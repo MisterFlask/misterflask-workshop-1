@@ -1,0 +1,12 @@
+post_id,timestamp,email,post_type,post_audience,active_subscription,country,city,region,device_type,client_os,client_type,user_agent
+169061929,2025-07-28T15:59:04.704Z,ishaan@koratkar.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-07-28T16:03:55.989Z,marmacea@hotmail.com,newsletter,everyone,true,US,,,,,,"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+169061929,2025-07-28T17:08:03.580Z,ironlordbyron@gmail.com,newsletter,everyone,false,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-07-28T17:41:01.785Z,ironlordbyron@gmail.com,newsletter,everyone,false,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-07-29T00:01:25.706Z,jacob.tycko@verizon.net,newsletter,everyone,true,NL,,,,,,Mozilla/5.0
+169061929,2025-07-29T02:41:41.152Z,ishaan@koratkar.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-07-29T05:17:22.904Z,sv.sivaraman107@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+169061929,2025-07-29T07:32:59.189Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-08-05T05:24:15.906Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+169061929,2025-08-22T22:46:21.044Z,jacob.tycko@verizon.net,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+169061929,2025-08-23T01:41:03.508Z,ishaan@koratkar.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)

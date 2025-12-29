@@ -1,0 +1,23 @@
+post_id,timestamp,email,post_type,post_audience,active_subscription,country,city,region,device_type,client_os,client_type,user_agent
+172417019,2025-09-21T13:13:55.356Z,hdylan1@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T13:14:50.723Z,ishaan@koratkar.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T13:15:45.119Z,longball714@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T13:27:19.595Z,johnofcharleston@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T13:30:07.509Z,smarter3@gmail.com,newsletter,everyone,true,CH,,,,,,"Mozilla/5.0 (Linux; Android 16; Pixel 9 Pro Build/BP3A.250905.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.7339.51 Mobile Safari/537.36"
+172417019,2025-09-21T13:36:29.931Z,smarter3@gmail.com,newsletter,everyone,true,CH,,,,,,"Mozilla/5.0 (Linux; Android 16; Pixel 9 Pro Build/BP3A.250905.014; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0.7339.51 Mobile Safari/537.36"
+172417019,2025-09-21T13:55:07.265Z,johnofcharleston@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T13:55:08.226Z,johnofcharleston@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T16:32:29.950Z,imdvs3@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T17:41:56.298Z,sv.sivaraman107@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+172417019,2025-09-21T17:59:15.370Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T19:03:05.449Z,dave.kasten@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+172417019,2025-09-21T20:39:49.751Z,isaiah.milbank@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-21T23:32:18.736Z,sv.sivaraman107@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-22T01:57:58.681Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-22T14:09:01.711Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-23T07:50:02.312Z,jacob.tycko@verizon.net,newsletter,everyone,true,US,,,,,,YahooMailProxy; https://help.yahoo.com/kb/yahoo-mail-proxy-SLN28749.html
+172417019,2025-09-24T01:12:01.228Z,jacob.tycko@verizon.net,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+172417019,2025-09-29T08:32:20.779Z,sv.sivaraman107@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0
+172417019,2025-09-30T05:20:44.639Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-09-30T05:24:11.132Z,yaniv256@gmail.com,newsletter,everyone,true,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
+172417019,2025-10-13T11:56:16.119Z,ironlordbyron@gmail.com,newsletter,everyone,false,US,,,,,,Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)
