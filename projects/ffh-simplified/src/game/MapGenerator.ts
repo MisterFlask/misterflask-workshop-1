@@ -75,10 +75,10 @@ function findStartPositions(
   const height = map.length;
   const positions: StartPosition[] = [];
 
-  // Define corners/edges for starting positions
+  // Define starting positions - hippus starts close to player for testing
   const startZones: Coord[] = [
-    { x: 3, y: 3 },                           // top-left
-    { x: width - 4, y: 3 },                   // top-right
+    { x: 5, y: 5 },                           // player: near top-left
+    { x: 10, y: 5 },                          // hippus: close to player for testing
     { x: 3, y: height - 4 },                  // bottom-left
     { x: width - 4, y: height - 4 },          // bottom-right
     { x: Math.floor(width / 2), y: 3 },       // top-center

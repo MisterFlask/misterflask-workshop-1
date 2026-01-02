@@ -108,8 +108,261 @@
         min-width: 250px;
         display: none;
       }
+      #legion-panel {
+        position: absolute;
+        top: 50px;
+        right: 10px;
+        width: 220px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 12px;
+        display: none;
+      }
+      #legion-panel h3 {
+        margin: 0 0 8px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #444;
+        font-size: 14px;
+      }
+      #legion-panel .legion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      #legion-panel .legion-stats {
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 12px;
+      }
+      .formation-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .formation-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .formation-row-label {
+        width: 36px;
+        font-size: 9px;
+        color: #666;
+        text-transform: uppercase;
+        text-align: right;
+        padding-right: 4px;
+      }
+      .formation-row-label.front { color: #c84; }
+      .formation-row-label.mid { color: #4c8; }
+      .formation-row-label.back { color: #88c; }
+      .formation-cells {
+        display: flex;
+        gap: 4px;
+        flex: 1;
+      }
+      .formation-cell {
+        width: 54px;
+        height: 54px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed #333;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .formation-cell.occupied {
+        border: 1px solid #555;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .soldier-card {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+        border-radius: 3px;
+      }
+      .soldier-card.dead {
+        opacity: 0.4;
+      }
+      .soldier-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: bold;
+        color: #000;
+      }
+      .soldier-icon.fighter { background: #c84; }
+      .soldier-icon.knight { background: #88c; }
+      .soldier-icon.archer { background: #4c8; }
+      .soldier-icon.mage { background: #c4c; }
+      .soldier-icon.cleric { background: #fff; }
+      .soldier-icon.demon { background: #c44; }
+      .soldier-hp-bar {
+        width: 100%;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 2px;
+      }
+      .soldier-hp-fill {
+        height: 100%;
+        transition: width 0.3s;
+      }
+      .soldier-hp-fill.high { background: #4f4; }
+      .soldier-hp-fill.medium { background: #ff4; }
+      .soldier-hp-fill.low { background: #f44; }
+      .soldier-hp-text {
+        font-size: 8px;
+        color: #aaa;
+        margin-top: 1px;
+      }
+      .legion-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 6px;
+      }
+      .legion-btn {
+        flex: 1;
+        padding: 6px 10px;
+        font-size: 11px;
+        background: #3a4a5a;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .legion-btn:hover {
+        background: #4a5a6a;
+      }
+      .legion-btn.primary {
+        background: #2a6a4a;
+        border-color: #3a8a5a;
+      }
+      .legion-btn.primary:hover {
+        background: #3a7a5a;
+      }
+      .legion-btn.cancel {
+        background: #5a3a3a;
+        border-color: #7a4a4a;
+      }
+      .legion-btn.cancel:hover {
+        background: #6a4a4a;
+      }
+      .formation-cell.edit-mode {
+        cursor: pointer;
+        border-style: solid;
+      }
+      .formation-cell.edit-mode:hover {
+        background: rgba(100, 150, 255, 0.2);
+        border-color: #68f;
+      }
+      .formation-cell.selected {
+        border-color: #4f4 !important;
+        background: rgba(100, 255, 100, 0.15) !important;
+        box-shadow: 0 0 8px rgba(100, 255, 100, 0.4);
+      }
+      .edit-instructions {
+        font-size: 10px;
+        color: #888;
+        text-align: center;
+        margin-top: 8px;
+        padding: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+      #unit-tooltip {
+        position: fixed;
+        background: rgba(20, 20, 35, 0.95);
+        border: 1px solid #555;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 200;
+        max-width: 220px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+      #unit-tooltip h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 6px;
+      }
+      #unit-tooltip .stat-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+      }
+      #unit-tooltip .stat-label {
+        color: #888;
+      }
+      #unit-tooltip .stat-value {
+        color: #fff;
+        font-weight: bold;
+      }
+      #unit-tooltip .stat-value.hp-high { color: #4f4; }
+      #unit-tooltip .stat-value.hp-medium { color: #ff4; }
+      #unit-tooltip .stat-value.hp-low { color: #f44; }
+      #unit-tooltip .section-label {
+        color: #666;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-top: 8px;
+        margin-bottom: 4px;
+      }
+      #unit-tooltip .attack-info {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 4px 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+      }
       #turn-indicator {
         font-weight: bold;
+      }
+      #tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid #555;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        pointer-events: none;
+        z-index: 100;
+        max-width: 280px;
+        display: none;
+        line-height: 1.4;
+      }
+      #tooltip h4 {
+        margin: 0 0 4px 0;
+        color: #fff;
+        font-size: 14px;
+      }
+      #tooltip p {
+        margin: 2px 0;
+        color: #ccc;
+      }
+      #tooltip .terrain {
+        color: #8f8;
+      }
+      #tooltip .city {
+        color: #fc0;
+      }
+      #tooltip .legion {
+        color: #f88;
+      }
+      #tooltip .friendly {
+        color: #8cf;
       }
     </style>
   </head>
@@ -137,7 +390,10 @@
             </div>
           </div>
           <div id="selection-panel"></div>
+          <div id="legion-panel"></div>
           <button id="end-turn-btn">End Turn</button>
+          <div id="tooltip"></div>
+          <div id="unit-tooltip"></div>
         </div>
       </div>
     </div>

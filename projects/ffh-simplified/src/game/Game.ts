@@ -59,6 +59,7 @@ export function createInitialGameState(seed: number = Date.now()): GameState {
     selectedCityId: null,
     gameOver: false,
     winner: null,
+    pendingCombat: null,
   };
 }
 
@@ -145,6 +146,9 @@ export function processAction(state: GameState, action: GameAction): GameState {
     case 'create_legion':
       return handleCreateLegion(state, action.cityId);
 
+    case 'apply_combat_results':
+      return handleApplyCombatResults(state);
+
     default:
       return state;
   }
@@ -154,23 +158,33 @@ function handleSelectTile(state: GameState, coord: Coord): GameState {
   const legion = getLegionAt(state, coord);
   const city = getCityAt(state, coord);
 
-  if (legion && legion.owner === 'player') {
-    return { ...state, selectedLegionId: legion.id, selectedCityId: null };
-  }
-
-  if (city && city.owner === 'player') {
-    return { ...state, selectedLegionId: null, selectedCityId: city.id };
-  }
-
-  // If we have a legion selected and clicked a valid move tile, move there
+  // FIRST: If we have a legion selected and clicked a valid move tile, move there
+  // This must come before city/legion selection to allow moving onto friendly cities
   if (state.selectedLegionId) {
     const selectedLegion = state.legions.get(state.selectedLegionId);
     if (selectedLegion) {
       const validMoves = getValidMoves(state, selectedLegion);
-      if (validMoves.some(m => coordsEqual(m, coord))) {
+      const isValidMove = validMoves.some(m => coordsEqual(m, coord));
+
+      if (isValidMove) {
         return handleMoveLegion(state, state.selectedLegionId, coord);
       }
     }
+  }
+
+  // THEN: Check for selecting a player legion
+  if (legion && legion.owner === 'player') {
+    return { ...state, selectedLegionId: legion.id, selectedCityId: null };
+  }
+
+  // THEN: Check for selecting a player city
+  if (city && city.owner === 'player') {
+    return { ...state, selectedLegionId: null, selectedCityId: city.id };
+  }
+
+  // Allow selecting enemy legions for viewing (but not controlling)
+  if (legion) {
+    return { ...state, selectedLegionId: legion.id, selectedCityId: null };
   }
 
   return { ...state, selectedLegionId: null, selectedCityId: null };
@@ -224,18 +238,43 @@ function handleCombat(
 
   const result = resolveCombat(attacker, defender, tile.terrain, hasWalls);
 
+  // Set pending combat and change phase - combat scene will display and call apply_combat_results when done
+  return {
+    ...state,
+    phase: 'combat_resolution',
+    pendingCombat: {
+      attackerId: attacker.id,
+      defenderId: defender.id,
+      combatLocation,
+      result,
+    },
+    selectedLegionId: null,
+  };
+}
+
+function handleApplyCombatResults(state: GameState): GameState {
+  if (!state.pendingCombat) return state;
+
+  const { attackerId, defenderId, combatLocation, result } = state.pendingCombat;
+  const attacker = state.legions.get(attackerId);
+  const defender = state.legions.get(defenderId);
+
+  if (!attacker || !defender) {
+    return { ...state, pendingCombat: null, phase: 'player_turn' };
+  }
+
   const newLegions = new Map(state.legions);
 
-  // Apply casualties
+  // Apply combat results - use survivors which have updated HP
   const updatedAttacker = {
     ...attacker,
-    soldiers: attacker.soldiers.filter(s => !result.attackerCasualties.includes(s.id)),
+    soldiers: result.attackerSurvivors,
     movementRemaining: 0,
   };
 
   const updatedDefender = {
     ...defender,
-    soldiers: defender.soldiers.filter(s => !result.defenderCasualties.includes(s.id)),
+    soldiers: result.defenderSurvivors,
   };
 
   if (result.attackerWon) {
@@ -265,7 +304,7 @@ function handleCombat(
         owner: attacker.owner,
         occupationTurns: 3,
       });
-      return { ...state, legions: newLegions, cities: newCities, selectedLegionId: null };
+      return { ...state, legions: newLegions, cities: newCities, pendingCombat: null, phase: 'player_turn' };
     }
   } else {
     // Attacker stays in place or retreats
@@ -282,7 +321,7 @@ function handleCombat(
     }
   }
 
-  return { ...state, legions: newLegions, selectedLegionId: null };
+  return { ...state, legions: newLegions, pendingCombat: null, phase: 'player_turn' };
 }
 
 function handleCityCapture(

@@ -1,4 +1,4 @@
-import type { Legion, Soldier, CombatResult, FormationRow, TerrainType } from '../types';
+import type { Legion, Soldier, CombatResult, CombatEvent, FormationRow, TerrainType } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
 
 const COMBAT_ROUND_DURATION = 100;
@@ -112,6 +112,10 @@ export function resolveCombat(
   terrain: TerrainType,
   defenderHasWalls: boolean = false
 ): CombatResult {
+  // Store initial state for replay
+  const initialAttackerSoldiers = attacker.soldiers.map(s => ({ ...s }));
+  const initialDefenderSoldiers = defender.soldiers.map(s => ({ ...s }));
+
   // Create working copies of soldiers
   const attackerSoldiers = attacker.soldiers.map(s => ({ ...s }));
   const defenderSoldiers = defender.soldiers.map(s => ({ ...s }));
@@ -136,22 +140,24 @@ export function resolveCombat(
   // Sort by timestamp
   allAttacks.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Track damage dealt
+  // Track damage dealt and combat events
   let attackerDamageDealt = 0;
   let defenderDamageDealt = 0;
+  const events: CombatEvent[] = [];
+  const deadSoldiers = new Set<string>();
 
   // Execute attacks
   for (const attack of allAttacks) {
     const friendlySoldiers = attack.isAttacker ? attackerSoldiers : defenderSoldiers;
     const enemySoldiers = attack.isAttacker ? defenderSoldiers : attackerSoldiers;
 
-    const attacker = friendlySoldiers.find(s => s.id === attack.attackerId);
-    if (!attacker || attacker.hp <= 0) continue; // Dead soldiers don't attack
+    const attackingSoldier = friendlySoldiers.find(s => s.id === attack.attackerId);
+    if (!attackingSoldier || attackingSoldier.hp <= 0) continue; // Dead soldiers don't attack
 
-    const attackerType = SOLDIER_TYPES[attacker.type];
+    const attackerType = SOLDIER_TYPES[attackingSoldier.type];
 
     // Special case: Cleric heals allies instead of attacking
-    if (attacker.type === 'cleric') {
+    if (attackingSoldier.type === 'cleric') {
       // Find lowest HP friendly soldier
       const wounded = friendlySoldiers
         .filter(s => s.hp > 0 && s.hp < s.maxHp)
@@ -159,20 +165,52 @@ export function resolveCombat(
 
       if (wounded.length > 0) {
         const healAmount = 30;
+        const actualHeal = Math.min(healAmount, wounded[0].maxHp - wounded[0].hp);
         wounded[0].hp = Math.min(wounded[0].maxHp, wounded[0].hp + healAmount);
+
+        events.push({
+          type: 'heal',
+          timestamp: attack.timestamp,
+          attackerId: attackingSoldier.id,
+          attackerIsPlayer: attack.isAttacker,
+          targetId: wounded[0].id,
+          healing: actualHeal,
+        });
       }
       continue;
     }
 
     // Find target
-    const target = findTarget(attacker, enemySoldiers, attackerType.attacksTarget);
+    const target = findTarget(attackingSoldier, enemySoldiers, attackerType.attacksTarget);
     if (!target) continue;
 
     // Apply defender terrain bonus only to defender side
     const bonus = attack.isAttacker ? terrainBonus : 0;
-    const damage = calculateDamage(attacker, target, bonus);
+    const damage = calculateDamage(attackingSoldier, target, bonus);
 
+    const hpBefore = target.hp;
     target.hp -= damage;
+
+    // Record attack event
+    events.push({
+      type: 'attack',
+      timestamp: attack.timestamp,
+      attackerId: attackingSoldier.id,
+      attackerIsPlayer: attack.isAttacker,
+      targetId: target.id,
+      damage: damage,
+    });
+
+    // Check for death
+    if (target.hp <= 0 && hpBefore > 0 && !deadSoldiers.has(target.id)) {
+      deadSoldiers.add(target.id);
+      events.push({
+        type: 'death',
+        timestamp: attack.timestamp + 0.1, // Slightly after the attack
+        attackerId: target.id,
+        attackerIsPlayer: !attack.isAttacker, // The one who died
+      });
+    }
 
     if (attack.isAttacker) {
       attackerDamageDealt += damage;
@@ -181,13 +219,17 @@ export function resolveCombat(
     }
   }
 
-  // Determine casualties
+  // Determine casualties and survivors
   const attackerCasualties = attackerSoldiers
     .filter(s => s.hp <= 0)
     .map(s => s.id);
   const defenderCasualties = defenderSoldiers
     .filter(s => s.hp <= 0)
     .map(s => s.id);
+
+  // Survivors with updated HP
+  const attackerSurvivors = attackerSoldiers.filter(s => s.hp > 0);
+  const defenderSurvivors = defenderSoldiers.filter(s => s.hp > 0);
 
   // Determine winner (defender wins ties)
   const attackerWon = attackerDamageDealt > defenderDamageDealt;
@@ -198,6 +240,11 @@ export function resolveCombat(
     defenderCasualties,
     attackerDamageDealt,
     defenderDamageDealt,
+    attackerSurvivors,
+    defenderSurvivors,
+    events,
+    initialAttackerSoldiers,
+    initialDefenderSoldiers,
   };
 }
 

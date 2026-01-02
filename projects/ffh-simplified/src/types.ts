@@ -115,12 +115,32 @@ export interface City {
 
 // ============ Combat ============
 
+export type CombatEventType = 'attack' | 'heal' | 'death';
+
+export interface CombatEvent {
+  type: CombatEventType;
+  timestamp: number;
+  attackerId: string;
+  attackerIsPlayer: boolean;
+  targetId?: string;
+  damage?: number;
+  healing?: number;
+}
+
 export interface CombatResult {
   attackerWon: boolean;
   attackerCasualties: string[]; // soldier IDs
   defenderCasualties: string[];
   attackerDamageDealt: number;
   defenderDamageDealt: number;
+  // Updated soldiers with HP changes applied
+  attackerSurvivors: Soldier[];
+  defenderSurvivors: Soldier[];
+  // Combat event log for visual playback
+  events: CombatEvent[];
+  // Initial state for replay
+  initialAttackerSoldiers: Soldier[];
+  initialDefenderSoldiers: Soldier[];
 }
 
 // ============ Game State ============
@@ -131,6 +151,13 @@ export type GamePhase =
   | 'combat_resolution'
   | 'end_turn'
   | 'game_over';
+
+export interface PendingCombat {
+  attackerId: string;
+  defenderId: string;
+  combatLocation: Coord;
+  result: CombatResult;
+}
 
 export interface GameState {
   phase: GamePhase;
@@ -146,6 +173,7 @@ export interface GameState {
   selectedCityId: string | null;
   gameOver: boolean;
   winner: FactionId | null;
+  pendingCombat: PendingCombat | null;
 }
 
 // ============ Actions ============
@@ -156,7 +184,8 @@ export type GameAction =
   | { type: 'end_turn' }
   | { type: 'build'; cityId: string; building: BuildingId }
   | { type: 'recruit'; cityId: string; soldierType: SoldierTypeId; legionId: string }
-  | { type: 'create_legion'; cityId: string };
+  | { type: 'create_legion'; cityId: string }
+  | { type: 'apply_combat_results' };
 
 // ============ UI State ============
 

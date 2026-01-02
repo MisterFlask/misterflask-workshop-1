@@ -3,7 +3,30 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(sudo mkdir:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm run test:*)",
+      "Bash(/usr/bin/npm run test)",
+      "Bash(command -v:*)",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash([ -s \"$NVM_DIR/nvm.sh\" ])",
+      "Bash(. \"$NVM_DIR/nvm.sh\")",
+      "Bash(nvm list:*)",
+      "Bash(source:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(./node_modules/.bin/playwright test:*)",
+      "Bash(npm install)",
+      "Bash(npx playwright install-deps:*)",
+      "Bash(PLAYWRIGHT_CHANNEL=chrome ./node_modules/.bin/playwright test:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run cli:*)",
+      "Bash(echo:*)",
+      "Bash(npx tsx:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(sudo git add:*)"
     ]
   }
 }
