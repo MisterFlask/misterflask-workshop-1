@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FFH Simplified</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: #1a1a2e;
+        color: #eee;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      #game-container {
+        flex: 1;
+        position: relative;
+      }
+      #game-canvas {
+        display: block;
+      }
+      #ui-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+      }
+      #ui-overlay > * {
+        pointer-events: auto;
+      }
+      #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 24px;
+      }
+      .resource {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .resource-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+      }
+      .gold-icon { background: #ffd700; }
+      .mana-icon { background: #7b68ee; }
+      #armageddon-counter {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #armageddon-bar {
+        width: 150px;
+        height: 12px;
+        background: #333;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      #armageddon-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #8b0000, #ff4500);
+        width: 0%;
+        transition: width 0.3s;
+      }
+      #end-turn-btn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        font-size: 16px;
+        background: #4a5568;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      #end-turn-btn:hover {
+        background: #2d3748;
+      }
+      #selection-panel {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 16px;
+        border-radius: 8px;
+        min-width: 250px;
+        display: none;
+      }
+      #turn-indicator {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-overlay">
+          <div id="top-bar">
+            <div id="turn-indicator">Turn 1</div>
+            <div class="resource">
+              <div class="resource-icon gold-icon"></div>
+              <span id="gold-amount">200</span>
+            </div>
+            <div class="resource">
+              <div class="resource-icon mana-icon"></div>
+              <span id="mana-amount">0</span>
+            </div>
+            <div id="armageddon-counter">
+              <span>Armageddon</span>
+              <div id="armageddon-bar">
+                <div id="armageddon-fill"></div>
+              </div>
+              <span id="armageddon-value">0/100</span>
+            </div>
+          </div>
+          <div id="selection-panel"></div>
+          <button id="end-turn-btn">End Turn</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
