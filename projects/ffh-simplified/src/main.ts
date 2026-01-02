@@ -2,7 +2,8 @@ import { createInitialGameState, processAction, getValidMoves, getTile, getLegio
 import { Renderer } from './rendering/Renderer';
 import { CombatScene } from './rendering/CombatScene';
 import { SOLDIER_TYPES } from './data/soldiers';
-import type { GameState, Coord } from './types';
+import { BUILDING_TYPES, getBuildingSlots } from './data/buildings';
+import type { GameState, Coord, BuildingId, SoldierTypeId } from './types';
 
 class GameApp {
   private state: GameState;
@@ -10,6 +11,7 @@ class GameApp {
   private canvas: HTMLCanvasElement;
   private tooltip: HTMLElement;
   private legionPanel: HTMLElement;
+  private cityPanel: HTMLElement;
   private unitTooltip: HTMLElement;
   private isDragging = false;
   private lastMousePos = { x: 0, y: 0 };
@@ -22,6 +24,7 @@ class GameApp {
     this.canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     this.tooltip = document.getElementById('tooltip') as HTMLElement;
     this.legionPanel = document.getElementById('legion-panel') as HTMLElement;
+    this.cityPanel = document.getElementById('city-panel') as HTMLElement;
     this.unitTooltip = document.getElementById('unit-tooltip') as HTMLElement;
     this.renderer = new Renderer(this.canvas);
     this.state = createInitialGameState();
@@ -265,6 +268,9 @@ class GameApp {
     // Update legion panel
     this.updateLegionPanel();
 
+    // Update city panel
+    this.updateCityPanel();
+
     // Game over check
     if (this.state.gameOver) {
       const message = this.state.winner === 'player'
@@ -449,6 +455,217 @@ class GameApp {
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => this.cancelEditingLegion());
     }
+  }
+
+  private updateCityPanel(): void {
+    if (!this.state.selectedCityId) {
+      this.cityPanel.style.display = 'none';
+      return;
+    }
+
+    const city = this.state.cities.get(this.state.selectedCityId);
+    if (!city || city.owner !== 'player') {
+      this.cityPanel.style.display = 'none';
+      return;
+    }
+
+    const player = this.state.factions.get('player');
+    if (!player) return;
+
+    const slots = getBuildingSlots(city.population);
+    const queuedBuildings = city.buildQueue.filter(item => item.itemType === 'building').length;
+    const usedSlots = city.buildings.length + queuedBuildings;
+
+    // Get legion at city for soldier recruitment
+    const legionAtCity = getLegionAt(this.state, city.coord);
+    const isPlayerLegion = legionAtCity && legionAtCity.owner === 'player';
+
+    // Build queue section
+    let queueHtml = '';
+    if (city.buildQueue.length > 0) {
+      queueHtml = `
+        <div class="city-section">
+          <div class="city-section-title">Build Queue</div>
+          <div class="build-queue">
+            ${city.buildQueue.map(item => {
+              const isBuilding = item.itemType === 'building';
+              const data = isBuilding
+                ? BUILDING_TYPES[item.itemId as BuildingId]
+                : SOLDIER_TYPES[item.itemId as SoldierTypeId];
+              const progressPercent = ((item.totalTurns - item.turnsRemaining) / item.totalTurns) * 100;
+              return `
+                <div class="queue-item">
+                  <div class="queue-item-info">
+                    <div class="queue-item-name">${data.name}</div>
+                    <div class="queue-item-turns">${item.turnsRemaining} turn${item.turnsRemaining > 1 ? 's' : ''} remaining</div>
+                    <div class="queue-progress">
+                      <div class="queue-progress-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                  </div>
+                  <button class="queue-item-cancel" data-queue-id="${item.id}">X</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Existing buildings section
+    let existingBuildingsHtml = '';
+    if (city.buildings.length > 0) {
+      existingBuildingsHtml = `
+        <div class="city-section">
+          <div class="city-section-title">Buildings (${city.buildings.length}/${slots})</div>
+          <div class="existing-buildings">
+            ${city.buildings.map(b => `<span class="existing-building">${BUILDING_TYPES[b].name}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Available buildings section
+    const availableBuildings = (Object.keys(BUILDING_TYPES) as BuildingId[]).filter(bid => {
+      if (city.buildings.includes(bid)) return false;
+      if (city.buildQueue.some(item => item.itemType === 'building' && item.itemId === bid)) return false;
+      return true;
+    });
+
+    let buildingsHtml = '';
+    if (usedSlots < slots && availableBuildings.length > 0) {
+      buildingsHtml = `
+        <div class="city-section">
+          <div class="city-section-title">Build Building</div>
+          <div class="available-items">
+            ${availableBuildings.map(bid => {
+              const b = BUILDING_TYPES[bid];
+              const canAfford = player.gold >= b.cost;
+              return `
+                <div class="build-option">
+                  <div class="build-option-info">
+                    <div class="build-option-name">${b.name}</div>
+                    <div class="build-option-cost">${b.cost} gold | ${b.buildTurns} turns</div>
+                  </div>
+                  <button class="build-option-btn" data-build-type="building" data-build-id="${bid}" ${!canAfford ? 'disabled' : ''}>
+                    Build
+                  </button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Available soldiers section (only if player legion is at city)
+    let soldiersHtml = '';
+    if (isPlayerLegion && city.occupationTurns === 0) {
+      // Determine which soldiers can be recruited
+      const recruitableSoldiers: SoldierTypeId[] = ['fighter']; // Always available
+      for (const buildingId of city.buildings) {
+        const building = BUILDING_TYPES[buildingId];
+        for (const effect of building.effects) {
+          if (effect.type === 'unlock_soldier' && !recruitableSoldiers.includes(effect.soldier)) {
+            recruitableSoldiers.push(effect.soldier);
+          }
+        }
+      }
+
+      // Check legion capacity
+      const queuedForLegion = city.buildQueue.filter(
+        item => item.itemType === 'soldier' && item.targetLegionId === legionAtCity.id
+      ).length;
+      const legionFull = legionAtCity.soldiers.length + queuedForLegion >= 8;
+
+      soldiersHtml = `
+        <div class="city-section">
+          <div class="city-section-title">Recruit Soldier (${legionAtCity.soldiers.length + queuedForLegion}/8)</div>
+          <div class="available-items">
+            ${recruitableSoldiers.map(sid => {
+              const s = SOLDIER_TYPES[sid];
+              const canAfford = player.gold >= s.cost.gold && player.mana >= s.cost.mana;
+              const costText = s.cost.mana > 0
+                ? `${s.cost.gold} gold, ${s.cost.mana} mana`
+                : `${s.cost.gold} gold`;
+              return `
+                <div class="build-option">
+                  <div class="build-option-info">
+                    <div class="build-option-name">${s.name}</div>
+                    <div class="build-option-cost">${costText} | ${s.buildTurns} turn${s.buildTurns > 1 ? 's' : ''}</div>
+                  </div>
+                  <button class="build-option-btn" data-build-type="soldier" data-build-id="${sid}" ${!canAfford || legionFull ? 'disabled' : ''}>
+                    Train
+                  </button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    this.cityPanel.innerHTML = `
+      <h3>${city.name}</h3>
+      <div class="city-stats">
+        <span>Population: ${city.population}</span>
+        <span>Building Slots: ${usedSlots}/${slots}</span>
+        ${city.occupationTurns > 0 ? `<span style="color: #f88">Occupied (${city.occupationTurns} turns)</span>` : ''}
+        ${isPlayerLegion ? `<span style="color: #8cf">Legion Present</span>` : ''}
+      </div>
+      ${queueHtml}
+      ${existingBuildingsHtml}
+      ${buildingsHtml}
+      ${soldiersHtml}
+    `;
+
+    this.cityPanel.style.display = 'block';
+
+    // Set up button listeners
+    this.setupCityPanelListeners(city.id, legionAtCity?.id || null);
+  }
+
+  private setupCityPanelListeners(cityId: string, legionId: string | null): void {
+    // Cancel queue buttons
+    const cancelBtns = this.cityPanel.querySelectorAll('.queue-item-cancel');
+    cancelBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const queueId = btn.getAttribute('data-queue-id');
+        if (queueId) {
+          this.state = processAction(this.state, {
+            type: 'cancel_queue_item',
+            cityId,
+            queueItemId: queueId,
+          });
+          this.updateUI();
+        }
+      });
+    });
+
+    // Build buttons
+    const buildBtns = this.cityPanel.querySelectorAll('.build-option-btn');
+    buildBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const buildType = btn.getAttribute('data-build-type');
+        const buildId = btn.getAttribute('data-build-id');
+        if (!buildType || !buildId) return;
+
+        if (buildType === 'building') {
+          this.state = processAction(this.state, {
+            type: 'queue_building',
+            cityId,
+            buildingId: buildId as BuildingId,
+          });
+        } else if (buildType === 'soldier' && legionId) {
+          this.state = processAction(this.state, {
+            type: 'queue_soldier',
+            cityId,
+            soldierType: buildId as SoldierTypeId,
+            targetLegionId: legionId,
+          });
+        }
+        this.updateUI();
+      });
+    });
   }
 
   private startEditingLegion(): void {

@@ -65,6 +65,7 @@ export interface SoldierType {
   attacksTarget: 'front' | 'back';
   attackCount: Record<FormationRow, number>;
   cost: { gold: number; mana: number };
+  buildTurns: number;
   sprite: string;
 }
 
@@ -92,6 +93,7 @@ export interface BuildingType {
   id: BuildingId;
   name: string;
   cost: number;
+  buildTurns: number;
   effects: BuildingEffect[];
   sprite: string;
 }
@@ -103,6 +105,18 @@ export type BuildingEffect =
   | { type: 'defense_bonus'; amount: number }
   | { type: 'growth_bonus'; amount: number };
 
+export type BuildQueueItemType = 'building' | 'soldier';
+
+export interface BuildQueueItem {
+  id: string;
+  itemType: BuildQueueItemType;
+  itemId: BuildingId | SoldierTypeId;
+  turnsRemaining: number;
+  totalTurns: number;
+  cost: { gold: number; mana: number };
+  targetLegionId?: string; // For soldiers - which legion to add them to
+}
+
 export interface City {
   id: string;
   name: string;
@@ -110,6 +124,7 @@ export interface City {
   coord: Coord;
   population: number;
   buildings: BuildingId[];
+  buildQueue: BuildQueueItem[];
   occupationTurns: number; // 0 = normal, >0 = recently captured
 }
 
@@ -185,7 +200,10 @@ export type GameAction =
   | { type: 'build'; cityId: string; building: BuildingId }
   | { type: 'recruit'; cityId: string; soldierType: SoldierTypeId; legionId: string }
   | { type: 'create_legion'; cityId: string }
-  | { type: 'apply_combat_results' };
+  | { type: 'apply_combat_results' }
+  | { type: 'queue_building'; cityId: string; buildingId: BuildingId }
+  | { type: 'queue_soldier'; cityId: string; soldierType: SoldierTypeId; targetLegionId: string }
+  | { type: 'cancel_queue_item'; cityId: string; queueItemId: string };
 
 // ============ UI State ============
 

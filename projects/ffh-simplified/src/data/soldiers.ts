@@ -12,6 +12,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'front',
     attackCount: { front: 3, mid: 2, back: 1 },
     cost: { gold: 50, mana: 0 },
+    buildTurns: 1,
     sprite: 'soldiers/fighter.png',
   },
   knight: {
@@ -25,6 +26,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'front',
     attackCount: { front: 3, mid: 2, back: 1 },
     cost: { gold: 100, mana: 0 },
+    buildTurns: 2,
     sprite: 'soldiers/knight.png',
   },
   archer: {
@@ -38,6 +40,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'back',
     attackCount: { front: 1, mid: 2, back: 2 },
     cost: { gold: 60, mana: 0 },
+    buildTurns: 1,
     sprite: 'soldiers/archer.png',
   },
   mage: {
@@ -51,6 +54,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'back',
     attackCount: { front: 1, mid: 1, back: 1 },
     cost: { gold: 80, mana: 10 },
+    buildTurns: 2,
     sprite: 'soldiers/mage.png',
   },
   cleric: {
@@ -64,6 +68,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'front', // Heals allies instead of attacking
     attackCount: { front: 1, mid: 1, back: 1 },
     cost: { gold: 70, mana: 5 },
+    buildTurns: 2,
     sprite: 'soldiers/cleric.png',
   },
   demon: {
@@ -77,6 +82,7 @@ export const SOLDIER_TYPES: Record<SoldierTypeId, SoldierType> = {
     attacksTarget: 'front',
     attackCount: { front: 3, mid: 2, back: 1 },
     cost: { gold: 100, mana: 0 }, // Boss-only, doesn't use normal recruitment
+    buildTurns: 1,
     sprite: 'soldiers/demon.png',
   },
 };

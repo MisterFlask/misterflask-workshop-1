@@ -4,23 +4,25 @@
 These must be fixed for the game to function correctly.
 
 - [ ] **Fix terrain defense bonus bug** - Combat.ts:172 applies terrain bonus to attacker instead of defender
-- [ ] **Fix combat HP persistence** - Combat result HP changes not propagated back to original soldiers
-- [ ] **Implement retreat logic** - Defeated legions are destroyed instead of retreating; need to move surviving soldiers
+- [x] **Fix combat HP persistence** - Combat result HP changes now propagated back to original soldiers via two-phase combat system
+- [x] **Implement retreat logic** - Defeated legions with survivors retreat to adjacent tile away from attacker; destroyed only if cornered
 
 ## Priority 2: Core Gameplay Loop
 These are required for a minimally playable game.
 
-- [ ] **City Management UI** - Panel for building construction and soldier recruitment
-  - [ ] Show available buildings based on population slots
-  - [ ] Show building costs and effects
-  - [ ] Build button with gold deduction
-  - [ ] Show recruitable soldiers based on buildings
-  - [ ] Recruit button with gold deduction and legion assignment
+- [x] **City Management UI** - Panel for building construction and soldier recruitment
+  - [x] Show available buildings based on population slots
+  - [x] Show building costs and turn times
+  - [x] Build queue with progress tracking
+  - [x] Cancel queued items with partial refund
+  - [x] Show recruitable soldiers based on buildings (when legion present)
+  - [x] Recruit soldiers to legion stationed at city
 
-- [ ] **Legion Management UI** - Panel for managing legion composition
-  - [ ] Show soldiers in formation grid (3x3)
-  - [ ] Allow repositioning soldiers between rows/columns
-  - [ ] Show legion stats summary
+- [x] **Legion Management UI** - Panel for managing legion composition
+  - [x] Show soldiers in formation grid (3x3)
+  - [x] Allow repositioning soldiers between rows/columns (Edit Formation mode)
+  - [x] Show legion stats summary
+  - [x] Unit tooltip with full stats on hover
 
 - [ ] **Movement validation improvements**
   - [ ] Prevent moving through enemy legions

@@ -10,13 +10,14 @@ import type {
   Soldier,
   SoldierTypeId,
   BuildingId,
+  BuildQueueItem,
 } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots, BASE_CITY_INCOME, TURNS_PER_POPULATION } from '../data/buildings';
 import { FACTION_TEMPLATES, createFaction } from '../data/factions';
 import { generateMap, placeStartingEntities } from './MapGenerator';
 import { resolveCombat, applyCombatResult } from './Combat';
-import { coordToKey, coordsEqual, getTilesInRange, findPath } from '../utils/grid';
+import { coordToKey, coordsEqual, getTilesInRange, findPath, getNeighbors, manhattanDistance } from '../utils/grid';
 import { generateId } from '../utils/random';
 
 const MOVEMENT_RANGE = 3;
@@ -108,6 +109,38 @@ function isPassableTerrain(tile: Tile): boolean {
   return tile.terrain !== 'mountain' && tile.terrain !== 'water';
 }
 
+function findRetreatTile(
+  state: GameState,
+  combatLocation: Coord,
+  attackerOrigin: Coord,
+  retreatingLegionOwner: FactionId
+): Coord | null {
+  const neighbors = getNeighbors(combatLocation, state.mapWidth, state.mapHeight);
+
+  // Filter to passable tiles without legions
+  const validTiles = neighbors.filter(coord => {
+    const tile = getTile(state, coord);
+    if (!tile || !isPassableTerrain(tile)) return false;
+
+    // Can't retreat to a tile occupied by another legion
+    const legionAtTile = getLegionAt(state, coord);
+    if (legionAtTile) return false;
+
+    return true;
+  });
+
+  if (validTiles.length === 0) return null;
+
+  // Prioritize retreating away from attacker (maximize distance from attacker origin)
+  validTiles.sort((a, b) => {
+    const distA = manhattanDistance(a, attackerOrigin);
+    const distB = manhattanDistance(b, attackerOrigin);
+    return distB - distA; // Higher distance = better retreat
+  });
+
+  return validTiles[0];
+}
+
 export function getValidMoves(state: GameState, legion: Legion): Coord[] {
   if (legion.movementRemaining <= 0) return [];
 
@@ -148,6 +181,15 @@ export function processAction(state: GameState, action: GameAction): GameState {
 
     case 'apply_combat_results':
       return handleApplyCombatResults(state);
+
+    case 'queue_building':
+      return handleQueueBuilding(state, action.cityId, action.buildingId);
+
+    case 'queue_soldier':
+      return handleQueueSoldier(state, action.cityId, action.soldierType, action.targetLegionId);
+
+    case 'cancel_queue_item':
+      return handleCancelQueueItem(state, action.cityId, action.queueItemId);
 
     default:
       return state;
@@ -282,9 +324,23 @@ function handleApplyCombatResults(state: GameState): GameState {
     updatedAttacker.location = combatLocation;
 
     if (updatedDefender.soldiers.length > 0) {
-      // TODO: Implement retreat logic
-      // For now, just destroy the legion
-      newLegions.delete(defender.id);
+      // Find retreat tile for defender
+      const retreatTile = findRetreatTile(
+        state,
+        combatLocation,
+        attacker.location, // Attacker's original position
+        defender.owner
+      );
+
+      if (retreatTile) {
+        // Defender retreats with survivors
+        updatedDefender.location = retreatTile;
+        updatedDefender.movementRemaining = 0; // Can't move after retreating
+        newLegions.set(defender.id, updatedDefender);
+      } else {
+        // No retreat path - legion is destroyed (cornered)
+        newLegions.delete(defender.id);
+      }
     } else {
       newLegions.delete(defender.id);
     }
@@ -432,6 +488,88 @@ function processEndTurnPhase(state: GameState): GameState {
     }
 
     newCities.set(cityId, newCity);
+  }
+
+  // Process build queues for all cities
+  for (const [cityId, city] of newCities) {
+    if (city.buildQueue.length === 0) continue;
+
+    const updatedQueue: BuildQueueItem[] = [];
+    let cityChanged = false;
+    let updatedCity = { ...city };
+
+    for (const item of city.buildQueue) {
+      const newTurnsRemaining = item.turnsRemaining - 1;
+
+      if (newTurnsRemaining <= 0) {
+        // Item completed
+        cityChanged = true;
+
+        if (item.itemType === 'building') {
+          // Add building to city
+          updatedCity = {
+            ...updatedCity,
+            buildings: [...updatedCity.buildings, item.itemId as BuildingId],
+          };
+        } else if (item.itemType === 'soldier' && item.targetLegionId) {
+          // Add soldier to legion
+          const legion = newLegions.get(item.targetLegionId);
+          if (legion && legion.soldiers.length < MAX_SOLDIERS_PER_LEGION) {
+            const soldierType = SOLDIER_TYPES[item.itemId as SoldierTypeId];
+
+            // Find open position
+            const usedPositions = new Set(
+              legion.soldiers.map(s => `${s.position.row}-${s.position.column}`)
+            );
+            let position: { row: 'front' | 'mid' | 'back'; column: number } | null = null;
+            const preferredRow = soldierType.preferredRow;
+            const rowOrder: ('front' | 'mid' | 'back')[] =
+              preferredRow === 'front'
+                ? ['front', 'mid', 'back']
+                : ['back', 'mid', 'front'];
+
+            for (const row of rowOrder) {
+              for (let col = 0; col < 3; col++) {
+                if (!usedPositions.has(`${row}-${col}`)) {
+                  position = { row, column: col };
+                  break;
+                }
+              }
+              if (position) break;
+            }
+
+            if (position) {
+              const newSoldier: Soldier = {
+                id: generateId('soldier'),
+                type: item.itemId as SoldierTypeId,
+                hp: soldierType.hp,
+                maxHp: soldierType.hp,
+                position,
+              };
+
+              newLegions.set(item.targetLegionId, {
+                ...legion,
+                soldiers: [...legion.soldiers, newSoldier],
+              });
+            }
+          }
+        }
+      } else {
+        // Still in progress
+        updatedQueue.push({
+          ...item,
+          turnsRemaining: newTurnsRemaining,
+        });
+      }
+    }
+
+    // Always update if there was a queue (turns remaining changed)
+    if (city.buildQueue.length > 0) {
+      newCities.set(cityId, {
+        ...updatedCity,
+        buildQueue: updatedQueue,
+      });
+    }
   }
 
   // Heal garrisoned legions
@@ -620,4 +758,148 @@ function handleCreateLegion(state: GameState, cityId: string): GameState {
   });
 
   return { ...state, legions: newLegions, factions: newFactions };
+}
+
+function handleQueueBuilding(state: GameState, cityId: string, buildingId: BuildingId): GameState {
+  const city = state.cities.get(cityId);
+  if (!city || city.owner !== 'player') return state;
+  if (city.occupationTurns > 0) return state;
+
+  const building = BUILDING_TYPES[buildingId];
+  const faction = state.factions.get('player');
+  if (!faction) return state;
+
+  // Check if player has enough gold
+  if (faction.gold < building.cost) return state;
+
+  // Check if building already exists
+  if (city.buildings.includes(buildingId)) return state;
+
+  // Check if building is already in queue
+  if (city.buildQueue.some(item => item.itemType === 'building' && item.itemId === buildingId)) {
+    return state;
+  }
+
+  // Check building slots (existing + queued buildings)
+  const slots = getBuildingSlots(city.population);
+  const queuedBuildings = city.buildQueue.filter(item => item.itemType === 'building').length;
+  if (city.buildings.length + queuedBuildings >= slots) return state;
+
+  const queueItem: BuildQueueItem = {
+    id: generateId('queue'),
+    itemType: 'building',
+    itemId: buildingId,
+    turnsRemaining: building.buildTurns,
+    totalTurns: building.buildTurns,
+    cost: { gold: building.cost, mana: 0 },
+  };
+
+  // Deduct gold immediately
+  const newFactions = new Map(state.factions);
+  newFactions.set('player', {
+    ...faction,
+    gold: faction.gold - building.cost,
+  });
+
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    buildQueue: [...city.buildQueue, queueItem],
+  });
+
+  return { ...state, cities: newCities, factions: newFactions };
+}
+
+function handleQueueSoldier(
+  state: GameState,
+  cityId: string,
+  soldierTypeId: SoldierTypeId,
+  targetLegionId: string
+): GameState {
+  const city = state.cities.get(cityId);
+  const legion = state.legions.get(targetLegionId);
+  if (!city || !legion) return state;
+  if (city.owner !== 'player' || legion.owner !== 'player') return state;
+  if (!coordsEqual(city.coord, legion.location)) return state;
+  if (city.occupationTurns > 0) return state;
+
+  const soldierType = SOLDIER_TYPES[soldierTypeId];
+  const faction = state.factions.get('player');
+  if (!faction) return state;
+
+  // Check resources
+  if (faction.gold < soldierType.cost.gold) return state;
+  if (faction.mana < soldierType.cost.mana) return state;
+
+  // Check if city can recruit this type (has the right building)
+  const canRecruit = city.buildings.some(b => {
+    const building = BUILDING_TYPES[b];
+    return building.effects.some(
+      e => e.type === 'unlock_soldier' && e.soldier === soldierTypeId
+    );
+  });
+  if (!canRecruit && soldierTypeId !== 'fighter') return state;
+
+  // Check legion capacity (current + queued soldiers for this legion)
+  const queuedForLegion = city.buildQueue.filter(
+    item => item.itemType === 'soldier' && item.targetLegionId === targetLegionId
+  ).length;
+  if (legion.soldiers.length + queuedForLegion >= MAX_SOLDIERS_PER_LEGION) return state;
+
+  const queueItem: BuildQueueItem = {
+    id: generateId('queue'),
+    itemType: 'soldier',
+    itemId: soldierTypeId,
+    turnsRemaining: soldierType.buildTurns,
+    totalTurns: soldierType.buildTurns,
+    cost: { gold: soldierType.cost.gold, mana: soldierType.cost.mana },
+    targetLegionId,
+  };
+
+  // Deduct resources immediately
+  const newFactions = new Map(state.factions);
+  newFactions.set('player', {
+    ...faction,
+    gold: faction.gold - soldierType.cost.gold,
+    mana: faction.mana - soldierType.cost.mana,
+  });
+
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    buildQueue: [...city.buildQueue, queueItem],
+  });
+
+  return { ...state, cities: newCities, factions: newFactions };
+}
+
+function handleCancelQueueItem(state: GameState, cityId: string, queueItemId: string): GameState {
+  const city = state.cities.get(cityId);
+  if (!city || city.owner !== 'player') return state;
+
+  const queueItem = city.buildQueue.find(item => item.id === queueItemId);
+  if (!queueItem) return state;
+
+  const faction = state.factions.get('player');
+  if (!faction) return state;
+
+  // Refund partial cost (50% of remaining progress)
+  const progressPercent = queueItem.turnsRemaining / queueItem.totalTurns;
+  const refundGold = Math.floor(queueItem.cost.gold * progressPercent * 0.5);
+  const refundMana = Math.floor(queueItem.cost.mana * progressPercent * 0.5);
+
+  const newFactions = new Map(state.factions);
+  newFactions.set('player', {
+    ...faction,
+    gold: faction.gold + refundGold,
+    mana: faction.mana + refundMana,
+  });
+
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    buildQueue: city.buildQueue.filter(item => item.id !== queueItemId),
+  });
+
+  return { ...state, cities: newCities, factions: newFactions };
 }

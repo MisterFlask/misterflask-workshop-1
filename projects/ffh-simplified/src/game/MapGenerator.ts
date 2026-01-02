@@ -182,6 +182,7 @@ function createStartingCity(
     coord,
     population: isCapital ? 3 : 1,
     buildings: isCapital ? ['barracks', 'market'] : [],
+    buildQueue: [],
     occupationTurns: 0,
   };
 }
@@ -244,6 +245,7 @@ export function placeStartingEntities(
         coord: { x, y },
         population: 2,
         buildings: [],
+        buildQueue: [],
         occupationTurns: 0,
       };
       // Actually mark as unclaimed by not setting owner
