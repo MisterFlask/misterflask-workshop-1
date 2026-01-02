@@ -1,5 +1,5 @@
 import type { Tile, TerrainType, City, Legion, FactionId, Coord, Soldier } from '../types';
-import { createRNG, randomInt, randomElement, generateId } from '../utils/random';
+import { createRNG, randomInt, randomElement, generateId, generateSoldierName, generateCityNameSeeded, resetCityNames } from '../utils/random';
 import { SOLDIER_TYPES } from '../data/soldiers';
 
 const TERRAIN_WEIGHTS: Record<TerrainType, number> = {
@@ -150,14 +150,17 @@ function createStartingLegion(factionId: FactionId, location: Coord): Legion {
     ];
   }
 
-  for (const { type, row, col } of composition) {
+  for (let i = 0; i < composition.length; i++) {
+    const { type, row, col } = composition[i];
     const soldierType = SOLDIER_TYPES[type];
     soldiers.push({
       id: generateId('soldier'),
+      name: generateSoldierName(),
       type,
       hp: soldierType.hp,
       maxHp: soldierType.hp,
       position: { row, column: col },
+      isLeader: i === 0, // First soldier is the leader
     });
   }
 
@@ -173,17 +176,22 @@ function createStartingLegion(factionId: FactionId, location: Coord): Legion {
 function createStartingCity(
   factionId: FactionId,
   coord: Coord,
-  isCapital: boolean
+  isCapital: boolean,
+  rng: () => number
 ): City {
+  const cityName = generateCityNameSeeded(rng);
   return {
     id: generateId('city'),
-    name: `${factionId} ${isCapital ? 'Capital' : 'Outpost'}`,
+    name: cityName,
     owner: factionId,
     coord,
     population: isCapital ? 3 : 1,
     buildings: isCapital ? ['barracks', 'market'] : [],
     buildQueue: [],
+    roster: [],
     occupationTurns: 0,
+    isCapital,
+    growthProgress: 0,
   };
 }
 
@@ -194,6 +202,9 @@ export function placeStartingEntities(
   legions: Map<string, Legion>,
   seed: number
 ): void {
+  // Reset city names for a fresh game
+  resetCityNames();
+
   const rng = createRNG(seed + 1000);
   const positions = findStartPositions(map, factions.length, rng);
 
@@ -202,7 +213,7 @@ export function placeStartingEntities(
     const pos = positions[i];
 
     // Create capital city
-    const city = createStartingCity(factionId, pos.cityCoord, true);
+    const city = createStartingCity(factionId, pos.cityCoord, true, rng);
     cities.set(city.id, city);
 
     // Create starting legion
@@ -237,16 +248,20 @@ export function placeStartingEntities(
       }
       if (tooClose) continue;
 
-      // Create neutral city
+      // Create neutral city with a proper name
+      const cityName = generateCityNameSeeded(rng);
       const city: City = {
         id: generateId('city'),
-        name: `Neutral Town ${i + 1}`,
+        name: cityName,
         owner: 'player', // Will be set to neutral/unclaimed
         coord: { x, y },
         population: 2,
         buildings: [],
         buildQueue: [],
+        roster: [],
         occupationTurns: 0,
+        isCapital: false,
+        growthProgress: 0,
       };
       // Actually mark as unclaimed by not setting owner
       // For now, leave as neutral (could add a 'neutral' faction)

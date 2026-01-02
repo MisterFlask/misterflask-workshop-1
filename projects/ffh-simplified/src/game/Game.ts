@@ -11,14 +11,18 @@ import type {
   SoldierTypeId,
   BuildingId,
   BuildQueueItem,
+  RosterSoldier,
+  CollegiaState,
+  Technology,
 } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots, BASE_CITY_INCOME, TURNS_PER_POPULATION } from '../data/buildings';
 import { FACTION_TEMPLATES, createFaction } from '../data/factions';
+import { TECHNOLOGIES, getAllTechnologyIds } from '../data/technologies';
 import { generateMap, placeStartingEntities } from './MapGenerator';
 import { resolveCombat, applyCombatResult } from './Combat';
 import { coordToKey, coordsEqual, getTilesInRange, findPath, getNeighbors, manhattanDistance } from '../utils/grid';
-import { generateId } from '../utils/random';
+import { generateId, generateSoldierName } from '../utils/random';
 
 const MOVEMENT_RANGE = 3;
 const HEAL_RATE = 20;
@@ -26,6 +30,33 @@ const LEGION_COST = 100;
 const MAX_LEGIONS_PER_FACTION = 5;
 const MAX_SOLDIERS_PER_LEGION = 8;
 const ARMAGEDDON_MAX = 100;
+const COLLEGIA_OFFERINGS_COUNT = 5;
+const COLLEGIA_REROLL_COST = 100;
+
+// Generate random Collegia offerings (excluding already owned techs)
+function generateCollegiaOfferings(ownedTechnologies: string[]): string[] {
+  const allTechs = getAllTechnologyIds();
+  const availableTechs = allTechs.filter(id => !ownedTechnologies.includes(id));
+
+  // Shuffle and take the first N
+  const shuffled = [...availableTechs];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled.slice(0, Math.min(COLLEGIA_OFFERINGS_COUNT, shuffled.length));
+}
+
+// Create initial Collegia state
+function createInitialCollegia(): CollegiaState {
+  return {
+    currentResearch: null,
+    availableOfferings: generateCollegiaOfferings([]),
+    ownedTechnologies: [],
+    rerollAvailable: true,
+  };
+}
 
 export function createInitialGameState(seed: number = Date.now()): GameState {
   const mapWidth = 30;
@@ -61,6 +92,7 @@ export function createInitialGameState(seed: number = Date.now()): GameState {
     gameOver: false,
     winner: null,
     pendingCombat: null,
+    collegia: createInitialCollegia(),
   };
 }
 
@@ -103,6 +135,180 @@ export function getFactionLegions(state: GameState, factionId: FactionId): Legio
 
 export function getFactionCities(state: GameState, factionId: FactionId): City[] {
   return Array.from(state.cities.values()).filter(c => c.owner === factionId);
+}
+
+// Get the name of a legion based on its leader
+export function getLegionName(legion: Legion): string {
+  const leader = legion.soldiers.find(s => s.isLeader);
+  if (leader) {
+    return `${leader.name}'s Legion`;
+  }
+  // Fallback if no leader (shouldn't happen, but just in case)
+  if (legion.soldiers.length > 0) {
+    return `${legion.soldiers[0].name}'s Legion`;
+  }
+  return 'Empty Legion';
+}
+
+// Ensure a legion has a leader (promotes first soldier if needed)
+function ensureLegionHasLeader(legion: Legion): void {
+  if (legion.soldiers.length === 0) return;
+
+  const hasLeader = legion.soldiers.some(s => s.isLeader);
+  if (!hasLeader) {
+    // Promote the first soldier to leader
+    legion.soldiers[0].isLeader = true;
+  }
+}
+
+const CITY_RECRUIT_RANGE = 2; // Legions within this range can receive soldiers from city
+
+export function getLegionsInRangeOfCity(state: GameState, city: City, factionId: FactionId): Legion[] {
+  return Array.from(state.legions.values()).filter(legion => {
+    if (legion.owner !== factionId) return false;
+    const distance = manhattanDistance(legion.location, city.coord);
+    return distance <= CITY_RECRUIT_RANGE;
+  });
+}
+
+export function getCitiesInRangeOfLegion(state: GameState, legion: Legion, factionId: FactionId): City[] {
+  return Array.from(state.cities.values()).filter(city => {
+    if (city.owner !== factionId) return false;
+    const distance = manhattanDistance(legion.location, city.coord);
+    return distance <= CITY_RECRUIT_RANGE;
+  });
+}
+
+export function getLegionsInRangeOfLegion(state: GameState, legion: Legion, factionId: FactionId): Legion[] {
+  return Array.from(state.legions.values()).filter(otherLegion => {
+    if (otherLegion.id === legion.id) return false; // Exclude self
+    if (otherLegion.owner !== factionId) return false;
+    const distance = manhattanDistance(legion.location, otherLegion.location);
+    return distance <= CITY_RECRUIT_RANGE;
+  });
+}
+
+// Calculate income breakdown for a city
+export interface CityIncomeBreakdown {
+  baseGold: number;
+  buildingGold: number;
+  buildingMana: number;
+  totalGold: number;
+  totalMana: number;
+  goldSources: { name: string; amount: number }[];
+  manaSources: { name: string; amount: number }[];
+}
+
+export function getCityIncome(city: City): CityIncomeBreakdown {
+  const baseGold = city.occupationTurns > 0 ? Math.floor(BASE_CITY_INCOME / 2) : BASE_CITY_INCOME;
+  let buildingGold = 0;
+  let buildingMana = 0;
+  const goldSources: { name: string; amount: number }[] = [];
+  const manaSources: { name: string; amount: number }[] = [];
+
+  if (city.occupationTurns === 0) {
+    for (const buildingId of city.buildings) {
+      const building = BUILDING_TYPES[buildingId];
+      for (const effect of building.effects) {
+        if (effect.type === 'gold_per_turn') {
+          buildingGold += effect.amount;
+          goldSources.push({ name: building.name, amount: effect.amount });
+        }
+        if (effect.type === 'mana_per_turn') {
+          buildingMana += effect.amount;
+          manaSources.push({ name: building.name, amount: effect.amount });
+        }
+      }
+    }
+  }
+
+  return {
+    baseGold,
+    buildingGold,
+    buildingMana,
+    totalGold: baseGold + buildingGold,
+    totalMana: buildingMana,
+    goldSources,
+    manaSources,
+  };
+}
+
+// Calculate total faction income
+export interface FactionIncomeBreakdown {
+  totalGold: number;
+  totalMana: number;
+  cityBreakdowns: { cityName: string; gold: number; mana: number }[];
+}
+
+export function getFactionIncome(state: GameState, factionId: FactionId): FactionIncomeBreakdown {
+  const cities = getFactionCities(state, factionId);
+  let totalGold = 0;
+  let totalMana = 0;
+  const cityBreakdowns: { cityName: string; gold: number; mana: number }[] = [];
+
+  for (const city of cities) {
+    const income = getCityIncome(city);
+    totalGold += income.totalGold;
+    totalMana += income.totalMana;
+    cityBreakdowns.push({
+      cityName: city.name,
+      gold: income.totalGold,
+      mana: income.totalMana,
+    });
+  }
+
+  return { totalGold, totalMana, cityBreakdowns };
+}
+
+// Calculate growth info for a city
+export interface CityGrowthInfo {
+  currentProgress: number;
+  progressNeeded: number;
+  turnsUntilGrowth: number;
+  growthRate: number; // Points per turn
+  hasGranary: boolean;
+}
+
+export function getCityGrowthInfo(city: City): CityGrowthInfo {
+  let growthBonus = 0;
+  let hasGranary = false;
+
+  for (const buildingId of city.buildings) {
+    const building = BUILDING_TYPES[buildingId];
+    for (const effect of building.effects) {
+      if (effect.type === 'growth_bonus') {
+        growthBonus += effect.amount;
+        if (buildingId === 'granary') hasGranary = true;
+      }
+    }
+  }
+
+  const growthRate = 1 + growthBonus;
+  const currentProgress = city.growthProgress || 0;
+  const remaining = TURNS_PER_POPULATION - currentProgress;
+  const turnsUntilGrowth = Math.ceil(remaining / growthRate);
+
+  return {
+    currentProgress,
+    progressNeeded: TURNS_PER_POPULATION,
+    turnsUntilGrowth,
+    growthRate,
+    hasGranary,
+  };
+}
+
+// Get defense bonus for a city
+export function getCityDefenseBonus(city: City): number {
+  let bonus = 0;
+  for (const buildingId of city.buildings) {
+    const building = BUILDING_TYPES[buildingId];
+    for (const effect of building.effects) {
+      if (effect.type === 'defense_bonus') {
+        bonus += effect.amount;
+      }
+    }
+  }
+  return bonus;
 }
 
 function isPassableTerrain(tile: Tile): boolean {
@@ -190,6 +396,24 @@ export function processAction(state: GameState, action: GameAction): GameState {
 
     case 'cancel_queue_item':
       return handleCancelQueueItem(state, action.cityId, action.queueItemId);
+
+    case 'assign_soldier':
+      return handleAssignSoldier(state, action.cityId, action.soldierId, action.legionId);
+
+    case 'unassign_soldier':
+      return handleUnassignSoldier(state, action.legionId, action.soldierId, action.cityId);
+
+    case 'create_legion_from_roster':
+      return handleCreateLegionFromRoster(state, action.cityId, action.soldierId);
+
+    case 'transfer_soldier':
+      return handleTransferSoldier(state, action.fromLegionId, action.soldierId, action.toLegionId);
+
+    case 'select_research':
+      return handleSelectResearch(state, action.technologyId);
+
+    case 'reroll_collegia':
+      return handleRerollCollegia(state);
 
     default:
       return state;
@@ -482,9 +706,26 @@ function processEndTurnPhase(state: GameState): GameState {
       newCity.occupationTurns--;
     }
 
-    // Population growth (every TURNS_PER_POPULATION turns)
-    if (state.turn % TURNS_PER_POPULATION === 0) {
+    // Calculate growth bonus from buildings
+    let growthBonus = 0;
+    for (const buildingId of newCity.buildings) {
+      const building = BUILDING_TYPES[buildingId];
+      for (const effect of building.effects) {
+        if (effect.type === 'growth_bonus') {
+          growthBonus += effect.amount;
+        }
+      }
+    }
+
+    // Population growth - accumulate growth points each turn
+    // Base growth is 1 point per turn, plus any growth bonus
+    const growthRate = 1 + growthBonus;
+    newCity.growthProgress = (newCity.growthProgress || 0) + growthRate;
+
+    // When growth reaches threshold, add population
+    if (newCity.growthProgress >= TURNS_PER_POPULATION) {
       newCity.population++;
+      newCity.growthProgress -= TURNS_PER_POPULATION;
     }
 
     newCities.set(cityId, newCity);
@@ -511,47 +752,66 @@ function processEndTurnPhase(state: GameState): GameState {
             ...updatedCity,
             buildings: [...updatedCity.buildings, item.itemId as BuildingId],
           };
-        } else if (item.itemType === 'soldier' && item.targetLegionId) {
-          // Add soldier to legion
-          const legion = newLegions.get(item.targetLegionId);
-          if (legion && legion.soldiers.length < MAX_SOLDIERS_PER_LEGION) {
-            const soldierType = SOLDIER_TYPES[item.itemId as SoldierTypeId];
+        } else if (item.itemType === 'soldier') {
+          const soldierType = SOLDIER_TYPES[item.itemId as SoldierTypeId];
 
-            // Find open position
-            const usedPositions = new Set(
-              legion.soldiers.map(s => `${s.position.row}-${s.position.column}`)
-            );
-            let position: { row: 'front' | 'mid' | 'back'; column: number } | null = null;
-            const preferredRow = soldierType.preferredRow;
-            const rowOrder: ('front' | 'mid' | 'back')[] =
-              preferredRow === 'front'
-                ? ['front', 'mid', 'back']
-                : ['back', 'mid', 'front'];
+          if (item.targetLegionId) {
+            // Add soldier to legion
+            const legion = newLegions.get(item.targetLegionId);
+            if (legion && legion.soldiers.length < MAX_SOLDIERS_PER_LEGION) {
+              // Find open position
+              const usedPositions = new Set(
+                legion.soldiers.map(s => `${s.position.row}-${s.position.column}`)
+              );
+              let position: { row: 'front' | 'mid' | 'back'; column: number } | null = null;
+              const preferredRow = soldierType.preferredRow;
+              const rowOrder: ('front' | 'mid' | 'back')[] =
+                preferredRow === 'front'
+                  ? ['front', 'mid', 'back']
+                  : ['back', 'mid', 'front'];
 
-            for (const row of rowOrder) {
-              for (let col = 0; col < 3; col++) {
-                if (!usedPositions.has(`${row}-${col}`)) {
-                  position = { row, column: col };
-                  break;
+              for (const row of rowOrder) {
+                for (let col = 0; col < 3; col++) {
+                  if (!usedPositions.has(`${row}-${col}`)) {
+                    position = { row, column: col };
+                    break;
+                  }
                 }
+                if (position) break;
               }
-              if (position) break;
-            }
 
-            if (position) {
-              const newSoldier: Soldier = {
-                id: generateId('soldier'),
-                type: item.itemId as SoldierTypeId,
-                hp: soldierType.hp,
-                maxHp: soldierType.hp,
-                position,
-              };
+              if (position) {
+                // If legion is empty, this soldier becomes the leader
+                const isLeader = legion.soldiers.length === 0;
+                const newSoldier: Soldier = {
+                  id: generateId('soldier'),
+                  name: generateSoldierName(),
+                  type: item.itemId as SoldierTypeId,
+                  hp: soldierType.hp,
+                  maxHp: soldierType.hp,
+                  position,
+                  isLeader,
+                };
 
-              newLegions.set(item.targetLegionId, {
-                ...legion,
-                soldiers: [...legion.soldiers, newSoldier],
-              });
+                newLegions.set(item.targetLegionId, {
+                  ...legion,
+                  soldiers: [...legion.soldiers, newSoldier],
+                });
+              }
             }
+          } else {
+            // No target legion - add to city roster
+            const rosterSoldier: RosterSoldier = {
+              id: generateId('soldier'),
+              name: generateSoldierName(),
+              type: item.itemId as SoldierTypeId,
+              hp: soldierType.hp,
+              maxHp: soldierType.hp,
+            };
+            updatedCity = {
+              ...updatedCity,
+              roster: [...updatedCity.roster, rosterSoldier],
+            };
           }
         }
       } else {
@@ -587,13 +847,17 @@ function processEndTurnPhase(state: GameState): GameState {
   // Advance Armageddon counter
   const newArmageddon = Math.min(ARMAGEDDON_MAX, state.armageddonCounter + 1);
 
-  return {
+  // Create intermediate state for collegia processing
+  const stateAfterTurn: GameState = {
     ...state,
     factions: newFactions,
     cities: newCities,
     legions: newLegions,
     armageddonCounter: newArmageddon,
   };
+
+  // Process Collegia research
+  return processCollegiaResearch(stateAfterTurn);
 }
 
 function checkGameOver(state: GameState): GameState {
@@ -814,14 +1078,27 @@ function handleQueueSoldier(
   state: GameState,
   cityId: string,
   soldierTypeId: SoldierTypeId,
-  targetLegionId: string
+  targetLegionId?: string
 ): GameState {
   const city = state.cities.get(cityId);
-  const legion = state.legions.get(targetLegionId);
-  if (!city || !legion) return state;
-  if (city.owner !== 'player' || legion.owner !== 'player') return state;
-  if (!coordsEqual(city.coord, legion.location)) return state;
+  if (!city || city.owner !== 'player') return state;
   if (city.occupationTurns > 0) return state;
+
+  // If targeting a legion, validate it
+  if (targetLegionId) {
+    const legion = state.legions.get(targetLegionId);
+    if (!legion || legion.owner !== 'player') return state;
+
+    // Check if legion is within range of city
+    const distance = manhattanDistance(legion.location, city.coord);
+    if (distance > CITY_RECRUIT_RANGE) return state;
+
+    // Check legion capacity (current + queued soldiers for this legion)
+    const queuedForLegion = city.buildQueue.filter(
+      item => item.itemType === 'soldier' && item.targetLegionId === targetLegionId
+    ).length;
+    if (legion.soldiers.length + queuedForLegion >= MAX_SOLDIERS_PER_LEGION) return state;
+  }
 
   const soldierType = SOLDIER_TYPES[soldierTypeId];
   const faction = state.factions.get('player');
@@ -840,12 +1117,6 @@ function handleQueueSoldier(
   });
   if (!canRecruit && soldierTypeId !== 'fighter') return state;
 
-  // Check legion capacity (current + queued soldiers for this legion)
-  const queuedForLegion = city.buildQueue.filter(
-    item => item.itemType === 'soldier' && item.targetLegionId === targetLegionId
-  ).length;
-  if (legion.soldiers.length + queuedForLegion >= MAX_SOLDIERS_PER_LEGION) return state;
-
   const queueItem: BuildQueueItem = {
     id: generateId('queue'),
     itemType: 'soldier',
@@ -853,7 +1124,7 @@ function handleQueueSoldier(
     turnsRemaining: soldierType.buildTurns,
     totalTurns: soldierType.buildTurns,
     cost: { gold: soldierType.cost.gold, mana: soldierType.cost.mana },
-    targetLegionId,
+    targetLegionId, // Can be undefined - soldier goes to roster
   };
 
   // Deduct resources immediately
@@ -902,4 +1173,409 @@ function handleCancelQueueItem(state: GameState, cityId: string, queueItemId: st
   });
 
   return { ...state, cities: newCities, factions: newFactions };
+}
+
+function handleAssignSoldier(
+  state: GameState,
+  cityId: string,
+  soldierId: string,
+  legionId: string
+): GameState {
+  const city = state.cities.get(cityId);
+  const legion = state.legions.get(legionId);
+  if (!city || !legion) return state;
+  if (city.owner !== 'player' || legion.owner !== 'player') return state;
+
+  // Check if legion is within range of city
+  const distance = manhattanDistance(legion.location, city.coord);
+  if (distance > CITY_RECRUIT_RANGE) return state;
+
+  // Find soldier in roster
+  const rosterSoldier = city.roster.find(s => s.id === soldierId);
+  if (!rosterSoldier) return state;
+
+  // Check legion capacity
+  if (legion.soldiers.length >= MAX_SOLDIERS_PER_LEGION) return state;
+
+  // Find open position in formation
+  const soldierType = SOLDIER_TYPES[rosterSoldier.type];
+  const usedPositions = new Set(
+    legion.soldiers.map(s => `${s.position.row}-${s.position.column}`)
+  );
+  let position: { row: 'front' | 'mid' | 'back'; column: number } | null = null;
+
+  const preferredRow = soldierType.preferredRow;
+  const rowOrder: ('front' | 'mid' | 'back')[] =
+    preferredRow === 'front'
+      ? ['front', 'mid', 'back']
+      : ['back', 'mid', 'front'];
+
+  for (const row of rowOrder) {
+    for (let col = 0; col < 3; col++) {
+      if (!usedPositions.has(`${row}-${col}`)) {
+        position = { row, column: col };
+        break;
+      }
+    }
+    if (position) break;
+  }
+
+  if (!position) return state; // No room
+
+  // If legion is empty, this soldier becomes the leader
+  const isLeader = legion.soldiers.length === 0;
+
+  // Create soldier with position
+  const newSoldier: Soldier = {
+    id: rosterSoldier.id,
+    name: rosterSoldier.name,
+    type: rosterSoldier.type,
+    hp: rosterSoldier.hp,
+    maxHp: rosterSoldier.maxHp,
+    position,
+    isLeader,
+  };
+
+  // Update legion
+  const newLegions = new Map(state.legions);
+  newLegions.set(legionId, {
+    ...legion,
+    soldiers: [...legion.soldiers, newSoldier],
+  });
+
+  // Remove from roster
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    roster: city.roster.filter(s => s.id !== soldierId),
+  });
+
+  return { ...state, legions: newLegions, cities: newCities };
+}
+
+function handleUnassignSoldier(
+  state: GameState,
+  legionId: string,
+  soldierId: string,
+  cityId: string
+): GameState {
+  const legion = state.legions.get(legionId);
+  const city = state.cities.get(cityId);
+  if (!legion || !city) return state;
+  if (legion.owner !== 'player' || city.owner !== 'player') return state;
+
+  // Check if legion is within range of city
+  const distance = manhattanDistance(legion.location, city.coord);
+  if (distance > CITY_RECRUIT_RANGE) return state;
+
+  // Find soldier in legion
+  const soldier = legion.soldiers.find(s => s.id === soldierId);
+  if (!soldier) return state;
+
+  // Create roster soldier (without position)
+  const rosterSoldier: RosterSoldier = {
+    id: soldier.id,
+    name: soldier.name,
+    type: soldier.type,
+    hp: soldier.hp,
+    maxHp: soldier.maxHp,
+  };
+
+  // Update city roster
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    roster: [...city.roster, rosterSoldier],
+  });
+
+  // Remove from legion and handle leader succession
+  const remainingSoldiers = legion.soldiers.filter(s => s.id !== soldierId);
+
+  // If we removed the leader and there are remaining soldiers, promote a new leader
+  if (soldier.isLeader && remainingSoldiers.length > 0) {
+    remainingSoldiers[0] = { ...remainingSoldiers[0], isLeader: true };
+  }
+
+  const newLegions = new Map(state.legions);
+  newLegions.set(legionId, {
+    ...legion,
+    soldiers: remainingSoldiers,
+  });
+
+  return { ...state, legions: newLegions, cities: newCities };
+}
+
+function handleCreateLegionFromRoster(
+  state: GameState,
+  cityId: string,
+  soldierId: string
+): GameState {
+  const city = state.cities.get(cityId);
+  if (!city || city.owner !== 'player') return state;
+
+  // Find soldier in roster
+  const rosterSoldier = city.roster.find(s => s.id === soldierId);
+  if (!rosterSoldier) return state;
+
+  // Create new legion at city location
+  const newLegionId = generateId('legion');
+
+  // Create the soldier for the legion (as leader)
+  const newSoldier: Soldier = {
+    id: rosterSoldier.id,
+    name: rosterSoldier.name,
+    type: rosterSoldier.type,
+    hp: rosterSoldier.hp,
+    maxHp: rosterSoldier.maxHp,
+    position: { row: 'front', column: 1 }, // Default center-front position
+    isLeader: true,
+  };
+
+  const newLegion: Legion = {
+    id: newLegionId,
+    owner: 'player',
+    soldiers: [newSoldier],
+    location: city.coord,
+    movementRemaining: 0, // New legion can't move this turn
+  };
+
+  // Remove soldier from roster
+  const newCities = new Map(state.cities);
+  newCities.set(cityId, {
+    ...city,
+    roster: city.roster.filter(s => s.id !== soldierId),
+  });
+
+  // Add new legion
+  const newLegions = new Map(state.legions);
+  newLegions.set(newLegionId, newLegion);
+
+  return { ...state, legions: newLegions, cities: newCities };
+}
+
+function handleTransferSoldier(
+  state: GameState,
+  fromLegionId: string,
+  soldierId: string,
+  toLegionId: string
+): GameState {
+  const fromLegion = state.legions.get(fromLegionId);
+  const toLegion = state.legions.get(toLegionId);
+  if (!fromLegion || !toLegion) return state;
+  if (fromLegion.owner !== 'player' || toLegion.owner !== 'player') return state;
+
+  // Check if legions are within range of each other
+  const distance = manhattanDistance(fromLegion.location, toLegion.location);
+  if (distance > CITY_RECRUIT_RANGE) return state;
+
+  // Find soldier in source legion
+  const soldier = fromLegion.soldiers.find(s => s.id === soldierId);
+  if (!soldier) return state;
+
+  // Check target legion capacity
+  if (toLegion.soldiers.length >= MAX_SOLDIERS_PER_LEGION) return state;
+
+  // Find open position in target legion
+  const soldierType = SOLDIER_TYPES[soldier.type];
+  const usedPositions = new Set(
+    toLegion.soldiers.map(s => `${s.position.row}-${s.position.column}`)
+  );
+  let position: { row: 'front' | 'mid' | 'back'; column: number } | null = null;
+
+  const preferredRow = soldierType.preferredRow;
+  const rowOrder: ('front' | 'mid' | 'back')[] =
+    preferredRow === 'front'
+      ? ['front', 'mid', 'back']
+      : ['back', 'mid', 'front'];
+
+  for (const row of rowOrder) {
+    for (let col = 0; col < 3; col++) {
+      if (!usedPositions.has(`${row}-${col}`)) {
+        position = { row, column: col };
+        break;
+      }
+    }
+    if (position) break;
+  }
+
+  if (!position) return state; // No room
+
+  // Create new soldier for target legion (not a leader unless target is empty)
+  const isLeader = toLegion.soldiers.length === 0;
+  const transferredSoldier: Soldier = {
+    id: soldier.id,
+    name: soldier.name,
+    type: soldier.type,
+    hp: soldier.hp,
+    maxHp: soldier.maxHp,
+    position,
+    isLeader,
+  };
+
+  // Remove from source legion and handle leader succession
+  const remainingSoldiers = fromLegion.soldiers.filter(s => s.id !== soldierId);
+  if (soldier.isLeader && remainingSoldiers.length > 0) {
+    remainingSoldiers[0] = { ...remainingSoldiers[0], isLeader: true };
+  }
+
+  // Update both legions
+  const newLegions = new Map(state.legions);
+  newLegions.set(fromLegionId, {
+    ...fromLegion,
+    soldiers: remainingSoldiers,
+  });
+  newLegions.set(toLegionId, {
+    ...toLegion,
+    soldiers: [...toLegion.soldiers, transferredSoldier],
+  });
+
+  return { ...state, legions: newLegions };
+}
+
+// ============ Collegia Handlers ============
+
+function handleSelectResearch(state: GameState, technologyId: string): GameState {
+  // Can't select if already researching
+  if (state.collegia.currentResearch) return state;
+
+  // Must be in the available offerings
+  if (!state.collegia.availableOfferings.includes(technologyId)) return state;
+
+  // Must not already own it
+  if (state.collegia.ownedTechnologies.includes(technologyId)) return state;
+
+  const tech = TECHNOLOGIES[technologyId];
+  if (!tech) return state;
+
+  return {
+    ...state,
+    collegia: {
+      ...state.collegia,
+      currentResearch: {
+        technologyId,
+        turnsRemaining: tech.researchTurns,
+      },
+    },
+  };
+}
+
+function handleRerollCollegia(state: GameState): GameState {
+  // Can't reroll if not available
+  if (!state.collegia.rerollAvailable) return state;
+
+  // Can't reroll while researching
+  if (state.collegia.currentResearch) return state;
+
+  // Check if player can afford it
+  const player = state.factions.get('player');
+  if (!player || player.gold < COLLEGIA_REROLL_COST) return state;
+
+  // Deduct cost and generate new offerings
+  const newFactions = new Map(state.factions);
+  newFactions.set('player', {
+    ...player,
+    gold: player.gold - COLLEGIA_REROLL_COST,
+  });
+
+  return {
+    ...state,
+    factions: newFactions,
+    collegia: {
+      ...state.collegia,
+      availableOfferings: generateCollegiaOfferings(state.collegia.ownedTechnologies),
+      rerollAvailable: false,
+    },
+  };
+}
+
+// Process research progress at end of turn
+function processCollegiaResearch(state: GameState): GameState {
+  if (!state.collegia.currentResearch) return state;
+
+  const newTurnsRemaining = state.collegia.currentResearch.turnsRemaining - 1;
+
+  if (newTurnsRemaining <= 0) {
+    // Research complete!
+    const completedTechId = state.collegia.currentResearch.technologyId;
+    const newOwnedTechnologies = [...state.collegia.ownedTechnologies, completedTechId];
+
+    return {
+      ...state,
+      collegia: {
+        currentResearch: null,
+        availableOfferings: generateCollegiaOfferings(newOwnedTechnologies),
+        ownedTechnologies: newOwnedTechnologies,
+        rerollAvailable: true,
+      },
+    };
+  }
+
+  // Still researching
+  return {
+    ...state,
+    collegia: {
+      ...state.collegia,
+      currentResearch: {
+        ...state.collegia.currentResearch,
+        turnsRemaining: newTurnsRemaining,
+      },
+    },
+  };
+}
+
+// ============ Technology Bonus Helpers ============
+
+// Get total bonus of a specific type from all owned technologies
+export function getTechnologyBonus(
+  state: GameState,
+  effectType: string,
+  filterKey?: string,
+  filterValue?: string
+): number {
+  let bonus = 0;
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+    for (const effect of tech.effects) {
+      if (effect.type === effectType) {
+        // Check filter if provided
+        if (filterKey && filterValue) {
+          if ((effect as Record<string, unknown>)[filterKey] !== filterValue) continue;
+        }
+        if ('amount' in effect) {
+          bonus += effect.amount;
+        }
+      }
+    }
+  }
+  return bonus;
+}
+
+// Check if a building is unlocked by technology
+export function isBuildingUnlockedByTech(state: GameState, buildingId: BuildingId): boolean {
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+    for (const effect of tech.effects) {
+      if (effect.type === 'unlock_building' && effect.building === buildingId) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Get all buildings unlocked by technology
+export function getUnlockedBuildings(state: GameState): BuildingId[] {
+  const unlocked: BuildingId[] = [];
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+    for (const effect of tech.effects) {
+      if (effect.type === 'unlock_building' && !unlocked.includes(effect.building)) {
+        unlocked.push(effect.building);
+      }
+    }
+  }
+  return unlocked;
 }

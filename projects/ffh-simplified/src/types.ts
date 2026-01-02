@@ -71,10 +71,12 @@ export interface SoldierType {
 
 export interface Soldier {
   id: string;
+  name: string;
   type: SoldierTypeId;
   hp: number;
   maxHp: number;
   position: FormationPosition;
+  isLeader?: boolean;
 }
 
 export interface Legion {
@@ -117,6 +119,14 @@ export interface BuildQueueItem {
   targetLegionId?: string; // For soldiers - which legion to add them to
 }
 
+export interface RosterSoldier {
+  id: string;
+  name: string;
+  type: SoldierTypeId;
+  hp: number;
+  maxHp: number;
+}
+
 export interface City {
   id: string;
   name: string;
@@ -125,7 +135,10 @@ export interface City {
   population: number;
   buildings: BuildingId[];
   buildQueue: BuildQueueItem[];
+  roster: RosterSoldier[]; // Unassigned soldiers stationed at this city
   occupationTurns: number; // 0 = normal, >0 = recently captured
+  isCapital?: boolean; // True if this is a faction's capital city
+  growthProgress: number; // Accumulated growth points toward next population
 }
 
 // ============ Combat ============
@@ -156,6 +169,44 @@ export interface CombatResult {
   // Initial state for replay
   initialAttackerSoldiers: Soldier[];
   initialDefenderSoldiers: Soldier[];
+}
+
+// ============ Technologies & Collegia ============
+
+export type TechnologyCategory = 'martial' | 'industrial' | 'arcane' | 'social';
+export type TechnologyTier = 'common' | 'guild_secret' | 'masters_teaching' | 'lost_art';
+
+export type TechnologyEffect =
+  | { type: 'unlock_building'; building: BuildingId }
+  | { type: 'soldier_attack_bonus'; soldier: SoldierTypeId; amount: number }
+  | { type: 'soldier_defense_bonus'; soldier: SoldierTypeId; amount: number }
+  | { type: 'soldier_hp_bonus'; soldier: SoldierTypeId; amount: number }
+  | { type: 'building_gold_bonus'; building: BuildingId; amount: number }
+  | { type: 'building_mana_bonus'; building: BuildingId; amount: number }
+  | { type: 'global_gold_bonus'; amount: number }
+  | { type: 'global_mana_bonus'; amount: number }
+  | { type: 'global_growth_bonus'; amount: number }
+  | { type: 'global_defense_bonus'; amount: number }
+  | { type: 'legion_movement_bonus'; amount: number };
+
+export interface Technology {
+  id: string;
+  name: string;
+  description: string;
+  category: TechnologyCategory;
+  tier: TechnologyTier;
+  researchTurns: number;
+  effects: TechnologyEffect[];
+}
+
+export interface CollegiaState {
+  currentResearch: {
+    technologyId: string;
+    turnsRemaining: number;
+  } | null;
+  availableOfferings: string[]; // Technology IDs
+  ownedTechnologies: string[]; // Technology IDs
+  rerollAvailable: boolean;
 }
 
 // ============ Game State ============
@@ -189,6 +240,7 @@ export interface GameState {
   gameOver: boolean;
   winner: FactionId | null;
   pendingCombat: PendingCombat | null;
+  collegia: CollegiaState;
 }
 
 // ============ Actions ============
@@ -202,8 +254,14 @@ export type GameAction =
   | { type: 'create_legion'; cityId: string }
   | { type: 'apply_combat_results' }
   | { type: 'queue_building'; cityId: string; buildingId: BuildingId }
-  | { type: 'queue_soldier'; cityId: string; soldierType: SoldierTypeId; targetLegionId: string }
-  | { type: 'cancel_queue_item'; cityId: string; queueItemId: string };
+  | { type: 'queue_soldier'; cityId: string; soldierType: SoldierTypeId; targetLegionId?: string }
+  | { type: 'cancel_queue_item'; cityId: string; queueItemId: string }
+  | { type: 'assign_soldier'; cityId: string; soldierId: string; legionId: string }
+  | { type: 'unassign_soldier'; legionId: string; soldierId: string; cityId: string }
+  | { type: 'create_legion_from_roster'; cityId: string; soldierId: string }
+  | { type: 'transfer_soldier'; fromLegionId: string; soldierId: string; toLegionId: string }
+  | { type: 'select_research'; technologyId: string }
+  | { type: 'reroll_collegia' };
 
 // ============ UI State ============
 

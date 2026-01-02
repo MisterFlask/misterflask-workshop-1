@@ -64,6 +64,142 @@
       }
       .gold-icon { background: #ffd700; }
       .mana-icon { background: #7b68ee; }
+      .research-icon { background: linear-gradient(135deg, #8b4513, #d2691e); }
+      .knowledge-icon { background: linear-gradient(135deg, #2e5a1c, #4a8a2e); }
+      #research-indicator, #knowledge-indicator {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      #research-indicator:hover, #knowledge-indicator:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      #research-indicator.needs-selection {
+        background: rgba(255, 200, 100, 0.3);
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      #knowledge-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 550px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(15, 25, 15, 0.95);
+        border: 2px solid #4a8a2e;
+        border-radius: 12px;
+        padding: 16px;
+        display: none;
+        z-index: 100;
+      }
+      #knowledge-panel h3 {
+        margin: 0 0 12px 0;
+        color: #6c6;
+        font-size: 18px;
+        text-align: center;
+        border-bottom: 1px solid #4a8a2e;
+        padding-bottom: 8px;
+      }
+      .knowledge-empty {
+        text-align: center;
+        color: #666;
+        padding: 40px;
+        font-style: italic;
+      }
+      .knowledge-categories {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .knowledge-category {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .knowledge-category-header {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #333;
+      }
+      .knowledge-category-header.martial { color: #c66; }
+      .knowledge-category-header.industrial { color: #cc6; }
+      .knowledge-category-header.arcane { color: #c6c; }
+      .knowledge-category-header.social { color: #6cc; }
+      .knowledge-tech-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .knowledge-tech {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }
+      .knowledge-tech-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .knowledge-tech-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .knowledge-tech-tier {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .knowledge-tech-tier.common { color: #888; }
+      .knowledge-tech-tier.guild_secret { color: #4a4; background: rgba(74, 170, 74, 0.15); }
+      .knowledge-tech-tier.masters_teaching { color: #44c; background: rgba(68, 68, 204, 0.15); }
+      .knowledge-tech-tier.lost_art { color: #c4c; background: rgba(204, 68, 204, 0.15); }
+      .knowledge-tech-description {
+        font-size: 10px;
+        color: #999;
+        margin-bottom: 6px;
+      }
+      .knowledge-tech-effects {
+        font-size: 10px;
+        color: #8cf;
+        background: rgba(100, 150, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+      .knowledge-close {
+        display: block;
+        margin: 16px auto 0;
+        padding: 8px 24px;
+        background: #444;
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .knowledge-close:hover {
+        background: #555;
+      }
+      .income-indicator {
+        font-size: 11px;
+        color: #8f8;
+        margin-left: 2px;
+      }
+      .income-indicator.zero {
+        color: #888;
+      }
       #armageddon-counter {
         margin-left: auto;
         display: flex;
@@ -243,15 +379,252 @@
       }
       .existing-buildings {
         display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .existing-building-item {
+        display: flex;
+        flex-direction: column;
+        background: rgba(100, 200, 100, 0.1);
+        padding: 4px 6px;
+        border-radius: 3px;
+      }
+      .existing-building {
+        font-size: 11px;
+        color: #8c8;
+        font-weight: 500;
+      }
+      .building-effects {
+        font-size: 9px;
+        color: #6a6;
+        margin-top: 2px;
+      }
+      .build-option-effects {
+        font-size: 9px;
+        color: #8cf;
+        margin-top: 2px;
+      }
+      .growth-display {
+        background: rgba(100, 200, 100, 0.1);
+        padding: 6px 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 11px;
+      }
+      .growth-display span {
+        color: #8c8;
+      }
+      .growth-bonus {
+        color: #4c8 !important;
+        margin-left: 4px;
+      }
+      .growth-bar {
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+      }
+      .growth-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4c8, #8f8);
+        transition: width 0.3s;
+      }
+      .defense-indicator {
+        color: #8cf !important;
+        background: rgba(100, 150, 255, 0.15);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      #collegia-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(20, 15, 10, 0.95);
+        border: 2px solid #8b4513;
+        border-radius: 12px;
+        padding: 16px;
+        display: none;
+        z-index: 100;
+      }
+      #collegia-panel h3 {
+        margin: 0 0 12px 0;
+        color: #d2691e;
+        font-size: 18px;
+        text-align: center;
+        border-bottom: 1px solid #8b4513;
+        padding-bottom: 8px;
+      }
+      .collegia-current-research {
+        background: rgba(139, 69, 19, 0.3);
+        border: 1px solid #8b4513;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+      .collegia-current-research h4 {
+        margin: 0 0 8px 0;
+        color: #ffa500;
+      }
+      .research-progress-bar {
+        height: 8px;
+        background: #333;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .research-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #8b4513, #d2691e);
+        transition: width 0.3s;
+      }
+      .collegia-offerings {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .collegia-offering {
+        display: flex;
+        align-items: stretch;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #555;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+      .collegia-offering:hover {
+        border-color: #d2691e;
+      }
+      .offering-info {
+        flex: 1;
+        padding: 10px 12px;
+      }
+      .offering-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+      .offering-description {
+        font-size: 10px;
+        color: #aaa;
+        margin-bottom: 6px;
+      }
+      .offering-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 10px;
+      }
+      .offering-category {
+        color: #888;
+        text-transform: uppercase;
+      }
+      .offering-category.martial { color: #c66; }
+      .offering-category.industrial { color: #cc6; }
+      .offering-category.arcane { color: #c6c; }
+      .offering-category.social { color: #6cc; }
+      .offering-tier {
+        color: #666;
+      }
+      .offering-tier.common { color: #888; }
+      .offering-tier.guild_secret { color: #4a4; }
+      .offering-tier.masters_teaching { color: #44c; }
+      .offering-tier.lost_art { color: #c4c; }
+      .offering-effects {
+        font-size: 9px;
+        color: #8cf;
+        margin-top: 4px;
+      }
+      .offering-select {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        background: rgba(139, 69, 19, 0.4);
+        border-left: 1px solid #555;
+        min-width: 70px;
+      }
+      .offering-turns {
+        font-size: 18px;
+        font-weight: bold;
+        color: #ffa500;
+      }
+      .offering-turns-label {
+        font-size: 9px;
+        color: #888;
+      }
+      .offering-select-btn {
+        margin-top: 6px;
+        padding: 4px 12px;
+        background: #8b4513;
+        border: none;
+        border-radius: 3px;
+        color: white;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .offering-select-btn:hover {
+        background: #a0522d;
+      }
+      .collegia-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid #444;
+      }
+      .collegia-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .collegia-btn.reroll {
+        background: #5a4a2a;
+        color: #fc0;
+      }
+      .collegia-btn.reroll:hover:not(:disabled) {
+        background: #6a5a3a;
+      }
+      .collegia-btn.reroll:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      .collegia-btn.close {
+        background: #444;
+        color: #fff;
+      }
+      .collegia-btn.close:hover {
+        background: #555;
+      }
+      .collegia-owned {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #333;
+      }
+      .collegia-owned-title {
+        font-size: 11px;
+        color: #888;
+        margin-bottom: 6px;
+      }
+      .owned-tech-list {
+        display: flex;
         flex-wrap: wrap;
         gap: 4px;
       }
-      .existing-building {
-        background: rgba(100, 200, 100, 0.2);
-        padding: 3px 6px;
+      .owned-tech {
+        font-size: 9px;
+        background: rgba(139, 69, 19, 0.3);
+        color: #d2691e;
+        padding: 2px 6px;
         border-radius: 3px;
-        font-size: 10px;
-        color: #8c8;
       }
       #legion-panel {
         position: absolute;
@@ -370,6 +743,26 @@
         font-size: 8px;
         color: #aaa;
         margin-top: 1px;
+      }
+      .soldier-name-label {
+        font-size: 7px;
+        color: #ccc;
+        max-width: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+      }
+      .leader-crown {
+        position: absolute;
+        top: -2px;
+        right: 2px;
+        font-size: 10px;
+        color: #fc0;
+        text-shadow: 0 0 3px #000;
+      }
+      .soldier-card {
+        position: relative;
       }
       .legion-actions {
         margin-top: 10px;
@@ -509,6 +902,129 @@
       #tooltip .friendly {
         color: #8cf;
       }
+      /* Roster styles */
+      .roster-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .roster-empty {
+        font-size: 11px;
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        padding: 8px;
+      }
+      .roster-soldier {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 8px;
+        border-radius: 4px;
+      }
+      .roster-soldier-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+      }
+      .roster-soldier-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        font-weight: bold;
+        color: #000;
+      }
+      .roster-soldier-icon.fighter { background: #c84; }
+      .roster-soldier-icon.knight { background: #88c; }
+      .roster-soldier-icon.archer { background: #4c8; }
+      .roster-soldier-icon.mage { background: #c4c; }
+      .roster-soldier-icon.cleric { background: #fff; }
+      .roster-soldier-icon.demon { background: #c44; }
+      .roster-soldier-details {
+        flex: 1;
+      }
+      .roster-soldier-name {
+        font-size: 11px;
+        color: #ddd;
+      }
+      .roster-soldier-hp {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        color: #888;
+      }
+      .roster-hp-bar {
+        width: 40px;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .roster-hp-fill {
+        height: 100%;
+      }
+      .roster-hp-fill.high { background: #4f4; }
+      .roster-hp-fill.medium { background: #ff4; }
+      .roster-hp-fill.low { background: #f44; }
+      .roster-assign-btn {
+        background: #2a5a7a;
+        border: none;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .roster-assign-btn:hover {
+        background: #3a6a8a;
+      }
+      .roster-assign-btn:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      /* Multiple train buttons */
+      .build-option-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        justify-content: flex-end;
+      }
+      .build-option-btns .build-option-btn {
+        padding: 3px 5px;
+        font-size: 9px;
+      }
+      .legion-target-btn {
+        background: #2a5a6a;
+      }
+      .legion-target-btn:hover:not(:disabled) {
+        background: #3a6a7a;
+      }
+      /* Roster assign buttons */
+      .roster-assign-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+      }
+      .no-legions {
+        font-size: 10px;
+        color: #666;
+        font-style: italic;
+      }
+      .new-legion-btn {
+        background: #4a6a2a !important;
+        border: 1px dashed #6a8a4a !important;
+      }
+      .new-legion-btn:hover {
+        background: #5a7a3a !important;
+      }
     </style>
   </head>
   <body>
@@ -518,13 +1034,23 @@
         <div id="ui-overlay">
           <div id="top-bar">
             <div id="turn-indicator">Turn 1</div>
-            <div class="resource">
+            <div class="resource" id="gold-resource" title="Gold">
               <div class="resource-icon gold-icon"></div>
               <span id="gold-amount">200</span>
+              <span id="gold-income" class="income-indicator"></span>
             </div>
-            <div class="resource">
+            <div class="resource" id="mana-resource" title="Mana">
               <div class="resource-icon mana-icon"></div>
               <span id="mana-amount">0</span>
+              <span id="mana-income" class="income-indicator"></span>
+            </div>
+            <div id="research-indicator" class="resource" title="Click to open Collegia">
+              <div class="resource-icon research-icon"></div>
+              <span id="research-status">No Research</span>
+            </div>
+            <div id="knowledge-indicator" class="resource" title="Click to view learned technologies">
+              <div class="resource-icon knowledge-icon"></div>
+              <span id="knowledge-count">0 Learned</span>
             </div>
             <div id="armageddon-counter">
               <span>Armageddon</span>
@@ -537,6 +1063,8 @@
           <div id="selection-panel"></div>
           <div id="city-panel"></div>
           <div id="legion-panel"></div>
+          <div id="collegia-panel"></div>
+          <div id="knowledge-panel"></div>
           <button id="end-turn-btn">End Turn</button>
           <div id="tooltip"></div>
           <div id="unit-tooltip"></div>

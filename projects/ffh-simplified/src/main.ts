@@ -1,8 +1,9 @@
-import { createInitialGameState, processAction, getValidMoves, getTile, getLegionAt, getCityAt } from './game/Game';
+import { createInitialGameState, processAction, getValidMoves, getTile, getLegionAt, getCityAt, getLegionsInRangeOfCity, getCitiesInRangeOfLegion, getLegionsInRangeOfLegion, getLegionName, getFactionIncome, getCityIncome, getCityGrowthInfo, getCityDefenseBonus } from './game/Game';
 import { Renderer } from './rendering/Renderer';
 import { CombatScene } from './rendering/CombatScene';
 import { SOLDIER_TYPES } from './data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots } from './data/buildings';
+import { TECHNOLOGIES } from './data/technologies';
 import type { GameState, Coord, BuildingId, SoldierTypeId } from './types';
 
 class GameApp {
@@ -13,6 +14,10 @@ class GameApp {
   private legionPanel: HTMLElement;
   private cityPanel: HTMLElement;
   private unitTooltip: HTMLElement;
+  private collegiaPanel: HTMLElement;
+  private collegiaVisible = false;
+  private knowledgePanel: HTMLElement;
+  private knowledgeVisible = false;
   private isDragging = false;
   private lastMousePos = { x: 0, y: 0 };
   private combatScene: CombatScene | null = null;
@@ -26,6 +31,8 @@ class GameApp {
     this.legionPanel = document.getElementById('legion-panel') as HTMLElement;
     this.cityPanel = document.getElementById('city-panel') as HTMLElement;
     this.unitTooltip = document.getElementById('unit-tooltip') as HTMLElement;
+    this.collegiaPanel = document.getElementById('collegia-panel') as HTMLElement;
+    this.knowledgePanel = document.getElementById('knowledge-panel') as HTMLElement;
     this.renderer = new Renderer(this.canvas);
     this.state = createInitialGameState();
 
@@ -48,6 +55,14 @@ class GameApp {
     // End turn button
     const endTurnBtn = document.getElementById('end-turn-btn');
     endTurnBtn?.addEventListener('click', () => this.endTurn());
+
+    // Research indicator click - open Collegia panel
+    const researchIndicator = document.getElementById('research-indicator');
+    researchIndicator?.addEventListener('click', () => this.toggleCollegiaPanel());
+
+    // Knowledge indicator click - open Knowledge panel
+    const knowledgeIndicator = document.getElementById('knowledge-indicator');
+    knowledgeIndicator?.addEventListener('click', () => this.toggleKnowledgePanel());
 
     // Keyboard
     document.addEventListener('keydown', (e) => this.onKeyDown(e));
@@ -119,8 +134,10 @@ class GameApp {
     if (city) {
       const isPlayer = city.owner === 'player';
       const ownerClass = isPlayer ? 'friendly' : 'city';
+      const capitalLabel = city.isCapital ? ' (Capital)' : '';
+      const ownerLabel = isPlayer ? 'Your' : city.owner;
       html += `<h4 class="${ownerClass}">${city.name}</h4>`;
-      html += `<p>Owner: ${city.owner}</p>`;
+      html += `<p>${ownerLabel} city${capitalLabel}</p>`;
       html += `<p>Population: ${city.population}</p>`;
       if (city.buildings.length > 0) {
         html += `<p>Buildings: ${city.buildings.join(', ')}</p>`;
@@ -252,15 +269,51 @@ class GameApp {
     // Update resource display
     const goldEl = document.getElementById('gold-amount');
     const manaEl = document.getElementById('mana-amount');
+    const goldIncomeEl = document.getElementById('gold-income');
+    const manaIncomeEl = document.getElementById('mana-income');
+    const goldResourceEl = document.getElementById('gold-resource');
+    const manaResourceEl = document.getElementById('mana-resource');
     const turnEl = document.getElementById('turn-indicator');
     const armageddonEl = document.getElementById('armageddon-value');
     const armageddonFill = document.getElementById('armageddon-fill');
 
     if (goldEl && player) goldEl.textContent = player.gold.toString();
     if (manaEl && player) manaEl.textContent = player.mana.toString();
+
+    // Calculate and display income per turn
+    const income = getFactionIncome(this.state, 'player');
+    if (goldIncomeEl) {
+      goldIncomeEl.textContent = `(+${income.totalGold})`;
+      goldIncomeEl.className = income.totalGold > 0 ? 'income-indicator' : 'income-indicator zero';
+    }
+    if (manaIncomeEl) {
+      if (income.totalMana > 0) {
+        manaIncomeEl.textContent = `(+${income.totalMana})`;
+        manaIncomeEl.className = 'income-indicator';
+      } else {
+        manaIncomeEl.textContent = '';
+      }
+    }
+
+    // Add tooltips with breakdown
+    if (goldResourceEl) {
+      const breakdown = income.cityBreakdowns.map(c => `${c.cityName}: +${c.gold}`).join('\n');
+      goldResourceEl.title = `Gold per turn: +${income.totalGold}\n${breakdown}`;
+    }
+    if (manaResourceEl && income.totalMana > 0) {
+      const manaBreakdown = income.cityBreakdowns.filter(c => c.mana > 0).map(c => `${c.cityName}: +${c.mana}`).join('\n');
+      manaResourceEl.title = `Mana per turn: +${income.totalMana}\n${manaBreakdown}`;
+    }
+
     if (turnEl) turnEl.textContent = `Turn ${this.state.turn}`;
     if (armageddonEl) armageddonEl.textContent = `${this.state.armageddonCounter}/100`;
     if (armageddonFill) armageddonFill.style.width = `${this.state.armageddonCounter}%`;
+
+    // Update research indicator
+    this.updateResearchIndicator();
+
+    // Update knowledge count
+    this.updateKnowledgeCount();
 
     // Update selection panel
     this.updateSelectionPanel();
@@ -270,6 +323,16 @@ class GameApp {
 
     // Update city panel
     this.updateCityPanel();
+
+    // Update Collegia panel if visible
+    if (this.collegiaVisible) {
+      this.updateCollegiaPanel();
+    }
+
+    // Update Knowledge panel if visible
+    if (this.knowledgeVisible) {
+      this.updateKnowledgePanel();
+    }
 
     // Game over check
     if (this.state.gameOver) {
@@ -287,9 +350,13 @@ class GameApp {
     if (this.state.selectedCityId) {
       const city = this.state.cities.get(this.state.selectedCityId);
       if (city) {
+        const isPlayer = city.owner === 'player';
+        const capitalLabel = city.isCapital ? ' (Capital)' : '';
+        const ownerLabel = isPlayer ? 'Your' : city.owner;
         panel.style.display = 'block';
         panel.innerHTML = `
           <h3>${city.name}</h3>
+          <p style="color: ${isPlayer ? '#4af' : '#f44'}; font-size: 11px;">${ownerLabel} city${capitalLabel}</p>
           <p>Population: ${city.population}</p>
           <p>Buildings: ${city.buildings.length > 0 ? city.buildings.join(', ') : 'None'}</p>
           ${city.occupationTurns > 0 ? `<p style="color: #f88">Occupied (${city.occupationTurns} turns)</p>` : ''}
@@ -338,6 +405,14 @@ class GameApp {
     const ownerColor = isPlayer ? '#4af' : '#f44';
     const ownerLabel = isPlayer ? 'Your Legion' : `${legion.owner} Legion`;
 
+    // Check for nearby player cities (for roster management)
+    const nearbyCities = isPlayer ? getCitiesInRangeOfLegion(this.state, legion, 'player') : [];
+    const hasNearbyCities = nearbyCities.length > 0;
+
+    // Check for nearby player legions (for transfers)
+    const nearbyLegions = isPlayer ? getLegionsInRangeOfLegion(this.state, legion, 'player') : [];
+    const hasNearbyLegions = nearbyLegions.length > 0;
+
     // Calculate total HP
     let totalHp = 0;
     let totalMaxHp = 0;
@@ -368,15 +443,17 @@ class GameApp {
       const hpPercent = (soldier.hp / soldier.maxHp) * 100;
       const hpClass = hpPercent > 50 ? 'high' : hpPercent > 25 ? 'medium' : 'low';
       const isDead = soldier.hp <= 0;
+      const leaderIndicator = soldier.isLeader ? '<span class="leader-crown" title="Leader">★</span>' : '';
 
       return `
         <div class="formation-cell occupied ${editClass} ${selectedClass}" data-soldier-id="${soldier.id}" data-pos="${posKey}">
           <div class="soldier-card ${isDead ? 'dead' : ''}">
+            ${leaderIndicator}
             <div class="soldier-icon ${soldier.type}">${soldier.type.slice(0, 3).toUpperCase()}</div>
+            <div class="soldier-name-label">${soldier.name}</div>
             <div class="soldier-hp-bar">
               <div class="soldier-hp-fill ${hpClass}" style="width: ${Math.max(0, hpPercent)}%"></div>
             </div>
-            <div class="soldier-hp-text">${Math.max(0, soldier.hp)}/${soldier.maxHp}</div>
           </div>
         </div>
       `;
@@ -399,11 +476,39 @@ class GameApp {
     let actionsHtml = '';
     if (isPlayer && legion.soldiers.length > 0) {
       if (this.editingLegion) {
+        const showTransfers = this.selectedSoldierId;
+        // Generate unassign buttons for each nearby city
+        const unassignButtons = showTransfers && hasNearbyCities ? nearbyCities.map(city => {
+          const distance = Math.abs(city.coord.x - legion.location.x) + Math.abs(city.coord.y - legion.location.y);
+          const distLabel = distance === 0 ? 'here' : `${distance} away`;
+          const cityLabel = city.name.length > 10 ? city.name.slice(0, 8) + '..' : city.name;
+          return `<button class="legion-btn unassign-city-btn" data-city-id="${city.id}" style="background: #5a4a2a;" title="${city.name} (${distLabel})">→${cityLabel}</button>`;
+        }).join('') : '';
+
+        // Generate transfer buttons for each nearby legion with room
+        const transferButtons = showTransfers && hasNearbyLegions ? nearbyLegions.map(targetLegion => {
+          const distance = Math.abs(targetLegion.location.x - legion.location.x) + Math.abs(targetLegion.location.y - legion.location.y);
+          const distLabel = distance === 0 ? 'here' : `${distance} away`;
+          const hasRoom = targetLegion.soldiers.length < 8;
+          const leader = targetLegion.soldiers.find(s => s.isLeader);
+          const shortName = leader ? leader.name : (targetLegion.soldiers[0]?.name || 'Empty');
+          const fullName = getLegionName(targetLegion);
+          return `<button class="legion-btn transfer-legion-btn" data-target-legion-id="${targetLegion.id}" style="background: #2a4a5a;" ${!hasRoom ? 'disabled' : ''} title="${fullName} (${targetLegion.soldiers.length}/8, ${distLabel})">→${shortName}</button>`;
+        }).join('') : '';
+
+        const hasTransferTargets = hasNearbyCities || hasNearbyLegions;
+        const nearbyInfo = [];
+        if (hasNearbyCities) nearbyInfo.push(`${nearbyCities.length} city${nearbyCities.length > 1 ? 'ies' : ''}`);
+        if (hasNearbyLegions) nearbyInfo.push(`${nearbyLegions.length} legion${nearbyLegions.length > 1 ? 's' : ''}`);
+
         actionsHtml = `
           <div class="edit-instructions">
             Click a soldier to select, then click another position to move/swap
+            ${hasTransferTargets ? `<br><span style="color: #8cf">${nearbyInfo.join(' and ')} nearby: Select a soldier to transfer</span>` : ''}
           </div>
           <div class="legion-actions">
+            ${transferButtons}
+            ${unassignButtons}
             <button class="legion-btn primary" id="done-edit-btn">Done</button>
             <button class="legion-btn cancel" id="cancel-edit-btn">Cancel</button>
           </div>
@@ -417,9 +522,12 @@ class GameApp {
       }
     }
 
+    const legionDisplayName = getLegionName(legion);
+
     this.legionPanel.innerHTML = `
       <div class="legion-header">
-        <h3 style="color: ${ownerColor}; border: none; margin: 0; padding: 0;">${ownerLabel}</h3>
+        <h3 style="color: ${ownerColor}; border: none; margin: 0; padding: 0;">${legionDisplayName}</h3>
+        <div style="font-size: 10px; color: #888;">${isPlayer ? 'Your Legion' : `${legion.owner} Legion`}</div>
       </div>
       <div class="legion-stats">
         ${legion.soldiers.length}/8 soldiers | ${totalHp}/${totalMaxHp} HP
@@ -455,6 +563,42 @@ class GameApp {
     if (cancelBtn) {
       cancelBtn.addEventListener('click', () => this.cancelEditingLegion());
     }
+
+    // Unassign buttons - move selected soldier to a nearby city's roster
+    const unassignBtns = this.legionPanel.querySelectorAll('.unassign-city-btn');
+    unassignBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cityId = btn.getAttribute('data-city-id');
+        if (cityId && this.selectedSoldierId) {
+          this.state = processAction(this.state, {
+            type: 'unassign_soldier',
+            legionId: legion.id,
+            soldierId: this.selectedSoldierId,
+            cityId,
+          });
+          this.selectedSoldierId = null;
+          this.updateUI();
+        }
+      });
+    });
+
+    // Transfer buttons - move selected soldier to a nearby legion
+    const transferBtns = this.legionPanel.querySelectorAll('.transfer-legion-btn');
+    transferBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetLegionId = btn.getAttribute('data-target-legion-id');
+        if (targetLegionId && this.selectedSoldierId) {
+          this.state = processAction(this.state, {
+            type: 'transfer_soldier',
+            fromLegionId: legion.id,
+            soldierId: this.selectedSoldierId,
+            toLegionId: targetLegionId,
+          });
+          this.selectedSoldierId = null;
+          this.updateUI();
+        }
+      });
+    });
   }
 
   private updateCityPanel(): void {
@@ -476,9 +620,9 @@ class GameApp {
     const queuedBuildings = city.buildQueue.filter(item => item.itemType === 'building').length;
     const usedSlots = city.buildings.length + queuedBuildings;
 
-    // Get legion at city for soldier recruitment
-    const legionAtCity = getLegionAt(this.state, city.coord);
-    const isPlayerLegion = legionAtCity && legionAtCity.owner === 'player';
+    // Get all player legions within range of the city for soldier recruitment
+    const nearbyLegions = getLegionsInRangeOfCity(this.state, city, 'player');
+    const hasNearbyLegions = nearbyLegions.length > 0;
 
     // Build queue section
     let queueHtml = '';
@@ -518,7 +662,14 @@ class GameApp {
         <div class="city-section">
           <div class="city-section-title">Buildings (${city.buildings.length}/${slots})</div>
           <div class="existing-buildings">
-            ${city.buildings.map(b => `<span class="existing-building">${BUILDING_TYPES[b].name}</span>`).join('')}
+            ${city.buildings.map(b => {
+              const building = BUILDING_TYPES[b];
+              const effects = this.formatBuildingEffects(building);
+              return `<div class="existing-building-item">
+                <span class="existing-building">${building.name}</span>
+                ${effects ? `<span class="building-effects">${effects}</span>` : ''}
+              </div>`;
+            }).join('')}
           </div>
         </div>
       `;
@@ -540,11 +691,13 @@ class GameApp {
             ${availableBuildings.map(bid => {
               const b = BUILDING_TYPES[bid];
               const canAfford = player.gold >= b.cost;
+              const effects = this.formatBuildingEffects(b);
               return `
                 <div class="build-option">
                   <div class="build-option-info">
                     <div class="build-option-name">${b.name}</div>
                     <div class="build-option-cost">${b.cost} gold | ${b.buildTurns} turns</div>
+                    ${effects ? `<div class="build-option-effects">${effects}</div>` : ''}
                   </div>
                   <button class="build-option-btn" data-build-type="building" data-build-id="${bid}" ${!canAfford ? 'disabled' : ''}>
                     Build
@@ -557,29 +710,57 @@ class GameApp {
       `;
     }
 
-    // Available soldiers section (only if player legion is at city)
-    let soldiersHtml = '';
-    if (isPlayerLegion && city.occupationTurns === 0) {
-      // Determine which soldiers can be recruited
-      const recruitableSoldiers: SoldierTypeId[] = ['fighter']; // Always available
-      for (const buildingId of city.buildings) {
-        const building = BUILDING_TYPES[buildingId];
-        for (const effect of building.effects) {
-          if (effect.type === 'unlock_soldier' && !recruitableSoldiers.includes(effect.soldier)) {
-            recruitableSoldiers.push(effect.soldier);
-          }
+    // Determine which soldiers can be recruited based on buildings
+    const recruitableSoldiers: SoldierTypeId[] = ['fighter']; // Always available
+    for (const buildingId of city.buildings) {
+      const building = BUILDING_TYPES[buildingId];
+      for (const effect of building.effects) {
+        if (effect.type === 'unlock_soldier' && !recruitableSoldiers.includes(effect.soldier)) {
+          recruitableSoldiers.push(effect.soldier);
         }
       }
+    }
 
-      // Check legion capacity
-      const queuedForLegion = city.buildQueue.filter(
-        item => item.itemType === 'soldier' && item.targetLegionId === legionAtCity.id
-      ).length;
-      const legionFull = legionAtCity.soldiers.length + queuedForLegion >= 8;
+    // Available soldiers section - can train to nearby legions or roster
+    let soldiersHtml = '';
+    if (city.occupationTurns === 0) {
+      // Helper to check if a legion can receive more soldiers
+      const getLegionCapacity = (legion: typeof nearbyLegions[0]) => {
+        const queuedForLegion = city.buildQueue.filter(
+          item => item.itemType === 'soldier' && item.targetLegionId === legion.id
+        ).length;
+        return 8 - legion.soldiers.length - queuedForLegion;
+      };
+
+      // Generate legion buttons for each soldier type
+      const getLegionButtons = (sid: SoldierTypeId, canAfford: boolean) => {
+        if (!hasNearbyLegions) return '';
+        return nearbyLegions.map(legion => {
+          const capacity = getLegionCapacity(legion);
+          const legionFull = capacity <= 0;
+          const distance = Math.abs(legion.location.x - city.coord.x) + Math.abs(legion.location.y - city.coord.y);
+          const distLabel = distance === 0 ? 'here' : `${distance} away`;
+          const fullName = getLegionName(legion);
+          // Get leader's first name for short label
+          const leader = legion.soldiers.find(s => s.isLeader);
+          const shortName = leader ? leader.name : (legion.soldiers[0]?.name || 'Empty');
+          return `
+            <button class="build-option-btn legion-target-btn"
+                    data-build-type="soldier"
+                    data-build-id="${sid}"
+                    data-target="legion"
+                    data-legion-id="${legion.id}"
+                    ${!canAfford || legionFull ? 'disabled' : ''}
+                    title="${fullName} (${legion.soldiers.length}/8, ${distLabel})">
+              →${shortName}
+            </button>
+          `;
+        }).join('');
+      };
 
       soldiersHtml = `
         <div class="city-section">
-          <div class="city-section-title">Recruit Soldier (${legionAtCity.soldiers.length + queuedForLegion}/8)</div>
+          <div class="city-section-title">Train Soldiers ${hasNearbyLegions ? `(${nearbyLegions.length} legion${nearbyLegions.length > 1 ? 's' : ''} nearby)` : ''}</div>
           <div class="available-items">
             ${recruitableSoldiers.map(sid => {
               const s = SOLDIER_TYPES[sid];
@@ -593,9 +774,12 @@ class GameApp {
                     <div class="build-option-name">${s.name}</div>
                     <div class="build-option-cost">${costText} | ${s.buildTurns} turn${s.buildTurns > 1 ? 's' : ''}</div>
                   </div>
-                  <button class="build-option-btn" data-build-type="soldier" data-build-id="${sid}" ${!canAfford || legionFull ? 'disabled' : ''}>
-                    Train
-                  </button>
+                  <div class="build-option-btns">
+                    ${getLegionButtons(sid, canAfford)}
+                    <button class="build-option-btn" data-build-type="soldier" data-build-id="${sid}" data-target="roster" ${!canAfford ? 'disabled' : ''} title="Train to City Roster">
+                      →Roster
+                    </button>
+                  </div>
                 </div>
               `;
             }).join('')}
@@ -604,27 +788,139 @@ class GameApp {
       `;
     }
 
+    // Roster section - unassigned soldiers at this city
+    let rosterHtml = '';
+    if (city.roster.length > 0 || city.buildQueue.some(item => item.itemType === 'soldier' && !item.targetLegionId)) {
+      const queuedForRoster = city.buildQueue.filter(item => item.itemType === 'soldier' && !item.targetLegionId).length;
+
+      // Generate assign buttons for each nearby legion + New Legion option
+      const getAssignButtons = (soldierId: string) => {
+        let buttons = '';
+
+        // Add buttons for existing nearby legions
+        if (hasNearbyLegions) {
+          buttons += nearbyLegions.map(legion => {
+            const canAssign = legion.soldiers.length < 8;
+            const distance = Math.abs(legion.location.x - city.coord.x) + Math.abs(legion.location.y - city.coord.y);
+            const distLabel = distance === 0 ? 'here' : `${distance} away`;
+            const fullName = getLegionName(legion);
+            const leader = legion.soldiers.find(s => s.isLeader);
+            const shortName = leader ? leader.name : (legion.soldiers[0]?.name || 'Empty');
+            return `
+              <button class="roster-assign-btn"
+                      data-soldier-id="${soldierId}"
+                      data-legion-id="${legion.id}"
+                      ${!canAssign ? 'disabled' : ''}
+                      title="${fullName} (${legion.soldiers.length}/8, ${distLabel})">
+                →${shortName}
+              </button>
+            `;
+          }).join('');
+        }
+
+        // Add "New Legion" button
+        buttons += `
+          <button class="roster-assign-btn new-legion-btn"
+                  data-soldier-id="${soldierId}"
+                  data-action="new-legion"
+                  title="Create a new legion with this soldier as leader">
+            +New Legion
+          </button>
+        `;
+
+        return buttons;
+      };
+
+      rosterHtml = `
+        <div class="city-section">
+          <div class="city-section-title">City Roster (${city.roster.length}${queuedForRoster > 0 ? ` +${queuedForRoster} training` : ''})</div>
+          <div class="roster-list">
+            ${city.roster.length === 0 ? '<div class="roster-empty">No soldiers in roster</div>' : ''}
+            ${city.roster.map(s => {
+              const soldierType = SOLDIER_TYPES[s.type];
+              const hpPercent = (s.hp / s.maxHp) * 100;
+              const hpClass = hpPercent > 50 ? 'high' : hpPercent > 25 ? 'medium' : 'low';
+              return `
+                <div class="roster-soldier">
+                  <div class="roster-soldier-info">
+                    <div class="roster-soldier-icon ${s.type}">${s.type.slice(0, 3).toUpperCase()}</div>
+                    <div class="roster-soldier-details">
+                      <div class="roster-soldier-name">${s.name} <span style="color: #888; font-size: 9px">(${soldierType.name})</span></div>
+                      <div class="roster-soldier-hp">
+                        <div class="roster-hp-bar">
+                          <div class="roster-hp-fill ${hpClass}" style="width: ${hpPercent}%"></div>
+                        </div>
+                        <span>${s.hp}/${s.maxHp}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="roster-assign-btns">
+                    ${getAssignButtons(s.id)}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    const capitalLabel = city.isCapital ? ' (Capital)' : '';
+
+    // Calculate city bonuses for display
+    const cityIncome = getCityIncome(city);
+    const growthInfo = getCityGrowthInfo(city);
+    const defenseBonus = getCityDefenseBonus(city);
+
+    // Build income display
+    let incomeHtml = `<span style="color: #fc0">+${cityIncome.totalGold} gold/turn</span>`;
+    if (cityIncome.totalMana > 0) {
+      incomeHtml += ` <span style="color: #a8f">+${cityIncome.totalMana} mana/turn</span>`;
+    }
+
+    // Build growth display
+    const growthPercent = (growthInfo.currentProgress / growthInfo.progressNeeded) * 100;
+    const growthHtml = `
+      <div class="growth-display">
+        <span>Growth: ${growthInfo.turnsUntilGrowth} turn${growthInfo.turnsUntilGrowth !== 1 ? 's' : ''} to next pop</span>
+        ${growthInfo.hasGranary ? '<span class="growth-bonus">(+Granary)</span>' : ''}
+        <div class="growth-bar">
+          <div class="growth-fill" style="width: ${growthPercent}%"></div>
+        </div>
+      </div>
+    `;
+
+    // Build defense display
+    const defenseHtml = defenseBonus > 0
+      ? `<span class="defense-indicator">Defense: +${defenseBonus}% (Walls)</span>`
+      : '';
+
     this.cityPanel.innerHTML = `
       <h3>${city.name}</h3>
+      <div style="font-size: 10px; color: #4af; margin-top: -8px; margin-bottom: 8px;">Your city${capitalLabel}</div>
       <div class="city-stats">
         <span>Population: ${city.population}</span>
         <span>Building Slots: ${usedSlots}/${slots}</span>
+        ${incomeHtml}
+        ${defenseHtml}
         ${city.occupationTurns > 0 ? `<span style="color: #f88">Occupied (${city.occupationTurns} turns)</span>` : ''}
-        ${isPlayerLegion ? `<span style="color: #8cf">Legion Present</span>` : ''}
+        ${hasNearbyLegions ? `<span style="color: #8cf">${nearbyLegions.length} Legion${nearbyLegions.length > 1 ? 's' : ''} in Range</span>` : ''}
       </div>
+      ${growthHtml}
       ${queueHtml}
       ${existingBuildingsHtml}
       ${buildingsHtml}
       ${soldiersHtml}
+      ${rosterHtml}
     `;
 
     this.cityPanel.style.display = 'block';
 
     // Set up button listeners
-    this.setupCityPanelListeners(city.id, legionAtCity?.id || null);
+    this.setupCityPanelListeners(city.id);
   }
 
-  private setupCityPanelListeners(cityId: string, legionId: string | null): void {
+  private setupCityPanelListeners(cityId: string): void {
     // Cancel queue buttons
     const cancelBtns = this.cityPanel.querySelectorAll('.queue-item-cancel');
     cancelBtns.forEach(btn => {
@@ -647,6 +943,8 @@ class GameApp {
       btn.addEventListener('click', () => {
         const buildType = btn.getAttribute('data-build-type');
         const buildId = btn.getAttribute('data-build-id');
+        const target = btn.getAttribute('data-target');
+        const legionId = btn.getAttribute('data-legion-id');
         if (!buildType || !buildId) return;
 
         if (buildType === 'building') {
@@ -655,15 +953,48 @@ class GameApp {
             cityId,
             buildingId: buildId as BuildingId,
           });
-        } else if (buildType === 'soldier' && legionId) {
+        } else if (buildType === 'soldier') {
+          // Train to specified legion or roster based on target
+          const targetLegionId = target === 'legion' && legionId ? legionId : undefined;
           this.state = processAction(this.state, {
             type: 'queue_soldier',
             cityId,
             soldierType: buildId as SoldierTypeId,
-            targetLegionId: legionId,
+            targetLegionId,
           });
         }
         this.updateUI();
+      });
+    });
+
+    // Assign roster soldiers to legion or create new legion
+    const assignBtns = this.cityPanel.querySelectorAll('.roster-assign-btn');
+    assignBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const soldierId = btn.getAttribute('data-soldier-id');
+        const action = btn.getAttribute('data-action');
+        const legionId = btn.getAttribute('data-legion-id');
+
+        if (!soldierId) return;
+
+        if (action === 'new-legion') {
+          // Create a new legion with this soldier as leader
+          this.state = processAction(this.state, {
+            type: 'create_legion_from_roster',
+            cityId,
+            soldierId,
+          });
+          this.updateUI();
+        } else if (legionId) {
+          // Assign to existing legion
+          this.state = processAction(this.state, {
+            type: 'assign_soldier',
+            cityId,
+            soldierId,
+            legionId,
+          });
+          this.updateUI();
+        }
       });
     });
   }
@@ -772,13 +1103,15 @@ class GameApp {
     const soldierType = SOLDIER_TYPES[soldier.type];
     const hpPercent = (soldier.hp / soldier.maxHp) * 100;
     const hpClass = hpPercent > 50 ? 'hp-high' : hpPercent > 25 ? 'hp-medium' : 'hp-low';
+    const leaderBadge = soldier.isLeader ? ' <span style="color: #fc0;">★ Leader</span>' : '';
 
     // Get attacks per row
     const attacksInRow = soldierType.attackCount[soldier.position.row];
     const targetPref = soldierType.attacksTarget === 'front' ? 'Front row first' : 'Back row first';
 
     this.unitTooltip.innerHTML = `
-      <h4 style="color: ${this.getSoldierColor(soldier.type)}">${soldierType.name}</h4>
+      <h4 style="color: ${this.getSoldierColor(soldier.type)}">${soldier.name}${leaderBadge}</h4>
+      <div style="font-size: 11px; color: #888; margin-top: -4px; margin-bottom: 8px;">${soldierType.name}</div>
 
       <div class="stat-row">
         <span class="stat-label">HP</span>
@@ -862,6 +1195,29 @@ class GameApp {
     return colors[type] || '#aaa';
   }
 
+  private formatBuildingEffects(building: typeof BUILDING_TYPES[keyof typeof BUILDING_TYPES]): string {
+    if (building.effects.length === 0) return '';
+
+    const effectStrings = building.effects.map(effect => {
+      switch (effect.type) {
+        case 'unlock_soldier':
+          return `Unlocks ${SOLDIER_TYPES[effect.soldier].name}`;
+        case 'gold_per_turn':
+          return `+${effect.amount} gold/turn`;
+        case 'mana_per_turn':
+          return `+${effect.amount} mana/turn`;
+        case 'defense_bonus':
+          return `+${effect.amount}% defense`;
+        case 'growth_bonus':
+          return `+${effect.amount} growth/turn`;
+        default:
+          return '';
+      }
+    }).filter(s => s);
+
+    return effectStrings.join(', ');
+  }
+
   private showCombatScene(): void {
     if (!this.state.pendingCombat) return;
 
@@ -924,6 +1280,181 @@ class GameApp {
     if (this.state.phase === 'combat_resolution' && this.state.pendingCombat && !this.combatScene) {
       this.showCombatScene();
     }
+  }
+
+  // ============ Collegia Panel ============
+
+  private updateResearchIndicator(): void {
+    const researchStatus = document.getElementById('research-status');
+    const researchIndicator = document.getElementById('research-indicator');
+    if (!researchStatus || !researchIndicator) return;
+
+    const { collegia } = this.state;
+
+    if (collegia.currentResearch) {
+      const tech = TECHNOLOGIES[collegia.currentResearch.technologyId];
+      researchStatus.textContent = `${tech.name} (${collegia.currentResearch.turnsRemaining})`;
+      researchIndicator.classList.remove('needs-selection');
+    } else {
+      researchStatus.textContent = 'Select Research';
+      researchIndicator.classList.add('needs-selection');
+    }
+  }
+
+  private toggleCollegiaPanel(): void {
+    this.collegiaVisible = !this.collegiaVisible;
+    if (this.collegiaVisible) {
+      this.updateCollegiaPanel();
+      this.collegiaPanel.style.display = 'block';
+    } else {
+      this.collegiaPanel.style.display = 'none';
+    }
+  }
+
+  private formatTechEffects(tech: typeof TECHNOLOGIES[keyof typeof TECHNOLOGIES]): string {
+    return tech.effects.map(effect => {
+      switch (effect.type) {
+        case 'unlock_building':
+          return `Unlocks ${BUILDING_TYPES[effect.building].name}`;
+        case 'soldier_attack_bonus':
+          return `${SOLDIER_TYPES[effect.soldier].name} +${effect.amount} ATK`;
+        case 'soldier_defense_bonus':
+          return `${SOLDIER_TYPES[effect.soldier].name} +${effect.amount} DEF`;
+        case 'soldier_hp_bonus':
+          return `${SOLDIER_TYPES[effect.soldier].name} +${effect.amount} HP`;
+        case 'building_gold_bonus':
+          return `${BUILDING_TYPES[effect.building].name} +${effect.amount} gold`;
+        case 'building_mana_bonus':
+          return `${BUILDING_TYPES[effect.building].name} +${effect.amount} mana`;
+        case 'global_gold_bonus':
+          return `+${effect.amount} gold/turn`;
+        case 'global_mana_bonus':
+          return `+${effect.amount} mana/turn`;
+        case 'global_growth_bonus':
+          return `+${effect.amount} growth`;
+        case 'global_defense_bonus':
+          return `+${effect.amount}% defense`;
+        case 'legion_movement_bonus':
+          return `+${effect.amount} movement`;
+        default:
+          return '';
+      }
+    }).filter(s => s).join(', ');
+  }
+
+  private formatTierName(tier: string): string {
+    return tier.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  private updateCollegiaPanel(): void {
+    const { collegia } = this.state;
+    const player = this.state.factions.get('player');
+    const canReroll = collegia.rerollAvailable && !collegia.currentResearch && player && player.gold >= 100;
+
+    // Current research section
+    let currentResearchHtml = '';
+    if (collegia.currentResearch) {
+      const tech = TECHNOLOGIES[collegia.currentResearch.technologyId];
+      const totalTurns = tech.researchTurns;
+      const elapsed = totalTurns - collegia.currentResearch.turnsRemaining;
+      const progressPercent = (elapsed / totalTurns) * 100;
+
+      currentResearchHtml = `
+        <div class="collegia-current-research">
+          <h4>Currently Researching: ${tech.name}</h4>
+          <div style="font-size: 11px; color: #aaa;">${tech.description}</div>
+          <div style="font-size: 10px; color: #8cf; margin-top: 4px;">${this.formatTechEffects(tech)}</div>
+          <div style="font-size: 12px; margin-top: 8px;">
+            <span style="color: #ffa500">${collegia.currentResearch.turnsRemaining}</span>
+            <span style="color: #888"> turns remaining</span>
+          </div>
+          <div class="research-progress-bar">
+            <div class="research-progress-fill" style="width: ${progressPercent}%"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Offerings section (only show if not researching)
+    let offeringsHtml = '';
+    if (!collegia.currentResearch) {
+      offeringsHtml = `
+        <div class="city-section-title" style="color: #d2691e; margin-bottom: 8px;">Choose Your Next Study</div>
+        <div class="collegia-offerings">
+          ${collegia.availableOfferings.map(techId => {
+            const tech = TECHNOLOGIES[techId];
+            return `
+              <div class="collegia-offering">
+                <div class="offering-info">
+                  <div class="offering-name">${tech.name}</div>
+                  <div class="offering-description">${tech.description}</div>
+                  <div class="offering-meta">
+                    <span class="offering-category ${tech.category}">${tech.category}</span>
+                    <span class="offering-tier ${tech.tier}">${this.formatTierName(tech.tier)}</span>
+                  </div>
+                  <div class="offering-effects">${this.formatTechEffects(tech)}</div>
+                </div>
+                <div class="offering-select">
+                  <div class="offering-turns">${tech.researchTurns}</div>
+                  <div class="offering-turns-label">turns</div>
+                  <button class="offering-select-btn" data-tech-id="${techId}">Study</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Owned technologies section
+    let ownedHtml = '';
+    if (collegia.ownedTechnologies.length > 0) {
+      ownedHtml = `
+        <div class="collegia-owned">
+          <div class="collegia-owned-title">Learned (${collegia.ownedTechnologies.length})</div>
+          <div class="owned-tech-list">
+            ${collegia.ownedTechnologies.map(techId => {
+              const tech = TECHNOLOGIES[techId];
+              return `<span class="owned-tech" title="${tech.description}">${tech.name}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    this.collegiaPanel.innerHTML = `
+      <h3>The Wandering Collegia</h3>
+      ${currentResearchHtml}
+      ${offeringsHtml}
+      <div class="collegia-actions">
+        <button class="collegia-btn reroll" id="collegia-reroll" ${!canReroll ? 'disabled' : ''}>
+          Reroll (100 gold)${!collegia.rerollAvailable ? ' - Used' : ''}
+        </button>
+        <button class="collegia-btn close" id="collegia-close">Close</button>
+      </div>
+      ${ownedHtml}
+    `;
+
+    // Add event listeners
+    const closeBtn = document.getElementById('collegia-close');
+    closeBtn?.addEventListener('click', () => this.toggleCollegiaPanel());
+
+    const rerollBtn = document.getElementById('collegia-reroll');
+    rerollBtn?.addEventListener('click', () => {
+      this.state = processAction(this.state, { type: 'reroll_collegia' });
+      this.updateUI();
+    });
+
+    const selectBtns = this.collegiaPanel.querySelectorAll('.offering-select-btn');
+    selectBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const techId = btn.getAttribute('data-tech-id');
+        if (techId) {
+          this.state = processAction(this.state, { type: 'select_research', technologyId: techId });
+          this.updateUI();
+        }
+      });
+    });
   }
 
   private gameLoop(): void {

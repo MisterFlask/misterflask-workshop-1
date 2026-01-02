@@ -26,7 +26,8 @@
       "Bash(npx tsx:*)",
       "Bash(git config:*)",
       "Bash(git add:*)",
-      "Bash(sudo git add:*)"
+      "Bash(sudo git add:*)",
+      "Bash(npm run build)"
     ]
   }
 }
