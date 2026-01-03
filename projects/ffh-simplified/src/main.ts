@@ -1457,6 +1457,89 @@ class GameApp {
     });
   }
 
+  // ============ Knowledge Panel ============
+
+  private updateKnowledgeCount(): void {
+    const knowledgeCount = document.getElementById('knowledge-count');
+    if (!knowledgeCount) return;
+
+    const count = this.state.collegia.ownedTechnologies.length;
+    knowledgeCount.textContent = `${count} Learned`;
+  }
+
+  private toggleKnowledgePanel(): void {
+    this.knowledgeVisible = !this.knowledgeVisible;
+    if (this.knowledgeVisible) {
+      this.updateKnowledgePanel();
+      this.knowledgePanel.style.display = 'block';
+    } else {
+      this.knowledgePanel.style.display = 'none';
+    }
+  }
+
+  private updateKnowledgePanel(): void {
+    const { collegia } = this.state;
+
+    if (collegia.ownedTechnologies.length === 0) {
+      this.knowledgePanel.innerHTML = `
+        <h3>Learned Technologies</h3>
+        <div class="knowledge-empty">
+          No technologies learned yet.<br>
+          Visit the Collegia to begin your studies.
+        </div>
+        <button class="knowledge-close" id="knowledge-close">Close</button>
+      `;
+    } else {
+      // Group technologies by category
+      const byCategory: Record<string, typeof TECHNOLOGIES[keyof typeof TECHNOLOGIES][]> = {
+        martial: [],
+        industrial: [],
+        arcane: [],
+        social: [],
+      };
+
+      for (const techId of collegia.ownedTechnologies) {
+        const tech = TECHNOLOGIES[techId];
+        if (tech) {
+          byCategory[tech.category].push(tech);
+        }
+      }
+
+      // Build HTML for each category that has technologies
+      const categoriesHtml = Object.entries(byCategory)
+        .filter(([_, techs]) => techs.length > 0)
+        .map(([category, techs]) => `
+          <div class="knowledge-category">
+            <div class="knowledge-category-header ${category}">${category.charAt(0).toUpperCase() + category.slice(1)}</div>
+            <div class="knowledge-tech-list">
+              ${techs.map(tech => `
+                <div class="knowledge-tech">
+                  <div class="knowledge-tech-header">
+                    <span class="knowledge-tech-name">${tech.name}</span>
+                    <span class="knowledge-tech-tier ${tech.tier}">${this.formatTierName(tech.tier)}</span>
+                  </div>
+                  <div class="knowledge-tech-description">${tech.description}</div>
+                  <div class="knowledge-tech-effects">${this.formatTechEffects(tech)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('');
+
+      this.knowledgePanel.innerHTML = `
+        <h3>Learned Technologies (${collegia.ownedTechnologies.length})</h3>
+        <div class="knowledge-categories">
+          ${categoriesHtml}
+        </div>
+        <button class="knowledge-close" id="knowledge-close">Close</button>
+      `;
+    }
+
+    // Add close button listener
+    const closeBtn = document.getElementById('knowledge-close');
+    closeBtn?.addEventListener('click', () => this.toggleKnowledgePanel());
+  }
+
   private gameLoop(): void {
     this.renderer.render(this.state);
     requestAnimationFrame(() => this.gameLoop());

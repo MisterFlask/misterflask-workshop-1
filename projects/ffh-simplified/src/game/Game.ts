@@ -20,16 +20,36 @@ import { BUILDING_TYPES, getBuildingSlots, BASE_CITY_INCOME, TURNS_PER_POPULATIO
 import { FACTION_TEMPLATES, createFaction } from '../data/factions';
 import { TECHNOLOGIES, getAllTechnologyIds } from '../data/technologies';
 import { generateMap, placeStartingEntities } from './MapGenerator';
-import { resolveCombat, applyCombatResult } from './Combat';
+import { resolveCombat, applyCombatResult, SoldierTechBonuses } from './Combat';
 import { coordToKey, coordsEqual, getTilesInRange, findPath, getNeighbors, manhattanDistance } from '../utils/grid';
 import { generateId, generateSoldierName } from '../utils/random';
 
-const MOVEMENT_RANGE = 3;
+const BASE_MOVEMENT_RANGE = 3;
 const HEAL_RATE = 20;
+
+// Get movement range with technology bonus
+function getMovementRange(state: GameState, factionId: FactionId): number {
+  if (factionId !== 'player') return BASE_MOVEMENT_RANGE;
+
+  let bonus = 0;
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+
+    for (const effect of tech.effects) {
+      if (effect.type === 'legion_movement_bonus') {
+        bonus += effect.amount;
+      }
+    }
+  }
+
+  return BASE_MOVEMENT_RANGE + bonus;
+}
 const LEGION_COST = 100;
 const MAX_LEGIONS_PER_FACTION = 5;
 const MAX_SOLDIERS_PER_LEGION = 8;
 const ARMAGEDDON_MAX = 100;
+const BOSS_SPAWN_THRESHOLD = 50; // Boss spawns at 50% Armageddon
 const COLLEGIA_OFFERINGS_COUNT = 5;
 const COLLEGIA_REROLL_COST = 100;
 
@@ -246,16 +266,58 @@ export function getFactionIncome(state: GameState, factionId: FactionId): Factio
   let totalMana = 0;
   const cityBreakdowns: { cityName: string; gold: number; mana: number }[] = [];
 
+  // Calculate tech bonuses (only for player)
+  let globalGoldBonus = 0;
+  let globalManaBonus = 0;
+  const buildingGoldBonuses: Partial<Record<BuildingId, number>> = {};
+  const buildingManaBonuses: Partial<Record<BuildingId, number>> = {};
+
+  if (factionId === 'player') {
+    for (const techId of state.collegia.ownedTechnologies) {
+      const tech = TECHNOLOGIES[techId];
+      if (!tech) continue;
+
+      for (const effect of tech.effects) {
+        if (effect.type === 'global_gold_bonus') {
+          globalGoldBonus += effect.amount;
+        } else if (effect.type === 'global_mana_bonus') {
+          globalManaBonus += effect.amount;
+        } else if (effect.type === 'building_gold_bonus') {
+          buildingGoldBonuses[effect.building] = (buildingGoldBonuses[effect.building] ?? 0) + effect.amount;
+        } else if (effect.type === 'building_mana_bonus') {
+          buildingManaBonuses[effect.building] = (buildingManaBonuses[effect.building] ?? 0) + effect.amount;
+        }
+      }
+    }
+  }
+
   for (const city of cities) {
     const income = getCityIncome(city);
-    totalGold += income.totalGold;
-    totalMana += income.totalMana;
+    let cityGold = income.totalGold;
+    let cityMana = income.totalMana;
+
+    // Add building-specific tech bonuses for this city
+    for (const buildingId of city.buildings) {
+      if (buildingGoldBonuses[buildingId]) {
+        cityGold += buildingGoldBonuses[buildingId]!;
+      }
+      if (buildingManaBonuses[buildingId]) {
+        cityMana += buildingManaBonuses[buildingId]!;
+      }
+    }
+
+    totalGold += cityGold;
+    totalMana += cityMana;
     cityBreakdowns.push({
       cityName: city.name,
-      gold: income.totalGold,
-      mana: income.totalMana,
+      gold: cityGold,
+      mana: cityMana,
     });
   }
+
+  // Add global bonuses
+  totalGold += globalGoldBonus;
+  totalMana += globalManaBonus;
 
   return { totalGold, totalMana, cityBreakdowns };
 }
@@ -490,6 +552,55 @@ function handleMoveLegion(state: GameState, legionId: string, to: Coord): GameSt
   return { ...state, legions: newLegions, selectedLegionId: null };
 }
 
+// Get soldier max HP with technology bonus applied
+function getSoldierMaxHp(state: GameState, factionId: FactionId, soldierType: SoldierTypeId): number {
+  const baseHp = SOLDIER_TYPES[soldierType].hp;
+
+  // Only the player has technologies
+  if (factionId !== 'player') return baseHp;
+
+  let hpBonus = 0;
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+
+    for (const effect of tech.effects) {
+      if (effect.type === 'soldier_hp_bonus' && effect.soldier === soldierType) {
+        hpBonus += effect.amount;
+      }
+    }
+  }
+
+  return baseHp + hpBonus;
+}
+
+// Calculate tech bonuses for a faction's soldiers in combat
+function getSoldierTechBonuses(state: GameState, factionId: FactionId): SoldierTechBonuses | undefined {
+  // Only the player has technologies (AI doesn't use the Collegia system)
+  if (factionId !== 'player') return undefined;
+
+  const attack: Partial<Record<SoldierTypeId, number>> = {};
+  const defense: Partial<Record<SoldierTypeId, number>> = {};
+  let globalDefense = 0;
+
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+
+    for (const effect of tech.effects) {
+      if (effect.type === 'soldier_attack_bonus') {
+        attack[effect.soldier] = (attack[effect.soldier] ?? 0) + effect.amount;
+      } else if (effect.type === 'soldier_defense_bonus') {
+        defense[effect.soldier] = (defense[effect.soldier] ?? 0) + effect.amount;
+      } else if (effect.type === 'global_defense_bonus') {
+        globalDefense += effect.amount;
+      }
+    }
+  }
+
+  return { attack, defense, globalDefense };
+}
+
 function handleCombat(
   state: GameState,
   attacker: Legion,
@@ -502,7 +613,11 @@ function handleCombat(
   const city = getCityAt(state, combatLocation);
   const hasWalls = city?.buildings.includes('walls') ?? false;
 
-  const result = resolveCombat(attacker, defender, tile.terrain, hasWalls);
+  // Calculate tech bonuses for both sides
+  const attackerTechBonuses = getSoldierTechBonuses(state, attacker.owner);
+  const defenderTechBonuses = getSoldierTechBonuses(state, defender.owner);
+
+  const result = resolveCombat(attacker, defender, tile.terrain, hasWalls, attackerTechBonuses, defenderTechBonuses);
 
   // Set pending combat and change phase - combat scene will display and call apply_combat_results when done
   return {
@@ -628,11 +743,304 @@ function handleCityCapture(
   return { ...state, legions: newLegions, cities: newCities, selectedLegionId: null };
 }
 
+// ============ AI Turn Processing ============
+
+function processAITurn(state: GameState): GameState {
+  let newState = { ...state };
+  const newLegions = new Map(newState.legions);
+
+  // Get all AI factions
+  const aiFactions = Array.from(newState.factions.values()).filter(f => f.id !== 'player');
+
+  for (const faction of aiFactions) {
+    // Reset movement for this faction's legions
+    for (const [id, legion] of newLegions) {
+      if (legion.owner === faction.id) {
+        newLegions.set(id, { ...legion, movementRemaining: BASE_MOVEMENT_RANGE });
+      }
+    }
+    newState = { ...newState, legions: newLegions };
+
+    // Process each legion for this faction
+    const factionLegions = Array.from(newLegions.values()).filter(l => l.owner === faction.id);
+
+    for (const legion of factionLegions) {
+      // Skip if legion has no soldiers
+      if (legion.soldiers.length === 0) continue;
+
+      // Find targets based on faction type
+      const targets = findAITargets(newState, faction, legion);
+
+      if (targets.length > 0) {
+        // Move toward nearest target
+        newState = processAILegionMove(newState, legion, targets[0]);
+      }
+    }
+  }
+
+  return newState;
+}
+
+// Find potential targets for an AI legion
+function findAITargets(state: GameState, faction: Faction, legion: Legion): Coord[] {
+  const targets: { coord: Coord; priority: number; distance: number }[] = [];
+
+  // Raiders prioritize player legions, then cities
+  // Defenders prioritize defending their own territory
+  // Ritualists are passive (for now)
+
+  if (faction.type === 'raider' || faction.type === 'boss') {
+    // Raiders and Boss target player legions, then cities
+    // Boss is more aggressive with higher priority
+    const priorityBonus = faction.type === 'boss' ? 5 : 0;
+
+    // Target player legions
+    for (const otherLegion of state.legions.values()) {
+      if (otherLegion.owner === 'player') {
+        const distance = manhattanDistance(legion.location, otherLegion.location);
+        targets.push({ coord: otherLegion.location, priority: 10 + priorityBonus, distance });
+      }
+    }
+
+    // Target player cities
+    for (const city of state.cities.values()) {
+      if (city.owner === 'player') {
+        const distance = manhattanDistance(legion.location, city.coord);
+        targets.push({ coord: city.coord, priority: 5 + priorityBonus, distance });
+      }
+    }
+  } else if (faction.type === 'defender') {
+    // Defenders attack nearby player units that are close to their cities
+    const ownCities = Array.from(state.cities.values()).filter(c => c.owner === faction.id);
+
+    for (const otherLegion of state.legions.values()) {
+      if (otherLegion.owner === 'player') {
+        // Check if player legion is near any of our cities
+        for (const city of ownCities) {
+          const distanceToCity = manhattanDistance(otherLegion.location, city.coord);
+          if (distanceToCity <= 5) {
+            const distance = manhattanDistance(legion.location, otherLegion.location);
+            targets.push({ coord: otherLegion.location, priority: 10, distance });
+            break;
+          }
+        }
+      }
+    }
+  }
+  // Ritualists are passive for now
+
+  // Sort by priority (descending), then distance (ascending)
+  targets.sort((a, b) => {
+    if (a.priority !== b.priority) return b.priority - a.priority;
+    return a.distance - b.distance;
+  });
+
+  return targets.map(t => t.coord);
+}
+
+// Move an AI legion toward a target
+function processAILegionMove(state: GameState, legion: Legion, target: Coord): GameState {
+  let newState = state;
+  const currentLegion = newState.legions.get(legion.id);
+  if (!currentLegion || currentLegion.movementRemaining <= 0) return newState;
+
+  // Check if already at target
+  if (coordsEqual(currentLegion.location, target)) return newState;
+
+  // Check if adjacent to target - attack if there's an enemy there
+  const distance = manhattanDistance(currentLegion.location, target);
+  if (distance === 1) {
+    // Check for enemy legion at target
+    const enemyLegion = getLegionAt(newState, target);
+    if (enemyLegion && enemyLegion.owner !== currentLegion.owner) {
+      // Attack!
+      return handleAICombat(newState, currentLegion, enemyLegion, target);
+    }
+
+    // Check for enemy city at target
+    const enemyCity = getCityAt(newState, target);
+    if (enemyCity && enemyCity.owner !== currentLegion.owner) {
+      // Check if city has a defending legion
+      const defender = getLegionAt(newState, target);
+      if (defender) {
+        return handleAICombat(newState, currentLegion, defender, target);
+      } else {
+        // Capture undefended city
+        return handleAICaptureCity(newState, currentLegion, enemyCity);
+      }
+    }
+
+    // Move to empty tile
+    return moveAILegion(newState, currentLegion, target);
+  }
+
+  // Find path to target
+  const path = findPath(currentLegion.location, target, newState.map, isPassableTerrain);
+  if (!path || path.length < 2) return newState;
+
+  // Move along path as far as movement allows
+  let stepsToTake = Math.min(currentLegion.movementRemaining, path.length - 1);
+  let currentPos = currentLegion.location;
+
+  for (let i = 1; i <= stepsToTake; i++) {
+    const nextPos = path[i];
+
+    // Check for blocking units
+    const blockingLegion = getLegionAt(newState, nextPos);
+    if (blockingLegion) {
+      if (blockingLegion.owner !== currentLegion.owner) {
+        // Attack!
+        return handleAICombat(newState, newState.legions.get(currentLegion.id)!, blockingLegion, nextPos);
+      } else {
+        // Friendly legion blocking - stop before it
+        break;
+      }
+    }
+
+    currentPos = nextPos;
+  }
+
+  // Move to the furthest position we can reach
+  if (!coordsEqual(currentPos, currentLegion.location)) {
+    return moveAILegion(newState, currentLegion, currentPos);
+  }
+
+  return newState;
+}
+
+// Move an AI legion to a position
+function moveAILegion(state: GameState, legion: Legion, to: Coord): GameState {
+  const path = findPath(legion.location, to, state.map, isPassableTerrain);
+  const distance = path ? path.length - 1 : manhattanDistance(legion.location, to);
+
+  const newLegions = new Map(state.legions);
+  newLegions.set(legion.id, {
+    ...legion,
+    location: to,
+    movementRemaining: Math.max(0, legion.movementRemaining - distance),
+  });
+
+  return { ...state, legions: newLegions };
+}
+
+// Handle AI-initiated combat
+function handleAICombat(state: GameState, attacker: Legion, defender: Legion, combatLocation: Coord): GameState {
+  const tile = getTile(state, combatLocation);
+  if (!tile) return state;
+
+  const city = getCityAt(state, combatLocation);
+  const hasWalls = city?.buildings.includes('walls') ?? false;
+
+  // AI doesn't have tech bonuses (only player has Collegia)
+  const result = resolveCombat(attacker, defender, tile.terrain, hasWalls);
+
+  // Apply combat results immediately for AI (no combat scene)
+  const newLegions = new Map(state.legions);
+
+  // Update attacker
+  const updatedAttacker = {
+    ...attacker,
+    soldiers: result.attackerSurvivors,
+    movementRemaining: 0,
+  };
+
+  // Update defender
+  const updatedDefender = {
+    ...defender,
+    soldiers: result.defenderSurvivors,
+  };
+
+  if (result.attackerWon) {
+    // Attacker wins - defender retreats or is destroyed
+    if (result.defenderSurvivors.length === 0) {
+      // Defender eliminated
+      newLegions.delete(defender.id);
+    } else {
+      // Defender retreats
+      const retreatDir = {
+        x: defender.location.x - attacker.location.x,
+        y: defender.location.y - attacker.location.y,
+      };
+      const retreatCoord = { x: defender.location.x + retreatDir.x, y: defender.location.y + retreatDir.y };
+      const retreatTile = getTile(state, retreatCoord);
+
+      if (retreatTile && isPassableTerrain(retreatTile) && !getLegionAt(state, retreatCoord)) {
+        updatedDefender.location = retreatCoord;
+        updatedDefender.movementRemaining = 0;
+        newLegions.set(defender.id, updatedDefender);
+      } else {
+        // No retreat path - destroyed
+        newLegions.delete(defender.id);
+      }
+    }
+
+    // Attacker moves to combat location
+    updatedAttacker.location = combatLocation;
+    if (result.attackerSurvivors.length > 0) {
+      newLegions.set(attacker.id, updatedAttacker);
+    } else {
+      newLegions.delete(attacker.id);
+    }
+
+    // Check for city capture
+    let newCities = state.cities;
+    if (city && city.owner !== attacker.owner) {
+      const newCitiesMap = new Map(state.cities);
+      newCitiesMap.set(city.id, {
+        ...city,
+        owner: attacker.owner,
+        occupationTurns: 3,
+      });
+      newCities = newCitiesMap;
+    }
+
+    return { ...state, legions: newLegions, cities: newCities };
+  } else {
+    // Defender wins - attacker retreats
+    if (result.attackerSurvivors.length === 0) {
+      newLegions.delete(attacker.id);
+    } else {
+      updatedAttacker.movementRemaining = 0;
+      newLegions.set(attacker.id, updatedAttacker);
+    }
+
+    if (result.defenderSurvivors.length > 0) {
+      newLegions.set(defender.id, updatedDefender);
+    } else {
+      newLegions.delete(defender.id);
+    }
+
+    return { ...state, legions: newLegions };
+  }
+}
+
+// Handle AI capturing an undefended city
+function handleAICaptureCity(state: GameState, legion: Legion, city: City): GameState {
+  const newLegions = new Map(state.legions);
+  newLegions.set(legion.id, {
+    ...legion,
+    location: city.coord,
+    movementRemaining: 0,
+  });
+
+  const newCities = new Map(state.cities);
+  newCities.set(city.id, {
+    ...city,
+    owner: legion.owner,
+    occupationTurns: 3,
+  });
+
+  return { ...state, legions: newLegions, cities: newCities };
+}
+
+// ============ End AI Processing ============
+
 function handleEndTurn(state: GameState): GameState {
   // Process AI turns, then end turn phase
   let newState = { ...state, phase: 'ai_turn' as const };
 
-  // TODO: Process AI faction turns
+  // Process AI faction turns
+  newState = processAITurn(newState);
 
   // End turn processing
   newState = processEndTurnPhase(newState);
@@ -647,11 +1055,12 @@ function handleEndTurn(state: GameState): GameState {
       turn: newState.turn + 1,
     };
 
-    // Reset player legion movement
+    // Reset player legion movement (includes tech bonus)
+    const playerMovementRange = getMovementRange(newState, 'player');
     const newLegions = new Map(newState.legions);
     for (const [id, legion] of newLegions) {
       if (legion.owner === 'player') {
-        newLegions.set(id, { ...legion, movementRemaining: MOVEMENT_RANGE });
+        newLegions.set(id, { ...legion, movementRemaining: playerMovementRange });
       }
     }
     newState.legions = newLegions;
@@ -670,6 +1079,31 @@ function processEndTurnPhase(state: GameState): GameState {
     let goldIncome = 0;
     let manaIncome = 0;
 
+    // Calculate tech bonuses (only for player)
+    let globalGoldBonus = 0;
+    let globalManaBonus = 0;
+    const buildingGoldBonuses: Partial<Record<BuildingId, number>> = {};
+    const buildingManaBonuses: Partial<Record<BuildingId, number>> = {};
+
+    if (factionId === 'player') {
+      for (const techId of state.collegia.ownedTechnologies) {
+        const tech = TECHNOLOGIES[techId];
+        if (!tech) continue;
+
+        for (const effect of tech.effects) {
+          if (effect.type === 'global_gold_bonus') {
+            globalGoldBonus += effect.amount;
+          } else if (effect.type === 'global_mana_bonus') {
+            globalManaBonus += effect.amount;
+          } else if (effect.type === 'building_gold_bonus') {
+            buildingGoldBonuses[effect.building] = (buildingGoldBonuses[effect.building] ?? 0) + effect.amount;
+          } else if (effect.type === 'building_mana_bonus') {
+            buildingManaBonuses[effect.building] = (buildingManaBonuses[effect.building] ?? 0) + effect.amount;
+          }
+        }
+      }
+    }
+
     // Calculate income from cities
     for (const city of state.cities.values()) {
       if (city.owner !== factionId) continue;
@@ -686,15 +1120,40 @@ function processEndTurnPhase(state: GameState): GameState {
             if (effect.type === 'gold_per_turn') goldIncome += effect.amount;
             if (effect.type === 'mana_per_turn') manaIncome += effect.amount;
           }
+
+          // Tech building bonuses
+          if (buildingGoldBonuses[buildingId]) {
+            goldIncome += buildingGoldBonuses[buildingId]!;
+          }
+          if (buildingManaBonuses[buildingId]) {
+            manaIncome += buildingManaBonuses[buildingId]!;
+          }
         }
       }
     }
+
+    // Add global tech bonuses
+    goldIncome += globalGoldBonus;
+    manaIncome += globalManaBonus;
 
     newFactions.set(factionId, {
       ...faction,
       gold: faction.gold + goldIncome,
       mana: faction.mana + manaIncome,
     });
+  }
+
+  // Calculate global growth bonus from technologies (player only)
+  let techGrowthBonus = 0;
+  for (const techId of state.collegia.ownedTechnologies) {
+    const tech = TECHNOLOGIES[techId];
+    if (!tech) continue;
+
+    for (const effect of tech.effects) {
+      if (effect.type === 'global_growth_bonus') {
+        techGrowthBonus += effect.amount;
+      }
+    }
   }
 
   // Population growth and occupation countdown
@@ -715,6 +1174,11 @@ function processEndTurnPhase(state: GameState): GameState {
           growthBonus += effect.amount;
         }
       }
+    }
+
+    // Add tech growth bonus for player cities
+    if (newCity.owner === 'player') {
+      growthBonus += techGrowthBonus;
     }
 
     // Population growth - accumulate growth points each turn
@@ -783,12 +1247,13 @@ function processEndTurnPhase(state: GameState): GameState {
               if (position) {
                 // If legion is empty, this soldier becomes the leader
                 const isLeader = legion.soldiers.length === 0;
+                const soldierMaxHp = getSoldierMaxHp(state, city.owner, item.itemId as SoldierTypeId);
                 const newSoldier: Soldier = {
                   id: generateId('soldier'),
                   name: generateSoldierName(),
                   type: item.itemId as SoldierTypeId,
-                  hp: soldierType.hp,
-                  maxHp: soldierType.hp,
+                  hp: soldierMaxHp,
+                  maxHp: soldierMaxHp,
                   position,
                   isLeader,
                 };
@@ -801,12 +1266,13 @@ function processEndTurnPhase(state: GameState): GameState {
             }
           } else {
             // No target legion - add to city roster
+            const rosterMaxHp = getSoldierMaxHp(state, city.owner, item.itemId as SoldierTypeId);
             const rosterSoldier: RosterSoldier = {
               id: generateId('soldier'),
               name: generateSoldierName(),
               type: item.itemId as SoldierTypeId,
-              hp: soldierType.hp,
-              maxHp: soldierType.hp,
+              hp: rosterMaxHp,
+              maxHp: rosterMaxHp,
             };
             updatedCity = {
               ...updatedCity,
@@ -847,8 +1313,8 @@ function processEndTurnPhase(state: GameState): GameState {
   // Advance Armageddon counter
   const newArmageddon = Math.min(ARMAGEDDON_MAX, state.armageddonCounter + 1);
 
-  // Create intermediate state for collegia processing
-  const stateAfterTurn: GameState = {
+  // Create intermediate state
+  let stateAfterTurn: GameState = {
     ...state,
     factions: newFactions,
     cities: newCities,
@@ -856,8 +1322,118 @@ function processEndTurnPhase(state: GameState): GameState {
     armageddonCounter: newArmageddon,
   };
 
+  // Check if boss should spawn
+  if (newArmageddon >= BOSS_SPAWN_THRESHOLD && state.armageddonCounter < BOSS_SPAWN_THRESHOLD) {
+    stateAfterTurn = spawnBoss(stateAfterTurn);
+  }
+
   // Process Collegia research
   return processCollegiaResearch(stateAfterTurn);
+}
+
+// Spawn the Infernal Legion boss when Armageddon threshold is reached
+function spawnBoss(state: GameState): GameState {
+  // Check if boss already exists
+  if (state.factions.has('boss')) {
+    return state;
+  }
+
+  const newFactions = new Map(state.factions);
+  const newCities = new Map(state.cities);
+  const newLegions = new Map(state.legions);
+
+  // Create boss faction
+  const bossTemplate = FACTION_TEMPLATES['boss'];
+  newFactions.set('boss', createFaction(bossTemplate));
+
+  // Find a suitable spawn location (far from player, on passable terrain)
+  const playerCities = Array.from(state.cities.values()).filter(c => c.owner === 'player');
+  const playerCenter = playerCities.length > 0
+    ? {
+        x: Math.round(playerCities.reduce((sum, c) => sum + c.coord.x, 0) / playerCities.length),
+        y: Math.round(playerCities.reduce((sum, c) => sum + c.coord.y, 0) / playerCities.length),
+      }
+    : { x: state.mapWidth / 2, y: state.mapHeight / 2 };
+
+  // Find spawn location on opposite side of map from player
+  const targetX = playerCenter.x < state.mapWidth / 2 ? state.mapWidth - 5 : 5;
+  const targetY = playerCenter.y < state.mapHeight / 2 ? state.mapHeight - 5 : 5;
+
+  // Search for passable tile near target
+  let spawnCoord: Coord | null = null;
+  for (let radius = 0; radius < 10; radius++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        const coord = { x: targetX + dx, y: targetY + dy };
+        if (coord.x < 0 || coord.x >= state.mapWidth || coord.y < 0 || coord.y >= state.mapHeight) continue;
+
+        const tile = getTile(state, coord);
+        if (tile && isPassableTerrain(tile) && !getCityAt(state, coord) && !getLegionAt(state, coord)) {
+          spawnCoord = coord;
+          break;
+        }
+      }
+      if (spawnCoord) break;
+    }
+    if (spawnCoord) break;
+  }
+
+  if (!spawnCoord) {
+    // Fallback - no suitable location found, skip spawning
+    console.warn('Could not find suitable spawn location for boss');
+    return state;
+  }
+
+  // Create boss city
+  const bossCity: City = {
+    id: generateId('city'),
+    name: 'The Pit',
+    owner: 'boss',
+    coord: spawnCoord,
+    population: 5,
+    buildings: [],
+    buildQueue: [],
+    roster: [],
+    occupationTurns: 0,
+    isCapital: true,
+    growthProgress: 0,
+  };
+  newCities.set(bossCity.id, bossCity);
+
+  // Update map tile ownership
+  const mapCopy = state.map.map(row => row.map(tile => ({ ...tile })));
+  mapCopy[spawnCoord.y][spawnCoord.x].city = bossCity;
+  mapCopy[spawnCoord.y][spawnCoord.x].owner = 'boss';
+
+  // Create boss legion with demons
+  const demonType = SOLDIER_TYPES['demon'];
+  const bossLegion: Legion = {
+    id: generateId('legion'),
+    owner: 'boss',
+    soldiers: Array.from({ length: 6 }, (_, i) => ({
+      id: generateId('soldier'),
+      name: `Demon ${i + 1}`,
+      type: 'demon' as SoldierTypeId,
+      hp: demonType.hp,
+      maxHp: demonType.hp,
+      position: {
+        row: i < 3 ? 'front' : 'mid',
+        column: i % 3,
+      },
+      isLeader: i === 0,
+    })),
+    location: spawnCoord,
+    movementRemaining: BASE_MOVEMENT_RANGE,
+  };
+  newLegions.set(bossLegion.id, bossLegion);
+
+  return {
+    ...state,
+    factions: newFactions,
+    cities: newCities,
+    legions: newLegions,
+    map: mapCopy,
+  };
 }
 
 function checkGameOver(state: GameState): GameState {
@@ -967,11 +1543,12 @@ function handleRecruit(
 
   if (!position) return state; // No room
 
+  const recruitedMaxHp = getSoldierMaxHp(state, legion.owner, soldierTypeId);
   const newSoldier: Soldier = {
     id: generateId('soldier'),
     type: soldierTypeId,
-    hp: soldierType.hp,
-    maxHp: soldierType.hp,
+    hp: recruitedMaxHp,
+    maxHp: recruitedMaxHp,
     position,
   };
 

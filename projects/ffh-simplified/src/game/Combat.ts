@@ -1,8 +1,15 @@
-import type { Legion, Soldier, CombatResult, CombatEvent, FormationRow, TerrainType } from '../types';
+import type { Legion, Soldier, CombatResult, CombatEvent, FormationRow, TerrainType, SoldierTypeId } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
 
 const COMBAT_ROUND_DURATION = 100;
 const MINIMUM_DAMAGE = 5;
+
+// Tech bonuses that can be applied in combat
+export interface SoldierTechBonuses {
+  attack: Partial<Record<SoldierTypeId, number>>;
+  defense: Partial<Record<SoldierTypeId, number>>;
+  globalDefense: number;
+}
 
 interface Attack {
   attackerId: string;
@@ -32,13 +39,24 @@ function getTerrainDefenseBonus(terrain: TerrainType, hasWalls: boolean): number
 function calculateDamage(
   attacker: Soldier,
   defender: Soldier,
-  terrainBonus: number
+  terrainBonus: number,
+  attackerTechBonuses?: SoldierTechBonuses,
+  defenderTechBonuses?: SoldierTechBonuses
 ): number {
   const attackerType = SOLDIER_TYPES[attacker.type];
   const defenderType = SOLDIER_TYPES[defender.type];
 
-  const effectiveDefense = defenderType.defense * (1 + terrainBonus);
-  const rawDamage = attackerType.attack - effectiveDefense;
+  // Apply tech attack bonus to attacker
+  const techAttackBonus = attackerTechBonuses?.attack[attacker.type] ?? 0;
+  const effectiveAttack = attackerType.attack + techAttackBonus;
+
+  // Apply tech defense bonuses to defender
+  const techDefenseBonus = defenderTechBonuses?.defense[defender.type] ?? 0;
+  const techGlobalDefense = defenderTechBonuses?.globalDefense ?? 0;
+  const baseDefense = defenderType.defense + techDefenseBonus;
+  const effectiveDefense = baseDefense * (1 + terrainBonus + techGlobalDefense / 100);
+
+  const rawDamage = effectiveAttack - effectiveDefense;
 
   return Math.max(rawDamage, MINIMUM_DAMAGE);
 }
@@ -110,7 +128,9 @@ export function resolveCombat(
   attacker: Legion,
   defender: Legion,
   terrain: TerrainType,
-  defenderHasWalls: boolean = false
+  defenderHasWalls: boolean = false,
+  attackerTechBonuses?: SoldierTechBonuses,
+  defenderTechBonuses?: SoldierTechBonuses
 ): CombatResult {
   // Store initial state for replay
   const initialAttackerSoldiers = attacker.soldiers.map(s => ({ ...s }));
@@ -186,7 +206,10 @@ export function resolveCombat(
 
     // Apply defender terrain bonus only to defender side
     const bonus = attack.isAttacker ? terrainBonus : 0;
-    const damage = calculateDamage(attackingSoldier, target, bonus);
+    // Tech bonuses: attacker's attack bonus vs target's defense bonus
+    const currentAttackerTech = attack.isAttacker ? attackerTechBonuses : defenderTechBonuses;
+    const currentDefenderTech = attack.isAttacker ? defenderTechBonuses : attackerTechBonuses;
+    const damage = calculateDamage(attackingSoldier, target, bonus, currentAttackerTech, currentDefenderTech);
 
     const hpBefore = target.hp;
     target.hp -= damage;
