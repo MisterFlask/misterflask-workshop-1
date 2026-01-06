@@ -19,7 +19,7 @@ import { SOLDIER_TYPES } from '../data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots, BASE_CITY_INCOME, TURNS_PER_POPULATION } from '../data/buildings';
 import { FACTION_TEMPLATES, createFaction } from '../data/factions';
 import { TECHNOLOGIES, getAllTechnologyIds } from '../data/technologies';
-import { generateMap, placeStartingEntities } from './MapGenerator';
+import { generateMap, placeStartingEntities, updateCulturalBorders } from './MapGenerator';
 import { resolveCombat, applyCombatResult, SoldierTechBonuses } from './Combat';
 import { coordToKey, coordsEqual, getTilesInRange, findPath, getNeighbors, manhattanDistance } from '../utils/grid';
 import { generateId, generateSoldierName } from '../utils/random';
@@ -1326,6 +1326,9 @@ function processEndTurnPhase(state: GameState): GameState {
   if (newArmageddon >= BOSS_SPAWN_THRESHOLD && state.armageddonCounter < BOSS_SPAWN_THRESHOLD) {
     stateAfterTurn = spawnBoss(stateAfterTurn);
   }
+
+  // Update cultural borders (in case population changed)
+  updateCulturalBorders(stateAfterTurn.map, stateAfterTurn.cities);
 
   // Process Collegia research
   return processCollegiaResearch(stateAfterTurn);

@@ -1,6 +1,7 @@
-import type { GameState, Coord, Tile, Legion, City, UIState } from '../types';
+import type { GameState, Coord, Tile, Legion, City, UIState, TerrainFeatureId } from '../types';
 import { coordsEqual } from '../utils/grid';
 import { getValidMoves, getLegionAt, getCityAt } from '../game/Game';
+import { TERRAIN_FEATURES } from '../data/terrainFeatures';
 
 const TILE_SIZE = 32;
 
@@ -18,6 +19,20 @@ const FACTION_COLORS: Record<string, string> = {
   sheaim: '#8b0000',
   elves: '#228b22',
   boss: '#ff4500',
+};
+
+// Icons for terrain features (simple text symbols for now)
+const FEATURE_ICONS: Record<TerrainFeatureId, { symbol: string; color: string }> = {
+  ancient_ruins: { symbol: '⌂', color: '#a08060' },
+  mana_spring: { symbol: '✧', color: '#8080ff' },
+  iron_vein: { symbol: '⚒', color: '#708090' },
+  gold_mine: { symbol: '◆', color: '#ffd700' },
+  sacred_grove: { symbol: '❀', color: '#90ee90' },
+  watchtower: { symbol: '▲', color: '#808080' },
+  haunted_barrow: { symbol: '☠', color: '#9060a0' },
+  dragon_bones: { symbol: '☆', color: '#ff8844' },
+  crystal_cave: { symbol: '◇', color: '#88ffff' },
+  fertile_plains: { symbol: '✿', color: '#90c020' },
 };
 
 export class Renderer {
@@ -119,23 +134,102 @@ export class Renderer {
         const screenX = x * TILE_SIZE;
         const screenY = y * TILE_SIZE;
 
-        // Terrain
+        // Terrain base color
         ctx.fillStyle = TERRAIN_COLORS[tile.terrain] || '#333';
         ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
 
-        // Territory border
+        // Cultural territory overlay (semi-transparent faction color)
         if (tile.owner) {
-          ctx.strokeStyle = FACTION_COLORS[tile.owner] || '#fff';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+          const factionColor = FACTION_COLORS[tile.owner] || '#fff';
+          ctx.fillStyle = this.hexToRgba(factionColor, 0.2);
+          ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+        }
+
+        // Terrain feature icon
+        if (tile.feature) {
+          const featureInfo = FEATURE_ICONS[tile.feature];
+          if (featureInfo) {
+            ctx.fillStyle = featureInfo.color;
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(featureInfo.symbol, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+          }
+        }
+
+        // Cultural border edge (only draw where adjacent tile has different owner)
+        if (tile.owner) {
+          this.renderBorderEdges(state, x, y, tile.owner);
         }
 
         // Grid lines
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.lineWidth = 1;
         ctx.strokeRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
       }
     }
+  }
+
+  // Render thick border edges where territory meets different/no territory
+  private renderBorderEdges(state: GameState, x: number, y: number, owner: string): void {
+    const { ctx } = this;
+    const screenX = x * TILE_SIZE;
+    const screenY = y * TILE_SIZE;
+    const color = FACTION_COLORS[owner] || '#fff';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+
+    // Check each adjacent tile
+    const neighbors = [
+      { dx: 0, dy: -1, side: 'top' },    // top
+      { dx: 1, dy: 0, side: 'right' },   // right
+      { dx: 0, dy: 1, side: 'bottom' },  // bottom
+      { dx: -1, dy: 0, side: 'left' },   // left
+    ];
+
+    for (const { dx, dy, side } of neighbors) {
+      const nx = x + dx;
+      const ny = y + dy;
+
+      // Check if neighbor is different territory
+      let isDifferent = true;
+      if (nx >= 0 && nx < state.mapWidth && ny >= 0 && ny < state.mapHeight) {
+        const neighborTile = state.map[ny][nx];
+        isDifferent = neighborTile.owner !== owner;
+      }
+
+      if (isDifferent) {
+        ctx.beginPath();
+        switch (side) {
+          case 'top':
+            ctx.moveTo(screenX, screenY);
+            ctx.lineTo(screenX + TILE_SIZE, screenY);
+            break;
+          case 'right':
+            ctx.moveTo(screenX + TILE_SIZE, screenY);
+            ctx.lineTo(screenX + TILE_SIZE, screenY + TILE_SIZE);
+            break;
+          case 'bottom':
+            ctx.moveTo(screenX, screenY + TILE_SIZE);
+            ctx.lineTo(screenX + TILE_SIZE, screenY + TILE_SIZE);
+            break;
+          case 'left':
+            ctx.moveTo(screenX, screenY);
+            ctx.lineTo(screenX, screenY + TILE_SIZE);
+            break;
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Helper to convert hex color to rgba
+  private hexToRgba(hex: string, alpha: number): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   private renderValidMoves(_state: GameState): void {

@@ -1,6 +1,7 @@
-import type { Tile, TerrainType, City, Legion, FactionId, Coord, Soldier } from '../types';
+import type { Tile, TerrainType, City, Legion, FactionId, Coord, Soldier, TerrainFeatureId } from '../types';
 import { createRNG, randomInt, randomElement, generateId, generateSoldierName, generateCityNameSeeded, resetCityNames } from '../utils/random';
 import { SOLDIER_TYPES } from '../data/soldiers';
+import { TERRAIN_FEATURES, getFeaturesForTerrain } from '../data/terrainFeatures';
 
 const TERRAIN_WEIGHTS: Record<TerrainType, number> = {
   grass: 50,
@@ -58,7 +59,113 @@ export function generateMap(width: number, height: number, seed: number): Tile[]
     }
   }
 
+  // Place terrain features
+  placeTerrainFeatures(map, rng);
+
   return map;
+}
+
+// Place terrain features on the map
+function placeTerrainFeatures(map: Tile[][], rng: () => number): void {
+  const width = map[0].length;
+  const height = map.length;
+
+  // Feature density settings
+  const COMMON_CHANCE = 0.03;    // 3% chance per tile
+  const UNCOMMON_CHANCE = 0.015; // 1.5% chance per tile
+  const RARE_CHANCE = 0.005;     // 0.5% chance per tile
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const tile = map[y][x];
+
+      // Skip impassable terrain
+      if (tile.terrain === 'water' || tile.terrain === 'mountain') continue;
+
+      // Get valid features for this terrain
+      const validFeatures = getFeaturesForTerrain(tile.terrain);
+      if (validFeatures.length === 0) continue;
+
+      // Roll for feature placement by rarity
+      const roll = rng();
+      let targetRarity: 'common' | 'uncommon' | 'rare' | null = null;
+
+      if (roll < RARE_CHANCE) {
+        targetRarity = 'rare';
+      } else if (roll < UNCOMMON_CHANCE) {
+        targetRarity = 'uncommon';
+      } else if (roll < COMMON_CHANCE) {
+        targetRarity = 'common';
+      }
+
+      if (targetRarity) {
+        const candidates = validFeatures.filter(f => f.rarity === targetRarity);
+        if (candidates.length > 0) {
+          const feature = randomElement(rng, candidates);
+          tile.feature = feature.id;
+        }
+      }
+    }
+  }
+}
+
+// Calculate cultural borders radius based on city population
+export function getCityBorderRadius(population: number): number {
+  // Base radius of 2, +1 for every 2 population
+  return 2 + Math.floor(population / 2);
+}
+
+// Update cultural borders for all cities on the map
+export function updateCulturalBorders(map: Tile[][], cities: Map<string, City>): void {
+  const width = map[0].length;
+  const height = map.length;
+
+  // Clear all existing ownership (except tiles with cities)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!map[y][x].city) {
+        map[y][x].owner = undefined;
+      }
+    }
+  }
+
+  // For each city, claim tiles within its border radius
+  // Process cities by population (larger cities have priority)
+  const sortedCities = Array.from(cities.values()).sort((a, b) => b.population - a.population);
+
+  for (const city of sortedCities) {
+    const radius = getCityBorderRadius(city.population);
+    const centerX = city.coord.x;
+    const centerY = city.coord.y;
+
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = centerX + dx;
+        const y = centerY + dy;
+
+        // Check bounds
+        if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+        // Calculate distance (using Manhattan for simplicity, or Euclidean for rounder borders)
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > radius) continue;
+
+        const tile = map[y][x];
+
+        // Skip impassable terrain for border expansion
+        if (tile.terrain === 'water' || tile.terrain === 'mountain') continue;
+
+        // Only claim if unclaimed or if this city is closer
+        // (For simplicity, first city to claim wins due to population sorting)
+        if (!tile.owner) {
+          tile.owner = city.owner;
+        }
+      }
+    }
+
+    // Always set the city tile to be owned
+    map[city.coord.y][city.coord.x].owner = city.owner;
+  }
 }
 
 interface StartPosition {
@@ -269,4 +376,7 @@ export function placeStartingEntities(
       break;
     }
   }
+
+  // Calculate initial cultural borders
+  updateCulturalBorders(map, cities);
 }

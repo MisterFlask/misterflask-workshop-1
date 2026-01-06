@@ -9,11 +9,41 @@ export interface Coord {
 
 export type TerrainType = 'grass' | 'forest' | 'hills' | 'mountain' | 'water';
 
+export type TerrainFeatureId =
+  | 'ancient_ruins'
+  | 'mana_spring'
+  | 'iron_vein'
+  | 'gold_mine'
+  | 'sacred_grove'
+  | 'watchtower'
+  | 'haunted_barrow'
+  | 'dragon_bones'
+  | 'crystal_cave'
+  | 'fertile_plains';
+
+export interface TerrainFeature {
+  id: TerrainFeatureId;
+  name: string;
+  description: string;
+  validTerrain: TerrainType[];
+  rarity: 'common' | 'uncommon' | 'rare';
+  effects: TerrainFeatureEffect[];
+  sprite?: string;
+}
+
+export type TerrainFeatureEffect =
+  | { type: 'gold_bonus'; amount: number }
+  | { type: 'mana_bonus'; amount: number }
+  | { type: 'growth_bonus'; amount: number }
+  | { type: 'defense_bonus'; amount: number }
+  | { type: 'research_bonus'; amount: number };
+
 export interface Tile {
   coord: Coord;
   terrain: TerrainType;
   city?: City;
   resource?: ResourceType;
+  feature?: TerrainFeatureId;
   owner?: FactionId;
 }
 
