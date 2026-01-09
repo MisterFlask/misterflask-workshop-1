@@ -2,7 +2,7 @@ YOUR OUTPUTS (deliver all of these in one cohesive doc):
 A) 1–2 page executive summary (what the game is, why it’s fun, what’s cut vs FFH)
 B) Systems overview (map, cities, economy, units, combat, diplomacy, victory)
 C) Content Bible (this is the main missing piece):
-   - 8–12 factions: fantasy identity, mechanical hook, strengths/weaknesses, “feel”, unique units/buildings/spells, AI personality.  Note that a given faction will always be EITHER human OR AI.  (We can have a faction be both, but mechanically this will effectively mean creating two different "factions" since mechanically players and AIs will not be doing the same things.)
+   - factions: fantasy identity, mechanical hook, strengths/weaknesses, “feel”, unique units/buildings/spells, AI personality.  Note that a given faction will always be EITHER human OR AI.  (We can have a faction be both, but mechanically this will effectively mean creating two different "factions" since mechanically players and AIs will not be doing the same things.)
    - Tech/civics progression: 3–5 eras/tiers, ~40–70 nodes total; each node unlocks specific, named content
    - Magic: 6–10 schools/spheres; each has tiered spells, passive effects, counters
    - Units: core roster + faction uniques; clear roles; upgrade paths; costs; constraints
@@ -34,3 +34,8 @@ PROCESS RULES (Ralph rules):
    - broken incentives (clear degenerate strategies, snowballing)
    - content redundancy
 6) Revise the doc to fix audit findings.
+
+COMPLETION CONDITION:
+At the very end of the doc, include a section titled “COMPLETION CHECKLIST” with checkboxes for every required output (A–G).
+Only when every checkbox is satisfied, output exactly:
+<PROMISE>FFH_SIMPLIFIED_DESIGN_DOC_COMPLETE</PROMISE>

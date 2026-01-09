@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(**/ralph-wiggum/**)",
       "Bash(mkdir:*)",
       "Bash(sudo mkdir:*)",
       "Bash(ls:*)",

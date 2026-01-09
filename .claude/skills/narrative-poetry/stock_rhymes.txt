@@ -1,0 +1,67 @@
+# Stock Rhymes - Cliched rhyme pairs to avoid or use with caution
+#
+# Format: category | word1 | word2 | ... | wordN
+# Categories:
+#   HARD - Almost always groan-inducing, avoid in serious poetry
+#   SOFT - Cliched in romantic/sentimental contexts, may be fine elsewhere
+#   GENRE - Tired in specific genres but acceptable in satire/parody
+
+# === HARD AVOID ===
+# These rhymes are so overused they've become punchlines
+
+HARD | moon | June | spoon | croon | swoon | tune | soon
+HARD | love | dove | above | thereof
+HARD | heart | apart | part | start | art
+# Note: heart/apart specifically in romantic "you stole my heart / we're torn apart" context
+
+# === SOFT WARNINGS ===
+# Overused in romantic/sentimental poetry, fine in other contexts
+
+SOFT | fire | desire | higher | liar
+SOFT | night | light | bright | sight | flight | right | might | white
+SOFT | eyes | skies | lies | cries | dies | rise | wise
+SOFT | kiss | bliss | miss | this
+SOFT | dreams | seems | streams | gleams | beams
+SOFT | tears | fears | years | hears | appears
+SOFT | day | way | say | stay | away | play
+SOFT | hold | gold | told | old | cold | bold
+SOFT | true | you | blue | through | new | knew
+SOFT | forever | never | together | weather
+SOFT | breath | death
+SOFT | rain | pain | again | vain | remain
+
+# === GENRE-SPECIFIC ===
+# Tired in their home genre but can work ironically or in other contexts
+
+GENRE | baby | maybe | crazy
+# Pop/country music cliche
+
+GENRE | tonight | alright
+# Rock/pop cliche
+
+GENRE | soul | control | whole | goal | roll
+# R&B/gospel cliche
+
+GENRE | world | girl | unfurled
+# Ballad cliche
+
+GENRE | free | me | be | see
+# Anthemic rock cliche
+
+GENRE | time | rhyme | climb | crime
+# Meta-poetry cliche (especially "time/rhyme")
+
+# === NOTES ===
+#
+# The presence of a word pair here doesn't mean you can NEVER use it.
+# Context matters:
+#
+# 1. Satire/parody: Stock rhymes can be used deliberately for comic effect
+# 2. Genre pastiche: If writing in the style of Tin Pan Alley, moon/June is period-appropriate
+# 3. Subversion: Setting up a stock rhyme then breaking it can be effective
+# 4. Semantic necessity: Sometimes the stock word IS the right word for the meaning
+#
+# The goal is to avoid UNTHINKING use of these pairs. If you reach for
+# "love/dove" because it's the first rhyme that comes to mind, query the
+# rhyming dictionary first. If you choose "love/dove" after seeing all
+# options because it genuinely fits best, that's a defensible choice.

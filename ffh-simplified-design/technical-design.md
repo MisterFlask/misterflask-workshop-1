@@ -1,5 +1,7 @@
 # Technical Design Document
 
+> **Note**: This document covers implementation architecture. For complete game design (factions, units, buildings, magic, combat, AI behavior), see [FFH_SIMPLIFIED_MASTER_DESIGN.md](FFH_SIMPLIFIED_MASTER_DESIGN.md).
+
 ## Technology Stack
 
 | Component | Choice | Rationale |

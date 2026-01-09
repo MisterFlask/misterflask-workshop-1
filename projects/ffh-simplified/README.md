@@ -54,11 +54,8 @@ ffh-simplified/
 ## Design Documents
 
 See the design documentation in `../ffh-simplified-design/`:
-- [Design Overview](../../ffh-simplified-design/design-overview.md)
-- [Combat System](../../ffh-simplified-design/combat-system.md)
-- [AI Faction Design](../../ffh-simplified-design/ai-faction-design.md)
-- [Economy & Cities](../../ffh-simplified-design/economy-and-cities.md)
-- [Technical Design](../../ffh-simplified-design/technical-design.md)
+- [**Master Design Document**](../../ffh-simplified-design/FFH_SIMPLIFIED_MASTER_DESIGN.md) - Complete game design (factions, units, buildings, magic, combat, AI, balance)
+- [Technical Design](../../ffh-simplified-design/technical-design.md) - Implementation architecture and code structure
 
 ## Generating Sprites
 
@@ -82,8 +79,11 @@ npm run generate-sprites
 - Armageddon counter
 
 **TODO:**
-- AI faction behaviors
+- AI faction behaviors (state machines per faction type)
 - Building construction UI
 - Soldier recruitment UI
-- Boss faction spawn at Armageddon 100
+- Hero system
+- Magic/spell system
+- Boss faction spawn at Armageddon 80
+- Siege mechanics
 - Actual sprite rendering (currently using colored shapes)
