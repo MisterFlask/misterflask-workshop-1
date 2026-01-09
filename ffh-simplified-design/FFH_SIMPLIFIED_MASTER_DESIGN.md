@@ -30,8 +30,8 @@ Your job is to position yourself—through military strength, territorial contro
 |---------|--------------|----------------|
 | Map | Hex grid, huge maps | Square grid, compact maps |
 | Units | Individual unit micromanagement | Legions (5-8 soldiers each), max 5 legions |
-| Cities | Full Civ4 city management | 1-3 building slots, automatic growth |
-| Tech Tree | 100+ technologies | ~50 nodes across 4 eras, building-gated |
+| Cities | Full Civ4 city management | 1-4 building slots, automatic growth |
+| Tech Tree | 100+ technologies | Building-gated eras + terrain-exclusive units (no research) |
 | Combat | Stack-based, manual control | Auto-resolve OB64-style |
 | AI Opponents | Symmetric (AI plays same game as you) | Asymmetric state machines |
 | Victory Conditions | Multiple (conquest, cultural, etc.) | Single: Defeat the Armageddon Boss |
@@ -39,6 +39,7 @@ Your job is to position yourself—through military strength, territorial contro
 | Diplomacy | Full Civ4 diplomacy | Simplified: redirect, bribe, request aid |
 | Magic | Complex ritual system | 6 schools, 3 tiers each, clear counters |
 | Multiplayer | Yes | No (designed for single-player only) |
+| Territory | Any tile can be improved | Rare improvements gate exclusive content |
 
 ## Design Philosophy
 
@@ -119,8 +120,21 @@ Before proceeding, I'm documenting gaps in the source material and my explicit a
 
 ### Building Construction
 - **Cost**: Gold only
-- **Time**: Instant (spend gold → building complete)
+- **Time**: Multi-turn construction (varies by building tier and type)
 - **Limit**: One building per slot
+- **Queue**: One building under construction per city at a time
+
+### Construction Times
+
+| Building Tier | Base Time | Examples |
+|---------------|-----------|----------|
+| Tier 1 | 2-3 turns | Barracks (2), Market (2), Walls (3) |
+| Tier 2 | 3-5 turns | War Academy (4), Mage Tower (4), Stables (3) |
+| Tier 3 | 5-7 turns | Cathedral (6), Elite Barracks (5), Arcane Sanctum (6) |
+| Tier 4 | 7-10 turns | Legendary Forge (8), Signal Towers (7) |
+| Exploitation | 4-10 turns | Mine (3), Crystal Sanctum (6), Titan Forge (10) |
+
+**Production Modifiers**: Cities with Mason's Guild reduce construction time by 20%.
 
 ### City Capture
 - Move legion to enemy city tile
@@ -1036,12 +1050,22 @@ When a hero dies, they're gone forever. The source building can spawn a replacem
 | Cleric | 1 | 70 | 10 | 10 | 45 | 70g 5m | Back | Temple |
 | Knight | 2 | 150 | 30 | 20 | 30 | 100g | Front | War Academy |
 | Mage | 2 | 50 | 35 | 5 | 40 | 80g 10m | Back | Mage Tower |
-| Cavalry | 2 | 90 | 25 | 12 | 65 | 90g | Front | Stables |
-| Catapult | 2 | 80 | 40 | 0 | 20 | 120g | Back | Siege Craft |
+| Cavalry | 2 | 90 | 25 | 12 | 65 | 90g | Front | Stables + Horses |
+| Catapult | 2 | 80 | 40 | 0 | 20 | 120g | Back | Siege Workshop |
 | Paladin | 3 | 130 | 35 | 25 | 40 | 150g 15m | Front | Cathedral |
-| Archmage | 3 | 60 | 45 | 8 | 45 | 120g 25m | Back | Arcane Sanctum |
 | Champion | 3 | 170 | 40 | 22 | 50 | 180g | Front | Elite Barracks |
-| Titan | 4 | 250 | 55 | 30 | 25 | 300g 30m | Front | Titan's Armory |
+
+### Terrain-Gated Units (Exclusive)
+
+These powerful units require controlling specific terrain improvements. See Section C7 for details.
+
+| Unit | Tier | HP | ATK | DEF | SPD | Cost | Row | Requires Improvement |
+|------|------|-----|-----|-----|-----|------|-----|---------------------|
+| Archmage | 3 | 60 | 45 | 8 | 45 | 120g 25m | Back | Crystal Cave |
+| Lich | 3 | 100 | 40 | 12 | 35 | 150g 30m | Back | Haunted Barrow |
+| Dragon Knight | 3 | 140 | 40 | 25 | 45 | 180g 20m | Front | Dragon Bones |
+| Treant | 3 | 180 | 35 | 30 | 20 | 150g 25m | Front | World Tree |
+| Titan | 4 | 250 | 55 | 30 | 25 | 300g 30m | Front | Titan's Grave |
 
 ### Unit Role Definitions
 
@@ -1108,21 +1132,38 @@ When a hero dies, they're gone forever. The source building can spawn a replacem
 
 | Building | Cost | Effect | Prerequisites |
 |----------|------|--------|---------------|
-| **Titan's Armory** | 400g | Unlocks Titan | Elite Barracks + Arcane Sanctum |
-| **Summoning Circle** | 350g | Summon elementals (30 mana each) | Arcane Sanctum |
 | **Legendary Forge** | 350g | Craft hero equipment | Elite Barracks |
 | **Signal Towers** | 200g | See all enemy movement in territory | Fortifications |
+
+### Exploitation Buildings (Require Terrain Improvements)
+
+These buildings activate terrain improvements and unlock exclusive content. See Section C7.
+
+| Building | Cost | Requires Improvement | Unlocks |
+|----------|------|---------------------|---------|
+| **Mine** | 80g | Iron Vein or Gold Deposit | +5 ATK melee (Iron) or +15 gold (Gold) |
+| **Mana Well** | 150g | Mana Spring | Elemental units |
+| **Archive** | 120g | Ancient Ruins | Sage unit, Ancient Lore spells |
+| **Deep Mine** | 150g | Mineral Deposit | Heavy equipment (+10 DEF Knights/Paladins) |
+| **Crystal Sanctum** | 250g | Crystal Cave | Archmage unit, +50% spell damage |
+| **Necropolis** | 250g | Haunted Barrow | Lich unit, Raise Dead spell |
+| **Dragon Shrine** | 200g | Dragon Bones | Dragon Knight unit, Fire immunity |
+| **Master Forge** | 300g | Adamantine Vein | Siege Titan unit, +10 ATK elite units |
+| **Grove of Ages** | 400g | World Tree | Treant unit, Nature's Wrath spell |
+| **Binding Circle** | 400g | Hellgate | Player Demon summoning |
+| **Titan Forge** | 450g | Titan's Grave | Titan unit, Golem unit |
 
 ### Building Slots Strategy
 
 Cities max at 4 slots. This forces choices:
 
 - **Military City**: Barracks + War Academy + Elite Barracks + Stables
-- **Magic City**: Temple + Mage Tower + Arcane Sanctum + Summoning Circle
+- **Magic City**: Temple + Mage Tower + Arcane Sanctum + (exploitation building if available)
 - **Economic City**: Market + Trade Hall + Treasury + Mason's Guild
 - **Fortress City**: Walls + Fortifications + Grand Walls + Signal Towers
+- **Exploitation City**: Focus on terrain improvement. Example: Crystal Sanctum + Mage Tower + Arcane Library + Temple = maximum mana output from Crystal Cave
 
-You cannot have everything in one city.
+You cannot have everything in one city. **Exploitation buildings compete for slots**, creating tension between maximizing a terrain improvement vs. other city roles.
 
 ---
 
@@ -1179,7 +1220,120 @@ You cannot have everything in one city.
 
 ---
 
-## C7. NEUTRAL THREATS
+## C7. EXCLUSIVE TERRAIN IMPROVEMENTS
+
+### Design Philosophy
+
+Territory matters. Some of the most powerful units and buildings in the game are **exclusively unlocked** by controlling specific rare terrain improvements. You can't just build your way to everything—you must conquer and hold the right locations.
+
+This creates:
+- **Natural conflict points**: The Crystal Cave is worth fighting over
+- **Asymmetric games**: Different map positions enable different strategies
+- **Meaningful denial**: Taking the Haunted Barrow doesn't just help you—it locks opponents out
+- **Territorial stakes**: Resources aren't just bonuses, they're capability gates
+
+### How Exclusive Unlocks Work
+
+1. **Control the tile**: Improvement must be within 3 tiles of your city
+2. **Build the exploitation building**: Specific building that activates the improvement
+3. **Gain exclusive access**: Unlock specific units/buildings no one else can access
+4. **Permanent knowledge**: If you lose the improvement later, you keep existing units but **cannot build more**
+
+### Improvement Tiers
+
+#### Common Improvements (4-6 per map)
+Standard resources with bonuses. Multiple players can have access to equivalent resources.
+
+| Improvement | Effect | Building Required | Unlocks |
+|-------------|--------|-------------------|---------|
+| **Iron Vein** | +5 gold/turn | Mine (80g) | +5 ATK to all melee units |
+| **Horses** | — | Stables (140g) | Cavalry, Horse Archer units |
+| **Gold Deposit** | +15 gold/turn | Mine (80g) | — |
+| **Mana Node** | +2 mana/turn | — | — |
+
+#### Uncommon Improvements (2-3 per map)
+Significant bonuses and mid-tier exclusive content. Worth prioritizing in expansion.
+
+| Improvement | Effect | Building Required | Exclusive Unlock |
+|-------------|--------|-------------------|------------------|
+| **Mana Spring** | +3 mana/turn | Mana Well (150g) | Elemental units (Fire/Ice/Storm Elemental) |
+| **Ancient Ruins** | +10 gold/turn | Archive (120g) | Sage unit (+research if implemented), Ancient Lore spells |
+| **Mineral Deposit** | +8 gold/turn | Deep Mine (150g) | Heavy equipment: +10 DEF to Knights/Paladins |
+
+#### Rare Improvements (1-2 per map)
+Powerful exclusive content. These are worth going to war over.
+
+| Improvement | Effect | Building Required | Exclusive Unlock |
+|-------------|--------|-------------------|------------------|
+| **Crystal Cave** | +5 mana/turn | Crystal Sanctum (250g) | **Archmage unit**, Arcane Amplification (+50% spell damage) |
+| **Haunted Barrow** | +4 mana/turn | Necropolis (250g) | **Lich unit**, Raise Dead spell (summon skeletons from combat kills) |
+| **Dragon Bones** | +3 mana/turn | Dragon Shrine (200g) | **Dragon Knight unit**, Fire immunity for one legion |
+| **Adamantine Vein** | +5 gold/turn | Master Forge (300g) | **Siege Titan unit**, Adamantine weapons (+10 ATK elite units) |
+
+#### Legendary Improvements (0-1 per map)
+Game-changing exclusive content. Whoever controls these has capabilities no one else can match.
+
+| Improvement | Effect | Building Required | Exclusive Unlock |
+|-------------|--------|-------------------|------------------|
+| **The World Tree** | +5 mana/turn, heals adjacent units | Grove of Ages (400g) | **Treant unit**, Nature's Wrath spell (massive AoE) |
+| **The Hellgate** | +8 mana/turn, +1 Armageddon/turn | Binding Circle (400g) | **Player-controlled Demon summoning** (30 mana each) |
+| **Titan's Grave** | +10 gold/turn | Titan Forge (450g) | **Titan unit** (alternative unlock path), Golem unit |
+
+### Exclusive Units
+
+Units unlocked exclusively through terrain improvements:
+
+| Unit | Tier | HP | ATK | DEF | SPD | Cost | Row | Requires |
+|------|------|-----|-----|-----|-----|------|-----|----------|
+| Fire Elemental | 2 | 80 | 30 | 10 | 50 | 80g 15m | Front | Mana Spring |
+| Ice Elemental | 2 | 70 | 25 | 15 | 45 | 80g 15m | Front | Mana Spring |
+| Sage | 2 | 50 | 15 | 5 | 40 | 100g | Back | Ancient Ruins |
+| Archmage | 3 | 60 | 45 | 8 | 45 | 120g 25m | Back | Crystal Cave |
+| Lich | 3 | 100 | 40 | 12 | 35 | 150g 30m | Back | Haunted Barrow |
+| Dragon Knight | 3 | 140 | 40 | 25 | 45 | 180g 20m | Front | Dragon Bones |
+| Siege Titan | 4 | 200 | 35 | 25 | 20 | 250g | Back | Adamantine Vein |
+| Treant | 3 | 180 | 35 | 30 | 20 | 150g 25m | Front | World Tree |
+| Summoned Demon | 3 | 120 | 35 | 15 | 55 | 30m | Front | Hellgate |
+| Golem | 3 | 160 | 30 | 35 | 25 | 180g 15m | Front | Titan's Grave |
+| Titan | 4 | 250 | 55 | 30 | 25 | 300g 30m | Front | Titan's Grave |
+
+**Note**: Archmage and Titan appear in the core unit roster but require rare improvements to recruit. Without the improvement, they're unavailable regardless of buildings.
+
+### Map Generation Rules for Improvements
+
+- **Common**: Distributed evenly, 4-6 per map
+- **Uncommon**: 2-3 per map, placed in expansion-distance from starting positions
+- **Rare**: 1-2 per map, placed in contested/neutral territory
+- **Legendary**: 0-1 per map (not every map has one), always in contested territory
+- **No player starts with Rare or Legendary** in their initial 3-tile radius
+- **Each player starts within reach of at least 1 Uncommon** improvement
+
+### Strategic Implications
+
+**Early Game**: Scout to identify valuable improvements. Plan expansion routes.
+
+**Mid Game**: Contest rare improvements. The Crystal Cave is a natural flashpoint—whoever takes it gets Archmages, opponent doesn't.
+
+**Late Game**: Deny legendary improvements if you can't hold them. A razed World Tree helps no one, but prevents enemy Treants.
+
+**Asymmetric Advantage**: If you control Haunted Barrow and opponent controls Crystal Cave:
+- You get Liches and undead summoning
+- They get Archmages and spell amplification
+- Neither can access the other's capabilities
+- Counterbuild appropriately (Life magic counters undead; anti-magic counters Archmages)
+
+### Losing Controlled Improvements
+
+If an enemy captures a city that was exploiting an improvement:
+- **Exploitation building is destroyed** (must rebuild if recaptured)
+- **Existing exclusive units remain** but cannot be replaced
+- **You lose the ongoing bonuses** (mana/gold per turn)
+
+This creates "stranded elite" scenarios: your last Archmage becomes irreplaceable if you lose the Crystal Cave.
+
+---
+
+## C8. NEUTRAL THREATS
 
 ### Monster Lairs
 
@@ -1713,10 +1867,11 @@ Take the Infernal Capital = Win
   - [x] C1: Factions (7 factions with identity, mechanics, units, buildings, AI, demon binding, population drain)
   - [x] C2: Tech/Civics progression (4 eras, building-gated—collapsed into building system)
   - [x] C3: Magic system (6 schools, 3 tiers each, counter matrix, school unlock paths)
-  - [x] C4: Units (11 core + faction uniques, roles, upgrades, row damage balance)
-  - [x] C5: Buildings (~25 with prerequisites, resource requirements, siege mechanics)
+  - [x] C4: Units (9 core + terrain-gated exclusives + faction uniques, roles, upgrades)
+  - [x] C5: Buildings (~25 with prerequisites + exploitation buildings for terrain improvements)
   - [x] C6: Resources & terrain (strategic + luxury, 3-tile control radius)
-  - [x] C7: Neutral threats (lairs, monsters, world bosses with balanced rewards)
+  - [x] C7: Exclusive terrain improvements (tiered improvements with exclusive unit/building unlocks)
+  - [x] C8: Neutral threats (lairs, monsters, world bosses with balanced rewards)
 - [x] **D) Balance & Tuning Framework**: Explicit knobs, counterplay matrix, degenerate prevention
 - [x] **E) AI System Design**: Asymmetric economy, state machines, legibility, diplomacy, AI-vs-AI casualties
 
@@ -1728,6 +1883,7 @@ Take the Infernal Capital = Win
 |---------|------|---------|
 | 1.0 | Initial | Complete design document |
 | 1.1 | Revision | Fixed 16 critical/major issues identified in design audit |
+| 1.2 | Revision | Added hybrid territory system with exclusive unlocks |
 
 Key fixes in v1.1:
 - Added hero system (B9) with acquisition, stats, permadeath
@@ -1739,6 +1895,15 @@ Key fixes in v1.1:
 - Added AI-vs-AI casualty mechanics
 - Increased resource control radius to 3 tiles
 - Balanced world boss rewards (Lich Lord adds Armageddon)
+
+Key additions in v1.2:
+- Added Section C7: Exclusive Terrain Improvements
+- Tiered improvement system (Common → Uncommon → Rare → Legendary)
+- Terrain-gated exclusive units (Archmage, Lich, Dragon Knight, Treant, Titan, etc.)
+- Exploitation buildings that activate terrain improvements
+- "Stranded elite" mechanic when losing controlled improvements
+- Map generation rules ensuring fair improvement distribution
+- Consolidated redundant Economy Design document into Master Design
 
 ---
 

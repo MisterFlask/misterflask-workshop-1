@@ -28,7 +28,26 @@
       "Bash(git config:*)",
       "Bash(git add:*)",
       "Bash(sudo git add:*)",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(python rhyme_lookup.py:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Skill(narrative-poetry)",
+      "Bash(powershell -c:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File C:\\dev\\claude-playground-1\\utilities\\play-victory.ps1"
+          }
+        ]
+      }
     ]
   }
 }

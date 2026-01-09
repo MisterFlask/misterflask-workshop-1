@@ -2,15 +2,18 @@
 
 ## Overview
 
-This document outlines the complete unit roster for FFH Simplified, including tech requirements, stats, and strategic roles. Units are organized by their primary tech category and unlock tier.
+This document outlines the complete unit roster for FFH Simplified, including building requirements, stats, and strategic roles. Units are organized by their unlock method and tier.
+
+**Note**: This document supplements the Master Design Document. For the authoritative system design, see `FFH_SIMPLIFIED_MASTER_DESIGN.md`.
 
 ## Design Principles
 
 1. **Role Clarity**: Each unit should have a clear tactical purpose
-2. **Tech Investment**: Higher-tier units require significant research commitment
-3. **Mana as Capacity**: Magical power is a limit, not a currency (see below)
-4. **Formation Matters**: Position in formation should meaningfully affect performance
-5. **Counter-Play**: Units should have strengths and weaknesses against other unit types
+2. **Building-Gated Progression**: Units unlock via buildings (multi-turn construction), not research
+3. **Terrain-Gated Elites**: The most powerful units require controlling specific rare terrain improvements
+4. **Mana as Capacity**: Magical power is a limit, not a currency (see below)
+5. **Formation Matters**: Position in formation should meaningfully affect performance
+6. **Counter-Play**: Units should have strengths and weaknesses against other unit types
 
 ---
 
@@ -29,15 +32,25 @@ Mana represents your civilization's **capacity to sustain magical forces**, not 
 - **No Refunds**: Mana isn't "spent" - it's allocated. Losing a mage frees up that mana.
 
 ### Mana Sources (Increase Cap)
+
+**From Buildings:**
 | Source | Mana Provided |
 |--------|---------------|
 | Mage Tower | +5 |
 | Temple | +3 |
-| Mana Spring (terrain feature) | +2 (if in your territory) |
-| Sacred Grove (terrain feature) | +1 (if in your territory) |
-| Crystal Cave (terrain feature) | +4 (if in your territory) |
-| Haunted Barrow (terrain feature) | +3 (if in your territory) |
-| Global Mana Bonus techs | +2 each |
+
+**From Terrain Improvements (requires exploitation building):**
+| Terrain Improvement | Building Required | Mana Provided |
+|---------------------|-------------------|---------------|
+| Mana Node | None | +2 |
+| Mana Spring | Mana Well | +3 |
+| Crystal Cave | Crystal Sanctum | +5 |
+| Haunted Barrow | Necropolis | +4 |
+| Dragon Bones | Dragon Shrine | +3 |
+| World Tree | Grove of Ages | +5 |
+| Hellgate | Binding Circle | +8 |
+
+See Master Design Section C7 for complete terrain improvement details.
 
 ### Mana Sinks (Consume Cap)
 | Consumer | Mana Upkeep |
@@ -251,12 +264,12 @@ Mana represents your civilization's **capacity to sustain magical forces**, not 
 
 #### Archmage
 - **Role**: Area damage dealer
-- **Unlock Tech**: "Mastery of Elements" (Arcane - Master's Teaching, 8 turns)
-- **Stats**: 60 HP, 25 ATK, 8 DEF, Speed 35
+- **Unlock**: **TERRAIN-GATED** - Requires Crystal Cave + Crystal Sanctum building
+- **Stats**: 60 HP, 45 ATK, 8 DEF, Speed 45
 - **Cost**: 120 Gold | **Mana Upkeep**: 5
 - **Position**: Back row
-- **Special**: Attacks ALL enemies in target row instead of single target
-- **Notes**: Heavy mana investment but devastating against grouped enemies.
+- **Special**: Attacks ALL enemies in target row instead of single target. +50% spell damage while alive.
+- **Notes**: Heavy mana investment but devastating against grouped enemies. **Cannot be recruited without controlling Crystal Cave.**
 
 #### Golem
 - **Role**: Ultimate tank
@@ -282,34 +295,45 @@ Mana represents your civilization's **capacity to sustain magical forces**, not 
 
 #### Lich
 - **Role**: Dark spellcaster
-- **Unlock Tech**: "Forbidden Summoning" (Arcane - Lost Art, 12 turns)
-- **Stats**: 70 HP, 40 ATK, 10 DEF, Speed 40
-- **Cost**: 80 Gold | **Mana Upkeep**: 6
+- **Unlock**: **TERRAIN-GATED** - Requires Haunted Barrow + Necropolis building
+- **Stats**: 100 HP, 40 ATK, 12 DEF, Speed 35
+- **Cost**: 150 Gold | **Mana Upkeep**: 6
 - **Position**: Back row, targets back row
 - **Special**: When Lich kills an enemy, raises a Skeleton (40 HP, 15 ATK, 5 DEF) in your front row. Skeletons cost 0 mana upkeep.
-- **Notes**: Massive mana drain but snowballs if it gets kills. The dark path.
+- **Notes**: Massive mana drain but snowballs if it gets kills. The dark path. **Cannot be recruited without controlling Haunted Barrow.**
 
 #### Dragon Knight
 - **Role**: Flying elite
-- **Unlock Tech**: "Dragon Pact" (Arcane - Lost Art, 12 turns)
-- **Stats**: 160 HP, 40 ATK, 20 DEF, Speed 55
-- **Cost**: 200 Gold | **Mana Upkeep**: 4
-- **Position**: Front or Mid row (flexible)
-- **Special**: Can target any row regardless of position. Ignores terrain defense bonuses.
-- **Notes**: The ultimate unit. Expensive gold AND significant mana commitment.
-
-#### Summoned Elemental
-- **Role**: Expendable powerhouse
-- **Unlock Tech**: "Elemental Binding" (Arcane - Lost Art, 10 turns)
-- **Stats**: 100 HP, 35 ATK, 15 DEF, Speed 50
-- **Cost**: 50 Gold | **Mana Upkeep**: 8
+- **Unlock**: **TERRAIN-GATED** - Requires Dragon Bones + Dragon Shrine building
+- **Stats**: 140 HP, 40 ATK, 25 DEF, Speed 45
+- **Cost**: 180 Gold | **Mana Upkeep**: 4
 - **Position**: Front row
-- **Special**: Dissolves after combat (returns mana). Cannot be healed.
-- **Notes**: Massive mana commitment for temporary power. Frees mana when it dies or dissolves.
+- **Special**: Can target any row regardless of position. Ignores terrain defense bonuses. Fire immunity for legion.
+- **Notes**: Powerful elite with flexibility. **Cannot be recruited without controlling Dragon Bones.**
+
+#### Summoned Elemental (Fire/Ice/Storm)
+- **Role**: Expendable powerhouse
+- **Unlock**: **TERRAIN-GATED** - Requires Mana Spring + Mana Well building
+- **Stats**: 70-80 HP, 25-30 ATK, 10-15 DEF, Speed 45-50 (varies by type)
+- **Cost**: 80 Gold + 15 Mana | **Mana Upkeep**: 3
+- **Position**: Front row
+- **Special**: Each type has elemental bonus (Fire: +damage, Ice: slows enemies, Storm: chain attacks)
+- **Notes**: Mid-tier exclusive units. **Cannot be recruited without controlling Mana Spring.**
 
 ---
 
-## Tech Tree Additions Required
+## ~~Tech Tree Additions Required~~ [DEPRECATED]
+
+> **NOTE**: The tech tree system described below has been **superseded** by the building-gated progression system in the Master Design Document. Units unlock via buildings (instant construction with gold), not research.
+>
+> For the authoritative unlock system, see:
+> - **Core units**: Building prerequisites in Master Design Section C5
+> - **Terrain-gated units**: Terrain improvements in Master Design Section C7
+>
+> The tech tiers below are preserved for reference but should not be implemented.
+
+<details>
+<summary>Legacy Tech Tree Reference (Click to expand)</summary>
 
 ### Martial
 | Tech | Tier | Turns | Unlocks |
@@ -344,25 +368,45 @@ Mana represents your civilization's **capacity to sustain magical forces**, not 
 | Divine Channeling | Master's Teaching | 7 | High Priest |
 | Divine Champion | Lost Art | 10 | Paladin |
 
+</details>
+
 ---
 
-## Building Requirements
+## Building & Terrain Requirements
 
-Some units also require specific buildings:
+Units unlock through two systems:
 
-| Unit | Building Required | Tech for Building |
-|------|-------------------|-------------------|
-| Knight | Stables | Ironworking |
-| Mage | Mage Tower | Ritual Basics |
-| Cleric | Temple | Consecrated Ground |
-| Battlemage | Mage Tower | Ritual Basics |
-| Archmage | Mage Tower | Ritual Basics |
-| Lich | Ritual Site | Forbidden Summoning |
-| Summoned Elemental | Mage Tower | Ritual Basics |
-| High Priest | Temple | Consecrated Ground |
-| Paladin | Temple | Consecrated Ground |
-| Golem | (new) Artificer Workshop | Construct Animation |
-| Dragon Knight | (new) Dragon Roost | Dragon Pact |
+### Core Units (Building-Gated)
+Available to all players who build the prerequisite building.
+
+| Unit | Building Required | Era |
+|------|-------------------|-----|
+| Fighter | Barracks | 1 |
+| Archer | Archery Range | 1 |
+| Cleric | Temple | 1 |
+| Knight | War Academy | 2 |
+| Mage | Mage Tower | 2 |
+| Cavalry | Stables (+ Horses resource) | 2 |
+| Catapult | Siege Workshop | 2 |
+| Paladin | Cathedral | 3 |
+| Champion | Elite Barracks | 3 |
+
+### Terrain-Gated Units (Exclusive)
+Only available if you control the specific terrain improvement AND build the exploitation building.
+
+| Unit | Terrain Required | Building Required |
+|------|------------------|-------------------|
+| Fire/Ice/Storm Elemental | Mana Spring | Mana Well |
+| Archmage | Crystal Cave | Crystal Sanctum |
+| Lich | Haunted Barrow | Necropolis |
+| Dragon Knight | Dragon Bones | Dragon Shrine |
+| Siege Titan | Adamantine Vein | Master Forge |
+| Treant | World Tree | Grove of Ages |
+| Summoned Demon | Hellgate | Binding Circle |
+| Titan | Titan's Grave | Titan Forge |
+| Golem | Titan's Grave | Titan Forge |
+
+**Critical Rule**: If you lose control of the terrain improvement, existing units survive but **cannot be replaced**. This creates "stranded elite" scenarios where your last Archmage becomes irreplaceable.
 
 ---
 

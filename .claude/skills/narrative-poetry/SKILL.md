@@ -45,7 +45,11 @@ For each stanza:
 1. Concatenate all stanzas
 2. **Length check**: Must be under 5000 characters
 3. If over, identify flabby stanzas and tighten (compress, don't truncate)
-4. Output final poem
+4. **Save final poem** to `drafts/poetry/` in the repo root (NOT inside `.claude/skills/`)
+
+## Output Directory
+
+**IMPORTANT**: Save all poem drafts to `drafts/poetry/` in the repository root directory. Do NOT save to `.claude/skills/narrative-poetry/drafts/` as that requires approval for each write.
 
 ## Tools
 
