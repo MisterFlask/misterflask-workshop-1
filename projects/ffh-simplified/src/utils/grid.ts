@@ -35,12 +35,13 @@ export function isValidCoord(coord: Coord, width: number, height: number): boole
   return coord.x >= 0 && coord.x < width && coord.y >= 0 && coord.y < height;
 }
 
-// A* pathfinding
+// A* pathfinding with optional movement cost function
 export function findPath(
   from: Coord,
   to: Coord,
   map: Tile[][],
-  isPassable: (tile: Tile) => boolean
+  isPassable: (tile: Tile) => boolean,
+  movementCost?: (tile: Tile) => number
 ): Coord[] | null {
   const width = map[0].length;
   const height = map.length;
@@ -96,7 +97,8 @@ export function findPath(
       if (!isPassable(neighborTile)) continue;
 
       const neighborKey = coordToKey(neighbor);
-      const tentativeG = (gScore.get(currentKey) ?? Infinity) + 1;
+      const tileCost = movementCost ? movementCost(neighborTile) : 1;
+      const tentativeG = (gScore.get(currentKey) ?? Infinity) + tileCost;
 
       if (tentativeG < (gScore.get(neighborKey) ?? Infinity)) {
         cameFrom.set(neighborKey, currentKey);
@@ -110,38 +112,62 @@ export function findPath(
   return null; // No path found
 }
 
+// Calculate the total movement cost of a path
+export function getPathCost(
+  path: Coord[],
+  map: Tile[][],
+  movementCost?: (tile: Tile) => number
+): number {
+  if (path.length < 2) return 0;
+
+  let cost = 0;
+  for (let i = 1; i < path.length; i++) {
+    const tile = map[path[i].y][path[i].x];
+    cost += movementCost ? movementCost(tile) : 1;
+  }
+  return cost;
+}
+
 // Get all tiles within movement range
+// movementCost is optional - defaults to 1 for all tiles
 export function getTilesInRange(
   from: Coord,
   range: number,
   map: Tile[][],
-  isPassable: (tile: Tile) => boolean
+  isPassable: (tile: Tile) => boolean,
+  movementCost?: (tile: Tile) => number
 ): Coord[] {
   const width = map[0].length;
   const height = map.length;
   const result: Coord[] = [];
-  const visited = new Set<string>();
-  const queue: { coord: Coord; distance: number }[] = [{ coord: from, distance: 0 }];
+  const costToReach = new Map<string, number>();
+  const queue: { coord: Coord; cost: number }[] = [{ coord: from, cost: 0 }];
 
-  visited.add(coordToKey(from));
+  costToReach.set(coordToKey(from), 0);
 
   while (queue.length > 0) {
-    const { coord, distance } = queue.shift()!;
+    // Sort by cost to process lowest cost first (Dijkstra's algorithm)
+    queue.sort((a, b) => a.cost - b.cost);
+    const { coord, cost } = queue.shift()!;
 
-    if (distance > 0) {
+    if (cost > 0) {
       result.push(coord);
     }
 
-    if (distance < range) {
+    if (cost < range) {
       for (const neighbor of getNeighbors(coord, width, height)) {
         const key = coordToKey(neighbor);
-        if (visited.has(key)) continue;
-
         const tile = map[neighbor.y][neighbor.x];
         if (!isPassable(tile)) continue;
 
-        visited.add(key);
-        queue.push({ coord: neighbor, distance: distance + 1 });
+        const tileCost = movementCost ? movementCost(tile) : 1;
+        const newCost = cost + tileCost;
+
+        // Only visit if we haven't found a cheaper path already
+        if (newCost <= range && (!costToReach.has(key) || newCost < costToReach.get(key)!)) {
+          costToReach.set(key, newCost);
+          queue.push({ coord: neighbor, cost: newCost });
+        }
       }
     }
   }

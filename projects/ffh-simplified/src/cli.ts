@@ -163,7 +163,7 @@ class GameCLI {
     lines.push(
       `Gold: ${c('yellow', player.gold.toString())} | ` +
       `Mana: ${c('magenta', player.mana.toString())} | ` +
-      `Armageddon: ${c('red', `${this.state.armageddonCounter}/100`)}`
+      `Armageddon: ${c('red', `${this.state.armageddonCounter}/80`)}`
     );
 
     return lines.join('\n');
@@ -523,7 +523,7 @@ ${c('bold', '─── Commands ───')}
     lines.push(c('bold', '\n═══ Full Status ═══'));
     lines.push(`Turn: ${this.state.turn}`);
     lines.push(`Gold: ${player.gold} | Mana: ${player.mana}`);
-    lines.push(`Armageddon Counter: ${this.state.armageddonCounter}/100`);
+    lines.push(`Armageddon Counter: ${this.state.armageddonCounter}/80`);
     lines.push(`Phase: ${this.state.phase}`);
     lines.push(`Your Legions: ${getPlayerLegions(this.state).length}`);
     lines.push(`Your Cities: ${getPlayerCities(this.state).length}`);

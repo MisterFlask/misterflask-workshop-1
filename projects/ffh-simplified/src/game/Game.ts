@@ -1,6 +1,7 @@
 import type {
   GameState,
   GameAction,
+  GamePhase,
   Coord,
   Tile,
   Legion,
@@ -13,15 +14,16 @@ import type {
   BuildQueueItem,
   RosterSoldier,
   CollegiaState,
-  Technology,
+  FormationRow,
 } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots, BASE_CITY_INCOME, TURNS_PER_POPULATION } from '../data/buildings';
 import { FACTION_TEMPLATES, createFaction } from '../data/factions';
 import { TECHNOLOGIES, getAllTechnologyIds } from '../data/technologies';
+import { TERRAIN_FEATURES } from '../data/terrainFeatures';
 import { generateMap, placeStartingEntities, updateCulturalBorders } from './MapGenerator';
 import { resolveCombat, applyCombatResult, SoldierTechBonuses } from './Combat';
-import { coordToKey, coordsEqual, getTilesInRange, findPath, getNeighbors, manhattanDistance } from '../utils/grid';
+import { coordToKey, coordsEqual, getTilesInRange, findPath, getPathCost, getNeighbors, manhattanDistance } from '../utils/grid';
 import { generateId, generateSoldierName } from '../utils/random';
 
 const BASE_MOVEMENT_RANGE = 3;
@@ -48,8 +50,8 @@ function getMovementRange(state: GameState, factionId: FactionId): number {
 const LEGION_COST = 100;
 const MAX_LEGIONS_PER_FACTION = 5;
 const MAX_SOLDIERS_PER_LEGION = 8;
-const ARMAGEDDON_MAX = 100;
-const BOSS_SPAWN_THRESHOLD = 50; // Boss spawns at 50% Armageddon
+const ARMAGEDDON_MAX = 80; // Per design doc - Armageddon triggers at 80
+const BOSS_SPAWN_THRESHOLD = 40; // Boss spawns at 50% Armageddon (40 out of 80)
 const COLLEGIA_OFFERINGS_COUNT = 5;
 const COLLEGIA_REROLL_COST = 100;
 
@@ -213,20 +215,25 @@ export interface CityIncomeBreakdown {
   baseGold: number;
   buildingGold: number;
   buildingMana: number;
+  featureGold: number;
+  featureMana: number;
   totalGold: number;
   totalMana: number;
   goldSources: { name: string; amount: number }[];
   manaSources: { name: string; amount: number }[];
 }
 
-export function getCityIncome(city: City): CityIncomeBreakdown {
+export function getCityIncome(city: City, state?: GameState): CityIncomeBreakdown {
   const baseGold = city.occupationTurns > 0 ? Math.floor(BASE_CITY_INCOME / 2) : BASE_CITY_INCOME;
   let buildingGold = 0;
   let buildingMana = 0;
+  let featureGold = 0;
+  let featureMana = 0;
   const goldSources: { name: string; amount: number }[] = [];
   const manaSources: { name: string; amount: number }[] = [];
 
   if (city.occupationTurns === 0) {
+    // Building effects
     for (const buildingId of city.buildings) {
       const building = BUILDING_TYPES[buildingId];
       for (const effect of building.effects) {
@@ -240,14 +247,36 @@ export function getCityIncome(city: City): CityIncomeBreakdown {
         }
       }
     }
+
+    // Terrain feature effects (if state is provided)
+    if (state) {
+      const tile = getTile(state, city.coord);
+      if (tile?.feature) {
+        const feature = TERRAIN_FEATURES[tile.feature];
+        if (feature) {
+          for (const effect of feature.effects) {
+            if (effect.type === 'gold_bonus') {
+              featureGold += effect.amount;
+              goldSources.push({ name: feature.name, amount: effect.amount });
+            }
+            if (effect.type === 'mana_bonus') {
+              featureMana += effect.amount;
+              manaSources.push({ name: feature.name, amount: effect.amount });
+            }
+          }
+        }
+      }
+    }
   }
 
   return {
     baseGold,
     buildingGold,
     buildingMana,
-    totalGold: baseGold + buildingGold,
-    totalMana: buildingMana,
+    featureGold,
+    featureMana,
+    totalGold: baseGold + buildingGold + featureGold,
+    totalMana: buildingMana + featureMana,
     goldSources,
     manaSources,
   };
@@ -292,7 +321,7 @@ export function getFactionIncome(state: GameState, factionId: FactionId): Factio
   }
 
   for (const city of cities) {
-    const income = getCityIncome(city);
+    const income = getCityIncome(city, state);
     let cityGold = income.totalGold;
     let cityMana = income.totalMana;
 
@@ -331,16 +360,32 @@ export interface CityGrowthInfo {
   hasGranary: boolean;
 }
 
-export function getCityGrowthInfo(city: City): CityGrowthInfo {
+export function getCityGrowthInfo(city: City, state?: GameState): CityGrowthInfo {
   let growthBonus = 0;
   let hasGranary = false;
 
+  // Building growth bonuses
   for (const buildingId of city.buildings) {
     const building = BUILDING_TYPES[buildingId];
     for (const effect of building.effects) {
       if (effect.type === 'growth_bonus') {
         growthBonus += effect.amount;
         if (buildingId === 'granary') hasGranary = true;
+      }
+    }
+  }
+
+  // Terrain feature growth bonuses
+  if (state) {
+    const tile = getTile(state, city.coord);
+    if (tile?.feature) {
+      const feature = TERRAIN_FEATURES[tile.feature];
+      if (feature) {
+        for (const effect of feature.effects) {
+          if (effect.type === 'growth_bonus') {
+            growthBonus += effect.amount;
+          }
+        }
       }
     }
   }
@@ -360,8 +405,10 @@ export function getCityGrowthInfo(city: City): CityGrowthInfo {
 }
 
 // Get defense bonus for a city
-export function getCityDefenseBonus(city: City): number {
+export function getCityDefenseBonus(city: City, state?: GameState): number {
   let bonus = 0;
+
+  // Building defense bonuses
   for (const buildingId of city.buildings) {
     const building = BUILDING_TYPES[buildingId];
     for (const effect of building.effects) {
@@ -370,11 +417,96 @@ export function getCityDefenseBonus(city: City): number {
       }
     }
   }
+
+  // Terrain feature defense bonuses
+  if (state) {
+    const tile = getTile(state, city.coord);
+    if (tile?.feature) {
+      const feature = TERRAIN_FEATURES[tile.feature];
+      if (feature) {
+        for (const effect of feature.effects) {
+          if (effect.type === 'defense_bonus') {
+            bonus += effect.amount;
+          }
+        }
+      }
+    }
+  }
+
   return bonus;
 }
 
 function isPassableTerrain(tile: Tile): boolean {
   return tile.terrain !== 'mountain' && tile.terrain !== 'water';
+}
+
+// ============ City Garrison Helpers ============
+
+const GARRISON_SIZE = 5;
+const GARRISON_RESPAWN_HP_PERCENT = 0.5;
+
+// Create garrison soldiers for a city
+export function createGarrison(fullHp: boolean = true): Soldier[] {
+  const soldiers: Soldier[] = [];
+  const soldierType = SOLDIER_TYPES.city_garrison;
+  const hp = fullHp ? soldierType.hp : Math.floor(soldierType.hp * GARRISON_RESPAWN_HP_PERCENT);
+
+  // Position garrison in front row (3) and mid row (2)
+  const positions: { row: FormationRow; column: number }[] = [
+    { row: 'front', column: 0 },
+    { row: 'front', column: 1 },
+    { row: 'front', column: 2 },
+    { row: 'mid', column: 0 },
+    { row: 'mid', column: 2 },
+  ];
+
+  for (let i = 0; i < GARRISON_SIZE; i++) {
+    soldiers.push({
+      id: generateId('garrison'),
+      name: '', // No name for garrison soldiers
+      type: 'city_garrison',
+      hp,
+      maxHp: soldierType.hp,
+      position: positions[i],
+      isGarrison: true,
+    });
+  }
+
+  return soldiers;
+}
+
+// Convert city garrison to a pseudo-Legion for combat
+export function getCityGarrisonAsLegion(city: City): Legion {
+  return {
+    id: `garrison_${city.id}`,
+    owner: city.owner,
+    soldiers: city.garrison,
+    location: city.coord,
+    movementRemaining: 0,
+  };
+}
+
+// Find nearest empty adjacent tile for legion spawning
+export function findEmptyAdjacentTile(state: GameState, coord: Coord): Coord | null {
+  const neighbors = getNeighbors(coord, state.mapWidth, state.mapHeight);
+
+  for (const neighbor of neighbors) {
+    const tile = getTile(state, neighbor);
+    if (!tile) continue;
+    if (!isPassableTerrain(tile)) continue;
+    if (getLegionAt(state, neighbor)) continue;
+    if (getCityAt(state, neighbor)) continue; // Cannot spawn on another city
+
+    return neighbor;
+  }
+
+  return null;
+}
+
+// Get movement cost for a terrain type (swamp costs 2 movement)
+function getTerrainMovementCost(terrain: string): number {
+  if (terrain === 'swamp') return 2;
+  return 1;
 }
 
 function findRetreatTile(
@@ -412,19 +544,101 @@ function findRetreatTile(
 export function getValidMoves(state: GameState, legion: Legion): Coord[] {
   if (legion.movementRemaining <= 0) return [];
 
-  return getTilesInRange(
+  // Get tiles reachable without passing through ANY legion (friendly or enemy) or city
+  const reachableTiles = getTilesInRange(
     legion.location,
     legion.movementRemaining,
     state.map,
     (tile) => {
       if (!isPassableTerrain(tile)) return false;
-      // Can move to tiles with enemy legions (triggers combat)
-      // Cannot move to tiles with friendly legions
+      // Cannot pass through any legion (friendly or enemy)
       const legionAtTile = getLegionAt(state, tile.coord);
-      if (legionAtTile && legionAtTile.owner === legion.owner) return false;
+      if (legionAtTile) return false;
+      // Cannot pass through any city (cities and legions are mutually exclusive)
+      const cityAtTile = getCityAt(state, tile.coord);
+      if (cityAtTile) return false;
       return true;
-    }
+    },
+    (tile) => getTerrainMovementCost(tile.terrain)
   );
+
+  // Filter out tiles with friendly legions or any city (can't move onto cities)
+  const validMoves = reachableTiles.filter(coord => {
+    const legionAtTile = getLegionAt(state, coord);
+    if (legionAtTile && legionAtTile.owner === legion.owner) return false;
+    // Cannot move onto any city tile
+    const cityAtTile = getCityAt(state, coord);
+    if (cityAtTile) return false;
+    return true;
+  });
+
+  // Add adjacent enemy tiles that we can attack (even if we couldn't path through them)
+  const neighbors = getNeighbors(legion.location, state.mapWidth, state.mapHeight);
+  for (const neighbor of neighbors) {
+    const tile = getTile(state, neighbor);
+    if (!tile || !isPassableTerrain(tile)) continue;
+
+    // Check for enemy legion
+    const legionAtTile = getLegionAt(state, neighbor);
+    if (legionAtTile && legionAtTile.owner !== legion.owner) {
+      // Adjacent enemy legion - can attack
+      if (!validMoves.some(c => c.x === neighbor.x && c.y === neighbor.y)) {
+        validMoves.push(neighbor);
+      }
+    }
+
+    // Check for enemy city (to attack garrison)
+    const cityAtTile = getCityAt(state, neighbor);
+    if (cityAtTile && cityAtTile.owner !== legion.owner) {
+      // Adjacent enemy city - can attack garrison
+      if (!validMoves.some(c => c.x === neighbor.x && c.y === neighbor.y)) {
+        validMoves.push(neighbor);
+      }
+    }
+  }
+
+  return validMoves;
+}
+
+// Get the movement path from a legion to a destination (for path preview)
+export function getMovementPath(state: GameState, legion: Legion, to: Coord): Coord[] | null {
+  // Check if destination is adjacent (for attacking enemies or cities)
+  const isAdjacent = Math.abs(legion.location.x - to.x) + Math.abs(legion.location.y - to.y) === 1;
+  const legionAtDest = getLegionAt(state, to);
+  const cityAtDest = getCityAt(state, to);
+
+  // If attacking adjacent enemy legion, path is just [from, to]
+  if (isAdjacent && legionAtDest && legionAtDest.owner !== legion.owner) {
+    return [legion.location, to];
+  }
+
+  // If attacking adjacent enemy city, path is just [from, to]
+  if (isAdjacent && cityAtDest && cityAtDest.owner !== legion.owner) {
+    return [legion.location, to];
+  }
+
+  // Otherwise, find path avoiding all legions and cities
+  return findPath(
+    legion.location,
+    to,
+    state.map,
+    (tile) => {
+      if (!isPassableTerrain(tile)) return false;
+      const legionAtTile = getLegionAt(state, tile.coord);
+      if (legionAtTile) return false;
+      const cityAtTile = getCityAt(state, tile.coord);
+      if (cityAtTile) return false;
+      return true;
+    },
+    (tile) => getTerrainMovementCost(tile.terrain)
+  );
+}
+
+// Get the movement cost for a path
+export function getMovementCost(state: GameState, path: Coord[]): number {
+  if (!path || path.length < 2) return 0;
+  const moveCostFn = (tile: Tile) => getTerrainMovementCost(tile.terrain);
+  return getPathCost(path, state.map, moveCostFn);
 }
 
 export function processAction(state: GameState, action: GameAction): GameState {
@@ -526,27 +740,28 @@ function handleMoveLegion(state: GameState, legionId: string, to: Coord): GameSt
   const validMoves = getValidMoves(state, legion);
   if (!validMoves.some(m => coordsEqual(m, to))) return state;
 
-  // Check for combat
+  // Check for city attack (must be adjacent - cities and legions are mutually exclusive)
+  const city = getCityAt(state, to);
+  if (city && city.owner !== legion.owner) {
+    return handleCityCombat(state, legion, city);
+  }
+
+  // Check for combat with enemy legion
   const enemyLegion = getLegionAt(state, to);
   if (enemyLegion && enemyLegion.owner !== legion.owner) {
     return handleCombat(state, legion, enemyLegion, to);
   }
 
-  // Check for city capture
-  const city = getCityAt(state, to);
-  if (city && city.owner !== legion.owner) {
-    return handleCityCapture(state, legion, city, to);
-  }
-
-  // Simple move
+  // Simple move (cannot move onto city tiles)
   const newLegions = new Map(state.legions);
-  const path = findPath(legion.location, to, state.map, isPassableTerrain);
-  const distance = path ? path.length - 1 : 1;
+  const moveCostFn = (tile: Tile) => getTerrainMovementCost(tile.terrain);
+  const path = findPath(legion.location, to, state.map, isPassableTerrain, moveCostFn);
+  const movementCost = path ? getPathCost(path, state.map, moveCostFn) : 1;
 
   newLegions.set(legionId, {
     ...legion,
     location: to,
-    movementRemaining: Math.max(0, legion.movementRemaining - distance),
+    movementRemaining: Math.max(0, legion.movementRemaining - movementCost),
   });
 
   return { ...state, legions: newLegions, selectedLegionId: null };
@@ -633,10 +848,80 @@ function handleCombat(
   };
 }
 
+// Handle combat between a legion and a city's garrison
+function handleCityCombat(
+  state: GameState,
+  attacker: Legion,
+  city: City
+): GameState {
+  // Create pseudo-legion from garrison
+  const defenderLegion = getCityGarrisonAsLegion(city);
+
+  // If garrison is empty (all dead), capture immediately
+  if (defenderLegion.soldiers.length === 0) {
+    return handleUndefendedCityCapture(state, attacker, city);
+  }
+
+  const tile = getTile(state, city.coord);
+  if (!tile) return state;
+
+  const hasWalls = city.buildings.includes('walls');
+
+  // Calculate tech bonuses for both sides
+  const attackerTechBonuses = getSoldierTechBonuses(state, attacker.owner);
+  const defenderTechBonuses = getSoldierTechBonuses(state, city.owner);
+
+  const result = resolveCombat(attacker, defenderLegion, tile.terrain, hasWalls, attackerTechBonuses, defenderTechBonuses);
+
+  // Set pending combat with garrison ID prefix
+  return {
+    ...state,
+    phase: 'combat_resolution',
+    pendingCombat: {
+      attackerId: attacker.id,
+      defenderId: `garrison_${city.id}`, // Special ID for garrison combat
+      combatLocation: city.coord,
+      result,
+    },
+    selectedLegionId: null,
+  };
+}
+
+// Handle capturing an undefended city (empty garrison)
+function handleUndefendedCityCapture(
+  state: GameState,
+  attacker: Legion,
+  city: City
+): GameState {
+  const newCities = new Map(state.cities);
+  newCities.set(city.id, {
+    ...city,
+    owner: attacker.owner,
+    occupationTurns: 3,
+    garrison: createGarrison(false), // Respawn garrison at 50% HP
+  });
+
+  // Attacker uses movement but stays in place (adjacent to city)
+  const newLegions = new Map(state.legions);
+  newLegions.set(attacker.id, {
+    ...attacker,
+    movementRemaining: 0,
+  });
+
+  return { ...state, legions: newLegions, cities: newCities, selectedLegionId: null };
+}
+
 function handleApplyCombatResults(state: GameState): GameState {
   if (!state.pendingCombat) return state;
 
   const { attackerId, defenderId, combatLocation, result } = state.pendingCombat;
+
+  // Check if this is a garrison combat (defenderId starts with 'garrison_')
+  if (defenderId.startsWith('garrison_')) {
+    return handleGarrisonCombatResults(state, attackerId, defenderId, combatLocation, result);
+  }
+
+  // Standard legion vs legion combat
   const attacker = state.legions.get(attackerId);
   const defender = state.legions.get(defenderId);
 
@@ -689,18 +974,6 @@ function handleApplyCombatResults(state: GameState): GameState {
     } else {
       newLegions.delete(attacker.id);
     }
-
-    // Check for city capture
-    const capturedCity = getCityAt(state, combatLocation);
-    if (capturedCity && capturedCity.owner !== attacker.owner) {
-      const newCities = new Map(state.cities);
-      newCities.set(capturedCity.id, {
-        ...capturedCity,
-        owner: attacker.owner,
-        occupationTurns: 3,
-      });
-      return { ...state, legions: newLegions, cities: newCities, pendingCombat: null, phase: 'player_turn' };
-    }
   } else {
     // Attacker stays in place or retreats
     if (updatedAttacker.soldiers.length > 0) {
@@ -716,7 +989,86 @@ function handleApplyCombatResults(state: GameState): GameState {
     }
   }
 
-  return { ...state, legions: newLegions, pendingCombat: null, phase: 'player_turn' };
+  // Determine next phase: if attacker was AI, continue AI turn; otherwise player turn
+  const wasAIAttack = attacker.owner !== 'player';
+  const resultState = { ...state, legions: newLegions, pendingCombat: null, phase: 'ai_turn' as GamePhase };
+
+  if (wasAIAttack) {
+    // Continue AI turn processing
+    return continueAITurn(resultState);
+  }
+
+  return { ...resultState, phase: 'player_turn' };
+}
+
+// Handle the results of garrison combat
+function handleGarrisonCombatResults(
+  state: GameState,
+  attackerId: string,
+  garrisonDefenderId: string,
+  combatLocation: Coord,
+  result: import('../types').CombatResult
+): GameState {
+  const attacker = state.legions.get(attackerId);
+  const cityId = garrisonDefenderId.replace('garrison_', '');
+  const city = state.cities.get(cityId);
+
+  if (!attacker || !city) {
+    // If we can't find the attacker, we don't know if it was AI - default to player turn
+    return { ...state, pendingCombat: null, phase: 'player_turn' };
+  }
+
+  const newLegions = new Map(state.legions);
+  const newCities = new Map(state.cities);
+
+  // Update attacker (stays in original position, doesn't move onto city)
+  const updatedAttacker = {
+    ...attacker,
+    soldiers: result.attackerSurvivors,
+    movementRemaining: 0,
+  };
+
+  if (result.attackerWon) {
+    // City is captured
+    // Attacker stays adjacent to city (doesn't move onto it)
+    if (updatedAttacker.soldiers.length > 0) {
+      newLegions.set(attacker.id, updatedAttacker);
+    } else {
+      newLegions.delete(attacker.id);
+    }
+
+    // Capture city and regenerate garrison at 50% HP
+    newCities.set(city.id, {
+      ...city,
+      owner: attacker.owner,
+      occupationTurns: 3,
+      garrison: createGarrison(false), // 50% HP garrison
+    });
+  } else {
+    // Attacker failed
+    if (updatedAttacker.soldiers.length > 0) {
+      newLegions.set(attacker.id, updatedAttacker);
+    } else {
+      newLegions.delete(attacker.id);
+    }
+
+    // Update garrison survivors
+    newCities.set(city.id, {
+      ...city,
+      garrison: result.defenderSurvivors,
+    });
+  }
+
+  // Determine next phase: if attacker was AI, continue AI turn; otherwise player turn
+  const wasAIAttack = attacker.owner !== 'player';
+  const resultState = { ...state, legions: newLegions, cities: newCities, pendingCombat: null, phase: 'ai_turn' as GamePhase };
+
+  if (wasAIAttack) {
+    // Continue AI turn processing
+    return continueAITurn(resultState);
+  }
+
+  return { ...resultState, phase: 'player_turn' };
 }
 
 function handleCityCapture(
@@ -745,15 +1097,37 @@ function handleCityCapture(
 
 // ============ AI Turn Processing ============
 
+// Calculate legion HP percentage
+function getLegionHpPercentage(legion: Legion): number {
+  if (legion.soldiers.length === 0) return 0;
+  const totalHp = legion.soldiers.reduce((sum, s) => sum + s.hp, 0);
+  const totalMaxHp = legion.soldiers.reduce((sum, s) => sum + s.maxHp, 0);
+  return totalMaxHp > 0 ? totalHp / totalMaxHp : 0;
+}
+
+// Get the home city for a faction (first city owned)
+function getFactionHomeCity(state: GameState, factionId: FactionId): City | null {
+  for (const city of state.cities.values()) {
+    if (city.owner === factionId) return city;
+  }
+  return null;
+}
+
+// Check if legion is at a friendly city (for healing)
+function isLegionAtFriendlyCity(state: GameState, legion: Legion): boolean {
+  const city = getCityAt(state, legion.location);
+  return city !== null && city.owner === legion.owner;
+}
+
 function processAITurn(state: GameState): GameState {
   let newState = { ...state };
-  const newLegions = new Map(newState.legions);
 
   // Get all AI factions
   const aiFactions = Array.from(newState.factions.values()).filter(f => f.id !== 'player');
 
   for (const faction of aiFactions) {
     // Reset movement for this faction's legions
+    const newLegions = new Map(newState.legions);
     for (const [id, legion] of newLegions) {
       if (legion.owner === faction.id) {
         newLegions.set(id, { ...legion, movementRemaining: BASE_MOVEMENT_RANGE });
@@ -761,24 +1135,176 @@ function processAITurn(state: GameState): GameState {
     }
     newState = { ...newState, legions: newLegions };
 
+    // Update faction state based on conditions
+    newState = updateFactionState(newState, faction);
+
+    // Process recruitment for this faction
+    newState = processAIRecruitment(newState, faction);
+
     // Process each legion for this faction
-    const factionLegions = Array.from(newLegions.values()).filter(l => l.owner === faction.id);
+    const factionLegions = Array.from(newState.legions.values()).filter(l => l.owner === faction.id);
 
     for (const legion of factionLegions) {
       // Skip if legion has no soldiers
       if (legion.soldiers.length === 0) continue;
 
-      // Find targets based on faction type
-      const targets = findAITargets(newState, faction, legion);
+      // Check if legion needs to retreat/heal
+      const hpPercent = getLegionHpPercentage(legion);
+      const homeCity = getFactionHomeCity(newState, faction.id);
+
+      if (hpPercent < 0.3 && homeCity) {
+        // Low HP - retreat to home city to heal
+        if (!isLegionAtFriendlyCity(newState, legion)) {
+          newState = processAILegionMove(newState, legion, homeCity.coord);
+          // If combat triggered against player, return immediately
+          if (newState.phase === 'combat_resolution') return newState;
+        } else {
+          // At home city - heal soldiers
+          newState = healLegionAtCity(newState, legion);
+        }
+        continue;
+      }
+
+      // Find targets based on faction type and state
+      const targets = findAITargets(newState, newState.factions.get(faction.id)!, legion);
 
       if (targets.length > 0) {
         // Move toward nearest target
         newState = processAILegionMove(newState, legion, targets[0]);
+        // If combat triggered against player, return immediately
+        if (newState.phase === 'combat_resolution') return newState;
       }
     }
   }
 
   return newState;
+}
+
+// Update faction state based on conditions
+function updateFactionState(state: GameState, faction: Faction): GameState {
+  const newFactions = new Map(state.factions);
+  let newState = faction.state;
+
+  if (faction.type === 'raider') {
+    // Raiders: idle -> raiding when they have enough gold/troops
+    const factionLegions = Array.from(state.legions.values()).filter(l => l.owner === faction.id);
+    const totalSoldiers = factionLegions.reduce((sum, l) => sum + l.soldiers.length, 0);
+
+    if (faction.state.type === 'idle' && totalSoldiers >= 3) {
+      // Start raiding
+      const playerCities = Array.from(state.cities.values()).filter(c => c.owner === 'player');
+      if (playerCities.length > 0) {
+        newState = { type: 'raiding', target: playerCities[0].coord };
+      }
+    } else if (faction.state.type === 'raiding' && totalSoldiers === 0) {
+      // No troops left, go back to idle
+      newState = { type: 'idle' };
+    }
+  } else if (faction.type === 'defender') {
+    // Defenders: always defending
+    if (faction.state.type !== 'defending') {
+      newState = { type: 'defending' };
+    }
+  }
+  // Ritualists stay idle for now
+
+  if (newState !== faction.state) {
+    newFactions.set(faction.id, { ...faction, state: newState });
+    return { ...state, factions: newFactions };
+  }
+
+  return state;
+}
+
+// Heal soldiers in a legion at a friendly city
+function healLegionAtCity(state: GameState, legion: Legion): GameState {
+  const HEAL_AMOUNT = 20; // HP healed per turn at city
+
+  const newLegions = new Map(state.legions);
+  const healedSoldiers = legion.soldiers.map(s => ({
+    ...s,
+    hp: Math.min(s.maxHp, s.hp + HEAL_AMOUNT),
+  }));
+
+  newLegions.set(legion.id, { ...legion, soldiers: healedSoldiers });
+  return { ...state, legions: newLegions };
+}
+
+// Process AI recruitment for a faction
+function processAIRecruitment(state: GameState, faction: Faction): GameState {
+  let newState = state;
+
+  // Get faction's cities
+  const factionCities = Array.from(state.cities.values()).filter(c => c.owner === faction.id);
+  if (factionCities.length === 0) return state;
+
+  // Get faction's gold
+  const factionData = state.factions.get(faction.id);
+  if (!factionData || factionData.gold < 50) return state; // Need at least 50 gold
+
+  // Get faction's legions
+  const factionLegions = Array.from(state.legions.values()).filter(l => l.owner === faction.id);
+  const totalSoldiers = factionLegions.reduce((sum, l) => sum + l.soldiers.length, 0);
+
+  // Don't recruit if we already have enough soldiers
+  if (totalSoldiers >= 8) return state;
+
+  // Find a city with a legion that has room for soldiers
+  for (const city of factionCities) {
+    const legionAtCity = getLegionAt(state, city.coord);
+    if (legionAtCity && legionAtCity.owner === faction.id && legionAtCity.soldiers.length < 8) {
+      // Recruit a soldier
+      const soldierType: SoldierTypeId = faction.type === 'raider' ? 'fighter' : 'archer';
+      const soldierCost = SOLDIER_TYPES[soldierType].cost;
+
+      if (factionData.gold >= soldierCost) {
+        // Create new soldier
+        const newSoldier: Soldier = {
+          id: `${faction.id}-soldier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: `${faction.name} ${SOLDIER_TYPES[soldierType].name}`,
+          type: soldierType,
+          hp: SOLDIER_TYPES[soldierType].hp,
+          maxHp: SOLDIER_TYPES[soldierType].hp,
+          position: getNextAvailablePosition(legionAtCity),
+        };
+
+        // Update legion
+        const newLegions = new Map(newState.legions);
+        newLegions.set(legionAtCity.id, {
+          ...legionAtCity,
+          soldiers: [...legionAtCity.soldiers, newSoldier],
+        });
+
+        // Update faction gold
+        const newFactions = new Map(newState.factions);
+        newFactions.set(faction.id, {
+          ...factionData,
+          gold: factionData.gold - soldierCost,
+        });
+
+        newState = { ...newState, legions: newLegions, factions: newFactions };
+        break; // Only recruit one per turn
+      }
+    }
+  }
+
+  return newState;
+}
+
+// Get next available position in a legion's formation
+function getNextAvailablePosition(legion: Legion): { row: FormationRow; column: number } {
+  const occupied = new Set(legion.soldiers.map(s => `${s.position.row}-${s.position.column}`));
+  const rows: FormationRow[] = ['front', 'mid', 'back'];
+
+  for (const row of rows) {
+    for (let col = 0; col < 3; col++) {
+      if (!occupied.has(`${row}-${col}`)) {
+        return { row, column: col };
+      }
+    }
+  }
+  // Fallback (shouldn't happen with 8 soldier limit)
+  return { row: 'front', column: 0 };
 }
 
 // Find potential targets for an AI legion
@@ -857,25 +1383,32 @@ function processAILegionMove(state: GameState, legion: Legion, target: Coord): G
       return handleAICombat(newState, currentLegion, enemyLegion, target);
     }
 
-    // Check for enemy city at target
+    // Check for enemy city at target (attack garrison)
     const enemyCity = getCityAt(newState, target);
     if (enemyCity && enemyCity.owner !== currentLegion.owner) {
-      // Check if city has a defending legion
-      const defender = getLegionAt(newState, target);
-      if (defender) {
-        return handleAICombat(newState, currentLegion, defender, target);
-      } else {
-        // Capture undefended city
-        return handleAICaptureCity(newState, currentLegion, enemyCity);
-      }
+      // Cities now have garrisons - always attack the garrison
+      return handleAICityCombat(newState, currentLegion, enemyCity);
+    }
+
+    // Cannot move onto city tiles (cities and legions are mutually exclusive)
+    const anyCity = getCityAt(newState, target);
+    if (anyCity) {
+      // Can't move onto any city, even friendly
+      return newState;
     }
 
     // Move to empty tile
     return moveAILegion(newState, currentLegion, target);
   }
 
-  // Find path to target
-  const path = findPath(currentLegion.location, target, newState.map, isPassableTerrain);
+  // Find path to target (avoiding cities since legions can't move onto them)
+  const path = findPath(currentLegion.location, target, newState.map, (tile) => {
+    if (!isPassableTerrain(tile)) return false;
+    // Cities block movement (except the target if it's an enemy city to attack)
+    const cityAtTile = getCityAt(newState, tile.coord);
+    if (cityAtTile && !coordsEqual(tile.coord, target)) return false;
+    return true;
+  });
   if (!path || path.length < 2) return newState;
 
   // Move along path as far as movement allows
@@ -893,6 +1426,18 @@ function processAILegionMove(state: GameState, legion: Legion, target: Coord): G
         return handleAICombat(newState, newState.legions.get(currentLegion.id)!, blockingLegion, nextPos);
       } else {
         // Friendly legion blocking - stop before it
+        break;
+      }
+    }
+
+    // Check for blocking city (attack enemy garrison or stop before friendly)
+    const blockingCity = getCityAt(newState, nextPos);
+    if (blockingCity) {
+      if (blockingCity.owner !== currentLegion.owner) {
+        // Attack enemy city garrison!
+        return handleAICityCombat(newState, newState.legions.get(currentLegion.id)!, blockingCity);
+      } else {
+        // Friendly city blocking - stop before it
         break;
       }
     }
@@ -931,10 +1476,26 @@ function handleAICombat(state: GameState, attacker: Legion, defender: Legion, co
   const city = getCityAt(state, combatLocation);
   const hasWalls = city?.buildings.includes('walls') ?? false;
 
-  // AI doesn't have tech bonuses (only player has Collegia)
-  const result = resolveCombat(attacker, defender, tile.terrain, hasWalls);
+  // Calculate tech bonuses - defender may be player
+  const attackerTechBonuses = getSoldierTechBonuses(state, attacker.owner);
+  const defenderTechBonuses = getSoldierTechBonuses(state, defender.owner);
+  const result = resolveCombat(attacker, defender, tile.terrain, hasWalls, attackerTechBonuses, defenderTechBonuses);
 
-  // Apply combat results immediately for AI (no combat scene)
+  // If defender is player, show combat scene
+  if (defender.owner === 'player') {
+    return {
+      ...state,
+      phase: 'combat_resolution',
+      pendingCombat: {
+        attackerId: attacker.id,
+        defenderId: defender.id,
+        combatLocation,
+        result,
+      },
+    };
+  }
+
+  // AI vs AI: apply combat results immediately (no combat scene)
   const newLegions = new Map(state.legions);
 
   // Update attacker
@@ -1014,12 +1575,88 @@ function handleAICombat(state: GameState, attacker: Legion, defender: Legion, co
   }
 }
 
-// Handle AI capturing an undefended city
-function handleAICaptureCity(state: GameState, legion: Legion, city: City): GameState {
+// Handle AI combat against city garrison
+function handleAICityCombat(state: GameState, attacker: Legion, city: City): GameState {
+  const defenderLegion = getCityGarrisonAsLegion(city);
+
+  // If garrison is empty, capture immediately
+  if (defenderLegion.soldiers.length === 0) {
+    return handleAIUndefendedCityCapture(state, attacker, city);
+  }
+
+  const tile = getTile(state, city.coord);
+  if (!tile) return state;
+
+  const hasWalls = city.buildings.includes('walls');
+
+  // Calculate tech bonuses - defender (city owner) may be player
+  const attackerTechBonuses = getSoldierTechBonuses(state, attacker.owner);
+  const defenderTechBonuses = getSoldierTechBonuses(state, city.owner);
+  const result = resolveCombat(attacker, defenderLegion, tile.terrain, hasWalls, attackerTechBonuses, defenderTechBonuses);
+
+  // If city belongs to player, show combat scene
+  if (city.owner === 'player') {
+    return {
+      ...state,
+      phase: 'combat_resolution',
+      pendingCombat: {
+        attackerId: attacker.id,
+        defenderId: `garrison_${city.id}`, // Special ID for garrison combat
+        combatLocation: city.coord,
+        result,
+      },
+    };
+  }
+
+  // AI vs AI: apply combat results immediately (no combat scene)
   const newLegions = new Map(state.legions);
+  const newCities = new Map(state.cities);
+
+  const updatedAttacker = {
+    ...attacker,
+    soldiers: result.attackerSurvivors,
+    movementRemaining: 0,
+  };
+
+  if (result.attackerWon) {
+    // City captured - attacker stays adjacent (doesn't move onto city)
+    if (updatedAttacker.soldiers.length > 0) {
+      newLegions.set(attacker.id, updatedAttacker);
+    } else {
+      newLegions.delete(attacker.id);
+    }
+
+    // Capture city and regenerate garrison at 50% HP
+    newCities.set(city.id, {
+      ...city,
+      owner: attacker.owner,
+      occupationTurns: 3,
+      garrison: createGarrison(false),
+    });
+  } else {
+    // Attacker failed
+    if (updatedAttacker.soldiers.length > 0) {
+      newLegions.set(attacker.id, updatedAttacker);
+    } else {
+      newLegions.delete(attacker.id);
+    }
+
+    // Update garrison survivors
+    newCities.set(city.id, {
+      ...city,
+      garrison: result.defenderSurvivors,
+    });
+  }
+
+  return { ...state, legions: newLegions, cities: newCities };
+}
+
+// Handle AI capturing an undefended city (empty garrison)
+function handleAIUndefendedCityCapture(state: GameState, legion: Legion, city: City): GameState {
+  const newLegions = new Map(state.legions);
+  // Legion stays adjacent to city (doesn't move onto it)
   newLegions.set(legion.id, {
     ...legion,
-    location: city.coord,
     movementRemaining: 0,
   });
 
@@ -1028,6 +1665,7 @@ function handleAICaptureCity(state: GameState, legion: Legion, city: City): Game
     ...city,
     owner: legion.owner,
     occupationTurns: 3,
+    garrison: createGarrison(false), // Respawn garrison at 50% HP
   });
 
   return { ...state, legions: newLegions, cities: newCities };
@@ -1037,13 +1675,36 @@ function handleAICaptureCity(state: GameState, legion: Legion, city: City): Game
 
 function handleEndTurn(state: GameState): GameState {
   // Process AI turns, then end turn phase
-  let newState = { ...state, phase: 'ai_turn' as const };
+  let newState: GameState = { ...state, phase: 'ai_turn' };
 
   // Process AI faction turns
   newState = processAITurn(newState);
 
+  // If combat was triggered against player, pause AI turn for combat resolution
+  if (newState.phase === 'combat_resolution') {
+    return newState;
+  }
+
+  return finishEndTurn(newState);
+}
+
+// Called after AI combat resolution to continue processing
+function continueAITurn(state: GameState): GameState {
+  // Continue processing remaining AI legions
+  let newState = processAITurn(state);
+
+  // If another combat was triggered, pause again
+  if (newState.phase === 'combat_resolution') {
+    return newState;
+  }
+
+  return finishEndTurn(newState);
+}
+
+// Finish end turn processing after AI is done
+function finishEndTurn(state: GameState): GameState {
   // End turn processing
-  newState = processEndTurnPhase(newState);
+  let newState = processEndTurnPhase(state);
 
   // Check win/loss conditions
   newState = checkGameOver(newState);
@@ -1129,6 +1790,18 @@ function processEndTurnPhase(state: GameState): GameState {
             manaIncome += buildingManaBonuses[buildingId]!;
           }
         }
+
+        // Terrain feature bonuses
+        const tile = getTile(state, city.coord);
+        if (tile?.feature) {
+          const feature = TERRAIN_FEATURES[tile.feature];
+          if (feature) {
+            for (const effect of feature.effects) {
+              if (effect.type === 'gold_bonus') goldIncome += effect.amount;
+              if (effect.type === 'mana_bonus') manaIncome += effect.amount;
+            }
+          }
+        }
       }
     }
 
@@ -1172,6 +1845,19 @@ function processEndTurnPhase(state: GameState): GameState {
       for (const effect of building.effects) {
         if (effect.type === 'growth_bonus') {
           growthBonus += effect.amount;
+        }
+      }
+    }
+
+    // Terrain feature growth bonuses
+    const tile = getTile(state, newCity.coord);
+    if (tile?.feature) {
+      const feature = TERRAIN_FEATURES[tile.feature];
+      if (feature) {
+        for (const effect of feature.effects) {
+          if (effect.type === 'growth_bonus') {
+            growthBonus += effect.amount;
+          }
         }
       }
     }
@@ -1400,6 +2086,7 @@ function spawnBoss(state: GameState): GameState {
     occupationTurns: 0,
     isCapital: true,
     growthProgress: 0,
+    garrison: createGarrison(true),
   };
   newCities.set(bossCity.id, bossCity);
 
@@ -1408,8 +2095,25 @@ function spawnBoss(state: GameState): GameState {
   mapCopy[spawnCoord.y][spawnCoord.x].city = bossCity;
   mapCopy[spawnCoord.y][spawnCoord.x].owner = 'boss';
 
-  // Create boss legion with demons
+  // Create boss legion with demons - spawn on adjacent tile (cities and legions are mutually exclusive)
   const demonType = SOLDIER_TYPES['demon'];
+
+  // Find adjacent tile for boss legion
+  const adjacentOffsets = [
+    { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+    { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+  ];
+  let bossLegionLocation: Coord = spawnCoord; // Fallback (shouldn't happen)
+  for (const offset of adjacentOffsets) {
+    const adjCoord = { x: spawnCoord.x + offset.dx, y: spawnCoord.y + offset.dy };
+    if (adjCoord.x < 0 || adjCoord.x >= state.mapWidth || adjCoord.y < 0 || adjCoord.y >= state.mapHeight) continue;
+    const adjTile = getTile(state, adjCoord);
+    if (adjTile && isPassableTerrain(adjTile) && !getCityAt(state, adjCoord) && !getLegionAt(state, adjCoord)) {
+      bossLegionLocation = adjCoord;
+      break;
+    }
+  }
+
   const bossLegion: Legion = {
     id: generateId('legion'),
     owner: 'boss',
@@ -1425,7 +2129,7 @@ function spawnBoss(state: GameState): GameState {
       },
       isLeader: i === 0,
     })),
-    location: spawnCoord,
+    location: bossLegionLocation,
     movementRemaining: BASE_MOVEMENT_RANGE,
   };
   newLegions.set(bossLegion.id, bossLegion);
@@ -1549,6 +2253,7 @@ function handleRecruit(
   const recruitedMaxHp = getSoldierMaxHp(state, legion.owner, soldierTypeId);
   const newSoldier: Soldier = {
     id: generateId('soldier'),
+    name: generateSoldierName(),
     type: soldierTypeId,
     hp: recruitedMaxHp,
     maxHp: recruitedMaxHp,
@@ -1581,14 +2286,15 @@ function handleCreateLegion(state: GameState, cityId: string): GameState {
   const playerLegions = getPlayerLegions(state);
   if (playerLegions.length >= MAX_LEGIONS_PER_FACTION) return state;
 
-  // Check if city tile is empty
-  if (getLegionAt(state, city.coord)) return state;
+  // Find empty adjacent tile for new legion (cities and legions are mutually exclusive)
+  const spawnLocation = findEmptyAdjacentTile(state, city.coord);
+  if (!spawnLocation) return state; // No valid spawn location
 
   const newLegion: Legion = {
     id: generateId('legion'),
     owner: 'player',
     soldiers: [],
-    location: city.coord,
+    location: spawnLocation, // Spawn on adjacent tile, not city
     movementRemaining: 0, // Can't move on creation turn
   };
 
@@ -1852,6 +2558,9 @@ function handleUnassignSoldier(
   const soldier = legion.soldiers.find(s => s.id === soldierId);
   if (!soldier) return state;
 
+  // Cannot unassign garrison soldiers
+  if (soldier.isGarrison) return state;
+
   // Create roster soldier (without position)
   const rosterSoldier: RosterSoldier = {
     id: soldier.id,
@@ -1897,7 +2606,11 @@ function handleCreateLegionFromRoster(
   const rosterSoldier = city.roster.find(s => s.id === soldierId);
   if (!rosterSoldier) return state;
 
-  // Create new legion at city location
+  // Find empty adjacent tile for new legion (cities and legions are mutually exclusive)
+  const spawnLocation = findEmptyAdjacentTile(state, city.coord);
+  if (!spawnLocation) return state; // No valid spawn location
+
+  // Create new legion on adjacent tile
   const newLegionId = generateId('legion');
 
   // Create the soldier for the legion (as leader)
@@ -1915,7 +2628,7 @@ function handleCreateLegionFromRoster(
     id: newLegionId,
     owner: 'player',
     soldiers: [newSoldier],
-    location: city.coord,
+    location: spawnLocation, // Spawn on adjacent tile, not city
     movementRemaining: 0, // New legion can't move this turn
   };
 
@@ -1951,6 +2664,9 @@ function handleTransferSoldier(
   // Find soldier in source legion
   const soldier = fromLegion.soldiers.find(s => s.id === soldierId);
   if (!soldier) return state;
+
+  // Cannot transfer garrison soldiers
+  if (soldier.isGarrison) return state;
 
   // Check target legion capacity
   if (toLegion.soldiers.length >= MAX_SOLDIERS_PER_LEGION) return state;

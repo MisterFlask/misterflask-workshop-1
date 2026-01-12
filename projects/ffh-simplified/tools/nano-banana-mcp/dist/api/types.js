@@ -1,0 +1,2 @@
+// Gemini API types
+export {};

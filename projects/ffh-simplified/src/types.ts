@@ -7,26 +7,35 @@ export interface Coord {
   y: number;
 }
 
-export type TerrainType = 'grass' | 'forest' | 'hills' | 'mountain' | 'water';
+export type TerrainType = 'grass' | 'forest' | 'hills' | 'mountain' | 'water' | 'swamp';
 
 export type TerrainFeatureId =
+  // Common features
   | 'ancient_ruins'
   | 'mana_spring'
   | 'iron_vein'
   | 'gold_mine'
   | 'sacred_grove'
   | 'watchtower'
+  | 'fertile_plains'
+  // Uncommon features
   | 'haunted_barrow'
   | 'dragon_bones'
   | 'crystal_cave'
-  | 'fertile_plains';
+  | 'mineral_deposit'
+  // Rare features
+  | 'adamantine_vein'
+  | 'world_tree'
+  // Legendary features
+  | 'hellgate'
+  | 'titans_grave';
 
 export interface TerrainFeature {
   id: TerrainFeatureId;
   name: string;
   description: string;
   validTerrain: TerrainType[];
-  rarity: 'common' | 'uncommon' | 'rare';
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
   effects: TerrainFeatureEffect[];
   sprite?: string;
 }
@@ -75,7 +84,33 @@ export type FactionState =
 
 // ============ Soldiers & Legions ============
 
-export type SoldierTypeId = 'fighter' | 'knight' | 'archer' | 'mage' | 'cleric' | 'demon';
+export type SoldierTypeId =
+  // Core units (building-gated)
+  | 'fighter'
+  | 'archer'
+  | 'cleric'
+  | 'knight'
+  | 'mage'
+  | 'cavalry'
+  | 'catapult'
+  | 'paladin'
+  | 'champion'
+  // Terrain-gated units
+  | 'fire_elemental'
+  | 'ice_elemental'
+  | 'sage'
+  | 'archmage'
+  | 'lich'
+  | 'dragon_knight'
+  | 'siege_titan'
+  | 'treant'
+  | 'summoned_demon'
+  | 'golem'
+  | 'titan'
+  // Boss/AI faction units
+  | 'demon'
+  // City garrison (non-recruitable)
+  | 'city_garrison';
 
 export type FormationRow = 'front' | 'mid' | 'back';
 
@@ -107,6 +142,7 @@ export interface Soldier {
   maxHp: number;
   position: FormationPosition;
   isLeader?: boolean;
+  isGarrison?: boolean; // True for city garrison soldiers (cannot be reassigned)
 }
 
 export interface Legion {
@@ -119,7 +155,45 @@ export interface Legion {
 
 // ============ Cities & Buildings ============
 
-export type BuildingId = 'barracks' | 'market' | 'temple' | 'mage_tower' | 'stables' | 'walls' | 'granary' | 'ritual_site';
+export type BuildingId =
+  // Tier 1 (available at game start)
+  | 'barracks'
+  | 'market'
+  | 'temple'
+  | 'granary'
+  | 'walls'
+  // Tier 2 (require Pop 3+)
+  | 'archery_range'
+  | 'war_academy'
+  | 'mage_tower'
+  | 'stables'
+  | 'trade_hall'
+  | 'fortifications'
+  | 'siege_workshop'
+  // Tier 3 (require Pop 5+)
+  | 'elite_barracks'
+  | 'arcane_sanctum'
+  | 'cathedral'
+  | 'treasury'
+  | 'grand_walls'
+  | 'masons_guild'
+  // Tier 4 (require Pop 7+)
+  | 'legendary_forge'
+  | 'signal_towers'
+  // Special
+  | 'ritual_site'
+  // Exploitation buildings (require terrain improvements)
+  | 'mine'
+  | 'mana_well'
+  | 'archive'
+  | 'deep_mine'
+  | 'crystal_sanctum'
+  | 'necropolis'
+  | 'dragon_shrine'
+  | 'master_forge'
+  | 'grove_of_ages'
+  | 'binding_circle'
+  | 'titan_forge';
 
 export interface BuildingType {
   id: BuildingId;
@@ -169,6 +243,7 @@ export interface City {
   occupationTurns: number; // 0 = normal, >0 = recently captured
   isCapital?: boolean; // True if this is a faction's capital city
   growthProgress: number; // Accumulated growth points toward next population
+  garrison: Soldier[]; // Defensive garrison soldiers (immobile, cannot be reassigned)
 }
 
 // ============ Combat ============
@@ -298,6 +373,7 @@ export type GameAction =
 export interface UIState {
   hoveredTile: Coord | null;
   validMoves: Coord[];
+  movementPath: Coord[];  // Path preview when hovering over a valid move
   showingCityPanel: boolean;
   showingLegionPanel: boolean;
   camera: {

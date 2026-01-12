@@ -1,14 +1,16 @@
-import type { Tile, TerrainType, City, Legion, FactionId, Coord, Soldier, TerrainFeatureId } from '../types';
+import type { Tile, TerrainType, City, Legion, FactionId, Coord, Soldier, TerrainFeatureId, GameState } from '../types';
 import { createRNG, randomInt, randomElement, generateId, generateSoldierName, generateCityNameSeeded, resetCityNames } from '../utils/random';
 import { SOLDIER_TYPES } from '../data/soldiers';
 import { TERRAIN_FEATURES, getFeaturesForTerrain } from '../data/terrainFeatures';
+import { createGarrison } from './Game';
 
 const TERRAIN_WEIGHTS: Record<TerrainType, number> = {
-  grass: 50,
-  forest: 25,
-  hills: 15,
+  grass: 45,
+  forest: 23,
+  hills: 14,
   mountain: 7,
   water: 3,
+  swamp: 8,
 };
 
 function pickTerrain(rng: () => number): TerrainType {
@@ -71,16 +73,17 @@ function placeTerrainFeatures(map: Tile[][], rng: () => number): void {
   const height = map.length;
 
   // Feature density settings
-  const COMMON_CHANCE = 0.03;    // 3% chance per tile
-  const UNCOMMON_CHANCE = 0.015; // 1.5% chance per tile
-  const RARE_CHANCE = 0.005;     // 0.5% chance per tile
+  const COMMON_CHANCE = 0.03;      // 3% chance per tile
+  const UNCOMMON_CHANCE = 0.015;   // 1.5% chance per tile
+  const RARE_CHANCE = 0.005;       // 0.5% chance per tile
+  const LEGENDARY_CHANCE = 0.001;  // 0.1% chance per tile (very rare)
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const tile = map[y][x];
 
-      // Skip impassable terrain
-      if (tile.terrain === 'water' || tile.terrain === 'mountain') continue;
+      // Skip impassable terrain (but allow mountains for some features)
+      if (tile.terrain === 'water') continue;
 
       // Get valid features for this terrain
       const validFeatures = getFeaturesForTerrain(tile.terrain);
@@ -88,9 +91,11 @@ function placeTerrainFeatures(map: Tile[][], rng: () => number): void {
 
       // Roll for feature placement by rarity
       const roll = rng();
-      let targetRarity: 'common' | 'uncommon' | 'rare' | null = null;
+      let targetRarity: 'common' | 'uncommon' | 'rare' | 'legendary' | null = null;
 
-      if (roll < RARE_CHANCE) {
+      if (roll < LEGENDARY_CHANCE) {
+        targetRarity = 'legendary';
+      } else if (roll < RARE_CHANCE) {
         targetRarity = 'rare';
       } else if (roll < UNCOMMON_CHANCE) {
         targetRarity = 'uncommon';
@@ -215,10 +220,27 @@ function findStartPositions(
       map[zone.y][zone.x].terrain = 'grass'; // Force valid terrain
     }
 
-    // Legion starts at city
+    // Legion starts adjacent to city (cities and legions are mutually exclusive on tiles)
+    // Find a valid adjacent tile for the legion
+    let legionCoord = cityCoord; // Default fallback
+    const adjacentOffsets = [
+      { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+      { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: -1 },
+    ];
+    for (const offset of adjacentOffsets) {
+      const adjX = cityCoord.x + offset.dx;
+      const adjY = cityCoord.y + offset.dy;
+      if (adjX < 0 || adjX >= width || adjY < 0 || adjY >= height) continue;
+      const adjTile = map[adjY][adjX];
+      if (adjTile.terrain !== 'mountain' && adjTile.terrain !== 'water') {
+        legionCoord = { x: adjX, y: adjY };
+        break;
+      }
+    }
+
     positions.push({
       cityCoord,
-      legionCoord: cityCoord,
+      legionCoord,
     });
   }
 
@@ -299,6 +321,7 @@ function createStartingCity(
     occupationTurns: 0,
     isCapital,
     growthProgress: 0,
+    garrison: createGarrison(true), // Full HP garrison
   };
 }
 
@@ -369,6 +392,7 @@ export function placeStartingEntities(
         occupationTurns: 0,
         isCapital: false,
         growthProgress: 0,
+        garrison: createGarrison(true), // Full HP garrison
       };
       // Actually mark as unclaimed by not setting owner
       // For now, leave as neutral (could add a 'neutral' faction)

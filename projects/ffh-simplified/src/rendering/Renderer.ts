@@ -11,6 +11,7 @@ const TERRAIN_COLORS: Record<string, string> = {
   hills: '#8b7355',
   mountain: '#6b6b6b',
   water: '#2266aa',
+  swamp: '#4a6030',
 };
 
 const FACTION_COLORS: Record<string, string> = {
@@ -23,16 +24,25 @@ const FACTION_COLORS: Record<string, string> = {
 
 // Icons for terrain features (simple text symbols for now)
 const FEATURE_ICONS: Record<TerrainFeatureId, { symbol: string; color: string }> = {
+  // Common features
   ancient_ruins: { symbol: '⌂', color: '#a08060' },
   mana_spring: { symbol: '✧', color: '#8080ff' },
   iron_vein: { symbol: '⚒', color: '#708090' },
   gold_mine: { symbol: '◆', color: '#ffd700' },
   sacred_grove: { symbol: '❀', color: '#90ee90' },
   watchtower: { symbol: '▲', color: '#808080' },
+  fertile_plains: { symbol: '✿', color: '#90c020' },
+  // Uncommon features
   haunted_barrow: { symbol: '☠', color: '#9060a0' },
   dragon_bones: { symbol: '☆', color: '#ff8844' },
   crystal_cave: { symbol: '◇', color: '#88ffff' },
-  fertile_plains: { symbol: '✿', color: '#90c020' },
+  mineral_deposit: { symbol: '●', color: '#c0c0c0' },
+  // Rare features
+  adamantine_vein: { symbol: '★', color: '#4080ff' },
+  world_tree: { symbol: '♠', color: '#00ff80' },
+  // Legendary features
+  hellgate: { symbol: '☼', color: '#ff2020' },
+  titans_grave: { symbol: '⚑', color: '#c080ff' },
 };
 
 export class Renderer {
@@ -46,6 +56,7 @@ export class Renderer {
     this.uiState = {
       hoveredTile: null,
       validMoves: [],
+      movementPath: [],
       showingCityPanel: false,
       showingLegionPanel: false,
       camera: { x: 0, y: 0, zoom: 1 },
@@ -69,6 +80,10 @@ export class Renderer {
 
   setValidMoves(moves: Coord[]): void {
     this.uiState.validMoves = moves;
+  }
+
+  setMovementPath(path: Coord[]): void {
+    this.uiState.movementPath = path;
   }
 
   setCamera(x: number, y: number): void {
@@ -109,6 +124,9 @@ export class Renderer {
 
     // Render valid moves
     this.renderValidMoves(state);
+
+    // Render movement path preview
+    this.renderMovementPath(state);
 
     // Render cities
     this.renderCities(state);
@@ -241,6 +259,52 @@ export class Renderer {
 
       ctx.fillStyle = 'rgba(100, 200, 100, 0.4)';
       ctx.fillRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+    }
+  }
+
+  private renderMovementPath(_state: GameState): void {
+    const { ctx } = this;
+    const path = this.uiState.movementPath;
+
+    if (path.length < 2) return;
+
+    // Draw path line connecting tiles
+    ctx.strokeStyle = 'rgba(255, 255, 100, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    const startX = path[0].x * TILE_SIZE + TILE_SIZE / 2;
+    const startY = path[0].y * TILE_SIZE + TILE_SIZE / 2;
+    ctx.moveTo(startX, startY);
+
+    for (let i = 1; i < path.length; i++) {
+      const x = path[i].x * TILE_SIZE + TILE_SIZE / 2;
+      const y = path[i].y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Draw dots at each waypoint
+    ctx.fillStyle = 'rgba(255, 255, 100, 0.9)';
+    for (let i = 1; i < path.length - 1; i++) {
+      const x = path[i].x * TILE_SIZE + TILE_SIZE / 2;
+      const y = path[i].y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw larger dot at destination
+    if (path.length > 1) {
+      const dest = path[path.length - 1];
+      const x = dest.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = dest.y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.fillStyle = 'rgba(255, 200, 50, 1)';
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 

@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FFH Simplified</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: #1a1a2e;
+        color: #eee;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        overflow: hidden;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      #game-container {
+        flex: 1;
+        position: relative;
+      }
+      #game-canvas {
+        display: block;
+      }
+      #ui-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+      }
+      #ui-overlay > * {
+        pointer-events: auto;
+      }
+      #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 24px;
+      }
+      .resource {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .resource-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+      }
+      .gold-icon { background: #ffd700; }
+      .mana-icon { background: #7b68ee; }
+      .research-icon { background: linear-gradient(135deg, #8b4513, #d2691e); }
+      .knowledge-icon { background: linear-gradient(135deg, #2e5a1c, #4a8a2e); }
+      #research-indicator, #knowledge-indicator {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      #research-indicator:hover, #knowledge-indicator:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      #research-indicator.needs-selection {
+        background: rgba(255, 200, 100, 0.3);
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      #knowledge-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 550px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(15, 25, 15, 0.95);
+        border: 2px solid #4a8a2e;
+        border-radius: 12px;
+        padding: 16px;
+        display: none;
+        z-index: 100;
+      }
+      #knowledge-panel h3 {
+        margin: 0 0 12px 0;
+        color: #6c6;
+        font-size: 18px;
+        text-align: center;
+        border-bottom: 1px solid #4a8a2e;
+        padding-bottom: 8px;
+      }
+      .knowledge-empty {
+        text-align: center;
+        color: #666;
+        padding: 40px;
+        font-style: italic;
+      }
+      .knowledge-categories {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .knowledge-category {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .knowledge-category-header {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #333;
+      }
+      .knowledge-category-header.martial { color: #c66; }
+      .knowledge-category-header.industrial { color: #cc6; }
+      .knowledge-category-header.arcane { color: #c6c; }
+      .knowledge-category-header.social { color: #6cc; }
+      .knowledge-tech-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .knowledge-tech {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 10px 12px;
+      }
+      .knowledge-tech-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .knowledge-tech-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .knowledge-tech-tier {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .knowledge-tech-tier.common { color: #888; }
+      .knowledge-tech-tier.guild_secret { color: #4a4; background: rgba(74, 170, 74, 0.15); }
+      .knowledge-tech-tier.masters_teaching { color: #44c; background: rgba(68, 68, 204, 0.15); }
+      .knowledge-tech-tier.lost_art { color: #c4c; background: rgba(204, 68, 204, 0.15); }
+      .knowledge-tech-description {
+        font-size: 10px;
+        color: #999;
+        margin-bottom: 6px;
+      }
+      .knowledge-tech-effects {
+        font-size: 10px;
+        color: #8cf;
+        background: rgba(100, 150, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+      .knowledge-close {
+        display: block;
+        margin: 16px auto 0;
+        padding: 8px 24px;
+        background: #444;
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .knowledge-close:hover {
+        background: #555;
+      }
+      .income-indicator {
+        font-size: 11px;
+        color: #8f8;
+        margin-left: 2px;
+      }
+      .income-indicator.zero {
+        color: #888;
+      }
+      #armageddon-counter {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #armageddon-bar {
+        width: 150px;
+        height: 12px;
+        background: #333;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      #armageddon-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #8b0000, #ff4500);
+        width: 0%;
+        transition: width 0.3s;
+      }
+      #end-turn-btn {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        font-size: 16px;
+        background: #4a5568;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      #end-turn-btn:hover {
+        background: #2d3748;
+      }
+      #selection-panel {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 16px;
+        border-radius: 8px;
+        min-width: 250px;
+        display: none;
+      }
+      #city-panel {
+        position: absolute;
+        top: 50px;
+        left: 10px;
+        width: 280px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 12px;
+        display: none;
+      }
+      #city-panel h3 {
+        margin: 0 0 8px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #444;
+        font-size: 14px;
+        color: #fc0;
+      }
+      #city-panel .city-stats {
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 12px;
+      }
+      #city-panel .city-stats span {
+        display: block;
+        margin: 2px 0;
+      }
+      .city-section {
+        margin-bottom: 12px;
+      }
+      .city-section-title {
+        font-size: 11px;
+        color: #888;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #333;
+      }
+      .build-queue {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .queue-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .queue-item-info {
+        flex: 1;
+      }
+      .queue-item-name {
+        color: #fff;
+      }
+      .queue-item-turns {
+        color: #8cf;
+        font-size: 10px;
+      }
+      .queue-item-cancel {
+        background: #5a3a3a;
+        border: none;
+        color: #fff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .queue-item-cancel:hover {
+        background: #7a4a4a;
+      }
+      .queue-progress {
+        height: 3px;
+        background: #333;
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+      }
+      .queue-progress-fill {
+        height: 100%;
+        background: #4c8;
+        transition: width 0.3s;
+      }
+      .available-items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .build-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.03);
+        padding: 6px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+      }
+      .build-option-info {
+        flex: 1;
+      }
+      .build-option-name {
+        color: #ddd;
+      }
+      .build-option-cost {
+        color: #fc0;
+        font-size: 10px;
+      }
+      .build-option-turns {
+        color: #888;
+        font-size: 10px;
+      }
+      .build-option-btn {
+        background: #2a6a4a;
+        border: none;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .build-option-btn:hover {
+        background: #3a8a5a;
+      }
+      .build-option-btn:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      .existing-buildings {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .existing-building-item {
+        display: flex;
+        flex-direction: column;
+        background: rgba(100, 200, 100, 0.1);
+        padding: 4px 6px;
+        border-radius: 3px;
+      }
+      .existing-building {
+        font-size: 11px;
+        color: #8c8;
+        font-weight: 500;
+      }
+      .building-effects {
+        font-size: 9px;
+        color: #6a6;
+        margin-top: 2px;
+      }
+      .build-option-effects {
+        font-size: 9px;
+        color: #8cf;
+        margin-top: 2px;
+      }
+      .growth-display {
+        background: rgba(100, 200, 100, 0.1);
+        padding: 6px 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 11px;
+      }
+      .growth-display span {
+        color: #8c8;
+      }
+      .growth-bonus {
+        color: #4c8 !important;
+        margin-left: 4px;
+      }
+      .growth-bar {
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+      }
+      .growth-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4c8, #8f8);
+        transition: width 0.3s;
+      }
+      .defense-indicator {
+        color: #8cf !important;
+        background: rgba(100, 150, 255, 0.15);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      #collegia-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(20, 15, 10, 0.95);
+        border: 2px solid #8b4513;
+        border-radius: 12px;
+        padding: 16px;
+        display: none;
+        z-index: 100;
+      }
+      #collegia-panel h3 {
+        margin: 0 0 12px 0;
+        color: #d2691e;
+        font-size: 18px;
+        text-align: center;
+        border-bottom: 1px solid #8b4513;
+        padding-bottom: 8px;
+      }
+      .collegia-current-research {
+        background: rgba(139, 69, 19, 0.3);
+        border: 1px solid #8b4513;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+      .collegia-current-research h4 {
+        margin: 0 0 8px 0;
+        color: #ffa500;
+      }
+      .research-progress-bar {
+        height: 8px;
+        background: #333;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+      .research-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #8b4513, #d2691e);
+        transition: width 0.3s;
+      }
+      .collegia-offerings {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .collegia-offering {
+        display: flex;
+        align-items: stretch;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #555;
+        border-radius: 6px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+      .collegia-offering:hover {
+        border-color: #d2691e;
+      }
+      .offering-info {
+        flex: 1;
+        padding: 10px 12px;
+      }
+      .offering-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+      .offering-description {
+        font-size: 10px;
+        color: #aaa;
+        margin-bottom: 6px;
+      }
+      .offering-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 10px;
+      }
+      .offering-category {
+        color: #888;
+        text-transform: uppercase;
+      }
+      .offering-category.martial { color: #c66; }
+      .offering-category.industrial { color: #cc6; }
+      .offering-category.arcane { color: #c6c; }
+      .offering-category.social { color: #6cc; }
+      .offering-tier {
+        color: #666;
+      }
+      .offering-tier.common { color: #888; }
+      .offering-tier.guild_secret { color: #4a4; }
+      .offering-tier.masters_teaching { color: #44c; }
+      .offering-tier.lost_art { color: #c4c; }
+      .offering-effects {
+        font-size: 9px;
+        color: #8cf;
+        margin-top: 4px;
+      }
+      .offering-select {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        background: rgba(139, 69, 19, 0.4);
+        border-left: 1px solid #555;
+        min-width: 70px;
+      }
+      .offering-turns {
+        font-size: 18px;
+        font-weight: bold;
+        color: #ffa500;
+      }
+      .offering-turns-label {
+        font-size: 9px;
+        color: #888;
+      }
+      .offering-select-btn {
+        margin-top: 6px;
+        padding: 4px 12px;
+        background: #8b4513;
+        border: none;
+        border-radius: 3px;
+        color: white;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .offering-select-btn:hover {
+        background: #a0522d;
+      }
+      .collegia-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid #444;
+      }
+      .collegia-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .collegia-btn.reroll {
+        background: #5a4a2a;
+        color: #fc0;
+      }
+      .collegia-btn.reroll:hover:not(:disabled) {
+        background: #6a5a3a;
+      }
+      .collegia-btn.reroll:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      .collegia-btn.close {
+        background: #444;
+        color: #fff;
+      }
+      .collegia-btn.close:hover {
+        background: #555;
+      }
+      .collegia-owned {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #333;
+      }
+      .collegia-owned-title {
+        font-size: 11px;
+        color: #888;
+        margin-bottom: 6px;
+      }
+      .owned-tech-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .owned-tech {
+        font-size: 9px;
+        background: rgba(139, 69, 19, 0.3);
+        color: #d2691e;
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      #legion-panel {
+        position: absolute;
+        top: 50px;
+        right: 10px;
+        width: 220px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid #444;
+        border-radius: 8px;
+        padding: 12px;
+        display: none;
+      }
+      #legion-panel h3 {
+        margin: 0 0 8px 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #444;
+        font-size: 14px;
+      }
+      #legion-panel .legion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      #legion-panel .legion-stats {
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 12px;
+      }
+      .formation-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .formation-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .formation-row-label {
+        width: 36px;
+        font-size: 9px;
+        color: #666;
+        text-transform: uppercase;
+        text-align: right;
+        padding-right: 4px;
+      }
+      .formation-row-label.front { color: #c84; }
+      .formation-row-label.mid { color: #4c8; }
+      .formation-row-label.back { color: #88c; }
+      .formation-cells {
+        display: flex;
+        gap: 4px;
+        flex: 1;
+      }
+      .formation-cell {
+        width: 54px;
+        height: 54px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed #333;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .formation-cell.occupied {
+        border: 1px solid #555;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .soldier-card {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+        border-radius: 3px;
+      }
+      .soldier-card.dead {
+        opacity: 0.4;
+      }
+      .soldier-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        font-weight: bold;
+        color: #000;
+      }
+      .soldier-icon.fighter { background: #c84; }
+      .soldier-icon.knight { background: #88c; }
+      .soldier-icon.archer { background: #4c8; }
+      .soldier-icon.mage { background: #c4c; }
+      .soldier-icon.cleric { background: #fff; }
+      .soldier-icon.demon { background: #c44; }
+      .soldier-hp-bar {
+        width: 100%;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 2px;
+      }
+      .soldier-hp-fill {
+        height: 100%;
+        transition: width 0.3s;
+      }
+      .soldier-hp-fill.high { background: #4f4; }
+      .soldier-hp-fill.medium { background: #ff4; }
+      .soldier-hp-fill.low { background: #f44; }
+      .soldier-hp-text {
+        font-size: 8px;
+        color: #aaa;
+        margin-top: 1px;
+      }
+      .soldier-name-label {
+        font-size: 7px;
+        color: #ccc;
+        max-width: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+      }
+      .leader-crown {
+        position: absolute;
+        top: -2px;
+        right: 2px;
+        font-size: 10px;
+        color: #fc0;
+        text-shadow: 0 0 3px #000;
+      }
+      .soldier-card {
+        position: relative;
+      }
+      .legion-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 6px;
+      }
+      .legion-btn {
+        flex: 1;
+        padding: 6px 10px;
+        font-size: 11px;
+        background: #3a4a5a;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .legion-btn:hover {
+        background: #4a5a6a;
+      }
+      .legion-btn.primary {
+        background: #2a6a4a;
+        border-color: #3a8a5a;
+      }
+      .legion-btn.primary:hover {
+        background: #3a7a5a;
+      }
+      .legion-btn.cancel {
+        background: #5a3a3a;
+        border-color: #7a4a4a;
+      }
+      .legion-btn.cancel:hover {
+        background: #6a4a4a;
+      }
+      .formation-cell.edit-mode {
+        cursor: pointer;
+        border-style: solid;
+      }
+      .formation-cell.edit-mode:hover {
+        background: rgba(100, 150, 255, 0.2);
+        border-color: #68f;
+      }
+      .formation-cell.selected {
+        border-color: #4f4 !important;
+        background: rgba(100, 255, 100, 0.15) !important;
+        box-shadow: 0 0 8px rgba(100, 255, 100, 0.4);
+      }
+      .edit-instructions {
+        font-size: 10px;
+        color: #888;
+        text-align: center;
+        margin-top: 8px;
+        padding: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+      }
+      #unit-tooltip {
+        position: fixed;
+        background: rgba(20, 20, 35, 0.95);
+        border: 1px solid #555;
+        padding: 10px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 200;
+        max-width: 220px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+      #unit-tooltip h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 6px;
+      }
+      #unit-tooltip .stat-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+      }
+      #unit-tooltip .stat-label {
+        color: #888;
+      }
+      #unit-tooltip .stat-value {
+        color: #fff;
+        font-weight: bold;
+      }
+      #unit-tooltip .stat-value.hp-high { color: #4f4; }
+      #unit-tooltip .stat-value.hp-medium { color: #ff4; }
+      #unit-tooltip .stat-value.hp-low { color: #f44; }
+      #unit-tooltip .section-label {
+        color: #666;
+        font-size: 10px;
+        text-transform: uppercase;
+        margin-top: 8px;
+        margin-bottom: 4px;
+      }
+      #unit-tooltip .attack-info {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 4px 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+      }
+      #turn-indicator {
+        font-weight: bold;
+      }
+      #tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.9);
+        border: 1px solid #555;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+        pointer-events: none;
+        z-index: 100;
+        max-width: 280px;
+        display: none;
+        line-height: 1.4;
+      }
+      #tooltip h4 {
+        margin: 0 0 4px 0;
+        color: #fff;
+        font-size: 14px;
+      }
+      #tooltip p {
+        margin: 2px 0;
+        color: #ccc;
+      }
+      #tooltip .terrain {
+        color: #8f8;
+      }
+      #tooltip .city {
+        color: #fc0;
+      }
+      #tooltip .legion {
+        color: #f88;
+      }
+      #tooltip .friendly {
+        color: #8cf;
+      }
+      /* Roster styles */
+      .roster-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .roster-empty {
+        font-size: 11px;
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        padding: 8px;
+      }
+      .roster-soldier {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 8px;
+        border-radius: 4px;
+      }
+      .roster-soldier-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+      }
+      .roster-soldier-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        font-weight: bold;
+        color: #000;
+      }
+      .roster-soldier-icon.fighter { background: #c84; }
+      .roster-soldier-icon.knight { background: #88c; }
+      .roster-soldier-icon.archer { background: #4c8; }
+      .roster-soldier-icon.mage { background: #c4c; }
+      .roster-soldier-icon.cleric { background: #fff; }
+      .roster-soldier-icon.demon { background: #c44; }
+      .roster-soldier-details {
+        flex: 1;
+      }
+      .roster-soldier-name {
+        font-size: 11px;
+        color: #ddd;
+      }
+      .roster-soldier-hp {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        color: #888;
+      }
+      .roster-hp-bar {
+        width: 40px;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .roster-hp-fill {
+        height: 100%;
+      }
+      .roster-hp-fill.high { background: #4f4; }
+      .roster-hp-fill.medium { background: #ff4; }
+      .roster-hp-fill.low { background: #f44; }
+      .roster-assign-btn {
+        background: #2a5a7a;
+        border: none;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .roster-assign-btn:hover {
+        background: #3a6a8a;
+      }
+      .roster-assign-btn:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      /* Multiple train buttons */
+      .build-option-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        justify-content: flex-end;
+      }
+      .build-option-btns .build-option-btn {
+        padding: 3px 5px;
+        font-size: 9px;
+      }
+      .legion-target-btn {
+        background: #2a5a6a;
+      }
+      .legion-target-btn:hover:not(:disabled) {
+        background: #3a6a7a;
+      }
+      /* Roster assign buttons */
+      .roster-assign-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+      }
+      .no-legions {
+        font-size: 10px;
+        color: #666;
+        font-style: italic;
+      }
+      .new-legion-btn {
+        background: #4a6a2a !important;
+        border: 1px dashed #6a8a4a !important;
+      }
+      .new-legion-btn:hover {
+        background: #5a7a3a !important;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-CwTMKgfb.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="ui-overlay">
+          <div id="top-bar">
+            <div id="turn-indicator">Turn 1</div>
+            <div class="resource" id="gold-resource" title="Gold">
+              <div class="resource-icon gold-icon"></div>
+              <span id="gold-amount">200</span>
+              <span id="gold-income" class="income-indicator"></span>
+            </div>
+            <div class="resource" id="mana-resource" title="Mana">
+              <div class="resource-icon mana-icon"></div>
+              <span id="mana-amount">0</span>
+              <span id="mana-income" class="income-indicator"></span>
+            </div>
+            <div id="research-indicator" class="resource" title="Click to open Collegia">
+              <div class="resource-icon research-icon"></div>
+              <span id="research-status">No Research</span>
+            </div>
+            <div id="knowledge-indicator" class="resource" title="Click to view learned technologies">
+              <div class="resource-icon knowledge-icon"></div>
+              <span id="knowledge-count">0 Learned</span>
+            </div>
+            <div id="armageddon-counter">
+              <span>Armageddon</span>
+              <div id="armageddon-bar">
+                <div id="armageddon-fill"></div>
+              </div>
+              <span id="armageddon-value">0/100</span>
+            </div>
+          </div>
+          <div id="selection-panel"></div>
+          <div id="city-panel"></div>
+          <div id="legion-panel"></div>
+          <div id="collegia-panel"></div>
+          <div id="knowledge-panel"></div>
+          <button id="end-turn-btn">End Turn</button>
+          <div id="tooltip"></div>
+          <div id="unit-tooltip"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -128,6 +128,19 @@ See Master Design Section C7 for complete terrain improvement details.
 - **Position**: Front row
 - **Notes**: Not recruitable by player. Boss-exclusive terror unit.
 
+### City Garrison
+- **Role**: Defensive city guard
+- **Unlock**: Automatic (spawns with cities)
+- **Stats**: 100 HP, 20 ATK, 18 DEF, Speed 45
+- **Cost**: N/A (non-recruitable)
+- **Position**: Front/Mid row
+- **Notes**: Cities automatically have a garrison of 5 City Garrison soldiers. Garrison soldiers:
+  - Cannot be recruited, moved, transferred, or reassigned
+  - Have no names (unlike regular soldiers)
+  - Defend the city when enemies attack
+  - Regenerate at 50% HP when the city is captured
+  - Cities and legions are mutually exclusive on tiles - attacking a city means fighting its garrison
+
 ---
 
 ## Proposed New Units

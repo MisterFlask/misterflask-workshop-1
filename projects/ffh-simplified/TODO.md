@@ -3,7 +3,7 @@
 ## Priority 1: Critical Bug Fixes
 These must be fixed for the game to function correctly.
 
-- [ ] **Fix terrain defense bonus bug** - Combat.ts:172 applies terrain bonus to attacker instead of defender
+- [x] **Fix terrain defense bonus bug** - Combat.ts:208 correctly applies terrain bonus only when defender is being attacked
 - [x] **Fix combat HP persistence** - Combat result HP changes now propagated back to original soldiers via two-phase combat system
 - [x] **Implement retreat logic** - Defeated legions with survivors retreat to adjacent tile away from attacker; destroyed only if cornered
 
@@ -24,36 +24,35 @@ These are required for a minimally playable game.
   - [x] Show legion stats summary
   - [x] Unit tooltip with full stats on hover
 
-- [ ] **Movement validation improvements**
-  - [ ] Prevent moving through enemy legions
-  - [ ] Show movement path preview
-  - [ ] Validate movement points remaining
+- [x] **Movement validation improvements**
+  - [x] Prevent moving through enemy legions
+  - [x] Show movement path preview
+  - [x] Validate movement points remaining (shows cost in tooltip)
 
 ## Priority 3: AI System (Single Faction First)
 Implement one AI faction to make the game playable.
 
-- [ ] **AI Turn Execution Framework** - Game.ts processAITurn()
-  - [ ] Loop through AI factions
-  - [ ] Execute behavior based on faction state
-  - [ ] Transition states based on conditions
+- [x] **AI Turn Execution Framework** - Game.ts processAITurn()
+  - [x] Loop through AI factions
+  - [x] Execute behavior based on faction state
+  - [x] Transition states based on conditions
 
-- [ ] **Hippus AI (Raider)** - Simplest behavior pattern
-  - [ ] Idle → Raiding when gold > threshold
-  - [ ] Target selection: nearest weak player city
-  - [ ] Pathfinding to target
-  - [ ] Combat initiation
-  - [ ] Retreat when legion HP < 30%
-  - [ ] Return to home city to heal
+- [x] **Hippus AI (Raider)** - Simplest behavior pattern
+  - [x] Idle → Raiding when troops >= 3
+  - [x] Target selection: nearest player legion/city
+  - [x] Pathfinding to target
+  - [x] Combat initiation
+  - [x] Retreat when legion HP < 30%
+  - [x] Return to home city to heal
 
-- [ ] **AI Legion Movement** - Pathfinding implementation
-  - [ ] A* or simple BFS pathfinding
-  - [ ] Avoid impassable terrain (mountains, water)
-  - [ ] Move toward target tile
+- [x] **AI Legion Movement** - Pathfinding implementation
+  - [x] A* pathfinding (using existing findPath)
+  - [x] Avoid impassable terrain (mountains, water)
+  - [x] Move toward target tile
 
-- [ ] **AI Recruitment** - Basic army building
-  - [ ] Build barracks if none exists
-  - [ ] Recruit soldiers when gold available
-  - [ ] Assign to existing or new legions
+- [x] **AI Recruitment** - Basic army building
+  - [x] Recruit soldiers when gold available (50+ gold threshold)
+  - [x] Assign to legion at home city
 
 ## Priority 4: Endgame System
 Required for win/loss conditions to be meaningful.
@@ -160,10 +159,10 @@ Nice-to-have features for deeper gameplay.
 | Core Infrastructure | ✅ Complete |
 | Map System | ✅ Complete |
 | Soldier/Building Data | ✅ Complete |
-| Combat System | 🟡 90% (has bugs) |
-| Player Turn System | 🟡 70% (missing UI) |
-| AI System | ❌ 0% |
+| Combat System | ✅ Complete |
+| Player Turn System | ✅ Complete |
+| AI System | ✅ Complete (basic) |
 | Endgame/Boss | ❌ 0% |
 | Visual Polish | 🟡 50% (no sprites) |
 
-**Estimated effort to playable MVP**: Priorities 1-4 (bug fixes + city UI + one AI + boss)
+**Estimated effort to playable MVP**: Priority 4 (boss/endgame)

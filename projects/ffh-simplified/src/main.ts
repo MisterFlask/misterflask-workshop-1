@@ -1,9 +1,10 @@
-import { createInitialGameState, processAction, getValidMoves, getTile, getLegionAt, getCityAt, getLegionsInRangeOfCity, getCitiesInRangeOfLegion, getLegionsInRangeOfLegion, getLegionName, getFactionIncome, getCityIncome, getCityGrowthInfo, getCityDefenseBonus } from './game/Game';
+import { createInitialGameState, processAction, getValidMoves, getMovementPath, getMovementCost, getTile, getLegionAt, getCityAt, getLegionsInRangeOfCity, getCitiesInRangeOfLegion, getLegionsInRangeOfLegion, getLegionName, getFactionIncome, getCityIncome, getCityGrowthInfo, getCityDefenseBonus } from './game/Game';
 import { Renderer } from './rendering/Renderer';
 import { CombatScene } from './rendering/CombatScene';
 import { SOLDIER_TYPES } from './data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots } from './data/buildings';
 import { TECHNOLOGIES } from './data/technologies';
+import { TERRAIN_FEATURES } from './data/terrainFeatures';
 import type { GameState, Coord, BuildingId, SoldierTypeId } from './types';
 
 class GameApp {
@@ -90,11 +91,40 @@ class GameApp {
       );
       this.lastMousePos = { x: e.clientX, y: e.clientY };
       this.hideTooltip();
+      this.renderer.setMovementPath([]);
     } else {
       const worldPos = this.renderer.screenToWorld(x, y);
       this.renderer.setHoveredTile(worldPos);
       this.updateTooltip(worldPos, e.clientX, e.clientY);
+      this.updateMovementPathPreview(worldPos);
     }
+  }
+
+  private updateMovementPathPreview(coord: Coord): void {
+    // Only show path if we have a legion selected
+    if (!this.state.selectedLegionId) {
+      this.renderer.setMovementPath([]);
+      return;
+    }
+
+    const legion = this.state.legions.get(this.state.selectedLegionId);
+    if (!legion || legion.movementRemaining <= 0) {
+      this.renderer.setMovementPath([]);
+      return;
+    }
+
+    // Check if this is a valid move destination
+    const validMoves = getValidMoves(this.state, legion);
+    const isValidMove = validMoves.some(m => m.x === coord.x && m.y === coord.y);
+
+    if (!isValidMove) {
+      this.renderer.setMovementPath([]);
+      return;
+    }
+
+    // Get the path to this destination
+    const path = getMovementPath(this.state, legion, coord);
+    this.renderer.setMovementPath(path || []);
   }
 
   private updateTooltip(coord: Coord, mouseX: number, mouseY: number): void {
@@ -120,6 +150,25 @@ class GameApp {
 
     let html = '';
 
+    // Movement cost info (if we have a legion selected and this is a valid move)
+    if (this.state.selectedLegionId) {
+      const selectedLegion = this.state.legions.get(this.state.selectedLegionId);
+      if (selectedLegion && selectedLegion.movementRemaining > 0) {
+        const validMoves = getValidMoves(this.state, selectedLegion);
+        const isValidMove = validMoves.some(m => m.x === coord.x && m.y === coord.y);
+        if (isValidMove) {
+          const path = getMovementPath(this.state, selectedLegion, coord);
+          if (path) {
+            const cost = getMovementCost(this.state, path);
+            const remaining = selectedLegion.movementRemaining;
+            const afterMove = remaining - cost;
+            const costColor = afterMove >= 0 ? '#8f8' : '#f88';
+            html += `<p style="color:${costColor};font-weight:bold">Move Cost: ${cost} (${remaining} → ${afterMove})</p>`;
+          }
+        }
+      }
+    }
+
     // Terrain info
     const terrainNames: Record<string, string> = {
       grass: 'Grassland',
@@ -127,8 +176,57 @@ class GameApp {
       hills: 'Hills (+15% defense)',
       mountain: 'Mountains (impassable)',
       water: 'Water (impassable)',
+      swamp: 'Swamp (2x movement cost)',
     };
     html += `<p class="terrain">${terrainNames[tile.terrain] || tile.terrain}</p>`;
+
+    // Terrain feature info
+    if (tile.feature) {
+      const feature = TERRAIN_FEATURES[tile.feature];
+      if (feature) {
+        const rarityColors: Record<string, string> = {
+          common: '#aaa',
+          uncommon: '#4a4',
+          rare: '#44f',
+          legendary: '#f80',
+        };
+        const rarityColor = rarityColors[feature.rarity] || '#fff';
+        const rarityLabel = feature.rarity.charAt(0).toUpperCase() + feature.rarity.slice(1);
+        html += `<h4 style="color:${rarityColor};margin-top:8px">${feature.name} <span style="font-size:0.8em;opacity:0.7">(${rarityLabel})</span></h4>`;
+        html += `<p style="font-style:italic;color:#999;font-size:0.9em">${feature.description}</p>`;
+
+        // Show effects
+        const effectDescriptions: string[] = [];
+        for (const effect of feature.effects) {
+          switch (effect.type) {
+            case 'gold_bonus':
+              effectDescriptions.push(`+${effect.amount} Gold/turn`);
+              break;
+            case 'mana_bonus':
+              effectDescriptions.push(`+${effect.amount} Mana/turn`);
+              break;
+            case 'growth_bonus':
+              effectDescriptions.push(`+${effect.amount} Growth`);
+              break;
+            case 'defense_bonus':
+              effectDescriptions.push(`+${effect.amount}% Defense`);
+              break;
+            case 'research_bonus':
+              effectDescriptions.push(`+${effect.amount} Research`);
+              break;
+          }
+        }
+        if (effectDescriptions.length > 0) {
+          html += `<p style="color:#8f8">${effectDescriptions.join(', ')}</p>`;
+          // Clarify when bonuses apply
+          if (city) {
+            html += `<p style="color:#ff8;font-size:0.85em">✓ City benefits from this feature</p>`;
+          } else {
+            html += `<p style="color:#888;font-size:0.85em">Build a city here to gain these bonuses</p>`;
+          }
+        }
+      }
+    }
 
     // City info
     if (city) {
@@ -148,6 +246,27 @@ class GameApp {
       const hasWalls = city.buildings.includes('walls');
       if (hasWalls) {
         html += `<p style="color:#8f8">Walls (+40% defense)</p>`;
+      }
+
+      // Income breakdown
+      const income = getCityIncome(city, this.state);
+      html += `<p style="color:#fc0">Income: +${income.totalGold} gold`;
+      if (income.totalMana > 0) {
+        html += `, +${income.totalMana} mana`;
+      }
+      html += `</p>`;
+
+      // Detailed breakdown
+      if (income.goldSources.length > 0 || income.totalGold > 0) {
+        html += `<p style="color:#aaa;font-size:0.9em">  Base: +${income.baseGold}</p>`;
+        for (const source of income.goldSources) {
+          html += `<p style="color:#aaa;font-size:0.9em">  ${source.name}: +${source.amount}</p>`;
+        }
+      }
+      if (income.manaSources.length > 0) {
+        for (const source of income.manaSources) {
+          html += `<p style="color:#88f;font-size:0.9em">  ${source.name}: +${source.amount} mana</p>`;
+        }
       }
     }
 
@@ -306,8 +425,8 @@ class GameApp {
     }
 
     if (turnEl) turnEl.textContent = `Turn ${this.state.turn}`;
-    if (armageddonEl) armageddonEl.textContent = `${this.state.armageddonCounter}/100`;
-    if (armageddonFill) armageddonFill.style.width = `${this.state.armageddonCounter}%`;
+    if (armageddonEl) armageddonEl.textContent = `${this.state.armageddonCounter}/80`;
+    if (armageddonFill) armageddonFill.style.width = `${(this.state.armageddonCounter / 80) * 100}%`;
 
     // Update research indicator
     this.updateResearchIndicator();
