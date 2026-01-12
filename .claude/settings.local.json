@@ -34,7 +34,16 @@
       "Bash(python:*)",
       "Skill(narrative-poetry)",
       "Bash(powershell -c:*)",
-      "Bash(powershell -ExecutionPolicy Bypass -File:*)"
+      "Bash(powershell -ExecutionPolicy Bypass -File:*)",
+      "Bash(npx vite:*)",
+      "Bash(./node_modules/.bin/vite build:*)",
+      "Bash(./node_modules/.bin/vite:*)",
+      "Bash(cat:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(conda list:*)",
+      "Bash(conda uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)"
     ]
   },
   "hooks": {

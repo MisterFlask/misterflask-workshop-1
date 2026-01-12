@@ -10,28 +10,63 @@ Generate high-quality narrative poetry with verified rhyme and meter. Output mus
 
 ## Workflow Overview
 
-### Phase 1: Planning (User Checkpoint Required)
+### Phase 1: Planning (User Checkpoints Required)
 
-1. Gather from user:
-   - Subject/story
-   - Optional: form preference (ballad, blank verse, sonnet sequence, etc.)
-   - Optional: exemplar hint (tone, era, poet style)
+#### Step 1a: Gather Input
+Gather from user:
+- Subject/story
+- Optional: form preference (ballad, blank verse, sonnet sequence, etc.)
+- Optional: exemplar hint (tone, era, poet style)
 
-2. Generate and present to user:
-   - **Narrative arc summary** (2-3 sentences)
-   - **Stanza breakdown**: What each stanza accomplishes narratively
-   - **Form/meter choice**: Explain the prosodic structure
-   - **Rough character estimate**: Warn early if plan exceeds ~4500 chars
+#### Step 1b: Concept Generation
+Generate **10 narrative concepts** for the subject matter. Each concept is 2-3 sentences describing:
+- The narrative angle/approach
+- The central tension or movement
+- The emotional trajectory
 
-3. **STOP and wait for user approval** before proceeding. User may:
-   - Approve
-   - Modify (add/cut stanzas, change emphasis, redirect narrative)
-   - Change form
-   - Abort
+No stanza structure at this stage—just the storytelling idea.
 
-### Phase 2: Per-Stanza Generation
+When generating concepts, explicitly explore different:
+- Narrative structures (linear, in medias res, frame story, revelation)
+- Emotional tones (comic, tragic, wistful, triumphant)
+- Points of view (protagonist, observer, omniscient)
+- Temporal approaches (single moment, journey, before/after)
 
-For each stanza:
+#### Step 1c: Concept Evaluation
+Evaluate each concept 1-10 against these criteria:
+
+| Criterion | Weight | Description |
+|-----------|--------|-------------|
+| Narrative tension | High | Conflict, stakes, movement |
+| Verse suitability | High | Natural stanza segmentation, key moments landing on strong beats |
+| Emotional arc | Medium | Clear shift (hope→despair, mystery→revelation, etc.) |
+| Originality | Medium | Avoids well-trodden paths for this subject |
+| Imagery potential | Medium | Suggests concrete, evocative scenes |
+
+Present ranked concepts with scores and brief rationale for top 3.
+
+#### Step 1d: User Selection
+**STOP and wait for user to select concept** (or request modifications/new concepts).
+
+#### Step 1e: Full Outline Development
+Develop selected concept into full outline:
+- **Narrative arc summary** (2-3 sentences)
+- **Form/meter choice**: Select using the Form Selection Guide in [reference.md](reference.md). Verify against the Form Selection Checklist before proceeding. Explain why this form suits the content, speaker, and tone.
+- **Stanza breakdown**: What each stanza accomplishes narratively
+- **Rough character estimate**: Warn early if plan exceeds ~4500 chars
+
+#### Step 1f: User Approval
+**STOP and wait for user approval** before proceeding to generation. User may:
+- Approve
+- Modify (add/cut stanzas, change emphasis, redirect narrative)
+- Change form
+- Abort
+
+### Phase 2: Generation (Two-Pass with Critique Loop)
+
+#### Pass 1: Initial Generation (Preserve Momentum)
+
+For each stanza sequentially:
 
 1. **Select exemplar(s)** from `exemplars/` folder matching form/tone, inject into context
 2. **Pull rhyme options** using the rhyme dictionary script with metrical filtering
@@ -39,6 +74,37 @@ For each stanza:
 4. **Verify meter** using the meter checker script
 5. **Revise loop** until meter passes
 6. Proceed to next stanza
+
+Complete all stanzas before moving to Pass 2.
+
+#### Pass 2: Contextual Critique-Rewrite Loop
+
+**Step 2a: Full Poem Read**
+Read the complete poem as a whole to understand flow and context.
+
+**Step 2b: Per-Stanza Critique**
+For each stanza, critique against these criteria:
+
+| Criterion | What to Look For |
+|-----------|------------------|
+| Narrative effectiveness | Does it advance the story? Does it earn its place? Does it connect to what comes before/after? |
+| Emotional impact | Does it land? Is the feeling earned or forced? Is tone consistent with arc position? |
+| Cliche detection | Stock phrases ("heart of gold", "dark as night", "stood tall"), tired imagery, predictable turns |
+| Forced phrasing | Inverted syntax without poetic purpose, padding words ("so", "very", "did"), unnatural word order solely to hit rhyme |
+
+Rate each criterion: **None** / **Minor** / **Substantial**
+
+**Step 2c: Rewrite Based on Critique**
+- If critique finds issues, rewrite the stanza addressing them
+- Re-verify meter after rewrite
+- Show critique reasoning and rewrite rationale visibly (useful for understanding refinement)
+
+**Step 2d: Assess Rewrite Scope**
+- **Minimal** (<25% of words changed, same rhyme endpoints, same core imagery): Done with this stanza
+- **Substantial** (new rhyme words, restructured imagery, >25% rewritten, different emotional beat): Return to Step 2b for another critique pass
+
+**Step 2e: Pass Limit**
+Maximum **5 critique-rewrite passes** per stanza. After 5, accept current version and note any remaining concerns.
 
 ### Phase 3: Assembly
 
@@ -49,7 +115,12 @@ For each stanza:
 
 ## Output Directory
 
-**IMPORTANT**: Save all poem drafts to `drafts/poetry/` in the repository root directory. Do NOT save to `.claude/skills/narrative-poetry/drafts/` as that requires approval for each write.
+**CRITICAL**: Save all poem drafts to `drafts/poetry/` in the **repository root directory**.
+
+- Correct path: `drafts/poetry/poem_name.md`
+- WRONG path: `.claude/skills/narrative-poetry/drafts/` (this is inside the skill folder - DO NOT USE)
+
+The skill folder (`.claude/skills/narrative-poetry/`) is for skill configuration only, not for output. Writing to the skill folder requires approval for each write and clutters the skill directory.
 
 ## Tools
 
@@ -147,14 +218,20 @@ If you find yourself reaching for these, query the rhyme dictionary for alternat
 
 ## Form Quick Reference
 
-| Form | Meter | Rhyme Scheme | Notes |
-|------|-------|--------------|-------|
-| Ballad (common meter) | 8/6/8/6 syllables | ABAB or ABCB | Strong narrative tradition |
-| Ballad (long meter) | 8/8/8/8 | ABAB | More room per stanza |
-| Blank verse | Iambic pentameter | None | Shakespeare, Milton |
-| Heroic couplet | Iambic pentameter | AA BB CC | Pope, Dryden |
-| Ottava rima | Iambic pentameter | ABABABCC | Byron's Don Juan |
-| Rhyme royal | Iambic pentameter | ABABBCC | Chaucer, Wyatt |
-| Spenserian | Iambic pentameter + alexandrine | ABABBCBCC | Spenser, Keats |
+| Form | Meter | Rhyme Scheme | Best For |
+|------|-------|--------------|----------|
+| Ballad (common meter) | 8/6/8/6 iambic | ABAB or ABCB | Folk narrative, dark irony |
+| Ballad (long/fourteeners) | 14+ syllables | AABB | Tall tales, yarn-spinning, comedy |
+| Anapestic tetrameter | da-da-DUM x4 (12 syl) | AABB | Breathless comedy, hucksters, manic energy |
+| Blank verse | Iambic pentameter | None | Serious drama, meditation |
+| Heroic couplet | Iambic pentameter | AA BB CC | Serious satire, authority (NOT light comedy) |
+| Ottava rima | Iambic pentameter | ABABABCC | Comic epic, witty narrative |
+| Trochaic tetrameter | DUM-da x4 | varies | Spells, myths, incantation |
+| Patter | Rapid trochaic/mixed | AABB | Gilbert & Sullivan, absurdist lists |
 
-For detailed reference on forms and prosody, see [reference.md](reference.md).
+**Critical:** Form carries tonal information. A mismatch between form and content creates friction. See [reference.md](reference.md) for the full Form Selection Guide, including:
+- Meter vibes (what each meter *feels like*)
+- Matching form to comedy vs. serious content
+- Character voice and meter
+- Form/content mismatches to avoid
+- Form Selection Checklist

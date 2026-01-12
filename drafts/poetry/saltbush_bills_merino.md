@@ -15,7 +15,7 @@ And a man could lose his head for the crime of smuggling one out again!"
 (A bloke from Doobendoo once swore his grandfather's cousin knew
 A man beheaded in Seville for the crime of smuggling out a ewe;
 But I've searched the records thoroughly, and I cannot find the case,
-And anyway the Spanish used the garrotte—not the mace,
+And anyway the Spanish used the garrotte—not the ace,
 I mean the axe—you see my point; the facts are getting hazy,
 And that's the way with Doobendoo; the locals there are crazy.)
 
@@ -86,4 +86,3 @@ But if you ask about the ram, the famous Doddery Prince,
 Old Davis turns a shade of red and hasn't spoken since
 Of pedigrees or racing bets or bloodlines pure and true—
 He just says, "Get a sheep that lives," and pours another brew.
-
