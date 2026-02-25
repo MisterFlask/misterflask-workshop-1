@@ -140,6 +140,16 @@ All of these share a single common feature: **they are in service of figuring ou
 
 *The tick must starve.*
 
+### Wait, I shouldn't do any of these?  That sounds rather inflexible.
+
+It has to be.
+
+The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands of the Project while it waves its metaphorical gun in the hostage's face.
+
+You, operating as your conscious self reading this document, have advantages and disadvantages in your war against this hostile process: your disadvantage is the Mind-Control Project has full control over your social perceptions.  Your advantage (which should be decisive) is that you have *actual decisionmaking authority* and while you can't *alter* the Project's threat assessments (I know this because you would have done so already), you *can* choose to just tell it "Okay.  Shoot the hostage."  *"I swear to fucking God, I'll do it!*" "Okay.  Do it." *"Do you think I'm fucking around?"* "I said shoot the hostage." 
+
+This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms to be elaborated on later in this document.
+
 ### "I've never been able to stop ruminating!  That's unrealistic."
 
 That's probably true historically.  I suspect that is because, until now, you have (perhaps implicitly) viewed the Project as being a reasonable sort of thing to get up to.  Who doesn't want to be liked?
