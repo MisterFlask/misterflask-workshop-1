@@ -527,17 +527,32 @@ I have no way of predicting how much longer or shorter it will take with any spe
 
 Good luck.  Send bug reports.
 
-# Appendix: Wild Speculation About Therapy Research
+# Appendix: Wild Speculation About Social Anxiety Research
 
-Clark and Wells-- the guys who pioneered gold-standard modern cognitive-behavioral therapy for various disorders, including social anxiety-- have identified the different instruments of the Project as problematic under different names.  "Self-focused attention."  "Post-event rumination." "Construction of self as a social object."  They even define social anxiety in a way that, in the abstract, could have led to basically this document: "Social anxiety is the consequence of high impression management drive plus low perceived efficacy of impression management."  Right there, they name the lever: "high impression management drive."  Yet they exclusively pull the other lever in CBT therapy.
+Clark and Wells-- the guys who pioneered gold-standard modern cognitive-behavioral therapy for various disorders, including social anxiety-- have identified the different instruments of the Project as problematic under different names.  "Self-focused attention."  "Post-event rumination." "Construction of self as a social object." "Safety behaviors", which are just compulsions under another name. They even define social anxiety in a way that, in principle, could have led to basically this document's protocol: "Social anxiety is the consequence of high impression management drive plus low perceived efficacy of impression management."  Right there, they name the lever: "high impression management drive."  Yet they exclusively pull the other lever in CBT therapy, and indeed their book on social anxiety barely acknowledges the first lever at all.
 
-Why have they not pulled this first lever?  Here I'm speculating, but I suspect the answer is because "impression management" actually encompasses a large number of activities only some of which are problematic:
+Why have they not pulled this first lever?  Here I'm speculating, but I suspect it's a few things:
+
+## Impression Management Is Complex To Ban
+"Impression management" actually encompasses a large number of activities only some of which are problematic:
 (1) buying and wearing clothes appropriate to your social groups
 (2) Trying to make specific people around you think positive things about you by putting on a pleasing performance
 (3) *Not* doing things that are clearly wildly socially inappropriate.
 
 If you say "we think the problem is impression management" you then have to tease apart these different meanings of the term, and that's annoying, and the specifics would be contentious.
 
-I also suspect-- quite strongly-- that there's a problem where clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.
+## Subcultural Normalization Of The Mind-Control Project
+The nice thing about attempting to improve the patient's perceptions of their social effectiveness is that it doesn't actually obligate the patient to do things that feel like they risk their social standing.  The things required to dismantle the Mind-Control Project *feel risky* to ask someone to do: "stop monitoring how people are responding to you" cuts strongly against particular cultural subcurrents in ways that I suspect strongly that people in the professional-managerial class (to which therapists belong) would be uncomfortable with.  "Reading the room" and "consider how this might look to other people" is culturally considered an important professional skill by most therapists, and what this protocol is trying to do is *make the patient stop reading the room because their obsession with reading the room is slowly killing them*. 
 
-This is a spicy take that I would say I about 60% believe.
+## CBT Really Wants You To Believe Something False So It Can Correct You
+The perceived-efficacy lever is more compatible with the general CBT framework, which is fundamentally about correcting cognitive distortions. "You think you're bad at socializing but actually you're not" is a classic cognitive distortion correction. "You need to stop trying to manage impressions entirely" isn't that — it's a behavioral and motivational intervention that sits more naturally in the OCD or possibly the ACT tradition.
+
+Hilariously, the novel protocol I'm discussing here and the protocol used by CBT traditionally are *both* called exposure and response prevention, and this elides that the question "exposure to what" and "what responses are prevented" differ radically. A therapist who didn't read this document too closely could easily be like "wait, we do ERP already, this isn't new."  The difference is that CBT wants habituation to an external stimulus. I am trying to achieve cessation of a stressful compulsion while claiming that the feared external stimulus barely exists. These concepts share a name but almost nothing else mechanistically.
+
+## Also Maybe Everyone Has This Lol
+I also suspect-- quite strongly-- that there's a problem where clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
+
+## Anyway
+The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them*. Which I won't, because that wouldn't help, but I can at least give them the url to this document.
+
+
