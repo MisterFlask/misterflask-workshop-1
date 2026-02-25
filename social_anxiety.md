@@ -12,7 +12,7 @@ A way this differs from traditional exposure therapy (if my logic and assumption
 
 Read the whole document before starting.
 
-## Part -1: Theoretical basis
+## Part -1: Theoretical inspiration
 
 This takes heavy inspiration from three sources:
 
