@@ -313,7 +313,7 @@ You will not catch all of the compulsions at first.  You won't even catch most o
 
 The goal is not perfection. The goal is getting better at noticing, faster.
 
-**You should not feel stressed-out for extended periods.** Anxiety, in this protocol, is not a symptom to be managed, and it is not something you white-knuckle through until it passes. **Anxiety is the feeling of the Project running.** The Project is computationally expensive, more expensive than almost anything else you will ever do.  You are literally trying to run a breadth-first search over possible utterances in descending order of how much the other person will like you after saying them, and this will instantly monopolize all the cognitive resources you would ordinarily use for things like "humor" or "being present." 
+**You should not feel stressed-out for extended periods.** Anxiety, in this protocol, is not a symptom to be managed, and it is not something you white-knuckle through until it passes. **Anxiety is the feeling of the Project running.** The Project is computationally expensive, more expensive than almost anything else you will ever do.  You are literally trying to run a breadth-first search over possible utterances in descending order of how much the other person will like you after saying them, and this will instantly monopolize all the cognitive resources you would ordinarily use for things like "humor" or "being present."
 
 That's why social anxiety makes you stilted and awkward around strangers, even if you're funny and charismatic around close friends.
 
@@ -329,14 +329,16 @@ You'll also find that anxiety spikes are quite frequent-- each one represents th
 2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
 3. **Surrender.** You give up on managing that perception. Fully. You accept whatever the feared negative outcome was — they think you're awkward, they think you're boring, they think you're a bad dancer — without attempting to mitigate it in any way or convince yourself that it won't happen.  It might happen!  Hell, it probably will happen!  They WILL think you're boring!  They WILL think you suck at dancing!  (In my example above, I instead didn't do anything at all; engaging with the compulsive urge to perform is forbidden.)  You must learn to sup their disdain like ambrosia from the table of Zeus himself.  You must grow stronger with every pursed lip and every furrowed brow.  ABANDON HOPE, YE WHO ENTER HERE.
 
-The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies that either my document doesn't explain things well (it is, ultimately, a piece of engineering that will require iteration), OR that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them, OR that my model of what is happening for you is just wrong.  In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
+The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies that either my document doesn't explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration), OR that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them, OR that my model of what is happening for you is just wrong.  In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
 
 
 ## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
 Yeah, I don't have an incredibly clean answer for you here: I'm trying to make you do an incredibly specific sort of mental motion that is deeply counterintuitive if you haven't been practicing it.  It should feel a little bit like ragequitting a League of Legends game or admitting that you've lost a really heated argument that you were super invested in.  It should feel like resignation to your fate.  A little bit like you're waiting for the guillotine, and you cannot prevent this in any way.  Like you're a fraudster and you've been running a scam for years, and it's come crashing down and now everyone knows and you can stop frantically trying to hide it.  Like you've been failing at your stressful job for years and decided that actually it's not worth it any more, and have sent in your resignation. It should feel like giving up, after which you should feel zero anxiety and zero effort.
 
-I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying to teach you how to perform psychic computer repair without being able to see inside your head or what specifically you're even doing.  "So I've connected the two components but the light isn't still coming on."  "Okay, that means they're still disconnected."  "But I've connected them." "I don't think you have. What does the connector look like?" "I dunno, kinda greenish?" This is basically tech support.  I guess all I can say in my defense is that this loop is tighter and faster than habituation based exposure therapy which has similar problems but over weeks of work.
+I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying to teach you how to perform psychic computer repair without being able to see inside your head or what specifically you're even doing.  "So I've connected the two components but the light isn't still coming on."  "Okay, that means they're still disconnected."  "But I've connected them." "I don't think you have. What does the connector look like?" "I dunno, kinda greenish?"
+
+This is basically tech support.  I guess all I can say in my defense is that this loop is tighter and faster than habituation based exposure therapy which has similar problems but over weeks of work.
 
 I suspect the reason that CBT for social anxiety focuses so much on observable safety behaviors is because that lets you track outcomes with unambiguous knowledge of whether the protocols were performed. This is methodologically rigorous, and it has every virtue of good, solid clinical science except for the virtue of being effective, as evidenced by the 35% remission rate of gold standard cbt maintained over two years for this disorder.
 
@@ -412,6 +414,8 @@ You can get back to your legitimate social learning later, after you genuinely c
 
 ## Part 7:  Where To Begin After Finishing This Document
 
+I'm asking for a lot.  This specific part will not ask you for a lot.
+
 The first step is just running the first part of the trace.  Noticing, when you're anxious, what SPECIFICALLY your anxiety is trying to get you to do.  There are likely to be multiple "somethings"; a large part of why social anxiety feels paralyzing is because there will oftentimes be multiple conflicting demands made by the Mind-Control Project *at the same time*, and you'll be stressed out because you will-- correctly-- identify that abiding by all those conflicting demands is impossible, but you nevertheless feel obligated to do so.
 
 EXAMPLE:  You're at dinner with some new acquiantances.  The Project is running hot, because you don't know these people and would like to make a good first impression.  The Project identifies several critical tasks, including but not limited to:
@@ -455,13 +459,15 @@ These are not scripts to memorize. They are examples of the *register* — the l
 > "Hey. I'm Aaron. So what's your deal?"
 
 **To a romantic interest, while on a first date:**
-> "I want to cuddle with you on that park bench so we can make out."  (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable.  Anyway, empirically I find it works more often than it has any right to.)
+> "I want to cuddle with you on that park bench so we can make out."  (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable; having to say "no thanks" will not cause your date to spontaneously burst into flames.  Anyway, empirically I find it works more often than it has any right to.)
 
 The crucial thing about all of these is that they do not have predictable results, because you're giving up control over the direction of the interaction. The last one is late-stage — it requires comfort with the protocol and a genuine willingness to hear "no" without treating it as a Mind-Control Project failure.  (I personally have a roughly fifty percent success rate on getting a makeout via the above approach; doing this does not, in expectation, actually tank your romantic life.)
 
 ## Part 8: FAQs
 
 ### "But that's try-hard / too forward / cringe"
+<img width="485" height="210" alt="image" src="https://github.com/user-attachments/assets/8be93ca6-b1f1-421a-9ce9-e549dd4c52f7" />
+*"An exceptionally fair and just point, my Liege"*
 
 This kind of thinking is the Project. You are forbidden from reasoning about how not to be any of those things. The feeling that a direct, honest statement is "too much" is the Project telling you to modulate your behavior to control perception.
 
@@ -473,7 +479,7 @@ There is no "actually."
 
 All social behavior is fundamentally subjective.  What's try-hard to one person is bold and gutsy to another.  There can *never* be a true answer to the question of "was I awkward" because the question assumes an answer exists.  There *can* be an answer to "did that specific person think I was awkward", but sadly you can never have this answer because mind-reading is impossible. 
 
-Luckily, you are not obligated to avoid any particular person thinking you're awkward, so it doesn't matter!  The system works.
+Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
 
 ### I acted based on some combination of [Honesty, Kindness, Selfish Impulse] and the interaction went badly!
 
@@ -509,6 +515,8 @@ Immediate cessation is strongly predicted by the model and is also consistent wi
 ### "What about texting / social media?"
 
 The Project runs just as hard over text, sometimes harder, because you have time to craft and revise. The same rules apply. Send the text you want to send. Don't rewrite it four times to optimize how it'll land. Don't check to see if they've read it. Don't analyze their response time. Don't draft replies strategically. Say what you mean, send it, put the phone down.
+
+Social media can be problematic and I suspect 
 
 ### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
 
@@ -571,6 +579,8 @@ Everyone wants to be liked; this protocol doesn't actually change this in any wa
 I also suspect that institutional clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
 ## Anyway
-The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them*. Which I won't, because that wouldn't help, but I can at least give them the url to this document.
+The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them*. 
+
+Which I won't, because that wouldn't help, but I can at least give them the url to this document.
 
 
