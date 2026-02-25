@@ -275,7 +275,10 @@ Doing or saying things because you genuinely want to, not because they're strate
 
 #### "I feel vaguely that this is not a safe set of principles by which to run a social life"
 
-The Project's voice: "you neeeeed me!"  (If this were a multimedia document I would have a picture of Wormtongue here whispering to a dessicated King Theodin.)
+The Project's voice: "you neeeeed me!"  If this were a multimedia document I would have a picture of Wormtongue here whispering to a dessicated King Theodin.  Actually, you know what, fuck it.
+
+<img width="275" height="183" alt="image" src="https://github.com/user-attachments/assets/4330b50c-85cf-498c-819a-d0afd13ecc89" />
+
 
 If this general principle causes you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
 
