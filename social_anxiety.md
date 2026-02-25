@@ -539,9 +539,9 @@ Why have they not pulled this first lever?  Here I'm speculating, but I suspect 
 
 ## Impression Management Is Tricky To Ban
 "Impression management" actually encompasses a large number of activities only some of which are problematic:
-(1) buying and wearing clothes appropriate to your social groups
-(2) Trying to make specific people around you think positive things about you by putting on a pleasing performance
-(3) *Not* doing things that are clearly wildly socially inappropriate.
+1. buying and wearing clothes appropriate to your social groups
+2. Trying to make specific people around you think positive things about you by putting on a pleasing performance
+3. *Not* doing things that are clearly wildly socially inappropriate.
 
 If you say "we think the problem is impression management" you then have to tease apart these different meanings of the term, and that's annoying, and the specifics would be contentious.
 
