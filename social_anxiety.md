@@ -467,6 +467,7 @@ The crucial thing about all of these is that they do not have predictable result
 
 ### "But that's try-hard / too forward / cringe"
 <img width="485" height="210" alt="image" src="https://github.com/user-attachments/assets/8be93ca6-b1f1-421a-9ce9-e549dd4c52f7" />
+
 *"An exceptionally fair and just point, my Liege"*
 
 This kind of thinking is the Project. You are forbidden from reasoning about how not to be any of those things. The feeling that a direct, honest statement is "too much" is the Project telling you to modulate your behavior to control perception.
