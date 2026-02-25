@@ -2,8 +2,6 @@
 
 ## An OCD-Inspired Protocol for Social Anxiety
 
-version 0.2
-
 ---
 
 ## What This Document Is
