@@ -533,7 +533,7 @@ Clark and Wells-- the guys who pioneered gold-standard modern cognitive-behavior
 
 Why have they not pulled this first lever?  Here I'm speculating, but I suspect it's a few things:
 
-## Impression Management Is Complex To Ban
+## Impression Management Is Tricky To Ban
 "Impression management" actually encompasses a large number of activities only some of which are problematic:
 (1) buying and wearing clothes appropriate to your social groups
 (2) Trying to make specific people around you think positive things about you by putting on a pleasing performance
