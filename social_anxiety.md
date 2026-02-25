@@ -78,7 +78,7 @@ Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you t
 
 That is not the approach I am discussing here.
 
-**You are not going to fix the Project; the Project cannot be fixed.  You are also not going to help the Project become more accurate in assessing its own performance; its accuracy is not an issue.  Instead, our goal is to burn it down and remove its influence over your cognition and behavior.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
+**You are not going to fix the Project; the Project cannot be fixed.  You are also not going to help the Project become more accurate in assessing its own performance; its accuracy is not an issue.  Instead, our goal is to burn it down, salt the ashes, and fully eliminate its influence over your cognition and behavior.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
 ---
 
