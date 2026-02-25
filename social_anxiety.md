@@ -279,7 +279,7 @@ If this were a multimedia document I would have a picture of Wormtongue here whi
 
 <img width="275" height="183" alt="image" src="https://github.com/user-attachments/assets/4330b50c-85cf-498c-819a-d0afd13ecc89" />
 
-"A most judicious point, my liege."
+*"A most judicious point, my liege."*
 
 Anyway.  If this general principle causes you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
 
