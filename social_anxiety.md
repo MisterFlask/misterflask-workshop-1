@@ -1,4 +1,4 @@
-# Killing the Mind Control Project
+# Decommissioning the Mind Control Project
 
 ## An OCD-Inspired Protocol for Social Anxiety
 
@@ -21,13 +21,11 @@ This takes heavy inspiration from three sources:
 (1) https://drmichaeljgreenberg.com/articles/ ; Dr Michael Greenberg writes things about OCD-spectrum disorders and their treatment using a mildly novel protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I have in operationalizing this.
 See also: https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/ , https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/ ,
 https://drmichaeljgreenberg.com/defining-and-demarcating-compulsion/ ,
-https://drmichaeljgreenberg.com/rumination-focused-case-conceptualization/
 https://drmichaeljgreenberg.com/rf-erp-order-of-operations/
 
 (2) Metacognitive therapy (https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ )
 
 (3) Bog-standard OCD treatment logic around reassurance and engagement with the object of obsession.
----
 
 ## Part 0: Contraindications
 
