@@ -400,19 +400,19 @@ The first step is just running the first part of the trace.  Noticing, when you'
 
 EXAMPLE:  You're at dinner with some new acquiantances.  The Project is running hot, because you don't know these people and would like to make a good first impression.  The Project identifies several critical tasks, including but not limited to:
 
-(1)  Don't sit there silently.  That's weird.
-(2)  Don't attempt to interject yourself into conversations that don't involve you.  That's intrusive.
-(3) Don't avoid eye contact with the other dinner guests.  That's weird.
-(4) Don't make eye contact with people you're not actually speaking to.  That's weird and intrusive.
+1. Don't sit there silently.  That's weird.
+2. Don't attempt to interject yourself into conversations that don't involve you.  That's intrusive.
+3.  Don't avoid eye contact with the other dinner guests.  That's weird.
+4. Don't make eye contact with people you're not actually speaking to.  That's weird and intrusive.
 
 These demands are, of course, mutually exclusive.  You can also pick them apart into separate proposition/policy pairs:
 
-(1) Sitting there silently will make you look weird. (factual proposition)
-(2) Avoiding eye contact with the other dinner guests will make you look weird. (factual proposition)
-(3) Don't be weird (standing policy)
-(4) Interjecting yourself into conversations that don't involve you will be perceived as intrusive. (factual proposition)
-(5) Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
-(6) Don't be intrusive. (Standing policy)
+1. Sitting there silently will make you look weird. (factual proposition)
+2. Avoiding eye contact with the other dinner guests will make you look weird. (factual proposition)
+3. Don't be weird (standing policy)
+4. Interjecting yourself into conversations that don't involve you will be perceived as intrusive. (factual proposition)
+5. Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
+6. Don't be intrusive. (Standing policy)
 
 I would like you to notice that 1, 2, 4 and 5 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 4 and 5 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself.")
 
@@ -442,7 +442,6 @@ These are not scripts to memorize. They are examples of the *register* — the l
 > "I want to cuddle with you on that park bench so we can make out."  (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable.  Anyway, empirically I find it works more often than it has any right to.)
 
 The crucial thing about all of these is that they do not have predictable results, because you're giving up control over the direction of the interaction. The last one is late-stage — it requires comfort with the protocol and a genuine willingness to hear "no" without treating it as a Mind-Control Project failure.  (I personally have a roughly fifty percent success rate on getting a makeout via the above approach; doing this does not, in expectation, actually tank your romantic life.)
----
 
 ## Part 8: FAQs
 
