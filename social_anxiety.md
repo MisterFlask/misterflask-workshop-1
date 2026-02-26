@@ -490,6 +490,18 @@ All social behavior is fundamentally subjective.  What's try-hard to one person 
 
 Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
 
+### Should I see a therapist while I'm doing this?
+
+Um.
+
+So, I'm in a bit of an uncomfortable position.  It sounds (and honestly feels) irresponsible to say "no;" I am literally some guy who's written this troubleshooting doc for an experimental social anxiety protocol.  So why didn't I just say "yes?"
+
+Well... cognitive-behavioral therapy is the dominant gold-standard modality for social anxiety that exists.  It gives a remission rate of 35% over two years, which doesn't exactly inspire confidence, and I think that the dynamics I've been calling out is probably a lot of the reason why: that standard CBT treatment contains elements that are ineffective and frequently *actively harmful* to patients with this disorder by reinforcing (and, indeed, frequently prescribing) content-level engagement with the obsession, and that reinforces the drive to perform the compulsions which are ruining the patient's life.  My suspicion is that to the degree it *is* effective it's due to therapist-specific factors (they're often quite smart and good at their jobs!) combined with "spending two years in therapy" as being a really good proxy for "willing to work hard at this problem instead of just accepting that this is their life."
+
+The half-assed middle ground I think I've ended up at is "maybe see an OCD specialist who is willing to work on social phobia."  I believe Dr. Michael Greenberg actually does this (or so claims his site at https://drmichaeljgreenberg.com/ ), which is a very funny recommendation to make given that I've never interacted with him in any way but he has written some *banger* articles on this topic that make me respect him as a thinker in this space.
+
+tl;dr: idk get off my back
+
 ### I acted based on some combination of [Honesty, Kindness, Selfish Impulse] and the interaction went badly!
 
 Expected and not a problem. You knew this was the price of admission. Some interactions will go worse without the Project than they would have gone with it. Many will go better.  Many will go much, much better.
@@ -527,7 +539,7 @@ The Project runs just as hard over text, sometimes harder, because you have time
 
 Social media can be problematic; I suspect a very great deal of what causes people to become socially-anxious is exposure to media that derives its entertainment value from making fun of cringe people.  This smuggles in an implicit belief system: "I must never be like *those* people."  This is toxic and makes you worse; disengage from such media immediately.
 
-Which brings us to another point: stop shaming people for being cringe, even if it's private, even if they'll never hear you.  Each time you do, the Project gets a stronger hold over your behavior.  You can't dismantle the Project for yourself while still enforcing its diseased value system against others.  That's *almost certainly* impossible and I believe-- though have little way of confirming directly-- that people who engage in cringe culture are driving themselves into an anxiety disorder.
+Which brings us to another point: stop shaming people for being cringe, even if it's private, even if they'll never hear you.  Each time you do, the Project gets a stronger hold over your behavior.  You can't dismantle the Project for yourself while still enforcing its diseased value system against others.  That's *almost certainly* impossible and I believe-- though have little way of confirming directly-- that people who engage in cringe culture are driving themselves into an anxiety disorder. (Really you should knock this off even if you strongly suspect I'm full of shit on everything else; it's not like it's meaningfully adding to your life, and the downside risk is *substantial*.)
 
 ### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
 
@@ -590,7 +602,7 @@ Everyone wants to be liked; this protocol doesn't actually change this in any wa
 I also suspect that institutional clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
 ## Anyway
-The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them*. 
+The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them because they don't have to live like this*.
 
 Which I won't, because that wouldn't help, but I can at least give them the url to this document.
 
