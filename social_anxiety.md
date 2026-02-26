@@ -580,23 +580,3 @@ The more people I speak to, even people who don't class themselves as socially a
 
 Which I won't, because that wouldn't help, but I can at least give them the url to this document.
 
-# Appendix B: Complaints About Cognitive-Behavioral Therapy Research On Social Anxiety From Some Guy
-
-## Cognitive-Behavioral Therapy Is Wildly Underspecified
-Suppose a person clutches a drink in order to avoid seeming idle in social gatherings, because the patient thinks it's awkward to be standing around looking idle.  The patient's therapist would like to fix this.
-
-Which of these is the cognitive distortion the therapist should target?
-(A) I need to clutch a drink to not be awkward
-(B) I need to not be awkward to be accepted in this gathering
-(C) I need to be accepted in this gathering to be okay
-
-This is SUPER important because it determines how you design behavioral experiments: if you're trying to disprove (C) then you actually *want* the patient to get rejected from the gathering; if you're trying to disprove (B) then you *want* the patient to be awkward; if you're trying to disprove (A) then you want the patient to stop clutching their drink.
-
-As far as I can tell CBT research sort of unthinkingly gravitates toward trying to disprove (A), which seems like by far the least useful prediction to disprove?  Like, if you left (B) untouched in the chain then you're going to generate new drink-clutching-type behaviors indefinitely, or at least I don't see why you *wouldn't*.
-
-## CBT Clinical Tradition Is Extremely Empiricist And Is Institutionally Uninterested In The Deep Structure Of Safety Behaviors
-Like, think about the relationships between safety behaviors and mental policies.  "Always look busy" is *obviously* downstream of "awkwardness avoidance"; CBT tends to jam both physical and mental safety behaviors together without bothering to posit any theoretical relationship between them, and generally doesn't even include anything approaching a policy as a "safety behavior" at all.  As a result clinicians frequently record "safety behavior substitution", whereby banning "clutching drinks" results in new safety behaviors like "clean dishware instead of engaging with guests" while evidencing an almost total incuriosity about *why it happens.*  Like: no shit, if the patient is trying to avoid being awkward and you ban a specific way they might do this then you have accomplished *precisely nothing* because they're still trying to avoid being awkward!  I haven't been able to find any articles at all that even bring up this fact which is obvious from two seconds of considering the situation. istg it feels like I'm taking crazy pills, which is ironic given the subject matter.
-
-That said: I suspect the reason that CBT for social anxiety focuses so much on leaf-node safety behaviors is because that lets you track outcomes with totally unambiguous knowledge of whether the protocols were performed. This is methodologically rigorous, and it has every virtue of good, solid clinical science except for the virtue of being effective, as evidenced by the 35% remission rate of gold standard cbt maintained over two years for this disorder.
-
-Sometimes your keys really *aren't* under the streetlight.
