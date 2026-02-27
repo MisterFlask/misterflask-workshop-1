@@ -521,7 +521,7 @@ Luckily, you are not obligated to avoid any particular person thinking you're aw
 
 ### Should I see a therapist while I'm doing this?
 
-Um.
+Um.  Probably?
 
 So, I'm in a bit of an uncomfortable position.  It sounds (and honestly feels) irresponsible to say "no;" I am literally a software engineer who's written this troubleshooting doc for an experimental n=1 social anxiety protocol.  So why don't I just say "yes?"
 
@@ -580,10 +580,6 @@ You only feel stressed out at a losing game of League of Legends until you rageq
 
 The stress will only subside once you *actually* stop trying to solve for other peoples' approval.
 
-### "You keep mixing metaphors between the Project being a factory, a tick, and an abusive boss."
-
-I have a medical condition that prevents me from sticking to one metaphor for an entire essay.  Sorry about that.
-
 ### When can I conclude this protocol doesn't work for me?
 
 A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
@@ -602,6 +598,10 @@ Please include which step the Trace and Surrender failed on; is it that you coul
 
 At this point, if you've gotten here, you should try more-conventional therapeutic modalities.
 
+### "You keep mixing metaphors between the Project being a factory, a tick, and an abusive boss.  Also Wormtongue."
+
+I have a medical condition that prevents me from sticking to one metaphor for an entire essay.  Sorry about that.
+
 ## Part 9: The Trajectory
 
 This is roughly what my own progress looked like.  Yours might look different if this works, who knows.
@@ -612,7 +612,7 @@ It's not that my baseline anxiety was gradually going down in novel social situa
 
 **Middle:** I mostly don't feel anxious (80% resolved, maybe?) but still have a fairly limited repertoire of behaviors since I'm very used to the extremely managed set of things I would say and do.  Occasionally I notice I'm continuing to compulse in small ways out of reflex, and stop doing it.  A few months in, some friends commented that I seemed different and better.
 
-**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that don't require the Project to function. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward situations memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *much* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
+**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward situations memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *much* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
 
 I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels  urgent or concerning.
 
@@ -651,7 +651,7 @@ Everyone wants to be liked; this protocol doesn't actually change this in any wa
 I also suspect that institutional clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
 ## Anyway
-The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. *I want to shake them because they don't have to live like this*.
+The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought. They don't have to live like this!  *I want to shake them*.
 
 Which I won't, because that wouldn't help, but I can at least give them the url to this document.
 
