@@ -589,10 +589,18 @@ I have a medical condition that prevents me from sticking to one metaphor for an
 A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
 
 Before concluding this I'd like you to try a few things:
+
 (0) Try it first in the lowest-stakes situations where you still have anxiety, just to establish the general principle.  Run the Trace.
-(1) Please read https://lifeimprovementschemes.substack.com/p/maybe-social-anxiety-is-just-you which is a *banger* of a blog post where I ended up at somethign approximating this framework and contains worked examples different from what were discussed here; maybe another example will help? I'm just spitballing here
-(2) reach out for a chat; if you're local i'd like to accompany you to a situation where you'd be anxious and try running you through the surrender process.  This could be helpful for you, and will certainly be helpful for me in refining this document, since the more examples I have of other people running through this the better off the end product is going to be.  This is a living document.
-(3) I have no further assistance to provide, since I've given you pretty much all I can in this document; please file a bug report.  Please include which step the Trace and Surrender failed on; is it that you could identify the policy but not stop from trying to fulfill it, or is it that you couldn't identify a policy at all, or is it that dropping the policy didn't generate the promised anxiety reduction? What circumstances did you try this in? This is all important information for me to refine this.  My goal is to put words in such an order as to one-shot social anxiety in some percentage of readers and these bug reports will be instrumental in me cranking this number as high as possible.  At this point, if you've gotten here, you should try other therapeutic modalities.
+
+(1) Please read https://lifeimprovementschemes.substack.com/p/maybe-social-anxiety-is-just-you which is a *banger* of a blog post where I ended up at something approximating this framework and contains worked examples different from what were discussed here; maybe another example will help? I'm just spitballing here
+
+(2) reach out for a chat; if you're local i'd like to accompany you to a situation where you'd be anxious and try running you through the surrender process.  This could be helpful for you, and will certainly be helpful for me in refining this document, since the more examples I have of other people running through this (and, especially, failing to run through this) the better off the end product is going to be.  This is a living document.
+
+(3) I have no further assistance to provide; please file a bug report.  
+
+Please include which step the Trace and Surrender failed on; is it that you could identify the policy but not stop from trying to fulfill it, or is it that you couldn't identify a policy at all, or is it that dropping the policy didn't generate the promised anxiety reduction? What circumstances did you try this in? This is all important information for me to refine this.  My goal is to put words in such an order as to one-shot social anxiety in some percentage of readers and these bug reports will be instrumental in me cranking this number as high as possible.  
+
+At this point, if you've gotten here, you should try more-conventional therapeutic modalities.
 
 ## Part 9: The Trajectory
 
