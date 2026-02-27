@@ -431,7 +431,7 @@ You can get back to your legitimate social learning later, after you genuinely c
 
 ## Part 7:  Where To Begin After Finishing This Document
 
-I'm asking for a lot.  This specific part will not ask you for a lot.
+I'm asking for a lot.  This specific part will *not* ask you for a lot.
 
 The first step is just running the first part of the trace.  Noticing, when you're anxious, what SPECIFICALLY your anxiety is trying to get you to do.  There are likely to be multiple "somethings"; a large part of why social anxiety feels paralyzing is because there will oftentimes be multiple conflicting demands made by the Mind-Control Project *at the same time*, and you'll be stressed out because you will-- correctly-- identify that abiding by all those conflicting demands is impossible, but you nevertheless feel obligated to do so.
 
@@ -484,7 +484,7 @@ The crucial thing about all of these is that they do not have predictable result
 
 This is a misconception common in the subcultures I interact with (mostly: progressives and anxious tech nerds.)
 
-The problem with trying to do this stuff indirectly is that indirect asks *leave the woman no way to explicitly disengage.*  If you talk around your desires then the girl probably knows exactly what's happening, but "I'm not interested, thanks" sounds incredibly presumptuous and rude if the other person hasn't made an ask yet.
+The problem with trying to do romantic approaches indirectly is that indirect asks leave the woman (excuse the heteronormative framing) *no way to explicitly disengage.*  If you talk around your desires then the girl probably knows exactly what's happening, but "I'm not interested, thanks" sounds incredibly presumptuous and rude if the other person hasn't made an ask yet.
 
 Let people say "no" to things.
 
@@ -498,14 +498,14 @@ Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is N
 
 ### What if I could just, like, read the room to assess interest before making a move?
 
-Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to their true state of mind?
+[Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  *What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
 
 ## Part 8: FAQs
 
 ### "But that's try-hard / too forward / cringe"
 <img width="485" height="210" alt="image" src="https://github.com/user-attachments/assets/8be93ca6-b1f1-421a-9ce9-e549dd4c52f7" />
 
-*"An exceptionally fair and just point, my Liege"*
+*"An exceptionally fair and just argument, my liege"*
 
 This kind of thinking is the Project. You are forbidden from reasoning about how not to be any of those things. The feeling that a direct, honest statement is "too much" is the Project telling you to modulate your behavior to control perception.
 
