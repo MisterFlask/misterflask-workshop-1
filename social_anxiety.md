@@ -70,7 +70,7 @@ This is why you find social situations to be exhausting: because you are running
 
 And this has been destroying you, which is why you're reading this long-ass document and taking what amounts to experimental mental health advice from someone who is in no way a therapist but who *has* eliminated his own social anxiety in a way that took like a year to reconcile with published psychology literature and then reverse-engineer into this self-help document.
 
-**The Project is the problem.**  What you feel as "social anxiety" is directly and solely caused by the Mind-Control Project: it's the internal feeling of the Project accurately flagging a situation it can't control (most of them), or the Project correctly detecting that it's in danger of failing (which is frequently true).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing in my goal of universal approval" and the more self-aware you are the more often this will happen because on some level you understand this was never achievable.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  What you feel as "social anxiety" is directly and solely caused by the Mind-Control Project: it's the internal feeling of the Project accurately flagging a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequently true).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing in my goal of universal approval" and the more self-aware you are the more often this will happen because on some level you understand this was never achievable.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
 **The Project is doomed.** You cannot actually control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
@@ -144,7 +144,7 @@ All of these share a single common feature: **they are in service of figuring ou
 
 It has to be.
 
-The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands of the Project while it waves its metaphorical gun in the hostage's face.
+The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
 
 You, operating as your conscious self reading this document, have advantages and disadvantages in your war against this hostile process: your disadvantage is the Mind-Control Project has full control over your social perceptions.  Your advantage (which should be decisive) is that you have *actual decisionmaking authority* and while you can't *alter* the Project's threat assessments (I know this because you would have done so already), you *can* choose to just tell it "Okay.  Shoot the hostage."  *"I swear to fucking God, I'll do it!*" "Okay.  Do it." *"Do you think I'm fucking around?"* "I said shoot the hostage." 
 
@@ -257,8 +257,8 @@ That means your positive guidance for behavior needs to have a number of specifi
 * It needs to be prosocial; "yeah, that's someone I would let into my apartment."
 * It needs to be applicable to most or all social situations you might end up in.
 * It needs to result in you not self-immolating socially in expectation.
-* It needs to be totally unambiguous guidance for action.
-* It cannot require the ability to mind-read, which means every principle has to be checkable internally to yourself.
+* It needs to be totally unambiguous guidance for action; or at least all ambiguity must be in weighing your OWN values against each other instead of figuring out how other people will react to whatever.
+* It cannot require the ability to mind-read, which means every principle has to be checkable internally to yourself.  Like half of the problem with the Project in the first place is that it requires mind-reading as an intermediate step.
 
 This ties *directly* into the anti-rumination discussion previously.  The way you make rumination pointless on a mechanical level is to have *principles* that you follow regardless of the perceptions of external observers; that causes rumination-- "should I have done something different?!"-- to return a deterministic, immediate output of "no, I was always going to do that because I have decided it's what I'm going to do regardless of their opinions."  Which requires no mind-reading and is therefore done with very, very quickly and painlessly.
 
@@ -313,9 +313,9 @@ The question is meaningless.  "Who you are" *is* "what you do and why."
 
 ## Part 5: Catching the Compulsions
 
-You will not catch all of the compulsions at first.  You won't even catch most of them. This is normal and expected. The compulsions are fast, automatic, and diverse, and they are *legion*. You've been running them for years. They don't feel like compulsions — they feel like social existence. Most of them will fire before you even notice they've started.
+You will not catch all of the compulsions at first.  You won't even catch most of them. This is normal and expected. The compulsions are fast, automatic, and diverse, and they are *legion*. You've been running them for years and they just feel like social existence. Most of them will fire before you even notice they've started.
 
-The goal is not perfection. The goal is getting better at noticing, faster.
+The goal is *not* perfection. The goal is getting better at noticing, faster.
 
 **You should not feel stressed-out for extended periods.** Anxiety, in this protocol, is not a symptom to be managed, and it is not something you white-knuckle through until it passes. **Anxiety is the feeling of the Project running.** The Project is computationally expensive, more expensive than almost anything else you will ever do.  You are literally trying to run a breadth-first search over possible utterances in descending order of how much the other person will like you after saying them, and this will instantly monopolize all the cognitive resources you would ordinarily use for things like "humor" or "being present."
 
@@ -375,8 +375,7 @@ RESOLUTION: "Getting punch when I don't actually want it in order to not have th
 ANXIETY SPIKE: "Too risky!  They might be having a private conversation!  In the middle of a crowded party!  We might be regarded as presumptuous!"
  RESOLUTION: "Avoiding presumptuousness is forbidden behavior.  I accept being regarded as presumptuous as a likely and acceptable outcome.  HEY CAN I JOIN YOUR CONVERSATION"
 
-It sounds annoying but you get used to it pretty fast, I think.
-
+It sounds annoying but you get used to it pretty fast, I think; even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
 
 ## Part 6: Post-Event Processing (Redirected)
 
@@ -434,7 +433,7 @@ These demands are, of course, mutually exclusive.  You can also pick them apart 
 5. Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
 6. Don't be intrusive. (Standing policy)
 
-I would like you to notice that 1, 2, 4 and 5 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 4 and 5 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself.")
+I would like you to notice that 1, 2, 4 and 5 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 4 and 5 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself" or, if you're more polite, "LOL")
 
 What I am asking you to do is notice and peel apart these concrete demands made by the Project, and then to *notice those demands as fundamentally optional.*  Not because people won't think you're weird and/or intrusive if you don't obey them. But because you have the God-given right as an American to have people think you're weird and intrusive and to *not do anything about this fact whatsoever.*
 
@@ -465,11 +464,23 @@ The crucial thing about all of these is that they do not have predictable result
 
 ### I don't like the romantic one.  What if the ask makes her uncomfortable?
 
-This is a misconception common in the subcultures I interact with (mostly: progressives and tech nerds.)
+This is a misconception common in the subcultures I interact with (mostly: progressives and anxious tech nerds.)
 
 The problem with trying to do this stuff indirectly is that indirect asks *leave the woman no way to explicitly disengage.*  If you talk around your desires then the girl probably knows exactly what's happening, but "I'm not interested, thanks" sounds incredibly presumptuous and rude if the other person hasn't made an ask yet.
 
 Let people say "no" to things.
+
+### I still think someone might be uncomfortable.
+
+People are made low-grade uncomfortable many times per day.  The attempts at compulsively avoiding discomfort for others is, I think, one of the very prosocial impulses that people with anxiety disorders take to an extreme where *literally any possibility of inflicting discomfort on someone else* is absolutely unthinkable.
+
+Unfortunately, inflicting discomfort was *never* avoidable.  Let's be clear: any time you make it clear you like someone and want to hang out-- even platonically!-- if that person wants to they'll feel pumped about it but if they don't they'll feel awkward and uncomfortable.  This isn't a preventable accident that can be avoided with appropriate hedging; this is the *nature of human connection* and if you attempt to avoid making anyone ever feel uncomfortable then literally the only way of doing this is by never reaching out in the first place.  You are, in expectation, sacrificing a future filled with beautiful relationships (platonic and otherwise) and a large number of awkward and deeply uncomfortable moments, and replacing it with a future that has *neither.*  This is an appallingly bad trade and nobody should take it.
+
+Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*
+
+### What if I could just, like, read the room to assess interest before making a move?
+
+Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to their true state of mind?
 
 ## Part 8: FAQs
 
@@ -494,7 +505,7 @@ Luckily, you are not obligated to avoid any particular person thinking you're aw
 
 Um.
 
-So, I'm in a bit of an uncomfortable position.  It sounds (and honestly feels) irresponsible to say "no;" I am literally some guy who's written this troubleshooting doc for an experimental social anxiety protocol.  So why didn't I just say "yes?"
+So, I'm in a bit of an uncomfortable position.  It sounds (and honestly feels) irresponsible to say "no;" I am literally a software engineer who's written this troubleshooting doc for an experimental n=1 social anxiety protocol.  So why don't I just say "yes?"
 
 Well... cognitive-behavioral therapy is the dominant gold-standard modality for social anxiety that exists.  It gives a remission rate of 35% over two years, which doesn't exactly inspire confidence, and I think that the dynamics I've been calling out is probably a lot of the reason why: that standard CBT treatment contains elements that are ineffective and frequently *actively harmful* to patients with this disorder by reinforcing (and, indeed, frequently prescribing) content-level engagement with the obsession, and that reinforces the drive to perform the compulsions which are ruining the patient's life.  My suspicion is that to the degree it *is* effective it's due to therapist-specific factors (they're often quite smart and good at their jobs!) combined with "spending two years in therapy" as being a really good proxy for "willing to work hard at this problem instead of just accepting that this is their life."
 
@@ -555,13 +566,23 @@ The stress will only subside once you *actually* stop trying to solve for other 
 
 I have a medical condition that prevents me from sticking to one metaphor for an entire essay.  Sorry about that.
 
----
+### When can I conclude this protocol doesn't work for me?
+
+A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
+
+Before concluding this I'd like you to try a few things:
+(0) Try it first in the lowest-stakes situations where you still have anxiety, just to establish the general principle.  Run the Trace.
+(1) Please read https://lifeimprovementschemes.substack.com/p/maybe-social-anxiety-is-just-you which is a *banger* of a blog post where I ended up at somethign approximating this framework and contains worked examples different from what were discussed here; maybe another example will help? I'm just spitballing here
+(2) reach out for a chat; if you're local i'd like to accompany you to a situation where you'd be anxious and try running you through the surrender process.  This could be helpful for you, and will certainly be helpful for me in refining this document, since the more examples I have of other people running through this the better off the end product is going to be.  This is a living document.
+(3) I have no further assistance to provide, since I've given you pretty much all I can in this document; please file a bug report.  Please include which step the Trace and Surrender failed on; is it that you could identify the policy but not stop from trying to fulfill it, or is it that you couldn't identify a policy at all, or is it that dropping the policy didn't generate the promised anxiety reduction? What circumstances did you try this in? This is all important information for me to refine this.  My goal is to put words in such an order as to one-shot social anxiety in some percentage of readers and these bug reports will be instrumental in me cranking this number as high as possible.  At this point, if you've gotten here, you should try other therapeutic modalities.
 
 ## Part 9: The Trajectory
 
 This is roughly what my own progress looked like.  Yours might look different if this works, who knows.
 
-**Early:**  Quality-of-life improvement is significant even over the first few days.  I catch compulsions sometimes in the moment, sometimes after the fact.  Mostly I use the anxiety spike as a signal that I'm Doing The Thing and can drop it reasonably quickly; this becomes self-sustaining almost immediately because the spike is *miserable* until the surrender, and I think this self-sustaining character is most of why I could do this without a therapist (which: thank God for that given that therapists don't actually offer this).  Frequently I get wrapped back up in impression-management, and "I should just act on impulse" responded to with "BUT WHAT WILL THEY THINK" feels like an impossible riddle that I *know* I just solved a bunch of times already. Post-event rumination is better but still exists.  
+**Early:**  Quality-of-life improvement is significant even over the first few days.  I catch compulsions sometimes in the moment, sometimes after the fact.  Mostly I use the anxiety spike as a signal that I'm Doing The Thing and can drop it reasonably quickly; this becomes self-sustaining almost immediately because the spike is *miserable* until the surrender, and I think this self-sustaining character is most of why I could do this without a therapist (which: thank God for that given that therapists don't actually offer this).  Frequently I get wrapped back up in impression-management, and "I should just act on impulse" responded to with "BUT WHAT WILL THEY THINK" feels like an impossible riddle that I *know* I just solved a bunch of times already. Post-event rumination is better but still exists.
+
+It's not that my baseline anxiety was gradually going down in novel social situations; I was just getting better at catching and resolving anxiety spikes as they occurred, and intrinsically this resulted in social situations containing a progressively lower percentage of time spent anxiously fretting.
 
 **Middle:** I mostly don't feel anxious (80% resolved, maybe?) but still have a fairly limited repertoire of behaviors since I'm very used to the extremely managed set of things I would say and do.  Occasionally I notice I'm continuing to compulse in small ways out of reflex, and stop doing it.  A few months in, some friends commented that I seemed different and better.
 
