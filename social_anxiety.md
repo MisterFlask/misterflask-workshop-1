@@ -586,6 +586,8 @@ Clinical literature around exposure therapy shows that banning punchbowl-type sa
 
 If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
 
+(I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
+
 ### When can I conclude this protocol doesn't work for me?
 
 A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
