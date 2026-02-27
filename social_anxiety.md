@@ -86,11 +86,30 @@ That is not the approach I am discussing here.
 
 The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them don't feel like compulsions — they feel like normal social behavior.  Some of them *definitely* feel like compulsions.
 
-Here's a list of things I suspect you are doing, and which I will ask you to notice and, ideally, stop.
+Here's a list of things I suspect you are doing, and which I will ask you to notice and, at some point, stop. 
 
-### Mental Compulsions
+There is a hierarchy.
 
-These happen inside your head. Nobody can see them, and most of them feel automatic.
+### Mental Compulsions (subclass: Root-Level Policies)
+
+These aren't exactly behaviors, as such.  They are sub-goals of "control what everyone thinks of me at all times" that your instrumental mental compulsions will be organized around.  You probably don't think about these, but they think about *you*.
+
+You likely won't have all of these, but you'll probably have some.
+
+- **Avoid Anyone Disliking Me**.  Secure universal approval.
+- **Don't Look Stupid**.
+- **Ensure Other People Always Have Their Preferences Met**.  This can be tricky because they often hide these preferences; it's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences.
+- **Ensure Nobody Else Has A Negative Emotional Experience Around You**.  This one is complicated because it feels like common decency, but this too has the problem of being a fundamentally impossible task that results in avoidance behavior, because "discomfort" and "human connection" are not fundamentally separable.
+- **Never Look Awkward**
+- **Never Look Cringe**
+- **Never Look Weird**
+- **Never Be Boring**
+- **Never Look Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
+- **Never Look Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
+
+### Mental Compulsions (subclass: Instrumental)
+
+These happen inside your head. Nobody can see them, and most of them feel automatic.  Physical and verbal compulsions are downstream of these.
 
 - **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because..."). **Both of these are the Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
@@ -108,15 +127,15 @@ These happen inside your head. Nobody can see them, and most of them feel automa
 
 ### Behavioral Compulsions
 
-These are things you do with your body or your actions.
+These are things you do with your body or your speech.
 
 - **Script-following.** Saying things you pre-planned rather than things you actually think or feel in the moment.
 
 - **Flowchart-creation.** "...and if she says *this* then I'll say..."
 
-- **Cringe-avoidance.** Steering away from disclosures that might not land well.
+- **Cringe-avoidance behavior cluster.** Steering away from disclosures that might not land well.
 
-- **Awkwardness-avoidance.** Looking at your phone.  Talking only to people you already know.  Trying to look busy.
+- **Awkwardness-avoidance behavior cluster.** Looking at your phone.  Talking only to people you already know.  Trying to look busy so that people don't see you alone and not doing anything.
 
 - **Nervous rambling.** Generally this is the output of an implicit but strongly-felt rule: "if there's an awkward silence that will reflect poorly on me."
 
@@ -193,7 +212,7 @@ Example: You're at a social event and someone tells a story. You feel a spike of
 
 ### Backward: From the Urge
 
-This might be the easier entry point depending on your level of introspective skill. Instead of starting from the anxiety, you start from the behavioral urge. You notice you're *about to do something in response to an anxiety spike*, and you trace backward.
+This might be the easier entry point depending on your level of introspective skill. Instead of starting from the anxiety, you start from the behavioral urge. You notice you're *about to do something in response to an anxiety spike*, and you trace backward. (Or you just caught yourself *after* performing the compulsion.  Still counts!)
 
 The sequence:
 
@@ -284,8 +303,7 @@ This takes second place because it's necessary but at the same time easily co-op
 
 #### 3. Selfish Impulse
 
-Doing or saying things because you genuinely want to, not because they're strategically optimized for approval.  Again, gated by kindness.  Mostly this is there because most Vulnerable Honesty and Kindness aren't actually relevant in a lot of situations and you need a thing to fill the gap.
-
+Doing or saying things because you genuinely want to, not because they're strategically optimized for approval.  Again, gated by kindness.  Mostly this is there because most Vulnerable Honesty and Kindness aren't actually relevant in a lot of situations and you need a thing to fill the gap.  "I want to see the new John Wick movie!"  "I think Vietnamese food tastes like soap and would prefer to go elsewhere!"  "I'M GONNA TAKE THE LAST SUSHI ROLL."
 
 #### "I feel vaguely that this is not a safe set of principles by which to run a social life"
 
