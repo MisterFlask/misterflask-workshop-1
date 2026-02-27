@@ -576,9 +576,15 @@ Which brings us to another point: stop shaming people for being cringe, even if 
 
 Haven't you been listening?  The compulsions aren't protecting you from the stress.  The compulsions *are* the stress, because stress writ large is the feeling of you failing at a task which you refuse to give up.  And the solution is... to give up.
 
-You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.  "Trying to not be cringe" is basically just a League game, except you're playing it all the time and in League it's actually possible to win.
+You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.   (NOTE FOR THE NON-GAMERS: League of Legends is a famously stressful 50-minute-long team-based 5v5 game.  Details aren't important.)  In League, the stress isn't caused by the game mechanics as such; it's caused by *caring about winning* while the outcome is uncertain and mostly outside your control, which is necessarily true because you're only 10% of the players in the game. 
 
-The stress will only subside once you *actually* stop trying to solve for other peoples' approval.
+"Trying to not be cringe" is basically just a League game, except you're playing it all the time and in League it's actually possible to win.  A place where I've diverged from traditional social anxiety exposure therapy protocols is this: trying to ban punchbowl-type safety behaviors one at a time (which is a traditional approach) doesn't help because it makes your impossible task *even more impossible*.
+
+This *rhymes* with something accurate-- League *is* only stressful while you're trying to win, hence the concept of "trolling" (whereby some people get so stressed out while losing that they decide to unilaterally change the game from "try to win" to "enrage teammates", which is almost guaranteed to be winnable)-- but if you're only banning "things that help you to win" without actually banning the attempt at winning then this makes things *more* stressful and not less. 
+
+Clinical literature around exposure therapy shows that banning punchbowl-type safety behaviors cause short-term distress; the traditional explanation is that the safety behaviors represent "avoidance" and that they are necessary to ban in order to habituate to the feared stimulus, and I think that's wrong.  I think the way traditional exposure therapy for social anxiety *actually* works (when it does) is that if you jam yourself into enough social situations then eventually you'll just stop trying to "win", but getting there is incredibly stressful, and I assume that the reason this takes so long-- and why anxious people relapse so often in treatment-- is because *they don't know that's what they were learning*.  
+
+If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
 
 ### When can I conclude this protocol doesn't work for me?
 
