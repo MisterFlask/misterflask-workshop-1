@@ -206,10 +206,10 @@ The sequence:
 2. Ask: what specific social outcome is the Project worried about right now?  The anxiety, I remind you, is the felt sense of that specific social outcome being at risk.
 3. Ask: what general rule or policy is generating that worry?
 4. Recognize the policy as the Project.
-5. Acknowledge that the policy is meant to accomplish a thing, and ignoring it means you might not accomplish whatever it was it was trying to do.  You might not avoid being cringe, or whatever.
-6. Accept this as fact, disobey the policy, and possibly drop it going forward.
+5. Acknowledge that the policy is meant to accomplish a thing, and ignoring it means you *will not* accomplish whatever it was it was trying to do.  You *will not* avoid being cringe, or whatever.  The Project is a *rational internal entity* making *correct moves* in pursuit of its doomed goal.
+6. Accept this as fact, disobey the policy, and embrace the consequences.
 
-Example: You're at a social event and someone tells a story. You feel a spike of anxiety. Tracing forward: the Project is worried that you're supposed to respond and your response might not be good enough. The policy: "always have something interesting to say when someone finishes telling you something." That's the Project. You can refuse to have something interesting to say. You can say nothing. Or: "huh."
+**Example:** You're at a social event and someone you're talking to is just finishing a long story. You feel a spike of anxiety. Tracing forward: the Project is worried that you're supposed to respond and your response might not be good enough. The policy: "always have something interesting to say when someone finishes telling you something." That's the Project. You can refuse to have something interesting to say. You can say nothing. Or: "huh."  And then you look your conversation partner dead in the eyes and, internally, *dare him to make you say something interesting or useful.*  He'll probably think you suck!  He might tell his friends you're *worse than Hitler.*  I ask you to embrace his hatred and do nothing whatsoever to avert it.
 
 ### Backward: From the Urge
 
@@ -218,19 +218,21 @@ This might be the easier entry point depending on your level of introspective sk
 The sequence:
 
 1. Notice the urge to do something — reach for your phone, go somewhere to be alone, find something to say.
-2. Ask: **what instrumental purpose does this serve?** What is this behavior intended to accomplish socially?
+2. Ask: **what instrumental purpose does this serve?**  What is this behavior intended to accomplish socially?
 
-(Note: this isn't a trick question; we're not doing the CBT thing where we're Socratically reasoning you to "this is stupid, actually."  Well, not yet, anyway.  Social anxiety has a true, genuine logic to it even when the outputs are terrible and tracing this logic is an important first step to dismantling it.  You need an *actual answer* to "why was this a reasonable thing to do" because you're not doing insane bullshit for no reason.)
+(Note: this isn't a trick question; we're not doing the CBT thing where we're Socratically reasoning you to "this is stupid, actually."  Well, not yet, anyway.  The Project has a true, in-its-frame-correct logic to it even when the outputs are terrible and tracing this logic is an important first step to dismantling it.  You need an *actual answer* to "why was this a reasonable thing to do" because you're not doing insane bullshit for no reason.)
 
 3. Ask: **is there a general policy I'm following that this is just one instance of?**
 4. Recognize the policy as the Project.
 5. Acknowledge that the rule or policy is there to accomplish something.  It wasn't a *good* something, but it was something.
-6. Accept that by no longer following it, you're running the risk of not getting whatever the policy was built to do for you.
-7. Disobey the policy and drop it going forward.
+6. Accept that by no longer following it, you're not getting whatever the policy was built to do for you.
+7. Disobey the policy and embrace the consequences.
 
-Example: You notice you're about to make a self-deprecating joke after making a mistake. Tracing backward: the instrumental purpose is to preempt the other person's judgment by getting there first. The general rule: "if you acknowledge your own failure before someone else can, they'll be less likely to think you're the kind of cringe person who doesn't notice his mistakes." That's the Project. The alternative is to just make the mistake and not comment on it.  Saying "oops" is also acceptable.
+Example: You notice you're about to make a self-deprecating joke after making a mistake. Tracing backward: the instrumental purpose is to preempt the other person's judgment by getting there first. The general rule: "if you acknowledge your own failure before someone else can, and make it clear that you know you suck at (skill), then they'll know you have self-awareness and will find you less contemptible." That's the Project, feeding you a *pretty good strategy for pre-empting social judgment*, and we do not obey commands from the Project. The alternative is to just make the mistake and not comment on it.  Saying "oops" is also acceptable.
 
-The Trace gets faster with practice. Early on, you'll mostly be doing it after the fact: "why did I excuse myself to the restroom instead of hang out in the lounge even though I don't actually need to pee?"  (Answer: because even though I don't need to speak to people in the lounge any more than I have to speak to them in the restroom, if I'm in the lounge I can be observed, and if I'm just on my phone in public then people might think I'm being awkward.) Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.
+The Trace gets faster with practice. Early on, you'll mostly be doing it after the fact: "why did I excuse myself to the restroom instead of hang out in the lounge even though I don't actually need to pee?"  (Answer: because even though I don't need to speak to people in the lounge any more than I have to speak to them in the restroom, if I'm in the lounge I can be observed, and if I'm just on my phone in public then people might think I'm being awkward, and "avoid being awkward" was the underlying policy being served.) 
+
+Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.
 
 ### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
 
@@ -238,13 +240,7 @@ Simple: If you feel anxiety preceding the urge, then this implies it's from the 
 
 That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  It's the intelligence-gathering apparatus of the Mind Control project.
 
-Not belching loudly during a wedding ceremony does not require N-dimensional recursive cognition.  It just requires not being an asshole.
-
-### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
-
-Maybe eventually?  But if you've been running the Mind-Control Project for years then that would probably be sufficient to install a negative self-schema in anyone, because you're trying to run an entire social life on like 2% of your total cognition (where 98% is allocated to a malfunctioning social monitoring and surveillance system) and that will kinda make you seem like you suck at socializing regardless of your underlying social skills. Running the Project might not be *necessary* to form a negative evaluation of yourself as a social being, but it is certainly *sufficient.*
-
-My model is any negative self-beliefs may or may not resolve on its own after the dismantling of the Project. Tough to say. If not, it can be resolved later, though I will confess that is outside the scope of this document. 
+Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
 
 ### "Okay but even with the trace that's like my whole social repertoire. Can I really just dismantle it?"
 
@@ -256,13 +252,11 @@ Additionally, trying to kill punchbowl-type behaviors without having killed the 
 
 ## Part 4: What To Do Instead
 
-Banning the Project creates a void. If you've been letting a psychic parasite drive most of your social behavior for years, taking it away raises the obvious question: "Then what am I supposed to do instead?"
+Banning the Project creates a void. If you've been letting a psychic parasite drive most of your social behavior for years, taking it away raises the obvious question: "Then what am I supposed to do instead?"  The Project is *crazy-making* but for a lot of people it's literally the only way they know how to connect to other people.
 
 I have an answer to this, but I should flag that this is the place I diverge most strongly from therapeutic literature; fundamentally none of the OCD ERP protocols I've seen are particularly interested in what you do after you drop the compulsions, but I think it's necessary to have positive behavioral guidance for socializing specifically since "sit in silence at the party while not compulsing"-- though a fine thing to do, which I actually do not object to you doing!-- probably isn't the reason you came to the party.
 
 One way of framing the situation is "the Mind-Control Project has unchallenged authority over your actions because there's nothing in you that's seriously *trying* to challenge its authority; you're running a one-party state and sure the party *sucks* but there's not an alternative." 
-
-<img width="400" height="400" alt="image" src="https://github.com/user-attachments/assets/3cd702ff-5b6c-4f90-9307-cbcd790e89f4" />
 
 Here we are attempting to fix that.
 
@@ -272,7 +266,7 @@ Most therapeutic protocols around OCD are subtractive: "you're doing this bad th
 
 That means your positive guidance for behavior needs to have a number of specific attributes:
 
-* It should be aspirational as an identity; you should be able to look at this set of replacement behaviors and be like, yeah, that's someone I would want to be.
+* It should be aspirational as an identity; you should be able to look at this set of replacement behaviors and be like, yeah, that's someone I would want to be.  (I think the core problem with shame-attacking exercises like "sing loudly in public" is because these are generally non-aspirational, so you're not really learning a new way of existing socially; you're just doing an exercise.)
 * At least one principle needs to be fundamentally hostile to the Project's goals.  The tick must starve.
 * It needs to be prosocial; "yeah, that's someone I would let into my apartment."
 * It needs to be applicable to most or all social situations you might end up in.
@@ -342,17 +336,17 @@ That's why social anxiety makes you stilted and awkward around strangers, even i
 
 A logical extension of this is that when you stop running the Project, the anxiety should drop within single-digit seconds.  Not minutes. If the anxiety persists, it means the Project is still running and you're still trying to fulfill its goals.  You're still *trying to figure something out.*  You still have a problem you are trying to solve, and you need to identify what that problem is and *stop trying to solve it*.  Please read the attached Dr. Michael Greenberg articles if you have issues with this step; he's the main clinician who I'm aware of who's doing this kind of thing.
 
-You'll also find that anxiety spikes are quite frequent-- each one represents the Project handing you another impossible task.  "Make the instructor think you're smart!" "Make that guy think you're cool!"  The Mind-Control Project is basically the world's worst boss and you're its only employee.  You're not even getting paid!  Anyway, these offered tasks must all be refused separately; doing so gets faster with time.
+You'll also find that anxiety spikes are quite frequent-- each one represents the Project handing you another impossible task.  "Make the instructor think you're smart!" "Make that guy think you're cool!"  The answer to these is always "no, we're not doing that."
 
 (The Mind-Control Project has never stopped handing me tasks, but over the course of the first few months doing this consistently I very gradually stopped giving a shit.)
 
 **What an anxiety spike should look like under this protocol:**
 
 1. **Anxiety spike.** You feel it: the Mind-Control Project has accurately identified a likely point of failure in its goal of universal approval.
-2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
-3. **Surrender.** You give up on managing that perception. Fully. You accept whatever the feared negative outcome was — they think you're awkward, they think you're boring, they think you're a bad dancer — without attempting to mitigate it in any way or convince yourself that it won't happen.  It might happen!  Hell, it probably will happen!  They WILL think you're boring!  They WILL think you suck at dancing!  (In my example above, I instead didn't do anything at all; engaging with the compulsive urge to perform is forbidden.)  You must learn to sup their disdain like ambrosia from the table of Zeus himself.  You must grow stronger with every pursed lip and every furrowed brow.  ABANDON HOPE, YE WHO ENTER HERE.
+2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  What are you about to do to mitigate this risk? (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
+3. **Surrender.** You give up on managing that perception. Fully. You accept whatever the feared negative outcome was — they think you're awkward, they think you're boring, they think you're a bad dancer — without attempting to mitigate it in any way or convince yourself that it won't happen.  It might happen!  Hell, it probably will happen!  They WILL think you're boring!  They WILL think you suck at dancing!  And you know why that is?  **IT'S BECAUSE YOU'RE NOT GOING TO TRY AND CONVINCE THEM OTHERWISE, BECAUSE DOING SO IS FORBIDDEN.**  (In my example above, I instead didn't do anything at all; engaging with the compulsive urge to perform is forbidden.)  **You must learn to sup their disdain like ambrosia from the table of Zeus himself.  You must grow stronger with every pursed lip and every furrowed brow.  ABANDON HOPE, YE WHO ENTER HERE**.
 
-The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies that either my document doesn't explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration), OR that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them, OR that my model of what is happening for you is just wrong.  In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
+The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies that either my document doesn't explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration), OR that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them, OR that my model of what is happening for you is just wrong, OR i'm full of shit generally and wrote this whole thing in a week-long manic episode.  In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
 
 ## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
@@ -412,8 +406,7 @@ You are going to think about social interactions after they happen. That's unavo
 
 - **Compulsion review.** Were there moments where the Project took over? Where you did a compulsion? If so, what was the compulsion, and what would the non-compulsion alternative have been?
     - Example: "I noticed that when I started a dance with a good dancer, I immediately made a self-deprecating joke. That was cringe-avoidance: I was trying to preempt them thinking I was bad at this. The alternative would have been to say nothing, and EMBRACE.  THEIR.  HATRED."
-- **Trace work.** Did you discover any new and terrible policies during the event?
-- **Noting the compulsion for next time.** Making a mental note to watch for that specific compulsion in the next similar situation.
+- **Are there people I'd like to connect to later?**
 - **Did I enjoy that?**"  I mean, it's worth asking.
 
 ### Any Social Outcome Is As Good As Any Other Social Outcome
@@ -442,17 +435,21 @@ EXAMPLE:  You're at dinner with some new acquiantances.  The Project is running 
 2. Don't attempt to interject yourself into conversations that don't involve you.  That's intrusive.
 3.  Don't avoid eye contact with the other dinner guests.  That's weird.
 4. Don't make eye contact with people you're not actually speaking to.  That's weird and intrusive.
+5. Don't pick food off the communal plate.  They might resent that, it's intrusive.
+6. Don't just *not take food* off the communal plate.  That's weird, you're at dinner.
 
 These demands are, of course, mutually exclusive.  You can also pick them apart into separate proposition/policy pairs:
 
 1. Sitting there silently will make you look weird. (factual proposition)
 2. Avoiding eye contact with the other dinner guests will make you look weird. (factual proposition)
-3. Don't be weird (standing policy)
-4. Interjecting yourself into conversations that don't involve you will be perceived as intrusive. (factual proposition)
-5. Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
-6. Don't be intrusive. (Standing policy)
+3. Picking food off the communal plate is intrusive. (factual proposition)
+4. Don't be weird (standing policy)
+5. Interjecting yourself into conversations that don't involve you will be perceived as intrusive. (factual proposition)
+6. Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
+7. Not picking food off the communal plate is weird (factual proposition)
+8. Don't be intrusive. (Standing policy)
 
-I would like you to notice that 1, 2, 4 and 5 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 4 and 5 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself" or, if you're more polite, "LOL")
+I would like you to notice that 1, 2, 3, 5 and 6 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 3, 5 and 6 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself" or, if you're more polite, "LOL")
 
 What I am asking you to do is notice and peel apart these concrete demands made by the Project, and then to *notice those demands as fundamentally optional.*  Not because people won't think you're weird and/or intrusive if you don't obey them. But because you have the God-given right as an American to have people think you're weird and intrusive and to *not do anything about this fact whatsoever.*
 
@@ -475,6 +472,9 @@ These are not scripts to memorize. They are examples of the *register* — the l
 
 **To someone new (romantic or otherwise):**
 > "Hey. I'm Aaron. So what's your deal?"
+
+**To someone new who you want to get to know better**
+> Wanna grab dinner over the next few days?"
 
 **To a romantic interest, while on a first date:**
 > "I want to cuddle with you on that park bench so we can make out."  (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable; having to say "no thanks" will not cause your date to spontaneously burst into flames.  Anyway, empirically I find it works more often than it has any right to.)
@@ -499,7 +499,7 @@ Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is N
 
 ### What if I could just, like, read the room to assess interest before making a move?
 
-[Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  *What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
+Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  [*What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
 
 ## Part 8: FAQs
 
@@ -532,7 +532,15 @@ I think it's generally true that therapists *regardless of school* are frequentl
 
 The half-assed middle ground I think I've ended up at is "maybe see an OCD specialist who is willing to work on social phobia."  I believe Dr. Michael Greenberg actually does this (or so claims his site at https://drmichaeljgreenberg.com/ ), which is a very funny recommendation to make given that I've never interacted with him in any way but he has written some *banger* articles on this topic that make me respect him as a thinker in this space.
 
+I also know a woman named Lynn Matalon who used to be my dating coach and whose whole deal is eradicating people-pleasing using highly-unprincipled non-therapeutic methods that rhyme *a lot* with what I have described here behaviorally, and who played a critical role in me figuring out this shit in the first place.  She only works with women at the moment; her website is called ["lion|EQ."](https://lioneq.com/)  I found her to be quite effective, so if you're a woman with social anxiety and people-pleasing tendencies chatting with her is *far* from the worst thing you could do, though I will say she is not a therapist and, separately, is a bit of a battle-axe, so definitely expect that going in.
+
 tl;dr: idk get off my back
+
+### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
+
+Maybe eventually?  But if you've been running the Mind-Control Project for years then that would probably be sufficient to install a negative self-schema in anyone, because you're trying to run an entire social life on like 2% of your total cognition (where 98% is allocated to a malfunctioning social monitoring and surveillance system) and that will kinda make you seem like you suck at socializing regardless of your underlying social skills. Running the Project might not be *necessary* to form a negative evaluation of yourself as a social being, but it is certainly *sufficient.*
+
+My model is any negative self-beliefs may or may not resolve on its own after the dismantling of the Project. Tough to say. If not, it can be resolved later, though I will confess that is outside the scope of this document. 
 
 ### I acted based on some combination of [Honesty, Kindness, Selfish Impulse] and the interaction went badly!
 
