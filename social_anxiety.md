@@ -671,6 +671,18 @@ I also suspect that institutional clinical psychology would *strongly* prefer to
 
 I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
+## Appendix B:  Puzzles Resolved By This Particular Theory
+Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be able to generate explanations for widely-reported phenomena regardless of whether it's a disorder we actually care about treating, because nature is not carved at the joints of "things we care about treating." And I think there are a very large number of phenomena that either CBT needs to generate unfalsifiable epicycles to explain which this theory handles as fairly obvious first-order extrapolations.  Like:
+
+(1) police officers not being anxious when arresting people who definitely hate them.  If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are yelling at them?
+(2) people being anxious at parties where tehy don't know anyone and therefore where social consequences are pretty much zero.  This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs".
+(3) people who are well-liked frequently being socially anxious.  This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception.
+(4) people who are widely-disliked being frequently socially non-anxious; this one's weird in CBT land and I think maybe just uninvestigated?
+(5) The anxiety signatures widely reported in MOBA games like LoL.  Clinical researchers aren't interested in this but I think they should be.
+(6) Why does CBT view some distortions (such as in cold approaching women) to be particularly stubborn?  Like, we see pickup artists who have approached literally hundreds of women and are still nervous about this.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it, shouldn't disconfirmation have kicked in?  You know you can survive rejection after hundreds of rejections.  *What's happening*?
+
+The incuriosity of the field is MADDENING.
+
 ## Anyway
 The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought as they work the vocal cords of their meat-puppets.  "Wherever you want to eat is fine!  Haha"
 
