@@ -94,18 +94,19 @@ There is a hierarchy.
 
 These aren't exactly behaviors, as such.  They are sub-goals of "control what everyone thinks of me at all times" that your instrumental mental compulsions will be organized around.  You probably don't think about these, but they think about *you*.
 
-You likely won't have all of these, but you'll probably have some.
+They are the mission statements of your particular Mind-Control Project.
 
-- **Avoid Anyone Disliking Me**.  Secure universal approval.
-- **Don't Look Stupid**.
-- **Ensure Other People Always Have Their Preferences Met**.  This can be tricky because they often hide these preferences; it's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences.
-- **Ensure Nobody Else Has A Negative Emotional Experience Around You**.  This one is complicated because it feels like common decency, but this too has the problem of being a fundamentally impossible task that results in avoidance behavior, because "discomfort" and "human connection" are not fundamentally separable.
-- **Never Look Awkward**
-- **Never Look Cringe**
-- **Never Look Weird**
-- **Never Be Boring**
-- **Never Look Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
-- **Never Look Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
+- **Avoid Anyone Disliking Me**.  The big one.
+- **Don't Be Perceived As Stupid**.
+- **Guarantee Other People Have Their Preferences Met**.  This can be tricky because they often hide these preferences; it's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences.
+- **Guarantee Nobody Else Has A Negative Emotional Experience Around You**.  This one is complicated because it feels like common decency, but this too has the problem of being a fundamentally impossible task that results in avoidance behavior, because "discomfort" and "human connection" are not fundamentally separable.
+- **Don't Be Perceived As Awkward**
+- **Don't Be Perceived As Cringe**
+- **Don't Be Perceived As Weird**
+- **Don't Be Perceived As Boring**
+- **Don't Be Perceived As Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
+- **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
+- **Don't Look Ugly** (I think this one actually manifests as body dysmorphic disorder, not social anxiety as such.)
 
 ### Mental Compulsions (subclass: Instrumental)
 
@@ -165,9 +166,9 @@ It has to be.
 
 The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
 
-You, operating as your conscious self reading this document, have advantages and disadvantages in your war against this hostile process: your disadvantage is the Mind-Control Project has full control over your social perceptions.  Your advantage (which should be decisive) is that you have *actual decisionmaking authority* and while you can't *alter* the Project's threat assessments (I know this because you would have done so already), you *can* choose to just tell it "Okay.  Shoot the hostage."  *"I swear to fucking God, I'll do it!*" "Okay.  Do it." *"Do you think I'm fucking around?"* "I said shoot the hostage." 
+This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "accept that the hostage is 100% absolutely going to die and commit to saying or doing nothing to prevent it whatsoever."
 
-This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms to be elaborated on later in this document.
+I should note I am not a professional hostage negotiator.
 
 ### "I've never been able to stop ruminating!  That's unrealistic."
 
