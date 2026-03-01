@@ -354,28 +354,27 @@ This is basically tech support.  I guess all I can say in my defense is that thi
 
 If you struggle with this, it might actually be instructive to speak to an OCD specialist. (Probably not a CBT therapist if you're still interested in pursuing this protocol, since they operate off entirely different assumptions that are totally contrary to this document.)
 
-## Part 5.5: The Panic
+## Part 5.5: Worked Examples
 
-Not monitoring, from the Project's perspective, sounds *dangerous*.  What if you did something mortifying while you weren't monitoring?  Better check!
+The Project communicates via anxiety spikes.
 
-This feeling is expected and normal, and remember that the checking is extremely banned behavior.  You're fine, the Project is just trying to pull you back in.  Fundamentally the only real thing the Project has to threaten you with is other peoples' perceptions of you, and without that it have no real leverage.  That means constantly having internal monologues like:
+That means constantly having internal monologues like:
 
+### Scenario 1: The Dangerous Dance
 ANXIETY SPIKE: "If I ask her for a dance and I suck, then she'll think poorly of me and resent the fact that I'm dancing with her!"
 RESOLUTION: "Yes, this is acceptable.  Trying to make her not think I suck is prohibited behavior.  Trying to reason about making her not think I suck is prohibited cognition. Redirect to replacement behaviors per policy."
 
 (Listen, it's not like you've shackled her to the floor.  She can leave if she wants.)
 
-or
-
+### Scenario 2: The Appalling Anecdote
 ANXIETY SPIKE: "I need to figure out what to say in this conversation!  What if this cool person detects that I'm kind of lame and boring?"
 RESOLUTION: "This cannot be avoided and in fact trying to avoid it is banned behavior, and reasoning about how to avoid it is banned cognition.  Redirect to replacement behaviors."
 
-or
-
+### Scenario 3: The Repulsive Rendezvous
 ANXIETY SPIKE: "My date's not impressed with me!  Quick, say something witty!"
 RESOLUTION: "My date being impressed or not with me is not my problem to solve; trying to make her impressed is banned behavior per policy.  Redirect to replacement behaviors."
 
-or
+### Scenario 4: The Perilous Party
 
 ANXIETY SPIKE:  "I'm at a party and not talking to anyone!  Oh God, I'm going to look so awkward!  Maybe I should get some punch to buy time!"
 RESOLUTION: "Getting punch when I don't actually want it in order to not have the partygoers think I'm weird is awkwardness-avoidance, which is banned behavior per policy.  I will stand here and embrace awkwardness."
@@ -383,6 +382,8 @@ RESOLUTION: "Getting punch when I don't actually want it in order to not have th
 "I'm bored now.  Time to check in on what I actually want in this moment.  I want... to join that group's conversation"
 ANXIETY SPIKE: "Too risky!  They might be having a private conversation!  In the middle of a crowded party!  We might be regarded as presumptuous!"
  RESOLUTION: "Avoiding presumptuousness is forbidden behavior.  I accept being regarded as presumptuous as a likely and acceptable outcome.  HEY CAN I JOIN YOUR CONVERSATION"
+
+(This one is actually tricky in some ways.  I'm going to say that if you can't get your anxiety about presumptiousness down to 0 then *probably* you shouldn't go up to the group.  We do not do exposures while compulsing because that's just suffering with extra steps.  I mean, I guess you could, it's just not what I consider to be therapeutic.)
 
 It sounds annoying but you get used to it pretty fast, I think; even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
 
