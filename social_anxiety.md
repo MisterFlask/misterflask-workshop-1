@@ -80,9 +80,7 @@ That is not the approach I am discussing here.
 
 **You are not going to fix the Project; the Project cannot be fixed.  You are also not going to help the Project become more accurate in assessing its own performance; its accuracy is not an issue.  Instead, our goal is to burn it down, salt the ashes, and fully eliminate its influence over your cognition and behavior.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
----
-
-## Part 2: The Obsessions And Compulsions
+## Part 2: The Obsessions And The Compulsions
 
 The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them don't feel like compulsions — they feel like normal social behavior.  Some of them *definitely* feel like compulsions.
 
