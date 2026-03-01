@@ -345,11 +345,11 @@ You'll also find that anxiety spikes are quite frequent-- each one represents th
 The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies one of the following:
 
 * my document doesn't currently explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration)
-* that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them
+* that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them.  Remember, our goal is to **ABANDON HOPE AND EMBRACE YOUR FATE**.
 * that my model of what is happening for you is just wrong
-* i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode.
+* i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode, which I will remove from Github as soon as the antipsychotics kick in.
 
-In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
+In any case, feel free to bail out of the situation and we can figure out what happened later.  I accept bug reports.
 
 ## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
