@@ -601,7 +601,7 @@ If you can't see the thing you're aiming at, then when you hit it (which will be
 
 A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
 
-Before concluding this I'd like you to try a few things:
+**Before concluding this I'd like you to try a few troubleshooting steps**:
 
 (0) Try it first in the lowest-stakes situations where you still have anxiety, just to establish the general principle.  Run the Trace.
 
@@ -691,7 +691,7 @@ Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the f
 ## Anyway
 The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought as they work the vocal cords of their meat-puppets.  "Wherever you want to eat is fine!  Haha"
 
-They don't have to live like this!  *I want to shake them*.
+*I want to shake them*.
 
 Which I won't, because that wouldn't help, but I can at least give them the url to this document.
 
