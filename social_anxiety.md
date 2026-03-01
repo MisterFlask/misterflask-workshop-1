@@ -82,7 +82,7 @@ That is not the approach I am discussing here.
 
 ---
 
-## Part 2: The Compulsions
+## Part 2: The Obsessions And Compulsions
 
 The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them don't feel like compulsions — they feel like normal social behavior.  Some of them *definitely* feel like compulsions.
 
@@ -90,7 +90,7 @@ Here's a list of things I suspect you are doing, and which I will ask you to not
 
 There is a hierarchy.
 
-### Mental Compulsions (subclass: Root-Level Policies)
+### Mental Obsessions (or, Root-Level Policies)
 
 These aren't exactly behaviors, as such.  They are sub-goals of "control what everyone thinks of me at all times" that your instrumental mental compulsions will be organized around.  You probably don't think about these, but they think about *you*.
 
@@ -106,9 +106,9 @@ They are the mission statements of your particular Mind-Control Project.
 - **Don't Be Perceived As Boring**
 - **Don't Be Perceived As Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
 - **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
-- **Don't Look Ugly** (I think this one actually manifests as body dysmorphic disorder, not social anxiety as such.)
+- **Don't Be Perceived As Ugly** (this one manifests as body dysmorphic disorder, not social anxiety as such.)
 
-### Mental Compulsions (subclass: Instrumental)
+### Mental Compulsions (or, Instrumental Mental Behaviors)
 
 These happen inside your head. Nobody can see them, and most of them feel automatic.  Physical and verbal compulsions are downstream of these.
 
