@@ -676,15 +676,15 @@ Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be abl
 
 (1) police officers not being anxious when arresting people who definitely hate them.  If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are screaming obscenities at them?  Why are the ICE agents in Minnesota not having constant public breakdowns?
 
-(2) people being anxious at parties where tehy don't know anyone and therefore where social consequences are pretty much zero.  This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs".
+(2) people being anxious at parties where tehy don't know anyone and therefore where social consequences are pretty much zero.  This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project runs hardest when the perceptions of others are undetermined, and where it feels plausible that effort could have maximum impact".
 
 (3) people who are well-liked frequently being socially anxious.  This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception.
 
 (4) people who are widely-disliked being frequently socially non-anxious; this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.
 
-(5) The anxiety signatures widely reported in MOBA games like LoL.  Clinical researchers aren't interested in this but I think they should be.
+(5) The anxiety signatures widely reported in MOBA games like LoL; it's not *social* anxiety as such, but I think it's a pretty much identical dynamic around attempted-control-of-uncontrollable-outcomes (as discussed previously).  Clinical researchers aren't interested in this but I think they should be.  I think psychology as a field is probably impoverished by its focusing exclusively on sick people.
 
-(6) Why does CBT view some distortions (such as in cold approaching women) to be particularly stubborn?  Like, we see pickup artists who have approached literally hundreds of women and are still nervous about each one.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it (inhibitory learning theory yeah yeah), shouldn't disconfirmation have kicked in?  You already know you can survive rejection after hundreds of rejections.  *What's happening here*?
+(6) Why do men not habituate to cold approaching women in public settings?  Like, we see pickup guys who have approached literally hundreds of women and are still nervous about each one.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it (inhibitory learning theory yeah yeah), shouldn't disconfirmation have kicked in?  You already know you can survive rejection after hundreds of rejections.  *What's happening here*?  (My own theory: cold-approaching women is almost maximally Project-infected because the interaction has no non-impression-management reason to exist, and in fact you need to impression-manage really hard due to all the specific beats that a cold approach needs to hit in order to go well; cold approach *needs* impression-management and if you're in the set of guys who find the Project anxiogenic-- probably most?-- this just structurally won't go well for you.)
 
 Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the field is MADDENING.
 
