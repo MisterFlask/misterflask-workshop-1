@@ -398,6 +398,15 @@ ANXIETY SPIKE: "Too risky!  They might be having a private conversation!  In the
 
 It sounds annoying but you get used to it pretty fast, I think; even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
 
+### Hold up.  "Not doing exposures while compulsing" is all very well but going up to a new group is objectively scary!
+
+Okay, here's the mental motion:
+(1) I have the *God-given right* to ask to join a conversation.
+(2) If they don't want me to join they can say so with their *human mouths*.
+(3) If they don't want me to join and don't want to tell me for some reason, that is unfortunate but not my fault; they may choose to learn to communicate and set boundaries at some later date.  Or they may not.  [Either way, nobody made *me* the Central Planner of the party's conversation economy.](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
+
+Run the trace-and-surrender and see how it goes.  I suspect that the *active* Project-refusals (e.g. asking to join a conversation, requesting a number) are much harder than the *passive* Project-refusals (e.g. not performing for approval); as such you can start with the passive ones and work up.
+
 ## Part 6: Post-Event Processing (Redirected)
 
 You are going to think about social interactions after they happen. That's unavoidable, but also therapeutically *extremely* dangerous because the most damaging of the mental compulsions live here. The question is what you think about.
