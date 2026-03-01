@@ -684,7 +684,23 @@ Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be abl
 
 Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the field is MADDENING.
 
+## Wild Speculation About The Personality-Level Causes Of Social Anxiety
+
+I can think of a few plausible spectrums that would result in people being socially anxious vs non-socially-anxious.
+
+### Spectrum Option 1: "How Functional Is YOUR Mind Control Project?"
+I suspect there's a population-wide spectrum that, broadly, is defined by "degree to which the Mind-Control Project causes anxiety."  Some people seem to run it incredibly well; I've met one of them (a high-flying CEO type) and I think he runs almost every interaction through varyingly-honest forms of impression management and he's *good at it.*  It does not appear to cause him noticeable strain.  I call these people Politicians.  (If you're reading this it is very likely you're not a Politician.)
+
+Then there are people for whom the Mind-Control Project is deeply unproductive and almost immediately pathological, such as myself.  People with social anxiety will almost universally be on this side of the spectrum.
+
+### Spectrum Option 2: "How Goal-Oriented Are You?"
+
+Some people really fucking love to achieve goals.  Some people fill all their free time by designating complex, totally arbitrary goals for themselves, and then struggle to achieve them, and they call this fun.  There are entire industries, plural, around constructing artificial goals (and equipment for achieving them) which take a bounded amount of time, and then they sell these artificial goals to people who pay richly for them.  Sometimes they use Kickstarter.
+
+These people will frequently end up socially anxious because they have, very naturally, infiltrated a goal into socializing because goals are how they arrange the rest of their professional, personal and intellectual life.
+
 ## Anyway
+
 The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought as they work the vocal cords of their meat-puppets.  "Wherever you want to eat is fine!  Haha"
 
 *I want to shake them*.
