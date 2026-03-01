@@ -120,11 +120,9 @@ These happen inside your head. Nobody can see them, and most of them feel automa
 
 - **In-the-moment monitoring.** During a conversation, splitting your attention between the interaction and your evaluation of the interaction. "Am I being awkward right now?" "Was that a normal thing to say?" "Are they bored?"
 
-- **Reading the room.** Effortful attempts to determine what someone is feeling about you based on their expression, tone, body language, or behavior. This is distinct from naturally noticing that someone seems upset — it's the active scanning for evidence about your standing.
-
 - **Reassurance-seeking.** Asking someone "was that weird?" or "did I come off okay?" or fishing for compliments or seeking out positive *or negative* feedback about your social performance.
 
-- **Checking.** Looking at someone's face to see if they reacted badly. Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
+- **Checking.** Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
 
 ### Behavioral Compulsions
 
