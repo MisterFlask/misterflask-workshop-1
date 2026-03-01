@@ -342,7 +342,14 @@ You'll also find that anxiety spikes are quite frequent-- each one represents th
 2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  What are you about to do to mitigate this risk? (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
 3. **Surrender.** You give up on managing that perception. Fully. You accept whatever the feared negative outcome was — they think you're awkward, they think you're boring, they think you're a bad dancer — without attempting to mitigate it in any way or convince yourself that it won't happen.  It might happen!  Hell, it probably will happen!  They WILL think you're boring!  They WILL think you suck at dancing!  And you know why that is?  **IT'S BECAUSE YOU'RE NOT GOING TO TRY AND CONVINCE THEM OTHERWISE, BECAUSE DOING SO IS FORBIDDEN.**  (In my example above, I instead didn't do anything at all; engaging with the compulsive urge to perform is forbidden.)  **You must learn to sup their disdain like ambrosia from the table of Zeus himself.  You must grow stronger with every pursed lip and every furrowed brow.  ABANDON HOPE, YE WHO ENTER HERE**.
 
-The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies that either my document doesn't explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration), OR that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them, OR that my model of what is happening for you is just wrong, OR i'm full of shit generally and wrote this whole thing in a week-long manic episode.  In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
+The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies one of the following:
+
+* my document doesn't currently explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration)
+* that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them
+* that my model of what is happening for you is just wrong
+* i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode.
+
+In any case, feel free to bail out of the situation and we can figure out what happened later.  Again: this is prototype psychoengineering and iteration is needed.  I accept bug reports.
 
 ## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
