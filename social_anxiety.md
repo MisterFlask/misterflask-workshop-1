@@ -347,13 +347,20 @@ The goal during social situations is *not* to endure prolonged anxiety. Prolonge
 * my document doesn't currently explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration)
 * that you've intellectually claimed acceptance of feared outcomes while still mentally scrambling to prevent them.  Remember, our goal is to **ABANDON HOPE AND EMBRACE YOUR FATE**.
 * that my model of what is happening for you is just wrong
-* i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode, which I will remove from Github as soon as the antipsychotics kick in.
+* i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode, which I will remove from Github at some point after a judge orders me to go on antipsychotics.
 
 In any case, feel free to bail out of the situation and we can figure out what happened later.  I accept bug reports.
 
 ## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
-Yeah, I don't have an incredibly clean answer for you here: I'm trying to make you do an incredibly specific sort of mental motion that is deeply counterintuitive if you haven't been practicing it.  It should feel a little bit like ragequitting a League of Legends game or admitting that you've lost a really heated argument that you were super invested in.  It should feel like resignation to your fate.  A little bit like you're waiting for the guillotine, and you cannot prevent this in any way.  Like you're a fraudster and you've been running a scam for years, and it's come crashing down and now everyone knows and you can stop frantically trying to hide it.  Like you've been failing at your stressful job for years and decided that actually it's not worth it any more, and have sent in your resignation. It should feel like giving up, after which you should feel zero anxiety and zero effort.
+Yeah, I don't have an incredibly clean answer for you here: I'm trying to make you do an incredibly specific sort of mental motion that is deeply counterintuitive if you haven't been practicing it.  It should feel a little bit like:
+* ragequitting a League of Legends game
+* admitting that you've lost a really heated argument that you were super invested in
+* A little bit like you're waiting for the guillotine, and you cannot prevent this in any way, and now you are resigned to your fate while waiting for the headsman.
+* you're a fraudster and you've been running a scam for years, and it's come crashing down and now everyone knows and you can stop frantically trying to hide it.
+* you've been failing at your stressful job for years and decided that actually it's not worth it any more, and have sent in your resignation.
+
+It should feel like giving up, after which you should feel zero anxiety and zero effort-- a sort of zenlike tranquility-- and possibly mild curiosity about what comes next once the unspeakable arrives.
 
 I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying to teach you how to perform psychic computer repair without being able to see inside your head or what specifically you're even doing.  "So I've connected the two components but the light isn't still coming on."  "Okay, that means they're still disconnected."  "But I've connected them." "I don't think you have. What does the connector look like?" "I dunno, kinda greenish?"
 
@@ -481,11 +488,11 @@ What I am asking you to do is notice and peel apart these concrete demands made 
 
 ### "Wait, why is that information of negative value?"
 
-Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Mind-Control Project says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.
+Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Mind-Control Project says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
 
-*The tick must starve.*
+The contradictory demands at the dinner table are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you: which is to say, *bloated to madness.*
 
----
+The tick must starve.
 
 ## Part 7.5: Brute Force Socializing
 
