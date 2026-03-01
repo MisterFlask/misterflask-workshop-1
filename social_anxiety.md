@@ -236,9 +236,9 @@ Eventually, you'll catch policies in real time as the anxiety fires, and the rec
 
 Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
 
-That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  It's the intelligence-gathering apparatus of the Mind Control project.
+That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
 
-Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
 
 ### "Okay but even with the trace that's like my whole social repertoire. Can I really just dismantle it?"
 
