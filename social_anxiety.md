@@ -493,7 +493,7 @@ That means constantly having internal monologues like:
 ### Scenario 1: The Dangerous Dance
 ANXIETY SPIKE: "If I ask her for a dance and I suck, then she'll think poorly of me and resent the fact that I'm dancing with her!"
 
-RESOLUTION: "Yes, this is acceptable.  Trying to make her not think I suck is prohibited behavior.  Trying to reason about making her not think I suck is prohibited cognition. Redirect to replacement behaviors per policy."
+RESOLUTION: "Yes, this is acceptable.  Trying to make her not think I suck is prohibited behavior.  Trying to reason about making her not think I suck is prohibited cognition. Redirect to replacement behaviors per policy: I may do things because they are honest, kind, or because they satisfy my base selfish impulses."
 
 
 (Listen, it's not like you've shackled her to the floor.  She can leave if she wants.)
@@ -531,7 +531,7 @@ It sounds annoying, but even when you're starting out this procedure is objectiv
 ### Hold up.  "Not doing exposures while compulsing" is all very well but going up to a new group is objectively scary!
 
 Okay, here's the mental motion:
-(1) I have the *God-given right* to ask to join a conversation.
+(1) I have the *God-given right* to ask to join a conversation.  Not to join it, necessarily, but just to ask.
 
 (2) If they don't want me to join they can say so with their *human mouths*.
 
@@ -592,7 +592,7 @@ Traditionally therapists discourage anxiolytics when doing exposures since they 
 
 I suspect anxiolytics *might* make the initial trace-and-surrender steps feel more approachable, but presumably at too high a dose you just won't feel the anxiety which means you won't be able to get actually therapeutic exposures because the whole point is getting practice with the Trace-And-Surrender steps.
 
-Uh, careful about the addiction profile for benzos.  Especially if you try phenibut, where the comedown after physical addiction traditionally involves (I swear I'm not making this up) feeling strongly like you're about to be fired, intense social anxiety (ironic) and, finally, sleep paralysis demons.  *You don't want the sleep paralysis demons.*
+Uh, careful about the addiction profile for benzos.  Especially if you try phenibut, where detox after physical addiction traditionally involves (I swear I'm not making this up) feeling strongly like you're about to be fired, intense social anxiety (ironic) and, finally, sleep paralysis demons.  *You don't want the sleep paralysis demons.*
 
 Anyway, chat with an actual professional.
 
