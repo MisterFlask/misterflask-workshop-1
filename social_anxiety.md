@@ -278,7 +278,7 @@ The first constraint-- that the principles represent an aspirational identity-- 
 
 Yeah.
 
-I think social anxiety is, basically, a philosophical disorder: you've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority".  That fucks you up in highly reliable and specific ways and this is partly addressing that.
+I think social anxiety is, basically, a philosophical disorder: you've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority".  That fucks you up in highly reliable and specific ways and any successful social anxiety treatment needs to address this by giving you an internal locus of judgment independent of whatever random thoughts flicker across other peoples' minds.
 
 ### The Specific Principles I Suggest
 
@@ -292,11 +292,17 @@ Saying true things about what you think, feel, want, or notice. This includes th
 
 The reason this takes first place is because "Vulnerable" *means* "exposes you to judgment."  This is, ultimately, a virtue which also happens to be the bluntest possible weapon against the Project's priorities, because "judgement from others" is the whole thing the Project was spun up to prevent.
 
+Also, it's *fun*.  When you say something that most people wouldn't, unapologetically, without hedging, it frequently causes tiny BSODs to ripple across their features.  "I gave a talk at a sex festival" said in tones of bland fact feels a little bit like handing someone a live grenade and, now, your reward is to watch in fascination as they they frantically decide whether they need to throw it out the window.  Reactions vary!
+
+Vulnerability-- in the sense of "saying and doing things that let people judge you in arbitrary ways"-- is also conducive to authentic human connection.
+
 #### 2. Kindness
 
 Doing or saying things because they're good for the other person, independent of how it makes you look or how it might influence the other person's perception of you.
 
 This takes second place because it's necessary but at the same time easily co-opted by the Project, since people *do* like people who are kind.
+
+A thing I started doing after beginnign this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
 
 #### 3. Selfish Impulse
 
