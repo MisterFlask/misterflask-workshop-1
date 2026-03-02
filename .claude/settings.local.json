@@ -43,7 +43,10 @@
       "Bash(conda list:*)",
       "Bash(conda uninstall:*)",
       "Bash(npm run dev:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch",
+      "Bash(python3:*)"
     ]
   },
   "hooks": {
