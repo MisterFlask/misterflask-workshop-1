@@ -534,7 +534,23 @@ Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is N
 
 Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  [*What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
 
-## Part 8: FAQs
+## Part 8: Medication...?
+
+I'll be real with you: I dunno, I'm not a doctor.
+
+Anxiolytics such as benzodiazapenes have an unlovely rep because they all come in "short-term effective, addictive long-term".  SSRIs are sometimes prescribed for anxiety long-term, but come with annoying side effects with you'll get regardless of whether they're effective.  I still have a grudge against Zoloft for making me gain like twenty pounds last time I was on it with no other obvious effects.
+
+On the other hand... SSRIs are frequently prescribed for OCD-spectrum disorders and have reasonable effect sizes there, and I *am* arguing that social anxiety is basically OCD-spectrum.  Does that mean they'll work here?  I'll be real: nobody knows why any psychoactive drug works, when it works, which is sometimes.  They just handwave about seratonin or whatever and measure effect sizes in clinical trials.  [Do Your Own Research.](https://slatestarcodex.com/2015/07/13/things-that-sometimes-work-if-you-have-anxiety/) Trying this wouldn't be an insane thing to do, though I haven't done enough research on this to give you more than that incredibly lukewarm referral.
+
+Traditionally therapists discourage anxiolytics when doing exposures since they think you need to habituate to the anxiety instead of chemically blunting it.  Obviously I am working off a different model.  I think anxiolytics are probably unnecessary (I did not make use of them when running this protocol, mostly because I kept needing to drive places, with the occasional exception of the very-unregulated phenibut which I restricted to once per couple of weeks at parties and such) but I guess it's nice they exist if you decide otherwise.  
+
+I suspect anxiolytics *might* make the initial trace-and-surrender steps feel more approachable, but presumably at too high a dose you just won't feel the anxiety which means you won't be able to get actually therapeutic exposures because the whole point is getting practice with the Trace-And-Surrender steps.
+
+Uh, careful about the addiction profile for benzos.  Especially if you try phenibut, where the comedown after physical addiction traditionally involves (I swear I'm not making this up) feeling strongly like you're about to be fired, intense social anxiety (ironic) and, finally, sleep paralysis demons.  *You don't want the sleep paralysis demons.*
+
+Anyway, chat with an actual professional.
+
+## Part 9: FAQs
 
 ### "But that's try-hard / too forward / cringe"
 <img width="485" height="210" alt="image" src="https://github.com/user-attachments/assets/8be93ca6-b1f1-421a-9ce9-e549dd4c52f7" />
@@ -565,7 +581,7 @@ I think it's generally true that therapists *regardless of school* are frequentl
 
 The half-assed middle ground I think I've ended up at is "maybe see an OCD specialist who is willing to work on social phobia."  I believe Dr. Michael Greenberg actually does this (or so claims his site at https://drmichaeljgreenberg.com/ ), which is a very funny recommendation to make given that I've never interacted with him in any way but he has written some *banger* articles on this topic that make me respect him as a thinker in this space.
 
-I also know a woman named Lynn Matalon who used to be my dating coach and whose whole deal is eradicating people-pleasing using highly-unprincipled non-therapeutic methods that rhyme *a lot* with what I have described here behaviorally, and who played a critical role in me figuring out this shit [in the first place](https://lifeimprovementschemes.substack.com/p/maybe-social-anxiety-is-just-you).  She only works with women at the moment; her website is called ["lion|EQ."](https://lioneq.com/)  Pretty much her whole deal was a spectacularly effective radar for Project-infected behaviors and would use this to call out compulsions in real time (she would generally use the word "bullshit" instead of "compulsion."  But the effect is the same!)  If you're a woman with social anxiety and people-pleasing tendencies chatting with her is *far* from the worst thing you could do, though I will say she is not a therapist and, separately, is a bit of a battle-axe, so definitely expect that going in.
+I also know a woman named Lynn Matalon who used to be my dating coach and whose whole deal is eradicating people-pleasing using highly-unprincipled non-therapeutic methods that rhyme *a lot* with what I have described here behaviorally, and who played a critical role in me figuring out this shit [in the first place](https://lifeimprovementschemes.substack.com/p/maybe-social-anxiety-is-just-you).  She only works with women at the moment; her website is called ["lion|EQ."](https://lioneq.com/)  She has a spectacularly effective radar for Project-infected behaviors and uses this to call out compulsions in real time (she frequently uses the word "bullshit" instead of "compulsion."  But the effect is the same!)  If you're a woman with social anxiety and people-pleasing tendencies chatting with her is *far* from the worst thing you could do, though I will say she is not a therapist and, separately, is a bit of a battle-axe, so definitely expect that going in.
 
 tl;dr: idk get off my back
 
@@ -713,7 +729,7 @@ Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be abl
 
 (3) people who are well-liked frequently being socially anxious.  This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception.
 
-(4) people who are widely-disliked being frequently socially non-anxious; this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.
+(4) people who are widely-disliked being frequently socially non-anxious; this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.  (One heckled me during a talk I was giving about literally this topic; at the end of my talk they were like "HEY THAT'S ALL DUMB.  YOU SHOULD JUST NOT CARE ABOUT WHAT PEOPLE THINK."  Then the room devolved into a bunch of different heated arguments without me formally ending the talk.  Exceptional outcome.)
 
 (5) The anxiety signatures widely reported in MOBA games like LoL; it's not *social* anxiety as such, but I think it's a pretty much identical dynamic around attempted-control-of-uncontrollable-outcomes (as discussed previously).  Clinical researchers aren't interested in this but I think they should be.  I think psychology as a field is probably impoverished by its focusing exclusively on sick people.
 
