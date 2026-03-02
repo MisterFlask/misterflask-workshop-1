@@ -506,7 +506,7 @@ I think the exposure difficulty will be in the following order:
 
 In the dinner party scenario, low-stakes passive exposure would be:
 
-1. not trying to avoid weirdness by avoiding eye contact.  Remember: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
+1. not trying to avoid weirdness by not avoiding eye contact.  That was a lot of negatives, so I'll rephrase: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
 2. not trying to avoid weirdness by not speaking.  Same logic.
 3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*
 
@@ -520,8 +520,11 @@ Active exposures are, I think, harder because they really need you to engage in 
 2.  Is there a true, kind thing that is relevant which I could say or do here?
 3.  Is there a selfish impulse I could indulge in this moment in either my speech or actions?
 
-Then you perform the Trace-And-Surrender on the complaint the Mind-Control Project will *inevitably* raise about any of these things.
+Then you perform the Trace-And-Surrender on the complaint the Mind-Control Project will *inevitably* raise about any of these things.  We are now pitting the replacement behaviors of your Ideal Self in a cage match with the Mind-Control Project and, frankly, if your Mind-Control Project has been in charge of your actions for a long time then even if the Project still wins 80% of the time that's still a meta-victory because 20% of the time it *didn't*.
 
+Remember: don't do any of the active exposure stuff *until you are at a state of zero effort and zero anxiety.*  If you start feeling anxious while doing active exposures, go back to passive exposures and become calm and non-anxious there.  Remember, if you spend the entire dinner party literally silent and immobile then this is your right and if even The Lord Your God were to say otherwise I invite you to flip Him your middle finger as you walk backwards into Hell.  
+
+**The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.**
 
 ## Part 7.5: Brute Force Socializing
 
