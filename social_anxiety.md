@@ -178,6 +178,14 @@ It will cease ruminating only after you mechanically cut rumination off from inf
 
 If you have trouble with the rumination ban metacognitive therapy has tools to use for this, which I'm not getting into here but are worth a Google.
 
+### "Okay but even with the trace that's like my whole social repertoire. Can I really just dismantle it?"
+
+Hear me out. The physical behaviors you are engaged in are almost all downstream of the cognitive ones. I suspect strongly that the physical end of what clinicians call "safety behaviors" are actually not particularly important to ban directly because if you are able to kill the cognitive policies generating them ("never appear awkward") they should disappear on their own. If this is not true, you can go through and address them after dealing with the most problematic policies.
+
+Most of the reason the physical behaviors are interesting to catalogue and target in the first place is because those are how you uproot the underlying policies they serve.  "Going to get punch to avoid looking awkward at the party" isn't really interesting to ban on its own because that's, like, 0.01% of your social behavior; going one by one like that would take forever, though I understand some methodologies do this. "Avoid looking awkward" is where the *real* action is, and if you kill that then you get all the punchbowl-type behaviors for free.
+
+Additionally, trying to kill punchbowl-type behaviors without having killed the underlying policy causing it will result in white-knuckling, which is basically just doing exposure therapy while compulsing, which is not useful. 
+
 ---
 
 ## Part 3: The Trace
@@ -238,13 +246,7 @@ That's because normal, healthy social cognition doesn't require mind-reading.  O
 
 Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
 
-### "Okay but even with the trace that's like my whole social repertoire. Can I really just dismantle it?"
-
-Hear me out. The physical behaviors you are engaged in are almost all downstream of the cognitive ones. I suspect strongly that the physical end of what clinicians call "safety behaviors" are actually not particularly important to ban directly because if you are able to kill the cognitive policies generating them ("never appear awkward") they should disappear on their own. If this is not true, you can go through and address them after dealing with the most problematic policies.
-
-Most of the reason the physical behaviors are interesting to catalogue and target in the first place is because those are how you uproot the underlying policies they serve.  "Going to get punch to avoid looking awkward at the party" isn't really interesting to ban on its own because that's, like, 0.01% of your social behavior; going one by one like that would take forever, though I understand some methodologies do this. "Avoid looking awkward" is where the *real* action is, and if you kill that then you get all the punchbowl-type behaviors for free.
-
-Additionally, trying to kill punchbowl-type behaviors without having killed the underlying policy causing it will result in white-knuckling, which is basically just doing exposure therapy while compulsing, which is not useful. 
+---
 
 ## Part 4: What To Do Instead
 
@@ -332,7 +334,15 @@ In any case, I suspect other replacement behavior combinations could work for th
 
 The question is meaningless.  "Who you are" *is* "what you do and why."
 
-## Part 5: Catching the Compulsions
+### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
+
+Maybe eventually?  But if you've been running the Mind-Control Project for years then that would probably be sufficient to install a negative self-schema in anyone, because you're trying to run an entire social life on like 2% of your total cognition (where 98% is allocated to a malfunctioning social monitoring and surveillance system) and that will kinda make you seem like you suck at socializing regardless of your underlying social skills. Running the Project might not be *necessary* to form a negative evaluation of yourself as a social being, but it is certainly *sufficient.*
+
+My model is any negative self-beliefs may or may not resolve on its own after the dismantling of the Project. Tough to say. If not, it can be resolved later, though I will confess that is outside the scope of this document. 
+
+---
+
+## Part 5: The Protocol In Practice
 
 You will not catch all of the compulsions at first.  You won't even catch most of them. This is normal and expected. The compulsions are fast, automatic, and diverse, and they are *legion*. You've been running them for years and they just feel like social existence. Most of them will fire before you even notice they've started.
 
@@ -348,7 +358,7 @@ You'll also find that anxiety spikes are quite frequent-- each one represents th
 
 (The Mind-Control Project has never stopped handing me tasks, but over the course of the first few months doing this consistently I very gradually stopped giving a shit.)
 
-**What an anxiety spike should look like under this protocol:**
+### What An Anxiety Spike Should Look Like Under This Protocol
 
 1. **Anxiety spike.** You feel it: the Mind-Control Project has accurately identified a likely point of failure in its goal of universal approval.
 2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  What are you about to do to mitigate this risk? (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
@@ -363,7 +373,7 @@ The goal during social situations is *not* to endure prolonged anxiety. Prolonge
 
 In any case, feel free to bail out of the situation and we can figure out what happened later.  I accept bug reports.
 
-## "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
+### "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
 Yeah, I don't have an incredibly clean answer for you here: I'm trying to make you do an incredibly specific sort of mental motion that is deeply counterintuitive if you haven't been practicing it.  It should feel a little bit like:
 * ragequitting a League of Legends game
@@ -379,6 +389,12 @@ I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying 
 This is basically tech support.  I guess all I can say in my defense is that this loop is tighter and faster than habituation based exposure therapy which has similar problems but over weeks of work.
 
 If you struggle with this, it might actually be instructive to speak to an OCD specialist. (Probably not a CBT therapist if you're still interested in pursuing this protocol, since they operate off entirely different assumptions that are totally contrary to this document.)
+
+### "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
+
+Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.
+
+---
 
 ## Part 6: Post-Event Processing (Redirected)
 
@@ -412,6 +428,8 @@ If you're reading this document you've been "social learning" for years.  Has th
 Anyway, right now we're like in the phase of contamination OCD where you literally just can't wash your hands except in a very specific set of whitelisted scenarios because the reasoning apparatus you'd be using to make that decision is (ironically) contaminated by a psychic parasite who would really prefer if you'd let it keep puppeting your vocal cords, thanks.
 
 You can get back to your legitimate social learning later, after you genuinely consider social anxiety to be a problem that you used to have.
+
+---
 
 ## Part 7:  Where To Begin After Finishing This Document
 
@@ -451,10 +469,14 @@ The contradictory demands at the dinner table are the logical and predictable en
 
 The tick must starve.
 
-### The Exposure Ladder
+---
 
-Okay, so I think you can rank exposure difficulty by *context* (low-stakes like a small hangout with platonic acquiantances, or high-stakes like a date) and by *passive vs active resistance to the Project* (that is-- are you passively not doing something the Project is demanding of you, or are you actually doing something the Project is screaming at you to *not* say or do?)
+## Part 8: The Exposure Ladder
+
+You can rank exposure difficulty by *context* (low-stakes like a small hangout with platonic acquiantances, or high-stakes like a date) and by *passive vs active resistance to the Project* (that is-- are you passively not doing something the Project is demanding of you, or are you actually doing something the Project is screaming at you to *not* say or do?)
+
 I think the exposure difficulty will be in the following order:
+
 * Low-Stakes Trace-only Exposure.  You're not actually doing anything different, you're just *noticing what you are doing and what policies are making demands of you.*.
 * Low-Stakes Passive Exposure.  You continue not doing anything you feel anxious about and instead run the Trace-And-Surrender on *doing nothing and daring someone to judge you*.
 * Low-Stakes Active Exposure.  Actually *doing stuff* that is not Project-approved and which is instead derived from the replacement principles.
@@ -483,8 +505,35 @@ Remember: don't do any of the active exposure stuff *until you are at a state of
 
 **The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.**
 
+### "What role do behavioral experiments play here?"
 
-## Part 7.3: Worked Examples
+None.
+
+There is nothing useful to be learned from behavioral experiments, because the entire framing-- "figure out if people will dislike you for doing xyz" --  is gathering information that the Mind-Control Project finds useful but which, for you, is valueless and indeed of negative value because we are attempting to decouple your actions from the perceived judgements of observers. You should not willingly be the information-gathering arm of a hostile internal process.
+
+You shouldn't be doing scary things.  You should be going up to the edges of scary things, dissolve the ruminative process that makes them stressful by giving up on literally any social outcome, and then doing them AFTER your anxiety about them has decreased to zero. Learning will happen as a byproduct.
+
+If you're doing a scary thing WHILE it is scary then you're just doing an exposure while compulsing which isn't useful.
+
+### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
+
+Haven't you been listening?  The compulsions aren't protecting you from the stress.  The compulsions *are* the stress, because stress writ large is the feeling of you failing at a task which you refuse to give up.  And the solution is... to give up.
+
+You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.   (NOTE FOR THE NON-GAMERS: League of Legends is a famously stressful 50-minute-long team-based 5v5 game.  Details aren't important.)  In League, the stress isn't caused by the game mechanics as such; it's caused by *trying to win* while the outcome is uncertain and mostly outside your control, which is necessarily true because you're only 10% of the players in the game.  Hence the concept of "trolling", whereby some people get so stressed out while losing that they decide to unilaterally change the game from "try to win" to "enrage teammates by intentionally playing badly", which is almost guaranteed to be winnable.  It's *incredibly* hard to emotionally disengage from the game while you're still trying to win, and trivial otherwise.
+
+(This will sound like an analogy, but I believe this is literally the same mechanism in play in a non-social context.)
+
+But if you're only banning "things that help you to win" without actually stopping the attempt at winning then this makes things *more* stressful and not less.  Which anyone can tell you who has ever started *losing* a League game-- while you're losing the game you are, in fact, gradually losing what little control you had over an outcome you're still desperately attempting to achieve.  Banning safety behaviors one-at-a-time without trying to uproot their underlying policies and the reasons for those policies is, basically, falling into this failure mode.
+
+Clinical literature around exposure therapy shows that banning punchbowl-type safety behaviors cause short-term distress; the traditional explanation is that the safety behaviors represent "avoidance" and that the anxiety spike is just necessary for habituation to the feared stimulus, and I think that's wrong.  I think the way traditional exposure therapy for social anxiety *actually* works (when it does) is that if you jam yourself into enough social situations then eventually you'll just stop trying to "win" either out of exhaustion or because you got distracted, but getting there is incredibly stressful, and I assume that the reason this takes so long-- and why anxious people relapse so often in treatment-- is because *they don't know that's what they were learning*.  
+
+If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
+
+(I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
+
+---
+
+## Part 9: Worked Examples
 
 The Project communicates via anxiety spikes.
 
@@ -524,7 +573,7 @@ ANXIETY SPIKE: "Too risky!  They might be having a private conversation!  In the
 
  RESOLUTION: "Avoiding presumptuousness is forbidden behavior.  I accept being regarded as presumptuous as a likely and acceptable outcome which I exchange for the fulfillment of my reasonable but ultimately selfish desire.  HEY CAN I JOIN YOUR CONVERSATION"
  
-(NOTE: if you can't get your anxiety about presumptiousness down to 0 then *probably* you shouldn't go up to the group.  We do not do exposures while compulsing because that's just suffering with extra steps.  I mean, I guess you could, it's just not what I consider to be therapeutic.  See also the exposure ladder section below for a more graduated hierarchy.)
+(NOTE: if you can't get your anxiety about presumptiousness down to 0 then *probably* you shouldn't go up to the group.  We do not do exposures while compulsing because that's just suffering with extra steps.  I mean, I guess you could, it's just not what I consider to be therapeutic.  See also the exposure ladder in Part 8 for a more graduated hierarchy.)
 
 It sounds annoying, but even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
 
@@ -539,8 +588,9 @@ Okay, here's the mental motion:
 
 Run the trace-and-surrender and see how it goes.  I suspect that the *active* Project-refusals (e.g. asking to join a conversation, requesting a number) are much harder than the *passive* Project-refusals (e.g. not performing for approval); as such you can start with the passive ones and work up.
 
+---
 
-## Part 7.5: Brute Force Socializing
+## Part 10: Socializing Without The Project
 
 Below are a few examples of what socializing looks like when you're not running the Project. They share a common feature: they will not make you a social pariah ("making the reader a pariah" is not really my goal here), but also they do not have predictable results. You are giving up control over the direction of the interaction. That is the *point.*
 
@@ -580,7 +630,31 @@ Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is N
 
 Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  [*What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
 
-## Part 8: Medication...?
+---
+
+## Part 11: The Trajectory
+
+This is roughly what my own progress looked like.  Yours might look different if this works, who knows.
+
+**Early:**  Quality-of-life improvement is significant even over the first few days.  I catch compulsions sometimes in the moment, sometimes after the fact.  Mostly I use the anxiety spike as a signal that I'm Doing The Thing and can drop it reasonably quickly; this becomes self-sustaining almost immediately because the spike is *miserable* until the surrender, and I think this self-sustaining character is most of why I could do this without a therapist (which: thank God for that given that therapists don't actually offer this).  Frequently I get wrapped back up in impression-management, and "I should just act on impulse" responded to with "BUT WHAT WILL THEY THINK" feels like an impossible riddle that I *know* I just solved a bunch of times already. Post-event rumination is better but still exists.
+
+It's not that my baseline anxiety was gradually going down in novel social situations; I was just getting better at catching and resolving anxiety spikes as they occurred, and intrinsically this resulted in social situations containing a progressively lower percentage of time spent anxiously fretting.
+
+**Middle:** I mostly don't feel anxious (80% resolved, maybe?) but still have a fairly limited repertoire of behaviors since I'm very used to the extremely managed set of things I would say and do.  Occasionally I notice I'm continuing to compulse in small ways out of reflex, and stop doing it.  A few months in, some friends commented that I seemed different and better.
+
+**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward moments memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *much* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
+
+I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels  urgent or concerning.
+
+I'd say it was about 6-9 months between starting the protocol and-- well, not finishing it, because it's not the kind of thing you finish.  It's kind of a permanent social operating system.  But 6-9 months to the end state, anyway.
+
+I have no way of predicting how much longer or shorter it will take with any specific person.  Or, really, how generalizable this is.  At a sex convention I gave a *very* early version of this to a crowd and it appeared to work without modification for approximately 10-15 percent of the audience, mostly judged by enthusiasm post-conference (though in one case I did receive a memorably detailed report which was extremely positive.  A clinical trial, this ain't.  On the other hand, propositioning a girl in front of her boyfriend who's like "get it bro" has exceptional face validity as an outcome measure.)
+
+Good luck.  Send bug reports.
+
+---
+
+## Part 12: Medication...?
 
 I'll be real with you: I dunno, I'm not a doctor.
 
@@ -596,7 +670,9 @@ Uh, careful about the addiction profile for benzos.  Especially if you try pheni
 
 Anyway, chat with an actual professional.
 
-## Part 9: FAQs
+---
+
+## Part 13: FAQs
 
 ### "But that's try-hard / too forward / cringe"
 <img width="485" height="210" alt="image" src="https://github.com/user-attachments/assets/8be93ca6-b1f1-421a-9ce9-e549dd4c52f7" />
@@ -631,12 +707,6 @@ I also know a woman named Lynn Matalon who used to be my dating coach and whose 
 
 tl;dr: idk get off my back
 
-### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
-
-Maybe eventually?  But if you've been running the Mind-Control Project for years then that would probably be sufficient to install a negative self-schema in anyone, because you're trying to run an entire social life on like 2% of your total cognition (where 98% is allocated to a malfunctioning social monitoring and surveillance system) and that will kinda make you seem like you suck at socializing regardless of your underlying social skills. Running the Project might not be *necessary* to form a negative evaluation of yourself as a social being, but it is certainly *sufficient.*
-
-My model is any negative self-beliefs may or may not resolve on its own after the dismantling of the Project. Tough to say. If not, it can be resolved later, though I will confess that is outside the scope of this document. 
-
 ### I acted based on some combination of [Honesty, Kindness, Selfish Impulse] and the interaction went badly!
 
 Expected and not a problem. You knew this was the price of admission. Some interactions will go worse without the Project than they would have gone with it. Many will go better.  Many will go much, much better.
@@ -653,21 +723,6 @@ Also expected, and also not a problem.  The Project frequently fails on its own 
 
 Is the topic interesting to you?  Then engage with it.  Is the topic uninteresting?  Then change it.  You can always say "eh, this isn't really my area of interest."
 
-## What role do behavioral experiments play here?
-
-None.
-
-There is nothing useful to be learned from behavioral experiments, because the entire framing-- "figure out if people will dislike you for doing xyz" --  is gathering information that the Mind-Control Project finds useful but which, for you, is valueless and indeed of negative value because we are attempting to decouple your actions from the perceived judgements of observers. You should not willingly be the information-gathering arm of a hostile internal process.
-
-You shouldn't be doing scary things.  You should be going up to the edges of scary things, dissolve the ruminative process that makes them stressful by giving up on literally any social outcome, and then doing them AFTER your anxiety about them has decreased to zero. Learning will happen as a byproduct.
-
-If you're doing a scary thing WHILE it is scary then you're just doing an exposure while compulsing which isn't useful.
-
-## "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
-
-Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.
-
-
 ### "What about texting / social media?"
 
 The Project runs just as hard over text, sometimes harder, because you have time to craft and revise. The same rules apply. Send the text you want to send. Don't rewrite it four times to optimize how it'll land. Don't check to see if they've read it. Don't analyze their response time. Don't draft replies strategically. Say what you mean, send it, put the phone down.
@@ -675,22 +730,6 @@ The Project runs just as hard over text, sometimes harder, because you have time
 Social media can be problematic; I suspect a very great deal of what causes people to become socially-anxious is exposure to media that derives its entertainment value from making fun of cringe people.  This smuggles in an implicit belief system: "I must never be like *those* people."  This is toxic and makes you worse; disengage from such media immediately.
 
 Which brings us to another point: stop shaming people for being cringe, even if it's private, even if they'll never hear you.  Each time you do, the Project gets a stronger hold over your behavior.  You can't dismantle the Project for yourself while still enforcing its diseased value system against others.  That's *almost certainly* impossible and I believe-- though have little way of confirming directly-- that people who engage in cringe culture are driving themselves into an anxiety disorder. (Really you should knock this off even if you strongly suspect I'm full of shit on everything else; it's not like it's meaningfully adding to your life, and the downside risk is *substantial*.)
-
-### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
-
-Haven't you been listening?  The compulsions aren't protecting you from the stress.  The compulsions *are* the stress, because stress writ large is the feeling of you failing at a task which you refuse to give up.  And the solution is... to give up.
-
-You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.   (NOTE FOR THE NON-GAMERS: League of Legends is a famously stressful 50-minute-long team-based 5v5 game.  Details aren't important.)  In League, the stress isn't caused by the game mechanics as such; it's caused by *trying to win* while the outcome is uncertain and mostly outside your control, which is necessarily true because you're only 10% of the players in the game.  Hence the concept of "trolling", whereby some people get so stressed out while losing that they decide to unilaterally change the game from "try to win" to "enrage teammates by intentionally playing badly", which is almost guaranteed to be winnable.  It's *incredibly* hard to emotionally disengage from the game while you're still trying to win, and trivial otherwise.
-
-(This will sound like an analogy, but I believe this is literally the same mechanism in play in a non-social context.)
-
-But if you're only banning "things that help you to win" without actually stopping the attempt at winning then this makes things *more* stressful and not less.  Which anyone can tell you who has ever started *losing* a League game-- while you're losing the game you are, in fact, gradually losing what little control you had over an outcome you're still desperately attempting to achieve.  Banning safety behaviors one-at-a-time without trying to uproot their underlying policies and the reasons for those policies is, basically, falling into this failure mode.
-
-Clinical literature around exposure therapy shows that banning punchbowl-type safety behaviors cause short-term distress; the traditional explanation is that the safety behaviors represent "avoidance" and that the anxiety spike is just necessary for habituation to the feared stimulus, and I think that's wrong.  I think the way traditional exposure therapy for social anxiety *actually* works (when it does) is that if you jam yourself into enough social situations then eventually you'll just stop trying to "win" either out of exhaustion or because you got distracted, but getting there is incredibly stressful, and I assume that the reason this takes so long-- and why anxious people relapse so often in treatment-- is because *they don't know that's what they were learning*.  
-
-If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
-
-(I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
 
 ### When can I conclude this protocol doesn't work for me?
 
@@ -714,25 +753,7 @@ At this point, if you've gotten here, you should try more-conventional therapeut
 
 I have a medical condition that prevents me from sticking to one metaphor for an entire essay.  Sorry about that.
 
-## Part 9: The Trajectory
-
-This is roughly what my own progress looked like.  Yours might look different if this works, who knows.
-
-**Early:**  Quality-of-life improvement is significant even over the first few days.  I catch compulsions sometimes in the moment, sometimes after the fact.  Mostly I use the anxiety spike as a signal that I'm Doing The Thing and can drop it reasonably quickly; this becomes self-sustaining almost immediately because the spike is *miserable* until the surrender, and I think this self-sustaining character is most of why I could do this without a therapist (which: thank God for that given that therapists don't actually offer this).  Frequently I get wrapped back up in impression-management, and "I should just act on impulse" responded to with "BUT WHAT WILL THEY THINK" feels like an impossible riddle that I *know* I just solved a bunch of times already. Post-event rumination is better but still exists.
-
-It's not that my baseline anxiety was gradually going down in novel social situations; I was just getting better at catching and resolving anxiety spikes as they occurred, and intrinsically this resulted in social situations containing a progressively lower percentage of time spent anxiously fretting.
-
-**Middle:** I mostly don't feel anxious (80% resolved, maybe?) but still have a fairly limited repertoire of behaviors since I'm very used to the extremely managed set of things I would say and do.  Occasionally I notice I'm continuing to compulse in small ways out of reflex, and stop doing it.  A few months in, some friends commented that I seemed different and better.
-
-**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward situations memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *much* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
-
-I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels  urgent or concerning.
-
-I'd say it was about 6-9 months between starting the protocol and-- well, not finishing it, because it's not the kind of thing you finish.  It's kind of a permanent social operating system.  But 6-9 months to the end state, anyway.
-
-I have no way of predicting how much longer or shorter it will take with any specific person.  Or, really, how generalizable this is.  At a sex convention I gave a *very* early version of this to a crowd and it appeared to work without modification for approximately 10-15 percent of the audience, mostly judged by enthusiasm post-conference (though in one case I did receive a memorably detailed report which was extremely positive.  A clinical trial, this ain't.  On the other hand, propositioning a girl in front of her boyfriend who's like "get it bro" has exceptional face validity as an outcome measure.)
-
-Good luck.  Send bug reports.
+---
 
 # Appendix A: Wild Speculation About Social Anxiety Research
 
@@ -766,7 +787,10 @@ I also suspect that institutional clinical psychology would *strongly* prefer to
 
 I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
+---
+
 ## Appendix B:  Puzzles Resolved By This Particular Theory
+
 Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be able to generate predictions for widely-reported phenomena regardless of whether it's a disorder we actually care about treating, because nature is not carved at the joints of "things we care about treating." And I think there are a very large number of phenomena that CBT needs to generate unfalsifiable epicycles to explain which my specific theory handles as fairly obvious first-order extrapolations of the core premise.  Like:
 
 (1) police officers not being anxious when arresting people who definitely hate them.  If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are screaming obscenities at them?  Why are the ICE agents in Minnesota not having constant public breakdowns?
@@ -783,7 +807,9 @@ Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be abl
 
 Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the field is MADDENING.
 
-## Wild Speculation About The Personality-Level Causes Of Social Anxiety
+---
+
+## Appendix C: Wild Speculation About The Personality-Level Causes Of Social Anxiety
 
 I can think of a few plausible spectrums that would result in people being socially anxious vs non-socially-anxious.
 
@@ -798,6 +824,8 @@ Some people really fucking love to achieve goals.  Some people fill all their fr
 
 These people will frequently end up socially anxious because they have, very naturally, infiltrated a goal into socializing because goals are how they arrange the rest of their professional, personal and intellectual life.
 
+---
+
 ## Anyway
 
 The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought as they work the vocal cords of their meat-puppets.  "Wherever you want to eat is fine!  Haha"
@@ -805,4 +833,3 @@ The more people I speak to, even people who don't class themselves as socially a
 *I want to shake them*.
 
 Which I won't, because that wouldn't help, but I can at least give them the url to this document.
-
