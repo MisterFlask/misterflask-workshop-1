@@ -274,6 +274,12 @@ This ties *directly* into the anti-rumination discussion previously.  The way yo
 
 The first constraint-- that the principles represent an aspirational identity-- is critical because we want this to be sustainable, and when the Project screams out "THAT PERSON THINKS YOU SUCK" we want you to be able to truthfully respond with "I acted in accordance with my values and that was awesome, actually" *and you'll mean it*.
 
+#### "This sounds dangerously like philosophy"
+
+Yeah.
+
+I think social anxiety is, basically, a philosophical disorder: you've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority".  That fucks you up in highly reliable and specific ways and this is partly addressing that.
+
 ### The Specific Principles I Suggest
 
 I think I have arrived at a set of workable principles that satisfy the above criteria.
@@ -402,15 +408,15 @@ RESOLUTION: "Getting punch when I don't actually want it in order to not have th
 
 ...
 
-"I'm bored now.  Time to check in on what I actually want in this moment.  I want... to join that group's conversation"
+"I'm bored now.  Time to check in on what I actually want in this moment (((SELFISH IMPULSE))).  I want... to join that group's conversation"
 
 ANXIETY SPIKE: "Too risky!  They might be having a private conversation!  In the middle of a crowded party!  We might be regarded as presumptuous!"
 
- RESOLUTION: "Avoiding presumptuousness is forbidden behavior.  I accept being regarded as presumptuous as a likely and acceptable outcome.  HEY CAN I JOIN YOUR CONVERSATION"
+ RESOLUTION: "Avoiding presumptuousness is forbidden behavior.  I accept being regarded as presumptuous as a likely and acceptable outcome which I exchange for the fulfillment of my reasonable but ultimately selfish desire.  HEY CAN I JOIN YOUR CONVERSATION"
  
-(This one is actually tricky in some ways.  I'm going to say that if you can't get your anxiety about presumptiousness down to 0 then *probably* you shouldn't go up to the group.  We do not do exposures while compulsing because that's just suffering with extra steps.  I mean, I guess you could, it's just not what I consider to be therapeutic.)
+(NOTE: if you can't get your anxiety about presumptiousness down to 0 then *probably* you shouldn't go up to the group.  We do not do exposures while compulsing because that's just suffering with extra steps.  I mean, I guess you could, it's just not what I consider to be therapeutic.  See also the exposure ladder section below for a more graduated hierarchy.)
 
-It sounds annoying but you get used to it pretty fast, I think; even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
+It sounds annoying, but even when you're starting out this procedure is objectively far more pleasant to run than the previous background hum of "MUST.  NOT.  APPEAR.  WEIRD."
 
 ### Hold up.  "Not doing exposures while compulsing" is all very well but going up to a new group is objectively scary!
 
