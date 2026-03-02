@@ -482,7 +482,7 @@ These demands are, of course, mutually exclusive.  You can also pick them apart 
 7. Not picking food off the communal plate is weird (factual proposition)
 8. Don't be intrusive. (Standing policy)
 
-I would like you to notice that 1, 2, 3, 5 and 6 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 3, 5 and 6 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 3 and 6 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself" or, if you're more polite, "LOL")
+I would like you to notice that 1, 2, 3, 5, 6 and 7 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 3, 5,  6 and 7 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. (Items 4 and 8 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "go fuck yourself" or, if you're more polite, "LOL")
 
 What I am asking you to do is notice and peel apart these concrete demands made by the Project, and then to *notice those demands as fundamentally optional.*  Not because people won't think you're weird and/or intrusive if you don't obey them. But because you have the God-given right as an American to have people think you're weird and intrusive and to *not do anything about this fact whatsoever.*
 
@@ -493,6 +493,35 @@ Because every time the Project successfully hijacks your cognition to perform in
 The contradictory demands at the dinner table are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you: which is to say, *bloated to madness.*
 
 The tick must starve.
+
+### The Exposure Ladder
+
+Okay, so I think you can rank exposure difficulty by *context* (low-stakes like a small hangout with platonic acquiantances, or high-stakes like a date) and by *passive vs active resistance to the Project* (that is-- are you passively not doing something the Project is demanding of you, or are you actually doing something the Project is screaming at you to *not* say or do?)
+I think the exposure difficulty will be in the following order:
+* Low-Stakes Trace-only Exposure (that is-- you're not actually doing anything different, you're just *noticing what you are doing and what policies are being served.*)
+* Low-Stakes Passive Exposure (that is-- you continue not doing anything you feel anxious about instead run the Trace-And-Surrender on *doing nothing and daring someone to judge you*)
+* Low-Stakes Active Exposure (that is-- actually *doing stuff* that is not Project-approved.)
+  
+... and then escalate up in terms of stakes using the same pattern of trace, then passive, then active exposure.  I will say there's probably not much point in moving up to medium or high stakes if you're unable to perform both active *and* passive resistance in a given situation.
+
+In the dinner party scenario, low-stakes passive exposure would be:
+
+1. not trying to avoid weirdness by avoiding eye contact.  Remember: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
+2. not trying to avoid weirdness by not speaking.  Same logic.
+3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*
+
+I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  Yes, but you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly.
+
+When you've gotten calm and relaxed with no racing thoughts (meaning you have either don't need the Trace-And-Surrender for the passive case, or you've already performed it) and, ideally, you're now a bit bored, we move on to active exposures:
+
+Active exposures are, I think, harder because they really need you to engage in the replacement behaviors; the Project's demand of "NO DO NOT DO THIS THING" needs to be met with the set of principles you're precommitting to maintaining.  So at every moment you should be asking yourself:
+
+1. Is there a true, relevant thing I could say that might expose me to some kind of social judgment?  (Remember, the judgment is considered a bonus.)
+2.  Is there a true, kind thing that is relevant which I could say or do here?
+3.  Is there a selfish impulse I could indulge in this moment in either my speech or actions?
+
+Then you perform the Trace-And-Surrender on the complaint the Mind-Control Project will *inevitably* raise about any of these things.
+
 
 ## Part 7.5: Brute Force Socializing
 
