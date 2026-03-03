@@ -16,7 +16,7 @@ Read the whole document before starting.
 
 This takes heavy inspiration from three sources:
 
-(1) https://drmichaeljgreenberg.com/articles/ ; Dr Michael Greenberg writes things about OCD-spectrum disorders and their treatment using a mildly novel protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I have in operationalizing this.
+(1) [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I had in operationalizing this; most other things I had to derive from introspection, first principles, and relevant bits of metacognitive therapy.
 See also: 
 * https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
 * https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
@@ -32,6 +32,8 @@ See also:
 If you have alexithymia, you're likely going to run into problems with the Trace which may or may not be resolvable.  Let's chat if that's the case.
 
 If you are someone that people keep having Serious Conversations with about Toning It Down because You're Making People Uncomfortable this isn't for you.
+
+If your anxiety is downstream of genuine severe skills deficits (you'll know this because *people will have told you explicitly*), this also isn't for you; this is for after you've got basic can-hold-a-job social skills lined up.
 
 More generally: this document was made by attempting to generalize my own experiences with OCD-inspired social anxiety Exposure and Response Prevention (ERP) therapy into a replicable document that could have been followed by a past version of myself. I was basically a pretty nice and people-pleasy but moderate-severity socially anxious introspective neurotypical nerd. To the degree you match this it seems to me plausible you will do well; the more different you are the more likely it is you will encounter issues I did not. 
 
@@ -64,7 +66,7 @@ The Project is extremely demanding.  The Project is probably the most cognitivel
 - Plan what to say or do next to produce the right impression
 - Monitor your face, voice, and body for signs of anxiety that might be visible
 - Suppress or hide those signs, and hide that you're attempting to suppress or hide those signs
-- Decide whether to stay or leave based on how you think it's going
+- You might even engage in conversation, *if you can spare the bandwidth*
 
 This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. You are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
@@ -74,7 +76,7 @@ And this has been destroying you, which is why you're reading this long-ass docu
 
 **The Project is doomed.** You cannot actually control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
-Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard and that actually your Project is more successful than you think.
+Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard and that actually your Project is more successful than you think. (In OCD-land they call this "accommodation."  It's not considered a flattering term.)
 
 That is not the approach I am discussing here.
 
@@ -162,7 +164,7 @@ It has to be.
 
 The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
 
-This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "accept that the hostage is 100% absolutely going to die and commit to saying or doing nothing to prevent it whatsoever."
+This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever."
 
 I should note I am not a professional hostage negotiator.
 
@@ -178,9 +180,9 @@ It will cease ruminating only after you mechanically cut rumination off from inf
 
 If you have trouble with the rumination ban metacognitive therapy has tools to use for this, which I'm not getting into here but are worth a Google.
 
-### "Okay but even with the trace that's like my whole social repertoire. Can I really just dismantle it?"
+### "Okay but that's like my whole social repertoire. Can I really just dismantle it?"
 
-Hear me out. The physical behaviors you are engaged in are almost all downstream of the cognitive ones. I suspect strongly that the physical end of what clinicians call "safety behaviors" are actually not particularly important to ban directly because if you are able to kill the cognitive policies generating them ("never appear awkward") they should disappear on their own. If this is not true, you can go through and address them after dealing with the most problematic policies.
+Hear me out. The physical behaviors you are engaged in are almost all downstream of the cognitive ones. I suspect strongly that the physical end of what clinicians call "safety behaviors" are actually not particularly important to ban directly because if you are able to kill the cognitive policies generating them ("never appear awkward") they should disappear on their own.
 
 Most of the reason the physical behaviors are interesting to catalogue and target in the first place is because those are how you uproot the underlying policies they serve.  "Going to get punch to avoid looking awkward at the party" isn't really interesting to ban on its own because that's, like, 0.01% of your social behavior; going one by one like that would take forever, though I understand some methodologies do this. "Avoid looking awkward" is where the *real* action is, and if you kill that then you get all the punchbowl-type behaviors for free.
 
@@ -202,7 +204,7 @@ People with social anxiety tend to view their anxiety as a somatic thing accompa
 
 Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
 
-Anyawy: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
+Anyway: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
 ### Forward: From the Anxiety
 
@@ -284,7 +286,9 @@ The first constraint-- that the principles represent an aspirational identity-- 
 
 Yeah.
 
-I think social anxiety is, basically, a philosophical disorder: you've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority".  That fucks you up in highly reliable and specific ways and any successful social anxiety treatment needs to address this by giving you an internal locus of judgment independent of whatever random thoughts flicker across other peoples' minds.
+I think social anxiety is, basically, a philosophical disorder.  (Not gonna find *that* one as a category in the DSM anytime soon.)
+
+You've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority" and are having understandable anxiety about this because it means "am I an okay person" is totally undecidable without mind-reading.  That fucks you up in highly predictable ways and any successful social anxiety treatment needs to address this by giving you an internal locus of judgment independent of whatever random thoughts flicker across other peoples' minds.
 
 ### The Specific Principles I Suggest
 
@@ -298,7 +302,7 @@ Saying true things about what you think, feel, want, or notice. This includes th
 
 The reason this takes first place is because "Vulnerable" *means* "exposes you to judgment."  This is, ultimately, a virtue which also happens to be the bluntest possible weapon against the Project's priorities, because "judgement from others" is the whole thing the Project was spun up to prevent.
 
-Also, it's *fun*.  When you say something that most people wouldn't, unapologetically, without hedging, it frequently causes tiny BSODs to ripple across their features.  "I gave a talk at a sex festival" said in tones of bland fact feels a little bit like handing someone a live grenade and, now, your reward is to watch in fascination as they they frantically decide whether they need to throw it out the window.  Reactions vary!
+Also, it's *fun*.  When you say something that most people wouldn't, unapologetically, without hedging, it frequently causes tiny BSODs to ripple across their features.  "I gave a talk at a sex festival" said in tones of bland fact feels a little bit like handing someone a live grenade and, now, your reward is to watch in fascination as you watch them frantically compute whether they need to throw it out the window.  Reactions vary!
 
 Vulnerability-- in the sense of "saying and doing things that let people judge you in arbitrary ways"-- is also conducive to authentic human connection.
 
@@ -308,7 +312,7 @@ Doing or saying things because they're good for the other person, independent of
 
 This takes second place because it's necessary but at the same time easily co-opted by the Project, since people *do* like people who are kind.
 
-A thing I started doing after beginnign this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
+A thing I started doing after beginning this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
 
 #### 3. Selfish Impulse
 
@@ -392,7 +396,7 @@ I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying 
 
 This is basically tech support.  I guess all I can say in my defense is that this loop is tighter and faster than habituation based exposure therapy which has similar problems but over weeks of work.
 
-If you struggle with this, it might actually be instructive to speak to an OCD specialist. (Probably not a CBT therapist if you're still interested in pursuing this protocol, since they operate off entirely different assumptions that are totally contrary to this document.)
+If you struggle with this, it might actually be instructive to speak to an OCD specialist or a therapist well-versed in metacognitive therapy. (Probably not a CBT therapist if you're still interested in pursuing this protocol, since they operate off entirely different assumptions that are totally contrary to this document.)
 
 ### "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
 
@@ -481,11 +485,11 @@ You can rank exposure difficulty by *context* (low-stakes like a small hangout w
 
 I think the exposure difficulty will be in the following order:
 
-* Low-Stakes Trace-only Exposure.  You're not actually doing anything different, you're just *noticing what you are doing and what policies are making demands of you.*.
+* Low-Stakes Trace-only Exposure.  You're not actually doing anything different, you're just *noticing what urgent problems are demanding attention, and what policies are making demands of you.*.
 * Low-Stakes Passive Exposure.  You continue not doing anything you feel anxious about and instead run the Trace-And-Surrender on *doing nothing and daring someone to judge you*.
 * Low-Stakes Active Exposure.  Actually *doing stuff* that is not Project-approved and which is instead derived from the replacement principles.
   
-... and then escalate up in terms of stakes using the same pattern of trace, then passive, then active exposure.  I will say there's probably not much point in moving up to medium or high stakes if you're unable to perform both active *and* passive resistance in a given situation.
+... and then escalate up in terms of stakes using the same pattern of trace, then passive, then active exposure.  I will say there's probably not much point in moving up to medium or high stakes if you're unable to perform both active *and* passive resistance in low-stakes scenarios.
 
 In the dinner party scenario, low-stakes passive exposure would be:
 
@@ -505,9 +509,9 @@ Active exposures are, I think, harder because they really need you to engage in 
 
 Then you perform the Trace-And-Surrender on the complaint the Mind-Control Project will *inevitably* raise about any of these things.  We are now pitting the replacement behaviors of your Ideal Self in a cage match with the Mind-Control Project and, frankly, if your Mind-Control Project has been in charge of your actions for a long time then even if the Project still wins 80% of the time that's still a meta-victory because 20% of the time it *didn't win*.
 
-Remember: don't do any of the active exposure stuff *until you are at a state of zero effort and zero anxiety.*  If you start feeling anxious while doing active exposures, go back to passive exposures and become calm and non-anxious there.  Remember, if you spend the entire dinner party literally silent and immobile then *this is your right*; and if The Lord Of Hosts Himself descends from the heavens amid a choir of blazing seraphim to tell you otherwise (*"**PERHAPS CONSIDER SAYING SOMETHING, MY CHILD**"*) I invite you to flip Him your middle finger as you walk backwards into Hell.  
+Remember: don't do any of the active exposure stuff *until you are at a state of zero effort and zero anxiety.*  If you start feeling anxious while doing active exposures, go back to passive exposures and become calm and non-anxious there.  If you spend the entire dinner party literally silent and immobile while not compulsing then *this is your right*; and if The Lord Of Hosts Himself descends from the heavens amid a choir of blazing seraphim to tell you otherwise (*"**PERHAPS CONSIDER ASKING ABOUT THEIR CAREER AMBITIONS, MY CHILD**"*) then I invite you to flip Him your middle finger as you walk backwards into Hell.  
 
-**The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.**
+The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.
 
 ### "What role do behavioral experiments play here?"
 
@@ -629,6 +633,8 @@ People are made low-grade uncomfortable many times per day.  The attempts at com
 Unfortunately, inflicting discomfort was *never* avoidable.  Let's be clear: any time you make it clear you like someone and want to hang out-- even platonically!-- if that person wants to they'll feel pumped about it but if they don't they'll feel awkward and uncomfortable.  This isn't a preventable accident that can be avoided with appropriate hedging; this is the *nature of human connection* and if you attempt to avoid making anyone ever feel uncomfortable then literally the only way of doing this is by never reaching out in the first place.  You are, in expectation, sacrificing a future filled with beautiful relationships (platonic and otherwise) and a large number of awkward and deeply uncomfortable moments, and replacing it with a future that has *neither.*  This is an appallingly bad trade and nobody should take it.
 
 Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*
+
+(I suspect progressive cultural mileaus have accidentally installed "never be creepy" as an OCD-level capital-O Obsession in some of its members in pursuit of certain well-meaning projects, which frequently metastasizes into full-blown avoidance, and that's why I discuss dating at length here; the Project cloaks many of its initiatives in the language of morality.  Remember, kids, morality *never requires you to read minds*.)
 
 ### What if I could just, like, read the room to assess interest before making a move?
 
