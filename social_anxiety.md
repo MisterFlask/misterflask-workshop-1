@@ -196,9 +196,13 @@ That skill is the Trace.
 
 ### How It Works
 
-The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you spinning your wheels against a goal you suspect you're failing but refuse to give up; in this case, it's a situation where the Project senses that it's goals are threatened, which-- being that its goals are impossible-- will be a common event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious") that the Project has installed in pursuit of its goal of universal approval. 
+The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you spinning your wheels against a goal that (a) you suspect you're failing but (b) refuse to give up on; in this case, it's a situation where the Project senses that it's goal of universal approval is threatened, which-- being that this goal is impossible-- will be a frequent event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious", "don't be cringe") that the Project has installed in pursuit of its goal of universal approval.
 
-The Trace is the procedure for identifying what specific failure the Project is encountering, and what general standing policy is in danger of being violated.  It works in two directions.
+People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
+
+Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
+
+Anyawy: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
 ### Forward: From the Anxiety
 
