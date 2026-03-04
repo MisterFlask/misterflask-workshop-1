@@ -8,7 +8,10 @@
 
 This is a user manual for a specific approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety isn't actually the anxiety; the anxiety is just a true signal that you're trying to engage in a crucial-feeling yet impossible task, and that you need to stop.
 
-A way this differs from traditional exposure therapy (if my logic and assumptions are correct) is that it should not force you to sit in any distressing situation for periods of time longer than a few minutes.  If that is something you find yourself doing then my protocol has *failed* and you are free to bail and regroup later.  Please file a bug report.
+## Promises I will make to the reader:
+(1) I have no formal credentials in this area.
+(2) Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
+(3) This protocol runs on the theory that the active ingredient in most forms of exposure therapy is an extremely specific set of introspective skills that I am attempting to teach directly here, instead of you "just getting used to it".  Accordingly, these exposures are intended not to be stressful for more than, like, a minute at a time.
 
 Read the whole document before starting.
 
@@ -72,7 +75,7 @@ This is why you find social situations to be exhausting: because you are running
 
 And this has been destroying you, which is why you're reading this long-ass document and taking what amounts to experimental mental health advice from someone who is in no way a therapist but who *has* eliminated his own social anxiety in a way that took like a year to reconcile with published psychology literature and then reverse-engineer into this self-help document.
 
-**The Project is the problem.**  The sensation you describe as "social anxiety" is directly and solely caused by the Mind-Control Project: it's the internal feeling of the Project accurately flagging a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequently true).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing in my goal of universal approval" and the more self-aware you are the more often this will happen because on some level you understand this was never achievable.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  The sensation you describe as "social anxiety" is directly *and solely* caused by the Mind-Control Project: it's the internal feeling of the Project accurately flagging a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequently true).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing in my goal of universal approval" and the more self-aware and perceptive you are the more often this will happen because *that's how you can tell it is failing*.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
 **The Project is doomed.** You cannot actually control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
@@ -120,10 +123,6 @@ These happen inside your head. Nobody can see them, and most of them feel automa
 
 - **In-the-moment monitoring.** During a conversation, splitting your attention between the interaction and your evaluation of the interaction. "Am I being awkward right now?" "Was that a normal thing to say?" "Are they bored?"
 
-- **Reassurance-seeking.** Asking someone "was that weird?" or "did I come off okay?" or fishing for compliments or seeking out positive *or negative* feedback about your social performance.
-
-- **Checking.** Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
-
 ### Behavioral Compulsions
 
 These are things you do with your body or your speech.
@@ -151,6 +150,11 @@ These are things you do with your body or your speech.
 - **Nervous fidgeting.** Trying to find a thing to do that looks natural to other people and failing in real-time.
 
 - **Strategic impression management.**  Any behavior whose primary justification is "this will make them think X about me."
+
+- **Reassurance-seeking.** Asking someone "was that weird?" or "did I come off okay?" or fishing for compliments or seeking out positive *or negative* feedback about your social performance.
+
+- **Checking.** Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
+
 
 ### The Relationship Of Compulsions to The Project
 
@@ -215,7 +219,7 @@ The sequence:
 1. Notice the anxiety.
 2. Ask: what specific social outcome is the Project worried about right now?  The anxiety, I remind you, is the felt sense of that specific social outcome being at risk.
 3. Ask: what general rule or policy is generating that worry?
-4. Recognize the policy as the Project.
+4. Recognize the policy as the Project.  At this point, the Trace is complete.
 5. Acknowledge that the policy is meant to accomplish a thing, and ignoring it means you *will not* accomplish whatever it was it was trying to do.  You *will not* avoid being cringe, or whatever.  The Project is a *rational internal entity* making *correct moves* in pursuit of its doomed goal.
 6. Accept this as fact, disobey the policy, and embrace the consequences.
 
@@ -242,7 +246,7 @@ Example: You notice you're about to make a self-deprecating joke after making a 
 
 The Trace gets faster with practice. Early on, you'll mostly be doing it after the fact: "why did I excuse myself to the restroom instead of hang out in the lounge even though I don't actually need to pee?"  (Answer: because even though I don't need to speak to people in the lounge any more than I have to speak to them in the restroom, if I'm in the lounge I can be observed, and if I'm just on my phone in public then people might think I'm being awkward, and "avoid being awkward" was the underlying policy being served.) 
 
-Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.
+Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.  The Surrender is the trickier part than the Trace and I'll be getting to that after establishing some more theoretical groundwork (sorry, it's necessary to stop the Surrender from just being excruciatingly unpleasant white-knuckling.)
 
 ### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
 
@@ -262,7 +266,7 @@ I have an answer to this, but I should flag that this is the place I diverge mos
 
 One way of framing the situation is "the Mind-Control Project has unchallenged authority over your actions because there's nothing in you that's seriously *trying* to challenge its authority; you're running a one-party state and sure the party *sucks* but there's not an alternative." 
 
-Here we are attempting to fix that.
+Here we are attempting to fix that.  We *need* this part before discussing the Surrender because-- like Nixon in the Cold War-- we need a potential replacement leader, armed with weaponry and CIA-gathered intelligence, before trying to destabilize the existing Communist-sympathetic third-world government. Metaphorically.
 
 ### Meta-Principles For How To Arrive At Principles
 
@@ -350,7 +354,7 @@ My model is any negative self-beliefs may or may not resolve on its own after th
 
 ---
 
-## Part 5: The Protocol In Practice
+## Part 5: The Protocol In Practice, Or: The Part Where We Finally Get To The Surrender
 
 You will not catch all of the compulsions at first.  You won't even catch most of them. This is normal and expected. The compulsions are fast, automatic, and diverse, and they are *legion*. You've been running them for years and they just feel like social existence. Most of them will fire before you even notice they've started.
 
@@ -372,6 +376,8 @@ You'll also find that anxiety spikes are quite frequent-- each one represents th
 2. **Trace.** You trace the anxiety back to the specific perception you are trying to manage. What, concretely, are you afraid someone thinks about you right now?  What are you about to do to mitigate this risk? (Example: when I was dancing with someone I had a crush on I would feel the spike and realize it was telling me that I need to say or do something this girl found engaging and entertaining.)
 3. **Surrender.** You give up on managing that perception. Fully. You accept whatever the feared negative outcome was — they think you're awkward, they think you're boring, they think you're a bad dancer — without attempting to mitigate it in any way or convince yourself that it won't happen.  It might happen!  Hell, it probably will happen!  They WILL think you're boring!  They WILL think you suck at dancing!  And you know why that is?  **IT'S BECAUSE YOU'RE NOT GOING TO TRY AND CONVINCE THEM OTHERWISE, BECAUSE DOING SO IS FORBIDDEN.**  (In my example above, I instead didn't do anything at all; engaging with the compulsive urge to perform is forbidden.)  **You must learn to sup their disdain like ambrosia from the table of Zeus himself.  You must grow stronger with every pursed lip and every furrowed brow.  ABANDON HOPE, YE WHO ENTER HERE**.
 
+(I call this the "passive" version of the surrender; the "Active" version is where you actually make use of the our puppet strongman that we set up in the previous section in order to direct us to *specific positive action*.)
+
 The goal during social situations is *not* to endure prolonged anxiety. Prolonged anxiety even after the Trace and Surrender implies one of the following:
 
 * my document doesn't currently explain things well (it is, ultimately, a piece of amateur psychoengineering that will require iteration)
@@ -380,6 +386,14 @@ The goal during social situations is *not* to endure prolonged anxiety. Prolonge
 * i'm full of shit generally and wrote this whole thing in a week-long modafinil-fueled manic episode, which I will remove from Github at some point after a judge orders me to go on antipsychotics.
 
 In any case, feel free to bail out of the situation and we can figure out what happened later.  I accept bug reports.
+
+### "'Just stop caring?' That's seriously your advice after I read like ten thousand words?  Man, fuck you."
+
+Ah!  I did *not* say to stop caring.  I said to stop *trying to fix it.*
+
+I want it to be sunny tomorrow; this is healthy and normal.  If I spent an enormous amount of cognitive or physical labor on the project of *making* it be sunny out via a complicated series of ritualistic dances, then we're getting into court-ordered antipsychotics territory.
+
+Likewise, you can care about social approval all you like!  I too prefer when people like me.  However, I am banned from saying or doing anything whatsoever to bring this about (outside the three principles discussed above); if I am liked it will be by accident, which is always the case anyway.
 
 ### "So my anxiety should cease within seconds if i really let go of social outcomes, and if my anxiety is still there I haven't really let go?  That's suspiciously unfalsifiable."
 
@@ -415,6 +429,8 @@ You are going to think about social interactions after they happen. That's unavo
 - Evaluating whether the interaction went "well" or "badly" in terms of your social standing.
 - Coming to any conclusion about another person's perception of you.
 - Any thought process that starts with "I wonder if they..." or "they probably thought..."
+
+Note that we're doing two things: we're both forbidding these outright, but we are also making them *non-action relevant.*  There is no *point* to figuring out how you came off because there are approximately ~0 situations where the principles of (Honesty, Kindness, Selfishness) require you to know how you came off to others.
 
 ### Allowed
 
