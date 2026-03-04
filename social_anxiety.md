@@ -9,9 +9,9 @@
 This is a user manual for a specific approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety isn't actually the anxiety; the anxiety is just a true signal that you're trying to engage in a crucial-feeling yet impossible task, and that you need to stop.
 
 ## Promises I will make to the reader:
-(1) I have no formal credentials in this area.
-(2) Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
-(3) This protocol runs on the theory that the active ingredient in most forms of exposure therapy is an extremely specific set of introspective skills that I am attempting to teach directly here, instead of you "just getting used to it".  Accordingly, these exposures are intended not to be stressful for more than, like, a minute at a time.
+1. I have no formal credentials in this area.
+2. Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
+3. This protocol runs on the theory that the active ingredient in most forms of exposure therapy is an extremely specific set of introspective skills that I am attempting to teach directly here, instead of you "just getting used to it".  Accordingly, these exposures are intended not to be stressful for more than, like, a minute at a time.
 
 Read the whole document before starting.
 
@@ -19,16 +19,16 @@ Read the whole document before starting.
 
 This takes heavy inspiration from three sources:
 
-(1) [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I had in operationalizing this; most other things I had to derive from introspection, first principles, and relevant bits of metacognitive therapy.
+1. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I had in operationalizing this; most other things I had to derive from introspection, first principles, and relevant bits of metacognitive therapy.
 See also: 
 * https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
 * https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
 * https://drmichaeljgreenberg.com/defining-and-demarcating-compulsion/
 * https://drmichaeljgreenberg.com/rf-erp-order-of-operations/
 
-(2) Metacognitive therapy (https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ )
+2. Metacognitive therapy (https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ )
 
-(3) Bog-standard OCD treatment logic around reassurance and engagement with the object of obsession.
+3. Bog-standard OCD treatment logic around reassurance and engagement with the object of obsession.
 
 ## Part 0: Contraindications
 
