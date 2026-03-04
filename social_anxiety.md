@@ -430,7 +430,7 @@ You are going to think about social interactions after they happen. That's unavo
 - Coming to any conclusion about another person's perception of you.
 - Any thought process that starts with "I wonder if they..." or "they probably thought..."
 
-Note that we're doing two things: we're both forbidding these outright, but we are also making them *non-action relevant.*  There is no *point* to figuring out how you came off because there are approximately ~0 situations where the principles of (Honesty, Kindness, Selfishness) require you to know how you came off to others.
+Note that we're doing two things: we're both forbidding these outright, but we are also making them *non-action relevant.*  There is no *point* to figuring out how you came off because there are approximately ~0 situations where the principles of (Honesty, Kindness, Selfishness) require you to know how you were perceived at any time. "They probably thought I was awkward!"  So?  This fact, if true, is forbidden for you to act on.  It's in a similar category as "current temperature on the North Pole" or "freezing point of mercury."
 
 ### Allowed
 
@@ -511,7 +511,7 @@ In the dinner party scenario, low-stakes passive exposure would be:
 
 1. not trying to avoid weirdness by not avoiding eye contact.  That was a lot of negatives, so I'll rephrase: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
 2. not trying to avoid weirdness by not speaking.  Same logic.
-3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*
+3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*  (You are not required to use these exact words.)
 
 I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  False!  That is only a small part of your problem.  Your *bigger* problem is that you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly which is a prerequisite to moving on.
 
@@ -554,6 +554,8 @@ Clinical literature around exposure therapy shows that banning punchbowl-type sa
 If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
 
 (I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
+
+"Why do people not habituate to the anxiety of losing at League even when they have >1000 repetitions at doing so" is left as an exercise to the reader. 
 
 ---
 
