@@ -8,6 +8,8 @@
 
 This is a user manual for a specific, experimental approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're trying to engage in a crucial-feeling yet impossible task, and that this is the actionable root cause of your anxiety disorder.
 
+Then we use this to derive a treatment.
+
 ## Promises I will make to the reader:
 1. I have no formal credentials in this area.
 2. Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
@@ -242,7 +244,7 @@ The sequence:
 6. Accept that by no longer following it, you're not getting whatever the policy was built to do for you.
 7. Disobey the policy and embrace the consequences.
 
-Example: You notice you're about to make a self-deprecating joke after making a mistake. Tracing backward: the instrumental purpose is to preempt the other person's judgment by getting there first. The general rule: "if you acknowledge your own failure before someone else can, and make it clear that you know you suck at (skill), then they'll know you have self-awareness and will find you less contemptible." That's the Project, feeding you a *pretty good strategy for pre-empting social judgment*, and we do not obey commands from the Project. The alternative is to just make the mistake and not comment on it.  Saying "oops" is also acceptable.
+Example: You notice you're about to make a self-deprecating joke after making a mistake. Tracing backward: the instrumental purpose is to preempt the other person's judgment by getting there first. The general rule: "if you acknowledge your own failure before someone else can, and make it clear that you know you suck at (skill), then they'll know you have self-awareness and will find you less contemptible." That's the Project, feeding you a *pretty good strategy for pre-empting social judgment*, and we do not obey commands from the Project. The alternative is to just make the mistake and not comment on it.  Saying "oops" is also acceptable.  After which: *embrace her hatred.*
 
 The Trace gets faster with practice. Early on, you'll mostly be doing it after the fact: "why did I excuse myself to the restroom instead of hang out in the lounge even though I don't actually need to pee?"  (Answer: because even though I don't need to speak to people in the lounge any more than I have to speak to them in the restroom, if I'm in the lounge I can be observed, and if I'm just on my phone in public then people might think I'm being awkward, and "avoid being awkward" was the underlying policy being served.) 
 
@@ -449,7 +451,9 @@ If you're reading this document you've been "social learning" for years.  Has th
 
 Anyway, right now we're like in the phase of contamination OCD where you literally just can't wash your hands except in a very specific set of whitelisted scenarios because the reasoning apparatus you'd be using to make that decision is (ironically) contaminated by a psychic parasite who would really prefer if you'd let it keep puppeting your vocal cords, thanks.
 
-You can get back to your legitimate social learning later, after you genuinely consider social anxiety to be a problem that you used to have.
+You can get back to your legitimate social learning later, after you genuinely consider social anxiety to be a problem that you used to have.  
+
+If you want to.
 
 ---
 
@@ -513,7 +517,7 @@ In the dinner party scenario, low-stakes passive exposure would be:
 2. not trying to avoid weirdness by not speaking.  Same logic.
 3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*  (You are not required to use these exact words.)
 
-I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  False!  That is only a small part of your problem.  Your *bigger* problem is that you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly which is a prerequisite to moving on.
+I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  FALSE.  That is only a small part of your problem.  Your *bigger* problem is that you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly which is a prerequisite to moving on.
 
 When you've gotten calm and relaxed with no racing thoughts (meaning you have either don't need the Trace-And-Surrender for the passive case, or you've already performed it) and, ideally, you're now a bit bored, we move on to active exposures.
 
@@ -614,6 +618,10 @@ Okay, here's the mental motion:
 
 Run the trace-and-surrender and see how it goes.  I suspect that the *active* Project-refusals (e.g. asking to join a conversation, requesting a number) are much harder than the *passive* Project-refusals (e.g. not performing for approval); as such you can start with the passive ones and work up.
 
+If you are unable to get yourself to disengage from the attempt at running simulations around peoples' reactions to your going up to them and asking to join, then bail and try again later.  These simulations are compulsive and lead to compulsive behavior in-conversation.  
+
+Remember: your role is to act from honesty, kindness, and selfish impulse, and if that causes the world to burn down around you then *so be it*.
+
 ---
 
 ## Part 10: Socializing Without The Project
@@ -672,11 +680,13 @@ It's not that my baseline anxiety was gradually going down in novel social situa
 
 **End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward moments memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *much* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
 
-I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels  urgent or concerning.
+I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels urgent or concerning. I would no longer suggest that I "have social anxiety" in any meaningful sense.
 
 I'd say it was about 6-9 months between starting the protocol and-- well, not finishing it, because it's not the kind of thing you finish.  It's kind of a permanent social operating system.  But 6-9 months to the end state, anyway.
 
 I have no way of predicting how much longer or shorter it will take with any specific person.  Or, really, how generalizable this is.  At a sex convention I gave a *very* early version of this to a crowd and it appeared to work without modification for approximately 10-15 percent of the audience, mostly judged by enthusiasm post-conference (though in one case I did receive a memorably detailed report which was extremely positive.  A clinical trial, this ain't.  On the other hand, propositioning a girl in front of her boyfriend who's like "get it bro" has exceptional face validity as an outcome measure.)
+
+I think these days my relationship with the Mind-Control Project is similar to a sultan's relationship with his extraordinarily untrustworthy but unfortunately quite brilliant and useful Grand Vizier.
 
 Good luck.  Send bug reports.
 
@@ -725,7 +735,7 @@ Um.  Probably?
 
 So, I'm in a bit of an uncomfortable position.  It sounds (and honestly feels) irresponsible to say "no;" I am literally a software engineer who's written this troubleshooting doc for an experimental n=1 social anxiety protocol.  So why don't I just say "yes?"
 
-Well... cognitive-behavioral therapy is the dominant gold-standard modality for social anxiety that exists.  It gives a remission rate of 35% over two years, which doesn't exactly inspire confidence, and I think that the dynamics I've been calling out is probably a lot of the reason why: that standard CBT treatment contains elements that are ineffective and frequently *actively harmful* to patients with this disorder by reinforcing (and, indeed, frequently prescribing) content-level engagement with the obsession, and that reinforces the drive to perform the compulsions which are ruining the patient's life.  My suspicion is that to the degree it *is* effective it's due to therapist-specific factors (they're often quite smart and good at their jobs!) combined with "spending two years in therapy" as being a really good proxy for "willing to work hard at this problem instead of just accepting that this is their life."
+Well... cognitive-behavioral therapy is the dominant gold-standard modality for social anxiety that exists.  It gives a remission rate of 40% over two years, which doesn't exactly inspire confidence, and I think that the dynamics I've been calling out is probably a lot of the reason why: that standard CBT treatment contains elements that are ineffective and frequently *actively harmful* to patients with this disorder by reinforcing (and, indeed, frequently prescribing) content-level engagement with the obsession, and that reinforces the drive to perform the compulsions which are ruining the patient's life.  My suspicion is that to the degree it *is* effective it's due to therapist-specific factors (they're often quite smart and good at their jobs!) combined with "spending two years in therapy" as being a really good proxy for "willing to work hard at this problem instead of just accepting that this is their life."
 
 I think it's generally true that therapists *regardless of school* are frequently quite smart and do good work; natural remission of social anxiety IIRC is like 15% or something so even a CBT therapist actually does improve somewhat over baseline; which means it's probably better to get a therapist than not for social anxiety.  ACT works roughly as well as CBT over the long term, as far as I understand it.
 
@@ -767,7 +777,7 @@ Which brings us to another point: stop shaming people for being cringe, even if 
 
 ### When can I conclude this protocol doesn't work for me?
 
-A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps two weeks.
+A very important question!  A protocol which can never fail, only ever *be* failed, is a bad protocol.  My hope is you can make such a determination within perhaps four hours total over two weeks.
 
 **Before concluding this I'd like you to try a few troubleshooting steps**:
 
@@ -819,10 +829,17 @@ Hilariously, the novel protocol I'm discussing here and the protocol used by CBT
 Everyone wants to be liked; this protocol doesn't actually change this in any way.  The problem I think is that the English language (or possibly American culture?) doesn't give a clean way of differentiating "stop trying to control what people think of you" from "stop caring what people think of you;" by far the most common reading-comprehension error I find when I hand anything like this protocol to someone is that they want to round it off to "stop caring what people think" which would be, indeed, an impossible instruction were I to be giving it.  And I think Clark and Wells subtly made the same error everyone else does: they confused "desire to impression-manage" (unchangeable, reasonable) with "effortful attempts at impression-managing" (the actual problem). 
 
 ## Also Maybe Everyone Has This Lol
-I also suspect that institutional clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  
+I also suspect that institutional clinical psychology would *strongly* prefer to not pathologize large chunks of the population, and what I'm saying is *basically* that the near-universal experience of guys on dates of being stiff and anxious is structurally identical to what people with social anxiety experience all the time, which implies that *most people* are running situation-specific versions of the Mind-Control Project and suffering from it, just not to the level where they've sought out therapy for it.  Similar to ADHD and the concept of "executive function", we've taken a bell curve of social anxiousness and put a line at some arbitrary point on that bell curve and declared everything to the right Disordered, and everything to the left Not Disordered.
+
 I note I fell on the far side of boldness; I don't think this overshooting is a coincidence, but rather the natural consequence of switching to bottled water in a world where everyone is Superman but Kryptonite is in the water supply. (In this analogy, the Kryptonite is our cultural obsession with reading the room and the concept of "cringe".) This is a spicy take that I would say I about 60% believe.
 
----
+## There Are Good Reasons To Believe CBT Doesn't Work For Dating Anxiety And Actually There Are Literally No Studies That Suggest It Does
+
+Consider: the concept of "inhibitory learning" (that is, seeing that your feared outcomes didn't come to fruition) is central in social anxiety treatment.  Dating, I note, involves going through an enormous amount of rejection.
+
+This actually implies that a fundamental problem with the Clark and Wells model applied to dating anxiety is that your perceptions that you're mostly getting rejected *might well be accurate*.  Which means we are *forced* onto the other lever by necessity.
+
+Luckily, the Leibowitz Social Anxiety Scale has one out of 24 items that touches romantic situations, so the system works!
 
 ## Appendix B:  Puzzles Resolved By This Particular Theory
 
@@ -874,11 +891,27 @@ Consider: Social anxiety we've discussed.  GAD is "I feel the need to worry in o
 
 They're *intolerance-of-uncertainty disorders.*
 
-Arachnophobia, fear of heights, maybe agoraphobia: these aren't intolerance of uncertainty disorders.  They're just concrete phobias, and probably deserve their own section in the DSM.  A thing you'll notice about these is habituation-based exposure therapy *actually works on them.*
+Arachnophobia, fear of heights, maybe agoraphobia: these aren't intolerance of uncertainty disorders.  They're just concrete phobias, and probably deserve their own section in the DSM.  A thing you'll notice about these is habituation-based exposure therapy *actually works quite well on them.* 
 
 A prediction that falls out of the model here is that, if you assume we treat phobias correctly (via habituation-based exposure) and treat OCD-spectrum disorders correctly (via what we currently do), then you should expect we see extremely poor remission rates on disorders were classed as "anxiety" but are actually "intolerance of uncertainty".  Which are: social anxiety, generalized anxiety disorder, and health anxiety.  And the reason we see poor remission for these is they're OCD-spectrum *and we never noticed so we don't use the OCD toolkit*.
 
 Anyway: my own assessment is that the DSM needs two new categorizations:  Intolerance-of-uncertainty disorders, and concrete phobias.
+
+## Appendix E: The Meta-Document, God Help You
+
+Here's my theory of change with this protocol:
+
+1. The most important therapeutic step I'm trying to accomplish is compulsion externalization.  The framing of the Project as a tick feeding off of you is 100% intentionally gross.  And the naming of the Mind-Control Project itself is meant to be a little bit silly and grandiose and perhaps a bit villainous: like, yes, *obviously* that's not something you should be doing.  Which is the most crucial step beyond naming it: eroding its felt authority.
+   
+2. Half of my theory of change is that even if you don't prioritize *literally any behavior change whatsoever*, if you get into the habit of running the Trace and *noticing the demands being made of you by the Project* then every so often you'll notice they're stupid.  I am basically trying to write the positive equivalent of an infohazard: once you see it, you can't unsee it, and your mind (if I did it right!) will start the process of disentangling from the Project immediately.  Which is why I put a shitload of effort into the examples, which were basically all personally-sourced: if you can see your own personal Mind-Control Project while you're going to the restroom to avoid observation, then half my game is won.
+
+I think most of the reason that I was able to do this *after* Lynn's workshop but not before is that Lynn gave me, first, a proof of concept that pausing the Project would not destroy me; and second, *knowledge that the Project existed and could be paused*.  I think the second is more important, which is great since I cannot impart the first in any sort of firsthand way.
+   
+4. The Surrender is not super negotiable and I *do* think the replacement principles are totally load-bearing as a source of replacement behaviors that aren't OCD-infected.  Actually the first place I put these into use IRL was as a way of asking girls out; previously I'd work myself into a lather about the least awkward or intrusive way of doing things and it was blissful and freeing to be like "actually i'm just going to say precisely the thing i'm thinking in precisely the way I'm thinking of it and if the world ends, it ends."  (It didn't.)  I think the Surrender is best executed in a sort of defiant mode, especially at first, hence the profanity.  Also I'm very proud of the God-telling-you-to-make-small-talk bit.  Classic.
+
+5. Most Project behaviors in the rationalist community I think stem from basically prosocial impulses: the belief that your social anxiety is the only thing standing between you and being a social wrecking ball. I think this is almost universally false: the people who I have witnessed being social wrecking balls are people whose Mind-Control Projects are so anemic they can't even figure out basic social cues, as opposed to the Mind-Control Projects who are thriving and engorged and demanding.  People with social anxiety are mostly *very very perceptive* about social situations, as far as I can tell. That's *why* they have social anxiety.
+
+If your Grand Vizier is stupid he won't gain any power over you; it's the clever ones you have to watch out for.  My own Grand Vizier gives me much excellent advice these days from his well-appointed room in the dungeon.
 
 ## Anyway
 
