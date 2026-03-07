@@ -6,9 +6,9 @@
 
 ## What This Document Is
 
-This is a user manual for a specific, experimental approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're trying to engage in a crucial-feeling yet impossible task, and that this is the actionable root cause of your anxiety disorder.
+This is a user manual for a specific, experimental approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're attempting a crucial-feeling yet impossible task, and that you need to stop.
 
-Then we use this to derive a treatment.
+The treatment is, basically, a how-to guide for stopping.
 
 ## Promises I will make to the reader:
 1. I have no formal credentials in this area.
