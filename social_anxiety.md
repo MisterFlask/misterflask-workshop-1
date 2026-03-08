@@ -822,6 +822,8 @@ The things required to dismantle the Mind-Control Project *feel risky* to ask so
 
 This shouldn't be controversial; I mean, for reals, "read the room" was a pseudo-moral admonishment that was incredibly common even a couple years ago on social media.
 
+There's also a fun phenomenon where if you use chatbots with any regularity, you'll notice they represent the cultural biases of mid-2020s progressive tech people.  Claude and ChatGPT won't bat an eye if you discuss contamination OCD protocols where you ban non-whitelisted hand washing, but they are *intensely* concerned about the idea of people dropping effortful social monitoring.  What if you alienate someone, or make someone uncomfortable?  That culture tends to treat social discomfort as a high-priority signal that something is going wrong, rather than as a normal and often unavoidable byproduct of actually engaging with people.  I got *so much pushback* from Claude about this essay.
+
 ## CBT Really Wants You To Believe Something False So It Can Correct You
 The perceived-efficacy lever is more compatible with the general CBT framework, which is fundamentally about correcting cognitive distortions. "You think you're bad at socializing but actually you're not" is a classic cognitive distortion correction. "You need to stop trying to manage impressions entirely" isn't that — it's a behavioral and motivational intervention that sits more naturally in the OCD or possibly the ACT tradition.
 
