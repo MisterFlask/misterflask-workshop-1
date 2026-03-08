@@ -642,7 +642,7 @@ These are not scripts to memorize. They are examples of the *register* — the l
 **To a romantic interest, while on a first date:**
 > "I want to cuddle with you on that park bench so we can make out."  (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable; having to say "no thanks" will not cause your date to spontaneously burst into flames.  Anyway, empirically I find it works more often than it has any right to.)
 
-The crucial thing about all of these is that they do not have predictable results, because you're giving up control over the direction of the interaction. The last one is late-stage — it requires comfort with the protocol and a genuine willingness to hear "no" without treating it as a Mind-Control Project failure.  (I personally have a roughly fifty percent success rate on getting a makeout via the above approach; doing this does not, in expectation, actually tank your romantic life.)
+The crucial thing about all of these is that they do not have predictable results, because you're giving up control over the direction of the interaction. The last one is, perhaps, late-stage.  (I personally have a roughly fifty percent success rate on getting a makeout via the above approach; doing this does not, in expectation, actually tank your romantic life.)
 
 ### I don't like the romantic one.  What if the ask makes her uncomfortable?
 
