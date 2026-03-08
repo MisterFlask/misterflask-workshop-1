@@ -845,7 +845,9 @@ This actually implies that a fundamental problem with the Clark and Wells model 
 
 Luckily, the Leibowitz Social Anxiety Scale has one out of 24 items that touches romantic situations, so the system works!
 
-## Appendix B:  Puzzles Resolved By This Particular Theory
+I find this maddening because when doing research for this I kept seeing pop-science articles claiming that CBT is "evidence-based" for romantic anxiety.  False!  It is evidence-based for *social anxiety* and we *just assume* that it works for romantic anxiety.
+
+# Appendix B:  Puzzles Resolved By This Particular Theory
 
 Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be able to generate predictions for widely-reported phenomena regardless of whether it's a disorder we actually care about treating, because nature is not carved at the joints of "things we care about treating." And I think there are a very large number of phenomena that CBT needs to generate unfalsifiable epicycles to explain which my specific theory handles as fairly obvious first-order extrapolations of the core premise.  Like:
 
@@ -865,16 +867,16 @@ Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the f
 
 ---
 
-## Appendix C: Wild Speculation About The Personality-Level Causes Of Social Anxiety
+# Appendix C: Wild Speculation About The Personality-Level Causes Of Social Anxiety
 
 I can think of a few plausible spectrums that would result in people being socially anxious vs non-socially-anxious.
 
-### Spectrum Option 1: "How Functional Is YOUR Mind Control Project?"
+## Spectrum Option 1: "How Functional Is YOUR Mind Control Project?"
 I suspect there's a population-wide spectrum that, broadly, is defined by "degree to which the Mind-Control Project causes anxiety."  Some people seem to run it incredibly well; I've met one of them (a high-flying CEO type) and I think he runs almost every interaction through varyingly-honest forms of impression management and he's *good at it.*  It does not appear to cause him noticeable strain.  I call these people Politicians.  (If you're reading this it is very likely you're not a Politician.)
 
 Then there are people for whom the Mind-Control Project is deeply unproductive and almost immediately pathological, such as myself.  People with social anxiety will almost universally be on this side of the spectrum.
 
-### Spectrum Option 2: "How Goal-Oriented Are You?"
+## Spectrum Option 2: "How Goal-Oriented Are You?"
 
 Some people really fucking love to achieve goals.  Some people fill all their free time by designating complex, totally arbitrary goals for themselves, and then struggle to achieve them, and they call this fun.  There are entire industries, plural, around constructing artificial goals (and equipment for achieving them) which take a bounded amount of time, and then they sell these artificial goals to people who pay richly for them.  Sometimes they use Kickstarter.
 
@@ -882,7 +884,7 @@ These people will frequently end up socially anxious because they have, very nat
 
 ---
 
-## Appendix D: Also the DSM Fucked Up Its Categorizations
+# Appendix D: Also the DSM Fucked Up Its Categorizations
 
 Right now we have two rough categorizations relevant to us: "Anxiety Disorder" and "OCD-spectrum disorders".
 Anxiety disorders include: Social anxiety, arachnophobia, generalized anxiety disorder, health anxiety, fear of heights, various other concrete phobias.
@@ -901,7 +903,7 @@ A prediction that falls out of the model here is that, if you assume we treat ph
 
 Anyway: my own assessment is that the DSM needs two new categorizations:  Intolerance-of-uncertainty disorders, and concrete phobias.
 
-## Appendix E: The Meta-Document, God Help You
+# Appendix E: The Meta-Document, God Help You
 
 Here's my theory of change with this protocol:
 
@@ -917,7 +919,7 @@ I think most of the reason that I was able to do this *after* Lynn's workshop bu
 
 If your Grand Vizier is stupid he won't gain any power over you; it's the clever ones you have to watch out for.  My own Grand Vizier gives me much excellent advice these days from his well-appointed room in the dungeon.
 
-## Anyway
+# Anyway
 
 The more people I speak to, even people who don't class themselves as socially anxious, the more i see traces of the Mind Control Project writ in their actions.  Like I put on those sunglasses from They Live and now I can see grotesque, writhing parasites clutching the brainstems of like half the people I meet, engorged and pulsating with stolen thought as they work the vocal cords of their meat-puppets.  "Wherever you want to eat is fine!  Haha"
 
