@@ -731,6 +731,27 @@ All social behavior is fundamentally subjective.  What's try-hard to one person 
 
 Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
 
+
+### So this is basically exposure therapy, right?
+
+Yes!  But not exposure therapy as traditionally practiced.
+
+There are two key questions that need to be asked in any round of exposure therapy and response prevention (ERP).  The first is: what is the patient being exposed to?  And the second is: what is the response being prevented?
+
+The first one, the exposure stimulus, is the same as standard ERP for social anxiety: "social situations."  The second differs *dramatically* from standard treatment.
+
+Traditional exposure therapy for social anxiety does extremely haphazard and unprincipled response prevention; as I understand it, it's quite traditional to simply ask patients "what do you do to feel safe in social situations where you're nervous?"  This is certainly a first step, but it tends to only surface extremely shallow and obvious behaviors; therapists ban "clutch drink to prevent shaking" but not "hide my fear from the partygoers" or "avoid visible awkwardness," because the patients don't conceptualize "avoiding awkwardness" as a thing they do to *stay safe*, they think of it as the nature of social conduct.  If you look at the SAFE questionnaire (a catalogue of subtle safety behaviors that social anxiety researchers have put together) you'll notice that compared to the list of mental and behavioral compulsions I listed above it's *remarkably* shallow and each behavior in it is almost totally untheorized.
+
+"What's that stuff around you?" the therapist asks the fish.  The fish thinks for a bit.  "Oh, you know, seaweed.  Sand.  Minnows, sometimes."
+
+And unfortunately, therapists can only ban what patients can name, and patients can only name what they can conceptualize as a safety behavior. "Clutch drink" is visible. "Avoid awkwardness as an operative goal" is invisible because it's the water the patient swims in — it's not experienced as a specific safety behavior, it's experienced as the nature of social existence. The Trace is the instrument for making the water visible, which is what makes principled response prevention possible at all.
+
+Evidence for this is in the frequent observation that white-knuckling (patients doing exposures while clearly stressed out of their minds) tends to result in poor patient outcomes.  Why would this be?  Because if patients are completing exposures while clearly distressed, that's evidence that response prevention is inadequate: they're still running the Project, just without their most obvious behavioral compulsions. The exposure is happening but the response isn't being prevented, which is exactly what produces poor outcomes in all forms of ERP.
+
+And it makes sense that contamination OCD has such better results with ERP: therapists *for contamination OCD* understand that the response to be prevented isn't just "wash hands after touching doorknobs", it's "any behavior in service of contamination avoidance."  Most of the problems with ERP as practiced for social anxiety are downstream of the fact that because social anxiety isn't classified as OCD-spectrum, they've basically had to reinvent every single concept in OCD under the heading of social anxiety.  Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination, self-focused attention = checking behavior.  Near-total structural isomorphism with obsessive-compulsive disorder, totally unnoticed.
+
+[This observation is hardly unique to myself.](https://www.sciencedirect.com/science/article/pii/S2211364925000338)
+
 ### Should I see a therapist while I'm doing this?
 
 Um.  Probably?
