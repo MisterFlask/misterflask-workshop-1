@@ -750,7 +750,7 @@ Evidence for this is in the frequent observation that white-knuckling (patients 
 
 And it makes sense that contamination OCD has such better results with ERP: therapists *for contamination OCD* understand that the response to be prevented isn't just "wash hands after touching doorknobs", it's "any physical *or cognitive* behavior in service of contamination avoidance."  Most of the problems with ERP as practiced for social anxiety are downstream of the fact that because social anxiety isn't classified as OCD-spectrum, they've basically had to reinvent every single concept in OCD under the heading of social anxiety, and this is *hard* because social behaviors are incredibly complex.  
 
-Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination, self-focused attention = checking behavior.  Near-total structural isomorphism with obsessive-compulsive disorder, but rebranded.  For *reasons*, presumably historical.
+Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination = checking behavior. self-focused attention = monitoring.  reassurance-seeking = uh, reassurance-seeking.  Intolerance of uncertainy as transdiagnostic maintaining factor.  What we have here is a near-total structural isomorphism with obsessive-compulsive disorder, but rebranded.  For *reasons*, presumably historical.  
 
 [This observation is hardly unique to myself.](https://www.sciencedirect.com/science/article/pii/S2211364925000338)
 
@@ -924,7 +924,7 @@ Arachnophobia, fear of heights, maybe agoraphobia: these aren't intolerance of u
 
 A prediction that falls out of the model here is that, if you assume we treat phobias correctly (via habituation-based exposure) and treat OCD-spectrum disorders correctly (via what we currently do), then you should expect we see extremely poor remission rates on disorders were classed as "anxiety" but are actually "intolerance of uncertainty".  Which are: social anxiety, generalized anxiety disorder, and health anxiety.  And the reason we see poor remission for these is they're OCD-spectrum *and we never noticed so we don't use the OCD toolkit*.
 
-Anyway: my own assessment is that the DSM needs two new categorizations:  Intolerance-of-uncertainty disorders, and concrete phobias.
+Anyway: my own assessment is that the DSM needs two new categorizations:  OCD-spectrum anxiety disorders (unified by intolerance of uncertainty and an obsession-compulsion loop), and concrete phobias.
 
 # Appendix E: The Meta-Document, God Help You
 
