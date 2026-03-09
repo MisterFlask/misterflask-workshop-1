@@ -916,7 +916,7 @@ OCD-spectrum disorders include: contamination OCD, harm OCD, scrupulosity OCD, m
 
 I think "Anxiety disorders" is actually a misnomer: the thing dividing all these things is not "does this cause anxiety" (contamination OCD sufferers also experience anxiety), but "is the negative affect downstream of attempting to achieve specific unachievable or unverifiable goals?"
 
-Consider: Social anxiety we've discussed.  GAD is "I feel the need to worry in order to avoid anything bad ever happening to me."  Health anxiety is "I need to ensure I never get seriously ill."  Contamination OCD is "I need to ensure I never get sick."  Harm OCD is "I need to make sure I never snap and hurt someone physically."  Body dysmorphic disorder is "I need to ensure I am objectively hot."  Moral OCD is "I need to ensure I am objectively a good person."  These are goals that have the *shape* of sensible objectives, but the demand for 100% certainty in achieving them results in horrifically disordered behavior.  (You'll notice the last two are category errors: they want objective certainty about things that are fundamentally not objective.)  
+Consider: Social anxiety we've discussed.  GAD is "I need to pre-solve every future problem in advance to ensure I'm always okay."  Health anxiety is "I need to be vigilant to ensure I never get seriously ill."  Contamination OCD is "I need to be vigilant to ensure I never get sick."  Harm OCD is "I need to be vigilant to make sure I never snap and hurt someone physically."  Body dysmorphic disorder is "I need to be vigilant to ensure I am objectively hot."  Moral OCD is "I need to be vigilant to ensure I am objectively a good person."  These are goals that have the *shape* of sensible objectives, but the demand for 100% certainty in achieving them results in horrifically disordered behavior.  (You'll notice the last two are category errors: they want objective certainty about things that are fundamentally not objective.)  
 
 They're *intolerance-of-uncertainty disorders.*
 
@@ -924,7 +924,7 @@ Arachnophobia, fear of heights, maybe agoraphobia: these aren't intolerance of u
 
 A prediction that falls out of the model here is that, if you assume we treat phobias correctly (via habituation-based exposure) and treat OCD-spectrum disorders correctly (via what we currently do), then you should expect we see extremely poor remission rates on disorders were classed as "anxiety" but are actually "intolerance of uncertainty".  Which are: social anxiety, generalized anxiety disorder, and health anxiety.  And the reason we see poor remission for these is they're OCD-spectrum *and we never noticed so we don't use the OCD toolkit*.
 
-Anyway: my own assessment is that the DSM needs two new categorizations:  OCD-spectrum anxiety disorders (unified by intolerance of uncertainty and an obsession-compulsion loop), and concrete phobias.
+Anyway: my own assessment is that the DSM needs a new categorization:  concrete phobias.  Social anxiety, health anxiety, and generalized anxiety disorder should be moved into the OCD category.
 
 # Appendix E: The Meta-Document, God Help You
 
