@@ -817,7 +817,7 @@ My hope is you can make such a determination within perhaps four hours total ove
 
 Remember: we're not talking about "slightly less nervous, maybe."  *Zenlike.  Fucking.  Tranquility*.  Perhaps mild curiosity.
 
-(This is not to say that it will *finish* in two weeks if it works.  That would be nuts, we're looking at a few months of dedicated practice here.  No, early stages of this working ought to look like "whipsawing between confidence and nervousness depending on presence or absence of mental Project activity at any point in time, frequently within the same conversation, at varying ratios depending on amount of skill attained.")
+(This is not to say that it will *finish* in two weeks if it works.  That would be nuts, we're looking at a few months of dedicated practice here.  No, early stages of this working ought to look like "whipsawing between confidence and nervousness depending on presence or absence of mental Project activity at any point in time, frequently within the same conversation, at varying ratios depending on amount of skill attained."  The zenlike character of it will probably only stick around for a little bit the first time.  This is normal.)
 
 **Before concluding this I'd like you to try a few troubleshooting steps**:
 
