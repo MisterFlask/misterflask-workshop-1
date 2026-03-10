@@ -815,6 +815,8 @@ A very important question!  A protocol which can never fail, only ever *be* fail
 
 My hope is you can make such a determination within perhaps four hours total over two weeks; my criteria for "evidence this will work for you personally" is basically "can you make the passive version of the Trace-And-Surrender deliver an immediate and total anxiety drop within a few minutes of exposure to a single stressful social situation"; that's the test.  If you are unable to do so even in a low-grade exposure, then I consider the protocol to have failed you. If you *are* able to do this, then I think you should stick with it; the difference between "I can run this once" and "I can run this in nearly every social situation forever" is basically just one of practice, which means if you can do it once then most of your game is won.
 
+Remember: we're not talking about "slightly less nervous, maybe."  *Zenlike.  Fucking.  Tranquility*.  Perhaps mild curiosity.
+
 (This is not to say that it will *finish* in two weeks if it works.  That would be nuts, we're looking at a few months of dedicated practice here.  No, early stages of this working ought to look like "whipsawing between confidence and nervousness depending on presence or absence of mental Project activity at any point in time, frequently within the same conversation, at varying ratios depending on amount of skill attained.")
 
 **Before concluding this I'd like you to try a few troubleshooting steps**:
