@@ -8,7 +8,7 @@
 
 This is a user manual for a specific, experimental approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're attempting a crucial-feeling yet impossible task, and that you need to stop.
 
-The treatment is, basically, a how-to guide for stopping.
+This document is, basically, a how-to guide for stopping, along with theoretical discussion of same.
 
 ## Promises I will make to the reader:
 1. I have no formal credentials in this area.
@@ -169,7 +169,7 @@ All of these share a single common feature: **they are in service of figuring ou
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
-It has to be.
+Even so.
 
 The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
 
@@ -413,7 +413,7 @@ I don't have a clean answer for the unfalsifiability, to be honest.  I'm trying 
 
 This is basically tech support.  I guess all I can say in my defense is that this loop is tighter and faster than habituation based exposure therapy which has similar problems but over weeks of work.
 
-If you struggle with this, it might actually be instructive to speak to an OCD specialist or a therapist well-versed in metacognitive therapy. (Probably not a CBT therapist if you're still interested in pursuing this protocol, since they operate off entirely different assumptions that are totally contrary to this document.)
+If you struggle with this, it might actually be instructive to speak to an OCD specialist or a therapist well-versed in metacognitive therapy. 
 
 ### "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
 
