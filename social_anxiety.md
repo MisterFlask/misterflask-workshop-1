@@ -540,34 +540,6 @@ Remember: don't do any of the active exposure stuff *until you are at a state of
 
 The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.  The reason to not do active exposures while anxious is because if you're doing them while anxious then they're Project-infected; you will simply be compulsing in a new and stressful way.
 
-### "What role do behavioral experiments play here?"
-
-None.
-
-There is nothing useful to be learned from behavioral experiments, because the entire framing-- "figure out if people will dislike you for doing xyz" --  is gathering information that the Mind-Control Project finds useful but which, for you, is valueless and indeed of negative value because we are attempting to decouple your actions from the perceived judgements of observers. You should not willingly be the information-gathering arm of a hostile internal process.
-
-You shouldn't be doing scary things.  You should be going up to the edges of scary things, dissolve the ruminative process that makes them stressful by giving up on literally any social outcome, and then doing them AFTER your anxiety about them has decreased to zero. Learning will happen as a byproduct.
-
-If you're doing a scary thing WHILE it is scary then you're just doing an exposure while compulsing which isn't useful.
-
-### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
-
-Haven't you been listening?  The compulsions aren't protecting you from the stress.  The compulsions *are* the stress, because stress writ large is the feeling of you failing at a task which you refuse to give up.  And the solution is... to give up.
-
-You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.   (NOTE FOR THE NON-GAMERS: League of Legends is a famously stressful 50-minute-long team-based 5v5 game.  Details aren't important.)  In League, the stress isn't caused by the game mechanics as such; it's caused by *trying to win* while the outcome is uncertain and mostly outside your control, which is necessarily true because you're only 10% of the players in the game.  Hence the concept of "trolling", whereby some people get so stressed out while losing that they decide to unilaterally change the game from "try to win" to "enrage teammates by intentionally playing badly", which is almost guaranteed to be winnable.  It's *incredibly* hard to emotionally disengage from the game while you're still trying to win, and trivial otherwise.
-
-(This will sound like an analogy, but I believe this is literally the same mechanism in play in a non-social context.)
-
-But if you're only banning "things that help you to win" without actually stopping the attempt at winning then this makes things *more* stressful and not less.  Which anyone can tell you who has ever started *losing* a League game-- while you're losing the game you are, in fact, gradually losing what little control you had over an outcome you're still desperately attempting to achieve.  Banning safety behaviors one-at-a-time without trying to uproot their underlying policies and the reasons for those policies is, basically, falling into this failure mode.
-
-Clinical literature around exposure therapy shows that banning punchbowl-type safety behaviors cause short-term distress; the traditional explanation is that the safety behaviors represent "avoidance" and that the anxiety spike is just necessary for habituation to the feared stimulus, and I think that's wrong.  I think the way traditional exposure therapy for social anxiety *actually* works (when it does) is that if you jam yourself into enough social situations then eventually you'll just stop trying to "win" either out of exhaustion or because you got distracted, but getting there is incredibly stressful, and I assume that the reason this takes so long-- and why anxious people relapse so often in treatment-- is because *they don't know that's what they were learning*.  
-
-If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
-
-(I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
-
-"Why do people not habituate to the anxiety of losing at League even when they have >1000 repetitions at doing so" is left as an exercise to the reader. You'll notice that neither the inhibitory *nor* the habituation schools of "why does exposure therapy work" have a clean answer to this question.
-
 ---
 
 ## Part 9: Worked Examples
@@ -762,6 +734,36 @@ And it makes sense that contamination OCD has such better results with ERP: ther
 Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination = checking behavior. self-focused attention = monitoring.  reassurance-seeking = uh, reassurance-seeking.  Intolerance of uncertainy as transdiagnostic maintaining factor.  What we have here is a near-total structural isomorphism with obsessive-compulsive disorder, but rebranded.  For *reasons*, presumably historical.  
 
 [This observation is hardly unique to myself.](https://www.sciencedirect.com/science/article/pii/S2211364925000338)
+
+
+### "What role do behavioral experiments play here?"
+
+None.
+
+There is nothing useful to be learned from behavioral experiments, because the entire framing-- "figure out if people will dislike you for doing xyz" --  is gathering information that the Mind-Control Project finds useful but which, for you, is valueless and indeed of negative value because we are attempting to decouple your actions from the perceived judgements of observers. You should not willingly be the information-gathering arm of a hostile internal process.
+
+You shouldn't be doing scary things.  You should be going up to the edges of scary things, dissolve the ruminative process that makes them stressful by giving up on literally any social outcome, and then doing them AFTER your anxiety about them has decreased to zero. Learning will happen as a byproduct.
+
+If you're doing a scary thing WHILE it is scary then you're just doing an exposure while compulsing which isn't useful.
+
+### "Wait.  I thought most Exposure Therapy-type protocols involved, like, banning behaviors one at a time to reduce how stressful it is?"
+
+Haven't you been listening?  The compulsions aren't protecting you from the stress.  The compulsions *are* the stress, because stress writ large is the feeling of you failing at a task which you refuse to give up.  And the solution is... to give up.
+
+You only feel stressed out at a losing game of League of Legends until you ragequit the game.  After which, blessed peace.   (NOTE FOR THE NON-GAMERS: League of Legends is a famously stressful 50-minute-long team-based 5v5 game.  Details aren't important.)  In League, the stress isn't caused by the game mechanics as such; it's caused by *trying to win* while the outcome is uncertain and mostly outside your control, which is necessarily true because you're only 10% of the players in the game.  Hence the concept of "trolling", whereby some people get so stressed out while losing that they decide to unilaterally change the game from "try to win" to "enrage teammates by intentionally playing badly", which is almost guaranteed to be winnable.  It's *incredibly* hard to emotionally disengage from the game while you're still trying to win, and trivial otherwise.
+
+(This will sound like an analogy, but I believe this is literally the same mechanism in play in a non-social context.)
+
+But if you're only banning "things that help you to win" without actually stopping the attempt at winning then this makes things *more* stressful and not less.  Which anyone can tell you who has ever started *losing* a League game-- while you're losing the game you are, in fact, gradually losing what little control you had over an outcome you're still desperately attempting to achieve.  Banning safety behaviors one-at-a-time without trying to uproot their underlying policies and the reasons for those policies is, basically, falling into this failure mode.
+
+Clinical literature around exposure therapy shows that banning punchbowl-type safety behaviors cause short-term distress; the traditional explanation is that the safety behaviors represent "avoidance" and that the anxiety spike is just necessary for habituation to the feared stimulus, and I think that's wrong.  I think the way traditional exposure therapy for social anxiety *actually* works (when it does) is that if you jam yourself into enough social situations then eventually you'll just stop trying to "win" either out of exhaustion or because you got distracted, but getting there is incredibly stressful, and I assume that the reason this takes so long-- and why anxious people relapse so often in treatment-- is because *they don't know that's what they were learning*.  
+
+If you can't see the thing you're aiming at, then when you hit it (which will be rarely) you'll mostly be doing it by luck.  I'm trying to help you do exposure therapy *while aiming*.
+
+(I suspect this is the reason that both ACT and CBT-- the two dominant paradigms for treating social anxiety-- both achieve identical pretty-bad-but-better-than-nothing remission rates for the disorder.  They both do exposures.  *Neither* sees the mechanism by which they work, so they surround the exposures with different sets of inert words, and eventually either the patient figures it out or they don't.)
+
+"Why do people not habituate to the anxiety of losing at League even when they have >1000 repetitions at doing so" is left as an exercise to the reader. You'll notice that neither the inhibitory *nor* the habituation schools of "why does exposure therapy work" have a clean answer to this question.
+
 
 ### Should I see a therapist while I'm doing this?
 
