@@ -6,14 +6,14 @@
 
 ## What This Document Is
 
-This is a user manual for a specific, experimental approach to dealing with social anxiety. It's not a standard therapeutic protocol. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're attempting a crucial-feeling yet impossible task, and that you need to stop.
+This is a user manual for a specific, experimental approach to dealing with social anxiety. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're attempting a crucial-feeling yet impossible task, and that you need to stop.
 
 This document is, basically, a how-to guide for stopping, along with theoretical discussion of same.
 
 ## Promises I will make to the reader:
 1. I have no formal credentials in this area.
 2. Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
-3. Most clinical theories on social anxiety hold that the active ingredient is either habituation (getting used to it) or inhibitory learning (discovering experientially that it's not that bad.)  For reasons we'll discuss, I think these are false, and that actually the active ingredient can be replicated by a very specific set of introspective skills that I am attempting to teach directly here.  Accordingly, though we still need exposures, these exposures are intended not to be stressful for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
+3. Most clinical theories on social anxiety hold that the active ingredient in exposure therapy is either habituation (getting used to it) or inhibitory learning (discovering experientially that it's not that bad.)  For reasons we'll discuss, I think these are false, and that actually the active ingredient can be functionally replicated by a very specific set of introspective skills that I am attempting to teach directly here.  Accordingly, though we still need exposures, these exposures are intended not to be stressful for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
 
 Read the whole document before starting.
 
