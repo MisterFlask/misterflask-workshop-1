@@ -12,8 +12,9 @@ This document is, basically, a how-to guide for stopping, along with theoretical
 
 ## Promises I will make to the reader:
 1. I have no formal credentials in this area.
-2. Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, since the protocol is mildly counterintuitive but should not be overly difficult to perform or understand.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
-3. Most clinical theories on social anxiety hold that the active ingredient in exposure therapy is either habituation (getting used to it) or inhibitory learning (discovering experientially that it's not that bad.)  For reasons we'll discuss, I think these are false, and that actually the active ingredient can be functionally replicated by a very specific set of introspective skills that I am attempting to teach directly here.  Accordingly, though we still need exposures, these exposures are intended not to be stressful for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
+2. Accordingly my credibility does and should rest entirely on you reading this document and recognizing yourself in it, and on you understanding the core logic of the theory and its implications.  I have theories in the appendix as to why it is not commonly in use, along with supporting evidence for the overall model.
+3. If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
+4. Most clinical theories on social anxiety hold that the active ingredient in exposure therapy is either habituation (getting used to it) or inhibitory learning (discovering experientially that it's not that bad.)  For reasons we'll discuss, I think these are false, and that actually the active ingredient can be functionally replicated by a very specific set of introspective skills that I am attempting to teach directly here.  Accordingly, though we still need exposures, these exposures are intended not to be stressful for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
 
 Read the whole document before starting.
 
@@ -60,7 +61,7 @@ I think there are some environments-- not most, but some-- which, fundamentally,
 
 You are running a project.
 
-You have been running it for years, probably since adolescence. The project is: **controlling what other people think of you.**  Most often this takes the form of "be thought well of by others."
+You have been running it for years, probably since adolescence. The project is: **controlling what other people think of you.**
 
 We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing what you say, how you say it, when you say it, what you do with your body, what expression you wear, and how you respond to things. You are monitoring all of this in real time, evaluating its effectiveness, and adjusting on the fly.
 
@@ -77,11 +78,11 @@ This is why you find social situations to be exhausting: because you are running
 
 And this has been destroying you, which is why you're reading this long-ass document and taking what amounts to experimental mental health advice from someone who is in no way a therapist but who *has* eliminated his own social anxiety in a way that took like a year to reconcile with published psychology literature and then reverse-engineer into this self-help document.
 
-**The Project is the problem.**  The sensation you describe as "social anxiety" is directly *and solely* caused by the Mind-Control Project: it's the internal feeling of the Project accurately flagging a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequently true).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing in my goal of universal approval" and the more self-aware and perceptive you are the more often this will happen because *that's how you can tell it is failing*.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  The sensation you describe as "social anxiety" is *directly* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (nearly all of them), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen because *that's how you can tell it is failing*.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
-**The Project is doomed.** You cannot actually control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
+**The Project is utterly and unsalvageably doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
-Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard and that actually your Project is more successful than you think. (In OCD-land they call this "accommodation."  It's not considered a flattering term.)
+Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard ("cognitive restructuring") and that actually your Project is more successful than you think ("behavioral experiments"). In OCD-land they call this "accommodation."  It's not considered a flattering term.
 
 That is not the approach I am discussing here.
 
@@ -101,7 +102,7 @@ They are the mission statements of your particular Mind-Control Project.
 
 - **Avoid Anyone Disliking Me**.  The big one.
 - **Don't Be Perceived As Stupid**.
-- **Guarantee Other People Have Their Preferences Met**.  This can be tricky because they often hide these preferences; it's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences.
+- **Guarantee Other People Have Their Preferences Met**.  It's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences, generally because they suspect the other person is *also* running this root-level policy. ("Where do you want to eat?" "I don't mind, any place you want to go is fine."  "Are you sure?  I thought you liked Thai.")
 - **Guarantee This Specific Person Liking Me**.  Guys do this on dates quite a lot.
 - **Guarantee Nobody Else Has A Negative Emotional Experience Around You**.  This one is complicated because it feels like common decency, but this too has the problem of being a fundamentally impossible task that results in avoidance behavior, because "discomfort" and "human connection" are not fundamentally separable.
 - **Don't Be Perceived As Awkward**
@@ -115,6 +116,8 @@ They are the mission statements of your particular Mind-Control Project.
 And now, a bit afield of this doc's actual purpose but just for funsies:
 - **Don't Ever Get Sick** (Contamination OCD.)
 - **Pre-Solve Every Possible Future Problem So That Nothing Bad Ever Happens** (Generalized Anxiety Disorder)
+
+(Pick any impossible guarantee, build yourself a real-time monitoring and control system around it, and you get a specific anxiety disorder depending on what you picked!  Like a buffet!  Anyway.)
 
 ### Mental Compulsions (or, Instrumental Mental Behaviors)
 
