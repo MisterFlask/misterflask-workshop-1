@@ -913,7 +913,7 @@ Answer: because nobody in those situations is *trying to make the arrestee like 
 
 ## people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.
 
-This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project feels intuitively necessary when there's no pre-existing social context, because people would prefer to avoid looking weird or awkward or out-of-place.  Avoiding this *is* the Project."
+This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "most people are running Avoid Being Awkward as a policy, and introducing yourself to a random stranger or set of strangers has a high probability of producing awkwardness, and the resulting attempts at Not Being Awkward are the Project and therefore anxiogenic." (This is obvious; put yourself in that situation and yeah, you probably *would* try to avoid being awkward or weird.)
 
 ## people who are well-liked frequently being socially anxious.
 This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental. I bring this up as a contrast to...
@@ -934,6 +934,8 @@ My own theory: cold-approaching women, *especially* in non-social settings, is a
 (Additionally, rejection-- which cold approaches produce most of the time regardless of skill-- does hurt a bit; it's not _that_ bad but it's still probably comparable to a bee sting if you don't have the force of rumination-driven shame to give it teeth.  The rumination is what drives the _real_ suffering; my protocol should resolve that, but the initial bee sting is what it is.)
 
 This implies "approach anxiety" (the PUA term of art for anxiety about hitting on random women in public settings) should be far easier to resolve while doing cold approaching in nightclubs and bars (where context basically already exists; the Project can be halted easily) and far harder in daytime cold approaches in, like, grocery stores and shopping malls.  I don't actually know if this prediction holds, but it *feels* true to me.
+
+(The Clark and Wells' model: "oh they were probably doing safety behaviors.")
 
 ## Why does within-session habituation occur during exposure therapy and then not carry over between-sessions?
 
