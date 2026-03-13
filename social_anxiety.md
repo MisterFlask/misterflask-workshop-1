@@ -29,6 +29,8 @@ See also:
 * https://drmichaeljgreenberg.com/defining-and-demarcating-compulsion/
 * https://drmichaeljgreenberg.com/rf-erp-order-of-operations/
 
+I should note that, as far as I'm aware, Greenberg does *not* extend this specific framework to social anxiety; that part is my own doing and to the extent it's wacky nonsense, that's my fault, not Greenberg's.
+
 2. Metacognitive therapy (https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ )
 
 3. Bog-standard OCD treatment logic around reassurance and engagement with the object of obsession.
