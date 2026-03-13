@@ -715,6 +715,13 @@ All social behavior is fundamentally subjective.  What's try-hard to one person 
 
 Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
 
+### I heard thought suppression doesn't work.  Isn't "don't think about how I came across" similar to "don't think of a white elephant"?
+
+[Here's a great article about this very question](https://drmichaeljgreenberg.com/thought-suppression-has-nothing-to-do-with-compulsive-rumination-so-why-does-it-feel-like-you-cant-stop/).  Quoting from it directly:
+
+> Let’s start with a thought exercise: Imagine you were solving a complicated math problem, and I asked you to stop. Would you have trouble stopping? You would not. Keep this in mind as you read on.
+> 
+> ‘Thought suppression’ and ‘the rebound effect’ refer to the idea that sometimes trying not to think about something causes you to think about it more. Sometimes people mistakenly think that this issue applies to rumination, and that if they try to stop ruminating, it will cause them to ruminate more. This is not the case because ‘thought suppression’ and ‘the rebound effect’ don’t apply to analytical thinking, which is the type of thinking involved in compulsive rumination. This is the same reason that trying to stop solving a complicated math problem doesn’t cause you to somehow solve it more.
 
 ### So this is basically exposure therapy, right?
 
