@@ -905,17 +905,25 @@ I find this maddening because when doing research for this I kept seeing pop-sci
 
 Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be able to generate predictions for widely-reported phenomena regardless of whether it's a disorder we actually care about treating, because nature is not carved at the joints of "things we care about treating." And I think there are a very large number of phenomena that CBT needs to generate unfalsifiable epicycles to explain which my specific theory handles as fairly obvious first-order extrapolations of the core premise.  Like:
 
-(1) police officers not being anxious when arresting people who definitely hate them.  If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are screaming obscenities at them?  Why are the ICE agents in Minnesota not having constant public breakdowns?
+## police officers not being anxious when arresting people who definitely hate them.
 
-(2) people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.  This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project runs hardest when the perceptions of others are undetermined, and thus where it feels plausible that effort could have maximum impact."
+If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are screaming obscenities at them?  Why are the ICE agents in Minnesota not having constant public breakdowns?
 
-(3) people who are well-liked frequently being socially anxious.  This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental.
+## people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.
 
-(4) the mirror image of #3 is that people who are widely-disliked are frequently socially non-anxious; this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.  (One heckled me during a talk I was giving about literally this topic; at the end of my talk they were like "HEY THAT'S ALL DUMB.  YOU SHOULD JUST NOT CARE ABOUT WHAT PEOPLE THINK."  Then the room devolved into a bunch of different heated arguments without me formally ending the talk.  Exceptional outcome.)
+This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project runs hardest when the perceptions of others are undetermined, and thus where it feels plausible that effort could have maximum impact."
 
-(5) The anxiety signatures widely reported in MOBA games like LoL; it's not *social* anxiety as such, but I think it's a pretty much identical dynamic around attempted-control-of-uncontrollable-outcomes (as discussed previously).  Clinical researchers aren't interested in this but I think they should be.  I think psychology as a field is probably impoverished by its focusing exclusively on sick people.
+## people who are well-liked frequently being socially anxious.
+This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental.
 
-(6) Why do men not habituate to cold approaching women in public settings?  Like, we see pickup guys who have approached literally hundreds of women and are still nervous about each one.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it (inhibitory learning theory yeah yeah), shouldn't disconfirmation have kicked in?  You already know you can survive rejection after hundreds of rejections.  *What's happening here*?  
+## the mirror image of #3 is that people who are widely-disliked are frequently socially non-anxious
+this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.  (One heckled me during a talk I was giving about literally this topic; at the end of my talk they were like "HEY THAT'S ALL DUMB.  YOU SHOULD JUST NOT CARE ABOUT WHAT PEOPLE THINK."  Then the room devolved into a bunch of different heated arguments without me formally ending the talk.  Exceptional outcome.)
+
+## The anxiety signatures widely reported in MOBA games like LoL
+it's not *social* anxiety as such, but I think it's a pretty much identical dynamic around attempted-control-of-uncontrollable-outcomes (as discussed previously).  Clinical researchers aren't interested in this but I think they should be.  I think psychology as a field is probably impoverished by its focusing exclusively on sick people.
+
+## Why do men not habituate to cold approaching women in public settings?  
+Like, we see pickup guys who have approached literally hundreds of women and are still nervous about each one.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it (inhibitory learning theory yeah yeah), shouldn't disconfirmation have kicked in?  You already know you can survive rejection after hundreds of rejections.  *What's happening here*?  
 
 My own theory: cold-approaching women, *especially* in non-social settings, is almost maximally Project-infected because you need to impression-manage really hard: you really need to establish "i'm not crazy, I don't want money from you, and I won't suck up enormous amounts of your time" within the first minute and structurally that *is* the Project.  This might mean my framework just straight-up provide actionable advice for non-social cold approaching.
 
@@ -923,7 +931,7 @@ My own theory: cold-approaching women, *especially* in non-social settings, is a
 
 This implies "approach anxiety" (the PUA term of art for anxiety about hitting on random women in public settings) should be far easier to resolve while doing cold approaching in nightclubs and bars (where context basically already exists; the Project can be halted) and far harder in daytime cold approaches in, like, grocery stores and shopping malls.  I don't actually know if this prediction holds, but it *feels* true to me.
 
-(7) Why does within-session habiutation occur during exposure therapy and then not carry over between-sessions?
+## Why does within-session habituation occur during exposure therapy and then not carry over between-sessions?
 
 (Cold-approach people are also familiar with this phenomenon-- they notice that guys are way way more relaxed toward the end of the night than the beginning, regardless of total amount of experience.  They call it "momentum.")
 
