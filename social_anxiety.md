@@ -909,33 +909,37 @@ Okay, here's where I'm at.  The True Theory Of Anxiety Disorders ought to be abl
 
 If the mechanism of social anxiety is "people not liking you" why don't we see police officers having anxiety attacks while the people they are arresting are screaming obscenities at them?  Why are the ICE agents in Minnesota not having constant public breakdowns?
 
+Answer: because nobody in those situations is *trying to make the arrestee like them.*  Because that would be silly.  No Project, no anxiety.
+
 ## people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.
 
-This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project runs hardest when the perceptions of others are undetermined, and thus where it feels plausible that effort could have maximum impact."
+This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "the Mind Control Project feels intuitively necessary when there's no pre-existing social context, because people would prefer to avoid looking weird or awkward or out-of-place.  Avoiding this *is* the Project."
 
 ## people who are well-liked frequently being socially anxious.
-This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental.
+This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental. I bring this up as a contrast to...
 
 ## the mirror image of #3 is that people who are widely-disliked are frequently socially non-anxious
 this one's weird in CBT land and I think maybe just uninvestigated?  I *know* some of these people *personally*.  (One heckled me during a talk I was giving about literally this topic; at the end of my talk they were like "HEY THAT'S ALL DUMB.  YOU SHOULD JUST NOT CARE ABOUT WHAT PEOPLE THINK."  Then the room devolved into a bunch of different heated arguments without me formally ending the talk.  Exceptional outcome.)
 
-## The anxiety signatures widely reported in MOBA games like LoL
+Anyway, my own model is that running the Project does not depend on you having any specific amount of popularity or unpopularity.  It is equally accessible to all (God help you.)
+
+## The anxiety signatures widely reported in MOBA games like LoL. as discussed above
 it's not *social* anxiety as such, but I think it's a pretty much identical dynamic around attempted-control-of-uncontrollable-outcomes (as discussed previously).  Clinical researchers aren't interested in this but I think they should be.  I think psychology as a field is probably impoverished by its focusing exclusively on sick people.
 
 ## Why do men not habituate to cold approaching women in public settings?  
 Like, we see pickup guys who have approached literally hundreds of women and are still nervous about each one.  Shouldn't habituation have kicked in by now?  Or if "fear-disconfirmation" was the main thing resolving it (inhibitory learning theory yeah yeah), shouldn't disconfirmation have kicked in?  You already know you can survive rejection after hundreds of rejections.  *What's happening here*?  
 
-My own theory: cold-approaching women, *especially* in non-social settings, is almost maximally Project-infected because you need to impression-manage really hard: you really need to establish "i'm not crazy, I don't want money from you, and I won't suck up enormous amounts of your time" within the first minute and structurally that *is* the Project.  This might mean my framework just straight-up provide actionable advice for non-social cold approaching.
+My own theory: cold-approaching women, *especially* in non-social settings, is almost maximally Project-infected because you need to impression-manage really hard: you really need to establish "i'm not crazy, I don't want money from you, and I won't suck up enormous amounts of your time" within the first minute and structurally that *is* the Project.  This might mean my framework just straight-up doesn't provide actionable advice for cold approaching in non-social environments.
 
 (Additionally, rejection-- which cold approaches produce most of the time regardless of skill-- does hurt a bit; it's not _that_ bad but it's still probably comparable to a bee sting if you don't have the force of rumination-driven shame to give it teeth.  The rumination is what drives the _real_ suffering; my protocol should resolve that, but the initial bee sting is what it is.)
 
-This implies "approach anxiety" (the PUA term of art for anxiety about hitting on random women in public settings) should be far easier to resolve while doing cold approaching in nightclubs and bars (where context basically already exists; the Project can be halted) and far harder in daytime cold approaches in, like, grocery stores and shopping malls.  I don't actually know if this prediction holds, but it *feels* true to me.
+This implies "approach anxiety" (the PUA term of art for anxiety about hitting on random women in public settings) should be far easier to resolve while doing cold approaching in nightclubs and bars (where context basically already exists; the Project can be halted easily) and far harder in daytime cold approaches in, like, grocery stores and shopping malls.  I don't actually know if this prediction holds, but it *feels* true to me.
 
 ## Why does within-session habituation occur during exposure therapy and then not carry over between-sessions?
 
 (Cold-approach people are also familiar with this phenomenon-- they notice that guys are way way more relaxed toward the end of the night than the beginning, regardless of total amount of experience.  They call it "momentum.")
 
-My theory is simple: the longer a social situation goes on, the more opportunities the socially-anxious person has to get sucked into a conversation where they *forget to self-monitor.*  They think on some level that self-monitoring is a good and useful thing to be doing (which is why they do it), but they aren't *vigilant* about it and sometimes-- *sometimes*-- in spite of themselves, they stop attempting to _make the pretty girls like them_ and then things start going well.  And this doesn't carry over from session-to-session is because they didn't know that's what they were doing.  A thing happened to them, but they didn't *learn* anything.
+My theory is simple: the longer a social situation goes on, the more opportunities the socially-anxious person has to get sucked into a conversation where they *forget to self-monitor.*  They think on some level that self-monitoring is a good and useful thing to be doing (which is why they do it), but they aren't *vigilant* about it and sometimes-- *sometimes*-- in spite of themselves, they stop attempting to _make the pretty girls like them_ and then things start going well.  And this doesn't carry over from session-to-session is because they didn't know that's what happened.  A thing happened to them, but they didn't *learn* anything; they still think the Project is necessary and useful to engage in.
 
 Come on, guys!  These aren't niche, unknown phenomena!  The incuriosity of the field is MADDENING.
 
