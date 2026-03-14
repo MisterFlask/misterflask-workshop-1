@@ -539,7 +539,7 @@ In the dinner party scenario, low-stakes passive exposure would be:
 
 1. not trying to avoid weirdness by not avoiding eye contact.  That was a lot of negatives, so I'll rephrase: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
 2. not trying to avoid weirdness by not speaking.  Same logic.
-3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*  (You are not required to use these exact words.)
+3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone feels negatively about this, that is *not your problem.*
 
 I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  FALSE.  That is only a small part of your problem.  Your *bigger* problem is that you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly which is a prerequisite to moving on.
 
