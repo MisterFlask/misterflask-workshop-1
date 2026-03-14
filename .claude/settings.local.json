@@ -46,7 +46,8 @@
       "Bash(node:*)",
       "WebSearch",
       "WebFetch",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "mcp__scheduled-tasks__list_scheduled_tasks"
     ]
   },
   "hooks": {

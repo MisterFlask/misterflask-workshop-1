@@ -64,10 +64,9 @@ When user provides a research question:
 
 For each source:
 
-1. **Attempt access** via WebFetch:
-   - Try publisher page
-   - Try PubMed abstract
-   - Try Google Scholar cached version
+1. **Attempt access** — try in order:
+   - **Use the `paper-retrieval` skill** (invoke via `/paper-retrieval`) when a DOI is available — it fetches full-text from PMC, Semantic Scholar, Unpaywall, and Sci-Hub automatically
+   - Fall back to WebFetch for publisher page, PubMed abstract, or Google Scholar cached version
    - Note what level of access was achieved
 
 2. **Create source file** at `research/sources/{slug}/{source-id}.md`
@@ -163,7 +162,7 @@ Question: [{question-title}](../questions/{slug}.md)
 - **Journal**: {journal name}
 - **DOI**: {doi if available}
 - **URL**: {original URL}
-- **Sci-Hub**: {leave blank for user to fill}
+- **Sci-Hub**: {leave blank for user to fill, or use `/paper-retrieval` with DOI to fetch automatically}
 
 ## Access Status
 
