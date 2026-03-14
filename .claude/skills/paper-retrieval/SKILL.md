@@ -76,11 +76,7 @@ WebFetch: https://api.semanticscholar.org/graph/v1/paper/DOI:{DOI}?fields=title,
 
 **If `openAccessPdf.url` is present:**
 
-```
-WebFetch: {openAccessPdf.url}
-```
-
-Extract and transcribe the content.
+PDF URLs must be downloaded locally before reading — WebFetch cannot parse binary PDF content. Use the **PDF download procedure** below.
 
 **If ArXiv ID is present:**
 
@@ -106,11 +102,7 @@ WebFetch: https://api.unpaywall.org/v2/{DOI}?email=research-tool@example.com
 - `oa_locations[]` — All available OA locations (try multiple if first fails)
 - `is_oa` — Boolean: whether any OA version exists
 
-**If a URL is found**, fetch and transcribe:
-
-```
-WebFetch: {best_oa_location.url_for_pdf}
-```
+**If a URL is found**, download and transcribe using the **PDF download procedure** below.
 
 Note the version in the transcript (accepted manuscripts may differ from published version).
 
@@ -155,10 +147,7 @@ Sci-Hub pages typically embed the PDF in an `<iframe>` or `<embed>` tag. Look fo
 - An `<iframe src="...">` pointing to the PDF
 - A direct download link
 
-If a PDF URL is found, fetch it:
-```
-WebFetch: {pdf-url}
-```
+If a PDF URL is found, use the **PDF download procedure** below.
 
 **Step 6c — If Sci-Hub is blocked or unresponsive:**
 
@@ -171,6 +160,62 @@ Present the URL to the user:
 **Step 6d — If the user provides a PDF or pasted text after Sci-Hub fails:**
 
 Proceed with transcription as normal (Phase 5 of deep-research workflow).
+
+---
+
+## PDF Download Procedure
+
+Use this procedure whenever a direct PDF URL is obtained (from Semantic Scholar `openAccessPdf.url`, Unpaywall `url_for_pdf`, Sci-Hub embed, or any other source). **Do not use WebFetch on PDF URLs** — it cannot parse binary content.
+
+**Step 1 — Download to a temp file:**
+
+```bash
+curl -L -o /tmp/{source-id}.pdf "{pdf-url}"
+```
+
+The `-L` flag follows redirects. If `curl` returns a non-zero exit code or the file is under 10KB (likely an error page, not a real PDF), mark as failed and try the next source.
+
+**Step 2 — Check it's actually a PDF:**
+
+```bash
+file /tmp/{source-id}.pdf
+```
+
+Output should contain `PDF document`. If it says `HTML document` or similar, the URL redirected to a paywall/login page — mark as failed.
+
+**Step 3 — Read the PDF using the Read tool:**
+
+The `Read` tool handles PDFs natively. For papers under ~10 pages, read without page range:
+
+```
+Read: /tmp/{source-id}.pdf
+```
+
+For longer papers (>10 pages), read in chunks of up to 20 pages:
+
+```
+Read: /tmp/{source-id}.pdf  pages: "1-20"
+Read: /tmp/{source-id}.pdf  pages: "21-40"
+...continue until end of document...
+```
+
+To determine total page count before chunking:
+
+```bash
+python3 -c "import subprocess; r=subprocess.run(['pdfinfo','/tmp/{source-id}.pdf'],capture_output=True,text=True); print(r.stdout)" 2>/dev/null || echo "pdfinfo unavailable"
+```
+
+If `pdfinfo` is unavailable, start reading from page 1 and continue in 20-page chunks until the Read tool returns an empty result or an error.
+
+**Step 4 — Transcribe the content:**
+
+Assemble the text from all chunks into the transcript file. Preserve section structure, describe figures, recreate simple tables in markdown.
+
+**Step 5 — Clean up:**
+
+```bash
+rm -f /tmp/{source-id}.pdf
+```
 
 ---
 
