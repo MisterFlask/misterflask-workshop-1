@@ -815,14 +815,6 @@ But the metric is not "did this interaction go well." The metric is "did I run t
 
 If you actually think you wronged someone, by all means apologize, and if you didn't, don't.
 
-### But what if I accidentally DID run the Project and the person didn't like me anyway?
-
-Also expected, and also not a problem.  The Project frequently fails on its own terms because it's fundamentally trying to do an impossible thing.  Do better next time (and by "do better" I of course mean "stop doing the compulsions")
-
-### "What do I do with my attention during conversations?"
-
-Is the topic interesting to you?  Then engage with it.  Is the topic uninteresting?  Then change it.  You can always say "eh, this isn't really my area of interest."
-
 ### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
 
 Maybe eventually?  But if you've been running the Mind-Control Project for years then that would probably be sufficient to install a negative self-schema in anyone, because you're trying to run an entire social life on like 2% of your total cognition (where 98% is allocated to a malfunctioning social monitoring and surveillance system) and that will kinda make you seem like you suck at socializing regardless of your underlying social skills. Running the Project might not be *necessary* to form a negative evaluation of yourself as a social being, but it is certainly *sufficient.*
