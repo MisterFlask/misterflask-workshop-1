@@ -43,7 +43,12 @@
       "Bash(conda list:*)",
       "Bash(conda uninstall:*)",
       "Bash(npm run dev:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch",
+      "Bash(python3:*)",
+      "Bash(mkdir -p \"C:/dev/claude-playground-1/.claude/worktrees/modest-mcnulty/.claude/skills/paper-retrieval\")",
+      "Bash(cp \"C:/dev/claude-playground-1/.claude/skills/paper-retrieval/SKILL.md\" \"C:/dev/claude-playground-1/.claude/worktrees/modest-mcnulty/.claude/skills/paper-retrieval/SKILL.md\")"
     ]
   },
   "hooks": {

@@ -1,0 +1,12 @@
+# Research Directory
+
+This directory contains structured literature research artifacts.
+
+See `.claude/skills/deep-research/SKILL.md` for the skill documentation.
+
+## Structure
+
+- `questions/` - Research question files (the organizational "hub")
+- `sources/` - Source metadata files, organized by question
+- `digests/` - Compaction-resistant summaries, organized by question
+- `transcripts/` - Full PDF transcriptions when available
