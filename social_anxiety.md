@@ -741,13 +741,13 @@ Luckily, you are not obligated to avoid any particular person thinking you're aw
 
 ### So this is basically exposure therapy, right?
 
-Yes!  But not exposure therapy as traditionally practiced.
+Yes!  But not exposure therapy as traditionally practiced for social anxiety.
 
 There are two key questions that need to be asked in any round of exposure therapy and response prevention (ERP).  The first is: what is the patient being exposed to?  And the second is: what is the response being prevented?
 
 The first one, the exposure stimulus, is the same as standard ERP for social anxiety: "social situations."  The second differs *dramatically* from standard treatment.
 
-Traditional exposure therapy for social anxiety does extremely haphazard and unprincipled response prevention; as I understand it, it's quite traditional to simply ask patients "what do you do to feel safe in social situations where you're nervous?"  This is certainly a first step, but it tends to only surface extremely shallow and obvious behaviors; therapists ban "clutch drink to prevent shaking" but not "hide my fear from the partygoers" or "avoid visible awkwardness," because the patients don't conceptualize "avoiding awkwardness" as a thing they do to *stay safe*, they think of it as the nature of social conduct.  If you look at the SAFE questionnaire (a catalogue of subtle safety behaviors that social anxiety researchers have put together) you'll notice that compared to the list of mental and behavioral compulsions I listed above it's *remarkably* shallow and each behavior in it is almost totally untheorized.
+Traditional exposure therapy for social anxiety does extremely haphazard and unprincipled response prevention; as I understand it, it's quite traditional to simply ask patients "what do you do to feel safe in social situations where you're nervous?" and have the answer to this question as the List Of Stuff To Ban.  This will only surface extremely shallow and obvious behaviors; therapists ban "clutch drink to prevent shaking" but not "hide my fear from the partygoers" or "avoid visible awkwardness," because the patients don't conceptualize "avoiding awkwardness" as a thing they do to *stay safe*, they think of it as the nature of reasonable social conduct.  If you look at the SAFE questionnaire (a catalogue of subtle safety behaviors that social anxiety researchers have put together) you'll notice that compared to the list of mental and behavioral compulsions I listed above it's *remarkably* shallow and each behavior in it is almost totally untheorized.
 
 "What's that stuff around you?" the therapist asks the fish.  The fish thinks for a bit.  "Oh, you know, seaweed.  Sand.  Minnows, sometimes."
 
@@ -761,6 +761,9 @@ Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination = 
 
 [This observation is hardly unique to myself.](https://www.sciencedirect.com/science/article/pii/S2211364925000338)
 
+Basically the entire gap between my own version of "exposure therapy" and the Clark and Wells version is in the answer to this question: *how much of the Project survives after you've banned the safety behaviors a typical therapist would identify?* 
+
+And I think the answer is "most of it." 
 
 ### "What role do behavioral experiments play here?"
 
