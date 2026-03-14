@@ -75,7 +75,11 @@ research/adversarial-reviews/{slug}/
    - Evidence cited by the document itself
    - Logical structure (does it build sequentially? are claims independent?)
 
-2. **Populate review.md** with an initial claim inventory table.
+2. **Populate review.md** with an initial claim inventory table. For each claim, include an **operational definition**: what observable difference in the world would exist if the claim is true vs. false? Frame claims as testable predictions, not category disputes. For example:
+   - BAD: "Social anxiety is caused by impression management" (invites definitional arguments about "caused")
+   - GOOD: "Stopping impression management is both necessary and sufficient for immediate anxiety resolution" (testable, observable)
+   - BAD: "Social anxiety is structurally identical to OCD" (invites arguments about "structurally identical")
+   - GOOD: "OCD-style ERP should produce equivalent or better outcomes than standard CBT for social anxiety" (testable)
 
 3. **Present to user**: Show the claim inventory and chunk plan. Ask which claims to focus on, or whether to evaluate all of them. **STOP and wait for user input.**
 
@@ -572,3 +576,5 @@ Total: ~4000-4500 words per subagent invocation — well within context limits.
 5. **User retains control.** Check in after every debate round. The user can redirect focus, provide additional context, skip chunks, or end early.
 
 6. **Accumulating cases.** Each debater builds a running case across rounds. This makes positions "stickier" — harder to abandon without good reason, which prevents the con side from capitulating too easily.
+
+7. **Operational definitions only.** Every crux and claim under debate must be framed as a question about something happening in reality, not about the meaning of words. If a debate round devolves into definitional sparring (e.g., "is X monocausal or polycausal?", "does Y count as Z?"), the judge must intervene and reframe the crux as an operationally testable question (e.g., "Is stopping X both necessary and sufficient for resolving Y?"). Debates about word meanings are not useful; debates about observable consequences are. When formulating claims for the claim inventory, always attach an operational definition: what would you observe in the world if this claim were true vs. false? If a claim cannot be reframed operationally, flag it as unfalsifiable and deprioritize it.
