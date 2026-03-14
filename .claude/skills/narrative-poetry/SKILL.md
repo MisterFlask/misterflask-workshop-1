@@ -1,7 +1,7 @@
 ---
 name: narrative-poetry
 description: Generate narrative poetry with proper rhyme and meter. Use when asked to write poetry, verse, ballads, or song lyrics. Includes metrically-aware rhyming dictionary, meter verification, and curated exemplars.
-allowed-tools: Read, Bash(python:*), Glob, Grep
+allowed-tools: Read, Write, Edit, Bash(python:*), Glob, Grep
 ---
 
 # Narrative Poetry Generation
