@@ -200,6 +200,14 @@ Most of the reason the physical behaviors are interesting to catalogue and targe
 
 Additionally, trying to kill punchbowl-type behaviors without having killed the underlying policy causing it will result in white-knuckling, which is basically just doing exposure therapy while compulsing, which is not useful. 
 
+### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
+
+Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
+
+That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
+
+Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+
 ---
 
 ## Part 3: The Trace
@@ -258,13 +266,19 @@ The Trace gets faster with practice. Early on, you'll mostly be doing it after t
 
 Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.  The Surrender is the trickier part than the Trace and I'll be getting to that after establishing some more theoretical groundwork (sorry, we need it to stop the Surrender from just being excruciatingly unpleasant white-knuckling.)
 
-### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
+## the idea this is always performable is questionable to me.  What if my anxiety IS just a diffuse cloud?
 
-Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
+Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. I am merely pointing out an obvious truism: that these behaviors aren't engaged in because the people involved are stupid. They're behaviors that make local sense, and the Trace is about discovering the sense in which this is true.
 
-That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
+These safety behaviors always and everywhere are accompanied by anxiety and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  The lack of space between those mutually exclusive goal sets is the suffocating feeling of anxiety; you are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
 
-Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+This documents' objective now is to show you how to give up the *other*, covert goal. 
+
+## I really think my anxiety might be a contentless fog though
+
+It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "holy shit oh fuck I'm gonna get mauled to death by a fucking bear."
+
+Social judgment is diffuse and probabilistic and I suspect this does make it harder to detect, which is why this confusion exists; there is a higher introspective bear-ier to entry (nailed it).
 
 ---
 
