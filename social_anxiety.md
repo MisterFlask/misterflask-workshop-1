@@ -270,7 +270,7 @@ Eventually, you'll catch policies in real time as the anxiety fires, and the rec
 
 Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. I am merely pointing out an obvious truism: that these behaviors aren't engaged in because the people involved are stupid. They're behaviors that make local sense, and the Trace is about discovering the sense in which this is true.
 
-These safety behaviors always and everywhere are accompanied by anxiety and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  The lack of space between those mutually exclusive goal sets is the suffocating feeling of anxiety; you are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
+These safety behaviors always and everywhere are accompanied by anxiety and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be perceived as awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  You are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
 
 This documents' objective now is to show you how to give up the *other*, covert goal. 
 
@@ -278,7 +278,7 @@ This documents' objective now is to show you how to give up the *other*, covert 
 
 It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "holy shit oh fuck I'm gonna get mauled to death by a fucking bear."
 
-Social judgment is diffuse and probabilistic and I suspect this does make it harder to detect, which is why this confusion exists; there is a higher introspective bear-ier to entry (nailed it).
+That said!  Social judgment is diffuse and probabilistic and I suspect this does mean there is a higher introspective bear-ier to entry here (nailed it).
 
 ---
 
