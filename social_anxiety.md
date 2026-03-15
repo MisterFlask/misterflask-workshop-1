@@ -268,15 +268,15 @@ Eventually, you'll catch policies in real time as the anxiety fires, and the rec
 
 ## the idea this is always performable is questionable to me.  What if my anxiety IS just a diffuse cloud?
 
-Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. I am merely pointing out an obvious truism: that these behaviors aren't engaged in because the people involved are stupid. They're behaviors that make local sense, and the Trace is about discovering the sense in which this is true.
+Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. If it truly *were* free floating anxiety, divorced of any specific call to action, then shouldn't you expect the downstream anxious behaviors to be sort of aimless and undirected? But we don't see that. We see very specific, directed anxious behaviors that clearly are related to specific social goals.
 
-These safety behaviors always and everywhere are accompanied by anxiety and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be perceived as awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  You are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
+These safety behaviors always and everywhere are accompanied by anxiety; and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be perceived as awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  You are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
 
 This documents' objective now is to show you how to give up the *other*, covert goal. 
 
 ## I really think my anxiety might be a contentless fog though
 
-It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "holy shit oh fuck I'm gonna get mauled to death by a fucking bear."
+It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "oh fuck I might get mauled to death by a fucking bear."
 
 That said!  Social judgment is diffuse and probabilistic and I suspect this does mean there is a higher introspective bear-ier to entry here (nailed it).
 
@@ -922,7 +922,7 @@ Answer: because nobody in those situations is *trying to make the arrestee like 
 
 ## people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.
 
-This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "most people are running Avoid Being Awkward as a policy, and introducing yourself to a random stranger or set of strangers has a high probability of producing awkwardness, and the resulting attempts at Not Being Awkward are the Project and therefore anxiogenic." (This is obvious; put yourself in that situation and yeah, you probably *would* try to avoid being awkward or weird.)
+This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "most people are running Avoid Being Awkward as a policy, and introducing yourself to a random stranger or set of strangers has a high probability of producing awkwardness, and the resulting attempts at Not Being Awkward *are* the Project and therefore anxiogenic." (This is obvious; put yourself in that situation and yeah, you probably *would* try to avoid being awkward or weird.  Your anxious thoughts would be *about* not being awkward or weird.)
 
 ## people who are well-liked frequently being socially anxious.
 This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental. I bring this up as a contrast to...
