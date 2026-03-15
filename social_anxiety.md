@@ -22,7 +22,7 @@ Read the whole document before starting.
 
 This takes heavy inspiration from three sources:
 
-1. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I had in operationalizing this; most other things I had to derive from introspection, first principles, and relevant bits of metacognitive therapy.
+1. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety, in particular the conception of anxiety as being the signal that I am engaged in compulsive cognition and need to stop.
 See also: 
 * https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
 * https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
