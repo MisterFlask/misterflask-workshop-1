@@ -48,7 +48,18 @@
       "WebFetch",
       "Bash(python3:*)",
       "Bash(mkdir -p \"C:/dev/claude-playground-1/.claude/worktrees/modest-mcnulty/.claude/skills/paper-retrieval\")",
-      "Bash(cp \"C:/dev/claude-playground-1/.claude/skills/paper-retrieval/SKILL.md\" \"C:/dev/claude-playground-1/.claude/worktrees/modest-mcnulty/.claude/skills/paper-retrieval/SKILL.md\")"
+      "Bash(cp \"C:/dev/claude-playground-1/.claude/skills/paper-retrieval/SKILL.md\" \"C:/dev/claude-playground-1/.claude/worktrees/modest-mcnulty/.claude/skills/paper-retrieval/SKILL.md\")",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "Read(//c/Users/ironl/.claude/**)",
+      "Skill(paper-retrieval)",
+      "Skill(paper-retrieval:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(done)",
+      "Bash(PDFDIR=\"C:/Users/ironl/.claude/projects/C--dev-claude-playground-1/12c2ec1a-d20d-425e-9301-d01c3e8137d6/tool-results\")",
+      "Bash(pdftotext \"$PDFDIR/webfetch-1773466581427-y56su4.pdf\" -)",
+      "Skill(keybindings-help)",
+      "Skill(keybindings-help:*)"
     ]
   },
   "hooks": {

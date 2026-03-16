@@ -1,7 +1,8 @@
 {
     "permissions": {
       "allow": [
-        "Bash(**/ralph-wiggum/**)"
+        "Bash(**/ralph-wiggum/**)",
+        "Bash(pdftotext*)"
       ]
     }
   }
