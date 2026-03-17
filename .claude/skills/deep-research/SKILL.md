@@ -137,7 +137,13 @@ Slug: {topic-slug}
 
 ## Key Findings (Running)
 
-{Updated as sources are digested. Bullet points of main takeaways.}
+{Updated as sources are digested. Each finding must be followed by the full verbatim paragraph from the source in which the claim appears, as a blockquote with source attribution. Format:}
+
+{Finding statement.}
+
+> {Full verbatim paragraph containing the claim.}
+>
+> — {source-id}, {section name or page}}
 
 ## Open Questions
 
@@ -411,6 +417,34 @@ When a good source cites other promising papers:
 1. Note them in the source file's Citation Notes
 2. Flag high-priority ones for follow-up
 3. Add to question file with status `inaccessible` until fetched
+
+---
+
+## Citation Standard for the Question File
+
+**Rule**: Whenever a claim from a source is recorded in the question file — in Key Findings, Open Questions, or Conflicts & Tensions — you MUST include the full verbatim paragraph from the source that contains the claim, as a blockquote immediately following the claim, with source attribution.
+
+**Format**:
+```
+{Claim or finding statement.}
+
+> {Full verbatim paragraph from source.}
+>
+> — {source-id}, {section or page reference}
+```
+
+**Why**: The question file captures evolving analytical conclusions. Anchoring each claim to its source paragraph prevents distortion across sessions and makes it possible to verify whether the claim accurately represents what the source says.
+
+**Scope**: This applies to all claim-bearing content added to the question file, including:
+- Items under Key Findings (Running)
+- Items under Open Questions
+- Items under Conflicts & Tensions
+
+This does NOT apply to the Sources table or Search Log (those are metadata, not claims).
+
+If a claim synthesizes multiple sources, quote the most specific/direct paragraph and note the others with `(also: {source-id})`.
+
+If the source is abstract-only and the full paragraph is not available, write `[Full paragraph unavailable — abstract-only]` instead of a blockquote.
 
 ---
 
