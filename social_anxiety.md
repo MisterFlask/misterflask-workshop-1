@@ -22,7 +22,7 @@ Read the whole document before starting.
 
 This takes heavy inspiration from three sources:
 
-1. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety and I think these links are the most critical concrete sources I had in operationalizing this; most other things I had to derive from introspection, first principles, and relevant bits of metacognitive therapy.
+1. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety, in particular the conception of anxiety as being the signal that I am engaged in compulsive cognition and need to stop.
 See also: 
 * https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
 * https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
@@ -82,9 +82,9 @@ And this has been destroying you, which is why you're reading this long-ass docu
 
 **The Project is the problem.**  The sensation you describe as "social anxiety" is *directly* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (nearly all of them), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen because *that's how you can tell it is failing*.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
-**The Project is utterly and unsalvageably doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
+**The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
-Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard ("cognitive restructuring") and that actually your Project is more successful than you think ("behavioral experiments"). In OCD-land they call this "accommodation."  It's not considered a flattering term.
+Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard ("cognitive restructuring") and that actually your Project is more successful than you think ("behavioral experiments").
 
 That is not the approach I am discussing here.
 
@@ -200,6 +200,14 @@ Most of the reason the physical behaviors are interesting to catalogue and targe
 
 Additionally, trying to kill punchbowl-type behaviors without having killed the underlying policy causing it will result in white-knuckling, which is basically just doing exposure therapy while compulsing, which is not useful. 
 
+### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
+
+Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
+
+That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
+
+Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+
 ---
 
 ## Part 3: The Trace
@@ -258,13 +266,19 @@ The Trace gets faster with practice. Early on, you'll mostly be doing it after t
 
 Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.  The Surrender is the trickier part than the Trace and I'll be getting to that after establishing some more theoretical groundwork (sorry, we need it to stop the Surrender from just being excruciatingly unpleasant white-knuckling.)
 
-### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
+## the idea this is always performable is questionable to me.  What if my anxiety IS just a diffuse cloud?
 
-Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
+Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. If it truly *were* free floating anxiety, divorced of any specific call to action, then shouldn't you expect the downstream anxious behaviors to be sort of aimless and undirected? But we don't see that. We see very specific, directed anxious behaviors that clearly are related to specific social goals.
 
-That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
+These safety behaviors always and everywhere are accompanied by anxiety; and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be perceived as awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  You are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
 
-Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+This documents' objective now is to show you how to give up the *other*, covert goal. 
+
+## I really think my anxiety might be a contentless fog though
+
+It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "oh fuck I might get mauled to death by a fucking bear."
+
+That said!  Social judgment is diffuse and probabilistic and I suspect this does mean there is a higher introspective bear-ier to entry here (nailed it).
 
 ---
 
@@ -525,7 +539,7 @@ In the dinner party scenario, low-stakes passive exposure would be:
 
 1. not trying to avoid weirdness by not avoiding eye contact.  That was a lot of negatives, so I'll rephrase: it's your God-given right as an American to never make eye contact with a single soul if you don't choose.
 2. not trying to avoid weirdness by not speaking.  Same logic.
-3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone challenges you on this they can *go fuck themselves.*  (You are not required to use these exact words.)
+3. Understanding that fundamentally you don't have to take food if you don't want to and if anyone feels negatively about this, that is *not your problem.*
 
 I hear you ask: "Wait, I already do nothing at dinner parties!  That's my whole problem!"  FALSE.  That is only a small part of your problem.  Your *bigger* problem is that you're currently doing nothing while *stressed out of your mind.*  Our goals start modest: to have you *at zero stress and zero effort* while still not actually doing anything.  This is for two reasons: first, being calm while not doing anything is a strict quality of life improvement, and second, it's an indicator that you've performed the Trace-And-Surrender properly which is a prerequisite to moving on.
 
@@ -727,13 +741,13 @@ Luckily, you are not obligated to avoid any particular person thinking you're aw
 
 ### So this is basically exposure therapy, right?
 
-Yes!  But not exposure therapy as traditionally practiced.
+Yes!  But not exposure therapy as traditionally practiced for social anxiety.
 
 There are two key questions that need to be asked in any round of exposure therapy and response prevention (ERP).  The first is: what is the patient being exposed to?  And the second is: what is the response being prevented?
 
 The first one, the exposure stimulus, is the same as standard ERP for social anxiety: "social situations."  The second differs *dramatically* from standard treatment.
 
-Traditional exposure therapy for social anxiety does extremely haphazard and unprincipled response prevention; as I understand it, it's quite traditional to simply ask patients "what do you do to feel safe in social situations where you're nervous?"  This is certainly a first step, but it tends to only surface extremely shallow and obvious behaviors; therapists ban "clutch drink to prevent shaking" but not "hide my fear from the partygoers" or "avoid visible awkwardness," because the patients don't conceptualize "avoiding awkwardness" as a thing they do to *stay safe*, they think of it as the nature of social conduct.  If you look at the SAFE questionnaire (a catalogue of subtle safety behaviors that social anxiety researchers have put together) you'll notice that compared to the list of mental and behavioral compulsions I listed above it's *remarkably* shallow and each behavior in it is almost totally untheorized.
+Traditional exposure therapy for social anxiety does extremely haphazard and unprincipled response prevention; as I understand it, it's quite traditional to simply ask patients "what do you do to feel safe in social situations where you're nervous?" and have the answer to this question as the List Of Stuff To Ban.  This will only surface extremely shallow and obvious behaviors; therapists ban "clutch drink to prevent shaking" but not "hide my fear from the partygoers" or "avoid visible awkwardness," because the patients don't conceptualize "avoiding awkwardness" as a thing they do to *stay safe*, they think of it as the nature of reasonable social conduct.  If you look at the SAFE questionnaire (a catalogue of subtle safety behaviors that social anxiety researchers have put together) you'll notice that compared to the list of mental and behavioral compulsions I listed above it's *remarkably* shallow and each behavior in it is almost totally untheorized.
 
 "What's that stuff around you?" the therapist asks the fish.  The fish thinks for a bit.  "Oh, you know, seaweed.  Sand.  Minnows, sometimes."
 
@@ -747,6 +761,9 @@ Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination = 
 
 [This observation is hardly unique to myself.](https://www.sciencedirect.com/science/article/pii/S2211364925000338)
 
+Basically the entire gap between my own version of "exposure therapy" and the Clark and Wells version is in the answer to this question: *how much of the Project survives after you've banned the safety behaviors a typical therapist would identify?* 
+
+And I think the answer is "most of it." 
 
 ### "What role do behavioral experiments play here?"
 
@@ -800,14 +817,6 @@ Expected and not a problem. You knew this was the price of admission. Some inter
 But the metric is not "did this interaction go well." The metric is "did I run the Project." If you didn't run the Project and it went "badly", that's still a success by the only metric worth measuring.
 
 If you actually think you wronged someone, by all means apologize, and if you didn't, don't.
-
-### But what if I accidentally DID run the Project and the person didn't like me anyway?
-
-Also expected, and also not a problem.  The Project frequently fails on its own terms because it's fundamentally trying to do an impossible thing.  Do better next time (and by "do better" I of course mean "stop doing the compulsions")
-
-### "What do I do with my attention during conversations?"
-
-Is the topic interesting to you?  Then engage with it.  Is the topic uninteresting?  Then change it.  You can always say "eh, this isn't really my area of interest."
 
 ### "Wait. Shouldn't we have to target, like, negative self-beliefs or something?"
 
@@ -913,7 +922,7 @@ Answer: because nobody in those situations is *trying to make the arrestee like 
 
 ## people being anxious at parties where they don't know anyone and therefore where social consequences are pretty much zero.
 
-This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "most people are running Avoid Being Awkward as a policy, and introducing yourself to a random stranger or set of strangers has a high probability of producing awkwardness, and the resulting attempts at Not Being Awkward are the Project and therefore anxiogenic." (This is obvious; put yourself in that situation and yeah, you probably *would* try to avoid being awkward or weird.)
+This is where CBT needs to introduce "gut-level beliefs" vs "intellectual beliefs"; I think I've arrived at the explanation of "most people are running Avoid Being Awkward as a policy, and introducing yourself to a random stranger or set of strangers has a high probability of producing awkwardness, and the resulting attempts at Not Being Awkward *are* the Project and therefore anxiogenic." (This is obvious; put yourself in that situation and yeah, you probably *would* try to avoid being awkward or weird.  Your anxious thoughts would be *about* not being awkward or weird.)
 
 ## people who are well-liked frequently being socially anxious.
 This one-- fair enough, it actually does predict this using the idea that social anxiety is about inaccurate perception; I don't wanna call that an epicycle since it's pretty fundamental. I bring this up as a contrast to...
