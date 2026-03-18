@@ -16,7 +16,7 @@ This document is, basically, a how-to guide for stopping, along with theoretical
 
 Read the whole document before starting.
 
-[See here for disclaimers, contraindications and throat-clearing.] (https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md)
+See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
 
 ## Part 1: The Mind Control Project
 
