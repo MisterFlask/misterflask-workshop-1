@@ -737,7 +737,7 @@ You will not.
 
 The people who go too far are not people who used to have social anxiety and recovered.  The people who go too far are people who never had the perceptual apparatus to notice social cues in the first place, and the fact that you're reading a document about social anxiety is strong evidence that you are not among them.
 
-The risk of becoming an asshole due to dismantling the Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity. Which is to say: the laws of physics allow for this to occur.
+The risk of becoming an asshole due to dismantling the Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity.
 
 ### I heard thought suppression doesn't work.  Isn't "don't think about how I came across" similar to "don't think of a white elephant"?
 
