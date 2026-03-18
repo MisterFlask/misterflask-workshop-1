@@ -147,6 +147,8 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Nervous rambling.** Generally this is the output of an implicit but strongly-felt rule: "if there's an awkward silence that will reflect poorly on me."
 
+- **Nearly all behaviors described as "getting defensive".**. Someone criticizes you. Maybe the criticism is fair, maybe it isn't, doesn't matter. What happens next is: you feel a spike of something urgent, and you immediately begin generating a response whose primary function is to repair the damage to how you're being perceived. You explain, contextualize, counter-accuse, minimize, or justify.  This is a compulsion in service of a threatened Root-Level Policy Objective. 
+
 - **Most lies, white or otherwise.** Almost all lies people tell are in service of avoiding other people thinking poorly of them or not having other undesirable internal experiences.  "Yeah I'm totally employed at, uh, the Business Factory." "Oh, I'm, uh, washing my cat that evening"
 
 - **Most people-pleasing behaviors.** Unnecessary hedging.  Trying to hide your true preferences so that they don't override the preferences of others who may also be hiding their true preferences.  "I don't know, where do you want to go eat?"
