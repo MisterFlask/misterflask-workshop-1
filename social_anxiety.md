@@ -6,9 +6,7 @@
 
 ## What This Document Is
 
-This is a user manual for a specific, experimental approach to dealing with social anxiety. It borrows heavily from how OCD is treated (Exposure and Response Prevention), applied to social anxiety on the theory that the core problem in social anxiety is that you're attempting a crucial-feeling yet impossible task, and that your attempts to compulsively perform this task are making you miserable.
-
-This document is, basically, a how-to guide for stopping, along with theoretical discussion of same.
+It is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  This is heavily inspired by treatment protocols for OCD-spectrum disorders.
 
 ## Promises I will make to the reader:
 1. If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
