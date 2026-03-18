@@ -480,7 +480,7 @@ What I am asking you to do is notice and peel apart these concrete demands made 
 
 Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Mind-Control Project says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
 
-The contradictory demands at the dinner table didn't emerge by happenstance.  They are the logical and predictable endpoint of a runaway internal bureaucracy that has been fed every single time it's demanded something from you: which is to say, *bloated to madness.*
+The contradictory demands at the dinner table didn't emerge by happenstance.  They are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you, which is: *bloated to madness.*
 
 The tick must starve.
 
@@ -516,11 +516,13 @@ Active exposures are, I think, harder because they really need you to engage in 
 
 ("Oh, but it takes so long to do that!"  And why is that a problem?  You're allowed to be silent for a few seconds, and in fact, nobody can stop you.)
 
-Then you perform the Trace-And-Surrender on the complaint the Mind-Control Project will *inevitably* raise about any of these things.  We are now pitting the replacement behaviors of your Ideal Self in a cage match with the Mind-Control Project and, frankly, if your Mind-Control Project has been in charge of your actions for a long time then even if the Project still wins 80% of the time that's still a meta-victory because 20% of the time it *didn't win*.
+Then you perform the Trace-And-Surrender on the complaints the Mind-Control Project will *inevitably* raise about any of these things.  We are now pitting the replacement behaviors of your Ideal Self in a cage match with the Mind-Control Project and, frankly, if your Mind-Control Project has been in charge of your actions for a long time then even if the Project still wins 80% of the time that's still a meta-victory because 20% of the time it *didn't win*.
 
 Remember: don't do any of the active exposure stuff *until you are at a state of zero effort and zero anxiety.*  If you start feeling anxious while doing active exposures, go back to passive exposures and become calm and non-anxious there.  If you spend the entire dinner party literally silent and immobile while not compulsing then *this is your right*; and if The Lord Of Hosts Himself descends from the heavens amid a choir of blazing seraphim to tell you otherwise (*"**PERHAPS CONSIDER ASKING ABOUT THEIR CAREER AMBITIONS, MY CHILD**"*) then I invite you to flip the Almighty your middle finger as you walk backwards into Hell.  
 
-The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.  The reason to not do active exposures while anxious is because if you're doing them while anxious then they're Project-infected; you will simply be compulsing in a new and stressful way.
+The only success criterion that matters is the degree to which you avoided compulsing in either thought or deed.  The reason to not do active exposures while anxious is because if you're doing them while anxious then they're Project-colonized; you will simply be compulsing in a new and stressful way.  If you're anxious while saying a vulnerable and honest thing, this anxiety *probably* is because you're trying to make it land well instead of pre-accepting that it *won't* land well.
+
+Anxiety is, always, the felt sense of the Mind-Control Project wrenching back control over your behavior.
 
 ---
 
@@ -573,7 +575,7 @@ It sounds annoying, but even when you're starting out this procedure is objectiv
 Okay, here's the mental motion:
 (1) I have the *God-given right* to ask to join a conversation.  Not to join it, necessarily, but just to ask.
 
-(2) If they don't want me to join they can say so with their *human mouths*.
+(2) If they don't want me to join they can say so with their *human mouths*.  This is an allowed outcome that I will not try to prevent.
 
 (3) If they don't want me to join and don't want to tell me for some reason, that is unfortunate but not my fault; they may choose to learn to communicate and set boundaries at some later date.  Or they may not.  [Either way, nobody made *me* the Central Planner of the party's conversation economy.](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
 
@@ -581,7 +583,7 @@ Run the trace-and-surrender and see how it goes.  I suspect that the *active* Pr
 
 If you are unable to get yourself to disengage from the attempt at running simulations around peoples' reactions to your going up to them and asking to join, then bail and try again later.  These simulations are compulsive and lead to compulsive behavior in-conversation.  
 
-Remember: your role is to act from honesty, kindness, and selfish impulse, and if that causes the world to burn down around you then *so be it*.
+Remember: your role is to act from honesty, kindness, and selfish impulse, and if that causes the veil to be rent asunder and the world to burn down around you, then *so be it*.
 
 ---
 
@@ -621,9 +623,11 @@ People are made low-grade uncomfortable many times per day.  The attempts at com
 
 Unfortunately, inflicting discomfort was *never* avoidable.  Let's be clear: any time you make it clear you like someone and want to hang out-- even platonically!-- if that person wants to they'll feel pumped about it but if they don't they'll feel awkward and uncomfortable.  This isn't a preventable accident that can be avoided with appropriate hedging; this is the *nature of human connection* and if you attempt to avoid making anyone ever feel uncomfortable then literally the only way of doing this is by never reaching out in the first place.  You are, in expectation, sacrificing a future filled with beautiful relationships (platonic and otherwise) and a large number of awkward and deeply uncomfortable moments, and replacing it with a future that has *neither.*  This is an appallingly bad trade and nobody should take it.
 
-Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*
+I suspect some cultural mileaus have accidentally installed "never be creepy" as an OCD-level capital-O Obsession in some of its members in pursuit of certain well-meaning social projects, which frequently metastasizes into full-blown avoidance, and that's why I discuss dating at length here; the Project cloaks many of its initiatives in the language of morality.
 
-(I suspect progressive cultural mileaus have accidentally installed "never be creepy" as an OCD-level capital-O Obsession in some of its members in pursuit of certain well-meaning social projects, which frequently metastasizes into full-blown avoidance, and that's why I discuss dating at length here; the Project cloaks many of its initiatives in the language of morality.  Remember, kids, morality *never requires you to read minds*.)
+You can see what happened: "Don't be creepy" becomes "constantly model whether you might be perceived as creepy," which becomes "avoid all behavior that could theoretically be interpreted as creepy by anyone," which becomes "avoid anyone ever inferring you are interested romantically in them because you can't guarantee this won't be perceived as creepy," which becomes "avoid anyone you might conceivably be attracted to."
+
+Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*  Remember, kids, morality *never requires you to read minds*.
 
 ### What if I could just, like, read the room to assess interest before making a move?
 
@@ -659,19 +663,7 @@ Good luck.  Send bug reports.
 
 ## Part 12: Medication...?
 
-I'll be real with you: I dunno, I'm not a doctor.
-
-Anxiolytics such as benzodiazapenes have an unlovely rep because they all come in "short-term effective, addictive long-term".  SSRIs are sometimes prescribed for anxiety long-term, but come with annoying side effects with you'll get regardless of whether they're effective.  I still have a grudge against Zoloft for making me gain like twenty pounds last time I was on it with no other obvious effects.
-
-On the other hand... SSRIs are frequently prescribed for OCD-spectrum disorders and have reasonable effect sizes there, and I *am* arguing that social anxiety is basically OCD-spectrum.  Does that mean they'll work here?  I'll be real: nobody knows why any psychoactive drug works, when it works, which is sometimes.  They just handwave about seratonin or whatever and measure effect sizes in clinical trials.  [Do Your Own Research.](https://slatestarcodex.com/2015/07/13/things-that-sometimes-work-if-you-have-anxiety/) Trying this wouldn't be an insane thing to do, though I haven't done enough research on this to give you more than that incredibly lukewarm referral.
-
-Traditionally therapists discourage anxiolytics when doing exposures since they think you need to habituate to the anxiety instead of chemically blunting it.  Obviously I am working off a different model.  I think anxiolytics are probably unnecessary (I did not make use of them when running this protocol, mostly because I kept needing to drive places, with the occasional exception of the very-unregulated phenibut which I restricted to once per couple of weeks at parties and such) but I guess it's nice they exist if you decide otherwise.  
-
-I suspect anxiolytics *might* make the initial trace-and-surrender steps feel more approachable, but presumably at too high a dose you just won't feel the anxiety which means you won't be able to get actually therapeutic exposures because the whole point is getting practice with the Trace-And-Surrender steps.
-
-Uh, careful about the addiction profile for benzos.  Especially if you try phenibut, where detox after physical addiction reportedly involves feeling strongly like you're about to be fired, intense social anxiety (ironic) and, finally, sleep paralysis demons.  *You don't want the sleep paralysis demons.*  (I haven't experienced this personally, but would reddit ever lie to me?)
-
-Anyway, chat with an actual professional.
+I'll be real with you: I dunno, I'm not a doctor. [Do Your Own Research.](https://slatestarcodex.com/2015/07/13/things-that-sometimes-work-if-you-have-anxiety/) 
 
 ---
 
@@ -789,7 +781,7 @@ My model is any negative self-beliefs may or may not resolve on its own after th
 
 ### "What about texting / social media?"
 
-The Project runs just as hard over text, sometimes harder, because you have time to craft and revise. The same rules apply. Send the text you want to send. Don't rewrite it four times to optimize how it'll land. Don't check to see if they've read it. Don't analyze their response time. Don't draft replies strategically. Say what you mean, send it, put the phone down.
+The Project runs just as hard over text, sometimes harder, because you have time to craft and revise. The same rules apply. Send the first text that is acceptable to at least one of [honest, kind, selfish]. Don't rewrite it four times to optimize how it'll land.
 
 Social media can be problematic; I suspect a very great deal of what causes people to become socially-anxious is exposure to media that derives its entertainment value from making fun of cringe people.  This smuggles in an implicit belief system: "I must never be like *those* people."  This is toxic and makes you worse; disengage from such media immediately.
 
