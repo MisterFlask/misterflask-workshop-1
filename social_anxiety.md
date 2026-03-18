@@ -20,7 +20,7 @@ See here for disclaimers, contraindications and throat-clearing: https://github.
 
 You are running a project.
 
-You have been running it for years, probably since adolescence. The project is: **controlling what other people think of you.**
+You have been running it for years, probably since adolescence. The project is this: *controlling what other people think of you.*
 
 We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing what you say, how you say it, when you say it, what you do with your body, what expression you wear, and how you respond to things. You are monitoring all of this in real time, evaluating its effectiveness, and adjusting on the fly.
 
