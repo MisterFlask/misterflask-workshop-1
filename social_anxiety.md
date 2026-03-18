@@ -37,15 +37,11 @@ This is why you find social situations to be exhausting: because you are running
 
 And this has been destroying you, which is why you're reading this long-ass document and taking what amounts to experimental mental health advice from someone who is in no way a therapist but who *has* eliminated his own social anxiety in a way that took like a year to reconcile with published psychology literature and then reverse-engineer into this self-help document.
 
-**The Project is the problem.**  The sensation you describe as "social anxiety" is *directly* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (nearly all of them), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen because *that's how you can tell it is failing*.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  The sensation you describe as "social anxiety" is *directly* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (nearly all of them), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
 **The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
-Traditionally, Cognitive-Behavioral Therapy (CBT) will attempt to persuade you that the Project isn't that hard ("cognitive restructuring") and that actually your Project is more successful than you think ("behavioral experiments").
-
-That is not the approach I am discussing here.
-
-**You are not going to fix the Project; the Project cannot be fixed.  You are going to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
+**We are not going to fix the Project; the Project cannot be fixed.  We are going to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
 ## Part 2: The Obsessions And The Compulsions
 
@@ -67,6 +63,7 @@ They are the mission statements of your particular Mind-Control Project.
 - **Don't Be Perceived As Awkward**
 - **Don't Be Perceived As Cringe**
 - **Don't Be Perceived As Weird**
+- **Don't Be Perceived As Creepy**
 - **Don't Be Perceived As Boring**
 - **Don't Be Perceived As Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
 - **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
@@ -82,7 +79,7 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 
 These happen inside your head. Nobody can see them, and most of them feel automatic.  Physical and verbal compulsions are downstream of these.
 
-- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because..."). **Both of these are the Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
+- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").  That's *bait*.  **Both of these are the Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
 - **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off. "Did that joke land?" "Did they think I was weird when I said that?" "I think she gave me a weird look when I..."  (OCD literature refers to this as "checking behavior")
 
@@ -98,7 +95,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Flowchart-creation.** "...and if she says *this* then I'll say..."
 
-- **Cringe-avoidance behavior cluster.** Steering away from disclosures that might not land well.
+- **Cringe-avoidance behavior cluster.** Steering away from disclosures that might not land well.  Hiding your genuine interests in fear of what people might think.
 
 - **Awkwardness-avoidance behavior cluster.** Looking at your phone.  Talking only to people you already know.  Trying to look busy so that people don't see you alone and not doing anything.
 
@@ -108,7 +105,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Most lies, white or otherwise.** Almost all lies people tell are in service of avoiding other people thinking poorly of them or not having other undesirable internal experiences.  "Yeah I'm totally employed at, uh, the Business Factory." "Oh, I'm, uh, washing my cat that evening"
 
-- **Attempting to win pointless arguments**. Root policy objective served: "don't look stupid", generally. If you're attempting to win an argument there should be stakes. If there are none, it's the Project.
+- **Attempting to win pointless in-person arguments**. Root policy objective served: "don't look stupid", generally. If you're attempting to win an argument there should be stakes. If there are none, it's *probably* the Project.
 
 
 - **Most self deprecation**. Done out of fear of being perceived as arrogant or presumptuous.
@@ -123,16 +120,13 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Nervous fidgeting.** Trying to find a thing to do that looks natural to other people and failing in real-time.  "What if I hold my arms like this?  Shit, no, that's actually worse."
 
-- **Strategic impression management.**  Any behavior whose primary justification is "this will make them think X about me."
-
 - **Reassurance-seeking.** Asking someone "was that weird?" or "did I come off okay?" or fishing for compliments or seeking out positive *or negative* feedback about your social performance.
 
 - **Checking.** Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
 
-
 ### The Relationship Of Compulsions to The Project
 
-All of these share a single common feature: **they are in service of figuring out, influencing, or responding to what other people think of you.** If the action is downstream of "what did they think of me" or "what will they think of me" — it's a compulsion, in the technical, clinical sense of the word.  It is the Project, a psychic tick latched onto your brainstem, swollen and fat and glistening from years of happily uninterrupted feeding.  The compulsions-- *especially* the mental compulsions-- are where it gets sustenance and it has supped *deeply*.
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If the action is downstream of "what did they think of me" or "what will they think of me" — it's a compulsion, in the technical, clinical sense of the word.  It is the Project, a psychic tick latched onto your brainstem, swollen and fat and glistening from years of happily uninterrupted feeding.  The compulsions-- *especially* the mental compulsions-- are where it gets sustenance and it has supped *deeply*.
 
 *The tick must starve.*
 
@@ -272,7 +266,7 @@ That means your positive guidance for behavior needs to have a number of specifi
 
 This ties *directly* into the anti-rumination discussion previously.  The way you make rumination pointless on a mechanical level is to have *principles* that you follow regardless of the perceptions of external observers; that causes rumination-- "should I have done something different?!"-- to return a deterministic, immediate output of "no, I was always going to do that because I have decided it's what I'm going to do regardless of their opinions."  Which requires no mind-reading and is therefore done with very, very quickly and painlessly.
 
-The first constraint-- that the principles represent an aspirational identity-- is critical because we want this to be sustainable, and when the Project screams out "THAT PERSON THINKS YOU SUCK" we want you to be able to truthfully respond with "I acted in accordance with my values and that was awesome, actually" *and you'll mean it*.  You'll look on exposures not with dull horror but with delight at who you are demonstrating yourself to be.
+The first constraint-- that the principles represent an aspirational identity-- is critical because we want this to be sustainable, and when the Project screams out "THAT PERSON THINKS YOU SUCK" we want you to be able to truthfully respond with "I acted in accordance with my values and that was awesome, actually" *and you'll mean it*.
 
 We aren't discussing "how will I do a round of exposures", we are discussing "how do I exist as a social being permanently without anxiety."
 
@@ -320,15 +314,15 @@ If this were a less serious document I would have a picture of Wormtongue here w
 
 *"A most judicious point, my liege."*
 
-Anyway.  If this general principle causes you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
+The risk of you becoming a social wrecking ball due to dismantling the Mind-Control Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity, and your concern about this happening results from exactly the same dynamic.
+
+If these general principles cause you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
 
 ### The Desired Outcome
 
 This is not really a values-neutral document, and it shoehorns the person reading it into a pretty specific social archetype that I suspect is intrinsically anxiety-lowering for people with this presentation of social anxiety.
 
 I am not operating off a large sample size.  Nevertheless, someone who says things they think because they think it, who is kind, and who pursues his own interests is going to look, generally, fairly bold and may end up being a polarizing figure depending on community and personality type; my bet is that you'll ultimately be happy with the split because you'll have become someone whose self-evaluation is no longer indexed to consensus.  Furthermore, I strongly suspect that this person will look confident and self-assured to others because "confidence" and "someone not running the Project" look the same from the outside.
-
-But you can't get there directly.  You can't just "try to be confident." That's the Project, and the Project is what's destroying you.  You have to go through the valley of not-trying-to-control-perceptions, and maybe you end up charismatic on the other side and maybe you don't, but at least you're not anxious anymore.
 
 In any case, I suspect other replacement behavior combinations could work for this; I do not claim [honesty, kindness, selfish impulse] are necessary or even optimal (though I suspect so) but they are at least *sufficient.* I confess to some bias here: I *like* being the kind of person who uses these as a decision-making apparatus.
 
@@ -346,11 +340,11 @@ You will not catch all of the compulsions at first.  You won't even catch most o
 
 The goal is *not* perfection. The goal is getting better at noticing, faster.
 
-**You should not feel stressed-out for extended periods.** Anxiety, in this protocol, is not a symptom to be managed, and it is not something you white-knuckle through until it passes. **Anxiety is the feeling of the Project running.** The Project is computationally expensive, more expensive than almost anything else you will ever do.  You are literally trying to run a breadth-first search over possible utterances in descending order of how much the other person will like you after saying them, and this will instantly monopolize all the cognitive resources you would ordinarily use for things like "humor" or "being present."
+**You should not feel stressed-out for extended periods.** Anxiety, in this protocol, is not something you white-knuckle through until it passes. **Anxiety is the feeling of the Project running.** The Project is computationally expensive, more expensive than almost anything else you will ever do.  You are trying to run an exhaustive search over possible utterances in descending order of how much the other person will like you after saying them, and this will instantly monopolize all the cognitive resources you would ordinarily use for things like "humor" or "being present."
 
 That's why social anxiety makes you stilted and awkward around strangers, even if you're funny and charismatic around close friends.
 
-A logical extension of this is that when you stop running the Project, the anxiety should drop within single-digit seconds.  Not minutes. If the anxiety persists, it means the Project is still running and you're still trying to fulfill its goals.  You're still *trying to figure something out.*  You still have a problem you are trying to solve, and you need to identify what that problem is and *stop trying to solve it*.  Please read the attached Dr. Michael Greenberg articles if you have issues with this step; he's the main clinician who I'm aware of who's doing this kind of thing.
+A logical extension of this is that when you stop running the Project, the anxiety should drop within single-digit seconds.  If the anxiety persists, it means the Project is still running and you're still trying to fulfill its goals.  You're still *trying to figure something out.*  You still have a problem you are trying to solve, and you need to identify what that problem is and *stop trying to solve it*.  Please read the attached Dr. Michael Greenberg articles if you have issues with this step; he's the main clinician who I'm aware of who's doing this kind of thing.
 
 You'll also find that anxiety spikes are quite frequent-- each one is just the Project handing you another impossible and unnecessary task.  "Make the instructor think you're smart!" "Make that guy think you're cool!"  "Fix this person's broken opinion of you!"  The answer to these is always "no, we're not doing that."
 
@@ -459,6 +453,7 @@ EXAMPLE:  You're at dinner with some new acquiantances.  The Project is running 
 4. Don't make eye contact with people you're not actually speaking to.  That's weird and intrusive.
 5. Don't pick food off what looks like a communal plate.  They might resent that, it's intrusive.
 6. Don't just *not take food* off the communal plate.  That's weird, you're at dinner.
+7. Don't ask about whether you should take food off the communal plate.  What a dumb question *that* would be.
 
 These demands are, of course, mutually exclusive.  You can also pick them apart into separate proposition/policy pairs:
 
@@ -470,10 +465,14 @@ These demands are, of course, mutually exclusive.  You can also pick them apart 
 6. Making eye contact with people you're not speaking to will be perceived as intrusive. (factual proposition)
 7. Not picking food off the communal plate is weird (factual proposition)
 8. Don't be intrusive. (Standing policy)
+9. Asking about the communal food is a dumb and intrusive question (factual proposition)
+10. Don't be dumb.  (Standing policy.)
 
-I would like you to notice that 1, 2, 3, 5, 6 and 7 are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of 1, 2, 3, 5,  6 and 7 to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value. 
+I would like you to notice that the factual propositions are inarguable in the very specific sense that you are *forbidden from arguing with them.* Evaluating these as true or false factual statements is a compulsive activity and cannot be engaged with safely; the Mind-Control project *needs* to know the truth-value of these facts to do its job-- which is why it's trying to hijack your cognition to reason about it-- but *you* do not need that information because the information is actually valueless and, indeed, has negative value.
 
-Items 4 and 8 are, of course, not factual statements at all but demands from the Mind-Control Project to dance for its benefit, which we have a standing policy of refusing.  If the boss at your volunteer job screams at you to perform several highly-urgent, poorly-defined, mutually-exclusive tasks RIGHT NOW, the appropriate response is not to panic about how to do them all.  The appropriate response is "no" or, if you're less polite, "LOL."
+<img width="268" height="148" alt="image" src="https://github.com/user-attachments/assets/b688115f-e260-428f-8fcb-887fa1c98905" />
+
+The standing policies, on the other hand, are demands from the Mind-Control Project to dance for its benefit which we have a standing policy of refusing.
 
 What I am asking you to do is notice and peel apart these concrete demands made by the Project, and then to *notice those demands as fundamentally optional.*  Not because people won't think you're weird and/or intrusive if you don't obey them. But because you have the God-given right as an American to have people think you're weird and intrusive and to *not do anything about this fact whatsoever.*
 
@@ -481,7 +480,7 @@ What I am asking you to do is notice and peel apart these concrete demands made 
 
 Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Mind-Control Project says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
 
-The contradictory demands at the dinner table are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you: which is to say, *bloated to madness.*
+The contradictory demands at the dinner table didn't emerge by happenstance.  They are the logical and predictable endpoint of a runaway internal bureaucracy that has been fed every single time it's demanded something from you: which is to say, *bloated to madness.*
 
 The tick must starve.
 
@@ -694,14 +693,6 @@ There is no "actually."
 All social behavior is fundamentally subjective.  What's try-hard to one person is bold and gutsy to another.  There can *never* be a true answer to the question of "was I awkward" because the question assumes an answer exists.  There *can* be an answer to "did that specific person think I was awkward", but sadly you can never have this answer because mind-reading is impossible. 
 
 Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
-
-### I'm afraid I might go too far somehow.
-
-You will not.
-
-The people who go too far are not people who used to have social anxiety and recovered.  The people who go too far are people who never had the perceptual apparatus to notice social cues in the first place, and the fact that you're reading a document about social anxiety is strong evidence that you are not among them.
-
-The risk of becoming an asshole due to dismantling the Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity.
 
 ### I heard thought suppression doesn't work.  Isn't "don't think about how I came across" similar to "don't think of a white elephant"?
 
