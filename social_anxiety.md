@@ -151,6 +151,9 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Most lies, white or otherwise.** Almost all lies people tell are in service of avoiding other people thinking poorly of them or not having other undesirable internal experiences.  "Yeah I'm totally employed at, uh, the Business Factory." "Oh, I'm, uh, washing my cat that evening"
 
+- **Attempting to win pointless arguments**. Root policy objective served: "don't look stupid", generally. If you're attempting to win an argument there should be stakes. If there are none, it's the Project.
+
+
 - **Most self deprecation**. Done out of fear of being perceived as arrogant or presumptuous.
   
 - **Most people-pleasing behaviors.** Unnecessary hedging.  Trying to hide your true preferences so that they don't override the preferences of others who may also be hiding their true preferences.  "I don't know, where do you want to go eat?"
