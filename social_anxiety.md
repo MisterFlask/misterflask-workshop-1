@@ -731,6 +731,14 @@ All social behavior is fundamentally subjective.  What's try-hard to one person 
 
 Luckily, you are not obligated to avoid any particular person thinking you're awkward/tryhard/whatever, so it doesn't matter!  The system works.
 
+### I'm afraid I might go too far somehow.
+
+You will not.
+
+The people who go too far are not people who used to have social anxiety and recovered.  The people who go too far are people who never had the perceptual apparatus to notice social cues in the first place, and the fact that you're reading a document about social anxiety is strong evidence that you are not among them.
+
+The risk of becoming an asshole due to dismantling the Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity. Which is to say: the laws of physics allow for this to occur.
+
 ### I heard thought suppression doesn't work.  Isn't "don't think about how I came across" similar to "don't think of a white elephant"?
 
 [Here's a great article about this very question](https://drmichaeljgreenberg.com/thought-suppression-has-nothing-to-do-with-compulsive-rumination-so-why-does-it-feel-like-you-cant-stop/).  Quoting from it directly:
