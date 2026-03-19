@@ -66,7 +66,7 @@ They are the mission statements of your particular Mind-Control Project.
 - **Don't Be Perceived As Creepy**
 - **Don't Be Perceived As Boring**
 - **Don't Be Perceived As Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
-- **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM)
+- **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM.)
 - **Don't Be Perceived As Ugly** (this one manifests as body dysmorphic disorder, not social anxiety as such.)
 
 And now, a bit afield of this doc's actual purpose but just for funsies:
