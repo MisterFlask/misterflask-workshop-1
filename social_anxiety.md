@@ -28,10 +28,10 @@ The Mind-Control Project is extraordinarily demanding. It requires you to simult
 
 - Model what other people are probably thinking about you
 - Simulate in your mind the distribution of responses they might have to possible things you could say next without leaving awkward silences
-- Select speech actions that will result in them having the desired impression of you
+- Select speech actions that will result in them having the desired positive impression of you
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
-- Maybe say something funny or interesting, *if you can spare the bandwidth*
+- Maybe even say something funny or interesting, *if you can spare the bandwidth*
 
 This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. You are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
@@ -107,7 +107,6 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Attempting to win pointless in-person arguments**. Root policy objective served: "don't look stupid", generally. If you're attempting to win an argument there should be stakes. If there are none, it's *probably* the Project.
 
-
 - **Most self deprecation**. Done out of fear of being perceived as arrogant or presumptuous.
   
 - **Most people-pleasing behaviors.** Unnecessary hedging.  Trying to hide your true preferences so that they don't override the preferences of others who may also be hiding their true preferences.  "I don't know, where do you want to go eat?"
@@ -136,7 +135,7 @@ Even so.
 
 The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
 
-This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever."
+This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever." 
 
 I should note I am not a professional hostage negotiator.
 
@@ -210,7 +209,7 @@ The sequence:
 1. Notice the urge to do something — reach for your phone, go somewhere to be alone, find something to say.
 2. Ask: **what instrumental purpose does this serve?**  What is this behavior intended to accomplish socially?
 
-(Note: this isn't a trick question; we're not doing the CBT thing where we're Socratically reasoning you to "this is stupid, actually."  Well, not yet, anyway.  The Project has a true, in-its-frame-correct logic to it even when the outputs are terrible and tracing this logic is an important first step to dismantling it.  You need an *actual answer* to "why was this a reasonable thing to do" because you're not doing insane bullshit for no reason.)
+(Note: this isn't a trick question; we're not doing the CBT thing where we're Socratically reasoning you to "this is stupid, actually."   The Project has a true, in-its-frame-correct logic to it even when the outputs are terrible and tracing this logic is an important first step to dismantling it.  You need an *actual answer* to "why was this a reasonable thing to do" because you're not doing insane bullshit for no reason.)
 
 3. Ask: **is there a general policy I'm following that this is just one instance of?**
 4. Recognize the policy as the Project.  You have finished with the Trace.
@@ -294,13 +293,15 @@ Also, it's *fun*.  When you say something that most people wouldn't, unapologeti
 
 Vulnerability-- in the sense of "saying and doing things that let people judge you in arbitrary ways"-- is also conducive to authentic human connection.
 
+I need to give one, specific carve-out here, though: *the vulnerability cannot be about your social anxiety.*  This is because I notice a large fraction of socially anxious people seem to be using this kind of statement to pre-empt people thinking they're being weird for no reason, which means this *specific* vulnerably-honest class of statements is colonized and therefore is inadmissible.
+
 #### 2. Kindness
 
 Doing or saying things because they're good for the other person, independent of how it makes you look or how it might influence the other person's perception of you.
 
 A thing I started doing after beginning this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
 
-This is almost totally internally-checkable, which you can demonstrate through a thought experiment: imagine you're watching a movie dialogue between two characters, one of whom is totally blanked out-- you cannot see or hear them.  Can you still tell if the other character is kind vs an asshole?  Generally yes!
+This is almost totally internally-checkable, which you can demonstrate through a thought experiment: imagine you're watching a movie dialogue between two characters, one of whom is totally blanked out-- you cannot see or hear them.  Can you still tell if the other character (who you can see and hear unimpeded) is kind vs an asshole?  Generally yes!
 
 #### 3. Selfish Impulse
 
