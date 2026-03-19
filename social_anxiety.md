@@ -24,14 +24,14 @@ You have been running it for years, probably since adolescence. The project is t
 
 We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing what you say, how you say it, when you say it, what you do with your body, what expression you wear, and how you respond to things. You are monitoring all of this in real time, evaluating its effectiveness, and adjusting on the fly.
 
-The Project is extremely demanding.  The Project is probably the most cognitively demanding thing humans do on a regular basis.  It might be the most cognitively demanding thing most humans do *ever.* It requires you to simultaneously:
+The Mind-Control Project is extraordinarily demanding. It requires you to simultaneously:
 
 - Model what other people are probably thinking about you
-- Evaluate whether what you just said landed correctly
-- Plan what to say or do next to produce the right impression
-- Monitor your face, voice, and body for signs of anxiety that might be visible
-- Suppress or hide those signs, and hide that you're attempting to suppress or hide those signs
-- You might even engage in conversation, *if you can spare the bandwidth*
+- Simulate in your mind the distribution of responses they might have to possible things you could say next without leaving awkward silences
+- Select speech actions that will result in them having the desired impression of you
+- Perform damage control if you suspect something you said landed poorly
+- Hide that you're doing all these things
+- Maybe say something funny or interesting, *if you can spare the bandwidth*
 
 This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. You are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
