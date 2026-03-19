@@ -27,7 +27,7 @@ We're going to call this the Mind Control Project, or just "the Project," becaus
 The Mind-Control Project is extraordinarily demanding. It requires you to simultaneously:
 
 - Model what other people are probably thinking about you
-- Simulate in your mind the distribution of responses they might have to possible things you could say next without leaving awkward silences
+- Simulate in your mind the distribution of responses they might have to possible things you could say next, and running the sim fast enough to not leave awkward silences
 - Select speech actions that will result in them having the desired positive impression of you
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
@@ -41,11 +41,11 @@ And this has been destroying you, which is why you're reading this long-ass docu
 
 **The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
-**We are not going to fix the Project; the Project cannot be fixed.  We are going to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
+**We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
 ## Part 2: The Obsessions And The Compulsions
 
-The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them don't feel like compulsions — they feel like normal social behavior.  Some of them *definitely* feel like compulsions.
+The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them feel like normal social behavior.  Some of them *definitely* feel like compulsions.
 
 Here's a list of things I suspect you are doing, and which I will ask you to notice and, at some point, stop. 
 
