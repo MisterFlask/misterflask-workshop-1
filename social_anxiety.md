@@ -159,11 +159,13 @@ Additionally, trying to kill punchbowl-type behaviors without having killed the 
 
 ### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
 
-Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.
+Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.  Why?
 
-That's because normal, healthy social cognition doesn't require mind-reading.  Ordinary social cognition is shit like "it's a library, I should be quiet" or "it's a funeral, I shouldn't show up drunk and then belt out Showtunes."  The whole reason that the Project is stressful to run is because "control peoples' perceptions of me" is incredibly recursive and expensive as a task: it requires you model another person's model *of you*, which is why lots of psych studies show that socially anxious people frequently have weird, distorted images of themselves appear unbidden in their imagination-- the Project *needs information about how you might be seen* and will bias to the negative, you know, just to be on the safe side.  Anxiety is how you can tell the intelligence-gathering apparatus of the Mind Control Project is hard at work.
+The reason you feel anxiety isn't *just* because perfect modeling of other people is impossible (it often feels tantalizingly possible in the moment) but because the Project opposes your consciously-held aspirational goals.  You want to give a presentation; the Project says "sure do that but ONLY IF YOU CAN GUARANTEE OTHER PEOPLE WILL HAVE ENJOYED THE PRESENTATION AND NOT THINK ILL OF YOU FOR WASTING THEIR TIME."  You want to be the sort of person to go to the party; the Project says "okay sure go to the party BUT ONLY IF YOU CAN BE CERTAIN THAT OTHER PEOPLE WILL THINK WELL OF YOU."  You want to ask the girl out and the project says "sure, live your best life BUT ONLY IF YOU CAN GUARANTEE SHE IS PERFECTLY COMFORTABLE AND HAPPY WITH YOU AFTER THE CONVERSATION."  This attempt at threading the needle between your mutually-exclusive aspirational and safety-seeking goals is, itself, what causes you to be stressed out.
 
-Anyway: Not belching loudly during a wedding ceremony does not require 4-dimensional recursive cognition.  It just requires not being an asshole.
+When you skip the party or decline the presentation, you feel relief (you no longer have to solve the impossible problem of guaranteeing an outcome to an intrinsically-uncontrollable situation) but also feel depressed or ashamed (because you've declined the thing you actually want to do in deference to an impulse you're pretty sure is unhealthy but aren't sure how to oppose.)
+
+tl; dr: Not belching loudly during a wedding ceremony does not require solving an impossible constraints satisfaction problem.  It just requires not being an asshole. 
 
 ---
 
@@ -179,7 +181,7 @@ The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feelin
 
 People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
 
-Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
+Which means your anxiety is always legible: it contains a message of urgently-needed action-- a *command* that you *fix it*, for some value of "it"-- that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
 
 Anyway: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
