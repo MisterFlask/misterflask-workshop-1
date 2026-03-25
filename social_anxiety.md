@@ -279,6 +279,8 @@ I think social anxiety is, partly, a philosophical disorder.  (Not gonna find *t
 
 You've trained yourself to confuse "other peoples' ephemeral judgments" with "actual moral authority" and are having understandable anxiety about this because it means "am I an okay person" has different answers depending on who you're speaking to and this *will* be crazy-making.  That fucks you up in highly predictable ways and any successful social anxiety treatment needs to address this by giving you an internal locus of judgment independent of whatever random thoughts flicker across other peoples' minds.
 
+You don't have to persuade yourself of this statement at any particularly deep level; intellectual acceptance is entirely adequate. From there, you only have to *act* as though this were the case, and you will end up believing it.  Gut-level beliefs are downstream of what your brain observes you doing.
+
 ### The Specific Principles I Suggest
 
 I think I have arrived at a set of workable principles that satisfy the above criteria.
@@ -295,19 +297,23 @@ Also, it's *fun*.  When you say something that most people wouldn't, unapologeti
 
 Vulnerability-- in the sense of "saying and doing things that let people judge you in arbitrary ways"-- is also conducive to authentic human connection.
 
-I need to give one, specific carve-out here, though: *the vulnerability cannot be about your social anxiety.*  This is because I notice a large fraction of socially anxious people seem to be using this kind of statement to pre-empt people thinking they're being weird for no reason, which means this *specific* vulnerably-honest class of statements is colonized and therefore is inadmissible.
+I need to give one, specific carve-out here, though: *the vulnerability cannot be about your social anxiety.*  This is because I notice a large fraction of socially anxious people seem to be using this kind of statement to pre-empt people thinking they're being weird for no reason, which means this *specific* vulnerably-honest class of statements is colonized and therefore is inadmissible.  (I see this a lot in anxious people.)
 
 #### 2. Kindness
 
 Doing or saying things because they're good for the other person, independent of how it makes you look or how it might influence the other person's perception of you.
 
-A thing I started doing after beginning this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
-
-This is almost totally internally-checkable, which you can demonstrate through a thought experiment: imagine you're watching a movie dialogue between two characters, one of whom is totally blanked out-- you cannot see or hear them.  Can you still tell if the other character (who you can see and hear unimpeded) is kind vs an asshole?  Generally yes!
+This is almost totally internally-checkable, which you can demonstrate through a thought experiment: imagine you're watching a movie dialogue between two characters, one of whom is totally blanked out-- you cannot see or hear them.  Can you still tell if the other character (who you can see and hear unimpeded) is kind vs an asshole?  Generally yes!  It's incredibly easy!
 
 #### 3. Selfish Impulse
 
 Doing or saying things because you genuinely want to, not because they're strategically optimized for approval.  Again, gated by kindness.  Mostly this is there because most Vulnerable Honesty and Kindness aren't actually relevant in a lot of situations and you need a thing to fill the gap.  "I want to see the new John Wick movie!"  "I think Vietnamese food tastes like soap and would prefer to go elsewhere!"  "I'M GONNA TAKE THE LAST SUSHI ROLL."
+
+This is intrinsically opposed to a lot of Project activity which takes the form of weird, unacknowledged sacrifices done for the hypothetical benefit of someone who will never notice ("I'll let him have the good spoon", "I'll order the cheapest thing on the menu since I know my date is paying."  *He doesn't care about getting the good spoon!  He would find the concept strange and laughable!*)
+
+A thing I started doing after beginning this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
+
+Also: this means asking other people for favors and to suggest activities you personally want to do.  People *like* being generous; if you are reading this document it is quite likely you enjoy performing generosity yourself but are resistant to others being generous toward you which is depriving them of an enjoyable social mode of being.  *Allow yourself to engage in social reciprocity or I will emerge from you computer monitor, like Samara from the Ring, and beat you with your own laptop.*
 
 #### "I feel vaguely that this is not a safe set of principles by which to run a social life"
 
@@ -317,7 +323,7 @@ If this were a less serious document I would have a picture of Wormtongue here w
 
 *"A most judicious point, my liege."*
 
-The risk of you becoming a social wrecking ball due to dismantling the Mind-Control Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity, and your concern about this happening results from exactly the same dynamic.
+The risk of you becoming a social wrecking ball due to dismantling the Mind-Control Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity, and your concern about this happening results from exactly the same dynamic.  Which is to say: possible within the laws of physics, but also I cannot think of literally anyone who has ever done this.
 
 If these general principles cause you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
 
