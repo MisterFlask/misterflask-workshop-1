@@ -403,7 +403,10 @@ If you struggle with this, it might actually be instructive to speak to an OCD s
 
 ### "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
 
-Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.
+Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.  
+
+The hard part isn't the surrender, I don't think, the hard part is noticing when you've lapsed into *trying to solve a problem.*  Remember: every time you feel social anxiety-- EVERY time-- *try to run the Trace.*  That is basically 90% of the protocol and if you can do it reliably then your game is mostly won.
+
 
 ---
 
