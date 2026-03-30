@@ -227,11 +227,7 @@ Eventually, you'll catch policies in real time as the anxiety fires, and the rec
 
 ## the idea this is always performable is questionable to me.  What if my anxiety IS just a diffuse cloud?
 
-Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. If it truly *were* free floating anxiety, divorced of any specific call to action, then shouldn't you expect the downstream anxious behaviors to be sort of aimless and undirected? But we don't see that. We see very specific, directed anxious behaviors that clearly are related to specific social goals.
-
-These safety behaviors always and everywhere are accompanied by anxiety; and the reason they are stressful is because they represent you threading the needle between covert safety-related goals ("never be perceived as awkward", "guarantee universal approval") against aspirational goals ("have a fun time at this party.")  You are observing accurately that your goal of universal approval is threatened by your goal of having fun, and vice-versa.  The reason why you feel better having left the party is because you have given up one of your conflicting goals and are no longer trying to solve a stressful optimization problem in real-time. 
-
-This documents' objective now is to show you how to give up the *other*, covert goal. 
+Consider: Safety behaviors (stereotyped patterns of behavior that socially anxious people will visibly engage in while nervous) are observed almost universally in all cases of clinical social anxiety. If it truly *were* free floating anxiety, divorced of any specific call to action, then shouldn't you expect the downstream anxious behaviors to be sort of aimless and undirected? But we don't see that. We see very specific, directed anxious behaviors that clearly are related to specific social goals (mostly around being unobtrusive or inoffensive); and these safety behaviors always and everywhere are accompanied by anxiety.
 
 ## I really think my anxiety might be a contentless fog though
 
