@@ -87,6 +87,8 @@ These happen inside your head. Nobody can see them, and most of them feel automa
 
 - **In-the-moment monitoring.** During a conversation, splitting your attention between the interaction and your evaluation of the interaction. "Am I being awkward right now?" "Was that a normal thing to say?" "Are they bored?" "How do I probably look from the outside?"
 
+- **Self-Loathing**: I think self-loathing frequently co-occurs with social anxiety because behaviors associated with self-loathing (eg verbal self-flagellation) are ways one might go about preventing others from lashing out at you for perceived wrongdoing; people feel more sympathy for the repentant sinner than the gleefully unrepentant sinner.  Ultimately I think this is a deeply subconscious compulsion that is still oriented at disapproval avoidance. 
+  
 ### Behavioral Compulsions
 
 Also known as "safety behaviors" in the clinical social anxiety literature.
