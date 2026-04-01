@@ -601,7 +601,7 @@ Remember: your role is to act from honesty, kindness, and selfish impulse, and i
 
 Below are a few examples of what socializing looks like when you're not running the Project. They share a common feature: they will not make you a social pariah ("making the reader a pariah" is not really my goal here), but also they do not have predictable results. You are giving up control over the direction of the interaction. That is the *point.*
 
-These are not scripts to memorize. They are examples of the *register* — the level of directness and honesty — you are aiming for.
+These are not scripts to memorize. They are examples of someone saying precisely the thing that is true about their internal state and not attempting to steer the outcome.
 
 **To a group:**
 > "Mind if I join your conversation?"
