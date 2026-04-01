@@ -31,7 +31,7 @@ The Mind-Control Project is extraordinarily demanding. It requires you to simult
 - Select speech actions that will result in them having the desired positive impression of you
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
-- Maybe even have a good time, *if you can spare the bandwidth* (lol)
+- Maybe even engage with the content of the conversation, *if you can spare the bandwidth*
 
 This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. You are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
