@@ -77,7 +77,7 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 
 ### Mental Compulsions (or, Instrumental Mental Behaviors)
 
-These happen inside your head. Nobody can see them, and most of them feel automatic.  Physical and verbal compulsions are downstream of these.
+These happen inside your head, but are nevertheless voluntary cognitive actions you are performing in service of the root level obsessions discussed. Physical and verbal compulsions are downstream of these.
 
 - **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").  That's *bait*.  **Both of these are the Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
