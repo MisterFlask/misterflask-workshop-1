@@ -311,7 +311,7 @@ This is intrinsically opposed to a lot of Project activity which takes the form 
 
 A thing I started doing after beginning this protocol is hugging people a lot more.  Previously I'd be like "OH NO what if they secretly don't want a hug AND WILL REFUSE ME AND THINK LESS OF ME FOR IT" but this is not useful.  An offer of a hug-- either as consolation or as simply a statement of appreciation for their company and emotional closeness-- is good and prosocial and the unpredictable nature of human reactions does not change this fact.
 
-Also: this means asking other people for favors and to suggest activities you personally want to do.  People *like* being generous; if you are reading this document it is quite likely you enjoy performing generosity yourself but are resistant to others being generous toward you; this is depriving them of something they would enjoy.  *Allow yourself to engage in social reciprocity or I will emerge from you computer monitor, like Samara from the Ring, and beat you with your own laptop.*
+Also: this means asking other people for favors and to suggest activities you personally want to do.  People *like* being generous; if you are reading this document it is quite likely you enjoy performing generosity yourself, but are resistant to others being generous toward you; this is depriving them of something they would enjoy.  Reconsider this!  *Or I will find you.*
 
 #### "I feel vaguely that this is not a safe set of principles by which to run a social life"
 
