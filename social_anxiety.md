@@ -41,7 +41,7 @@ See here for disclaimers, contraindications and throat-clearing: https://github.
 
 The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them feel like normal social behavior, but some *definitely* feel like compulsions.
 
-Here's a list of things I suspect you are doing, and which I will ask you to notice and, at some point, stop. 
+If you have social anxiety, you *will* see yourself in a great many of these things.
 
 ### Mental Obsessions (or, Root-Level Policies)
 
