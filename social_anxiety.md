@@ -2,20 +2,6 @@
 
 ## An OCD-Inspired Protocol for Social Anxiety
 
----
-
-## What This Document Is
-
-It is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  This is heavily inspired by treatment protocols for OCD-spectrum disorders.
-
-## Promises I will make to the reader:
-1. If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
-2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
-
-Read the whole document before starting.
-
-See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
-
 ## Part 1: The Mind Control Project
 
 You are running a project.
@@ -42,6 +28,14 @@ And this has been destroying you, which is why you're reading this long-ass docu
 **The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  Also it makes you weird and stilted on dates.
 
 **We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
+
+## Before We Begin
+This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  I promise you the following:
+
+1. If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
+2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
+   
+See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
 
 ## Part 2: The Obsessions And The Compulsions
 
