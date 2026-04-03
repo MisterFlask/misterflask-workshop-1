@@ -123,7 +123,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 ### The Relationship Of Compulsions to The Project
 
-All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If the action is downstream of "what did they think of me" or "what will they think of me" — it's a compulsion, in the technical, clinical sense of the word.  It is the Project, a psychic tick latched onto your brainstem, swollen and fat and glistening from years of happily uninterrupted feeding.  The compulsions-- *especially* the mental compulsions-- are where it gets sustenance and it has supped *deeply*.
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If the action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: a psychic tick latched onto your brainstem, swollen and fat and glistening from years of happily uninterrupted feeding.  The compulsions-- *especially* the mental compulsions-- are where it gets sustenance and it has supped *deeply*.
 
 *The tick must starve.*
 
@@ -131,39 +131,21 @@ All of these share a single common feature: **they are in service of either figu
 
 Even so.
 
-The Mind-Control Project is an adversarial subconscious process in your brain; it's responsible for social perception and maintaining social rank.  It is *incredibly* persuasive when speaking in its domain.  The Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.
+The Mind-Control Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.  
 
-This document is a lengthy explainer on accomplishing this, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever." 
+Most people immediately cave without realizing that's what they are doing.
+
+This document is a lengthy explainer on _how to stop caving_, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever." 
 
 I should note I am not a professional hostage negotiator.
 
-### "I've never been able to stop ruminating!  That's unrealistic."
+### "Obviously ruminating over past awkward event sucks, but I can't stop."
 
 That's probably true historically.  I suspect that is because, until now, you have (perhaps implicitly) viewed the Project as being a reasonable sort of thing to get up to.  Who doesn't want to be liked?
 
 This causes rumination because your brain is highly efficient goal-achievement hardware; you have assigned it the goal of "achieve universal approval" and a sub-goal of that is "mind-read other people from half-recalled conversations to find out how they feel about me" and this is an insane and impossible task *in the service of a even more insane and impossible task* but your mind will still go at it for however many hours until you've achieved certainty (Never. That's never.)
 
 It will cease ruminating only after you mechanically cut rumination off from influencing any of your possible future behaviors, which is our objective here.  Your brain is efficient: you don't spend time thinking about "BUT WHAT IF A METEOR CRASHES INTO THE EARTH" because it's totally non-actionable; either it hits or it doesn't. Rumination is driven by any kind of causal link to your future behaviors; "what if I said something weird" is treated as relevant by your brain because "try not to be weird" is an operative goal, which implies that "get better at assessing weirdness" feels relevant, which implies "analyze past behavior for weirdness" is an instrumentally reasonable sub-goal.  If-- and the goal of later parts of this document is to achieve this-- if your analysis of past social events is no longer allowed a causal link to your future behaviors, the rumination should die without further effort.
-
-If you have trouble with the rumination ban metacognitive therapy has tools to use for this, which I'm not getting into here but are worth a Google.
-
-### "Okay but that's like my whole social repertoire. Can I really just dismantle it?"
-
-Hear me out. The physical behaviors you are engaged in are almost all downstream of the cognitive ones. I suspect strongly that the physical end of what clinicians call "safety behaviors" are actually not particularly important to ban directly because if you are able to kill the cognitive policies generating them ("never appear awkward") they should disappear on their own.
-
-Most of the reason the physical behaviors are interesting to catalogue and target in the first place is because those are how you uproot the underlying policies they serve.  "Going to get punch to avoid looking awkward at the party" isn't really interesting to ban on its own because that's, like, 0.01% of your social behavior; going one by one like that would take forever, though I understand some methodologies do this. "Avoid looking awkward" is where the *real* action is, and if you kill that then you get all the punchbowl-type behaviors for free.
-
-Additionally, trying to kill punchbowl-type behaviors without having killed the underlying policy causing it will result in white-knuckling, which is basically just doing exposure therapy while compulsing, which is not useful. 
-
-### "How do I know an urge to do a thing is from the Mind-Control Project instead of just ordinary social cognition?"
-
-Simple: If you feel anxiety preceding the urge, then this implies it's from the Project.  Why?
-
-The reason you feel anxiety isn't *just* because perfect modeling of other people is impossible (it often feels tantalizingly possible in the moment) but because the Project opposes your consciously-held aspirational goals.  You want to give a presentation; the Project says "sure do that but ONLY IF YOU CAN GUARANTEE OTHER PEOPLE WILL HAVE ENJOYED THE PRESENTATION AND NOT THINK ILL OF YOU FOR WASTING THEIR TIME."  You want to be the sort of person to go to the party; the Project says "okay sure go to the party BUT ONLY IF YOU CAN BE CERTAIN THAT OTHER PEOPLE WILL THINK WELL OF YOU."  You want to ask the girl out and the project says "sure, live your best life BUT ONLY IF YOU CAN GUARANTEE SHE IS PERFECTLY COMFORTABLE AND HAPPY WITH YOU AFTER THE CONVERSATION."  This attempt at threading the needle between your mutually-exclusive aspirational and safety-seeking goals is, itself, what causes you to be stressed out.
-
-When you skip the party or decline the presentation, you feel relief (you no longer have to solve the impossible problem of guaranteeing an outcome to an intrinsically-uncontrollable situation) but also feel depressed or ashamed (because you've declined the thing you actually want to do in deference to an impulse you're pretty sure is unhealthy but aren't sure how to oppose.)
-
-tl; dr: Not belching loudly during a wedding ceremony does not require solving an impossible constraints satisfaction problem.  It just requires not being an asshole. 
 
 ---
 
@@ -221,7 +203,7 @@ Example: You notice you're about to make a self-deprecating joke after making a 
 
 The Trace gets faster with practice. Early on, you'll mostly be doing it after the fact: "why did I excuse myself to the restroom instead of hang out in the lounge even though I don't actually need to pee?"  (Answer: because even though I don't need to speak to people in the lounge any more than I have to speak to them in the restroom, if I'm in the lounge I can be observed, and if I'm just on my phone in public then people might think I'm being awkward, and "avoid being awkward" was the underlying policy being served.) 
 
-Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.  The Surrender is the trickier part than the Trace and I'll be getting to that after establishing some more theoretical groundwork (sorry, we need it to stop the Surrender from just being excruciatingly unpleasant white-knuckling.)
+Eventually, you'll catch policies in real time as the anxiety fires, and the recognition will become near-instant.  The Surrender is the trickier part than the Trace and I'll be getting to that after establishing some more theoretical groundwork on what to do *instead* (sorry, we need it to stop the Surrender from just being excruciatingly unpleasant white-knuckling.)
 
 ## the idea this is always performable is questionable to me.  What if my anxiety IS just a diffuse cloud?
 
@@ -233,6 +215,15 @@ It would be weird if this only happened in social anxiety, wouldn't it? Like: if
 
 That said!  Social judgment is diffuse and probabilistic and I suspect this does mean there is a higher introspective bear-ier to entry here (nailed it).
 
+### "How do I know a social behavior is compulsive instead of just ordinary social cognition?"
+
+Simple: If you feel anxiety preceding the urge, this implies it's from the Project.  Why?
+
+The reason you feel anxiety isn't *just* because perfect modeling of other people is impossible (it often feels tantalizingly possible in the moment) but because the Project opposes your consciously-held aspirational goals.  You want to give a presentation; the Project says "sure do that but ONLY IF YOU CAN GUARANTEE OTHER PEOPLE WILL HAVE ENJOYED THE PRESENTATION AND NOT THINK ILL OF YOU FOR WASTING THEIR TIME."  You want to be the sort of person to go to the party; the Project says "okay sure go to the party BUT ONLY IF YOU CAN BE CERTAIN THAT OTHER PEOPLE WILL THINK WELL OF YOU."  You want to ask the girl out and the project says "sure, live your best life BUT ONLY IF YOU CAN GUARANTEE SHE IS PERFECTLY COMFORTABLE AND HAPPY WITH YOU AFTER THE CONVERSATION."  This attempt at threading the needle between your mutually-exclusive aspirational and safety-seeking goals is, itself, what causes you to be stressed out.
+
+When you skip the party or decline the presentation, you feel relief (you no longer have to solve the impossible problem of guaranteeing an outcome to an intrinsically-uncontrollable situation) but also feel depressed or ashamed (because you've declined the thing you actually want to do in deference to an impulse you're pretty sure is unhealthy but aren't sure how to oppose.)
+
+tl; dr: Not belching loudly during a wedding ceremony does not require solving an impossible constraints satisfaction problem.  It just requires not being an asshole. 
 ---
 
 ## Part 4: What To Do Instead
