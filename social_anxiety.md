@@ -120,17 +120,19 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 ### The Relationship Of Physical And Mental Compulsions to The Project
 
-All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: an internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: your internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
 You are King Theodin, and you need to stop listening to Wormtongue.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
-The Grand Vizier has precisely one move, which he deploys at every opportunity: he strides into your throne room, bows low, and informs you with tremendous urgency that someone, somewhere, might be forming a negative opinion of you, and that in order to prevent this dire catastrophe you now have to do _some fucking thing, Your Excellency_. Social anxiety is neither more nor less than the feeling of the Vizier bursting through the doors seventeen times per hour with a new fucking crisis, all of them marked URGENT, while you scramble to figure out how to fix all of them at once.
+The Grand Vizier has precisely one move, which he deploys at every opportunity: he strides into your throne room, bows low, and informs you with tremendous urgency that someone, somewhere, might be forming a negative opinion of you, and that in order to prevent this dire catastrophe you now have to do _some fucking thing_. Social anxiety is neither more nor less than the feeling of the Vizier bursting through the doors seventeen times per hour with a new fucking crisis, all of them which require _YOUR IMMEDIATE ATTENTION, YOUR EXCELLENCY, OR WE SHALL LOSE THE OUTLYING DUCHIES TO THE BARBARIAN HORDES_, while you scramble to figure out how to fix all of these simultaneous crises at once.
 
-Most people sort of take for granted that, sure, of course you have to fix the crisis.  Obviously.
+Most people sort of take for granted that, sure, obviously you can't just *ignore the crises.*
 
-This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix all these crises*, because "just stop doing the social anxiety things" has a poor track record as a therapeutic protocol. Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the Vizier's predicted catastrophe arrive and commit to doing absolutely nothing to prevent it whatsoever, while he calmly observes that the skies are now as sackcloth and the moon is now as blood _specifically due to your negligence_."
+This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies burn to the ground, while saying and doing nothing whatsoever to prevent this."
+
+It should be noted I'm not a professional politician.
 
 ---
 
@@ -219,7 +221,7 @@ I have an answer to this, but I should flag that this is the place I diverge mos
 
 One way of framing the situation is "the Mind-Control Project has unchallenged authority over your actions because there's nothing in you that's seriously *trying* to challenge its authority; you're running a one-party state and sure the party *sucks* but there's not an alternative." 
 
-Here we are attempting to fix that.  We *need* this part before discussing the Surrender because-- like Nixon in the Cold War-- we need a potential replacement leader, armed with weaponry and CIA-gathered intelligence, before trying to destabilize the existing Communist-sympathetic third-world government. Metaphorically.
+Here we are attempting to fix that.  We *need* this part before discussing the Surrender because-- like Nixon in the Cold War-- we need a potential replacement leader, armed with fancy weaponry and CIA-gathered intelligence, before trying to destabilize the existing Communist-sympathetic third-world government. Metaphorically.
 
 ### Meta-Principles For How To Arrive At Principles
 
