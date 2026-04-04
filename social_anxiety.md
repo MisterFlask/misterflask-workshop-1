@@ -23,7 +23,7 @@ This is why you find social situations to be exhausting: because you are running
 
 And this has been destroying you.
 
-**The Project is the problem.**  The sensation you describe as "social anxiety" is *entirely* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (which happens often), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  The sensation you describe as "social anxiety" is *entirely* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequent).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
 **The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  
 
@@ -120,23 +120,17 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 ### The Relationship Of Physical And Mental Compulsions to The Project
 
-All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If any physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: an internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of the entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests (one of the items on the Obsessions list above), and the last time you went more than a day without getting his sign-off you were eleven years old. 
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: an internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
-The compulsions-- _especially_ the mental compulsions-- is his voice in your ear, and he whispers constantly, and you have been mistaking his voice for your own thoughts for so long that the difference no longer feels meaningful.
-
-You are King Theodin, and you need to stop taking advice from Wormtongue.
+You are King Theodin, and you need to stop listening to Wormtongue.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
-Even so.
+The Grand Vizier has precisely one move, which he deploys at every opportunity: he strides into your throne room, bows low, and informs you with tremendous urgency that someone, somewhere, might be forming a negative opinion of you, and that in order to prevent this dire catastrophe you now have to do _some fucking thing_. Social anxiety is neither more nor less than the feeling of the Vizier bursting through the doors seventeen times per hour with a new fucking crisis, all of them marked URGENT, while you scramble to figure out how to fix all of them at once.
 
-The Mind-Control Project has precisely one hostage, which it threatens at every opportunity: that someone will think poorly of you if you don't do *some fucking thing.*  Social anxiety is neither more nor less than the feeling of you failing to complete the myriad frequently-contradictory frequently-impossible demands the Project screams at you while it waves its metaphorical gun in the hostage's face.  
+Most people sort of take for granted that, sure, of course you have to fix the crisis.  Obviously.
 
-Most people immediately cave without realizing that's what they are doing.
-
-This document is a lengthy explainer on _how to stop caving_, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever." 
-
-I should note I am not a professional hostage negotiator.
+This document is a lengthy explainer on *why this is not true* and *how to stop trying*, because "just stop doing the social anxiety things* has a poor track record as a therapeutic protocol. Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the Vizier's predicted catastrophe arrive and commit to doing absolutely nothing to prevent it whatsoever, while he calmly predicts that the skies shall become as sackcloth and the moon shall be as blood due specifically to your negligence."
 
 ---
 
@@ -150,9 +144,9 @@ That skill is the Trace.
 
 The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you spinning your wheels against a goal that (a) you suspect you're failing but (b) refuse to give up on; in this case, it's a situation where the Project senses that it's goal of universal approval is threatened, which-- being that this goal is impossible-- will be a frequent event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious", "don't be cringe") that the Project has installed in pursuit of its goal of universal approval.
 
-People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effourgentlyrtful and purpose-driven.  
+People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
 
-Which means your anxiety is always legible: it contains a message of -needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
+Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
 
 Anyway: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
