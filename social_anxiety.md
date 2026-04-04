@@ -120,9 +120,11 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 ### The Relationship Of Compulsions to The Project
 
-All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If the action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: a psychic tick latched onto your brainstem, swollen and fat and glistening from years of happily uninterrupted feeding.  The compulsions-- *especially* the mental compulsions-- are where it gets sustenance and it has supped *deeply*.
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If any physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: a Grand Vizier who has been whispering in your ear since adolescence, who you have never once disobeyed, and who has-- over decades of perfect obedience-- grown so fantastically powerful that he effectively runs the kingdom while you sit glassy-eyed on the throne and rubber-stamp his increasingly-psychotic decrees.
 
-*The tick must starve.*
+The compulsions-- _especially_ the mental compulsions-- are his edicts, and you have been stamping them so fast that the wax seal never cools.
+
+He must be deposed.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
@@ -135,14 +137,6 @@ Most people immediately cave without realizing that's what they are doing.
 This document is a lengthy explainer on _how to stop caving_, because "just stop" has a poor track record as a therapeutic protocol.  Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only *actually* engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which rhyme with "let the hostage die and commit to saying or doing nothing to prevent it whatsoever." 
 
 I should note I am not a professional hostage negotiator.
-
-### "Obviously ruminating over past awkward event sucks, but I can't stop."
-
-That's probably true historically.  I suspect that is because, until now, you have (perhaps implicitly) viewed the Project as being a reasonable sort of thing to get up to.  Who doesn't want to be liked?
-
-This causes rumination because your brain is highly efficient goal-achievement hardware; you have assigned it the goal of "achieve universal approval" and a sub-goal of that is "mind-read other people from half-recalled conversations to find out how they feel about me" and this is an insane and impossible task *in the service of a even more insane and impossible task* but your mind will still go at it for however many hours until you've achieved certainty (Never. That's never.)
-
-It will cease ruminating only after you mechanically cut rumination off from influencing any of your possible future behaviors, which is our objective here.  Your brain is efficient: you don't spend time thinking about "BUT WHAT IF A METEOR CRASHES INTO THE EARTH" because it's totally non-actionable; either it hits or it doesn't. Rumination is driven by any kind of causal link to your future behaviors; "what if I said something weird" is treated as relevant by your brain because "try not to be weird" is an operative goal, which implies that "get better at assessing weirdness" feels relevant, which implies "analyze past behavior for weirdness" is an instrumentally reasonable sub-goal.  If-- and the goal of later parts of this document is to achieve this-- if your analysis of past social events is no longer allowed a causal link to your future behaviors, the rumination should die without further effort.
 
 ---
 
@@ -247,7 +241,9 @@ That means your positive guidance for behavior needs to have a number of specifi
 * It needs to be totally unambiguous guidance for action; or at least all ambiguity must be in weighing your OWN values against each other instead of figuring out how other people will react to whatever.
 * It cannot require the ability to mind-read, which means every principle has to be checkable internally to yourself.  Like half of the problem with the Project in the first place is that it requires mind-reading as an intermediate step.
 
-This ties *directly* into the anti-rumination discussion previously.  The way you make rumination pointless on a mechanical level is to have *principles* that you follow regardless of the perceptions of external observers; that causes rumination-- "should I have done something different?!"-- to return a deterministic, immediate output of "no, I was always going to do that because I have decided it's what I'm going to do regardless of their opinions."  Which requires no mind-reading and is therefore done with very, very quickly and painlessly.
+This ties *directly* into the anti-rumination discussion previously.  Your brain is highly efficient goal-achievement hardware; you have assigned it the goal of "achieve universal approval" and a sub-goal of that is "mind-read other people from half-recalled conversations to find out how they feel about me" and this is an insane and impossible task *in the service of a even more insane and impossible task* but your mind will still go at it for however many hours until you've achieved certainty (Never. That's never.)
+
+The way you make rumination pointless on a mechanical level is to have *principles* that you follow regardless of the perceptions of external observers; that causes rumination-- "should I have done something different?!"-- to return a deterministic, immediate output of "no, I was always going to do that because I have decided it's what I'm going to do regardless of their opinions."  Which requires no mind-reading and is therefore done with very, very quickly and painlessly.
 
 The first constraint-- that the principles represent an aspirational identity-- is critical because we want this to be sustainable, and when the Project screams out "THAT PERSON THINKS YOU SUCK" we want you to be able to truthfully respond with "I acted in accordance with my values and that was awesome, actually" *and you'll mean it*.
 
