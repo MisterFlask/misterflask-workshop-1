@@ -299,8 +299,6 @@ Also: this means asking other people for favors and to suggest activities you pe
 
 #### "I feel vaguely that this is not a safe set of principles by which to run a social life"
 
-If this were a less serious document I would have a picture of Wormtongue here whispering to a dessicated King Theodin.  Actually, you know what, fuck it.
-
 <img width="275" height="183" alt="image" src="https://github.com/user-attachments/assets/4330b50c-85cf-498c-819a-d0afd13ecc89" />
 
 *"A most judicious point, my liege."*
