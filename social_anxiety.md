@@ -17,11 +17,11 @@ The Mind-Control Project is extraordinarily demanding. It requires you to simult
 - Select speech actions that will result in them having the desired positive impression of you
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
-- Maybe even engage with the content of the conversation, *if you can spare the bandwidth*
+- Maybe even engage with the conversation, *if you can spare the bandwidth*
 
-This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. You are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
+This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. _You_ are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
-And this has been destroying you, which is why you're reading this long-ass document and taking what amounts to experimental mental health advice from someone who is in no way a therapist but who *has* eliminated his own social anxiety in a way that took like a year to reconcile with published psychology literature and then reverse-engineer into this self-help document.
+And this has been destroying you.
 
 **The Project is the problem.**  The sensation you describe as "social anxiety" is *entirely* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (which happens often), or the Project alerting you that it's in danger of failing (a necessarily-frequent event).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
 
@@ -32,9 +32,11 @@ Also it makes you weird and stilted on dates.
 **We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
 ## Before We Begin
-This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  I promise you the following:
+This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  
 
-1. If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free; I have more falsifiability info later in the document.
+I promise you the following:
+
+1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
 2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
    
 See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
@@ -56,11 +58,7 @@ They are the mission statements of your particular Mind-Control Project.
 - **Guarantee Other People Have Their Preferences Met**.  It's common for people with this policy to literally hide things they want to do in order to ensure they can elicit other peoples' true preferences, generally because they suspect the other person is *also* running this root-level policy. ("Where do you want to eat?" "I don't mind, any place you want to go is fine."  "Are you sure?  I thought you liked Thai.")
 - **Guarantee This Specific Person Liking Me**.  Guys do this on dates quite a lot.
 - **Guarantee Nobody Else Has A Negative Emotional Experience Around You**.  This one is complicated because it feels like common decency, but this too has the problem of being a fundamentally impossible task that results in avoidance behavior, because "discomfort" and "human connection" are not fundamentally separable.
-- **Don't Be Perceived As Awkward**
-- **Don't Be Perceived As Cringe**
-- **Don't Be Perceived As Weird**
-- **Don't Be Perceived As Creepy**
-- **Don't Be Perceived As Boring**
+- **Don't Be Perceived As Awkward/Cringe/Creepy/Boring**
 - **Don't Be Perceived As Nervous** (This one is apparently common enough in anxiety disorders that "clutch a drink to stop people from seeing me tremble" has become kinda the standard example of a safety behavior in the social anxiety literature)
 - **Don't Be Perceived As Weak** (This one deserves a place here, though almost nobody reading this doc will have it, because if you have it you won't present with "social anxiety", you'll present with "people keep saying I'm an asshole but I will not tolerate being disrespected so it's actually THEIR problem" which is not in the DSM.)
 - **Don't Be Perceived As Ugly** (this one manifests as body dysmorphic disorder, not social anxiety as such.)
@@ -69,15 +67,11 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 - **Don't Ever Get Sick** (Contamination OCD.)
 - **Pre-Solve Every Possible Future Problem So That Nothing Bad Ever Happens** (Generalized Anxiety Disorder)
 
-(Pick any impossible guarantee, build yourself a real-time monitoring and control system around it, and you get a specific anxiety disorder depending on what you picked!  Like a buffet!  Anyway.)
-
 ### Mental Compulsions (or, Instrumental Mental Behaviors)
-
-These happen inside your head, but are nevertheless voluntary cognitive actions you are performing in service of the root level obsessions discussed. Physical and verbal compulsions are downstream of these.  
 
 You probably do most of these things.
 
-- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").  That's *bait*.  **Both of these are the Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
+- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").  That's *bait*.  **Both of these are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
 - **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off. "Did that joke land?" "Did they think I was weird when I said that?" "I think she gave me a weird look when I..."  (OCD literature refers to this as "checking behavior")
 
