@@ -118,13 +118,13 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 - **Checking.** Reviewing text messages to see if you said something wrong. Checking social media to see if someone unfollowed you.
 
-### The Relationship Of Compulsions to The Project
+### The Relationship Of Physical And Mental Compulsions to The Project
 
-All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If any physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: a Grand Vizier who has been whispering in your ear since adolescence, who you have never once disobeyed, and who has-- over decades of perfect obedience-- grown so fantastically powerful that he effectively runs the kingdom while you sit glassy-eyed on the throne and rubber-stamp his increasingly-psychotic decrees.
+All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.** If any physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: an internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of the entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests (one of the items on the Obsessions list above), and the last time you went more than a day without getting his sign-off you were eleven years old. 
 
-The compulsions-- _especially_ the mental compulsions-- are his edicts, and you have been stamping them so fast that the wax seal never cools.
+The compulsions-- _especially_ the mental compulsions-- is his voice in your ear, and he whispers constantly, and you have been mistaking his voice for your own thoughts for so long that the difference no longer feels meaningful.
 
-He must be deposed.
+You are King Theodin, and you need to stop taking advice from Wormtongue.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
@@ -234,7 +234,7 @@ Most therapeutic protocols around OCD are subtractive: "you're doing this bad th
 That means your positive guidance for behavior needs to have a number of specific attributes:
 
 * It should be aspirational as an identity; you should be able to look at this set of replacement behaviors and be like, yeah, that's someone I would want to be.  (I think the core problem with shame-attacking exercises like "sing loudly in public" is because these are generally non-aspirational, so you're not really learning a new way of existing socially; you're just doing an exercise.)
-* At least one principle needs to be fundamentally hostile to the Project's goals.  The tick must starve.
+* At least one principle needs to be fundamentally hostile to the Project's goals.
 * It needs to be prosocial; "yeah, that's someone I would let into my apartment."
 * It needs to be applicable to most or all social situations you might end up in.
 * It needs to result in you not self-immolating socially in expectation.
@@ -466,11 +466,11 @@ What I am asking you to do is notice and peel apart these concrete demands made 
 
 ### "Wait, why is that information of negative value?"
 
-Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Mind-Control Project says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
+Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Wormtongue says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
 
 The contradictory demands at the dinner table didn't emerge by happenstance.  They are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you, which is: *bloated to madness.*
 
-The tick must starve.
+Stop taking advice from Wormtongue.
 
 ---
 
