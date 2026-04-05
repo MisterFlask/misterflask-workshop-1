@@ -96,7 +96,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 - **Nervous rambling.** Generally this is the output of an implicit but strongly-felt rule: "if there's an awkward silence that will reflect poorly on me."
 
-- **Nearly all behaviors described as "getting defensive" or "being insecure"**. Someone criticizes you, fairly or no. What happens next is: you feel a spike of urgency, and you immediately begin generating a response whose primary function is to repair the damage to how you're being perceived (damage which is represented by whatever critical thing was just said). You explain, contextualize, counter-accuse, minimize, or justify. "Getting defensive" always and everywhere means attempting to directly restore someone's broken perception of you instead of addressing the actual content of the criticism being provided. 
+- **Nearly all behaviors described as "getting defensive" or "being insecure"**. Someone criticizes you, fairly or no. What happens next is: you feel a spike of urgency, and you immediately begin generating a response whose primary function is to repair the damage to how you're being perceived (damage which is represented by whatever critical thing was just said).  "Getting defensive" always and everywhere means attempting to directly restore someone's broken perception of you (via explaining/justifying/recontextualizing/etc) instead of addressing the actual content of the criticism being provided. 
 
 - **Most lies, white or otherwise.** Almost all lies people tell are in service of avoiding other people thinking poorly of them or not having other undesirable internal experiences.  "Yeah I'm totally employed at, uh, the Business Factory." "Oh, I'm, uh, washing my cat that evening"
 
