@@ -1,4 +1,4 @@
-# Decommissioning the Mind Control Project
+# Confidence Engineering
 
 ## An OCD-Inspired Protocol for Social Anxiety
 
