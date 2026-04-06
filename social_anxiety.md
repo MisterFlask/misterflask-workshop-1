@@ -122,7 +122,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: your internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
-You are King Theodin, and you need to stop listening to Wormtongue.
+You are a sick and dessicated King Theodin, and the treatment plan is simple: to _stop taking advice from  Wormtongue_.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
@@ -130,7 +130,9 @@ The Grand Vizier has precisely one move, which he deploys at every opportunity: 
 
 Most people sort of take for granted that, sure, obviously you can't just *ignore the crises.*
 
-This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies burn to the ground, while saying and doing nothing whatsoever to prevent this."
+This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because telling people "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. 
+
+Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies burn to the ground, while saying and doing nothing whatsoever to prevent this."
 
 It should be noted I'm not a professional politician.
 
