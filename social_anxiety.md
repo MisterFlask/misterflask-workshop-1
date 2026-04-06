@@ -79,8 +79,8 @@ You probably do most of these things.
 
 - **In-the-moment monitoring.** During a conversation, splitting your attention between the interaction and your evaluation of the interaction. "Am I being awkward right now?" "Was that a normal thing to say?" "Are they bored?" "How do I probably look from the outside?"
 
-- **Self-Loathing**: Verbal behaviors associated with self-loathing (eg self-deprecation) are all just ways one might go about preventing others from lashing out at you for perceived wrongdoing; people feel more sympathy for the self-flagellating repentant sinner than for the gleefully unrepentant sinner.  For that reason I think this is actually a mental compulsion (structurally similar to rumination) which is subconsciously oriented at disapproval avoidance.
-   - That means *any* attempts to figure out whether you are in some abstract way worthy of self-loathing are also compulsions, ultimately in service of the Project, that require banning; you are thus forbidden from trying to come to any conclusion about your worth as a person. Sorry, I don't make the rules.
+- **Self-Loathing**: Basically all downstream behaviors from self-loathing (eg self-deprecation) are just ways one might go about preventing others from lashing out at you for perceived wrongdoing. This comes from the subconscious but correct logic that people feel more sympathy for the sorrowful, repentant sinner than for the gleefully unrepentant sinner.  For that reason I think self-loathing is actually a mental compulsion (structurally similar to rumination) which is subconsciously oriented at disapproval avoidance.
+   - That means *any* attempts to figure out whether you are in some abstract way worthy of self-loathing are _also_ compulsions, ultimately in service of the Project, that require banning; you are thus forbidden from trying to come to any conclusion about your worth as a person. Sorry, I don't make the rules.
   
 ### Behavioral Compulsions
 
