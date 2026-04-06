@@ -140,7 +140,7 @@ It should be noted I'm not a professional politician.
 
 ## Part 3: The Trace
 
-The list above is generic. It covers the most common compulsions, but you will have compulsions that aren't on the list — idiosyncratic ones specific to you, to your history, and to the particular situations you find yourself in. The list can't cover everything. So you need a skill for catching compulsions the list doesn't name.
+It's all very well to have a list of compulsions.  But you're not going to memorize a bigass list that also isn't anywhere near exhaustive; you need a way to identify compulsive behaviors in real-time.
 
 That skill is the Trace.
 
