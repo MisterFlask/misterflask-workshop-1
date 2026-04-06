@@ -132,7 +132,7 @@ Most people sort of take for granted that, sure, obviously you can't just *ignor
 
 This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because telling people "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. 
 
-Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies burn to the ground, while saying and doing nothing whatsoever to prevent this."
+Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies _burn to the fucking ground_ while committing to doing nothing whatsoever to prevent this."
 
 It should be noted I'm not a professional politician.
 
