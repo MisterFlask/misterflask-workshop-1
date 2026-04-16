@@ -30,20 +30,20 @@ Also it makes you weird and stilted on dates.
 **We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
 
 ## Before We Begin
-This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments.  
+This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that the Mind-Control Project isn't that difficult and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you-- which means that this treatment target is *fragile*.
 
 I promise you the following:
 
-1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to file a bug report and be free.
+1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to be free.
 2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
    
 See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
 
 ## Part 2: The Obsessions And The Compulsions
 
-The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to other forms of OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them feel like normal social behavior, but some *definitely* feel like compulsions.
+The Mind-Control Project feeds on compulsions, in a dynamic that is pretty much identical to e.g. contamination OCD.  These compulsions are the specific mental and behavioral actions that keep the Project alive and important-feeling in your psyche. Some of them feel like normal social behavior.
 
-If you have social anxiety, you *will* see yourself in a great many of these things.
+If you have social anxiety, you will see yourself in a great many of these things.
 
 ### Mental Obsessions (or, Root-Level Policies)
 
@@ -69,13 +69,12 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 
 You probably do most of these things.
 
-- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").  That's *bait*.  **Both of these are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
+- **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").
+   - You know what that is?  *Bait*.  **Both of these moves are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
-- **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off. "Did that joke land?" "Did they think I was weird when I said that?" "I think she gave me a weird look when I..."  (OCD literature refers to this as "checking behavior")
+- **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off.  (OCD literature refers to this as "checking behavior.")  The only possible reason to do this is in order to figure out how the social situation went which means these replays are also banned cognition.
 
-- **Internally preparing for minor social events.** Before a social situation, rehearsing what you'll say or do. Planning conversation topics. Deciding how you'll enter a room. Thinking through how to handle specific scenarios. Strategizing.
-
-- **In-the-moment monitoring.** During a conversation, splitting your attention between the interaction and your evaluation of the interaction. "Am I being awkward right now?" "Was that a normal thing to say?" "Are they bored?" "How do I probably look from the outside?"
+- **Mentally preparing for minor conversations.**
 
 - **Self-Loathing**: Basically all downstream behaviors from self-loathing (eg self-deprecation) are just ways one might go about preventing others from lashing out at you for perceived wrongdoing. This comes from the subconscious but correct logic that people feel more sympathy for the sorrowful, repentant sinner than for the gleefully unrepentant sinner.  For that reason I think self-loathing is actually a mental compulsion (structurally similar to rumination) which is subconsciously oriented at disapproval avoidance.
    - That means *any* attempts to figure out whether you are in some abstract way worthy of self-loathing are _also_ compulsions, ultimately in service of the Project, that require banning; you are thus forbidden from trying to come to any conclusion about your worth as a person. Sorry, I don't make the rules.
@@ -120,7 +119,7 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: your internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
-You are a sick and dessicated King Theodin, and the treatment plan is simple: to _stop taking advice from  Wormtongue_.
+You are a sick and dessicated King Theodin, and the treatment plan is simple: to _stop taking advice from Wormtongue_.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
 
@@ -130,7 +129,7 @@ Most people sort of take for granted that, sure, obviously you can't just *ignor
 
 This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because telling people "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. 
 
-Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later, which I don't want to get into here but which rhyme with "let the duchies _burn to the fucking ground_ while committing to doing nothing whatsoever to prevent this."
+Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later which rhyme with "let the duchies _burn to the fucking ground_ while committing to doing nothing whatsoever to prevent this."
 
 It should be noted I'm not a professional politician.
 
