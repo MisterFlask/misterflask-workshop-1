@@ -276,7 +276,10 @@ I need to give one, specific carve-out here, though: *the vulnerability cannot b
 
 Doing or saying things because they're good for the other person, independent of how it makes you look or how it might influence the other person's perception of you.
 
+Like, if you're at a party or a conference or whatever, be on the lookout for people who look lost or bored or lonely.  Then you can introduce yourself; you can be, yourself, the welcome-wagon.  I think this is part of why I like running meetups; it gives an endless series of explicit opportunities to do this sort of thing.
+
 This is almost totally internally-checkable, which you can demonstrate through a thought experiment: imagine you're watching a movie dialogue between two characters, one of whom is totally blanked out-- you cannot see or hear them.  Can you still tell if the other character (who you can see and hear unimpeded) is kind vs an asshole?  Generally yes!  It's incredibly easy!
+
 
 #### 3. Selfish Impulse
 
