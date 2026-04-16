@@ -27,7 +27,7 @@ And this has been destroying you.
 
 Also it makes you weird and stilted on dates.
 
-**We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect, because social anxiety is just the fumes being emitted by the Project during its everyday operation.**
+We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect.
 
 ## Before We Begin
 This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that the Mind-Control Project isn't that difficult and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you-- which means that this treatment target is *fragile*.
