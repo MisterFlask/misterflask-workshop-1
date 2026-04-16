@@ -8,7 +8,7 @@ You are running a project.
 
 You have been running it for years, probably since adolescence. The project is this: *controlling what other people think of you.*
 
-We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing your verbal and physical behaviors, and this is *extraordinarily* demanding. The Mind-Control Project requires you to simultaneously:
+We're going to call this the Mind Control Project, or just "the Project," because that's what it is: you are attempting to control the contents of other people's minds by carefully managing your verbal and physical behaviors. The Mind-Control Project requires you to simultaneously:
 
 - Model what other people are probably thinking about you
 - Simulate in your mind all the responses they might have to possible things you could say next, and running the sim fast enough to not leave awkward silences
