@@ -8,22 +8,20 @@ You are running a project.
 
 You have been running it for years, probably since adolescence. The project is this: *controlling what other people think of you.*
 
-We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing what you say, how you say it, when you say it, what you do with your body, what expression you wear, and how you respond to things. You are monitoring all of this in real time, evaluating its effectiveness, and adjusting on the fly.
-
-The Mind-Control Project is extraordinarily demanding. It requires you to simultaneously:
+We're going to call this the Mind Control Project, or just "the Project," because that's what it is. You are attempting to control the contents of other people's minds by carefully managing your verbal and physical behaviors, and this is *extraordinarily* demanding. The Mind-Control Project requires you to simultaneously:
 
 - Model what other people are probably thinking about you
-- Simulate in your mind the distribution of responses they might have to possible things you could say next, and running the sim fast enough to not leave awkward silences
+- Simulate in your mind all the responses they might have to possible things you could say next, and running the sim fast enough to not leave awkward silences
 - Select speech actions that will result in them having the desired positive impression of you
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
 - Maybe even engage with the conversation, *if you can spare the bandwidth*
 
-This is why you find social situations to be exhausting: because you are running a massive nonstop real-time computation on top of the actual interaction. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. _You_ are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
+This _specifically_ is why you find social situations to be exhausting. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. _You_ are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
 And this has been destroying you.
 
-**The Project is the problem.**  The sensation you describe as "social anxiety" is *entirely* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequent).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for humor and emotional engagement and connecting with people-- *on stupid bullshit.*
+**The Project is the problem.**  The sensation you describe as "social anxiety" is *entirely* caused by the Mind-Control Project: it's the internal feeling of the Project noticing a situation it can't control (most of them), or the Project alerting you that it's in danger of failing (which is frequent).  Every spike of social anxiety you feel is the Project saying "I'm in danger of failing to get some specific person's approval" and the more self-aware and perceptive you are the more often this will happen.  The Mind-Control Project is *wasting* your valuable cognitive resources-- resources that you critically require for connecting with people-- *on stupid bullshit.*
 
 **The Project is doomed.** You cannot control what other people think of you. You can influence it, kinda, sorta, but not reliably, and the attempt at doing so is driving you insane. The Project promises that if you try hard enough, you can guarantee that people will perceive you as being a Pretty Cool Person.  This is a *lie*.  It has always been a lie.  You have been paying an enormous cost in suffering for a guarantee that was never real, and sometimes, by accident, people liked you anyway.  
 
