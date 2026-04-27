@@ -32,6 +32,8 @@ We are not going to fix the Project; the Project cannot be fixed.  Our goal is t
 ## Before We Begin
 This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that the Mind-Control Project isn't that difficult and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you-- which means that this treatment target is *fragile*.
 
+The theory I am operating from is that social anxiety is the same kind of thing as contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
+
 I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  I would be surprised if I were the only person this worked for. 
 
 I promise you the following:
