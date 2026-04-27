@@ -1,6 +1,6 @@
-# Confidence Engineering
+# Social Anxiety As OCD-Spectrum Phenomenon
 
-## An OCD-Inspired Protocol for Social Anxiety
+## A Protocol for Social Anxiety
 
 ## Part 1: The Mind Control Project
 
@@ -31,6 +31,8 @@ We are not going to fix the Project; the Project cannot be fixed.  Our goal is t
 
 ## Before We Begin
 This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that the Mind-Control Project isn't that difficult and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you-- which means that this treatment target is *fragile*.
+
+I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  I would be surprised if I were the only person this worked for. 
 
 I promise you the following:
 
