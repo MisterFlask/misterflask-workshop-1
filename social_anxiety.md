@@ -2,6 +2,20 @@
 
 ## A Protocol for Social Anxiety
 
+## Before We Begin
+This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that it isn't that difficult to make people like you and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you sometimes, necessarily -- which means that this treatment target is *fragile*.
+
+The theory I am operating from is that social anxiety is the same kind of thing as contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
+
+I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  I would be surprised if I were the only person this worked for. 
+
+I promise you the following:
+
+1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to be free.
+2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
+   
+See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
+
 ## Part 1: The Mind Control Project
 
 You are running a project.
@@ -29,19 +43,7 @@ Also it makes you weird and stilted on dates.
 
 We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect.
 
-## Before We Begin
-This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that the Mind-Control Project isn't that difficult and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you-- which means that this treatment target is *fragile*.
 
-The theory I am operating from is that social anxiety is the same kind of thing as contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
-
-I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  I would be surprised if I were the only person this worked for. 
-
-I promise you the following:
-
-1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to be free.
-2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
-   
-See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
 
 ## Part 2: The Obsessions And The Compulsions
 
