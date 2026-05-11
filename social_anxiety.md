@@ -46,9 +46,7 @@ We're going to call this the Mind Control Project, or just "the Project," becaus
 - Hide that you're doing all these things
 - Maybe even engage with the conversation, *if you can spare the bandwidth*
 
-<img width="635" height="407" alt="image" src="https://github.com/user-attachments/assets/396b6da5-af66-4ed5-b1b9-3ae56f607e2d" />
-
-This _specifically_ is why you find social situations to be exhausting. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. _You_ are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
+This _specifically_ is why you find social situations to be exhausting. Non-anxious people (a minority, I increasingly suspect) are only engaging in the Mind-Control Project (read: "feeling socially anxious") when they're in genuine physical or social danger.  _You_ are running the Project in _most social situations_.
 
 And this has been destroying you.
 
@@ -58,7 +56,11 @@ And this has been destroying you.
 
 Also it makes you weird and stilted on dates.
 
-We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect.
+<img width="641" height="360" alt="image" src="https://github.com/user-attachments/assets/c5e7836d-8326-4d8d-91d7-9e4954de09da" />
+
+We are not going to fix the Project; the Project is actually working entirely as intended.  Our goal is merely to provide you _conscious control_ over when and when not to run it in your life.
+
+And that-- in true OCD-treatment fashion-- starts with _burning it to the fucking ground_, so it can be later reintroduced as a controllable social tool instead of what it is now: a tyrant.
 
 
 ## Part 2: The Obsessions And The Compulsions
@@ -69,7 +71,7 @@ If you have social anxiety, you will see yourself in a great many of these thing
 
 ### Mental Obsessions (or, Root-Level Policies)
 
-These aren't exactly behaviors, as such.  They are sub-goals of "control what everyone thinks of me at all times" that your instrumental mental compulsions will be organized around.  You probably don't think about these, but they think about *you*.  You probably identify with several.
+These aren't exactly behaviors, as such.  They are sub-goals of "control what everyone thinks of me at all times" that your instrumental mental compulsions will be organized around.   You probably identify with several.
 
 They are the mission statements of your particular Mind-Control Project.
 
@@ -145,15 +147,11 @@ Also known as "safety behaviors" in the clinical social anxiety literature.
 
 ### The Relationship Of Physical And Mental Compulsions to The Project
 
-<img width="641" height="360" alt="image" src="https://github.com/user-attachments/assets/c5e7836d-8326-4d8d-91d7-9e4954de09da" />
-
 All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: your internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
 You are a sick and dessicated King Theodin, and the treatment plan is simple: to _stop taking advice from Wormtongue_.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
-
-<img width="279" height="556" alt="image" src="https://github.com/user-attachments/assets/3e083a22-4c20-4ec4-8637-17327822335e" />
 
 The Grand Vizier has precisely one move, which he deploys at every opportunity: he strides into your throne room, bows low, and informs you with tremendous urgency that someone, somewhere, might be forming a negative opinion of you, and that in order to prevent this dire catastrophe you now have to do _some fucking thing_. Social anxiety is neither more nor less than the feeling of the Vizier bursting through the doors seventeen times per hour with a new fucking crisis, all of them which require _YOUR IMMEDIATE ATTENTION, YOUR EXCELLENCY, OR WE SHALL LOSE THE OUTLYING DUCHIES TO THE BARBARIAN HORDES_, while you scramble to figure out how to fix all of these simultaneous crises at once.
 
@@ -165,10 +163,13 @@ Though I will say this isn't a thing where I'm going to ask you to do a bunch of
 
 It should be noted I'm not a professional politician.
 
+### That's terrifying.
+
+During treatment, you will be undershooting normal social calibration.  That's on purpose: you will be doing _less_ perception-management than a "normal" (lol) person would do.  The endpoint is Project deployment that you can choose or not choose to run at any given time.
+
 ---
 
-## Part 2: Contraindications
-<img width="800" height="450" alt="image" src="https://github.com/user-attachments/assets/017ef324-ca06-478a-9171-febd04a94278" />
+## Part 2.5: Contraindications
 
 If you have alexithymia, you're likely going to run into problems with the Trace which may or may not be resolvable.  Autism is highly comorbid with alexithymia; if you're on the spectrum there are reasonable odds you will *also* not be able to perform the Trace.  Let's chat if you want to dig into whether that's actually the case, this part's basically just guesswork on my end.
 
@@ -184,16 +185,18 @@ I should note again that I am not a therapist and this is neither legal nor fina
 
 If that's the case this document will either work for you, or it won't.  I have no specific model of how any of these disorders interact with what is described here.
 
-One nice thing is that I am making a genuine empirical prediction for you: that if you attempt the trace and surrender steps later and are unable to have this make a dent in your anxiety in-the-moment, it might imply you have a different thing or, alternatively, that I'm full of shit. The DSM does not go into a lot of granularity; it's basically either social anxiety or social anxiety (performance) and I suspect real life has more categories than this.  
+One nice thing is that I am making a genuine empirical prediction for you: that if you attempt the trace and surrender steps later and are unable to have this make a dent in your anxiety in-the-moment, it might imply you have a different thing from what I am describing. The DSM does not go into a lot of granularity; it's basically either social anxiety or social anxiety (performance) and I suspect real life has more categories than this.  
 
 That said, I do think that what I'm making here ought to be general for what most people experience as "social anxiety."  We will see.
 
 ### "What about people in genuinely hostile or judgmental social environments?"
 
-I think there are some environments-- not most, but some-- which, fundamentally, require a level of social anxiety in order to operate in them effectively. Academia. Certain high-strung communities.  A useful heuristic is "who is the last person I saw drummed out of this environment and what were they expelled for?"  Also, if you're in physical or economic danger then who am I to tell you to stop being anxious about that. Maybe try CBT.
+I think there are some environments-- not most, but some-- which, fundamentally, require a level of social anxiety in order to operate in them effectively (which is to say: they *do* need you to compulsively model other peoples' opinions for your basic social safety.) Academia. Certain high-strung communities.  Abusive relationships, for sure.  A useful heuristic is "who is the last person I saw drummed out of this environment and what were they expelled for?"  Also, if you're in physical or economic danger then who am I to tell you to stop being anxious about that. Maybe try CBT.
 
 
 ## Part 3: The Trace
+
+<img width="452" height="604" alt="image" src="https://github.com/user-attachments/assets/1111a411-f124-4f77-803f-6d95c2a2ad86" />
 
 It's all very well to have a list of compulsions.  But you're not going to memorize a giant list, and even if you _could_ it isn't anywhere near exhaustive; you need a way to identify compulsive behaviors in real-time.
 
@@ -201,7 +204,7 @@ That skill is the Trace.
 
 ### How It Works
 
-The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you spinning your wheels against a goal that (a) you suspect you're failing but (b) refuse to give up on; in this case, it's a situation where the Project senses that it's goal of universal approval is threatened, which-- being that this goal is impossible-- will be a frequent event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious", "don't be cringe") that the Project has installed in pursuit of its goal of universal approval.
+The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you mentally spinning your wheels against a goal that (a) you suspect you're failing but (b) refuse to give up on; in this case, it's a situation where the Project senses that it's goal of universal approval is threatened, which-- being that this goal is impossible-- will be a frequent event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious", "don't be cringe") that the Project has installed in pursuit of its goal of universal approval.
 
 People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
 
@@ -213,7 +216,7 @@ Anyway: our goal with the Trace is to bring this monologue into your conscious a
 
 You feel a spike of anxiety. Instead of trying to manage the anxiety or figure out what went wrong, you ask: *what is the Project trying to do right now?*
 
-The sequence:
+The sequence is this:
 
 1. Notice the anxiety.
 2. Ask: what specific social outcome is the Project worried about right now?  The anxiety, I remind you, is the felt sense of that specific social outcome being at risk.
@@ -271,6 +274,9 @@ tl; dr: Not belching loudly during a wedding ceremony does not require solving a
 ---
 
 ## Part 4: What To Do Instead
+
+<img width="800" height="800" alt="image" src="https://github.com/user-attachments/assets/26b0a1e3-00f5-4477-b2fc-d728c7fdce09" />
+
 
 Banning the Project creates a void. If you've been letting a psychic parasite drive most of your social behavior for years, taking it away raises the obvious question: "Then what am I supposed to do instead?"  The Project is *crazy-making* but for a lot of people it's literally the only way they know how to connect to other people.
 
@@ -355,9 +361,13 @@ Also: this means asking other people for favors and to suggest activities you pe
 
 *"A most judicious point, my liege."*
 
-The risk of you becoming a social wrecking ball due to dismantling the Mind-Control Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity, and your concern about this happening results from exactly the same dynamic.  Which is to say: possible within the laws of physics, but also I cannot think of literally anyone who has ever done this.
+The risk of you becoming a social wrecking ball due to dismantling the Mind-Control Project is approximately the risk that someone recovering from anorexia will, in doing so, accidentally eat themselves into massive obesity, and your concern about this happening results from exactly the same dynamic.  Which is to say: it's possible, but in my estimation unlikely.  It _is_ quite likely you will make some number of calibration errors; this is unavoidable in a well-lived life.
 
 If these general principles cause you a *specific, external problem* that was *explicitly called out unprompted by another human being* we can revisit this later.  Until such a thing happens, all actions and impulses downstream of the Project are to be considered highly suspect.
+
+### "Are you denying the concept of social skills entirely?"
+
+I see how you got there, but no.  I have written an essay on this topic here that goes into how one builds sports-psychology-style process goals which map onto this framework, which I believe constitute non-Project-infected social skills: https://lifeimprovementschemes.substack.com/p/process-goals-in-social-interaction
 
 ### The Desired Outcome
 
@@ -435,7 +445,7 @@ If you struggle with this, it might actually be instructive to speak to an OCD s
 
 ### "But surely it should take longer than a few seconds to calm down even if you drop any attempt at averting feared outcomes."
 
-Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.  
+Immediate cessation is strongly predicted by the model and is also consistent with my personal experience; that's all I can give you, really.  I will say that cessation is *harder* if you don't attempt some kind of replacement.
 
 The hard part isn't the surrender, I don't think, the hard part is noticing when you've lapsed into *trying to solve a problem.*  Remember: every time you feel social anxiety-- EVERY time-- *try to run the Trace.*  That is basically 90% of the protocol and if you can do it reliably then your game is mostly won.
 
