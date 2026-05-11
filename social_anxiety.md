@@ -491,6 +491,10 @@ You can get back to your 'legitimate social learning' later, after you genuinely
 
 If you want to.
 
+### "Actually, someone called me out and I think I did in fact fuck up in a legitimately important way, such that someone else was made uncomfortable or otherwise harmed."
+
+Ah!  Well, that's different. I discuss the mechanics of running a blameless postmortem of yourself (complete with action item generation) here: https://lifeimprovementschemes.substack.com/p/the-disaster-postmortem-of-yourself .  After you finish creating action items, *there is no more point to ruminating about the interaction.*
+
 ---
 
 ## Part 7:  Where To Begin After Finishing This Document
