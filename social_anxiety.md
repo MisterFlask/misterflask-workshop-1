@@ -1,8 +1,9 @@
 # Abandon Hope: A Social Anxiety Self-Treatment Protocol
-## Or, Social Anxiety Is An OCD-Spectrum Phenomenon
+## What It Would Mean To Take Social Anxiety Seriously As An OCD-Spectrum Phenomenon
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/f725a31d-780b-4724-ae32-52eb5581ef83" />
 
 ## Before We Begin
-This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that it isn't that difficult to make people like you and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you sometimes, necessarily -- which means that this treatment target is *fragile*.
+This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that it isn't that difficult to make people like you and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you sometimes -- which means that this treatment target is *fragile*, and more to the point, the act of trying to persuade yourself that a given person likes you *is a primary compulsion that keeps the obsession alive*.
 
 The theory I am operating from is that social anxiety shares an identical underlying mechanism with contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
 
@@ -14,21 +15,23 @@ I promise you the following:
 2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself deeply stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
    
 ## Part -1: Intellectual Lineage
+<img width="626" height="356" alt="image" src="https://github.com/user-attachments/assets/639a9760-698e-45c8-998d-c39929bb4e75" />
+
 
 This takes heavy inspiration from three main sources:
 
 1. Metacognitive therapy theory and practice.  The canonical text is here: https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ .
 
-2. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety, in particular the conception of anxiety as being the signal that I am engaged in compulsive cognition and need to stop.
+2. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety, in particular the conception of anxiety as being the signal that I am engaged in compulsive cognition and need to stop.  Which has a deeply counterintuitive implication: that intense stress during exposures *is both optional and counterproductive.*
 See also: 
 * https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
 * https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
 * https://drmichaeljgreenberg.com/defining-and-demarcating-compulsion/
 * https://drmichaeljgreenberg.com/rf-erp-order-of-operations/
 
-3. Standard OCD treatment logic around reassurance and engagement with the object of obsession; the core claim of this essay is that the core reason standard social anxiety treatments fail is because they are not adequately forcing engagement with the object of obsession.
+3. Standard OCD treatment logic around reassurance and engagement with the object of obsession; the core claim of this essay is that the core reason standard social anxiety treatments fail is because they are not adequately forcing disengagement from the compulsive mental rituals that constitute socially-anxious behaviors.
 
-## Part 0: The Mind Control Project
+## Part 1: The Mind Control Project
 
 You are running a project.
 
@@ -42,6 +45,8 @@ We're going to call this the Mind Control Project, or just "the Project," becaus
 - Perform damage control if you suspect something you said landed poorly
 - Hide that you're doing all these things
 - Maybe even engage with the conversation, *if you can spare the bandwidth*
+
+<img width="635" height="407" alt="image" src="https://github.com/user-attachments/assets/396b6da5-af66-4ed5-b1b9-3ae56f607e2d" />
 
 This _specifically_ is why you find social situations to be exhausting. Non-anxious people (a minority, I increasingly suspect) are mostly just talking to each other. _You_ are talking to someone while simultaneously running a surveillance and management operation on their perception of you.  
 
@@ -102,7 +107,9 @@ The mental compulsions share a lot with what is traditionally called "Pure-O" OC
   
 ### Behavioral Compulsions
 
-Also known as "safety behaviors" in the clinical social anxiety literature.  You probably do most of these things.
+<img width="640" height="718" alt="image" src="https://github.com/user-attachments/assets/a790828d-5339-4de0-baa8-b9f28ac02633" />
+
+Also known as "safety behaviors" in the clinical social anxiety literature.
 
 - **Script-following.** Saying things you pre-planned rather than things you actually think or feel in the moment.
 
@@ -138,11 +145,15 @@ Also known as "safety behaviors" in the clinical social anxiety literature.  You
 
 ### The Relationship Of Physical And Mental Compulsions to The Project
 
+<img width="641" height="360" alt="image" src="https://github.com/user-attachments/assets/c5e7836d-8326-4d8d-91d7-9e4954de09da" />
+
 All of these share a single common feature: **they are in service of either figuring out or controlling what other people think of you.**  If _any_ physical or cognitive action is downstream of "what did they think of me" or "what will they think of me," then it's the Project: your internal Grand Vizier, who you appointed decades ago to a minor advisory role and who has since-- through daily, incremental, exquisitely reasonable-sounding counsel-- seized de facto control of your entire kingdom. You are technically still the sultan, sure.  But every word out of your mouth was drafted by the Vizier's office, every decision vetted against the Vizier's interests, and _every time you take his advice_ you reinforce his power over you.
 
 You are a sick and dessicated King Theodin, and the treatment plan is simple: to _stop taking advice from Wormtongue_.
 
 ### Wait, I shouldn't do any of these?  That sounds rather inflexible.
+
+<img width="279" height="556" alt="image" src="https://github.com/user-attachments/assets/3e083a22-4c20-4ec4-8637-17327822335e" />
 
 The Grand Vizier has precisely one move, which he deploys at every opportunity: he strides into your throne room, bows low, and informs you with tremendous urgency that someone, somewhere, might be forming a negative opinion of you, and that in order to prevent this dire catastrophe you now have to do _some fucking thing_. Social anxiety is neither more nor less than the feeling of the Vizier bursting through the doors seventeen times per hour with a new fucking crisis, all of them which require _YOUR IMMEDIATE ATTENTION, YOUR EXCELLENCY, OR WE SHALL LOSE THE OUTLYING DUCHIES TO THE BARBARIAN HORDES_, while you scramble to figure out how to fix all of these simultaneous crises at once.
 
@@ -157,6 +168,7 @@ It should be noted I'm not a professional politician.
 ---
 
 ## Part 2: Contraindications
+<img width="800" height="450" alt="image" src="https://github.com/user-attachments/assets/017ef324-ca06-478a-9171-febd04a94278" />
 
 If you have alexithymia, you're likely going to run into problems with the Trace which may or may not be resolvable.  Autism is highly comorbid with alexithymia; if you're on the spectrum there are reasonable odds you will *also* not be able to perform the Trace.  Let's chat if you want to dig into whether that's actually the case, this part's basically just guesswork on my end.
 
@@ -183,7 +195,7 @@ I think there are some environments-- not most, but some-- which, fundamentally,
 
 ## Part 3: The Trace
 
-It's all very well to have a list of compulsions.  But you're not going to memorize a bigass list that also isn't anywhere near exhaustive; you need a way to identify compulsive behaviors in real-time.
+It's all very well to have a list of compulsions.  But you're not going to memorize a giant list, and even if you _could_ it isn't anywhere near exhaustive; you need a way to identify compulsive behaviors in real-time.
 
 That skill is the Trace.
 
