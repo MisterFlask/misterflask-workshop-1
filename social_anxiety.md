@@ -1,22 +1,34 @@
-# Social Anxiety As OCD-Spectrum Phenomenon
-
-## A Protocol for Social Anxiety
+# Abandon Hope: A Social Anxiety Self-Treatment Protocol
+## Or, Social Anxiety Is An OCD-Spectrum Phenomenon
 
 ## Before We Begin
 This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that it isn't that difficult to make people like you and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you sometimes, necessarily -- which means that this treatment target is *fragile*.
 
-The theory I am operating from is that social anxiety is the same kind of thing as contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
+The theory I am operating from is that social anxiety shares an identical underlying mechanism with contamination OCD: an obsessive orientation to an unverifiable goal. It generates compulsions, which are counterproductive and unpleasant and keep the obsession alive. The treatment target is the whole suite of cognitive and behavioral compulsions, for which we implement replacement behaviors. 
 
-I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  I would be surprised if I were the only person this worked for. 
+I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  It is unlikely to work for everyone; but I would also be surprised if I were the only person this worked for. 
 
 I promise you the following:
 
-1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this, at which point i invite you to be free.
-2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
+1.  If I'm incorrect for your case, it should take no more than ~four hours of your time to confirm this over the span of perhaps a week.  After which, be free.
+2.  During this you are not intended to be stressed for more than, like, a minute at a time.  If you find yourself deeply stressed out for more than >5 minutes at once then my protocol has *failed.* Be told.
    
-See here for disclaimers, contraindications and throat-clearing: https://github.com/MisterFlask/misterflask-workshop-1/blob/master/social-anxiety-introduction.md
+## Part -1: Intellectual Lineage
 
-## Part 1: The Mind Control Project
+This takes heavy inspiration from three main sources:
+
+1. Metacognitive therapy theory and practice.  The canonical text is here: https://www.amazon.com/Metacognitive-Therapy-Anxiety-Depression-Adrian/dp/1609184963/ .
+
+2. [Dr Michael Greenberg](https://drmichaeljgreenberg.com/articles/) writes about OCD-spectrum disorders and their treatment using a mildly novel (it should be noted, not clinically validated) protocol called "Rumination-Focused ERP".  It aligns closely with my own experience in dealing with social anxiety, in particular the conception of anxiety as being the signal that I am engaged in compulsive cognition and need to stop.
+See also: 
+* https://drmichaeljgreenberg.com/rumination-focused-erp-turning-exposure-on-its-head/
+* https://drmichaeljgreenberg.com/targets-and-rationales-for-rf-erp-exposures/
+* https://drmichaeljgreenberg.com/defining-and-demarcating-compulsion/
+* https://drmichaeljgreenberg.com/rf-erp-order-of-operations/
+
+3. Standard OCD treatment logic around reassurance and engagement with the object of obsession; the core claim of this essay is that the core reason standard social anxiety treatments fail is because they are not adequately forcing engagement with the object of obsession.
+
+## Part 0: The Mind Control Project
 
 You are running a project.
 
@@ -42,7 +54,6 @@ And this has been destroying you.
 Also it makes you weird and stilted on dates.
 
 We are not going to fix the Project; the Project cannot be fixed.  Our goal is to burn it down, eliminate its influence over your cognition and behavior, and salt the ashes that it might never regrow.  Social anxiety should resolve as a side-effect.
-
 
 
 ## Part 2: The Obsessions And The Compulsions
@@ -73,10 +84,14 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 
 ### Mental Compulsions (or, Instrumental Mental Behaviors)
 
-You probably do most of these things.
+The mental compulsions share a lot with what is traditionally called "Pure-O" OCD.
 
 - **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").
-   - You know what that is?  *Bait*.  **Both of these moves are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
+   - You know what that is?  *Bait*.
+     
+<img width="636" height="264" alt="image" src="https://github.com/user-attachments/assets/a697913e-599e-413d-a74e-5c6c197e5f79" />
+
+**Both of these moves are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
 - **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off.  (OCD literature refers to this as "checking behavior.")  The only possible reason to do this is in order to figure out how the social situation went which means these replays are also banned cognition.
 
@@ -140,6 +155,31 @@ Though I will say this isn't a thing where I'm going to ask you to do a bunch of
 It should be noted I'm not a professional politician.
 
 ---
+
+## Part 2: Contraindications
+
+If you have alexithymia, you're likely going to run into problems with the Trace which may or may not be resolvable.  Autism is highly comorbid with alexithymia; if you're on the spectrum there are reasonable odds you will *also* not be able to perform the Trace.  Let's chat if you want to dig into whether that's actually the case, this part's basically just guesswork on my end.
+
+If you are someone that people keep having Serious Conversations with about Toning It Down because You're Making People Uncomfortable this isn't for you.
+
+If your anxiety is downstream of genuine severe skills deficits (you'll know this because *people will have told you explicitly*), this also isn't for you; this is for after you've got basic can-hold-a-job social skills lined up.
+
+More generally: this document was made by attempting to generalize my own experiences with OCD-inspired social anxiety Exposure and Response Prevention (ERP) therapy into a replicable document that could have been followed by a past version of myself. I was basically a pretty nice and people-pleasy but moderate-severity socially anxious introspective neurotypical nerd. To the degree you match this it seems to me plausible you will do well; the more different you are the more likely it is you will encounter issues I did not. 
+
+I should note again that I am not a therapist and this is neither legal nor financial advice.
+
+### "What if you're someone who's social fears are trauma-based or have comorbid depression or who have schizophrenia?"
+
+If that's the case this document will either work for you, or it won't.  I have no specific model of how any of these disorders interact with what is described here.
+
+One nice thing is that I am making a genuine empirical prediction for you: that if you attempt the trace and surrender steps later and are unable to have this make a dent in your anxiety in-the-moment, it might imply you have a different thing or, alternatively, that I'm full of shit. The DSM does not go into a lot of granularity; it's basically either social anxiety or social anxiety (performance) and I suspect real life has more categories than this.  
+
+That said, I do think that what I'm making here ought to be general for what most people experience as "social anxiety."  We will see.
+
+### "What about people in genuinely hostile or judgmental social environments?"
+
+I think there are some environments-- not most, but some-- which, fundamentally, require a level of social anxiety in order to operate in them effectively. Academia. Certain high-strung communities.  A useful heuristic is "who is the last person I saw drummed out of this environment and what were they expelled for?"  Also, if you're in physical or economic danger then who am I to tell you to stop being anxious about that. Maybe try CBT.
+
 
 ## Part 3: The Trace
 
