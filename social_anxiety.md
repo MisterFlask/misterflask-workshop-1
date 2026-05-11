@@ -475,7 +475,7 @@ It's like ruminating about the temperature in Iceland.  Is it 45 degrees in Reyk
 - **Are there people I'd like to connect to later?**
 - **Did I enjoy that?**"  I mean, it's worth asking.
 
-### Any Social Outcome Is As Good As Any Other Social Outcome
+### There Is No Awkwardness
 
 If you notice you came off poorly during the review — if the non-compulsion behaviors meant you said something weird or did something awkward — this is expected and is not a problem. Coming off poorly sometimes is a direct and predicted consequence of deprioritizing the Project (also, of being alive). You knew this going in. It is the price of admission. It is not a thing to be solved, and accordingly, trying to solve it is forbidden cognition.
 
@@ -491,7 +491,7 @@ You can get back to your 'legitimate social learning' later, after you genuinely
 
 If you want to.
 
-### "Actually, someone called me out and I think I did in fact fuck up in a legitimately important way, such that someone else was made uncomfortable or otherwise harmed."
+### "Actually, someone called me out and I think I did in fact fuck up in a legitimately important way, such that someone else was made deeply uncomfortable or otherwise harmed."
 
 Ah!  Well, that's different. I discuss the mechanics of running a blameless postmortem of yourself (complete with action item generation) here: https://lifeimprovementschemes.substack.com/p/the-disaster-postmortem-of-yourself .  After you finish creating action items, *there is no more point to ruminating about the interaction.*
 
@@ -536,7 +536,7 @@ What I am asking you to do is notice and peel apart these concrete demands made 
 
 ### "Wait, why is that information of negative value?"
 
-Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time the Wormtongue says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
+Because every time the Project successfully hijacks your cognition to perform intelligence-gathering on its behalf, you're implicitly accepting the false premise that the answer *matters.*  Indeed, every time Wormtongue says "DANCE, MONKEY" via an anxiety spike and you dance-- whether explicitly via a behavioral demand to make others think some specific thing about you, or implicitly via performing an utterly pointless information-gathering task about others' possible perceptions-- the Mind-Control project gets license to become more demanding and insane and self-contradictory in its asks.  
 
 The contradictory demands at the dinner table didn't emerge by happenstance.  They are the logical and predictable endpoint of a runaway obsession that has been fed every single time it's demanded something from you, which is: *bloated to madness.*
 
