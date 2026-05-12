@@ -208,9 +208,7 @@ The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feelin
 
 People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
 
-Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Since discovering this I have never once observed in myself an exception to this rule.  N=1 introspective evidence, yeah yeah.
-
-Anyway: our goal with the Trace is to bring this monologue into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
+Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Our goal with the Trace is to bring this message into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
 ### Forward: From the Anxiety
 
@@ -554,7 +552,7 @@ I think the exposure difficulty will be in the following order:
 * Low-Stakes Passive Exposure.  You continue not doing anything you feel anxious about and instead run the Trace-And-Surrender on *doing nothing and daring someone to judge you*.
 * Low-Stakes Active Exposure.  Actually *doing stuff* that is not Project-approved and which is instead derived from the replacement principles.
   
-... and then escalate up in terms of stakes using the same pattern of trace, then passive, then active exposure.  I will say there's probably not much point in moving up to medium or high stakes if you're unable to perform both active *and* passive resistance in low-stakes scenarios.
+... and then escalate up in terms of stakes using the same pattern of trace, then passive, then active exposure.  I will say there's probably not much point in moving up to medium or high stakes if you're unable to perform both active *and* passive resistance in low-stakes scenarios.  (Truthfully, I'm not necessarily sure if low-stakes passive *is* particularly easier than low-stakes active, since active exposures give you an explicit attention sink-- the principles-- which prevent you from engaging in FORBIDDEN COGNITION.  Anyway.)
 
 In the dinner party scenario, low-stakes passive exposure would be:
 
@@ -568,11 +566,10 @@ When you've gotten calm and relaxed with no racing thoughts (meaning you have ei
 
 Active exposures are, I think, harder because they really need you to engage in the replacement behaviors; the Project's demand of "NO DO NOT DO THIS THING" needs to be met with the set of principles you're precommitting to maintaining.  So at every moment you should be asking yourself:
 
-1. Is there a true, relevant thing I could say that might expose me to some kind of social judgment?  (Remember, the judgment is considered a bonus.)
-2.  Is there a true, kind thing that is relevant which I could say or do here?
-3.  Is there a selfish impulse I could indulge in this moment in either my speech or actions?
+1. Is there a true, relevant, not-unkind thing I could say, perhaps one that might expose me to some kind of social judgment?  (Remember, the judgment is considered a bonus.)
+2.  Is there a selfish impulse I could indulge in this moment in either my speech or actions?
 
-("Oh, but it takes so long to do that!"  And why is that a problem?  You're allowed to be silent for a few seconds, and in fact, nobody can stop you.)
+("Oh, but it takes so long to think through this!"  And why is that a problem?  You're allowed to be silent for a few seconds, and in fact, nobody can stop you.)
 
 Then you perform the Trace-And-Surrender on the complaints the Mind-Control Project will *inevitably* raise about any of these things.  We are now pitting the replacement behaviors of your Ideal Self in a cage match with the Mind-Control Project and, frankly, if your Mind-Control Project has been in charge of your actions for a long time then even if the Project still wins 80% of the time that's still a meta-victory because 20% of the time it *didn't win*.
 
@@ -660,8 +657,11 @@ These are not scripts to memorize. They are examples of someone saying precisely
 **To someone new who you want to get to know better**
 > Wanna grab dinner over the next few days?"
 
-**To a romantic interest, while on a first date:**
-> "I want to cuddle with you on that park bench."
+**To a romantic interest:**
+> "I want to take you on a date."
+
+**To a romantic interest, on a date:**
+> "I want to make out with you on that park bench."
 
 (Claude hates this one, mostly because it's really hard to talk about escalating on a date without either sounding like someone being performatively blunt or deferring to lots of things like "read the room" which intrinsically will involve Project-colonized cognitive behaviors.  I think the first one of these is preferable; having to say "no thanks" will not cause your date to spontaneously burst into flames.  Anyway, empirically I find it works more often than it has any right to.)
 
@@ -669,9 +669,7 @@ The crucial thing about all of these is that they do not have predictable result
 
 ### I don't like the romantic one.  What if the ask makes her uncomfortable?
 
-This is a misconception common in the subcultures I interact with (mostly: progressives and anxious tech nerds.)
-
-The problem with trying to do romantic approaches indirectly is that indirect asks leave the woman (excuse the heteronormative framing) *no way to explicitly disengage.*  If you talk around your desires then the girl probably knows exactly what's happening, but "I'm not interested, thanks" sounds incredibly presumptuous and rude if the other person hasn't made an ask yet.
+Okay.  So, the problem with trying to do romantic approaches indirectly is that indirect asks leave the woman (excuse the heteronormative framing) *no way to explicitly disengage.*  If you talk around your desires then the girl probably knows exactly what's happening, but "I'm not interested, thanks" sounds incredibly presumptuous and rude if the other person hasn't made an ask yet.
 
 Let people say "no" to things.
 
@@ -685,11 +683,17 @@ I suspect some cultural mileaus have accidentally installed "never be creepy" as
 
 You can see what happened: "Don't be creepy" becomes "constantly model whether you might be perceived as creepy," which becomes "avoid all behavior that could theoretically be interpreted as creepy by anyone," which becomes "avoid anyone ever inferring you are interested romantically in them because you can't guarantee this won't be perceived as creepy," which becomes "avoid anyone you might conceivably be attracted to."
 
-Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*  Remember, kids, morality *never requires you to read minds*.
+Anyway.  Your job is to be honest, kind, and a little bit selfish.  You job is NOT to manage other peoples' hidden emotional states because doing so will result in you suffering from an anxiety disorder.  *And you'll fail anyway.*  Morality never requires you to read minds.
+
+If you did in fact make someone clearly uncomfortable via a romantic approach, I suggest running through a postmortem process as per this essay: https://lifeimprovementschemes.substack.com/p/the-disaster-postmortem-of-yourself .  Establish for yourself whatever the relevant action items are, then wash your hands of the incident and think of it no more.
 
 ### What if I could just, like, read the room to assess interest before making a move?
 
-Oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  [*What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
+First, perhaps counterintuitively: people with social anxiety lack any capacity to meaningfully read rooms.  If your fire alarm is going off all hours of the day, an underappreciated side effect of this is that *the alarm will longer can tell you about whether there is a fire.*  The way you gain discrimination is, unfortunately, by doing things and making mistakes, and if you are to do this those mistakes must be *thinkable*; there has never been a way around this.
+
+Second: oh, sweet summer child.  Other people are running their *own* mind-control projects.  Do you really think they'll let on that easily as to whether they're interested?  [*What if they make you uncomfortable?*](https://lifeimprovementschemes.substack.com/p/the-social-calculation-problem)
+
+That means the goal in making a move is to give the other person easy ability to unambiguously accept or decline, independent of your judgement regarding the likelihood of either outcome.  (I will say this often means making the romantic bids _outside_ of group conversations; people feel much more reluctant to explicitly reject bids made in group contexts.)
 
 ---
 
@@ -705,9 +709,9 @@ It's not that my baseline anxiety was gradually going down in novel social situa
 
 I keep noticing myself hesitate before I tell acquiantances details about my life that I haven't pre-vetted for external consumption.
 
-**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well. I don't recall any interactions recently that went notably poorly, but probably they exist; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward moments memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *overwhelmingly* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
+**End state:** I can recognize a Project-derived impulse when it arises, trace it within seconds, surrender the perception it's trying to manage, and feel the anxiety drop. I have a repertoire of honest, kind, and prosocially-selfish behaviors that are not Project-colonized. Most interactions go well.  I recall very few interactions that went notably poorly in the recent past; this is almost certainly not a function of me not ever being awkward but more that the Project is the only thing that makes awkward moments memorable in the first place, and with that decommissioned there's not much reason to keep awkward moments in long-term memory.  Dates go *overwhelmingly* better now.  I am now, as a factual matter, probably noticeably bolder than most people while having started noticeably shyer; I suspect this protocol systematically overshoots "normal" which (if it ends up being generalizable) is sorta nifty.
 
-I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels urgent or concerning. I would no longer suggest that I "have social anxiety" in any meaningful sense.
+I still feel the pull of the Project a few times a day but it's more like a known-busted Check Engine light than anything that feels urgent or concerning. I would no longer suggest that I "have social anxiety" in any meaningful sense.  On occasion I do decide the running the Project is *actually the correct move*, though generally not. 
 
 I'd say it was about 6-9 months between starting the protocol and-- well, not finishing it, because it's not the kind of thing you finish.  It's kind of a permanent social operating system.  But 6-9 months to the end state, anyway.
 
@@ -722,6 +726,8 @@ Good luck.  Send bug reports.
 ## Part 12: Medication...?
 
 I'll be real with you: I dunno, I'm not a doctor. [Do Your Own Research.](https://slatestarcodex.com/2015/07/13/things-that-sometimes-work-if-you-have-anxiety/) 
+
+That said, I quite like anxiolytics for this; I think they make the Trace and Surrender much easier to perform in practice.
 
 ---
 
@@ -776,7 +782,7 @@ Safety behaviors = compulsion.  Core fear = obsession.  Post-event rumination = 
 
 Basically the entire gap between my own version of "exposure therapy" and the Clark and Wells version is in the answer to this question: *how much of the Project survives after you've banned the safety behaviors a typical therapist would identify?* 
 
-And I think the answer is "most of it." 
+And I think the answer is "most of it."
 
 ### "What role do behavioral experiments play here?"
 
@@ -894,7 +900,7 @@ If you say "we think the problem is impression management" you then have to teas
 Even after you've isolated (2) as the problem: telling patients "stop trying to make people like you" is a *much* harder therapeutic sell than "let's examine whether your fears are realistic." The first requires the patient to give up something they believe is keeping them safe. The second lets them keep doing it while trying to make them feel better about the situation. One is radical, the other is conservative. Clinical psychology, for understandable institutional reasons, tends toward conservative interventions.  Plus, there's a classic trolley problem issue: if the patient doesn't get better, well, that's unfortunate but kinda the way these things go.  If the patient *destroys their social life by doing what the therapist told them to do* this is now the therapist's problem.
 
 ## Subcultural Normalization Of The Mind-Control Project
-The things required to dismantle the Mind-Control Project *feel risky* to ask someone to do: "stop monitoring how people are responding to you" cuts strongly against particular cultural subcurrents in ways that I suspect strongly that people in the professional-managerial class (to which therapists belong) would be uncomfortable with.  "Reading the room" and "consider how this might look to other people" is culturally considered an important professional skill by most therapists, and what this protocol is trying to do is *make the patient stop reading the room because their obsession with reading the room is slowly killing them*.  
+The things required to dismantle the Mind-Control Project *feel risky* to ask someone to do: "stop monitoring how people are responding to you" cuts strongly against particular cultural subcurrents in ways that people in the professional-managerial class (to which therapists belong) would be uncomfortable with.  "Reading the room" and "consider how this might look to other people" is culturally considered an important professional skill by most therapists, and what this protocol is trying to do is *make the patient stop reading the room because their obsession with reading the room is slowly killing them*.  
 
 This part shouldn't be controversial; I mean, for reals, "read the room" was a pseudo-moral admonishment that was incredibly common even a couple years ago on social media.
 
@@ -1003,15 +1009,15 @@ Arachnophobia, fear of heights, maybe agoraphobia: these aren't intolerance of u
 
 A prediction that falls out of the model here is that, if you assume we treat phobias correctly (via habituation-based exposure) and treat OCD-spectrum disorders correctly (via what we currently do), then you should expect we see extremely poor remission rates on disorders were classed as "anxiety" but are actually "intolerance of uncertainty".  Which are: social anxiety, generalized anxiety disorder, and health anxiety.  And the reason we see poor remission for these is they're OCD-spectrum *and we never noticed so we don't use the OCD toolkit*.
 
-Anyway, my own assessment is that the DSM needs a new categorization:  concrete phobias.  Social anxiety, health anxiety, and generalized anxiety disorder should be moved into the OCD category.
+Anyway, my own assessment is that the DSM needs a new categorization:  concrete phobias, into which we place fear of spiders and heights and similar.  Social anxiety, health anxiety, and generalized anxiety disorder should be moved into the OCD category.
 
 # Appendix E: The Meta-Document, God Help You
 
 Here's my theory of change with this protocol:
 
-1. The most important therapeutic step I'm trying to accomplish is compulsion externalization.  The framing of the Project as a tick feeding off of you is 100% intentionally gross.  And the naming of the Mind-Control Project itself is meant to be a little bit silly and grandiose and perhaps a bit villainous: like, yes, *obviously* that's not something you should be doing.  Which is the most crucial step beyond naming it: eroding its felt authority.
+1. The most important therapeutic step I'm trying to accomplish is compulsion externalization.  The framing of the Project as a vizier usurping your kingdom is quite hostile.  And the naming of the Mind-Control Project itself is meant to be a little bit silly and grandiose and perhaps a bit villainous: like, yes, *obviously* that's not something you should be doing.  Which is the most crucial step beyond naming it: eroding its felt authority.
    
-2. Half of my theory of change is that even if you don't prioritize *literally any behavior change whatsoever*, if you get into the habit of running the Trace and *noticing the demands being made of you by the Project* then every so often you'll notice they're stupid.  I am basically trying to write the positive equivalent of an infohazard: once you see it, you can't unsee it, and your mind (if I did it right!) will start the process of disentangling from the Project immediately.  Which is why I put a shitload of effort into the examples, which were basically all personally-sourced: if you can see your own personal Mind-Control Project while you're going to the restroom to avoid observation, then half my game is won.
+2. Half of my theory of change is that even if you don't prioritize *literally any behavior change whatsoever*, if you get into the habit of running the Trace and *noticing the demands being made of you by the Project* then every so often you'll notice they're stupid and pointless.  I am basically trying to write the positive equivalent of an infohazard: once you see it, you can't unsee it, and your mind (if I did it right!) will start the process of disentangling from the Project immediately.  Which is why I put a shitload of effort into the examples, which were basically all personally-sourced: if you can see your own personal Grand Vizier at work while you're going to the restroom to avoid observation, then half my game is won.
 
 I think most of the reason that I was able to do this *after* Lynn's workshop but not before is that Lynn gave me, first, a proof of concept that pausing the Project would not destroy me; and second, *knowledge that the Project existed and could be paused*.  I think the second is more important, which is great since I cannot impart the first in any sort of firsthand way.
    
