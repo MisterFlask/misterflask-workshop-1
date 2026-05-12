@@ -5,7 +5,7 @@
 ## Before We Begin
 This document is a combined theory and treatment protocol for social anxiety which has a radically different theory of change from mainstream social anxiety treatments, which I discuss further in the FAQs.  Specifically: CBT mostly tries to persuade you that it isn't that difficult to make people like you and you're probably doing better than you think.  The core problem with this is that sometimes it is a *lie*-- people *do* judge you sometimes -- which means that this treatment target is *fragile*, and more to the point, the act of trying to persuade yourself that a given person likes you *is a primary compulsion that keeps the obsession alive*.
 
-The theory I am operating from is that social anxiety shares an identical underlying mechanism with contamination OCD: an obsessive orientation to an unverifiable goal, where here the obsession is "achieving control over other peoples' internal states". This generates compulsions, some but not all of which have been recorded as "safety behaviors" in the therapeutic literature.  Our treatment target is the whole suite of cognitive and behavioral compulsions resulting from this obsession, for which we implement replacement behaviors. 
+I'm working from the theory that social anxiety shares an identical underlying mechanism with contamination OCD: an obsessive orientation to an unverifiable goal, where here the obsession is "achieving control over other peoples' internal states". This generates compulsions, some but not all of which have been recorded as "safety behaviors" in the therapeutic literature.  Our treatment target is the whole suite of cognitive and behavioral compulsions resulting from this obsession, for which we implement replacement behaviors.  (This isn't actually that spicy of a claim: intolerance of uncertainty is known to be a correlate of both social anxiety *and* OCD-spectrum disorders.  However, to my knowledge nobody has ever actually designed a social anxiety protocol that takes this idea 100% seriously and follows it to its natural conclusions; this is my attempt at doing so.)
 
 I used a rough version of this on myself to to resolve my general social anxiety about 2 years ago, and then did a bunch of literature research to turn it into a general theory of what social anxiety is and how it should be treated.  It is unlikely to work for everyone; but I would also be surprised if I were the only person this worked for. 
 
@@ -91,7 +91,7 @@ And now, a bit afield of this doc's actual purpose but just for funsies:
 
 ### Mental Compulsions (or, Instrumental Mental Behaviors)
 
-The mental compulsions share a lot with what is traditionally called "Pure-O" OCD.
+The mental compulsions share a lot with what is traditionally called "Pure-O" OCD.  The performance of these compulsions is, itself, what the experience of social anxiety consists of. 
 
 - **Figuring out how a social situation went or is going.** When the thought "they think I looked stupid" shows up, either agreeing with it ("yeah, I definitely looked stupid") OR arguing against it ("no, actually, I was fine, because...").
    - You know what that is?  *Bait*.
@@ -100,18 +100,19 @@ The mental compulsions share a lot with what is traditionally called "Pure-O" OC
 
 **Both of these moves are the Mind-Control Project.**  The thought should be neither agreed with nor disagreed with, because any form of engagement feeds the Project by reinforcing the critical importance of controlling other peoples' perceptions of you.  Again: bog-standard OCD ritual logic.  Do not engage.  "Did I look stupid" *is not a question that deserves an answer and, actually, never has been.*
 
+- **Scheming About How To Ensure A Situation Goes Well, Or About How To Repair A Situation.**  Trying to figure out how to come off as cool and nonchalant while you're on a date; trying to ensure you come off as cool and fun to be around with a new group of people.
+  
 - **Rumination after social events.** After a social interaction, replaying what happened to figure out how you came off.  (OCD literature refers to this as "checking behavior.")  The only possible reason to do this is in order to figure out how the social situation went which means these replays are also banned cognition.
 
 - **Mentally preparing for minor conversations.**
 
 - **Self-Loathing**: Basically all downstream behaviors from self-loathing (eg self-deprecation) are just ways one might go about preventing others from lashing out at you for perceived wrongdoing. This comes from the subconscious but correct logic that people feel more sympathy for the sorrowful, repentant sinner than for the gleefully unrepentant sinner.  For that reason I think self-loathing is actually a mental compulsion (structurally similar to rumination) which is subconsciously oriented at disapproval avoidance.
    - That means *any* attempts to figure out whether you are in some abstract way worthy of self-loathing are _also_ compulsions, ultimately in service of the Project, that require banning; you are thus forbidden from trying to come to any conclusion about your worth as a person. Sorry, I don't make the rules.
+ 
   
 ### Behavioral Compulsions
 
-<img width="640" height="718" alt="image" src="https://github.com/user-attachments/assets/a790828d-5339-4de0-baa8-b9f28ac02633" />
-
-Also known as "safety behaviors" in the clinical social anxiety literature.
+Also known as "safety behaviors" in the clinical social anxiety literature; they are exhaust fumes emitted by the cognitive compulsions.
 
 - **Script-following.** Saying things you pre-planned rather than things you actually think or feel in the moment.
 
@@ -159,13 +160,13 @@ Most people sort of take for granted that, sure, obviously you can't just *ignor
 
 This document is a lengthy explainer on *why this is not true* and *how to stop trying to fix them*, because telling people "just stop doing all the social anxiety things" has a poor track record as a therapeutic protocol. 
 
-Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later which rhyme with "let the duchies _burn to the fucking ground_ while committing to doing nothing whatsoever to prevent this."
+Though I will say this isn't a thing where I'm going to ask you to do a bunch of scary aversive shit; instead, I'm going to have you go up to the edges of scary aversive shit and only actually engage when anxiety and effort are both at zero via mechanisms that I'll get into later which rhyme with "let the duchies _burn to the fucking ground_ while committing to doing nothing whatsoever to prevent this."  You are free to mourn the duchies; you are free to hope that some of them are spared from the carnage.  The thing you are banned from is *acting in service of these priorities*.
 
 It should be noted I'm not a professional politician.
 
 ### That's terrifying.
 
-During treatment, you will be undershooting normal social calibration.  That's on purpose: you will be doing _less_ perception-management than a "normal" (lol) person would do.  The endpoint is Project deployment that you can choose or not choose to run at any given time.
+At the start of treatment, you will be aiming to undershoot normal social calibration.  That's on purpose: you will be doing _less_ perception-management than a "normal" (lol) person would do; this is similar to the asks made of contamination OCD patients at the start of treatment.  The endpoint is Project deployment that you can choose or not choose to run at any given time.
 
 ---
 
@@ -173,9 +174,11 @@ During treatment, you will be undershooting normal social calibration.  That's o
 
 If you have alexithymia, you're likely going to run into problems with the Trace which may or may not be resolvable.  Autism is highly comorbid with alexithymia; if you're on the spectrum there are reasonable odds you will *also* not be able to perform the Trace.  Let's chat if you want to dig into whether that's actually the case, this part's basically just guesswork on my end.
 
-If you are someone that people keep having Serious Conversations with about Toning It Down because You're Making People Uncomfortable this isn't for you.
+If you are someone that people keep having Serious Conversations with about Toning It Down because You're Making People Uncomfortable this isn't for you; basically I believe there is a sliding scale of social disinhibition where one end is "terrified doormat" and the other is "social wrecking ball" and what this protocol is designed to do is move you further away from the "terrified doormat" pole into what is better social functioning.  Here is a visual aid:
 
-If your anxiety is downstream of genuine severe skills deficits (you'll know this because *people will have told you explicitly*), this also isn't for you; this is for after you've got basic can-hold-a-job social skills lined up.
+<img width="829" height="442" alt="image" src="https://github.com/user-attachments/assets/3e7e7819-c4cf-4609-aaca-58c2b670a187" />
+
+(I suspect it is actually quite hard to accidentally wander into "social wrecking ball" by accident; which is not to be confused with small social calibration errors, which are not really avoidable if you're going to lead a life worth living.)
 
 More generally: this document was made by attempting to generalize my own experiences with OCD-inspired social anxiety Exposure and Response Prevention (ERP) therapy into a replicable document that could have been followed by a past version of myself. I was basically a pretty nice and people-pleasy but moderate-severity socially anxious introspective neurotypical nerd. To the degree you match this it seems to me plausible you will do well; the more different you are the more likely it is you will encounter issues I did not. 
 
@@ -191,8 +194,7 @@ That said, I do think that what I'm making here ought to be general for what mos
 
 ### "What about people in genuinely hostile or judgmental social environments?"
 
-I think there are some environments-- not most, but some-- which, fundamentally, require a level of social anxiety in order to operate in them effectively (which is to say: they *do* need you to compulsively model other peoples' opinions for your basic social safety.) Academia. Certain high-strung communities.  Abusive relationships, for sure.  A useful heuristic is "who is the last person I saw drummed out of this environment and what were they expelled for?"  Also, if you're in physical or economic danger then who am I to tell you to stop being anxious about that. Maybe try CBT.
-
+I think there are some environments-- not most, but some-- which, fundamentally, require a level of social anxiety in order to operate in them effectively (which is to say: they *do* need you to compulsively model other peoples' opinions for your basic social safety.) Academia. Certain high-strung communities.  Abusive relationships, for sure.  A useful heuristic is "who is the last person I saw drummed out of this environment and what were they expelled for?"  Also, if you're in physical or economic danger then who am I to tell you to stop being anxious about that.
 
 ## Part 3: The Trace
 
@@ -206,9 +208,11 @@ That skill is the Trace.
 
 The Mind-Control Project generates anxiety as a byproduct. Anxiety is the feeling of you mentally spinning your wheels against a goal that (a) you suspect you're failing but (b) refuse to give up on; in this case, it's a situation where the Project senses that it's goal of universal approval is threatened, which-- being that this goal is impossible-- will be a frequent event. That means **every spike of social anxiety you feel is downstream of a specific potential or actual failure the Project is flagging.**  Commonly, the failure will actually be of a *standing policy objective* ("never look stupid," "always seem relaxed," "don't let anyone see you're anxious", "don't be cringe") that the Project has installed in pursuit of its goal of universal approval.
 
-People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven.  
+People with social anxiety tend to view their anxiety as a somatic thing accompanying social situations, a fog of emotion and unpleasant bodily sensations that make it harder to think and act appropriately.  They perceive their simultaneous internal monologue of frantic strategizing and modeling-what-to-say and searching-for-the-right-response as a totally separate thing which happens to co-occur.  The Trace only works because this is *false*; the fog of emotion is the *felt sense* of that running internal monologue, which is *always* effortful and purpose-driven. 
 
-Which means your anxiety is always legible: it contains a message of urgently-needed action that is easily decoded because you're the one writing it.  Our goal with the Trace is to bring this message into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
+Which means your anxiety is always legible: it contains a command for you to perform urgently-needed action that is easily decoded because _you're the one writing it_.  I think people believe otherwise only because they are unfamiliar with introspecting on the fog's content and internal logic, and instead skip directly to "obedience".
+
+Our goal with the Trace is to bring this message into your conscious awareness as a thing that itself requires evaluation.  It works in two directions.
 
 ### Forward: From the Anxiety
 
@@ -256,7 +260,7 @@ Consider: Safety behaviors (stereotyped patterns of behavior that socially anxio
 
 ## I really think my anxiety might be a contentless fog though
 
-It would be weird if this only happened in social anxiety, wouldn't it? Like: if you see a bear in the woods you're not like "oh no a contentless fog of anxiety" you're like "oh fuck I might get mauled to death by a fucking bear."
+It would be weird if this only happened in social anxiety, wouldn't it? Like: if you've gotten lost while hiking around in Bear Country you're not like "oh no a contentless fog of anxiety" you're like "oh fuck I might get mauled to death by a fucking bear."
 
 That said!  Social judgment is diffuse and probabilistic and I suspect this does mean there is a higher introspective bear-ier to entry here (nailed it).
 
@@ -268,7 +272,11 @@ The reason you feel anxiety isn't *just* because perfect modeling of other peopl
 
 When you skip the party or decline the presentation, you feel relief (you no longer have to solve the impossible problem of guaranteeing an outcome to an intrinsically-uncontrollable situation) but also feel depressed or ashamed (because you've declined the thing you actually want to do in deference to an impulse you're pretty sure is unhealthy but aren't sure how to oppose.)
 
-tl; dr: Not belching loudly during a wedding ceremony does not require solving an impossible constraints satisfaction problem.  It just requires not being an asshole. 
+Frequently (more on this later) the anxiety will be because several of your policies conflict in what they want you to do.  "Speak up, otherwise people will think you're weird" plus "don't say anything stupid," for instance, will often generate anxiety because the solution space of speech acts acceptable to both might be zero, and the anxiety is the felt urgency of trying to find a solution to an impossible-feeling problem.  This implies you'll frequently, on examining your cloud of anxiety, that there are *many different Policies firing at once.*
+
+Ordinary social calibration _doesn't_ generate anxiety because there's nothing in you actively competing against it.  "Don't belch during the wedding" does not compete with aspirational _or_ safety-seeking goals, and thus it does not require solving an impossible constraints satisfaction problem.  It just requires not being an asshole.
+ 
+
 ---
 
 ## Part 4: What To Do Instead
