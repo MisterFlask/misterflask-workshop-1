@@ -1,0 +1,1666 @@
+{
+ "lines": [
+  {
+   "text": "Rattatat rattling, racketing, roaring\u2014attend to the specs of the HELLRAIL!",
+   "stanza": 0,
+   "start": 971,
+   "end": 1088,
+   "words": [
+    {
+     "w": "Rattatat",
+     "f": 971
+    },
+    {
+     "w": "rattling,",
+     "f": 971
+    },
+    {
+     "w": "racketing,",
+     "f": 980
+    },
+    {
+     "w": "roaring",
+     "f": 999
+    },
+    {
+     "w": "attend",
+     "f": 1020
+    },
+    {
+     "w": "to",
+     "f": 1028
+    },
+    {
+     "w": "the",
+     "f": 1038
+    },
+    {
+     "w": "specs",
+     "f": 1042
+    },
+    {
+     "w": "of",
+     "f": 1052
+    },
+    {
+     "w": "the",
+     "f": 1062
+    },
+    {
+     "w": "HELLRAIL!",
+     "f": 1068
+    }
+   ]
+  },
+  {
+   "text": "Blueprints in brimstone and bolted in brass, built so it never can fail!",
+   "stanza": 0,
+   "start": 1110,
+   "end": 1257,
+   "words": [
+    {
+     "w": "Blueprints",
+     "f": 1110
+    },
+    {
+     "w": "in",
+     "f": 1126
+    },
+    {
+     "w": "brimstone",
+     "f": 1132
+    },
+    {
+     "w": "and",
+     "f": 1148
+    },
+    {
+     "w": "bolted",
+     "f": 1154
+    },
+    {
+     "w": "in",
+     "f": 1172
+    },
+    {
+     "w": "brass,",
+     "f": 1177
+    },
+    {
+     "w": "built",
+     "f": 1193
+    },
+    {
+     "w": "so",
+     "f": 1207
+    },
+    {
+     "w": "it",
+     "f": 1216
+    },
+    {
+     "w": "never",
+     "f": 1222
+    },
+    {
+     "w": "can",
+     "f": 1231
+    },
+    {
+     "w": "fail!",
+     "f": 1243
+    }
+   ]
+  },
+  {
+   "text": "Fourteen-foot firebox, flanged and flame-fitted, forged in the furnaces below!",
+   "stanza": 1,
+   "start": 1283,
+   "end": 1431,
+   "words": [
+    {
+     "w": "Fourteen-foot",
+     "f": 1283
+    },
+    {
+     "w": "firebox,",
+     "f": 1309
+    },
+    {
+     "w": "flanged",
+     "f": 1328
+    },
+    {
+     "w": "and",
+     "f": 1343
+    },
+    {
+     "w": "flame-fitted,",
+     "f": 1361
+    },
+    {
+     "w": "forged",
+     "f": 1370
+    },
+    {
+     "w": "in",
+     "f": 1387
+    },
+    {
+     "w": "the",
+     "f": 1396
+    },
+    {
+     "w": "furnaces",
+     "f": 1400
+    },
+    {
+     "w": "below!",
+     "f": 1415
+    }
+   ]
+  },
+  {
+   "text": "Cast-iron cladding, copper-clad coils, triple-thick tungsten aglow!",
+   "stanza": 1,
+   "start": 1459,
+   "end": 1613,
+   "words": [
+    {
+     "w": "Cast-iron",
+     "f": 1459
+    },
+    {
+     "w": "cladding,",
+     "f": 1487
+    },
+    {
+     "w": "copper-clad",
+     "f": 1521
+    },
+    {
+     "w": "coils,",
+     "f": 1534
+    },
+    {
+     "w": "triple-thick",
+     "f": 1565
+    },
+    {
+     "w": "tungsten",
+     "f": 1579
+    },
+    {
+     "w": "aglow!",
+     "f": 1594
+    }
+   ]
+  },
+  {
+   "text": "Pressure at eight hundred pounds to the pipe, pig-iron pistons that pound!",
+   "stanza": 1,
+   "start": 1643,
+   "end": 1804,
+   "words": [
+    {
+     "w": "Pressure",
+     "f": 1643
+    },
+    {
+     "w": "at",
+     "f": 1658
+    },
+    {
+     "w": "eight",
+     "f": 1672
+    },
+    {
+     "w": "hundred",
+     "f": 1676
+    },
+    {
+     "w": "pounds",
+     "f": 1679
+    },
+    {
+     "w": "to",
+     "f": 1697
+    },
+    {
+     "w": "the",
+     "f": 1706
+    },
+    {
+     "w": "pipe,",
+     "f": 1712
+    },
+    {
+     "w": "pig-iron",
+     "f": 1741
+    },
+    {
+     "w": "pistons",
+     "f": 1754
+    },
+    {
+     "w": "that",
+     "f": 1772
+    },
+    {
+     "w": "pound!",
+     "f": 1779
+    }
+   ]
+  },
+  {
+   "text": "Boilerplate black as the back of the Pit, banded and burnished and bound!",
+   "stanza": 1,
+   "start": 1824,
+   "end": 1978,
+   "words": [
+    {
+     "w": "Boilerplate",
+     "f": 1824
+    },
+    {
+     "w": "black",
+     "f": 1845
+    },
+    {
+     "w": "as",
+     "f": 1853
+    },
+    {
+     "w": "the",
+     "f": 1864
+    },
+    {
+     "w": "back",
+     "f": 1869
+    },
+    {
+     "w": "of",
+     "f": 1877
+    },
+    {
+     "w": "the",
+     "f": 1886
+    },
+    {
+     "w": "Pit,",
+     "f": 1892
+    },
+    {
+     "w": "banded",
+     "f": 1905
+    },
+    {
+     "w": "and",
+     "f": 1930
+    },
+    {
+     "w": "burnished",
+     "f": 1938
+    },
+    {
+     "w": "and",
+     "f": 1955
+    },
+    {
+     "w": "bound!",
+     "f": 1960
+    }
+   ]
+  },
+  {
+   "text": "Wheels of wrought tungsten on tempered-steel tracks, thirty tons turning at speed!",
+   "stanza": 2,
+   "start": 1998,
+   "end": 2155,
+   "words": [
+    {
+     "w": "Wheels",
+     "f": 1998
+    },
+    {
+     "w": "of",
+     "f": 2018
+    },
+    {
+     "w": "wrought",
+     "f": 2022
+    },
+    {
+     "w": "tungsten",
+     "f": 2028
+    },
+    {
+     "w": "on",
+     "f": 2041
+    },
+    {
+     "w": "tempered-steel",
+     "f": 2060
+    },
+    {
+     "w": "tracks,",
+     "f": 2071
+    },
+    {
+     "w": "thirty",
+     "f": 2095
+    },
+    {
+     "w": "tons",
+     "f": 2105
+    },
+    {
+     "w": "turning",
+     "f": 2116
+    },
+    {
+     "w": "at",
+     "f": 2132
+    },
+    {
+     "w": "speed!",
+     "f": 2138
+    }
+   ]
+  },
+  {
+   "text": "Axles of adamant, oiled and aligned, alloys that avarice decreed!",
+   "stanza": 2,
+   "start": 2178,
+   "end": 2382,
+   "words": [
+    {
+     "w": "Axles",
+     "f": 2178
+    },
+    {
+     "w": "of",
+     "f": 2202
+    },
+    {
+     "w": "adamant,",
+     "f": 2211
+    },
+    {
+     "w": "oiled",
+     "f": 2233
+    },
+    {
+     "w": "and",
+     "f": 2248
+    },
+    {
+     "w": "aligned,",
+     "f": 2251
+    },
+    {
+     "w": "alloys",
+     "f": 2298
+    },
+    {
+     "w": "that",
+     "f": 2321
+    },
+    {
+     "w": "avarice",
+     "f": 2348
+    },
+    {
+     "w": "decreed!",
+     "f": 2367
+    }
+   ]
+  },
+  {
+   "text": "Grinding through granite and gnashing through gneiss, groaning down gradients grim!",
+   "stanza": 2,
+   "start": 2386,
+   "end": 2539,
+   "words": [
+    {
+     "w": "Grinding",
+     "f": 2386
+    },
+    {
+     "w": "through",
+     "f": 2407
+    },
+    {
+     "w": "granite",
+     "f": 2415
+    },
+    {
+     "w": "and",
+     "f": 2433
+    },
+    {
+     "w": "gnashing",
+     "f": 2438
+    },
+    {
+     "w": "through",
+     "f": 2452
+    },
+    {
+     "w": "gneiss,",
+     "f": 2467
+    },
+    {
+     "w": "groaning",
+     "f": 2474
+    },
+    {
+     "w": "down",
+     "f": 2500
+    },
+    {
+     "w": "gradients",
+     "f": 2505
+    },
+    {
+     "w": "grim!",
+     "f": 2516
+    }
+   ]
+  },
+  {
+   "text": "Sparks at the switchback and screaming on slate\u2014Loss of traction? Just a whim!",
+   "stanza": 2,
+   "start": 2539,
+   "end": 2740,
+   "words": [
+    {
+     "w": "Sparks",
+     "f": 2539
+    },
+    {
+     "w": "at",
+     "f": 2582
+    },
+    {
+     "w": "the",
+     "f": 2589
+    },
+    {
+     "w": "switchback",
+     "f": 2602
+    },
+    {
+     "w": "and",
+     "f": 2611
+    },
+    {
+     "w": "screaming",
+     "f": 2616
+    },
+    {
+     "w": "on",
+     "f": 2624
+    },
+    {
+     "w": "slate",
+     "f": 2646
+    },
+    {
+     "w": "Loss",
+     "f": 2653
+    },
+    {
+     "w": "of",
+     "f": 2669
+    },
+    {
+     "w": "traction?",
+     "f": 2680
+    },
+    {
+     "w": "Just",
+     "f": 2705
+    },
+    {
+     "w": "a",
+     "f": 2715
+    },
+    {
+     "w": "whim!",
+     "f": 2727
+    }
+   ]
+  },
+  {
+   "text": "Diamond-head drillbits that devour the dark, chewing through chalk and through char!",
+   "stanza": 3,
+   "start": 2754,
+   "end": 2899,
+   "words": [
+    {
+     "w": "Diamond-head",
+     "f": 2754
+    },
+    {
+     "w": "drillbits",
+     "f": 2769
+    },
+    {
+     "w": "that",
+     "f": 2783
+    },
+    {
+     "w": "devour",
+     "f": 2789
+    },
+    {
+     "w": "the",
+     "f": 2803
+    },
+    {
+     "w": "dark,",
+     "f": 2817
+    },
+    {
+     "w": "chewing",
+     "f": 2828
+    },
+    {
+     "w": "through",
+     "f": 2850
+    },
+    {
+     "w": "chalk",
+     "f": 2860
+    },
+    {
+     "w": "and",
+     "f": 2867
+    },
+    {
+     "w": "through",
+     "f": 2876
+    },
+    {
+     "w": "char!",
+     "f": 2884
+    }
+   ]
+  },
+  {
+   "text": "Borers that burrow through basalt and bone, shafts sinking steadily far!",
+   "stanza": 3,
+   "start": 2899,
+   "end": 3077,
+   "words": [
+    {
+     "w": "Borers",
+     "f": 2899
+    },
+    {
+     "w": "that",
+     "f": 2941
+    },
+    {
+     "w": "burrow",
+     "f": 2950
+    },
+    {
+     "w": "through",
+     "f": 2963
+    },
+    {
+     "w": "basalt",
+     "f": 2971
+    },
+    {
+     "w": "and",
+     "f": 2989
+    },
+    {
+     "w": "bone,",
+     "f": 3004
+    },
+    {
+     "w": "shafts",
+     "f": 3014
+    },
+    {
+     "w": "sinking",
+     "f": 3024
+    },
+    {
+     "w": "steadily",
+     "f": 3036
+    },
+    {
+     "w": "far!",
+     "f": 3059
+    }
+   ]
+  },
+  {
+   "text": "Carbide-tipped cutters that crackle and crunch, coring the crust like a cheese!",
+   "stanza": 3,
+   "start": 3103,
+   "end": 3269,
+   "words": [
+    {
+     "w": "Carbide-tipped",
+     "f": 3103
+    },
+    {
+     "w": "cutters",
+     "f": 3128
+    },
+    {
+     "w": "that",
+     "f": 3143
+    },
+    {
+     "w": "crackle",
+     "f": 3151
+    },
+    {
+     "w": "and",
+     "f": 3169
+    },
+    {
+     "w": "crunch,",
+     "f": 3173
+    },
+    {
+     "w": "coring",
+     "f": 3184
+    },
+    {
+     "w": "the",
+     "f": 3206
+    },
+    {
+     "w": "crust",
+     "f": 3217
+    },
+    {
+     "w": "like",
+     "f": 3226
+    },
+    {
+     "w": "a",
+     "f": 3235
+    },
+    {
+     "w": "cheese!",
+     "f": 3241
+    }
+   ]
+  },
+  {
+   "text": "Tunnels by Tuesday through tectonics itself\u2014done, if you please, with such ease!",
+   "stanza": 3,
+   "start": 3269,
+   "end": 3478,
+   "words": [
+    {
+     "w": "Tunnels",
+     "f": 3269
+    },
+    {
+     "w": "by",
+     "f": 3299
+    },
+    {
+     "w": "Tuesday",
+     "f": 3306
+    },
+    {
+     "w": "through",
+     "f": 3316
+    },
+    {
+     "w": "tectonics",
+     "f": 3329
+    },
+    {
+     "w": "itself",
+     "f": 3349
+    },
+    {
+     "w": "done,",
+     "f": 3390
+    },
+    {
+     "w": "if",
+     "f": 3425
+    },
+    {
+     "w": "you",
+     "f": 3426
+    },
+    {
+     "w": "please,",
+     "f": 3432
+    },
+    {
+     "w": "with",
+     "f": 3447
+    },
+    {
+     "w": "such",
+     "f": 3450
+    },
+    {
+     "w": "ease!",
+     "f": 3457
+    }
+   ]
+  },
+  {
+   "text": "Compartments in crimson with cushions of calf, curtained in damask and down!",
+   "stanza": 4,
+   "start": 3494,
+   "end": 3650,
+   "words": [
+    {
+     "w": "Compartments",
+     "f": 3494
+    },
+    {
+     "w": "in",
+     "f": 3516
+    },
+    {
+     "w": "crimson",
+     "f": 3521
+    },
+    {
+     "w": "with",
+     "f": 3538
+    },
+    {
+     "w": "cushions",
+     "f": 3543
+    },
+    {
+     "w": "of",
+     "f": 3558
+    },
+    {
+     "w": "calf,",
+     "f": 3565
+    },
+    {
+     "w": "curtained",
+     "f": 3585
+    },
+    {
+     "w": "in",
+     "f": 3604
+    },
+    {
+     "w": "damask",
+     "f": 3611
+    },
+    {
+     "w": "and",
+     "f": 3628
+    },
+    {
+     "w": "down!",
+     "f": 3634
+    }
+   ]
+  },
+  {
+   "text": "Gilt-fitted gaslight and gimballed champagne, the plushest perdition in town!",
+   "stanza": 4,
+   "start": 3672,
+   "end": 3826,
+   "words": [
+    {
+     "w": "Gilt-fitted",
+     "f": 3672
+    },
+    {
+     "w": "gaslight",
+     "f": 3695
+    },
+    {
+     "w": "and",
+     "f": 3717
+    },
+    {
+     "w": "gimballed",
+     "f": 3729
+    },
+    {
+     "w": "champagne,",
+     "f": 3735
+    },
+    {
+     "w": "the",
+     "f": 3763
+    },
+    {
+     "w": "plushest",
+     "f": 3766
+    },
+    {
+     "w": "perdition",
+     "f": 3782
+    },
+    {
+     "w": "in",
+     "f": 3802
+    },
+    {
+     "w": "town!",
+     "f": 3812
+    }
+   ]
+  },
+  {
+   "text": "Lavatories lacquered in luminous lead, lustrous and lavish and loud!",
+   "stanza": 4,
+   "start": 3856,
+   "end": 4011,
+   "words": [
+    {
+     "w": "Lavatories",
+     "f": 3856
+    },
+    {
+     "w": "lacquered",
+     "f": 3880
+    },
+    {
+     "w": "in",
+     "f": 3896
+    },
+    {
+     "w": "luminous",
+     "f": 3911
+    },
+    {
+     "w": "lead,",
+     "f": 3922
+    },
+    {
+     "w": "lustrous",
+     "f": 3947
+    },
+    {
+     "w": "and",
+     "f": 3960
+    },
+    {
+     "w": "lavish",
+     "f": 3967
+    },
+    {
+     "w": "and",
+     "f": 3985
+    },
+    {
+     "w": "loud!",
+     "f": 3990
+    }
+   ]
+  },
+  {
+   "text": "Porters in pearl-buttons, punctual, precise\u2014service to singe any crowd!",
+   "stanza": 4,
+   "start": 4034,
+   "end": 4219,
+   "words": [
+    {
+     "w": "Porters",
+     "f": 4034
+    },
+    {
+     "w": "in",
+     "f": 4049
+    },
+    {
+     "w": "pearl-buttons,",
+     "f": 4067
+    },
+    {
+     "w": "punctual,",
+     "f": 4076
+    },
+    {
+     "w": "precise",
+     "f": 4094
+    },
+    {
+     "w": "service",
+     "f": 4161
+    },
+    {
+     "w": "to",
+     "f": 4174
+    },
+    {
+     "w": "singe",
+     "f": 4184
+    },
+    {
+     "w": "any",
+     "f": 4201
+    },
+    {
+     "w": "crowd!",
+     "f": 4206
+    }
+   ]
+  },
+  {
+   "text": "Speed? We deliver a thousand miles down in the time that you'd take for your tea!",
+   "stanza": 5,
+   "start": 4219,
+   "end": 4404,
+   "words": [
+    {
+     "w": "Speed?",
+     "f": 4219
+    },
+    {
+     "w": "We",
+     "f": 4258
+    },
+    {
+     "w": "deliver",
+     "f": 4270
+    },
+    {
+     "w": "a",
+     "f": 4285
+    },
+    {
+     "w": "thousand",
+     "f": 4298
+    },
+    {
+     "w": "miles",
+     "f": 4313
+    },
+    {
+     "w": "down",
+     "f": 4330
+    },
+    {
+     "w": "in",
+     "f": 4339
+    },
+    {
+     "w": "the",
+     "f": 4342
+    },
+    {
+     "w": "time",
+     "f": 4344
+    },
+    {
+     "w": "that",
+     "f": 4354
+    },
+    {
+     "w": "you'd",
+     "f": 4361
+    },
+    {
+     "w": "take",
+     "f": 4366
+    },
+    {
+     "w": "for",
+     "f": 4375
+    },
+    {
+     "w": "your",
+     "f": 4384
+    },
+    {
+     "w": "tea!",
+     "f": 4388
+    }
+   ]
+  },
+  {
+   "text": "Velocity verified, viscera-tested, validated, vivid, and free!",
+   "stanza": 5,
+   "start": 4404,
+   "end": 4583,
+   "words": [
+    {
+     "w": "Velocity",
+     "f": 4404
+    },
+    {
+     "w": "verified,",
+     "f": 4452
+    },
+    {
+     "w": "viscera-tested,",
+     "f": 4499
+    },
+    {
+     "w": "validated,",
+     "f": 4528
+    },
+    {
+     "w": "vivid,",
+     "f": 4548
+    },
+    {
+     "w": "and",
+     "f": 4555
+    },
+    {
+     "w": "free!",
+     "f": 4569
+    }
+   ]
+  },
+  {
+   "text": "Faster than falling, than fear, than the future\u2014the friction coefficient's a laugh!",
+   "stanza": 5,
+   "start": 4583,
+   "end": 4766,
+   "words": [
+    {
+     "w": "Faster",
+     "f": 4583
+    },
+    {
+     "w": "than",
+     "f": 4625
+    },
+    {
+     "w": "falling,",
+     "f": 4635
+    },
+    {
+     "w": "than",
+     "f": 4649
+    },
+    {
+     "w": "fear,",
+     "f": 4657
+    },
+    {
+     "w": "than",
+     "f": 4667
+    },
+    {
+     "w": "the",
+     "f": 4674
+    },
+    {
+     "w": "future",
+     "f": 4680
+    },
+    {
+     "w": "the",
+     "f": 4692
+    },
+    {
+     "w": "friction",
+     "f": 4702
+    },
+    {
+     "w": "coefficient's",
+     "f": 4712
+    },
+    {
+     "w": "a",
+     "f": 4745
+    },
+    {
+     "w": "laugh!",
+     "f": 4748
+    }
+   ]
+  },
+  {
+   "text": "Passengers pallid with pleasure arrive; check the receipts! Do the math!",
+   "stanza": 5,
+   "start": 4766,
+   "end": 4997,
+   "words": [
+    {
+     "w": "Passengers",
+     "f": 4766
+    },
+    {
+     "w": "pallid",
+     "f": 4813
+    },
+    {
+     "w": "with",
+     "f": 4831
+    },
+    {
+     "w": "pleasure",
+     "f": 4837
+    },
+    {
+     "w": "arrive;",
+     "f": 4849
+    },
+    {
+     "w": "check",
+     "f": 4910
+    },
+    {
+     "w": "the",
+     "f": 4934
+    },
+    {
+     "w": "receipts!",
+     "f": 4944
+    },
+    {
+     "w": "Do",
+     "f": 4960
+    },
+    {
+     "w": "the",
+     "f": 4968
+    },
+    {
+     "w": "math!",
+     "f": 4974
+    }
+   ]
+  },
+  {
+   "text": "Fueled on the fumes of foreclosed-upon farms, on foetor of fortunes gone foul!",
+   "stanza": 6,
+   "start": 4997,
+   "end": 5171,
+   "words": [
+    {
+     "w": "Fueled",
+     "f": 4997
+    },
+    {
+     "w": "on",
+     "f": 5032
+    },
+    {
+     "w": "the",
+     "f": 5035
+    },
+    {
+     "w": "fumes",
+     "f": 5039
+    },
+    {
+     "w": "of",
+     "f": 5050
+    },
+    {
+     "w": "foreclosed-upon",
+     "f": 5069
+    },
+    {
+     "w": "farms,",
+     "f": 5081
+    },
+    {
+     "w": "on",
+     "f": 5102
+    },
+    {
+     "w": "foetor",
+     "f": 5111
+    },
+    {
+     "w": "of",
+     "f": 5116
+    },
+    {
+     "w": "fortunes",
+     "f": 5128
+    },
+    {
+     "w": "gone",
+     "f": 5144
+    },
+    {
+     "w": "foul!",
+     "f": 5149
+    }
+   ]
+  },
+  {
+   "text": "Stoked with stock-Loss and shattered ambitions, promissory paper to prowl!",
+   "stanza": 6,
+   "start": 5183,
+   "end": 5362,
+   "words": [
+    {
+     "w": "Stoked",
+     "f": 5183
+    },
+    {
+     "w": "with",
+     "f": 5203
+    },
+    {
+     "w": "stock-Loss",
+     "f": 5218
+    },
+    {
+     "w": "and",
+     "f": 5227
+    },
+    {
+     "w": "shattered",
+     "f": 5236
+    },
+    {
+     "w": "ambitions,",
+     "f": 5249
+    },
+    {
+     "w": "promissory",
+     "f": 5288
+    },
+    {
+     "w": "paper",
+     "f": 5303
+    },
+    {
+     "w": "to",
+     "f": 5317
+    },
+    {
+     "w": "prowl!",
+     "f": 5329
+    }
+   ]
+  },
+  {
+   "text": "Combustible contracts and kindling of cares, the calorific content of greed!",
+   "stanza": 6,
+   "start": 5369,
+   "end": 5523,
+   "words": [
+    {
+     "w": "Combustible",
+     "f": 5369
+    },
+    {
+     "w": "contracts",
+     "f": 5393
+    },
+    {
+     "w": "and",
+     "f": 5411
+    },
+    {
+     "w": "kindling",
+     "f": 5419
+    },
+    {
+     "w": "of",
+     "f": 5435
+    },
+    {
+     "w": "cares,",
+     "f": 5441
+    },
+    {
+     "w": "the",
+     "f": 5455
+    },
+    {
+     "w": "calorific",
+     "f": 5457
+    },
+    {
+     "w": "content",
+     "f": 5473
+    },
+    {
+     "w": "of",
+     "f": 5492
+    },
+    {
+     "w": "greed!",
+     "f": 5509
+    }
+   ]
+  },
+  {
+   "text": "One burning bushel of broken-backed bonds propels us at blistering speed!",
+   "stanza": 6,
+   "start": 5551,
+   "end": 5731,
+   "words": [
+    {
+     "w": "One",
+     "f": 5551
+    },
+    {
+     "w": "burning",
+     "f": 5561
+    },
+    {
+     "w": "bushel",
+     "f": 5573
+    },
+    {
+     "w": "of",
+     "f": 5589
+    },
+    {
+     "w": "broken-backed",
+     "f": 5621
+    },
+    {
+     "w": "bonds",
+     "f": 5643
+    },
+    {
+     "w": "propels",
+     "f": 5665
+    },
+    {
+     "w": "us",
+     "f": 5689
+    },
+    {
+     "w": "at",
+     "f": 5696
+    },
+    {
+     "w": "blistering",
+     "f": 5700
+    },
+    {
+     "w": "speed!",
+     "f": 5722
+    }
+   ]
+  },
+  {
+   "text": "Shares selling swiftly! Subscribe and be saved! Stamps at the station! Don't wait!",
+   "stanza": 7,
+   "start": 5731,
+   "end": 5918,
+   "words": [
+    {
+     "w": "Shares",
+     "f": 5731
+    },
+    {
+     "w": "selling",
+     "f": 5779
+    },
+    {
+     "w": "swiftly!",
+     "f": 5787
+    },
+    {
+     "w": "Subscribe",
+     "f": 5800
+    },
+    {
+     "w": "and",
+     "f": 5815
+    },
+    {
+     "w": "be",
+     "f": 5828
+    },
+    {
+     "w": "saved!",
+     "f": 5833
+    },
+    {
+     "w": "Stamps",
+     "f": 5844
+    },
+    {
+     "w": "at",
+     "f": 5865
+    },
+    {
+     "w": "the",
+     "f": 5872
+    },
+    {
+     "w": "station!",
+     "f": 5876
+    },
+    {
+     "w": "Don't",
+     "f": 5894
+    },
+    {
+     "w": "wait!",
+     "f": 5900
+    }
+   ]
+  },
+  {
+   "text": "Gold by the guilder, the guinea, the groat\u2014invest and incinerate fate!",
+   "stanza": 7,
+   "start": 5941,
+   "end": 6205,
+   "words": [
+    {
+     "w": "Gold",
+     "f": 5941
+    },
+    {
+     "w": "by",
+     "f": 5954
+    },
+    {
+     "w": "the",
+     "f": 5963
+    },
+    {
+     "w": "guilder,",
+     "f": 5969
+    },
+    {
+     "w": "the",
+     "f": 5992
+    },
+    {
+     "w": "guinea,",
+     "f": 5995
+    },
+    {
+     "w": "the",
+     "f": 6020
+    },
+    {
+     "w": "groat",
+     "f": 6028
+    },
+    {
+     "w": "invest",
+     "f": 6116
+    },
+    {
+     "w": "and",
+     "f": 6153
+    },
+    {
+     "w": "incinerate",
+     "f": 6167
+    },
+    {
+     "w": "fate!",
+     "f": 6189
+    }
+   ]
+  },
+  {
+   "text": "Signed, sealed, and certified, stoked and en route, the HELLRAIL departs on the hour!",
+   "stanza": 7,
+   "start": 6205,
+   "end": 6388,
+   "words": [
+    {
+     "w": "Signed,",
+     "f": 6205
+    },
+    {
+     "w": "sealed,",
+     "f": 6245
+    },
+    {
+     "w": "and",
+     "f": 6256
+    },
+    {
+     "w": "certified,",
+     "f": 6259
+    },
+    {
+     "w": "stoked",
+     "f": 6284
+    },
+    {
+     "w": "and",
+     "f": 6288
+    },
+    {
+     "w": "en",
+     "f": 6301
+    },
+    {
+     "w": "route,",
+     "f": 6301
+    },
+    {
+     "w": "the",
+     "f": 6317
+    },
+    {
+     "w": "HELLRAIL",
+     "f": 6327
+    },
+    {
+     "w": "departs",
+     "f": 6341
+    },
+    {
+     "w": "on",
+     "f": 6364
+    },
+    {
+     "w": "the",
+     "f": 6368
+    },
+    {
+     "w": "hour!",
+     "f": 6374
+    }
+   ]
+  },
+  {
+   "text": "Climb on! Cash in! The conductors are calling! Come claim your combustible DOWER!",
+   "stanza": 7,
+   "start": 6388,
+   "end": 6751,
+   "words": [
+    {
+     "w": "Climb",
+     "f": 6388
+    },
+    {
+     "w": "on!",
+     "f": 6421
+    },
+    {
+     "w": "Cash",
+     "f": 6439
+    },
+    {
+     "w": "in!",
+     "f": 6445
+    },
+    {
+     "w": "The",
+     "f": 6463
+    },
+    {
+     "w": "conductors",
+     "f": 6469
+    },
+    {
+     "w": "are",
+     "f": 6499
+    },
+    {
+     "w": "calling!",
+     "f": 6508
+    },
+    {
+     "w": "Come",
+     "f": 6661
+    },
+    {
+     "w": "claim",
+     "f": 6683
+    },
+    {
+     "w": "your",
+     "f": 6706
+    },
+    {
+     "w": "combustible",
+     "f": 6713
+    },
+    {
+     "w": "DOWER!",
+     "f": 6742
+    }
+   ]
+  }
+ ],
+ "stanzas": [
+  {
+   "start": 971,
+   "end": 1257
+  },
+  {
+   "start": 1283,
+   "end": 1978
+  },
+  {
+   "start": 1998,
+   "end": 2740
+  },
+  {
+   "start": 2754,
+   "end": 3478
+  },
+  {
+   "start": 3494,
+   "end": 4219
+  },
+  {
+   "start": 4219,
+   "end": 4997
+  },
+  {
+   "start": 4997,
+   "end": 5731
+  },
+  {
+   "start": 5731,
+   "end": 6751
+  }
+ ]
+}
