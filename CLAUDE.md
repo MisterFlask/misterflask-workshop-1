@@ -10,11 +10,12 @@ policy below.
 
 ### If you are NOT Fable (Opus, Sonnet, Haiku, ...)
 
-For **nontrivial tasks** — architectural decisions, tricky debugging, game
-balance changes, multi-file refactors, anything where a wrong approach is
-expensive to unwind — consult a stronger model as an **advisor** before
-committing to an approach (e.g. spawn an advisor subagent via the Agent tool
-with a model override, asking it to review your plan or diagnosis):
+Consult a stronger model as an **advisor** only when you are experiencing
+**implementation or design uncertainty** — you're unsure which approach is
+right, a diagnosis isn't converging, competing designs have real trade-offs
+you can't resolve, or you'd be guessing. Consult before committing to the
+uncertain choice (e.g. spawn an advisor subagent via the Agent tool with a
+model override, asking it to review your plan or diagnosis):
 
 1. **Try Fable first** as the advisor. Don't attempt to pre-check availability,
    quota, or spend limits — just make the call.
@@ -24,8 +25,8 @@ with a model override, asking it to review your plan or diagnosis):
    If you are Opus and the Fable call fails, proceed without an advisor rather
    than consulting another Opus instance.
 
-Trivial tasks (small edits, lookups, answering simple questions, mechanical
-changes) do not need an advisor — just do them.
+If you are confident in the approach — even on a large or important task — do
+not consult an advisor. Uncertainty is the trigger, not task size.
 
 ### If you ARE Fable
 
@@ -38,7 +39,7 @@ changes) do not need an advisor — just do them.
 
 ### Summary
 
-| You are | Advisor for nontrivial tasks | Delegation |
+| You are | Advisor when uncertain (implementation/design) | Delegation |
 |---|---|---|
 | Fable | None (never Fable or Opus) | Delegate well-scoped subtasks to cheaper models |
 | Opus | Try Fable; on failure, none (never Opus) | As normal |
