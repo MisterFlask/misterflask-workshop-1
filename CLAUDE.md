@@ -16,11 +16,12 @@ expensive to unwind — consult a stronger model as an **advisor** before
 committing to an approach (e.g. spawn an advisor subagent via the Agent tool
 with a model override, asking it to review your plan or diagnosis):
 
-1. **Prefer Fable** as the advisor.
-2. If Fable is unavailable (capacity limits, spend limits, model not offered in
-   this environment, or the call fails), **fall back to Opus** as the advisor.
+1. **Try Fable first** as the advisor. Don't attempt to pre-check availability,
+   quota, or spend limits — just make the call.
+2. If the Fable call **fails** (for any reason: capacity, spend limits, model
+   not offered, error), **fall back to Opus** as the advisor.
 3. **Exception — no self-advising:** Opus must never use Opus as its advisor.
-   If you are Opus and Fable is unavailable, proceed without an advisor rather
+   If you are Opus and the Fable call fails, proceed without an advisor rather
    than consulting another Opus instance.
 
 Trivial tasks (small edits, lookups, answering simple questions, mechanical
@@ -40,8 +41,8 @@ changes) do not need an advisor — just do them.
 | You are | Advisor for nontrivial tasks | Delegation |
 |---|---|---|
 | Fable | None (never Fable or Opus) | Delegate well-scoped subtasks to cheaper models |
-| Opus | Fable if available; otherwise none (never Opus) | As normal |
-| Sonnet / Haiku / other | Fable if available; otherwise Opus | As normal |
+| Opus | Try Fable; on failure, none (never Opus) | As normal |
+| Sonnet / Haiku / other | Try Fable; on failure, Opus | As normal |
 
 ## FFH Simplified Game Project
 
