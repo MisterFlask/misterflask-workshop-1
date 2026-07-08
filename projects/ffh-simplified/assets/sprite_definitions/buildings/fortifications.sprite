@@ -1,0 +1,41 @@
+name: fortifications
+size: 32x32
+palette:
+  .: transparent
+  x: #000000
+  w: #8a8a82
+  d: #666058
+  g: #5a7a3a
+pixels: |
+  ................................
+  ................................
+  ................................
+  ................................
+  ................................
+  ...................xxxxxxxxxxx..
+  ..................xdwwddwwddwwx.
+  ..................xdwwddwwddwwx.
+  ...................xwwwwwwwwwx..
+  ...................xwwwwwwwwwx..
+  ...................xwwwwwwwwwx..
+  ...................xwwwwwwwwwx..
+  ...................xwwwwwwwwwx..
+  ...xx..xx..xx..xx..xwwwwwwwwwx..
+  ..xwwxxwwxxwwxxwwxxwwwwwwwwwwx..
+  ..xwwxxwwxxwwxxwwxxwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdddddddddddddddddwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdddddddddddddddddwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xdwwwwwdwwwwwdwwwwwwwwwwwwwx..
+  ..xggggggggggggggggggggggggggx..
+  ..xggggggggggggggggggggggggggx..
+  ...xxxxxxxxxxxxxxxxxxxxxxxxxx...
+  ................................
+  ................................
+  ................................

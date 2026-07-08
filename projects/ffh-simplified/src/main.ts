@@ -5,7 +5,15 @@ import { SOLDIER_TYPES } from './data/soldiers';
 import { BUILDING_TYPES, getBuildingSlots } from './data/buildings';
 import { TECHNOLOGIES } from './data/technologies';
 import { TERRAIN_FEATURES } from './data/terrainFeatures';
+import { getSpriteUrl } from './rendering/SpriteStore';
 import type { GameState, Coord, BuildingId, SoldierTypeId } from './types';
+
+// Inline sprite <img> for panel lists; returns '' when the sprite doesn't
+// exist so callers keep their non-sprite fallback rendering.
+function spriteImg(sprite: string, size: number): string {
+  const url = getSpriteUrl(sprite);
+  return url ? `<img class="pixel-icon" src="${url}" width="${size}" height="${size}" alt="">` : '';
+}
 
 class GameApp {
   private state: GameState;
@@ -568,7 +576,7 @@ class GameApp {
         <div class="formation-cell occupied ${editClass} ${selectedClass}" data-soldier-id="${soldier.id}" data-pos="${posKey}">
           <div class="soldier-card ${isDead ? 'dead' : ''}">
             ${leaderIndicator}
-            <div class="soldier-icon ${soldier.type}">${soldier.type.slice(0, 3).toUpperCase()}</div>
+            ${spriteImg(SOLDIER_TYPES[soldier.type].sprite, 28) || `<div class="soldier-icon ${soldier.type}">${soldier.type.slice(0, 3).toUpperCase()}</div>`}
             <div class="soldier-name-label">${soldier.name}</div>
             <div class="soldier-hp-bar">
               <div class="soldier-hp-fill ${hpClass}" style="width: ${Math.max(0, hpPercent)}%"></div>
@@ -785,7 +793,7 @@ class GameApp {
               const building = BUILDING_TYPES[b];
               const effects = this.formatBuildingEffects(building);
               return `<div class="existing-building-item">
-                <span class="existing-building">${building.name}</span>
+                <span class="existing-building">${spriteImg(building.sprite, 18)}${building.name}</span>
                 ${effects ? `<span class="building-effects">${effects}</span>` : ''}
               </div>`;
             }).join('')}
@@ -814,7 +822,7 @@ class GameApp {
               return `
                 <div class="build-option">
                   <div class="build-option-info">
-                    <div class="build-option-name">${b.name}</div>
+                    <div class="build-option-name">${spriteImg(b.sprite, 20)}${b.name}</div>
                     <div class="build-option-cost">${b.cost} gold | ${b.buildTurns} turns</div>
                     ${effects ? `<div class="build-option-effects">${effects}</div>` : ''}
                   </div>
@@ -890,7 +898,7 @@ class GameApp {
               return `
                 <div class="build-option">
                   <div class="build-option-info">
-                    <div class="build-option-name">${s.name}</div>
+                    <div class="build-option-name">${spriteImg(s.sprite, 20)}${s.name}</div>
                     <div class="build-option-cost">${costText} | ${s.buildTurns} turn${s.buildTurns > 1 ? 's' : ''}</div>
                   </div>
                   <div class="build-option-btns">
@@ -962,7 +970,7 @@ class GameApp {
               return `
                 <div class="roster-soldier">
                   <div class="roster-soldier-info">
-                    <div class="roster-soldier-icon ${s.type}">${s.type.slice(0, 3).toUpperCase()}</div>
+                    ${spriteImg(SOLDIER_TYPES[s.type].sprite, 24) || `<div class="roster-soldier-icon ${s.type}">${s.type.slice(0, 3).toUpperCase()}</div>`}
                     <div class="roster-soldier-details">
                       <div class="roster-soldier-name">${s.name} <span style="color: #888; font-size: 9px">(${soldierType.name})</span></div>
                       <div class="roster-soldier-hp">

@@ -1,7 +1,6 @@
-import type { GameState, Coord, Tile, Legion, City, UIState, TerrainFeatureId } from '../types';
-import { coordsEqual } from '../utils/grid';
-import { getValidMoves, getLegionAt, getCityAt } from '../game/Game';
-import { TERRAIN_FEATURES } from '../data/terrainFeatures';
+import type { GameState, Coord, Legion, UIState, TerrainFeatureId, SoldierTypeId } from '../types';
+import { SOLDIER_TYPES } from '../data/soldiers';
+import { getSprite } from './SpriteStore';
 
 const TILE_SIZE = 32;
 
@@ -115,6 +114,9 @@ export class Renderer {
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Keep pixel-art sprites crisp when scaled.
+    ctx.imageSmoothingEnabled = false;
+
     ctx.save();
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
@@ -163,15 +165,20 @@ export class Renderer {
           ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
         }
 
-        // Terrain feature icon
+        // Terrain feature icon (sprite if available, else the Unicode glyph fallback)
         if (tile.feature) {
-          const featureInfo = FEATURE_ICONS[tile.feature];
-          if (featureInfo) {
-            ctx.fillStyle = featureInfo.color;
-            ctx.font = 'bold 14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(featureInfo.symbol, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+          const featureSprite = getSprite(`features/${tile.feature}.png`);
+          if (featureSprite) {
+            ctx.drawImage(featureSprite, screenX, screenY, TILE_SIZE, TILE_SIZE);
+          } else {
+            const featureInfo = FEATURE_ICONS[tile.feature];
+            if (featureInfo) {
+              ctx.fillStyle = featureInfo.color;
+              ctx.font = 'bold 14px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(featureInfo.symbol, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+            }
           }
         }
 
@@ -319,16 +326,21 @@ export class Renderer {
       ctx.fillStyle = FACTION_COLORS[city.owner] || '#888';
       ctx.fillRect(screenX + 4, screenY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
 
-      // City icon (simple house shape)
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.moveTo(screenX + TILE_SIZE / 2, screenY + 8);
-      ctx.lineTo(screenX + TILE_SIZE - 8, screenY + 16);
-      ctx.lineTo(screenX + TILE_SIZE - 8, screenY + TILE_SIZE - 8);
-      ctx.lineTo(screenX + 8, screenY + TILE_SIZE - 8);
-      ctx.lineTo(screenX + 8, screenY + 16);
-      ctx.closePath();
-      ctx.fill();
+      // City icon: sprite if available, else the drawn house shape fallback
+      const citySprite = getSprite('features/city.png');
+      if (citySprite) {
+        ctx.drawImage(citySprite, screenX, screenY, TILE_SIZE, TILE_SIZE);
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(screenX + TILE_SIZE / 2, screenY + 8);
+        ctx.lineTo(screenX + TILE_SIZE - 8, screenY + 16);
+        ctx.lineTo(screenX + TILE_SIZE - 8, screenY + TILE_SIZE - 8);
+        ctx.lineTo(screenX + 8, screenY + TILE_SIZE - 8);
+        ctx.lineTo(screenX + 8, screenY + 16);
+        ctx.closePath();
+        ctx.fill();
+      }
 
       // Population indicator
       ctx.fillStyle = '#000';
@@ -348,45 +360,102 @@ export class Renderer {
     for (const legion of state.legions.values()) {
       const screenX = legion.location.x * TILE_SIZE;
       const screenY = legion.location.y * TILE_SIZE;
+      const centerX = screenX + TILE_SIZE / 2;
+      const centerY = screenY + TILE_SIZE / 2;
 
       // Legion marker (circle with faction color)
       ctx.fillStyle = FACTION_COLORS[legion.owner] || '#888';
       ctx.beginPath();
-      ctx.arc(
-        screenX + TILE_SIZE / 2,
-        screenY + TILE_SIZE / 2,
-        TILE_SIZE / 3,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(centerX, centerY, TILE_SIZE / 3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Soldier count
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(
-        legion.soldiers.length.toString(),
-        screenX + TILE_SIZE / 2,
-        screenY + TILE_SIZE / 2
-      );
+      const spriteTypeId = this.pickLegionSpriteSoldierType(legion);
+      const soldierSprite = spriteTypeId ? getSprite(SOLDIER_TYPES[spriteTypeId].sprite) : null;
+
+      if (soldierSprite) {
+        // Draw the strongest soldier's sprite centered on the tile, on top of the circle.
+        const spriteSize = 24;
+        ctx.drawImage(
+          soldierSprite,
+          centerX - spriteSize / 2,
+          centerY - spriteSize / 2,
+          spriteSize,
+          spriteSize
+        );
+
+        // Soldier count moves to a small dark badge so it stays readable over the sprite.
+        const badgeSize = 10;
+        const badgeX = screenX + TILE_SIZE - badgeSize - 1;
+        const badgeY = screenY + TILE_SIZE - badgeSize - 1;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        this.drawRoundedRectPath(badgeX, badgeY, badgeSize, badgeSize, 3);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          legion.soldiers.length.toString(),
+          badgeX + badgeSize / 2,
+          badgeY + badgeSize / 2 + 1
+        );
+      } else {
+        // Fallback: soldier count centered in the circle, exactly as before.
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(legion.soldiers.length.toString(), centerX, centerY);
+      }
 
       // Movement indicator
       if (legion.owner === 'player' && legion.movementRemaining > 0) {
         ctx.strokeStyle = '#0f0';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(
-          screenX + TILE_SIZE / 2,
-          screenY + TILE_SIZE / 2,
-          TILE_SIZE / 3 + 3,
-          0,
-          Math.PI * 2
-        );
+        ctx.arc(centerX, centerY, TILE_SIZE / 3 + 3, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
+  }
+
+  // Picks which soldier's sprite represents the legion on the map: the soldier
+  // with the highest combined hp+attack+defense (a cheap stand-in for "tier").
+  private pickLegionSpriteSoldierType(legion: Legion): SoldierTypeId | null {
+    if (legion.soldiers.length === 0) return null;
+
+    let best = legion.soldiers[0];
+    let bestScore = this.soldierPowerScore(best.type);
+    for (const soldier of legion.soldiers) {
+      const score = this.soldierPowerScore(soldier.type);
+      if (score > bestScore) {
+        best = soldier;
+        bestScore = score;
+      }
+    }
+    return best.type;
+  }
+
+  private soldierPowerScore(typeId: SoldierTypeId): number {
+    const type = SOLDIER_TYPES[typeId];
+    return type.hp + type.attack + type.defense;
+  }
+
+  // Builds a rounded-rectangle path for the current ctx; caller fills/strokes it.
+  private drawRoundedRectPath(x: number, y: number, w: number, h: number, r: number): void {
+    const { ctx } = this;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
   private renderSelection(state: GameState): void {

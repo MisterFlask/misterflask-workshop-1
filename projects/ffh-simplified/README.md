@@ -64,8 +64,15 @@ Sprites are defined in text format and generated to PNG:
 ```bash
 # Requires Python 3 and Pillow
 pip install Pillow
-npm run generate-sprites
+python3 tools/compose_all.py   # regenerate .sprite definitions from tools/compose/
+npm run generate-sprites       # render .sprite definitions to assets/sprites/*.png
 ```
+
+Most `.sprite` definitions are composed programmatically by the modules in
+`tools/compose/` (drawing helpers live in `tools/sprite_lib.py`); the four
+original soldier sprites (fighter, archer, cleric, mage) are hand-authored
+and never overwritten. `tools/make_contact_sheet.py <subdir> --out sheet.png`
+renders an upscaled review sheet.
 
 ## Current Status
 
@@ -86,4 +93,3 @@ npm run generate-sprites
 - Magic/spell system
 - Boss faction spawn at Armageddon 80
 - Siege mechanics
-- Actual sprite rendering (currently using colored shapes)

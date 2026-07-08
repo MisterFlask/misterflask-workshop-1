@@ -124,11 +124,11 @@ Improve combat experience.
 ## Priority 8: Visual Polish
 Make the game look better.
 
-- [ ] **Sprite Rendering**
-  - [ ] Load sprite assets
-  - [ ] Render terrain sprites instead of colored rectangles
-  - [ ] Render unit sprites
-  - [ ] Render building icons on cities
+- [x] **Sprite Rendering**
+  - [x] Load sprite assets (SpriteStore, bundled via import.meta.glob)
+  - [x] Render terrain feature/city sprites (terrain base stays flat color by design)
+  - [x] Render unit sprites (map legions + combat scene)
+  - [x] Render building icons (city panel build/built lists)
 
 - [ ] **Animations**
   - [ ] Legion movement animation
@@ -163,6 +163,6 @@ Nice-to-have features for deeper gameplay.
 | Player Turn System | ✅ Complete |
 | AI System | ✅ Complete (basic) |
 | Endgame/Boss | ❌ 0% |
-| Visual Polish | 🟡 50% (no sprites) |
+| Visual Polish | 🟡 75% (sprites done; animations/UI polish remain) |
 
 **Estimated effort to playable MVP**: Priority 4 (boss/endgame)

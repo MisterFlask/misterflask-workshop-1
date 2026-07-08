@@ -1,0 +1,42 @@
+name: grand_walls
+size: 32x32
+palette:
+  .: transparent
+  x: #000000
+  w: #9a9a92
+  d: #767068
+  g: #5a7a3a
+  s: #e0c040
+pixels: |
+  ................................
+  ................................
+  ................................
+  ................................
+  ..xxxxxxxxx...........xxxxxxxxx.
+  .xswwsswwssx.........xswwsswwssx
+  .xswwsswwssx.........xswwsswwssx
+  ..xwwwwwwwx...........xwwwwwwwx.
+  ..xwwwwwwwx...........xwwwwwwwx.
+  ..xwwwwwwwxxx..xx..xx.xwwwwwwwx.
+  ..xwwwwwwwxwwxxwwxxwwxxwwwwwwwx.
+  ..xwwwwwwwxwwxxwwxxwwxxwwwwwwwx.
+  ..xwwwwwwwssssssssssssswwwwwwwx.
+  ..xwwwwwwwdddddddddddddwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwdddddddddddddwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwdddddddddddddwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xwwwwwwwwwwwwdwwwwwdwwwwwwwwx.
+  ..xggggggggggggggggggggggggggx..
+  ..xggggggggggggggggggggggggggx..
+  ...xxxxxxxxxxxxxxxxxxxxxxxxxx...
+  ................................
+  ................................
+  ................................

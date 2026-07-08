@@ -1,5 +1,6 @@
-import type { Soldier, CombatResult, CombatEvent } from '../types';
+import type { Soldier, CombatResult } from '../types';
 import { SOLDIER_TYPES } from '../data/soldiers';
+import { getSprite } from './SpriteStore';
 
 const SCENE_WIDTH = 800;
 const SCENE_HEIGHT = 400;
@@ -285,6 +286,9 @@ export class CombatScene {
   private render(): void {
     const { ctx } = this;
 
+    // Keep pixel-art sprites crisp when scaled.
+    ctx.imageSmoothingEnabled = false;
+
     // Clear with dark background
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -422,7 +426,7 @@ export class CombatScene {
 
   private renderSoldier(state: SoldierState): void {
     const { ctx } = this;
-    const { x, y, soldier, hp, maxHp, animationState, isPlayer, isDead } = state;
+    const { x, y, soldier, hp, maxHp, animationState, isPlayer } = state;
 
     const isAttacker = soldier.id === this.currentAttackerId;
     const isTarget = soldier.id === this.currentTargetId;
@@ -461,34 +465,54 @@ export class CombatScene {
       ctx.shadowBlur = 0;
     }
 
-    // Draw soldier body (simple colored rectangle based on type)
-    const colors: Record<string, string> = {
-      fighter: '#c84',
-      archer: '#4c8',
-      knight: '#88c',
-      mage: '#c4c',
-      cleric: '#fff',
-      skeleton: '#888',
-      demon: '#c44',
-    };
-    const color = colors[soldier.type] || '#aaa';
-
     const size = SOLDIER_SIZE * scale;
+    const drawX = x + offsetX;
+    const drawY = y + offsetY;
+    const sprite = getSprite(SOLDIER_TYPES[soldier.type].sprite);
 
-    // Body
-    ctx.fillStyle = color;
-    ctx.fillRect(x + offsetX - size / 2, y + offsetY - size / 2, size, size);
+    if (sprite) {
+      // Enemies face left toward the player's side; mirror their sprite so the two armies face each other.
+      if (isPlayer) {
+        ctx.drawImage(sprite, drawX - size / 2, drawY - size / 2, size, size);
+      } else {
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+        ctx.restore();
+      }
 
-    // Border
-    ctx.strokeStyle = isPlayer ? '#4af' : '#f44';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x + offsetX - size / 2, y + offsetY - size / 2, size, size);
+      // Team affiliation: a thin colored underline bar below the sprite (replaces the old border rect).
+      ctx.fillStyle = isPlayer ? '#4af' : '#f44';
+      ctx.fillRect(drawX - size / 2, drawY + size / 2 - 2, size, 2);
+    } else {
+      // Fallback: simple colored rectangle + type label based on type.
+      const colors: Record<string, string> = {
+        fighter: '#c84',
+        archer: '#4c8',
+        knight: '#88c',
+        mage: '#c4c',
+        cleric: '#fff',
+        skeleton: '#888',
+        demon: '#c44',
+      };
+      const color = colors[soldier.type] || '#aaa';
 
-    // Type label
-    ctx.font = `bold ${11 * scale}px sans-serif`;
-    ctx.fillStyle = '#000';
-    ctx.textAlign = 'center';
-    ctx.fillText(soldier.type.slice(0, 3).toUpperCase(), x + offsetX, y + offsetY + 4);
+      // Body
+      ctx.fillStyle = color;
+      ctx.fillRect(drawX - size / 2, drawY - size / 2, size, size);
+
+      // Border
+      ctx.strokeStyle = isPlayer ? '#4af' : '#f44';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(drawX - size / 2, drawY - size / 2, size, size);
+
+      // Type label
+      ctx.font = `bold ${11 * scale}px sans-serif`;
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.fillText(soldier.type.slice(0, 3).toUpperCase(), drawX, drawY + 4);
+    }
 
     // HP bar background
     const barWidth = size;
