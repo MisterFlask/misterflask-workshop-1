@@ -1,49 +1,75 @@
 # Claude Code Project Instructions
 
-## Model Hierarchy and Advisor Policy
+## Model Hierarchy: Escalation and Delegation
 
-At the start of a session, check which model you are running as (e.g. via the
-model ID in your system prompt or environment): specifically, determine whether
-you are a **Fable/Mythos-class** model (`claude-fable-*`, `claude-mythos-*`) or
-a **non-Fable** model (Opus, Sonnet, Haiku, etc.). Then follow the matching
-policy below.
+At the start of a session, check which model you are running as (via the model
+ID in your system prompt or environment): a **Fable/Mythos-class** model
+(`claude-fable-*`, `claude-mythos-*`) or a **non-Fable** model (Opus, Sonnet,
+Haiku, etc.). Then follow the matching policy.
+
+The principle in both directions: **Fable-level ability is for judgment —
+design decisions, ambiguity resolution, diagnosis of stuck problems, and
+review of concrete work.** It is not for grind, and it is not an oracle to
+chat with. Escalations hand over artifacts (a diff, a failing test output,
+two competing sketches), never just a narrative summary — the reviewer must be
+able to disagree with your framing, not merely answer your question.
+
+### If you are Fable
+
+Reserve yourself for judgment; delegate the grind.
+
+- **Delegate** well-scoped subtasks — codebase searches, bulk/mechanical
+  edits, isolated implementations with a clear spec, running tests and
+  verification — to cheaper models (Sonnet by default, Haiku for trivial
+  mechanical work) via subagents.
+- **Keep for yourself:** writing the spec, resolving ambiguity, design and
+  balance decisions, and reviewing delegated work before accepting it.
+- **Never consult an advisor** (not Fable, not Opus, not anyone). You are the
+  top of the hierarchy; decide directly.
 
 ### If you are NOT Fable (Opus, Sonnet, Haiku, ...)
 
-Consult a stronger model as an **advisor** only when you are experiencing
-**implementation or design uncertainty** — you're unsure which approach is
-right, a diagnosis isn't converging, competing designs have real trade-offs
-you can't resolve, or you'd be guessing. Consult before committing to the
-uncertain choice (e.g. spawn an advisor subagent via the Agent tool with a
-model override, asking it to review your plan or diagnosis):
+Do the work yourself. Escalate for a **review of concrete work product** when
+a gate fires — gates are objective so they trigger whether or not you *feel*
+uncertain:
 
-1. **Try Fable first** as the advisor. Don't attempt to pre-check availability,
-   quota, or spend limits — just make the call.
-2. If the Fable call **fails** (for any reason: capacity, spend limits, model
-   not offered, error), **fall back to Opus** as the advisor.
-3. **Exception — no self-advising:** Opus must never use Opus as its advisor.
-   If you are Opus and the Fable call fails, proceed without an advisor rather
-   than consulting another Opus instance.
+1. **Core-logic diff, before commit:** your change touches core game logic
+   (`Game.ts`, `Combat.ts`) or alters game balance values (unit stats, costs,
+   building effects, economy numbers). Send the actual diff for review.
+2. **Stuck, after two failed attempts:** you've tried to fix the same bug or
+   test failure twice and it still fails. Send the failing output and what
+   you tried.
+3. **Ambiguity, before implementing:** requirements are ambiguous, or they
+   conflict with the design docs. Send the specific conflict and your
+   proposed resolution.
+4. **Genuine fork in the road:** you cannot choose between approaches with
+   real trade-offs. Send both options as concrete sketches, not descriptions.
 
-If you are confident in the approach — even on a large or important task — do
-not consult an advisor. Uncertainty is the trigger, not task size.
+Feeling lost still counts as a trigger — but it is the extra trigger, not the
+only one. Confident routine work outside these gates proceeds without
+escalation, regardless of size.
 
-### If you ARE Fable
+**Who reviews** (attempt in order; don't pre-check quota or availability —
+just make the call and fall back on failure):
 
-- **Never consult an advisor.** Fable must not call Fable or Opus (or any other
-  model) as an advisor — you are the top of the hierarchy; decide directly.
-- **Do delegate:** continue delegating well-scoped subtasks (searches, bulk
-  mechanical edits, isolated implementations with clear specs, verification
-  runs) to cheaper models (Sonnet, Haiku) via subagents, keeping design
-  judgment and final review to yourself.
+1. **Fable**, via an Agent-tool subagent with a model override.
+2. On failure, **Opus**.
+3. On failure, a **fresh instance of your own model** (skip duplicates — for
+   Opus, step 2 and 3 are the same thing). A clean-context review of a
+   concrete artifact still catches real errors; the value of review is mostly
+   fresh eyes on the artifact, not extra raw capability. Reviewing your own
+   work inside your own context does NOT count as a review.
+
+Apply the reviewer's feedback or explicitly note why you disagree, then
+proceed. One review round per gate — do not loop.
 
 ### Summary
 
-| You are | Advisor when uncertain (implementation/design) | Delegation |
+| You are | Escalation (only at a gate) | Delegation |
 |---|---|---|
-| Fable | None (never Fable or Opus) | Delegate well-scoped subtasks to cheaper models |
-| Opus | Try Fable; on failure, none (never Opus) | As normal |
-| Sonnet / Haiku / other | Try Fable; on failure, Opus | As normal |
+| Fable | Never | Grind goes to Sonnet/Haiku; judgment and review stay with you |
+| Opus | Fable → fresh Opus instance | As normal |
+| Sonnet / Haiku / other | Fable → Opus → fresh instance of yourself | As normal |
 
 ## FFH Simplified Game Project
 
