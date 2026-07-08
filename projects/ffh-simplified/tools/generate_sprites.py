@@ -145,6 +145,11 @@ def main():
     definitions_dir = project_root / 'assets' / 'sprite_definitions'
     output_dir = project_root / 'assets' / 'sprites'
 
+    # Optional: limit to one subdirectory (e.g. `generate_sprites.py soldiers`)
+    if len(sys.argv) > 1:
+        definitions_dir = definitions_dir / sys.argv[1]
+        output_dir = output_dir / sys.argv[1]
+
     if not definitions_dir.exists():
         print(f"No sprite definitions directory found at {definitions_dir}")
         print("Creating directory...")
