@@ -357,7 +357,7 @@ A narrative poem of 16-24 quatrains is a reasonable target. Plan accordingly in 
 - [ ] User has approved plan
 
 ### Phase 2: Per-Stanza Generation
-- [ ] Exemplar selected and in context
+- [ ] Exemplar sourced via web search (public domain) and in context
 - [ ] Rhyme options queried for line-ending words
 - [ ] Stanza drafted
 - [ ] Meter verified (all lines pass)

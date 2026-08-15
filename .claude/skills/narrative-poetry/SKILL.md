@@ -68,7 +68,7 @@ Develop selected concept into full outline:
 
 For each stanza sequentially:
 
-1. **Select exemplar(s)** from `exemplars/` folder matching form/tone, inject into context
+1. **Source exemplar(s)** via web search (see Exemplar Sourcing below), inject into context
 2. **Pull rhyme options** using the rhyme dictionary script with metrical filtering
 3. **Draft stanza** with full phonetic option space visible
 4. **Verify meter** using the meter checker script
@@ -165,25 +165,19 @@ python .claude/skills/narrative-poetry/scripts/meter_check.py "The curfew tolls 
 
 Returns: syllable count, stress pattern, and whether it matches expected meter.
 
-## Exemplar Selection
+## Exemplar Sourcing (Web Search)
 
-Exemplars are stored in `exemplars/` subdirectory, organized by form:
+Before drafting, run a simple web search to find 1-2 exemplar poems (or excerpts) from suitably old poetry that is clearly in the public domain (pre-1900 is a safe rule of thumb; think Byron, Kipling-era and earlier, Gilbert & Sullivan, broadside ballads, music hall songs).
 
-```
-exemplars/
-├── ballad/           # Common meter (8686), narrative focus
-├── blank-verse/      # Unrhymed iambic pentameter
-├── heroic-couplet/   # Rhymed iambic pentameter pairs
-├── ottava-rima/      # 8-line stanzas, ABABABCC
-└── misc/             # Other forms, miscellaneous
-```
-
-Select exemplars based on:
-- **Form match**: Pull from the relevant form directory
+Search for poetry that is either **thematically** or **tonally** consistent with the current poem/song concept:
+- **Form match**: Same meter and rhyme scheme where possible (e.g., anapestic tetrameter → Byron's "The Destruction of Sennacherib")
 - **Tone match**: Darker subjects → different poems than comic subjects
-- **Era hint**: If user mentions "Victorian" or "medieval", weight accordingly
+- **Theme match**: Similar subject matter (war, labor, commerce, the supernatural, etc.)
+- **Era hint**: If user mentions "Victorian" or "medieval", weight the search accordingly
 
-Inject 1-2 short exemplars (or excerpts) into context before drafting. This shifts vocabulary and syntactic patterns away from modern cliches.
+Example searches: `public domain Victorian comic verse anapestic tetrameter`, `W.S. Gilbert Bab Ballads full text`, `broadside ballad strike labor 19th century full text`.
+
+Inject 1-2 short exemplars (or excerpts) into context before drafting. This shifts vocabulary and syntactic patterns away from modern cliches. Only use sources old enough that public-domain status is unambiguous.
 
 ## Stock Rhyme Warnings
 
