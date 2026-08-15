@@ -52,6 +52,28 @@ slow-drifting blurred cover-art background, a glowing ember waveform
 (`showwaves` + gaussian glow, screen-blended), film grain, vignette, and the
 subtitle track.
 
+## Animated version (`animated/`)
+
+A second, fully animated cut — no photographic assets at all. Soviet
+constructivist propaganda-poster style, drawn frame-by-frame with pycairo and
+driven by audio analysis (librosa: beats, RMS, low-band thump → `env.json`).
+
+- One scene per song section: the megaphone rally, the stoker shoveling on
+  the beat while Lucifer lounges in a gilded halo, an El Lissitzky red-wedge
+  chorus, the machinery of pain with a whip-cracking overseer, Beelzebub's
+  soul hoard and the rising specter of Pandemonium, the frozen whispered
+  bridge, a strobing break, and a finale where the chains literally shatter
+  on "we are literally all in chains".
+- A global `freeze` curve shifts the palette from fire-reds to ice-blues as
+  hell freezes over across the song.
+- Beat-synced motion throughout: shovel cycles, marching crowds, whip cracks,
+  camera shake from the low band, flame heights from RMS.
+
+```
+animated/animate.py <frames_dir>          # ~3000 frames at 24 fps, 4-way parallel
+FRAMES=<frames_dir> AUDIO=song.mp3 animated/render_animated.sh out.mp4
+```
+
 ## Dependencies
 
 - Python: `mutagen`, `numpy`, `sherpa-onnx`
