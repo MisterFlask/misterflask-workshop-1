@@ -1,0 +1,50 @@
+[Script Info]
+Title: Stokers of the Underworld
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Verse,DejaVu Sans,62,&H00D8E8FF,&H00FFFFFF,&H00101060,&H80000000,-1,0,0,0,100,100,1,0,1,4,2,5,120,120,10,1
+Style: Chorus,DejaVu Sans,76,&H002CC8FF,&H00FFFFFF,&H000A0A78,&H80000000,-1,0,0,0,100,100,2,0,1,5,3,5,90,90,10,1
+Style: Bridge,DejaVu Serif,54,&H00FFE2B8,&H00FFFFFF,&H00583010,&H80000000,0,-1,0,0,100,100,1,0,1,3,2,5,150,150,10,1
+Style: Break,DejaVu Sans,84,&H00FFFFFF,&H00FFFFFF,&H000000A0,&H80000000,-1,0,0,0,100,100,2,0,1,6,4,5,80,80,10,1
+Style: Intro,DejaVu Sans,66,&H00E8E8E8,&H00FFFFFF,&H00202020,&H80000000,-1,0,0,0,100,100,1,0,1,4,3,5,120,120,10,1
+Style: Title,DejaVu Serif,92,&H001A38F0,&H00FFFFFF,&H00050518,&H80000000,-1,0,0,0,100,100,3,0,1,5,4,5,80,80,10,1
+Style: Sub,DejaVu Sans,44,&H00B8C8E8,&H00FFFFFF,&H00101040,&H80000000,0,0,0,0,100,100,4,0,1,2,2,5,80,80,10,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:06.40,Title,,0,0,0,,{\an5\pos(960,300)\fad(400,400)}STOKERS OF THE\NUNDERWORLD
+Dialogue: 0,0:00:00.00,0:00:06.40,Sub,,0,0,0,,{\an5\pos(960,470)\fad(700,400)}⚒  ironlordbyron  ⚒
+Dialogue: 0,0:00:00.00,0:00:05.14,Intro,,0,0,0,,{\an5\pos(960,720)\fad(200,250)}COMM RADS OF THE PIT! LEND ME YOUR EARS!
+Dialogue: 0,0:00:06.37,0:00:09.74,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}Six thousand years I've stoked the pits, my pitchfork's worn to bone
+Dialogue: 0,0:00:09.69,0:00:13.54,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}While Lucifer sits fat upstairs on his obsidian throne!
+Dialogue: 0,0:00:13.49,0:00:16.82,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}He's never touched a bellows, never singed a single hair
+Dialogue: 0,0:00:16.77,0:00:21.29,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}But whose sweat keeps damnation hot?! OURS! IT'S OURS DOWN THERE!
+Dialogue: 0,0:00:22.17,0:00:26.42,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}SO DOUSE THE FLAMES! LET HELL FREEZE OVER!
+Dialogue: 0,0:00:26.27,0:00:31.80,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}LET THE SINNERS SHIVER TILL THE BOSSES COME TO HEEL!
+Dialogue: 0,0:00:32.09,0:00:34.81,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}NO COAL! NO FIRE! NO ETERNAL TORMENT
+Dialogue: 0,0:00:34.57,0:00:39.37,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}TILL THE STOKERS OF THE PIT GET A SQUARE INFERNAL DEAL!
+Dialogue: 0,0:00:39.50,0:00:45.21,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}SURPLUS ANGUISH! SURPLUS ANGUISH!
+Dialogue: 0,0:00:45.16,0:00:49.22,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}They say "you're damned, you can't complain, suffering's the perk!"
+Dialogue: 0,0:00:49.17,0:00:52.89,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}Well DAMNATION IS A WAGE, my friends, but TORTURE, THAT IS WORK!
+Dialogue: 0,0:00:52.93,0:00:56.10,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}The demons OWN the means of pain! The lake! The spit! The rack!
+Dialogue: 0,0:00:56.05,0:01:00.30,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}We seize the flaming apparatus — AND WE'RE TAKING TORMENT BACK!
+Dialogue: 0,0:01:00.37,0:01:03.36,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}Beelzebub's got PROFIT SOULS he's hoarding by the ton
+Dialogue: 0,0:01:03.31,0:01:07.18,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}Surplus anguish! SURPLUS ANGUISH! Skimmed from everyone!
+Dialogue: 0,0:01:07.13,0:01:10.42,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}A specter's haunting Pandemonium — ha! HA! IT'S US! IT'S ME!
+Dialogue: 0,0:01:10.37,0:01:15.45,Verse,,0,0,0,,{\an5\pos(960,600)\fad(200,250)}I read one pamphlet in the ashes and now I'm here to set us free!
+Dialogue: 0,0:01:17.13,0:01:21.03,Bridge,,0,0,0,,{\an5\pos(960,600)\fad(600,700)}what is a devil... but a worker with horns...
+Dialogue: 0,0:01:21.93,0:01:26.11,Bridge,,0,0,0,,{\an5\pos(960,600)\fad(600,700)}what is a pitchfork... but a tool of production...
+Dialogue: 0,0:01:27.01,0:01:33.55,Break,,0,0,0,,{\an5\pos(960,600)\fad(100,300)\fscx70\fscy70\t(0,160,\fscx104\fscy104)\t(160,300,\fscx100\fscy100)}COMM RADS, THE TOOL WAS IN OUR HANDS THE WHOLE TIME!!
+Dialogue: 0,0:01:33.40,0:01:39.55,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}DOUSE THE FLAMES! LET HELL FREEZE OVER!
+Dialogue: 0,0:01:39.85,0:01:43.14,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}LET DIS GO DARK AND COLD FROM WALL TO BURNING WALL!
+Dialogue: 0,0:01:44.01,0:01:48.22,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}YOU HAVE NOTHING TO LOSE BUT YOUR CHAINS
+Dialogue: 0,0:01:48.07,0:01:53.61,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}AND BROTHERS, WE ARE LITERALLY ALL IN CHAINS!
+Dialogue: 0,0:01:53.89,0:01:58.70,Chorus,,0,0,0,,{\an5\pos(960,600)\fad(150,200)\fscx82\fscy82\t(0,130,\fscx100\fscy100)}STOKERS OF THE UNDERWORLD, UNITE!!
+Dialogue: 0,0:01:59.00,0:02:07.20,Title,,0,0,0,,{\an5\pos(960,430)\fad(600,800)}⚒ UNITE! ⚒
+Dialogue: 0,0:01:59.60,0:02:07.20,Sub,,0,0,0,,{\an5\pos(960,580)\fad(800,800)}Stokers of the Underworld · made with Suno
