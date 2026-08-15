@@ -24,11 +24,23 @@ TAU = 2 * math.pi
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ENV = json.load(open(os.path.join(ROOT, "env.json")))
+LINES = json.load(open(os.path.join(ROOT, "timed_lines.json")))
 FPS = ENV["fps"]
 DUR = ENV["duration"]
 BEATS = np.array(ENV["beats"])
 RMS = np.array(ENV["rms"])
 LOW = np.array(ENV["low"])
+
+def clamp(v, lo=0.0, hi=1.0):
+    return max(lo, min(hi, v))
+
+def line_u(i, t):
+    """Progress through lyric line i: <0 before, 0..1 during, >1 after."""
+    l = LINES[i]
+    return (t - l["start"]) / max(l["end"] - l["start"], 1e-3)
+
+def during(i, t):
+    return 0.0 <= line_u(i, t) <= 1.0
 
 # ---------------------------------------------------------------- palette
 
@@ -178,13 +190,30 @@ def horned_head(ctx, x, y, r, color):
                    (x + s * r * 1.25, y - r * 1.75),
                    (x + s * r * 0.1, y - r * 0.85)], color)
 
-def worker(ctx, x, y, s, phase, P, tool="shovel"):
-    """Stoker silhouette, feet at (x, y). phase 0..1 = shovel cycle."""
+def worker(ctx, x, y, s, phase, P, tool="shovel", pose="work", aim=None, pu=0.0):
+    """Stoker silhouette, feet at (x, y).
+
+    pose: "work"    — shovel cycle, phase 0..1
+          "inspect" — pauses, holds his worn pitchfork flat, head bowed to it
+          "point"   — one arm flung out along angle `aim`, other on hip
+          "fist"    — fist to the sky, pumping with pu (beat pulse)
+          "rise"    — pu 0 = cowering wretch, 1 = standing tall
+    """
     ink = P["ink"]
-    lean = math.radians(-14 + 26 * math.sin(phase * TAU))
-    dip = s * 0.05 * (1 - math.cos(phase * TAU)) / 2
+    if pose == "work":
+        lean = math.radians(-14 + 26 * math.sin(phase * TAU))
+    elif pose == "inspect":
+        lean = math.radians(4)
+    elif pose == "point":
+        lean = math.radians(-8)
+    elif pose == "fist":
+        lean = math.radians(-10 - 4 * pu)
+    else:  # rise
+        lean = math.radians(lerp(38, -8, pu))
+    dip = s * 0.05 * (1 - math.cos(phase * TAU)) / 2 if pose == "work" else 0
+    crouch = s * 0.10 * (1 - pu) if pose == "rise" else 0
     ctx.save()
-    ctx.translate(x, y - dip)
+    ctx.translate(x, y - dip + crouch)
     # legs
     ctx.set_source_rgb(*ink)
     ctx.set_line_width(s * 0.14)
@@ -196,37 +225,102 @@ def worker(ctx, x, y, s, phase, P, tool="shovel"):
     # torso
     ctx.translate(0, -s * 0.40)
     ctx.rotate(lean)
-    poly(ctx, [(-s * 0.2, 0), (s * 0.2, 0), (s * 0.14, -s * 0.52),
-               (-s * 0.14, -s * 0.52)], ink)
-    horned_head(ctx, 0, -s * 0.66, s * 0.14, ink)
-    # arms + tool
-    reach = s * (0.55 + 0.15 * math.sin(phase * TAU))
-    ang = math.radians(30 + 40 * math.sin(phase * TAU + 0.6))
-    hx_, hy_ = reach * math.cos(ang), -s * 0.30 - reach * 0.4 * math.sin(ang)
+    chest = 1.0 + (0.08 * pu if pose in ("rise", "fist") else 0.0)
+    poly(ctx, [(-s * 0.2 * chest, 0), (s * 0.2 * chest, 0),
+               (s * 0.14 * chest, -s * 0.52), (-s * 0.14 * chest, -s * 0.52)], ink)
+    head_dy = {"inspect": -s * 0.60, "rise": -s * lerp(0.56, 0.66, pu)}.get(pose, -s * 0.66)
+    head_dx = s * 0.10 if pose == "inspect" else 0
+    horned_head(ctx, head_dx, head_dy, s * 0.14, ink)
     ctx.set_line_width(s * 0.11)
-    ctx.move_to(-s * 0.05, -s * 0.42)
-    ctx.line_to(hx_, hy_)
-    ctx.stroke()
-    if tool == "shovel":
-        tx, ty = hx_ + s * 0.34 * math.cos(ang - 0.5), hy_ + s * 0.30 * math.sin(ang - 0.5)
-        ctx.set_line_width(s * 0.055)
-        ctx.move_to(hx_, hy_)
-        ctx.line_to(tx, ty)
+    if pose == "work":
+        reach = s * (0.55 + 0.15 * math.sin(phase * TAU))
+        ang = math.radians(30 + 40 * math.sin(phase * TAU + 0.6))
+        hx_, hy_ = reach * math.cos(ang), -s * 0.30 - reach * 0.4 * math.sin(ang)
+        ctx.move_to(-s * 0.05, -s * 0.42)
+        ctx.line_to(hx_, hy_)
         ctx.stroke()
-        disc(ctx, tx, ty, s * 0.11, ink)
-    elif tool == "pitchfork":
-        ctx.save()
-        ctx.translate(hx_, hy_)
-        pitchfork(ctx, 0, s * 0.3, s * 1.05, math.radians(12), ink)
-        ctx.restore()
+        if tool == "shovel":
+            tx = hx_ + s * 0.34 * math.cos(ang - 0.5)
+            ty = hy_ + s * 0.30 * math.sin(ang - 0.5)
+            ctx.set_line_width(s * 0.055)
+            ctx.move_to(hx_, hy_)
+            ctx.line_to(tx, ty)
+            ctx.stroke()
+            disc(ctx, tx, ty, s * 0.11, ink)
+        elif tool == "pitchfork":
+            ctx.save()
+            ctx.translate(hx_, hy_)
+            pitchfork(ctx, 0, s * 0.3, s * 1.05, math.radians(12), ink)
+            ctx.restore()
+    elif pose == "inspect":
+        # both hands on a horizontal, worn-to-the-bone pitchfork
+        fy = -s * 0.40
+        for hx_ in (-s * 0.26, s * 0.26):
+            ctx.move_to(-s * 0.05, -s * 0.42)
+            ctx.line_to(hx_, fy)
+            ctx.stroke()
+        ctx.set_line_width(s * 0.05)
+        ctx.move_to(-s * 0.55, fy)
+        ctx.line_to(s * 0.55, fy)
+        ctx.stroke()
+        ctx.set_line_width(s * 0.035)
+        for k, dr in enumerate((-0.10, 0.0, 0.10)):
+            ctx.move_to(s * 0.55, fy + s * dr * 0.5)
+            # tines drooping — six thousand years of wear
+            ctx.curve_to(s * 0.65, fy + s * dr * 0.7,
+                         s * 0.70, fy + s * dr + s * 0.04,
+                         s * 0.74, fy + s * dr + s * 0.09)
+            ctx.stroke()
+    elif pose == "point":
+        a = aim if aim is not None else math.radians(-40)
+        ctx.move_to(-s * 0.02, -s * 0.44)
+        ctx.line_to(s * 0.62 * math.cos(a), -s * 0.44 + s * 0.62 * math.sin(a))
+        ctx.stroke()
+        disc(ctx, s * 0.62 * math.cos(a), -s * 0.44 + s * 0.62 * math.sin(a),
+             s * 0.055, ink)
+        ctx.move_to(s * 0.02, -s * 0.40)  # other arm akimbo
+        ctx.line_to(s * 0.24, -s * 0.22)
+        ctx.line_to(s * 0.10, -s * 0.06)
+        ctx.stroke()
+    elif pose == "fist":
+        up = s * (0.55 + 0.16 * pu)
+        ctx.move_to(-s * 0.02, -s * 0.44)
+        ctx.line_to(s * 0.16, -s * 0.44 - up)
+        ctx.stroke()
+        disc(ctx, s * 0.16, -s * 0.44 - up, s * 0.09, ink)
+        ctx.move_to(s * 0.02, -s * 0.42)
+        ctx.line_to(s * 0.20, -s * 0.16)
+        ctx.stroke()
+    else:  # rise: arms wrapped when cowering, opening to fists at sides
+        wrap = 1 - pu
+        for sgn in (-1, 1):
+            ctx.move_to(sgn * s * 0.04, -s * 0.42)
+            ex = sgn * s * lerp(0.10, 0.30, pu)
+            ey = -s * lerp(0.30, 0.10, pu) - wrap * s * 0.06 * sgn
+            ctx.line_to(ex, ey)
+            ctx.stroke()
+            if pu > 0.5:
+                disc(ctx, ex, ey, s * 0.07, ink)
     ctx.restore()
 
-def lucifer(ctx, x, y, s, t, P):
-    """Fat boss on a stepped obsidian throne, feet-level at (x, y)."""
+def lucifer(ctx, x, y, s, t, P, act="idle", au=0.0):
+    """Fat boss on a stepped obsidian throne, feet-level at (x, y).
+
+    act: "idle" — breathes, raises goblet on the beat
+         "sip"  — tips the goblet to his lips over the line (au 0..1)
+         "preen"— buffs his crown, sparkles; never singed a single hair
+         "recoil"— flinches back from the fist below (au 0..1)
+    """
     ink = P["ink"]
     for i in range(3):  # throne steps
         wd = s * (1.9 - i * 0.45)
         rect(ctx, x - wd / 2, y - s * 0.28 * (i + 1), wd, s * 0.28, ink, 0.92)
+    ctx.save()
+    if act == "recoil":
+        k = math.sin(math.pi * clamp(au)) * 0.7 + 0.3 * clamp(au)
+        ctx.translate(x, y)
+        ctx.rotate(math.radians(-9) * k)
+        ctx.translate(-x, -y - s * 0.05 * k)
     breathe = 1 + 0.03 * math.sin(t * 1.3)
     ctx.save()
     ctx.translate(x, y - s * 0.84)
@@ -240,15 +334,47 @@ def lucifer(ctx, x, y, s, t, P):
         poly(ctx, [(x - s * 0.12 + k * s * 0.12, y - s * 1.64),
                    (x - s * 0.06 + k * s * 0.12, y - s * 1.80),
                    (x + s * 0.00 + k * s * 0.12, y - s * 1.64)], P["ember"])
-    # goblet raised on the beat
-    gob = beat_pulse(t) * s * 0.06
     ctx.set_source_rgb(*ink)
     ctx.set_line_width(s * 0.09)
-    ctx.move_to(x + s * 0.30, y - s * 1.05)
-    ctx.line_to(x + s * 0.62, y - s * 1.30 - gob)
-    ctx.stroke()
-    poly(ctx, [(x + s * 0.52, y - s * 1.30 - gob), (x + s * 0.72, y - s * 1.30 - gob),
-               (x + s * 0.62, y - s * 1.44 - gob)], P["red2"])
+    if act == "sip":
+        # goblet travels to the lips and back, held mid-line
+        p = math.sin(math.pi * clamp(au)) ** 0.5
+        gx = lerp(x + s * 0.62, x + s * 0.16, p)
+        gy = lerp(y - s * 1.30, y - s * 1.50, p)
+        ctx.move_to(x + s * 0.30, y - s * 1.05)
+        ctx.line_to(gx, gy)
+        ctx.stroke()
+        ctx.save()
+        ctx.translate(gx, gy)
+        ctx.rotate(-1.1 * p)  # tips it back
+        poly(ctx, [(-s * 0.10, 0), (s * 0.10, 0), (0, -s * 0.14)], P["red2"])
+        ctx.restore()
+    elif act == "preen":
+        # hand circling the crown, polishing; little sparkles
+        ca = t * 5.0
+        hx_ = x - s * 0.02 + s * 0.16 * math.cos(ca)
+        hy_ = y - s * 1.70 + s * 0.08 * math.sin(ca)
+        ctx.move_to(x + s * 0.28, y - s * 1.06)
+        ctx.line_to(x + s * 0.30, y - s * 1.44)
+        ctx.line_to(hx_, hy_)
+        ctx.stroke()
+        disc(ctx, hx_, hy_, s * 0.07, ink)
+        for k in range(4):
+            sa = t * 3 + k * 1.7
+            disc(ctx, x + s * 0.30 * math.cos(sa * 1.3 + k),
+                 y - s * 1.75 - s * 0.12 * abs(math.sin(sa)),
+                 s * 0.025, P["paper"], 0.5 + 0.4 * math.sin(sa * 2))
+    else:
+        gob = beat_pulse(t) * s * 0.06
+        if act == "recoil":  # goblet flung up defensively
+            gob = s * (0.10 + 0.10 * clamp(au))
+        ctx.move_to(x + s * 0.30, y - s * 1.05)
+        ctx.line_to(x + s * 0.62, y - s * 1.30 - gob)
+        ctx.stroke()
+        poly(ctx, [(x + s * 0.52, y - s * 1.30 - gob),
+                   (x + s * 0.72, y - s * 1.30 - gob),
+                   (x + s * 0.62, y - s * 1.44 - gob)], P["red2"])
+    ctx.restore()
 
 def chain(ctx, x0, y0, x1, y1, links, sway, color, lw=6):
     ctx.set_source_rgb(*color)
@@ -373,17 +499,38 @@ def sc_verse1(ctx, t, P, fz):
         u = ((t * (0.25 + (sd % 1.0) * 0.3)) + sd) % 1.0
         disc(ctx, 430 + 60 * math.sin(sd * 9 + t), (H - 600) * (1 - u),
              4 + 4 * (sd % 1.0), P["ember"], (1 - u) * 0.8)
-    # the stoker, shoveling on the beat (one cycle per 2 beats),
-    # backlit by his own ember halo
+    # the stoker, backlit by his own ember halo — acting out each line
     disc(ctx, 950, H - 330, 360, P["red"], 0.5)
     disc(ctx, 950, H - 330, 360 + beat_pulse(t) * 26, P["red2"], 0.25)
     phase = (beat_count(t) % 2 + beat_phase(t)) / 2
-    worker(ctx, 950, H - 60, 420, phase, P, "shovel")
+    if during(1, t):      # "...my pitchfork's worn to bone" — inspects it
+        worker(ctx, 950, H - 60, 420, 0, P, pose="inspect")
+    elif during(2, t):    # "While Lucifer sits fat upstairs" — points at him
+        aim = math.atan2((H * 0.10 + 250) - (H - 480), (W - 360) - 950)
+        worker(ctx, 950, H - 60, 420, 0, P, pose="point", aim=aim)
+    elif during(4, t):    # "OURS! IT'S OURS DOWN THERE!" — fist to the sky
+        worker(ctx, 950, H - 60, 420, 0, P, pose="fist", pu=beat_pulse(t))
+        for k in range(7):  # sweat flung off him — whose sweat indeed
+            sd = k * 2.39
+            u = ((t * 1.6) + sd) % 1.0
+            sgn = -1 if k % 2 else 1
+            disc(ctx, 950 + sgn * (60 + 150 * u),
+                 H - 500 - 90 * u + 260 * u * u, 6 * (1 - u * 0.5),
+                 P["paper"], (1 - u) * 0.9)
+    else:                 # line 3 and gaps: back to shoveling while the boss preens
+        worker(ctx, 950, H - 60, 420, phase, P, "shovel")
     # Lucifer high right on his obsidian tower, lit by a gilded halo
     rect(ctx, W - 600, H * 0.10, 480, H, ink)
     sunburst(ctx, W - 360, H * 0.10 + 200, 60, 420, 16, -t * 0.05, P["ember"], 0.35)
     disc(ctx, W - 360, H * 0.10 + 230, 260, P["ember"], 0.30)
-    lucifer(ctx, W - 360, H * 0.10 + 420, 220, t, P)
+    if during(2, t):      # takes a lazy sip while being called out
+        lucifer(ctx, W - 360, H * 0.10 + 420, 220, t, P, "sip", line_u(2, t))
+    elif during(3, t):    # "never singed a single hair" — buffs the crown
+        lucifer(ctx, W - 360, H * 0.10 + 420, 220, t, P, "preen")
+    elif during(4, t):    # flinches from the fist below
+        lucifer(ctx, W - 360, H * 0.10 + 420, 220, t, P, "recoil", line_u(4, t))
+    else:
+        lucifer(ctx, W - 360, H * 0.10 + 420, 220, t, P)
 
 def sc_chorus1(ctx, t, P, fz):
     rect(ctx, 0, 0, W, H, P["bg"])
@@ -421,21 +568,78 @@ def sc_verse2(ctx, t, P, fz):
     rect(ctx, W * 0.62, H * 0.42, 460, 34, ink)
     for u in (0.66, 0.79, 0.93):
         rect(ctx, W * u, H * 0.16, 26, H * 0.30, ink)
-    # whip demon left, cracking on beats
+    # THE OVERSEER vs THE WORKER — the argument of verse two, line by line
+    ox, wx = W * 0.30, W * 0.52
+    grabbed = during(13, t) and line_u(13, t) > 0.35   # whip changes hands
+    stagger = clamp(line_u(13, t)) if during(13, t) else 0.0
     ctx.save()
-    ctx.translate(W * 0.30, H - 120)
+    ctx.translate(ox, H - 120)
+    if grabbed:  # staggers back, arms up in disbelief
+        ctx.rotate(math.radians(-14) * stagger)
+        ctx.translate(-60 * stagger, 0)
     horned_head(ctx, 0, -330, 42, ink)
     poly(ctx, [(-70, 0), (70, 0), (44, -300), (-44, -300)], ink)
-    crack = beat_pulse(t, 0.12)
     ctx.set_source_rgb(*ink)
     ctx.set_line_width(14)
-    ctx.move_to(30, -260)
-    for k in range(1, 9):
-        u = k / 8
-        ctx.line_to(30 + 320 * u,
-                    -260 - 150 * u * math.sin(u * 5 - crack * 9 - t * 2) * (0.3 + crack))
-    ctx.stroke()
+    if during(10, t):
+        # "you can't complain!" — condescending finger wag
+        wag = math.sin(t * 8.0) * 0.45
+        ctx.move_to(30, -260)
+        ctx.line_to(120, -350)
+        ctx.stroke()
+        ctx.save()
+        ctx.translate(120, -350)
+        ctx.rotate(wag)
+        ctx.set_line_width(10)
+        ctx.move_to(0, 0)
+        ctx.line_to(28, -60)
+        ctx.stroke()
+        ctx.restore()
+    elif during(12, t):
+        # "The demons OWN the means of pain!" — sweeping possessive arm
+        u = clamp(line_u(12, t))
+        sw = lerp(math.radians(210), math.radians(-30), u)  # gears -> rack
+        ctx.move_to(20, -270)
+        ctx.line_to(20 + 190 * math.cos(sw), -270 - 120 * math.sin(sw))
+        ctx.stroke()
+        disc(ctx, 20 + 190 * math.cos(sw), -270 - 120 * math.sin(sw), 16, ink)
+    elif grabbed:  # both arms thrown up
+        for sgn in (-1, 1):
+            ctx.move_to(sgn * 20, -270)
+            ctx.line_to(sgn * 90, -370 - 20 * sgn)
+            ctx.stroke()
+    if not grabbed:  # the whip is still his
+        crack = beat_pulse(t, 0.12)
+        ctx.move_to(30, -260)
+        for k in range(1, 9):
+            u = k / 8
+            ctx.line_to(30 + 320 * u,
+                        -260 - 150 * u * math.sin(u * 5 - crack * 9 - t * 2)
+                        * (0.3 + crack))
+        ctx.stroke()
     ctx.restore()
+    # the worker: cowers, rises, then lunges and seizes the whip
+    if t < LINES[11]["start"]:
+        wpu = 0.0
+    elif during(11, t):  # "TORTURE, THAT IS WORK!" — straightens to full height
+        wpu = clamp(line_u(11, t))
+    else:
+        wpu = 1.0
+    lunge = clamp(line_u(13, t)) if during(13, t) else 0.0
+    wx_now = wx - 120 * lunge
+    worker(ctx, wx_now, H - 90, 300, 0, P, pose="rise", pu=wpu)
+    if grabbed:  # the whip, seized, cracks skyward from the worker's fist
+        ctx.set_source_rgb(*ink)
+        ctx.set_line_width(12)
+        hx_, hy_ = wx_now - 70, H - 90 - 300 * 0.85
+        ctx.move_to(hx_, hy_)
+        crack = beat_pulse(t, 0.12)
+        for k in range(1, 9):
+            u = k / 8
+            ctx.line_to(hx_ - 60 * u,
+                        hy_ - 300 * u - 90 * u * math.sin(u * 6 - crack * 10)
+                        * (0.4 + crack))
+        ctx.stroke()
     # the seizing fist, rising through the verse with a torch
     prog = min(1.0, max(0.0, (t - 53.0) / 6.5))
     fy = H + 320 - prog * 640
@@ -462,15 +666,57 @@ def sc_verse3(ctx, t, P, fz):
         py = H - 60 - (k // 9) * 44 - 12 * ((sd * 3) % 1.0)
         disc(ctx, px, py, 24, P["ember"], 0.9)
         disc(ctx, px, py, 10, P["paper"], 0.7)
+    # tiny workers at the edge, having their anguish skimmed
+    for k, tx in enumerate((90, 190, 290)):
+        bob = 4 * math.sin(t * 2 + k)
+        poly(ctx, [(tx - 28, H - 60), (tx + 28, H - 60),
+                   (tx + 18, H - 170 + bob), (tx - 18, H - 170 + bob)], ink)
+        horned_head(ctx, tx, H - 190 + bob, 18, ink)
+    if during(15, t):
+        # "SURPLUS ANGUISH! Skimmed from everyone!" — souls stream to the hoard
+        for k in range(10):
+            sd = k * 1.618
+            u = ((t * 0.45) + sd) % 1.0
+            sx = 90 + (sd * 77) % 220
+            x = lerp(sx, W * 0.75, u)
+            y = H - 200 - 320 * math.sin(math.pi * u) + 40 * math.sin(sd * 9)
+            disc(ctx, x, y, 14, P["ember"], 0.9 * min(1, 4 * u * (1 - u) + 0.3))
+            disc(ctx, x, y, 6, P["paper"], 0.7)
+    # Beelzebub: greedy scooping until the specter scares him out of his hunch
+    startled = t >= LINES[16]["start"]
+    su = clamp(line_u(16, t)) if startled else 0.0
+    jump = math.exp(-3.0 * su) if startled else 0.0
     ctx.save()
-    ctx.translate(W * 0.75, H - 430)
+    ctx.translate(W * 0.75 + 40 * su * (1 - su), H - 430 - 130 * jump)
+    if startled:
+        ctx.rotate(math.radians(10) * (jump + 0.3 * su))  # leans away from the ghost
     poly(ctx, [(-160, 220), (160, 220), (90, -120), (-90, -120)], ink)  # hunch
     horned_head(ctx, -60, -160, 44, ink)
-    # fly wings, buzzing with the music
+    # arms: raking souls onto the pile, one scoop per beat; flung up when startled
+    ctx.set_source_rgb(*ink)
+    ctx.set_line_width(26)
+    if startled:
+        for sgn in (-1, 1):
+            ctx.move_to(sgn * 70, -80)
+            ctx.line_to(sgn * 150, -230 - 30 * sgn * math.sin(t * 9))
+            ctx.stroke()
+    else:
+        big = 1.35 if during(14, t) else 1.0  # hoarding by the TON
+        sc = beat_phase(t)
+        for sgn, off in ((-1, 0.0), (1, 0.5)):
+            u = (sc + off) % 1.0
+            ax = sgn * lerp(220, 60, math.sin(math.pi * u)) * big
+            ay = lerp(60, 180, u ** 2)
+            ctx.move_to(sgn * 60, -60)
+            ctx.line_to(ax, ay)
+            ctx.stroke()
+            disc(ctx, ax, ay, 30, ink)
+    # fly wings, buzzing with the music (frantic when startled)
+    buzz = 21 + 26 * su
     for s in (-1, 1):
         ctx.save()
         ctx.translate(s * 100, -110)
-        ctx.rotate(s * (0.5 + 0.12 * math.sin(t * 21)))
+        ctx.rotate(s * (0.5 + (0.12 + 0.10 * su) * math.sin(t * buzz)))
         ctx.scale(1, 0.45)
         disc(ctx, 0, -90, 95, P["dim"], 0.85)
         ctx.restore()
@@ -494,11 +740,18 @@ def sc_verse3(ctx, t, P, fz):
         ctx.fill()
         for s in (-1, 1):  # eyes
             disc(ctx, s * 45, -130, 16, ink, 0.9 * sp)
-        # it carries the pamphlet
+        # it carries the pamphlet — thrust skyward on the beat for
+        # "I read one pamphlet in the ashes and now I'm here to set us free!"
+        thrust = beat_pulse(t) if during(17, t) else 0.0
+        px_, py_ = 90 + 20 * thrust, -60 - 160 * thrust
+        if during(17, t):
+            sunburst(ctx, px_ + 55, py_ + 40, 60, 220 + 60 * thrust, 12,
+                     t * 0.4, P["ember"], 0.35 * sp)
         ctx.set_source_rgba(*P["red2"], sp)
         ctx.save()
-        ctx.rotate(0.1 * math.sin(t * 2))
-        ctx.rectangle(90, -60, 110, 80)
+        ctx.translate(px_, py_)
+        ctx.rotate(0.1 * math.sin(t * 2) - 0.5 * thrust)
+        ctx.rectangle(0, 0, 110, 80)
         ctx.fill()
         ctx.restore()
         ctx.restore()
