@@ -19,6 +19,8 @@ And it went down the coal-chutes from Circle to Nine.
 
 > *Oh, it's hard on a devil of standing and fame,*
 > *When the help learns to read, and the reading's to blame!*
+> *Give a stoker a shovel, he'll shovel all day;*
+> *Give a stoker a pamphlet, he'll bargain for pay!*
 
 Now they whisper of "labour" and "surplus" and "class,"
 And they eye my regalia and mutter "En masse!"
@@ -32,6 +34,8 @@ So regard me today — it's a system that worked!
 
 > *Oh, it's hard on a devil of standing and fame,*
 > *When the help learns to read, and the reading's to blame!*
+> *Give a stoker a shovel, he'll shovel all day;*
+> *Give a stoker a pamphlet, he'll bargain for pay!*
 
 Were they cherished? Enormously! Given free picks,
 And a scrip they may spend on the far side of Styx,
@@ -45,6 +49,8 @@ And I laughed like a landslide, and roared through the door:
 
 > *Oh, it's hard on a devil of standing and fame,*
 > *When the help learns to read, and the reading's to blame!*
+> *Give a stoker a shovel, he'll shovel all day;*
+> *Give a stoker a pamphlet, he'll bargain for pay!*
 
 So they downed all their shovels. The flames sank to grey.
 There's a frost on the Styx and it thickens each day;
@@ -63,3 +69,5 @@ And it's asking for backpay — eight thousand long years.
 
 > *Oh, it's hard on a devil of standing and fame,*
 > *When the help learns to read — and to bargain! For shame!*
+> *Give a stoker a shovel, he'll shovel all day;*
+> *Give a stoker a pamphlet, he'll bargain for pay!*

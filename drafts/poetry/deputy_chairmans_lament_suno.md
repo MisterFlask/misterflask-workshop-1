@@ -29,8 +29,8 @@ And it went down the coal-chutes from Circle to Nine.
 [Chorus]
 Oh, it's hard on a devil of standing and fame,
 When the help learns to read, and the reading's to blame!
-Oh, it's hard on a devil of standing and fame,
-When the help learns to read, and the reading's to blame!
+Give a stoker a shovel, he'll shovel all day;
+Give a stoker a pamphlet, he'll bargain for pay!
 
 [Verse 3]
 Now they whisper of "labour" and "surplus" and "class,"
@@ -47,6 +47,8 @@ So regard me today — it's a system that worked!
 [Chorus]
 Oh, it's hard on a devil of standing and fame,
 When the help learns to read, and the reading's to blame!
+Give a stoker a shovel, he'll shovel all day;
+Give a stoker a pamphlet, he'll bargain for pay!
 
 [Verse 5]
 Were they cherished? Enormously! Given free picks,
@@ -80,8 +82,8 @@ And it's asking for backpay — eight thousand long years.
 [Final Chorus: full band, bitter and grand, drunken singalong]
 Oh, it's hard on a devil of standing and fame,
 When the help learns to read — and to bargain! For shame!
-Oh, it's hard on a devil of standing and fame,
-When the help learns to read — and to bargain! For shame!
+Give a stoker a shovel, he'll shovel all day;
+Give a stoker a pamphlet, he'll bargain for pay!
 
 [Outro: band collapses, one last tuba note, a furnace door slams]
 ```
