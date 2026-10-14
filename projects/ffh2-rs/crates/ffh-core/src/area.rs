@@ -7,9 +7,6 @@
 //! CvArea has no AI subclass: the AI bookkeeping that rules code maintains (area AI types,
 //! target cities, unit AI counts, best found values) are plain fields here, as in C++.
 
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-
 use crate::game::Game;
 use crate::ids::*;
 use ffh_data::*;
@@ -160,17 +157,49 @@ impl Game {
 
     /// C++ `CvArea::countNumUniqueBonusTypes`: present bonuses flagged `bOneArea`.
     pub fn area_count_num_unique_bonus_types(&self, a: AreaId) -> i32 {
-        todo!("CvArea::countNumUniqueBonusTypes")
+        let mut count = 0;
+
+        for (b, bonus) in self.d.bonuses.iter_enumerated() {
+            if self.map.areas[a].num_bonuses[b] > 0 && bonus.one_area {
+                count += 1;
+            }
+        }
+
+        count
     }
 
     /// C++ `CvArea::countHasReligion` (C++ default `eOwner = NO_PLAYER`).
     pub fn area_count_has_religion(&self, a: AreaId, religion: ReligionType, owner: Option<PlayerId>) -> i32 {
-        todo!("CvArea::countHasReligion")
+        let mut count = 0;
+
+        for i in self.player_ids() {
+            if self.players[i].alive && (owner.is_none() || owner == Some(i)) {
+                for &c in &self.players[i].cities {
+                    if self.city_area(c) == a && self.cities[c].has_religion[religion] {
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        count
     }
 
     /// C++ `CvArea::countHasCorporation` (C++ default `eOwner = NO_PLAYER`).
     pub fn area_count_has_corporation(&self, a: AreaId, corporation: CorporationType, owner: Option<PlayerId>) -> i32 {
-        todo!("CvArea::countHasCorporation")
+        let mut count = 0;
+
+        for i in self.player_ids() {
+            if self.players[i].alive && (owner.is_none() || owner == Some(i)) {
+                for &c in &self.players[i].cities {
+                    if self.city_area(c) == a && self.cities[c].has_corporation[corporation] {
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        count
     }
 
     // ------------------------------------------------------------------
@@ -248,28 +277,62 @@ impl Game {
 
     /// C++ `CvArea::changeBuildingGoodHealth` (+ `CvPlayer::AI_makeAssignWorkDirty`).
     pub fn area_change_building_good_health(&mut self, a: AreaId, player: PlayerId, change: i32) {
-        todo!("CvArea::changeBuildingGoodHealth")
+        if change != 0 {
+            let area = &mut self.map.areas[a];
+            area.building_good_health[player] += change;
+            debug_assert!(area.building_good_health[player] >= 0);
+
+            self.player_ai_make_assign_work_dirty(player);
+        }
     }
 
     /// C++ `CvArea::changeBuildingBadHealth` (+ `CvPlayer::AI_makeAssignWorkDirty`).
     pub fn area_change_building_bad_health(&mut self, a: AreaId, player: PlayerId, change: i32) {
-        todo!("CvArea::changeBuildingBadHealth")
+        if change != 0 {
+            // C++: FAssert(getBuildingBadHealth(eIndex) >= 0), although `processArea` adds the
+            // (negative or zero) `getAreaHealth()` of non-healthy buildings here.
+            self.map.areas[a].building_bad_health[player] += change;
+
+            self.player_ai_make_assign_work_dirty(player);
+        }
     }
 
     /// C++ `CvArea::changeBuildingHappiness` (+ `CvPlayer::AI_makeAssignWorkDirty`).
     pub fn area_change_building_happiness(&mut self, a: AreaId, player: PlayerId, change: i32) {
-        todo!("CvArea::changeBuildingHappiness")
+        if change != 0 {
+            self.map.areas[a].building_happiness[player] += change;
+
+            self.player_ai_make_assign_work_dirty(player);
+        }
     }
 
     /// C++ `CvArea::changeFreeSpecialist` (+ `CvPlayer::AI_makeAssignWorkDirty`).
     pub fn area_change_free_specialist(&mut self, a: AreaId, player: PlayerId, change: i32) {
-        todo!("CvArea::changeFreeSpecialist")
+        if change != 0 {
+            let area = &mut self.map.areas[a];
+            area.free_specialist[player] += change;
+            debug_assert!(area.free_specialist[player] >= 0);
+
+            self.player_ai_make_assign_work_dirty(player);
+        }
     }
 
     /// C++ `CvArea::changeYieldRateModifier` (invalidates the owner's yield rank cache,
     /// updates commerce, reassigns citizens).
     pub fn area_change_yield_rate_modifier(&mut self, a: AreaId, player: PlayerId, yield_type: YieldType, change: i32) {
-        todo!("CvArea::changeYieldRateModifier")
+        if change != 0 {
+            self.map.areas[a].yield_rate_modifier[player][yield_type.idx()] += change;
+
+            self.player_invalidate_yield_rank_cache(player, Some(yield_type));
+
+            if yield_type == YieldType::YIELD_COMMERCE {
+                self.player_update_commerce(player);
+            }
+
+            self.player_ai_make_assign_work_dirty(player);
+
+            // setDirty(CityInfo_DIRTY_BIT) for the active team: UI only.
+        }
     }
 
     // ------------------------------------------------------------------
@@ -284,7 +347,18 @@ impl Game {
 
     /// C++ `CvArea::changeCleanPowerCount` (updates the team's commerce and power health).
     pub fn area_change_clean_power_count(&mut self, a: AreaId, team: TeamId, change: i32) {
-        todo!("CvArea::changeCleanPowerCount")
+        if change != 0 {
+            let old_clean_power = self.area_is_clean_power(a, team);
+
+            self.map.areas[a].clean_power_count[team] += change;
+
+            if old_clean_power != self.area_is_clean_power(a, team) {
+                self.team_update_commerce(team);
+                self.team_update_power_health(team);
+
+                // setDirty(CityInfo_DIRTY_BIT) for the active team: UI only.
+            }
+        }
     }
 
     /// C++ `CvArea::isBorderObstacle`.
@@ -334,5 +408,39 @@ mod tests {
         assert_eq!(a.num_ai_units[PlayerId(2)].len(), UnitAIType::NUM);
         assert_eq!(a.num_bonuses.len(), 4);
         assert_eq!(a.num_improvements.len(), 5);
+    }
+
+    #[test]
+    fn counters() {
+        let mut g = crate::map::tests::game_from_ascii(&["##"], false, false);
+        let a = g.map_add_area(false);
+
+        // Only bonuses present in the area and flagged `bOneArea` count (FFH2 flags none).
+        assert_eq!(g.area_count_num_unique_bonus_types(a), 0);
+        g.map.areas[a].num_bonuses.fill(1);
+        let one_area = g.d.bonuses.iter().filter(|b| b.one_area).count() as i32;
+        assert_eq!(g.area_count_num_unique_bonus_types(a), one_area);
+
+        // No cities: nothing has the religion / corporation.
+        if !g.d.religions.is_empty() {
+            assert_eq!(g.area_count_has_religion(a, ReligionType(0), None), 0);
+        }
+        if !g.d.corporations.is_empty() {
+            assert_eq!(g.area_count_has_corporation(a, CorporationType(0), Some(PlayerId(0))), 0);
+        }
+
+        // Zero changes are no-ops; a clean power change that keeps the state updates nothing.
+        let (p, t) = (PlayerId(0), TeamId(0));
+        g.area_change_building_good_health(a, p, 0);
+        g.area_change_building_bad_health(a, p, 0);
+        g.area_change_building_happiness(a, p, 0);
+        g.area_change_free_specialist(a, p, 0);
+        g.area_change_yield_rate_modifier(a, p, YieldType::YIELD_COMMERCE, 0);
+        g.area_change_clean_power_count(a, t, 0);
+        assert_eq!(g.map.areas[a].yield_rate_modifier[p], [0; YieldType::NUM]);
+        g.map.areas[a].clean_power_count[t] = 1;
+        g.area_change_clean_power_count(a, t, 2);
+        assert_eq!(g.map.areas[a].clean_power_count[t], 3);
+        assert!(g.area_is_clean_power(a, t));
     }
 }
