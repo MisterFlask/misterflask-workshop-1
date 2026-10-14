@@ -140,6 +140,11 @@ pub fn build(d: &GameData, group: &str, seeds: &[u32], turns: i32, n_random: usi
                     no_victory: victories.iter().filter(|x| !x.contains("ALTAR") && !x.contains("TOWER") && !x.contains("TIME")).cloned().collect(),
                     ..base(seed)
                 });
+                // The FfH building victories, forced: the first civ's capital gets the victory
+                // buildings at turn 100.
+                for vic in victories.iter().filter(|x| x.contains("ALTAR") || x.contains("TOWER")) {
+                    v.push(Settings { grant_victory: Some(format!("{vic}@100")), ..base(seed) });
+                }
                 // No victory at all.
                 v.push(Settings { no_victory: victories.clone(), ..base(seed) });
             }

@@ -143,13 +143,55 @@ fn flush_log(g: &mut Game) {
     }
 }
 
+/// `--grant-victory VICTORY_X@T`: (victory, turn).
+fn parse_grant(g: &Game, s: &Settings) -> Option<(VictoryType, i32)> {
+    let spec = s.grant_victory.as_ref()?;
+    let (v, t) = spec.split_once('@').expect("--grant-victory VICTORY_X@TURN");
+    Some((g.d.t::<VictoryType>(v), t.parse().expect("--grant-victory turn")))
+}
+
+/// Gives the capital of the first alive civ every building whose class counts towards `v`.
+fn grant_victory_buildings(g: &mut Game, v: VictoryType) {
+    let d = g.d;
+    let barbarian = g.barbarian_player();
+    let Some(p) = g.player_ids().find(|&p| p != barbarian && g.players[p].alive && g.player_get_capital_city(p).is_some()) else {
+        return;
+    };
+    let capital = g.player_get_capital_city(p).unwrap();
+    for class in d.building_classes.keys() {
+        if d.building_classes[class].victory_threshold[v] > 0 {
+            if let Some(b) = d.building_classes[class].default_building_index {
+                g.city_set_num_real_building(capital, b, 1);
+            }
+        }
+    }
+    println!("GRANT\t{}\t{}", g.game_turn(), team_name(g, g.players[p].team));
+}
+
 /// Plays `s.turns` turns (or until the game ends), as `ffh-cli`'s `run::autoplay`.
 fn play(s: &Settings, g: &mut Game) {
     let end_turn = g.game_turn() + s.turns;
     let mut turn = g.game_turn();
     TURN.store(turn, Ordering::Relaxed);
     let mut updates_this_turn = 0u64;
-    while g.game_state == GameStateType::GAMESTATE_ON && g.game_turn() < end_turn {
+    // After a victory under autorun the game goes on (`GAMESTATE_EXTENDED`, as in C++): play
+    // up to `EXTENDED_TURNS` more turns of it.
+    const EXTENDED_TURNS: i32 = 50;
+    let mut stop_turn = end_turn;
+    let mut grant = parse_grant(g, s);
+    while g.game_state != GameStateType::GAMESTATE_OVER && g.game_turn() < stop_turn {
+        if g.game_state != GameStateType::GAMESTATE_ON && stop_turn == end_turn {
+            check_end(g);
+            println!("VICTORY\t{}\t{}", g.game_turn(), end_state(g));
+            stop_turn = end_turn.min(g.game_turn() + EXTENDED_TURNS);
+            continue;
+        }
+        if let Some((v, t)) = grant {
+            if g.game_turn() >= t {
+                grant_victory_buildings(g, v);
+                grant = None;
+            }
+        }
         g.update();
         updates_this_turn += 1;
         if g.game_turn() != turn {

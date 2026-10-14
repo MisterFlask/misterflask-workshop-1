@@ -26,6 +26,9 @@ pub struct Settings {
     pub no_victory: Vec<String>,
     /// Open slots after the civs (None = the standard count).
     pub spare: Option<usize>,
+    /// `VICTORY_X@T`: at turn T, the capital of the first alive civ gets every building whose
+    /// class has a victory threshold for VICTORY_X (forces the FfH tower/altar victories).
+    pub grant_victory: Option<String>,
 }
 
 impl Settings {
@@ -50,6 +53,7 @@ impl Settings {
             max_city_elimination: 0,
             no_victory: Vec::new(),
             spare: None,
+            grant_victory: None,
         }
     }
 
@@ -79,6 +83,7 @@ impl Settings {
                 "--max-city-elimination" => s.max_city_elimination = num(&v)? as i32,
                 "--no-victory" => s.no_victory = list(&v),
                 "--spare" => s.spare = Some(num(&v)? as usize),
+                "--grant-victory" => s.grant_victory = Some(v),
                 a => return Err(format!("unknown option {a}")),
             }
             i += 2;
@@ -128,6 +133,9 @@ impl Settings {
         if let Some(n) = self.spare {
             push("--spare", n.to_string());
         }
+        if let Some(g) = &self.grant_victory {
+            push("--grant-victory", g.clone());
+        }
         a
     }
 
@@ -169,6 +177,9 @@ impl Settings {
         }
         if let Some(n) = self.spare {
             out += &format!(" spare={n}");
+        }
+        if let Some(g) = &self.grant_victory {
+            out += &format!(" grant={}", short(g));
         }
         out
     }

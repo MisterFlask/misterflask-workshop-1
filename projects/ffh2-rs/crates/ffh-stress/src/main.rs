@@ -224,6 +224,7 @@ fn run_child(exe: &std::path::Path, s: &Settings, timeout: Duration) -> Done {
     let mut done = Done { settings: s.clone(), status: String::new(), turn: "?".into(), end: String::new(), detail: String::new(), secs };
     let mut panic_lines = Vec::new();
     let mut progress = String::new();
+    let mut victory = String::new();
     for line in out.lines() {
         let mut f = line.splitn(2, '\t');
         match (f.next(), f.next()) {
@@ -231,6 +232,7 @@ fn run_child(exe: &std::path::Path, s: &Settings, timeout: Duration) -> Done {
             (Some("END"), Some(v)) => done.end = v.to_string(),
             (Some("PANIC"), Some(v)) | (Some("BT"), Some(v)) => panic_lines.push(v.to_string()),
             (Some("PROGRESS"), Some(v)) => progress = v.to_string(),
+            (Some("VICTORY"), Some(v)) => victory = v.replace('\t', " "),
             _ => {}
         }
     }
@@ -246,6 +248,12 @@ fn run_child(exe: &std::path::Path, s: &Settings, timeout: Duration) -> Done {
         done.detail = format!("{status}: {}", tail.into_iter().rev().collect::<Vec<_>>().join(" | "));
     } else {
         done.status = "ok".into();
+    }
+    if !victory.is_empty() {
+        // "<turn> <state> <victory> winner=..": the end state at the victory, then the end.
+        let (vt, rest) = victory.split_once(' ').unwrap_or(("?", ""));
+        let short: String = rest.split_whitespace().take(3).collect::<Vec<_>>().join(" ");
+        done.end = format!("{short} @{vt}; then {}", done.end);
     }
     if done.turn == "?" && !progress.is_empty() {
         done.turn = progress;
@@ -267,7 +275,9 @@ fn summary(results: &[Done], elapsed: Duration) {
         let c = |s: &str| rs.iter().filter(|r| r.status == s).count();
         let mut ends: Vec<(String, usize)> = Vec::new();
         for r in rs.iter().filter(|r| r.status == "ok") {
-            let k = r.end.split_whitespace().next().unwrap_or("?").to_string();
+            // "ON", or the victory type ("EXTENDED CONQUEST ..." -> "CONQUEST").
+            let w: Vec<&str> = r.end.split_whitespace().take(2).collect();
+            let k = if w.first() == Some(&"ON") { "ON".to_string() } else { w.get(1).unwrap_or(&"?").to_string() };
             match ends.iter_mut().find(|(e, _)| *e == k) {
                 Some(e) => e.1 += 1,
                 None => ends.push((k, 1)),
