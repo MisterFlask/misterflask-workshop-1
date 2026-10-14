@@ -166,7 +166,8 @@ pub fn manage(g: &mut Game, v: &View) {
         let waited = g.teams[team].ai_war_plan_state_counter[target];
         if ready && waited >= 5 || waited >= 40 {
             crate::trace!(g, p, "declares war on team {:?} (army {}, prepared {} turns)", target, army_size(g, p), waited);
-            g.team_declare_war(team, target, true, Some(WarPlanType::WARPLAN_TOTAL));
+            let plan = if g.teams[team].ai_war_plan[target] == Some(WarPlanType::WARPLAN_PREPARING_LIMITED) { WarPlanType::WARPLAN_LIMITED } else { WarPlanType::WARPLAN_TOTAL };
+            g.team_declare_war(team, target, true, Some(plan));
         }
         return;
     }
@@ -176,17 +177,36 @@ pub fn manage(g: &mut Game, v: &View) {
         return;
     }
     let leader = g.players[p].personality_type.map(|l| &g.d.leader_heads[l]);
-    let war_rand = leader.map_or(100, |l| l.max_war_rand.max(1));
-    // Deterministic stand-in for `getSorenRandNum(iMaxWarRand) == 0`, checked every 5 turns.
-    let roll = ((turn as u32).wrapping_mul(2654435761) ^ (p.0 as u32).wrapping_mul(40503)) % (war_rand as u32 / 5 + 1);
-    if roll != 0 {
+    // C++ AI_doWar's three kinds of war, each with its own leader odds (deterministic stand-in
+    // for `getSorenRandNum(iRand) == 0`, checked every 5 turns): total war against a weaker
+    // neighbour, limited war at closer odds, and dogpiling on a civ already at war.
+    let roll = |salt: u32, rand: i32| -> bool {
+        let h = (turn as u32).wrapping_mul(2654435761) ^ (p.0 as u32).wrapping_mul(40503) ^ salt.wrapping_mul(97);
+        h % (rand.max(1) as u32 / 5 + 1) == 0
+    };
+    #[derive(PartialEq, Clone, Copy)]
+    enum Kind {
+        Total,
+        Limited,
+        Dogpile,
+    }
+    let kind = if roll(0, leader.map_or(100, |l| l.max_war_rand)) {
+        Kind::Total
+    } else if roll(1, leader.map_or(100, |l| l.limited_war_rand)) {
+        Kind::Limited
+    } else if roll(2, leader.map_or(100, |l| l.dogpile_war_rand)) {
+        Kind::Dogpile
+    } else {
+        return;
+    };
+    // A broke empire only picks on clearly weaker neighbours (a captured city pays for itself
+    // in plunder and land); a bankrupt one not at all.
+    let broke = crate::production::financial_trouble(g, p);
+    if broke && g.player_calculate_gold_rate(p) < 0 && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] == 0 {
+        crate::trace!(g, p, "war roll passed but bankrupt");
         return;
     }
-    // Not while broke.
-    if crate::production::financial_trouble(g, p) {
-        crate::trace!(g, p, "war roll passed but broke");
-        return;
-    }
+    let margin = if broke { 75 } else { 100 };
     let ours = g.team_get_power(team, true).max(1) as i64;
     let mut best: Option<(TeamId, i64)> = None;
     for other in g.player_ids() {
@@ -206,8 +226,18 @@ pub fn manage(g: &mut Game, v: &View) {
         if rel > 1 {
             continue;
         }
-        let theirs = g.team_get_power(ot, true).max(1) as i64;
-        if ours * 10 < theirs * 13 {
+        let theirs = g.team_get_defensive_power(ot).max(1) as i64;
+        // Power checks as in C++ (their defensive power against ours times the leader ratio).
+        let ok = match kind {
+            Kind::Total => theirs * 2 / 3 < ours * leader.map_or(100, |l| l.max_war_nearby_power_ratio) as i64 * margin / 10000,
+            Kind::Limited => theirs < ours * leader.map_or(100, |l| l.limited_war_power_ratio) as i64 * margin / 10000,
+            Kind::Dogpile => {
+                // Their enemies' power counts on our side.
+                let at_war_with: i64 = g.team_ids().into_iter().filter(|&o| o != ot && o != team && g.team_is_alive(o) && o != g.barbarian_team() && g.at_war(o, ot)).map(|o| g.team_get_power(o, true) as i64).sum();
+                at_war_with > 0 && theirs < (ours + at_war_with) * margin / 100
+            }
+        };
+        if !ok {
             continue;
         }
         let Some(dist) = reach_distance(g, team, ot) else { continue };
@@ -223,8 +253,9 @@ pub fn manage(g: &mut Game, v: &View) {
         }
     }
     if let Some((target, _)) = best {
-        crate::trace!(g, p, "prepares war on team {:?}", target);
-        g.team_ai_set_war_plan(team, target, Some(WarPlanType::WARPLAN_PREPARING_TOTAL), false);
+        let plan = if kind == Kind::Total { WarPlanType::WARPLAN_PREPARING_TOTAL } else { WarPlanType::WARPLAN_PREPARING_LIMITED };
+        crate::trace!(g, p, "prepares war on team {:?} ({:?})", target, plan);
+        g.team_ai_set_war_plan(team, target, Some(plan), false);
     }
 }
 
@@ -271,7 +302,7 @@ fn can_take_cities(g: &Game, p: PlayerId, other: PlayerId) -> bool {
     }
     let Some(best_defense) = weakest else { return false };
     // Fortified in a city: roughly +50%; siege engines take most of that away.
-    let needed = best_defense * if siege { 85 } else { 140 } / 100;
+    let needed = best_defense * if siege { 85 } else { 120 } / 100;
     best_attack >= needed
 }
 

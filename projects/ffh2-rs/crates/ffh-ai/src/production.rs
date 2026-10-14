@@ -378,6 +378,22 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
     }
 
+    // An explorer while much of our landmass is unknown (sites, goody huts, contact with
+    // the neighbours).
+    if ctx.capital && ctx.threat == 0 && (5..150).contains(&g.game_turn()) && count_ai(g, p, UnitAIType::UNITAI_EXPLORE) == 0 {
+        let area = g.map.plots[plot].area;
+        if let Some(a) = area {
+            let unknown = g.area_get_num_unrevealed_tiles(a, pl.team);
+            if unknown * 5 > g.map.areas[a].num_tiles && unknown > 20 {
+                if let Some(u) = best_unit(g, c, Role::Explore).or_else(|| best_unit(g, c, Role::Attack)) {
+                    if g.city_production_turns_left_unit(c, u, 0) <= 10 {
+                        return Some(Choice::Train(u, UnitAIType::UNITAI_EXPLORE));
+                    }
+                }
+            }
+        }
+    }
+
     // 3. Settlers while good sites remain in reach.
     let settler = settler_choice(ai, g, c, &ctx, ctx.threat == 0);
     if let SettlerPlan::Now(choice) = settler {
