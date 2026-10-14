@@ -56,7 +56,7 @@ This is the design of `crates/ffh-play`, implemented phase by phase (§7); the s
 | F18 | C++ exe helpers: `cityPushOrder` rewrites flags when the city has stored production (CvGame.cpp:2472). `CvNetPushOrder` → `pushOrder(o, d, -1, alt, !(shift‖ctrl), shift)`. `CvNetResearch` is as at CvMessageData.cpp:364. `selectionListMove` puts up the DECLAREWARMOVE popup (CvGameInterface.cpp:828). `selectionListGameNetMessage` joins the selection into a group unless it `mirrorsSelectionGroup` (:900). `updateTestEndTurn` sends AutoMoves when nothing is ready (:386). FFH2's `cannotSelectionList*` and `cannotHandleAction` all return False. | ref C++ / CvGameUtils.py | `command.rs` ports these exactly. |
 | F19 | AI cost: `ffh bench --seed 1 --civs 6 --size WORLDSIZE_STANDARD --turns 150` measured **10.51 ms/turn** (slowest 28.6 ms). | measured today | The UI adds the latency; the AI is fast enough. A synchronous end turn is fine. |
 | F20 | ffh-stress `check.rs` has `pub fn check(&Game)` and depends only on ffh-core. | ffh-stress/src/check.rs | Reused by the bot and soak tests through `#[path = "../../ffh-stress/src/check.rs"] mod check;`, with no edit to ffh-stress. |
-| F21 | Node 22 is installed. No browser is installed. Only the `x86_64-unknown-linux-gnu` target exists. | env | JS gets `node --check` and `node --test` (optional, skipped if node is missing). UI correctness rests on server-side logic and protocol tests. |
+| F21 | Node 22 is installed (`/opt/node22/bin/node`). Headless Chromium is available: the Playwright browsers are in `/opt/pw-browsers` (`PLAYWRIGHT_BROWSERS_PATH`; `chromium-1194`, `chromium_headless_shell-1194`), and the `playwright` npm package (1.56) is installed globally under `/opt/node22/lib/node_modules`. Without that package, `chrome-linux/chrome --headless` can be driven directly (`--dump-dom`, `--screenshot`, DevTools protocol). Only the `x86_64-unknown-linux-gnu` target exists. | env (checked: a Playwright script launched Chromium and ran page JS) | JS gets `node --check` and `node --test`, and P5 adds a **headless-browser smoke test** (load the page against `ffh-play serve`, no console errors, play a few turns through the UI, screenshots for review). All of these are optional and skipped when node or the browser is missing. Correctness still rests mainly on server-side logic and protocol tests: the client only renders what the engine computes. |
 | F22 | The FfH main HUD shows the Armageddon counter (`getGlobalCounter`) and mana counts (`getNumAvailableBonuses` over `BONUS_MANA_*`). | CvMainInterface.py:102, 855, 3386 | Both go in the top bar (`get_global_counter`, game/world.rs:1351). |
 
 ---
@@ -181,7 +181,7 @@ Notes on `settle` and `EndTurn`:
 | Pending item | How it is derived | Answer command | Rules call |
 |---|---|---|---|
 | events | `SessionShared.pending_events` for h, filtered: the triggered data still exists and ≥1 `player_can_do_event` option (launchEventPopup); entries with no options are dropped | `event {triggered, event}` | `player_apply_event(h, e, id, true)` |
-| votes | `votes_triggered` with `player_is_voting_member(h, src)` and `player_vote(h,id)` ∈ {NO_PLAYER_VOTE, NO_PLAYER_VOTE_CHECKED} | `vote {vote, choice}`; choices are YES, NO, NEVER (only if `player_can_defy_resolution`), ABSTAIN, or a team for team votes | `cast_vote(h, id, choice)` |
+| votes | `votes_triggered` with `player_is_voting_member(h, src)` and `player_vote(h,id)` ∈ {NO_PLAYER_VOTE, NO_PLAYER_VOTE_CHECKED} | `vote {vote, choice}`; the choices are the DIPLOVOTE popup's buttons (`launchDiploVotePopup`; §4.5): a team vote offers **team ids**, other votes YES, NO, NEVER (only if `player_can_defy_resolution`) and ABSTAIN | `cast_vote(h, id, choice)` |
 | research | `player_get_current_research(h).is_none()` and some tech passes `player_can_research(h,t,false)` | `research {tech, shift}` | CvNetResearch port |
 | idle cities | `!city_is_production(c)` for own cities | `push_order` | cityPushOrder plus the CvNetPushOrder port |
 
@@ -428,7 +428,7 @@ pub enum Query { Status, Pending, View, Map { since: Option<u32> }, Plot { x: i3
 
 ### 4.1 Envelope
 
-The envelope is identical for HTTP `POST /api` and for stdio lines. Type references are accepted as XML type names (`"UNIT_WARRIOR"`, resolved with `d.ty`) or as integer indices; responses use indices and `/api/data` maps them back to names. Ids are raw `u32` (`UnitId`, `CityId`, `GroupId`, `TriggeredId`, `VoteId`, decision ids). Players and teams are `u8`. Plots are `x,y`.
+The envelope is identical for HTTP `POST /api` and for stdio lines. Type references are accepted as XML type names (`"UNIT_WARRIOR"`, resolved with `d.ty`) or as integer indices; responses use indices and `/api/data` maps them back to names. **Every** type-valued field of a response (status, view, map, queries) is an integer index, including the hard-coded C++ enums (activity, attitude, mission, order, victory, ...) and map keys (mana counts are an array of `{bonus, count}`, not an object keyed by name); `null` means none. Only protocol vocabulary that is not a game type is a string: `phase`, decision `kind` and option `key`, error codes, confirm kinds. Vote choices (`PlayerVoteTypes`, not an index type) are `YES`/`NO`/`NEVER`/`ABSTAIN` (or the values -2, -3, -5, -4) or a team id (§4.5). Ids are raw `u32` (`UnitId`, `CityId`, `GroupId`, `TriggeredId`, `VoteId`, decision ids). Players and teams are `u8`. Plots are `x,y`. Integers are `i64` on the wire; a 64-bit hash goes as a hex string.
 
 **Requests:**
 
@@ -477,26 +477,26 @@ At EOF of stdin: answer open decisions with the advisor and either quit (default
  "active_players":[3],"view_version":40,"map_rev":"9f3a11c2","ms_in_phase":12,
  "decision":{"id":17,"kind":"keep_city","title":"...","text":"...","options":[{"key":"keep","label":"Keep","help":"","enabled":true},...],
              "advisor":0,"context":{"plot":[12,30],"city":4,"unit":null,"other_player":2}},
- "over":{"winner_team":1,"victory":"VICTORY_CONQUEST"},
+ "over":{"winner_team":1,"victory":2},
  "crash":{"message":"...","autosave":"saves/auto/T0056.ffhsave","journal":"..."}}
 ```
 
 ### 4.4 View and map
 
-**`view`** is built from the human team's perspective, or the true state with `debug.reveal`, which the UI marks clearly:
+**`view`** is built from the human team's perspective, or the true state with `debug.reveal`, which the UI marks clearly. Type-valued fields are indices (§4.1); the client names them from `/api/data`. In the example, with the current data: `type` 312 = `UNIT_WARRIOR`, `order` 0 = `ORDER_TRAIN`, `attitude` 1 = `ATTITUDE_ANNOYED`, `activity` 2 = `ACTIVITY_SLEEP` (fortified units sleep: C++ has no fortify activity, `MISSION_FORTIFY` sets `ACTIVITY_SLEEP`), `m` 0 = `MISSION_MOVE_TO`, `bonus` 8 = `BONUS_MANA_FIRE`; other numbers are illustrative.
 
 ```json
 {"view_version":40,"turn":57,
  "me":{"player":0,"team":0,"gold":143,"gold_rate":6,"research":{"tech":21,"progress":40,"cost":120,"turns":4,"rate":9,"queue":[21,30]},
        "commerce_percent":[60,40,0,0],"flexible":[true,true,false,false],"anarchy":0,"golden_age":0,"state_religion":2,
-       "civics":[..],"score":312,"armageddon":14,"mana":{"BONUS_MANA_FIRE":1,...},"stasis":{"research":0,"production":0,"spells":0}},
- "players":[{"id":1,"leader":5,"civ":3,"team":1,"met":true,"war":true,"attitude":"ATTITUDE_ANNOYED","open_borders":false,
+       "civics":[..],"score":312,"armageddon":14,"mana":[{"bonus":8,"count":1},...],"stasis":{"research":0,"production":0,"spells":0}},
+ "players":[{"id":1,"leader":5,"civ":3,"team":1,"met":true,"war":true,"attitude":1,"open_borders":false,
              "defensive_pact":false,"score":290,"alive":true,"contact":true}],
  "cities":[{"id":3,"owner":0,"x":12,"y":30,"name":"Taranis","size":5,"capital":true,"visible":true,
-            "production":{"order":"ORDER_TRAIN","type":44,"turns":3},"idle":false,"defense":20}],
- "units":[{"id":881,"owner":0,"visual_owner":0,"type":44,"x":12,"y":31,"group":402,"hp":100,"moves":60,"max_moves":120,
-           "level":2,"xp":7,"promo_ready":false,"activity":"ACTIVITY_FORTIFY"}],
- "groups":[{"id":402,"head":881,"units":[881,890],"ready":true,"missions":[{"m":"MISSION_MOVE_TO","d1":15,"d2":33}],"automated":false}],
+            "production":{"order":0,"type":312,"turns":3},"idle":false,"defense":20}],
+ "units":[{"id":881,"owner":0,"visual_owner":0,"type":312,"x":12,"y":31,"group":402,"hp":100,"moves":60,"max_moves":120,
+           "level":2,"xp":7,"promo_ready":false,"activity":2}],
+ "groups":[{"id":402,"head":881,"units":[881,890],"ready":true,"missions":[{"m":0,"d1":15,"d2":33}],"automated":false}],
  "pending":{"events":[...],"votes":[...],"research_needed":false,"idle_cities":[7],"promotions_ready":[881],"ready_groups":[402,409]},
  "log_next":4211}
 ```
@@ -547,7 +547,7 @@ Every command is validated before any rules call (§2.8).
 | `declare_war {team}` | `CvNetChangeWar` | Met, `team_can_declare_war`, then `team_declare_war(my, t, false, None)`. Peace goes through a deal. |
 | `propose_deal {to,give,get}` | diplomacy screen → `AI_considerOffer` → `implementDeal` | `player_can_contact`; every item must pass `player_can_trade_item(from, to, item, false)` with no `player_get_trade_denial`. Then `g.controller(to).consider_offer(g, to, h, give, get)`; if true, `implement_deal(h, to, give, get, false)`. Reply `{accepted}`. |
 | `event {triggered,event}` | `CvNetEventTriggered` | Must be in the pending list and `player_can_do_event`; then `player_apply_event(h, e, id, true)`; remove it from the pending list. |
-| `vote {vote,choice}` | `CvNetDiploVote` | Pending vote for h; NEVER only if `player_can_defy_resolution`; then `cast_vote(h, id, choice)`. |
+| `vote {vote,choice}` | DIPLOVOTE popup (`CvDLLButtonPopup::launchDiploVotePopup`) → `CvNetDiploVote` | `choice` is decoded by `names::decode_player_vote`: YES, NO, NEVER, ABSTAIN or a team id; the internal `NO_PLAYER_VOTE` (-1) and `NO_PLAYER_VOTE_CHECKED` (-6) are refused. The vote must be pending for h. Then the choice must be a button the popup offers. **Team vote** (`is_team_vote`): a team id that is alive and `is_team_vote_eligible(t, src)`; if h's team is the vassal of an eligible team V (the first in team order), only V or h's own team; ABSTAIN only when h is not such a vassal; YES/NO/NEVER refused. **Other votes:** YES, NO, NEVER only if `player_can_defy_resolution(h, src, &option)`, ABSTAIN; team ids refused. Then `cast_vote(h, id, choice)`. (A non-negative `PlayerVoteTypes` is a team id; ffh-core's `PlayerVote::player()` reads it as a player id, see P7.) |
 | `set_option {option,value}` | `sendPlayerOption` | Allow-list: STACK_ATTACK, QUICK_MOVES, SAFE_AUTOMATION, NO_UNIT_CYCLING, WAIT_END_TURN. SHOW_* is refused (F3). |
 | `auto_moves` | `CvNetAutoMoves` | `player_set_auto_moves(h, true)` |
 | `end_turn {force}` | `CvNetTurnComplete` | The gate in §2.3, then `player_set_end_turn(h, true)` |
@@ -738,6 +738,7 @@ assets/js/api.js ~200, state.js ~250, markup.js ~120, map.js ~1,000, units.js ~5
 assets/test/*.mjs          node --test: markup, wrap-aware tile maths, overlay layout, api smoke   ~200
 tests/*.rs                 §8                                                                      ~1,600
 tools/web-check.sh         node --check + node --test, skipped if node is absent                   ~20
+tools/web-smoke.mjs        headless-Chromium smoke test against `ffh-play serve` (P5; F21), skipped without a browser ~150
 ```
 
 Totals: about **7.5k lines** of Rust library and binary code, **1.6k** of Rust tests, and **4.6k** of JS/CSS/HTML.
@@ -769,9 +770,9 @@ Each phase is independently testable and committable. `cargo build --release && 
   * the workspace member line.
 * Tests: JSON round-trip and escaping; name resolution for every info table and hard-coded enum.
 * **As built (done).**
-  * `json.rs` (std only). `Json { Null, Bool, Int(i64), Float(f64), Str, Arr, Obj(Vec<(String, Json)>) }`: objects keep insertion order, so output is deterministic (journal byte-equality). The parser is strict RFC 8259 and, because its input comes from clients, also rejects **duplicate keys** and nesting deeper than 128; a lone surrogate escape decodes to U+FFFD; integer literals that fit are `Int`, other numbers `Float`. The writer escapes `"`, `\`, control characters, U+2028/U+2029; non-finite floats become `null`. Builders: `jobj!`, `jarr!`, `Json::set/with/push`, `Json::idx/opt_idx` (type index, `null` for none), `From` for integers, strings, `Option`, `Vec` and the ffh-core entity ids. Typed getters for command decoding: `req::<T>`, `opt::<T>` (absent or `null` = none), `get_or`, `req_str`, `req_arr`, ... via `FromJson` (integers range-checked; entity ids; `Vec<T>`), all returning a `FieldError` that names the field ("field `units`: expected ..., got ..."). `to_pretty()` for people.
-  * `names.rs`. `Named` trait (kind name, count, name, lookup, text key) for all **61 info tables** (`ffh_data::INFO_FILES`), the **6 GlobalTypes lists** without a table (flavors, art styles, city sizes, contacts, diplomacy powers, directions) and the **15 hard-coded C++ enums** that have `NAMES` but no XML (activity, area AI, cardinal direction, control, feat, game state, interface message, mission AI, order, player option, plot, probability, task, tradeable item, war plan). `KINDS` lists them with type-erased accessors (for `/api/data`, `inspect`, the CLI). `decode::<T>` accepts a type name or an index in range; `decode_opt` also takes `null`/`-1` as none; `field`, `opt_field`, `list_field` decode object members. `PlayerVoteTypes` (not an index type) has `decode_player_vote` (C++ names, `YES`/`NO`/`NEVER`/`ABSTAIN`, or an integer). Type names are unique across all kinds (tested), so a bare name is never ambiguous.
-  * **Text.** The vendored text (`data/text/en.tsv`) holds FfH2's own text file only; descriptions inherited from BtS (e.g. `TXT_KEY_UNIT_WARRIOR`) have no text. `names::display` therefore falls back to a humanized type name (`UNIT_WARRIOR` → "Warrior"). Vendoring the BtS text would fix it (a data change, outside this crate).
+  * `json.rs` (std only). `Json { Null, Bool, Int(i64), Float(f64), Str, Arr, Obj(Vec<(String, Json)>) }`: objects keep insertion order, so output is deterministic (journal byte-equality). The parser is strict RFC 8259 and, because its input comes from clients, also rejects **duplicate keys** and nesting deeper than 128; a lone surrogate escape decodes to U+FFFD; integer literals that fit are `Int`, other numbers `Float`. Integers are `i64`: there is no `u64` conversion (a value above `i64::MAX` would come back as a lossy float; hashes go as hex strings), and `usize` converts within `0..=i64::MAX`. The writer escapes `"`, `\`, control characters, U+2028/U+2029; non-finite floats become `null`. Builders: `jobj!`, `jarr!`, `Json::set/with/push`, `Json::idx/opt_idx` (type index, `null` for none), `From` for integers, strings, `Option`, `Vec` and the ffh-core entity ids. Typed getters for command decoding: `req::<T>`, `opt::<T>` (absent or `null` = none), `get_or`, `req_str`, `req_arr`, ... via `FromJson` (integers range-checked; entity ids; `Vec<T>`), all returning a `FieldError` that names the field ("field `units`: expected ..., got ..."). `to_pretty()` for people.
+  * `names.rs`. `Named` trait (kind name, count, name, lookup, text key) for all **61 info tables** (`ffh_data::INFO_FILES`), the **6 GlobalTypes lists** without a table (flavors, art styles, city sizes, contacts, diplomacy powers, directions) and the **15 hard-coded C++ enums** that have `NAMES` but no XML (activity, area AI, cardinal direction, control, feat, game state, interface message, mission AI, order, player option, plot, probability, task, tradeable item, war plan). `KINDS` lists them with type-erased accessors (for `/api/data`, `inspect`, the CLI). `decode::<T>` accepts a type name or an index in range; `decode_opt` also takes `null`/`-1` as none; `field`, `opt_field`, `list_field` decode object members. `PlayerVoteTypes` (not an index type) has `decode_player_vote`, which accepts only what the C++ DIPLOVOTE popup can send: `YES`/`NO`/`NEVER`/`ABSTAIN` (C++ or short name, or the values -2, -3, -5, -4) or a **team id** in `0..MAX_CIV_TEAMS` (a non-negative `PlayerVoteTypes` is a team, used only in team votes); the internal `NO_PLAYER_VOTE` (-1) and `NO_PLAYER_VOTE_CHECKED` (-6) are refused. Which choices a given vote offers is the P1 `vote` command's check (§4.5). `voted_team` reads a vote value as a team. Type names are unique across all kinds (tested), so a bare name is never ambiguous.
+  * **Text.** The vendored text (`data/text/en.tsv`) holds FfH2's own text file only; descriptions inherited from BtS (e.g. `TXT_KEY_UNIT_WARRIOR`) have no text. `names::display` therefore falls back to a humanized type name (`UNIT_WARRIOR` → "Warrior"). Vendoring the BtS text would fix it (a data change, outside this crate). Otherwise `display` is the **whole** description with Civ4 markup kept (`VOTE_LIBERTY` → "Global Civic: Liberty"), not ffh-data's `Text::name`, which cuts at the first ':' as a "gendered forms" separator: FfH2's English text has no forms (no `<Text>`/`<Gender>` in an English entry), and its 11 descriptions with a ':' are all prose. A description with an unfilled placeholder (the two Somnium memories, `%D1: "..."`) also falls back to the type name.
   * Binary: `ffh-play kinds`, `ffh-play names [KIND] [--pretty]`, `ffh-play lookup NAME|KIND:INDEX ..` (debugging aids; the §6.1 subcommands arrive with their phases).
   * Tests: `json.rs` unit tests (round trip compact and pretty, escaping, numbers, strings and surrogates, structural errors with positions, duplicate keys, depth limit, typed getters and their messages); `tests/names.rs` (every kind × every index: name, lookup, decode by name / index, out-of-range and wrong-type errors, display; coverage checked against `INFO_FILES`, the `info_ids!` list in registry.rs and every `NAMES` array in enums.rs, so a new table or enum without a `KINDS` entry fails; registry names equal the hard-coded `NAMES` where both exist); `tests/cli.rs` (binary smoke test).
 
@@ -818,7 +819,7 @@ Each phase is independently testable and committable. `cargo build --release && 
   * log and turn report;
   * new, save and load;
   * game over and crash screens.
-* Tests: `tools/web-check.sh` (syntax plus pure-module tests) and a node smoke client that drives `serve` for 20 turns through `fetch`.
+* Tests: `tools/web-check.sh` (syntax plus pure-module tests), a node smoke client that drives `serve` for 20 turns through `fetch`, and a **headless-Chromium smoke test** (F21; `tools/web-smoke.mjs`, Playwright if its package resolves, else `chrome --headless`): load the page against `ffh-play serve`, fail on console errors or failed requests, start a game, select and move a unit, choose production and research, end a few turns through the UI, and save screenshots for review. Skipped when no browser is found.
 * Also a manual checklist for the human tester in docs/HUMAN.md.
 
 **P6 — browser complete (about 2k JS plus 0.3k Rust).**
@@ -846,6 +847,9 @@ Each phase is independently testable and committable. `cargo build --release && 
   4. The raze gift option.
   5. Election deferral (keep the selection when `None`).
   6. Only if testers find timing differences: engine-first's opt-in C++ popup queue (`takes_popups`, `Player::popups`, save format bump).
+* **Notes for other owners** (found in the P0 review; no behaviour change, not edited here):
+  * ffh-core `structs.rs`: `PlayerVote`'s doc ("a player id"), `PlayerVote::for_player` and `PlayerVote::player()` treat a non-negative value as a player; in C++ it is a `TeamTypes` (team votes only: `CvGame::castVote` compares it with `getTeam()`, and votes.rs's own `team_vote` builds it from a `TeamId`). ffh-play uses `names::voted_team`.
+  * ffh-data `Text::name` cuts a text at the first ':' as FfH2's "gendered forms" separator, but English entries have no forms, so it shortens prose: ffh-core's vote option texts (votes.rs `kVoteOption.szText`, "Election cancelled: ...") show "Global Civic" for `VOTE_LIBERTY` and drop the effect of 8 other votes ("Single Currency" for "Single Currency: +1 Trade Route ..."). ffh-play's `names::display` uses the full text.
 
 ---
 
@@ -918,6 +922,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
     * a view build on a huge map is under 10 ms;
     * QueryGuard overhead is under 1 ms.
 14. **Optional JS** (`tools/web-check.sh`): `node --check assets/js/*.js` and `node --test assets/test/*.mjs`.
+15. **Optional browser smoke** (`tools/web-smoke.mjs`, F21): headless Chromium against `ffh-play serve`, as in P5; screenshots for review. Not part of `cargo test`.
 
 ---
 
@@ -935,7 +940,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
 | **Timing deviations** for blocking decisions. | Keep/raze is immediate in C++ too. A free tech or an election is answered during processing rather than at the human's next turn start. Documented in PORTING.md; phase-7 hooks or the popup queue fix it if testers care. |
 | **Automation and FfH AI-controlled units idle** (F15). | Automation is hidden; an "AI-controlled units idle" warning is shown; phase-7 request to ffh-ai (also the fallback "improve the AI" task). |
 | **No AI-initiated diplomacy**: a human at war must propose peace. | `propose_deal` with a peace treaty; the `consider_offer` modal is already wired. |
-| **About 4.6k lines of hand-written JS that agents cannot see render** (F21). | The engine computes everything (legal actions, odds, turns, fog), so the client is a renderer. ES modules with one concern each; node syntax and pure-module tests; a node smoke client; the JSONL agent exposes the same capabilities for headless verification; `--assets` live-edit mode for the human tester. |
+| **About 4.6k lines of hand-written JS**, checked by agents only headless (F21). | The engine computes everything (legal actions, odds, turns, fog), so the client is a renderer. ES modules with one concern each; node syntax and pure-module tests; a node smoke client; a headless-Chromium smoke test with screenshots (console errors fail it); the JSONL agent exposes the same capabilities for headless verification; `--assets` live-edit mode for the human tester. |
 | **Thin messages and help** (F14; `CvGameTextMgr` not ported). | Diff-based turn report; event effect summaries; XML help and pedia texts; inspector. Add `log.msg` sites upstream incrementally (no rules effect). |
 | **Settle or auto-moves spinning on a stuck group.** | `settle` capped at 10k slices; AutoMoves at most once per control episode; the 200k-slice watchdog with ffh-cli-style diagnostics. |
 | **Fog leaks** (global log lines; views built mid-rules). | A single `fog.rs`; log filter `player == h or None`; T8; debug-reveal is explicit and visibly marked. |

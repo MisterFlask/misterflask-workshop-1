@@ -29,17 +29,27 @@ cargo build --release
 These hold for every request and reply of the protocol (design §4.1):
 
 * **Type references** are accepted as the XML/C++ type name (`"UNIT_WARRIOR"`, `"ORDER_TRAIN"`,
-  `"MISSION_FORTIFY"`) or as the integer index; replies use indices. Where a type is optional,
-  `null` or `-1` means none. A name of the wrong kind is refused (`unknown UnitType "TECH_X"`).
+  `"MISSION_FORTIFY"`) or as the integer index. Replies use indices for every type-valued field,
+  hard-coded C++ enums included (an `activity` is `2`, not `"ACTIVITY_SLEEP"`); `ffh-play names`
+  (later `/api/data`) maps them back. Where a type is optional, `null` or `-1` means none. A name
+  of the wrong kind is refused (`unknown UnitType "TECH_X"`).
 * **Kinds** with names: all 61 info tables, the 6 GlobalTypes lists without a table, and 15
-  hard-coded C++ enums (activities, orders, tasks, player options, tradeable items, ...). Vote
-  choices take `PLAYER_VOTE_YES` / `YES`, `NO`, `NEVER`, `ABSTAIN`, or an integer.
+  hard-coded C++ enums (activities, orders, tasks, player options, tradeable items, ...).
+* **Vote choices** are what the Civ4 vote popup offers: `YES`, `NO`, `NEVER`, `ABSTAIN` (also
+  `PLAYER_VOTE_YES`, ..., or the values -2, -3, -5, -4), or, in a team vote (secretary general,
+  victory), the **team id** voted for (0-34). `NO_PLAYER_VOTE` and `NO_PLAYER_VOTE_CHECKED`
+  (-1, -6) are vote state, not choices, and are refused. The `vote` command (P1) will also refuse a button the popup would
+  not show for that vote: team ids in a yes/no vote, YES/NO/NEVER in a team vote, a team that is
+  not eligible, NEVER when you cannot defy the resolution, and, for a vassal, anything but its
+  master or its own team.
 * **Ids** (units, cities, groups, triggered events, votes) are plain unsigned integers; players
-  and teams are 0-255.
+  and teams are 0-255. JSON integers are 64-bit signed; a 64-bit hash is sent as a hex string.
 * **JSON** is strict: no comments or trailing commas, no duplicate keys, nesting at most 128.
   Errors name the field: ``field `units`: expected an array of (a unit id (...)), got "x"``.
-* **Display names** come from the game text; text FfH2 inherits from BtS is not vendored, so
-  those names are derived from the type name (`UNIT_WARRIOR` -> "Warrior").
+* **Display names** are the whole description text, with Civ4 markup such as `[ICON_TRADE]` kept
+  (`VOTE_LIBERTY` -> "Global Civic: Liberty"). Text FfH2 inherits from BtS is not vendored, so
+  those names are derived from the type name (`UNIT_WARRIOR` -> "Warrior"), as are descriptions
+  with an unfilled placeholder (`MEMORY_SOMNIUM_POSITIVE` -> "Somnium Positive").
 
 ## Known gaps
 
