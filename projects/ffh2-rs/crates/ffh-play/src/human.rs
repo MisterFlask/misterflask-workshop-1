@@ -140,11 +140,22 @@ impl ResearchMark {
     }
 }
 
+/// A deferred event popup (C++ BUTTONPOPUP_EVENT in the player's popup queue).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct DeferredEvent {
+    pub player: PlayerId,
+    pub triggered: TriggeredId,
+    /// Shown: the popup was launched at a control point (`launchEventPopup` found a doable
+    /// event). Before that it is only queued; once launched it stays open (C++ fixes the popup
+    /// when it is shown) until answered, closed by a forced end turn, or its data is gone.
+    pub launched: bool,
+}
+
 /// Session state the controller shares with the session (design §3).
 pub struct SessionShared {
-    /// Deferred event popups: (player, triggered data id), in trigger order (C++ the player's
-    /// popup queue; saved in the sidecar).
-    pub pending_events: Mutex<Vec<(PlayerId, TriggeredId)>>,
+    /// Deferred event popups in trigger order (C++ the player's popup queue; saved in the
+    /// sidecar).
+    pub pending_events: Mutex<Vec<DeferredEvent>>,
     /// The research-site rule's mark (see `HumanController::choose_research`).
     pub research_mark: Mutex<Option<ResearchMark>>,
     pub next_decision: AtomicU32,
@@ -167,9 +178,15 @@ impl SessionShared {
         }
     }
 
-    /// Deferred events of `p`, in order.
+    /// Deferred events of `p` (queued or open), in order.
     pub fn events_of(&self, p: PlayerId) -> Vec<TriggeredId> {
-        self.pending_events.lock().unwrap().iter().filter(|(q, _)| *q == p).map(|&(_, id)| id).collect()
+        self.pending_events.lock().unwrap().iter().filter(|e| e.player == p).map(|e| e.triggered).collect()
+    }
+
+    /// The event popups of `p` on screen (launched), in order: what `pending` lists and the
+    /// `event` command answers.
+    pub fn open_events_of(&self, p: PlayerId) -> Vec<TriggeredId> {
+        self.pending_events.lock().unwrap().iter().filter(|e| e.player == p && e.launched).map(|e| e.triggered).collect()
     }
 
     pub fn decision_open(&self) -> bool {
@@ -305,8 +322,8 @@ impl Controller for HumanController {
             return self.advisor.choose_event(g, p, t, options);
         }
         let mut pending = self.shared.pending_events.lock().unwrap();
-        if !pending.contains(&(p, t.id)) {
-            pending.push((p, t.id));
+        if !pending.iter().any(|e| (e.player, e.triggered) == (p, t.id)) {
+            pending.push(DeferredEvent { player: p, triggered: t.id, launched: false });
             self.shared.stats.lock().unwrap().events_deferred += 1;
         }
         None

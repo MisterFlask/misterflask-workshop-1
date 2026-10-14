@@ -238,7 +238,7 @@ impl Session {
                 }
                 Phase::Human(h) => {
                     self.drain_log();
-                    self.refresh_pending_events(h);
+                    self.launch_events(h);
                     // A new game is saved at its first control point (the human's first turn;
                     // `game_init` leaves the first player's turn active, so the game starts
                     // without a turn boundary).
@@ -283,7 +283,7 @@ impl Session {
             return Err(CmdErr::DecisionPending);
         }
         let Phase::Human(h) = self.phase() else { return Err(CmdErr::NotYourTurn) };
-        let events = self.shared.events_of(h);
+        let events = self.shared.open_events_of(h);
         let plan = {
             let g = QueryGuard::new(&self.g);
             command::validate(&g, h, cmd, &Ctx { events: &events })?
@@ -306,13 +306,18 @@ impl Session {
         self.drain_log();
         let mark = self.messages_total;
         match action {
-            Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|&e| e != (h, *triggered)),
+            Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|e| (e.player, e.triggered) != (h, *triggered)),
             // C++: closing an event popup without a choice does nothing; the popup is gone.
-            Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|&(p, _)| p != h),
+            Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
             _ => {}
         }
         command::apply(&mut self.g, h, action);
         self.settle(h);
+        // Back at a control point: popups the command queued are shown now (as the exe shows
+        // them in its next frames).
+        if let Phase::Human(h) = self.phase() {
+            self.launch_events(h);
+        }
         // The human's messages since the command started (turn boundaries during the settle
         // drained some of them already).
         self.drain_log();
@@ -374,11 +379,23 @@ impl Session {
         }
     }
 
-    /// Drops deferred events the popup would no longer show (`launchEventPopup`: the data is
-    /// gone or no event can be done).
-    fn refresh_pending_events(&mut self, h: PlayerId) {
+    /// Shows the queued event popups of `h` at a control point: `launchEventPopup` checks once,
+    /// when the popup is shown, that its data exists and some event can be done, else drops it.
+    /// A shown popup is modal in C++ with its buttons fixed, so it stays open (its options
+    /// enabled as `canDoEvent` says at each moment) until answered or closed by a forced end
+    /// turn; it is dropped only when its data is gone (`applyEvent` would do nothing).
+    fn launch_events(&mut self, h: PlayerId) {
         let g = QueryGuard::new(&self.g);
-        self.shared.pending_events.lock().unwrap().retain(|&(p, id)| p != h || decision::pending_event(&g, h, id).is_some());
+        self.shared.pending_events.lock().unwrap().retain_mut(|e| {
+            if e.player != h {
+                true
+            } else if e.launched {
+                g.player_get_event_triggered(h, e.triggered).is_some()
+            } else {
+                e.launched = decision::event_available(&g, h, e.triggered);
+                e.launched
+            }
+        });
     }
 
     // ---- reads ---------------------------------------------------------------------------------
@@ -390,7 +407,7 @@ impl Session {
 
     /// What waits for the human.
     pub fn pending(&self) -> Pending {
-        let events = self.shared.events_of(self.human);
+        let events = self.shared.open_events_of(self.human);
         self.read(|g| decision::pending(g, self.human, &events))
     }
 

@@ -86,7 +86,10 @@ Civ4 answers some rules questions with popups for a human. `ffh-play` keeps the 
 
 * **Deferred** (answered at your next control point, like an unanswered C++ popup): choosing
   production for an idle city, events, diplomatic votes, the research choice. They are listed by
-  `pending()` and answered with `push_order`, `event`, `vote`, `research`. Ending the turn with
+  `pending()` and answered with `push_order`, `event`, `vote`, `research`. An event popup is
+  checked when it is shown (it is dropped if none of its choices is possible then); once shown
+  it stays until you answer it, even while your own actions make its choices impossible for a
+  while (C++ event popups are modal). Ending the turn with
   any open needs `force`; then open events are dropped, votes stay (they abstain after Civ4's
   extra turn) and empty research takes Civ4's automatic pick after turn 4.
 * **Blocking** (answered during the rules call that asks, through the session's `Answerer`):

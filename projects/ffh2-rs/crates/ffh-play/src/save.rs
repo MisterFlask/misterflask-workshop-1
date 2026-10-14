@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use ffh_core::ids::{PlayerId, TriggeredId};
 use ffh_core::log::LogEntry;
 
+use crate::human::DeferredEvent;
+
 use crate::json::{FieldError, Json};
 
 /// Sidecar format version.
@@ -19,8 +21,9 @@ pub const SIDECAR_VERSION: i64 = 1;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Sidecar {
     pub human: PlayerId,
-    /// Deferred event popups, in order.
-    pub pending_events: Vec<(PlayerId, TriggeredId)>,
+    /// Deferred event popups, in order (`[player, triggered id, launched]`; a version 1 pair
+    /// without `launched` reads as not yet launched).
+    pub pending_events: Vec<DeferredEvent>,
     /// The journal of the session that saved (for bug reports).
     pub journal: Option<String>,
     /// Lines that journal had when saving.
@@ -44,7 +47,7 @@ impl Sidecar {
         crate::jobj! {
             "v" => SIDECAR_VERSION,
             "human" => self.human,
-            "pending_events" => Json::Arr(self.pending_events.iter().map(|&(p, id)| crate::jarr![p, id]).collect()),
+            "pending_events" => Json::Arr(self.pending_events.iter().map(|e| crate::jarr![e.player, e.triggered, e.launched]).collect()),
             "journal" => self.journal.as_deref(),
             "journal_line" => self.journal_line,
             "messages_tail" => Json::Arr(self.messages_tail.iter().map(log_entry_json).collect()),
@@ -62,9 +65,14 @@ impl Sidecar {
         for (i, pair) in j.req_arr("pending_events").map_err(e)?.iter().enumerate() {
             let p = pair.at(0).and_then(|v| v.as_i64()).and_then(|v| u8::try_from(v).ok());
             let id = pair.at(1).and_then(|v| v.as_i64()).and_then(|v| u32::try_from(v).ok());
-            match (p, id, pair.as_arr().map(<[Json]>::len)) {
-                (Some(p), Some(id), Some(2)) => pending_events.push((PlayerId(p), TriggeredId(id))),
-                _ => return Err(format!("field `pending_events`: element {i}: expected [player, triggered id]")),
+            let launched = match pair.as_arr().map(<[Json]>::len) {
+                Some(2) => Some(false),
+                Some(3) => pair.at(2).and_then(Json::as_bool),
+                _ => None,
+            };
+            match (p, id, launched) {
+                (Some(p), Some(id), Some(launched)) => pending_events.push(DeferredEvent { player: PlayerId(p), triggered: TriggeredId(id), launched }),
+                _ => return Err(format!("field `pending_events`: element {i}: expected [player, triggered id, launched]")),
             }
         }
         let messages_tail = j.req_arr("messages_tail").map_err(e)?.iter().map(log_entry_from).collect::<Result<_, _>>().map_err(e)?;
@@ -169,7 +177,7 @@ mod tests {
     fn sidecar_round_trip_and_autosave_ring() {
         let s = Sidecar {
             human: PlayerId(0),
-            pending_events: vec![(PlayerId(0), TriggeredId(7))],
+            pending_events: vec![DeferredEvent { player: PlayerId(0), triggered: TriggeredId(7), launched: true }],
             journal: Some("saves/journal.jsonl".into()),
             journal_line: 12,
             messages_tail: vec![LogEntry { turn: 3, player: Some(0), text: "hi \"there\"".into() }],
@@ -177,8 +185,10 @@ mod tests {
         };
         assert_eq!(Sidecar::from_json(&Json::parse(&s.to_json().to_string()).unwrap()).unwrap(), s);
         // Optional members of version 1 read as their defaults.
-        let old = Json::parse(r#"{"v":1,"human":0,"pending_events":[],"journal":null,"journal_line":3,"messages_tail":[]}"#).unwrap();
-        assert!(!Sidecar::from_json(&old).unwrap().auto_moves_tried);
+        let old = Json::parse(r#"{"v":1,"human":0,"pending_events":[[0,4]],"journal":null,"journal_line":3,"messages_tail":[]}"#).unwrap();
+        let old = Sidecar::from_json(&old).unwrap();
+        assert!(!old.auto_moves_tried);
+        assert_eq!(old.pending_events, [DeferredEvent { player: PlayerId(0), triggered: TriggeredId(4), launched: false }]);
 
         let dir = std::env::temp_dir().join(format!("ffh-play-save-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);

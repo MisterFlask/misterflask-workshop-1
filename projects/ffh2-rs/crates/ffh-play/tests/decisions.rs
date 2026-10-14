@@ -176,18 +176,28 @@ fn research_next_after_a_completed_tech_is_deferred() {
     assert!(s.pending().research_needed);
 }
 
-/// Fires the first trigger that defers an event popup for `h`; returns its triggered id.
-fn fire_event(s: &mut Session) -> TriggeredId {
+/// Fires the first trigger accepted by `which` that defers an event popup for `h`; returns its
+/// triggered id (queued: the popup is shown at the next control point).
+fn queue_event(s: &mut Session, which: impl Fn(&GameData, EventTriggerType) -> bool) -> Option<TriggeredId> {
     let h = s.human;
     let d = s.g.d;
-    for t in d.event_triggers.keys() {
+    for t in d.event_triggers.keys().filter(|&t| which(d, t)) {
         let before = s.shared.events_of(h);
         s.g.player_init_triggered_data(h, t, true, None, INVALID_PLOT_COORD, INVALID_PLOT_COORD, None, None, None, None, None, None);
         if let Some(&id) = s.shared.events_of(h).iter().find(|id| !before.contains(id)) {
-            return id;
+            return Some(id);
         }
     }
-    panic!("no trigger fires for the human");
+    None
+}
+
+/// Fires the first trigger that defers an event popup for `h` and shows it (a control point);
+/// returns its triggered id.
+fn fire_event(s: &mut Session) -> TriggeredId {
+    let id = queue_event(s, |_, _| true).expect("no trigger fires for the human");
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert!(s.shared.open_events_of(s.human).contains(&id), "shown at the control point");
+    id
 }
 
 /// Events: pending, not applied, after the trigger; applied by `event` (with `bUpdateTrigger`);
@@ -233,6 +243,57 @@ fn events_are_deferred_until_answered() {
     s.g.player_delete_event_triggered(h, id3);
     assert_eq!(s.advance(&mut |_| {}), Stop::Human);
     assert!(!s.shared.events_of(h).contains(&id3));
+}
+
+/// `launchEventPopup` checks an event popup once, when it is shown: one with nothing doable then
+/// is dropped unshown; once shown it stays open (C++ popups are modal, their buttons fixed) even
+/// when the human's own actions leave no option doable, and an option that becomes doable again
+/// can still be chosen (P1 review: the check used to run at every control point).
+#[test]
+fn event_popups_are_checked_once_when_shown() {
+    let (mut s, _) = duel(14, |_, _| 0);
+    to_turn(&mut s, 3);
+    let h = s.human;
+    // Triggers whose events all act on the event's city: pointing the data at a city that does
+    // not exist makes every option impossible (as losing that city would), and back again.
+    let city_trigger = |d: &GameData, t: EventTriggerType| {
+        let events = &d.event_triggers[t].events;
+        !events.is_empty() && events.iter().all(|&e| d.events[e].city_effect)
+    };
+    let set_city = |s: &mut Session, id: TriggeredId, c: Option<CityId>| -> Option<CityId> {
+        let data = s.g.players[h].events_triggered.iter_mut().find(|d| d.id == id).unwrap();
+        std::mem::replace(&mut data.city, c)
+    };
+    let gone = Some(CityId(u32::MAX));
+
+    // Nothing doable when it would be shown: dropped unshown.
+    let id = queue_event(&mut s, city_trigger).expect("a city event fires");
+    assert!(!s.shared.open_events_of(h).contains(&id), "queued, not yet shown");
+    let city = set_city(&mut s, id, gone);
+    assert!(city.is_some());
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert!(!s.shared.events_of(h).contains(&id), "dropped when it would be shown");
+
+    // Shown, then nothing doable: still open, with every option disabled.
+    let id = queue_event(&mut s, city_trigger).expect("another city event fires");
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert!(s.shared.open_events_of(h).contains(&id));
+    let city = set_city(&mut s, id, gone);
+    ok(&mut s, Command::SetOption { option: PlayerOptionType::PLAYEROPTION_QUICK_MOVES, value: true });
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    let pe = s.pending().events.into_iter().find(|e| e.triggered == id).expect("the shown popup stays open");
+    assert!(pe.options.iter().all(|o| !o.enabled));
+    let event = pe.options[0].event;
+    assert!(matches!(s.execute(&Command::Event { triggered: id, event }), Err(CmdErr::Cannot(_))));
+    match s.execute(&Command::EndTurn { force: false }) {
+        Ok(CmdOk::NeedsConfirm(Confirm::EndTurn { events, .. })) => assert!(events >= 1),
+        other => panic!("{other:?}"),
+    }
+    // Doable again: answered.
+    set_city(&mut s, id, city);
+    let event = s.pending().events.into_iter().find(|e| e.triggered == id).unwrap().options.into_iter().find(|o| o.enabled).expect("an option is doable again").event;
+    ok(&mut s, Command::Event { triggered: id, event });
+    assert!(!s.shared.events_of(h).contains(&id));
 }
 
 /// Votes: unanswered, the vote gets C++'s extra turn and is then counted as abstain; answered,

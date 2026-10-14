@@ -425,15 +425,19 @@ impl Pending {
     }
 }
 
-/// The event popup for triggered data `id` of `p` as `launchEventPopup` builds it: `None` when
-/// the data is gone or no event can be done (the popup is not launched and is dropped).
+/// Would `launchEventPopup` show the popup for triggered data `id` of `p`: the data exists and
+/// at least one of the trigger's events can be done (else the popup is dropped unshown).
+pub fn event_available(g: &Game, p: PlayerId, id: TriggeredId) -> bool {
+    g.player_get_event_triggered(p, id).is_some_and(|data| g.d.event_triggers[data.trigger].events.iter().any(|&e| g.player_can_do_event(p, e, data)))
+}
+
+/// The event popup for triggered data `id` of `p` as `launchEventPopup` builds it, with each
+/// option enabled as `canDoEvent` says now (`None` when the data is gone). An open popup stays
+/// listed when no option can be done at the moment.
 pub fn pending_event(g: &Game, p: PlayerId, id: TriggeredId) -> Option<PendingEvent> {
     let data = g.player_get_event_triggered(p, id)?;
     let trigger = &g.d.event_triggers[data.trigger];
     let enabled: Vec<bool> = trigger.events.iter().map(|&e| g.player_can_do_event(p, e, data)).collect();
-    if !enabled.contains(&true) {
-        return None;
-    }
     let options = trigger.events.iter().zip(enabled).map(|(&event, enabled)| EventOption { event, enabled, effects: event_effects(g, p, event, data) }).collect();
     let plot = (data.plot_x != ffh_core::defs::INVALID_PLOT_COORD && data.plot_y != ffh_core::defs::INVALID_PLOT_COORD).then_some((data.plot_x, data.plot_y));
     Some(PendingEvent { triggered: id, trigger: data.trigger, text: data.text.clone(), options, city: data.city, plot })
@@ -521,8 +525,7 @@ pub fn ready_groups(g: &Game, p: PlayerId) -> Vec<GroupId> {
     g.players[p].groups.iter().copied().filter(|&grp| g.group_ready_to_move(grp, true) && !is_ai_group(g, grp)).collect()
 }
 
-/// [`Pending`] for `p`, with the deferred events in `events` (the session's list, already
-/// filtered by [`pending_event`]).
+/// [`Pending`] for `p`, with the open event popups in `events` (the session's launched ones).
 pub fn pending(g: &Game, p: PlayerId, events: &[TriggeredId]) -> Pending {
     let pl = &g.players[p];
     Pending {
