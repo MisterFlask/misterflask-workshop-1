@@ -1,6 +1,13 @@
 # ffh-play: human play for ffh2-rs (final design)
 
-This is a design; nothing in it is implemented yet. Every claim marked *verified* was checked read-only against `projects/ffh2-rs` at commit 5ee3be6 (branch ccr-17ac9b54-lbgjpn) and against the C++/Python under `/home/user/ref/ffh2`.
+This is the design of `crates/ffh-play`, implemented phase by phase (§7); the status table below says what exists. Every claim marked *verified* was checked read-only against `projects/ffh2-rs` at commit 5ee3be6 (branch ccr-17ac9b54-lbgjpn) and against the C++/Python under `/home/user/ref/ffh2`.
+
+**Implementation status.**
+
+| Phase | Status | Notes |
+|---|---|---|
+| P0 skeleton | done | `json.rs`, `names.rs`, `ffh-play kinds / names / lookup`; see "As built" under P0 in §7. |
+| P1–P7 | not started | |
 
 **Starting point.** The design starts from the **web** design, which had the highest total score: 8.5 + 7.5 + 7 = 23, against 21.5 for tui and 21.5 for engine-first. It grafts on the ideas the judges recommended (§11 lists every disagreement and how it was resolved).
 
@@ -704,7 +711,7 @@ Size is about 1–1.5 MB, cached by ETag.
 ```
 Cargo.toml                 lib + [[bin]] ffh-play; deps ffh-data, ffh-core, ffh-ai (path)        ~20
 src/lib.rs                 modules, re-exports                                                    ~60
-src/main.rs                serve | agent | bot | soak | replay | journal print | bench            ~220
+src/main.rs                serve | agent | bot | soak | replay | journal print | bench; kinds | names | lookup (P0) ~220
 src/json.rs                Json enum, escaping writer, recursive-descent parser, typed getters    ~400
 src/names.rs               type name <-> index for every table and hard-coded enum (NAMES arrays), text lookup ~220
 src/setup.rs               NewGame -> Game, controllers, active_player, options, take_over, setup lists ~250
@@ -761,6 +768,12 @@ Each phase is independently testable and committable. `cargo build --release && 
   * `names.rs`;
   * the workspace member line.
 * Tests: JSON round-trip and escaping; name resolution for every info table and hard-coded enum.
+* **As built (done).**
+  * `json.rs` (std only). `Json { Null, Bool, Int(i64), Float(f64), Str, Arr, Obj(Vec<(String, Json)>) }`: objects keep insertion order, so output is deterministic (journal byte-equality). The parser is strict RFC 8259 and, because its input comes from clients, also rejects **duplicate keys** and nesting deeper than 128; a lone surrogate escape decodes to U+FFFD; integer literals that fit are `Int`, other numbers `Float`. The writer escapes `"`, `\`, control characters, U+2028/U+2029; non-finite floats become `null`. Builders: `jobj!`, `jarr!`, `Json::set/with/push`, `Json::idx/opt_idx` (type index, `null` for none), `From` for integers, strings, `Option`, `Vec` and the ffh-core entity ids. Typed getters for command decoding: `req::<T>`, `opt::<T>` (absent or `null` = none), `get_or`, `req_str`, `req_arr`, ... via `FromJson` (integers range-checked; entity ids; `Vec<T>`), all returning a `FieldError` that names the field ("field `units`: expected ..., got ..."). `to_pretty()` for people.
+  * `names.rs`. `Named` trait (kind name, count, name, lookup, text key) for all **61 info tables** (`ffh_data::INFO_FILES`), the **6 GlobalTypes lists** without a table (flavors, art styles, city sizes, contacts, diplomacy powers, directions) and the **15 hard-coded C++ enums** that have `NAMES` but no XML (activity, area AI, cardinal direction, control, feat, game state, interface message, mission AI, order, player option, plot, probability, task, tradeable item, war plan). `KINDS` lists them with type-erased accessors (for `/api/data`, `inspect`, the CLI). `decode::<T>` accepts a type name or an index in range; `decode_opt` also takes `null`/`-1` as none; `field`, `opt_field`, `list_field` decode object members. `PlayerVoteTypes` (not an index type) has `decode_player_vote` (C++ names, `YES`/`NO`/`NEVER`/`ABSTAIN`, or an integer). Type names are unique across all kinds (tested), so a bare name is never ambiguous.
+  * **Text.** The vendored text (`data/text/en.tsv`) holds FfH2's own text file only; descriptions inherited from BtS (e.g. `TXT_KEY_UNIT_WARRIOR`) have no text. `names::display` therefore falls back to a humanized type name (`UNIT_WARRIOR` → "Warrior"). Vendoring the BtS text would fix it (a data change, outside this crate).
+  * Binary: `ffh-play kinds`, `ffh-play names [KIND] [--pretty]`, `ffh-play lookup NAME|KIND:INDEX ..` (debugging aids; the §6.1 subcommands arrive with their phases).
+  * Tests: `json.rs` unit tests (round trip compact and pretty, escaping, numbers, strings and surrogates, structural errors with positions, duplicate keys, depth limit, typed getters and their messages); `tests/names.rs` (every kind × every index: name, lookup, decode by name / index, out-of-range and wrong-type errors, display; coverage checked against `INFO_FILES`, the `info_ids!` list in registry.rs and every `NAMES` array in enums.rs, so a new table or enum without a `KINDS` entry fails; registry names equal the hard-coded `NAMES` where both exist); `tests/cli.rs` (binary smoke test).
 
 **P1 — session core, in-process API only (about 3.2k plus 0.8k tests).** This is where the semantics get pinned down.
 * Scope:
