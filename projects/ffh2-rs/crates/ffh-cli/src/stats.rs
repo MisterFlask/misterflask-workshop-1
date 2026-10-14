@@ -149,7 +149,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
     let mut snaps: Vec<(i32, String)> = Vec::new();
     let barb = g.barbarian_player();
     let t = Instant::now();
-    let stats = run::autoplay_with(&mut g, cfg, |g, stat| {
+    let played = run::play(&mut g, cfg, |g, stat| {
         let now = city_owners(g);
         for (plot, &old) in &owners {
             match now.get(plot) {
@@ -179,13 +179,26 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
             snaps.push((played, snapshot(g)));
         }
     });
+    let stats = played.stats;
+    let outcome_json = match played.outcome {
+        run::Outcome::TurnLimit => "{\"kind\":\"turn_limit\"}".to_string(),
+        run::Outcome::Victory { turn, winner, victory } => format!(
+            "{{\"kind\":\"victory\",\"turn\":{turn},\"team\":{},\"victory\":\"{}\"}}",
+            winner.map_or(-1, |t| t.0 as i64),
+            victory.map_or("time".to_string(), |v| g.d.victories[v].base.type_.clone())
+        ),
+        run::Outcome::LastStanding { turn, team } => format!("{{\"kind\":\"last_standing\",\"turn\":{turn},\"team\":{}}}", team.0),
+        run::Outcome::Supremacy { turn, team, since } => {
+            format!("{{\"kind\":\"supremacy\",\"turn\":{turn},\"team\":{},\"since\":{since}}}", team.0)
+        }
+    };
     let play_s = t.elapsed().as_secs_f64();
     let n = stats.len().max(1) as f64;
     let slowest = stats.iter().map(|s| s.elapsed.as_secs_f64() * 1000.0).fold(0.0, f64::max);
     let eliminated = g.player_ids().into_iter().filter(|&p| g.players[p].ever_alive && !g.players[p].alive && p != barb).count();
     let snaps_json: Vec<String> = snaps.iter().map(|(t, s)| format!("\"{t}\":{s}")).collect();
     println!(
-        "{{\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"snapshots\":{{{}}}}}",
+        "{{\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"outcome\":{},\"snapshots\":{{{}}}}}",
         cfg.seed,
         cfg.civs,
         cfg.world,
@@ -202,6 +215,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
         ev.wars_declared,
         ev.peace_made,
         eliminated,
+        outcome_json,
         snaps_json.join(",")
     );
 }

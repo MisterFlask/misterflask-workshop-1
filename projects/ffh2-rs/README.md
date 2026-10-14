@@ -47,6 +47,10 @@ CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECK
   cargo build --release --target-dir target/checked -p ffh-stress
 ```
 
+`--until-supremacy` stops a game once it is decided: a victory, the last civ standing, or one
+team holding twice the runner-up's score for 25 turns (counted from turn 100); `--turns` stays the
+cap, and the outcome is printed (and reported by `ffh stats` / `ai_metrics.py --until-supremacy`).
+
 `autoplay` prints one line per turn (time, units, cities, sync checksum) and a final
 per-player summary; `bench` prints only the timing summary.
 

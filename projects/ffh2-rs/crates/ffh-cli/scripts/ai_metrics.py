@@ -8,6 +8,7 @@ events (captures, razes, wars, eliminations), barbarian strength and timings.
 usage: ai_metrics.py [--bin target/release/ffh] [--seeds 1-6] [--civs 6]
                      [--size WORLDSIZE_STANDARD] [--turns 300] [--at 100,200,300]
                      [--out results.json] [--compare old.json] [--jobs 4] [--option GAMEOPTION_X]
+                     [--until-supremacy]
 """
 import argparse
 import json
@@ -31,6 +32,8 @@ def run_one(args, seed):
            '--turns', str(args.turns), '--at', args.at]
     for opt in args.option:
         cmd += ['--option', opt]
+    if args.until_supremacy:
+        cmd += ['--until-supremacy']
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {'seed': seed, 'error': (r.stderr or r.stdout)[-2000:]}
@@ -94,6 +97,18 @@ def print_report(results, at, label=''):
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)
     print('time: %.2f ms/turn avg, slowest turn %.1f ms' % (tot['ms_per_turn'], tot['slowest_ms']))
+    outs = [r['outcome'] for r in results if 'error' not in r and 'outcome' in r]
+    if outs:
+        decided = [o for o in outs if o['kind'] != 'turn_limit']
+        kinds = {}
+        for o in decided:
+            k = o['kind'] if o['kind'] != 'victory' else 'victory:' + o.get('victory', '?')
+            kinds[k] = kinds.get(k, 0) + 1
+        turns = [o['turn'] for o in decided]
+        print('outcome: %d/%d decided%s%s' % (
+            len(decided), len(outs),
+            (', decision turn avg %.0f [%d-%d]' % (sum(turns) / len(turns), min(turns), max(turns))) if turns else '',
+            (' | ' + ', '.join('%s %d' % kv for kv in sorted(kinds.items()))) if kinds else ''))
     for r in results:
         if 'error' in r:
             continue
@@ -115,6 +130,8 @@ def main():
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--label', default='current')
     ap.add_argument('--option', action='append', default=[], help='GAMEOPTION_X to turn on (repeatable)')
+    ap.add_argument('--until-supremacy', action='store_true',
+                    help='stop each game at victory, last civ standing, or clear supremacy (2x runner-up score held 25 turns, from turn 100)')
     args = ap.parse_args()
     seeds = parse_seeds(args.seeds)
     at = [int(t) for t in args.at.split(',')]

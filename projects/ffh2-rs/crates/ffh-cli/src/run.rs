@@ -96,11 +96,13 @@ pub struct RunConfig {
     pub report_every: i32,
     /// Game options (`GAMEOPTION_*` type names) to turn on.
     pub options: Vec<String>,
+    /// Stop once the game is decided (see [`SupremacyRule`]); `turns` stays the cap.
+    pub until_supremacy: bool,
 }
 
 impl Default for RunConfig {
     fn default() -> Self {
-        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0, options: Vec::new() }
+        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false }
     }
 }
 
@@ -141,7 +143,108 @@ pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
 }
 
 /// [`autoplay`], calling `on_turn` after every completed game turn.
-pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Game, &TurnStat)) -> Vec<TurnStat> {
+pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, on_turn: impl FnMut(&Game, &TurnStat)) -> Vec<TurnStat> {
+    play(g, cfg, on_turn).stats
+}
+
+/// When a game counts as decided for testing purposes ("clear supremacy").
+#[derive(Clone, Copy, Debug)]
+pub struct SupremacyRule {
+    /// Leader's score as a percentage of the runner-up's (200 = twice).
+    pub ratio_pct: i64,
+    /// Consecutive turns the leader must keep that margin.
+    pub hold_turns: i32,
+    /// Margins before this game turn don't count (early scores are tiny and noisy).
+    pub min_turn: i32,
+}
+
+impl Default for SupremacyRule {
+    fn default() -> Self {
+        SupremacyRule { ratio_pct: 200, hold_turns: 25, min_turn: 100 }
+    }
+}
+
+/// How an autoplay run ended.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Outcome {
+    /// The turn cap was reached with no decision.
+    TurnLimit,
+    /// The rules ended the game (`winner` is None for a time end without a single winner).
+    Victory { turn: i32, winner: Option<TeamId>, victory: Option<VictoryType> },
+    /// Only one civ team (not counting barbarians) is left alive.
+    LastStanding { turn: i32, team: TeamId },
+    /// One team kept `ratio_pct` of the runner-up's score for `hold_turns` turns.
+    Supremacy { turn: i32, team: TeamId, since: i32 },
+}
+
+/// Result of [`play`].
+pub struct Played {
+    pub stats: Vec<TurnStat>,
+    pub outcome: Outcome,
+}
+
+/// Score of each alive civ team (sum over its alive members), barbarians excluded, by team id.
+pub fn team_scores(g: &Game) -> Vec<(TeamId, i64)> {
+    let barb = g.barbarian_team();
+    let mut out: Vec<(TeamId, i64)> = Vec::new();
+    for p in g.player_ids() {
+        let pl = &g.players[p];
+        if !pl.alive || pl.team == barb {
+            continue;
+        }
+        let score = g.player_calculate_score(p, false, false) as i64;
+        match out.iter_mut().find(|(t, _)| *t == pl.team) {
+            Some(e) => e.1 += score,
+            None => out.push((pl.team, score)),
+        }
+    }
+    out.sort_by_key(|&(t, _)| t);
+    out
+}
+
+/// Tracks [`SupremacyRule`] turn by turn.
+#[derive(Default)]
+pub struct SupremacyTracker {
+    rule: SupremacyRule,
+    leader: Option<TeamId>,
+    since: i32,
+}
+
+impl SupremacyTracker {
+    pub fn new(rule: SupremacyRule) -> Self {
+        SupremacyTracker { rule, leader: None, since: 0 }
+    }
+
+    /// Call after each completed game turn; returns the outcome once the game is decided.
+    pub fn observe(&mut self, g: &Game) -> Option<Outcome> {
+        let turn = g.game_turn();
+        let scores = team_scores(g);
+        if scores.len() == 1 {
+            return Some(Outcome::LastStanding { turn, team: scores[0].0 });
+        }
+        let mut sorted = scores.clone();
+        sorted.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        let (Some(&(lead, top)), Some(&(_, second))) = (sorted.first(), sorted.get(1)) else { return None };
+        if turn >= self.rule.min_turn && top * 100 >= second.max(1) * self.rule.ratio_pct {
+            if self.leader != Some(lead) {
+                self.leader = Some(lead);
+                self.since = turn;
+            }
+            if turn - self.since >= self.rule.hold_turns {
+                return Some(Outcome::Supremacy { turn, team: lead, since: self.since });
+            }
+        } else {
+            self.leader = None;
+        }
+        None
+    }
+}
+
+/// Plays until `cfg.turns` turns, the end of the game, or (with `cfg.until_supremacy`) clear
+/// supremacy, calling `on_turn` after every completed game turn.
+pub fn play(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Game, &TurnStat)) -> Played {
+    let mut tracker = SupremacyTracker::new(SupremacyRule::default());
+    let mut outcome = Outcome::TurnLimit;
     let mut stats = Vec::new();
     let end_turn = g.game_turn() + cfg.turns;
     let mut turn = g.game_turn();
@@ -179,6 +282,12 @@ pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Gam
             turn = g.game_turn();
             t0 = Instant::now();
             updates_this_turn = 0;
+            if cfg.until_supremacy && g.game_state == GameStateType::GAMESTATE_ON {
+                if let Some(o) = tracker.observe(g) {
+                    outcome = o;
+                    break;
+                }
+            }
         } else if updates_this_turn > 100_000 {
             for p in g.player_ids() {
                 if !g.players[p].alive || !g.players[p].turn_active {
@@ -206,7 +315,35 @@ pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Gam
             panic!("turn {turn} did not finish after {updates_this_turn} updates (a player never ends its turn)");
         }
     }
-    stats
+    if g.game_state != GameStateType::GAMESTATE_ON {
+        outcome = Outcome::Victory { turn: g.game_turn(), winner: g.winner, victory: g.victory };
+    }
+    Played { stats, outcome }
+}
+
+/// One line describing `outcome` (civ names of the deciding team's members).
+pub fn describe_outcome(g: &Game, outcome: &Outcome) -> String {
+    let team_name = |t: TeamId| {
+        let names: Vec<String> = g
+            .player_ids()
+            .into_iter()
+            .filter(|&p| g.players[p].team == t && g.players[p].ever_alive)
+            .map(|p| g.player_get_civilization_type(p).map_or("?".to_string(), |c| g.d.civilizations[c].base.type_.trim_start_matches("CIVILIZATION_").to_string()))
+            .collect();
+        format!("team {} ({})", t.0, names.join("+"))
+    };
+    match outcome {
+        Outcome::TurnLimit => "no decision before the turn limit".to_string(),
+        Outcome::Victory { turn, winner, victory } => format!(
+            "game over at turn {turn}: {} by {}",
+            winner.map_or("no single winner".to_string(), team_name),
+            victory.map_or("time".to_string(), |v| g.d.victories[v].base.type_.clone())
+        ),
+        Outcome::LastStanding { turn, team } => format!("last civ standing at turn {turn}: {}", team_name(*team)),
+        Outcome::Supremacy { turn, team, since } => {
+            format!("clear supremacy at turn {turn}: {} has held twice the runner-up's score since turn {since}", team_name(*team))
+        }
+    }
 }
 
 /// Per alive player: research, gold, techs, units by AI role, and each city's size and
@@ -355,7 +492,7 @@ mod tests {
     /// Same seed, same game: every per-turn sync checksum must match.
     #[test]
     fn same_seed_same_game() {
-        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0, options: Vec::new() };
+        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false };
         let (mut a, _) = new_game(&cfg);
         let sa = autoplay(&mut a, &cfg);
         let (mut b, _) = new_game(&cfg);
@@ -366,11 +503,29 @@ mod tests {
         }
     }
 
+    /// A game played until supremacy stops early with a decision, and never before the rule's
+    /// minimum turn.
+    #[test]
+    fn until_supremacy_stops_with_a_decision() {
+        let cfg = RunConfig { civs: 2, world: "WORLDSIZE_DUEL".into(), turns: 400, until_supremacy: true, ..RunConfig::default() };
+        let (mut g, _) = new_game(&cfg);
+        let played = play(&mut g, &cfg, |_, _| {});
+        match played.outcome {
+            Outcome::Supremacy { turn, since, .. } => {
+                assert!(since >= SupremacyRule::default().min_turn);
+                assert!(turn - since >= SupremacyRule::default().hold_turns);
+                assert_eq!(played.stats.last().map(|s| s.turn + 1), Some(turn));
+            }
+            Outcome::TurnLimit => assert_eq!(played.stats.len(), 400),
+            Outcome::Victory { .. } | Outcome::LastStanding { .. } => {}
+        }
+    }
+
     /// Different seeds should give different games.
     #[test]
     fn different_seed_different_game() {
-        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, options: Vec::new() };
-        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0, options: Vec::new() } };
+        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false };
+        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0, options: Vec::new(), until_supremacy: false } };
         let (mut a, _) = new_game(&cfg1);
         let (mut b, _) = new_game(&cfg2);
         let sa = autoplay(&mut a, &cfg1);
@@ -382,7 +537,7 @@ mod tests {
     /// advanced start on its first turn.
     #[test]
     fn ai_spends_advanced_start_points() {
-        let cfg = RunConfig { seed: 3, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 2, verbose: false, report_every: 0, options: vec!["GAMEOPTION_ADVANCED_START".into()] };
+        let cfg = RunConfig { seed: 3, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 2, verbose: false, report_every: 0, options: vec!["GAMEOPTION_ADVANCED_START".into()], until_supremacy: false };
         let (mut g, _) = new_game(&cfg);
         autoplay(&mut g, &cfg);
         for p in g.player_ids() {

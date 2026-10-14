@@ -17,7 +17,7 @@ mod stats;
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--at T1,T2,..]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--until-supremacy] [--at T1,T2,..]");
     std::process::exit(2)
 }
 
@@ -38,6 +38,11 @@ fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
             "--size" => cfg.world = val(i),
             "--turns" => cfg.turns = val(i).parse().unwrap_or_else(|_| usage()),
             "--option" => cfg.options.push(val(i)),
+            "--until-supremacy" => {
+                cfg.until_supremacy = true;
+                i += 1;
+                continue;
+            }
             "--report" => cfg.report_every = val(i).parse().unwrap_or_else(|_| usage()),
             "--at" => at = val(i).split(',').map(|t| t.parse().unwrap_or_else(|_| usage())).collect(),
             _ => usage(),
@@ -55,7 +60,8 @@ fn cmd_autoplay(args: &[String], verbose: bool) {
     let setup_time = t.elapsed();
     let ai_at_setup = timed.total();
     let t = Instant::now();
-    let stats = run::autoplay(&mut g, &cfg);
+    let played = run::play(&mut g, &cfg, |_, _| {});
+    let stats = played.stats;
     let play_time = t.elapsed();
     let ai_time = timed.total() - ai_at_setup;
     let n = stats.len().max(1) as f64;
@@ -74,6 +80,7 @@ fn cmd_autoplay(args: &[String], verbose: bool) {
     if let Some(last) = stats.last() {
         println!("final checksum {:08x} at turn {}", last.checksum as u32, last.turn);
     }
+    println!("outcome: {}", run::describe_outcome(&g, &played.outcome));
     if verbose {
         print!("{}", run::summary(&g));
     }
