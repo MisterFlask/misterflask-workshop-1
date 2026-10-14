@@ -271,6 +271,13 @@ impl GameData {
         check(w, &self.reg, "AttitudeInfo", AttitudeType::NAMES);
         check(w, &self.reg, "DenialInfo", DenialType::NAMES);
         check(w, &self.reg, "DirectionTypes", DirectionType::NAMES);
+        check(w, &self.reg, "AlignmentInfo", AlignmentType::NAMES);
+        check(w, &self.reg, "DamageInfo", DamageType::NAMES);
+        check(w, &self.reg, "CalendarInfo", CalendarType::NAMES);
+        check(w, &self.reg, "WorldInfo", WorldSizeType::NAMES);
+        check(w, &self.reg, "ContactTypes", ContactType::NAMES);
+        check(w, &self.reg, "DiplomacyPowerTypes", DiplomacyPowerType::NAMES);
+        check(w, &self.reg, "CitySizeTypes", CitySizeType::NAMES);
     }
 
     /// Typed lookup of a type name (C++ `GC.getInfoTypeForString` + cast).
