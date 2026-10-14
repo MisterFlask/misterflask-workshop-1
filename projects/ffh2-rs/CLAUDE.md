@@ -136,6 +136,15 @@ C++ -> Rust mapping:
 - `CvPlayerAI::AI_foundValue` (needed by starting plots and barbarian cities) ->
   `self.player_ai_found_value(p, x, y, min_rival_range, starting_loc, &[])` (`found_value.rs`).
 
+Saved games (`src/save/`, see docs/ARCHITECTURE.md): every state struct reachable from `Game`
+is saved by destructuring it exhaustively (`persist_struct!(Unit { id, group, .. every field })`
+in `save/state.rs`; `Game` in `save/mod.rs`; `PathFinder` in `save/path_finder.rs`), so adding a
+field to `Game`, `Unit`, `City`, `Player`, `Team`, `Plot`, `Area`, `Map`, ... breaks the build until
+it is added to its save list (in declaration order) -- then bump `save::FORMAT_VERSION`. A new
+field type needs a `Persist` impl (`save/io.rs` covers primitives, `Option`, `Vec`, arrays,
+`IdxVec`, `BTreeMap`, tuples, `Slab`, `Cell`/`RefCell`; ids and info types in `save/state.rs`).
+State must live in `Game` (not in statics or controllers) to survive save/load.
+
 Every `todo!()` left in core code means "not yet ported"; keep the C++ function name in
 the message (`todo!("CvUnit::airStrike")`) so remaining work is greppable.
 

@@ -24,6 +24,7 @@ pub mod player;
 pub mod plot;
 pub mod plot_group;
 pub mod rng;
+pub mod save;
 pub mod setup;
 pub mod slab;
 pub mod structs;

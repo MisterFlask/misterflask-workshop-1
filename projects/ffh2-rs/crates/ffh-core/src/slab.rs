@@ -85,6 +85,18 @@ impl<I: Idx, T> Slab<I, T> {
     pub fn ids(&self) -> Vec<I> {
         self.iter().map(|(i, _)| i).collect()
     }
+
+    /// Every slot ever allocated, in id order (`None` = removed). With [`Slab::from_slots`] this
+    /// round-trips a slab exactly (same ids, same next id): used by saved games.
+    pub fn slots(&self) -> impl Iterator<Item = Option<&T>> + '_ {
+        self.items.iter().map(|s| s.as_deref())
+    }
+
+    /// The slab whose slots are `slots` (see [`Slab::slots`]).
+    pub fn from_slots(slots: Vec<Option<T>>) -> Self {
+        let live = slots.iter().filter(|s| s.is_some()).count();
+        Slab { items: slots.into_iter().map(|s| s.map(Box::new)).collect(), live, _m: PhantomData }
+    }
 }
 
 impl<I: Idx, T> Index<I> for Slab<I, T> {

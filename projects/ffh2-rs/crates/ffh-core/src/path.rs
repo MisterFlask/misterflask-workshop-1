@@ -1366,6 +1366,11 @@ fn finder_player(finder: &FinderCtx) -> PlayerId {
     PlayerId(finder.info as u8)
 }
 
+/// Saved-game support for [`PathFinder`] (a child module so it can read the private search
+/// state; the code lives with the rest of the save format in `src/save/`).
+#[path = "save/path_finder.rs"]
+mod persist;
+
 #[cfg(test)]
 mod tests {
     use super::*;

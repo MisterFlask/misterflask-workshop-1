@@ -59,6 +59,30 @@ The C++ rules code calls `AI_*` functions synchronously. In this port:
 - the AI proper (`ffh-ai`) plays turns via `Controller::play_turn`, using only public
   rules APIs (the same moves a player could make).
 
+## Saved games
+
+`ffh-core/src/save/` (replaces C++ `read`/`write`): `Game::save(&self) -> Vec<u8>` and
+`Game::load(d, &bytes) -> Result<Game, LoadError>`. std-only binary format: magic `FFH2SAVE`,
+format version, a fingerprint of the static data (type count + hash of the type names of every
+info table, plus the fixed array lengths; a save made with other XML is refused), then every
+`Game` field in declaration order (varint integers, length-prefixed strings/vectors, tagged
+options; slabs keep their ids and next id). Encoding details: `save/io.rs`.
+
+- Everything mutable is saved, rules caches included (`Player::ai_bonus_value`, city rank
+  caches, the path finders' kept search trees), so a loaded game needs no recomputation.
+- Not saved: `d`, `controllers` (a loaded game has `NullController`s: the caller re-attaches
+  its controllers, as after `Game::new`) and `map_script` (only used by `game_init`).
+- Resume guarantee: a game saved at a turn boundary (`Game::at_turn_boundary()`: no player's
+  turn active, so the next `update()` starts the next game turn) or right after `game_init`,
+  loaded with fresh controllers and continued, plays out exactly like the uninterrupted game
+  (`crates/ffh-ai/tests/save_resume.rs` checks sync checksums and byte-identical saves every
+  turn). This relies on controllers keeping no state that matters across turns: any cache a
+  controller keeps outside `Game` must be keyed by game turn (or otherwise recomputed) so that
+  a fresh controller decides the same way. Mid-turn saves restore the rules state exactly but
+  not the controllers' memory of what they already did this turn.
+- Every saved struct is written by exhaustive destructuring, so adding a field fails to compile
+  until the save code lists it (bump `save::FORMAT_VERSION` when the layout changes).
+
 ## Python
 
 FFH2 implements much of its content in Python (spells, events, per-turn effects,
