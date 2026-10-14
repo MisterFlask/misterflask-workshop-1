@@ -130,6 +130,12 @@ pub struct Game {
     /// C++ `m_iAIAutoPlay`: turns left of AI autoplay. While > 0 the game does not end when no
     /// human is alive, and victories put the game in `GAMESTATE_EXTENDED`.
     pub ai_auto_play: i32,
+    /// C++ `gDLL->GetAutorun()` (exe flag): the game keeps running with no human player alive.
+    /// The headless runner sets it; it has no other effect.
+    pub autorun: bool,
+    /// C++ `GC.getGameINLINE().getActivePlayer()` (CvInitCore): the player whose screen is
+    /// shown. Always `None` when headless, so active-player UI branches are skipped.
+    pub active_player: Option<PlayerId>,
     /// C++ `m_bScoreDirty`: `update_score` recomputes ranks only when set (rank timing feeds
     /// the FfH challenge options in `do_turn`, so it is kept although C++ treats it as UI).
     pub score_dirty: bool,
@@ -328,6 +334,8 @@ impl Game {
             init_tech: 0,
             init_wonders: 0,
             ai_auto_play: 0,
+            autorun: false,
+            active_player: None,
             score_dirty: false,
             circumnavigated: false,
             final_initialized: false,

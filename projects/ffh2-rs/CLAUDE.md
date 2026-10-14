@@ -119,6 +119,11 @@ C++ -> Rust mapping:
   (ports of the FFH2 Python). Until ported, call a stub there rather than dropping the call.
 - UI/graphics/sound/network (`gDLL->getInterfaceIFace()`, entities, flags, popups for
   humans) -> omit. Messages may go to `self.log.msg(turn, Some(p), || text)`.
+- `GC.getGameINLINE().getActivePlayer()` -> `self.active_player` (always `None` headless, so
+  "active player" UI branches never run; combat is never shown, i.e. always quick);
+  `gDLL->GetAutorun()` -> `self.autorun`.
+- `CvPlayerAI::AI_foundValue` (needed by starting plots and barbarian cities) ->
+  `self.player_ai_found_value(p, x, y, min_rival_range, starting_loc, &[])` (`found_value.rs`).
 
 Every `todo!()` left in core code means "not yet ported"; keep the C++ function name in
 the message (`todo!("CvUnit::airStrike")`) so remaining work is greppable.
