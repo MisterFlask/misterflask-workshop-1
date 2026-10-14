@@ -1782,11 +1782,9 @@ mod tests {
         assert_eq!(g.plot_get_found_value(p, P0), 0);
         g.map.plots[p].found_value[P0] = 7;
         assert_eq!(g.plot_get_found_value(p, P0), 7);
-        // -1 asks for a recomputation by the (unported) AI valuation: the entry stays -1
-        g.map.plots[p].found_value[P0] = -1;
-        assert_eq!(g.plot_get_found_value(p, P0), -1);
+        // A cached value is returned as is and does not raise the area's best value.
         assert_eq!(g.map.areas[area].best_found_value[P0], 0);
-        assert!(!g.plot_is_best_adjacent_found(p, P0));
+        // -1 recomputes through `player_ai_found_value` (found_value.rs, tested there).
     }
 
     #[test]
