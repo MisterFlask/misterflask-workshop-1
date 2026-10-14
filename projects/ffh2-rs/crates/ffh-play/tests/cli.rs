@@ -59,3 +59,30 @@ fn names_and_kinds() {
     assert_eq!(run(&[]).0, 2);
     assert_eq!(run(&["no-such-command"]).0, 2);
 }
+
+/// `bot` with a saves directory, then `replay` (from the header and from an autosave) and
+/// `journal print` of its journal.
+#[test]
+fn bot_replay_and_journal_print() {
+    let dir = std::env::temp_dir().join(format!("ffh-play-cli-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let d = dir.to_str().unwrap();
+    let (code, out) = run(&["bot", "--seed", "2", "--turns", "12", "--world", "WORLDSIZE_DUEL", "--opponents", "1", "--saves", d, "--quiet"]);
+    assert_eq!(code, 0, "{out}");
+    assert!(out.contains("stopped: Human at turn 12"), "{out}");
+    let journal = dir.join("journal.jsonl");
+    let (code, out) = run(&["replay", journal.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out}");
+    assert!(out.starts_with("replayed "), "{out}");
+    let auto = dir.join("auto/T0005.ffhsave");
+    let (code, out2) = run(&["replay", journal.to_str().unwrap(), "--from", auto.to_str().unwrap()]);
+    assert_eq!(code, 0, "{out2}");
+    assert_eq!(out, out2, "the same end from the header and from the autosave");
+    let (code, out) = run(&["journal", "print", journal.to_str().unwrap()]);
+    assert_eq!(code, 0);
+    assert!(out.lines().next().unwrap().starts_with("new game seed 2"), "{out}");
+    assert!(out.contains("-- checkpoint (turn 5)"), "{out}");
+    assert_eq!(run(&["replay", dir.join("missing.jsonl").to_str().unwrap()]).0, 1);
+    assert_eq!(run(&["journal", "show", journal.to_str().unwrap()]).0, 2);
+    std::fs::remove_dir_all(&dir).unwrap();
+}

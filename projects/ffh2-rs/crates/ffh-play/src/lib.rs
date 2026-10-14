@@ -16,8 +16,9 @@
 //! * [`command`], [`selection`]: commands as ports of the C++ human input paths.
 //! * [`decision`]: blocking decisions and the pending items of a control point.
 //! * [`guard`]: [`QueryGuard`], which keeps reads of `&Game` free of side effects.
-//! * [`setup`], [`save`], [`journal`].
+//! * [`setup`], [`save`], [`journal`], [`bot`] (a scripted human for tests).
 
+pub mod bot;
 pub mod command;
 pub mod decision;
 pub mod guard;
