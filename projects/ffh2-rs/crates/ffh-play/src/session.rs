@@ -267,6 +267,7 @@ impl Session {
                 }
                 Phase::Running => {
                     self.g.update();
+                    self.follow_human();
                     if self.g.at_turn_boundary() {
                         self.boundary();
                         slices = 0;
@@ -317,7 +318,8 @@ impl Session {
             _ => {}
         }
         command::apply(&mut self.g, h, action);
-        self.settle(h);
+        self.follow_human();
+        self.settle();
         // Back at a control point: popups the command queued are shown now (as the exe shows
         // them in its next frames).
         if let Phase::Human(h) = self.phase() {
@@ -333,18 +335,40 @@ impl Session {
 
     /// The exe's next frames after a command: at least one `update()` (the governor, war and
     /// timers react), then while a human group is busy (missions in progress, combat).
-    fn settle(&mut self, h: PlayerId) {
+    fn settle(&mut self) {
         let mut n = 0;
         loop {
             self.g.update();
+            self.follow_human();
             n += 1;
             if self.g.at_turn_boundary() {
                 self.boundary();
             }
-            if self.phase() == Phase::Over || n >= self.opts.settle_limit || !human_busy(&self.g, h) {
+            if self.phase() == Phase::Over || n >= self.opts.settle_limit || !human_busy(&self.g, self.human) {
                 break;
             }
         }
+    }
+
+    /// Follows the human to another slot. FfH moves the human player with
+    /// `CvInitCore::reassignPlayerAdvanced` (the Impersonate Leader spell and the end of its
+    /// timer, the "switch civilizations" event, the High to Low challenge): the slot's human flag,
+    /// options and controller move (ffh-core `reassign_player_advanced`), and C++ also moves the
+    /// active player (CvInitCore.cpp:474-482), which ffh-core does not: the session does it here,
+    /// after the rules call that moved the human (a P7 note). The messages so far are drained
+    /// for the old slot first.
+    fn follow_human(&mut self) {
+        if self.g.players[self.human].human {
+            return;
+        }
+        let Some(new) = self.g.civ_player_ids().find(|&p| self.g.players[p].human) else { return };
+        self.drain_log();
+        let old = std::mem::replace(&mut self.human, new);
+        if self.g.active_player == Some(old) {
+            self.g.active_player = Some(new);
+        }
+        self.fog = LogFog::new(&self.g, new);
+        self.shared.stats.lock().unwrap().reassigned += 1;
     }
 
     /// At a turn boundary: drain the log, journal a checkpoint, autosave.

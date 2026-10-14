@@ -102,6 +102,8 @@ pub struct Stats {
     pub events_deferred: usize,
     /// The research rule's advisor picks (the C++ `AI_chooseResearch` call of `doResearch`).
     pub research_ai_picks: usize,
+    /// Times the rules moved the human to another slot (`reassignPlayerAdvanced`).
+    pub reassigned: usize,
 }
 
 impl Stats {

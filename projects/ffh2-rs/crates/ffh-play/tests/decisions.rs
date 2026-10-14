@@ -745,3 +745,55 @@ fn parameters_the_exe_never_sends_are_refused() {
     let j = ffh_play::json::Json::parse(&format!(r#"{{"c":"do_task","city":{},"task":"TASK_LIBERATE"}}"#, my_city.0)).unwrap();
     assert!(matches!(Command::from_json(d, &j), Ok(Command::DoTask { data1: 0, .. })));
 }
+
+/// FfH moves the human to another slot with `reassignPlayerAdvanced`; here the Impersonate
+/// Leader spell (no `bAllowAI`: a human-only path), cast with `do_command` by a Gibbon Goetia
+/// standing in the AI's city. The session follows the human and moves the active player with it
+/// (as C++ does); the human plays the AI civilization until the spell's timer runs out, then is
+/// moved back. Before P2 the session kept waiting for the old slot (the watchdog's `Stuck`).
+#[test]
+fn the_session_follows_the_human_to_another_slot() {
+    let dir = std::env::temp_dir().join(format!("ffh-play-reassign-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, 21);
+    ng.opponents = 1;
+    ng.world = d.t("WORLDSIZE_DUEL");
+    let opts = SessionOptions { saves_dir: Some(dir.clone()), ..Default::default() };
+    let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), opts).unwrap();
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    to_turn(&mut s, 3);
+    let h = s.human;
+    let (c, ai) = s.g.cities.iter().find(|(_, c)| c.owner != h).map(|(id, c)| (id, c.owner)).expect("an AI city");
+    let (cx, cy) = (s.g.cities[c].x, s.g.cities[c].y);
+    let gibbon = d.units.keys().find(|&u| d.units[u].unit_class_type == d.ty("UNITCLASS_GIBBON")).expect("the Gibbon Goetia");
+    let u = s.g.player_init_unit(h, gibbon, cx, cy, None, None);
+    let spell = d.t::<SpellType>("SPELL_IMPERSONATE_LEADER");
+    assert!(s.g.unit_can_cast(u, spell, false));
+    ok(&mut s, Command::DoCommand { units: vec![u], command: CommandType::COMMAND_CAST, data1: spell.0 as i32, data2: -1, alt: false, confirmed: false });
+    assert_eq!((s.human, s.g.active_player), (ai, Some(ai)));
+    assert!(s.g.players[ai].human && !s.g.players[h].human);
+    assert_eq!(s.g.players[ai].real_player, Some(h));
+    let timer = s.g.players[ai].temp_player_timer;
+    assert!((5..15).contains(&timer), "{timer}");
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert_eq!(s.phase(), Phase::Human(ai));
+    // A save of the impersonation resumes as the impersonated player.
+    s.save("impersonating").unwrap();
+    let (bytes, sidecar) = ffh_play::save::read_bundle(&dir.join("impersonating.ffhsave")).unwrap();
+    assert_eq!(sidecar.as_ref().unwrap().human, ai);
+    let resumed = Session::load(&bytes, sidecar.as_ref(), Arc::new(AdvisorAnswerer), SessionOptions::default()).unwrap();
+    assert_eq!((resumed.human, resumed.phase()), (ai, Phase::Human(ai)));
+    // Turns as the AI civilization, until the timer brings the human back.
+    let mut turns = 0;
+    while s.human == ai {
+        ok(&mut s, Command::EndTurn { force: true });
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+        turns += 1;
+        assert!(turns <= 15, "still impersonating after {turns} turns");
+    }
+    assert_eq!((s.human, s.g.active_player, s.phase()), (h, Some(h), Phase::Human(h)));
+    assert!(s.g.players[h].human && !s.g.players[ai].human);
+    assert_eq!(s.stats().reassigned, 2);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
