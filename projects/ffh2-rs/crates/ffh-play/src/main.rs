@@ -1,6 +1,6 @@
 //! `ffh-play`: human play for ffh2-rs (docs/PLAY_DESIGN.md, docs/HUMAN.md).
 //!
-//! Commands (serve, agent, soak and bench come with later phases):
+//! Commands (serve, agent and bench come with later phases):
 //!   ffh-play kinds                     list every named kind (info tables, GlobalTypes lists,
 //!                                      hard-coded C++ enums) with its source and count
 //!   ffh-play names [KIND] [--pretty]   JSON of the type names of one kind (`UnitType` or
@@ -17,19 +17,36 @@
 //!                                      autosave at one of its checkpoints; exit code 1 at a
 //!                                      divergence
 //!   ffh-play journal print JOURNAL     the journal as lines for people
+//!   ffh-play soak run [SETTINGS] [--saves DIR] [--resume SAVE] [--check-every N] [--save-check-every N]
+//!                                      the AI plays the human slot for one game (design P2):
+//!                                      --seed N --size tiny|WORLDSIZE_X --civ kuriotates|CIVILIZATION_X
+//!                                      --opponents N --options raging,aggressive|GAMEOPTION_X,..
+//!                                      --turns N --speed --handicap --era --spawn-turn N; a
+//!                                      panic is caught and reported with its repro command
+//!                                      (exit 101; stuck 4; other failure 5); --panic-at T
+//!                                      panics at turn T (a self-test of the report)
+//!   ffh-play soak [--seeds A..B] [--sizes ..] [--civs ..] [--options default,raging,..] [--turns N]
+//!                 [--jobs N] [--timeout SECS] [--saves DIR] [--keep-saves] [--out FILE]
+//!                 [--filter TEXT] [--list] [--check-every N] [--save-check-every N]
+//!                                      the soak matrix (default: design §7 P2's), each game in
+//!                                      a child `soak run`; summary on stdout, exit 1 on failures
 
 use ffh_play::jobj;
 use ffh_play::json::Json;
 use ffh_play::bot::Bot;
 use ffh_play::names::{self, Source, KINDS};
 use ffh_play::session::ReplayFrom;
+use ffh_play::soak::{self, batch, Matrix, RunOptions, SoakGame};
 use ffh_play::{NewGame, Session, SessionOptions, Stop};
 
 fn usage() -> ! {
     eprintln!(
         "usage: ffh-play kinds | names [KIND] [--pretty] | lookup NAME|KIND:INDEX ..\n\
          \x20      | bot [--seed N] [--turns T] [--opponents N] [--world WORLDSIZE_X] [--saves DIR] [--quiet]\n\
-         \x20      | replay JOURNAL [--from SAVE] | journal print JOURNAL"
+         \x20      | replay JOURNAL [--from SAVE] | journal print JOURNAL\n\
+         \x20      | soak run [SETTINGS] [--saves DIR] [--resume SAVE] [--check-every N] [--save-check-every N]\n\
+         \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--turns N] [--jobs N] [--timeout SECS]\n\
+         \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list] (see the source header)"
     );
     std::process::exit(2)
 }
@@ -174,6 +191,165 @@ fn cmd_journal(args: &[String]) {
     }
 }
 
+/// `soak run`: one game in this process (the batch's child).
+fn cmd_soak_run(args: &[String]) {
+    let d = ffh_data::global();
+    let mut opts = RunOptions::default();
+    let mut settings = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--saves" => opts.saves = Some(flag_value(args, &mut i).into()),
+            "--resume" => opts.resume = Some(flag_value(args, &mut i).into()),
+            "--check-every" => opts.check_every = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--save-check-every" => opts.save_check_every = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--panic-at" => opts.panic_at = Some(flag_value(args, &mut i).parse().unwrap_or_else(|_| usage())),
+            _ => {
+                settings.push(args[i].clone());
+                settings.push(flag_value(args, &mut i).to_string());
+            }
+        }
+        i += 1;
+    }
+    let game = SoakGame::parse(d, &settings).unwrap_or_else(|e| {
+        eprintln!("soak run: {e}");
+        std::process::exit(2)
+    });
+    let mut repro = format!("ffh-play soak run {}", game.to_args(d).join(" "));
+    let r = soak::run_caught(&game, &opts, &mut |s| println!("PROGRESS\t{}", s.g.game_turn()));
+    if let Some(dir) = &opts.saves {
+        if let Some(a) = soak::latest_autosave(dir) {
+            repro += &format!(" --resume {}", a.display());
+        }
+    } else if let Some(r) = &opts.resume {
+        repro += &format!(" --resume {}", r.display());
+    }
+    match r {
+        Ok(Ok(o)) => {
+            let st = &o.stats;
+            println!("TURN\t{}", o.turn);
+            println!("END\t{} ({:.1} s, checksum {:08x}, save {})", o.end_text(d), o.secs, o.checksum as u32, o.save_fnv);
+            println!("CITIES\t{}\t{}", o.human_cities, o.ai_cities.iter().map(|c| c.to_string()).collect::<Vec<_>>().join(","));
+            println!(
+                "STATS\thuman p{} {}{}: cities {} vs AI {:?}; turns {} prod {} auto {} research {} events {} (closed {}) votes {} left open {} gate {}; decisions {:?} events deferred {} research AI {} moved {}; checks {}+{}{}",
+                o.human.0,
+                o.human_civ.map_or("?", |c| d.type_name(c)),
+                match game.civ() {
+                    Some(c) if Some(c) != o.human_civ => format!(" (started as {})", d.type_name(c)),
+                    _ => String::new(),
+                },
+                o.human_cities,
+                o.ai_cities,
+                st.turns_played,
+                st.productions,
+                st.automated_cities,
+                st.research,
+                st.events,
+                st.events_unanswerable,
+                st.votes,
+                st.popups_left,
+                st.gate_confirms,
+                o.session.decisions,
+                o.session.events_deferred,
+                o.session.research_ai_picks,
+                o.session.reassigned,
+                st.checks,
+                st.save_checks,
+                st.taken_over_at.map_or(String::new(), |t| format!("; taken over at {t}"))
+            );
+            if let soak::End::Stuck(diag) = &o.end {
+                println!("STUCK\t{diag}");
+                println!("REPRO\t{repro}");
+                std::process::exit(4);
+            }
+        }
+        Ok(Err(e)) => {
+            println!("ERROR\t{e}");
+            println!("REPRO\t{repro}");
+            std::process::exit(5);
+        }
+        Err(c) => {
+            println!("TURN\t{}", c.turn);
+            println!("PANIC\t{} at {}", c.message.replace('\n', " / "), c.location);
+            for f in &c.frames {
+                println!("BT\t{f}");
+            }
+            println!("REPRO\t{repro}");
+            std::process::exit(101);
+        }
+    }
+}
+
+/// `soak [matrix]`: the soak matrix, each game in a child process.
+fn cmd_soak(args: &[String]) {
+    if args.first().map(String::as_str) == Some("run") {
+        return cmd_soak_run(&args[1..]);
+    }
+    let d = ffh_data::global();
+    let mut m = Matrix::design(d);
+    let mut o = batch::BatchOptions {
+        jobs: std::thread::available_parallelism().map_or(1, |n| n.get()),
+        timeout: std::time::Duration::from_secs(1800),
+        saves: None,
+        keep_saves: false,
+        extra: Vec::new(),
+    };
+    let mut out = None;
+    let mut filters: Vec<String> = Vec::new();
+    let mut list = false;
+    let fail = |e: String| -> ! {
+        eprintln!("soak: {e}");
+        std::process::exit(2)
+    };
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--seeds" => m.seeds = batch::parse_seeds(flag_value(args, &mut i)).unwrap_or_else(|e| fail(e)),
+            "--sizes" => {
+                m.sizes = flag_value(args, &mut i).split(',').map(|s| soak::lenient(d, "WORLDSIZE_", s)).collect::<Result<_, _>>().unwrap_or_else(|e| fail(e))
+            }
+            "--civs" => {
+                m.civs = flag_value(args, &mut i).split(',').map(|s| soak::lenient(d, "CIVILIZATION_", s)).collect::<Result<_, _>>().unwrap_or_else(|e| fail(e))
+            }
+            "--options" => {
+                m.options = flag_value(args, &mut i).split(',').map(|s| soak::parse_options(d, s)).collect::<Result<_, _>>().unwrap_or_else(|e| fail(e))
+            }
+            "--turns" => m.turns = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--jobs" => o.jobs = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--timeout" => o.timeout = std::time::Duration::from_secs(flag_value(args, &mut i).parse().unwrap_or_else(|_| usage())),
+            "--saves" => o.saves = Some(flag_value(args, &mut i).into()),
+            "--keep-saves" => o.keep_saves = true,
+            "--out" => out = Some(flag_value(args, &mut i).to_string()),
+            "--filter" => filters.push(flag_value(args, &mut i).to_string()),
+            "--list" => list = true,
+            k @ ("--check-every" | "--save-check-every") => {
+                let v = flag_value(args, &mut i).to_string();
+                o.extra.extend([k.to_string(), v]);
+            }
+            _ => usage(),
+        }
+        i += 1;
+    }
+    let mut games = m.games(d);
+    games.retain(|g| filters.iter().all(|f| g.describe(d).contains(f.as_str())));
+    if list {
+        for g in &games {
+            println!("ffh-play soak run {}", g.to_args(d).join(" "));
+        }
+        return;
+    }
+    let exe = std::env::current_exe().unwrap_or_else(|e| fail(format!("current_exe: {e}")));
+    let t0 = std::time::Instant::now();
+    let results = batch::run_all(d, &exe, games, &o);
+    print!("{}", batch::summary(d, &results, t0.elapsed()));
+    if let Some(path) = out {
+        std::fs::write(&path, batch::tsv(d, &results)).unwrap_or_else(|e| fail(format!("{path}: {e}")));
+    }
+    if results.iter().any(|r| r.status != "ok") {
+        std::process::exit(1);
+    }
+}
+
 fn cmd_kinds() {
     let d = ffh_data::global();
     for k in KINDS {
@@ -269,6 +445,7 @@ fn main() {
         "bot" => cmd_bot(&args[1..]),
         "replay" => cmd_replay(&args[1..]),
         "journal" => cmd_journal(&args[1..]),
+        "soak" => cmd_soak(&args[1..]),
         _ => usage(),
     }
 }

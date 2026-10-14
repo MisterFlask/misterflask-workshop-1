@@ -86,3 +86,68 @@ fn bot_replay_and_journal_print() {
     assert_eq!(run(&["journal", "show", journal.to_str().unwrap()]).0, 2);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+/// The value of the first `KEY\t...` line of a `soak run` output.
+fn field<'a>(out: &'a str, key: &str) -> Option<&'a str> {
+    out.lines().find_map(|l| l.strip_prefix(key).and_then(|r| r.strip_prefix('\t')))
+}
+
+/// `soak run` (a game, a deliberate panic with its report and repro, the repro resumed),
+/// `soak --list` and a small `soak` batch.
+#[test]
+fn soak_run_report_and_batch() {
+    let dir = std::env::temp_dir().join(format!("ffh-play-cli-soak-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let game = ["--seed", "5", "--size", "duel", "--opponents", "1", "--civ", "sheaim", "--turns", "16"];
+    let (code, out) = run(&[&["soak", "run"][..], &game].concat());
+    assert_eq!(code, 0, "{out}");
+    assert_eq!(field(&out, "TURN"), Some("16"));
+    let end = field(&out, "END").unwrap().to_string();
+    assert!(end.starts_with("ON ("), "{out}");
+    assert!(field(&out, "STATS").unwrap().contains("CIVILIZATION_SHEAIM"), "{out}");
+
+    // A panic: reported with the workspace frames and the command that resumes the game.
+    let saves = dir.join("panic");
+    let (code, out) = run(&[&["soak", "run"][..], &game, &["--saves", saves.to_str().unwrap(), "--panic-at", "9"]].concat());
+    assert_eq!(code, 101, "{out}");
+    assert_eq!(field(&out, "TURN"), Some("9"));
+    assert!(field(&out, "PANIC").unwrap().starts_with("soak self-test: a deliberate panic at turn 9 at crates/ffh-play/src/soak.rs:"), "{out}");
+    assert!(field(&out, "BT").unwrap().starts_with("ffh_play::soak::run "), "{out}");
+    let repro = field(&out, "REPRO").unwrap();
+    let autosave = saves.join("auto/T0008.ffhsave");
+    assert_eq!(
+        repro,
+        format!("ffh-play soak run --seed 5 --size WORLDSIZE_DUEL --civ CIVILIZATION_SHEAIM --turns 16 --resume {}", autosave.display())
+    );
+    let args: Vec<&str> = repro.split(' ').skip(1).collect();
+    let (code, out) = run(&args);
+    assert_eq!(code, 0, "{out}");
+    // The resumed game ends as the uninterrupted one (state, checksum, save hash; not the time).
+    let strip = |e: &str| e.split_once(" s, ").map(|(a, b)| (a.split(" (").next().unwrap().to_string(), b.to_string())).unwrap();
+    assert_eq!(strip(field(&out, "END").unwrap()), strip(&end));
+
+    // The matrix.
+    let (code, out) = run(&["soak", "--list"]);
+    assert_eq!(code, 0);
+    assert_eq!(out.lines().count(), 144, "design §7 P2: 2 seeds x 3 sizes x 6 civs x 4 option sets");
+    let (code, out) = run(&["soak", "--list", "--seeds", "1..3", "--sizes", "duel", "--civs", "bannor,infernal", "--options", "default,raging+aggressive", "--filter", "INFERNAL"]);
+    assert_eq!(code, 0);
+    assert_eq!(out.lines().count(), 6, "{out}");
+    assert!(out.lines().all(|l| l.starts_with("ffh-play soak run --seed ") && l.contains("--civ CIVILIZATION_INFERNAL")), "{out}");
+    let batch = dir.join("batch");
+    let tsv = dir.join("soak.tsv");
+    let (code, out) = run(&[
+        "soak", "--seeds", "1..2", "--sizes", "duel", "--civs", "calabim", "--options", "default", "--turns", "10", "--jobs", "2", "--saves",
+        batch.to_str().unwrap(), "--out", tsv.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{out}");
+    assert!(out.contains("== soak summary: 2 games in ") && out.contains("\nno failures"), "{out}");
+    let tsv = std::fs::read_to_string(&tsv).unwrap();
+    assert_eq!(tsv.lines().count(), 3, "{tsv}");
+    assert!(tsv.lines().skip(1).all(|l| l.split('\t').nth(1) == Some("ok")), "{tsv}");
+    assert_eq!(std::fs::read_dir(&batch).map_or(0, |d| d.count()), 0, "saves of games that passed are removed");
+    // Usage errors.
+    assert_eq!(run(&["soak", "run", "--size", "enormous"]).0, 2);
+    assert_eq!(run(&["soak", "--seeds", "3..1"]).0, 2);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
