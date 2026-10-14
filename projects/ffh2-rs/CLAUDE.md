@@ -38,6 +38,10 @@ When porting, read the C++/Python being ported -- never port from memory.
   original DLL compiler (MSVC 2003, x86) does -- function-call *arguments* are evaluated
   right to left (`f(rand(a), rand(b))` draws `b` first); operands of binary operators left
   to right (`rand(a) + rand(b)` draws `a` first). Comment `// C++ quirk: MSVC evaluation order`.
+- **Fidelity bar: what a player could notice.** Rules, formulas, odds and outcomes must match
+  the original. Exact RNG-stream parity and artefacts of C++ container order (e.g. FFreeListTrashArray
+  slot reuse deciding which equal-value city/unit a loop finds first) do NOT need to match: per-owner
+  lists iterate in creation order. Don't add machinery whose only effect is bit-exact replay.
 - **Faithfulness first.** Port C++ semantics exactly, including quirks; if a quirk
   is an obvious bug that changes no gameplay, keep it and add a `// C++ quirk:` note.
   Never "improve" rules silently. Deliberate deviations go in docs/PORTING.md.

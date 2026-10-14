@@ -51,7 +51,7 @@ Pending from the audits:
 
 ## Planned next
 
-1. **Emulate FFreeListTrashArray slot order** (after the audits) for per-player units, cities, groups and plot groups: freed slots are reused LIFO and iteration is in slot order. Also add a vote-container free list in game.rs. Order-dependent places:
+1. **(Dropped by user decision: slot-order emulation is not needed; document as deviation.)** Formerly: emulate FFreeListTrashArray slot order (after the audits) for per-player units, cities, groups and plot groups: freed slots are reused LIFO and iteration is in slot order. Also add a vote-container free list in game.rs. Order-dependent places:
    - the CvPlayer::doTurn city loop (RNG);
    - the unit/group turn loops;
    - Python getUnitList loops;
