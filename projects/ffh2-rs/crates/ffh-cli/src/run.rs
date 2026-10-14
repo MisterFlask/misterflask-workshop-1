@@ -105,3 +105,37 @@ pub fn summary(g: &Game) -> String {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Same seed, same game: every per-turn sync checksum must match.
+    /// Ignored until the rules engine can play full turns (run with `--ignored`).
+    #[test]
+    #[ignore]
+    fn same_seed_same_game() {
+        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false };
+        let mut a = new_game(&cfg);
+        let sa = autoplay(&mut a, &cfg);
+        let mut b = new_game(&cfg);
+        let sb = autoplay(&mut b, &cfg);
+        assert_eq!(sa.len(), sb.len());
+        for (x, y) in sa.iter().zip(sb.iter()) {
+            assert_eq!((x.turn, x.checksum), (y.turn, y.checksum), "games diverged at turn {}", x.turn);
+        }
+    }
+
+    /// Different seeds should give different games.
+    #[test]
+    #[ignore]
+    fn different_seed_different_game() {
+        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false };
+        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, seed: 0 } };
+        let mut a = new_game(&cfg1);
+        let mut b = new_game(&cfg2);
+        let sa = autoplay(&mut a, &cfg1);
+        let sb = autoplay(&mut b, &cfg2);
+        assert_ne!(sa.last().map(|s| s.checksum), sb.last().map(|s| s.checksum));
+    }
+}
