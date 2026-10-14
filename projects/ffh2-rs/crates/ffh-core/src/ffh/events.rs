@@ -2236,7 +2236,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs CvGameCoreUtils::getTurnMonthForGame (utils.rs) for getGameTurnYear"]
     fn dying_players_move_the_armageddon_counter_by_alignment() {
         let mut g = game(2);
         let d = g.d;
