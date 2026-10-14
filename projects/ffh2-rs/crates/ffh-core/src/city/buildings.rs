@@ -411,7 +411,7 @@ impl Game {
         self.cities[c]
             .building_commerce_change
             .iter()
-            .find(|ch| ch.building_class == building_class && ch.commerce == commerce)
+            .find(|ch| ch.building_class == building_class && ch.commerce_type == commerce)
             .map_or(0, |ch| ch.change)
     }
 
@@ -419,7 +419,7 @@ impl Game {
     pub fn city_set_building_commerce_change(&mut self, c: CityId, building_class: BuildingClassType, commerce: CommerceType, change: i32) {
         let changes = &mut self.cities[c].building_commerce_change;
         let mut updated = false;
-        if let Some(i) = changes.iter().position(|ch| ch.building_class == building_class && ch.commerce == commerce) {
+        if let Some(i) = changes.iter().position(|ch| ch.building_class == building_class && ch.commerce_type == commerce) {
             if changes[i].change != change {
                 if change == 0 {
                     changes.remove(i);
@@ -429,7 +429,7 @@ impl Game {
                 updated = true;
             }
         } else if change != 0 {
-            changes.push(BuildingCommerceChange { building_class, commerce, change });
+            changes.push(BuildingCommerceChange { building_class, commerce_type: commerce, change });
             updated = true;
         }
         if updated {

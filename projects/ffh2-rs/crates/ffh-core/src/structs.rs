@@ -118,21 +118,8 @@ pub struct PlotExtraCost {
     pub cost: i32,
 }
 
-/// C++ `BuildingYieldChange`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BuildingYieldChange {
-    pub building_class: BuildingClassType,
-    pub yield_type: YieldType,
-    pub change: i32,
-}
-
-/// C++ `BuildingCommerceChange`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BuildingCommerceChange {
-    pub building_class: BuildingClassType,
-    pub commerce: CommerceType,
-    pub change: i32,
-}
+// C++ `BuildingYieldChange` / `BuildingCommerceChange` are defined in ffh-data
+// (`ffh_data::BuildingYieldChange`, `ffh_data::BuildingCommerceChange`).
 
 /// C++ `BuildingChangeArray` = vector<pair<BuildingClassTypes, int>>.
 pub type BuildingChangeArray = Vec<(BuildingClassType, i32)>;
