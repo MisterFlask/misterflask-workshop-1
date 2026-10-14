@@ -730,7 +730,8 @@ impl Game {
     pub fn player_change_state_religion_building_commerce(&mut self, p: PlayerId, commerce: CommerceType, change: i32) {
         if change != 0 {
             self.players[p].state_religion_building_commerce[commerce.idx()] += change;
-            debug_assert!(self.players[p].state_religion_building_commerce[commerce.idx()] >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
             self.player_update_commerce_type(p, commerce);
         }
     }
@@ -779,7 +780,8 @@ impl Game {
     pub fn player_change_commerce_flexible_count(&mut self, p: PlayerId, commerce: CommerceType, change: i32) {
         if change != 0 {
             self.players[p].commerce_flexible_count[commerce.idx()] += change;
-            debug_assert!(self.players[p].commerce_flexible_count[commerce.idx()] >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
 
             if !self.player_is_commerce_flexible(p, commerce) {
                 self.player_set_commerce_percent(p, commerce, 0);
@@ -1525,7 +1527,8 @@ impl Game {
     pub fn player_change_building_good_health(&mut self, p: PlayerId, change: i32) {
         if change != 0 {
             self.players[p].building_good_health += change;
-            debug_assert!(self.players[p].building_good_health >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
             self.player_ai_make_assign_work_dirty(p);
         }
     }
@@ -1534,7 +1537,8 @@ impl Game {
     pub fn player_change_building_bad_health(&mut self, p: PlayerId, change: i32) {
         if change != 0 {
             self.players[p].building_bad_health += change;
-            debug_assert!(self.players[p].building_bad_health <= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
             self.player_ai_make_assign_work_dirty(p);
         }
     }
@@ -1696,7 +1700,8 @@ impl Game {
     pub fn player_change_free_specialist(&mut self, p: PlayerId, change: i32) {
         if change != 0 {
             self.players[p].free_specialist += change;
-            debug_assert!(self.players[p].free_specialist >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
             self.player_ai_make_assign_work_dirty(p);
         }
     }
@@ -1719,7 +1724,8 @@ impl Game {
     pub fn player_change_specialist_extra_yield(&mut self, p: PlayerId, specialist: SpecialistType, yield_type: YieldType, change: i32) {
         if change != 0 {
             self.players[p].specialist_extra_yield[specialist][yield_type.idx()] += change;
-            debug_assert!(self.players[p].specialist_extra_yield[specialist][yield_type.idx()] >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
             self.player_update_extra_specialist_yield(p);
             self.player_ai_make_assign_work_dirty(p);
         }

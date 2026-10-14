@@ -178,9 +178,11 @@ fn play(s: &Settings, g: &mut Game) {
     // up to `EXTENDED_TURNS` more turns of it.
     const EXTENDED_TURNS: i32 = 50;
     let mut stop_turn = end_turn;
+    let mut ended = false;
     let mut grant = parse_grant(g, s);
     while g.game_state != GameStateType::GAMESTATE_OVER && g.game_turn() < stop_turn {
-        if g.game_state != GameStateType::GAMESTATE_ON && stop_turn == end_turn {
+        if g.game_state != GameStateType::GAMESTATE_ON && !ended {
+            ended = true;
             check_end(g);
             println!("VICTORY\t{}\t{}", g.game_turn(), end_state(g));
             stop_turn = end_turn.min(g.game_turn() + EXTENDED_TURNS);
@@ -204,13 +206,25 @@ fn play(s: &Settings, g: &mut Game) {
             panic!("turn {turn} did not finish after {updates_this_turn} updates (a player never ends its turn)");
         }
     }
-    check_end(g);
+    // A game that ended straight in GAMESTATE_OVER (never extended).
+    if !ended {
+        check_end(g);
+    }
 }
 
-/// Consistency of a finished game: a game that is over has a victory and a winner; a winner
-/// team is alive (C++ `setWinner` + `setGameState(GAMESTATE_OVER)`).
+/// Consistency of a finished game: a game that is over has a victory and a winner (C++
+/// `setWinner` + `setGameState`), except at max turns when no civ team has the best score alone
+/// (C++ `testVictory`: no time victory, then `GAMESTATE_EXTENDED`/`OVER` with no winner).
 fn check_end(g: &Game) {
     if g.game_state == GameStateType::GAMESTATE_ON {
+        return;
+    }
+    if g.victory.is_none() && g.max_turns() > 0 && g.elapsed_game_turns >= g.max_turns() {
+        let barbarian = g.players[g.barbarian_player()].team;
+        let mut scores: Vec<i32> = g.team_ids().filter(|&t| t != barbarian && g.team_is_alive(t)).map(|t| g.team_score[t]).collect();
+        scores.sort_unstable_by(|a, b| b.cmp(a));
+        assert!(scores.is_empty() || (scores.len() >= 2 && scores[0] == scores[1]), "max turns reached, best team score {scores:?} alone, but no time victory");
+        println!("NOTE\tmax turns reached with no civ team alive or a tie for the best team score {scores:?}: no winner (as in C++)");
         return;
     }
     assert!(g.victory.is_some() && g.winner.is_some(), "game over without a victory/winner: {}", end_state(g));

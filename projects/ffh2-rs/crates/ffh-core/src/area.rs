@@ -311,7 +311,8 @@ impl Game {
         if change != 0 {
             let area = &mut self.map.areas[a];
             area.free_specialist[player] += change;
-            debug_assert!(area.free_specialist[player] >= 0);
+            // C++ quirk: the C++ FAssert can fail for a player added to a team mid-game (bTeamShare
+            // buildings, see `player_change_trade_routes`).
 
             self.player_ai_make_assign_work_dirty(player);
         }
