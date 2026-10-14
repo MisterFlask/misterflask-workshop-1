@@ -1,0 +1,559 @@
+//! The session (design §2.2): owns the `Game` and drives it the way the Civ4 exe does for one
+//! human player. `advance` runs `update()` until the human has control (or the game ends);
+//! `execute` applies one command between `update()` calls, then lets the game settle. Inputs
+//! are journaled, the log is drained at deterministic points, turn boundaries are autosaved.
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
+use ffh_ai::Ai;
+use ffh_core::controller::ControllerRef;
+use ffh_core::game::Game;
+use ffh_core::ids::*;
+use ffh_core::log::LogEntry;
+use ffh_data::*;
+
+use crate::command::{self, Action, CmdErr, CmdOk, Command, Ctx, Plan};
+use crate::decision::{self, Pending};
+use crate::guard::{self, QueryGuard};
+use crate::human::{Answerer, HumanController, SessionShared, Stats};
+use crate::journal::{self, Cursor, Journal, JournalAnswerer, Line, Stamp};
+use crate::save::{self, SavePaths, Sidecar};
+use crate::setup::{self, NewGame, HUMAN_SLOT};
+
+/// Who has control.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Phase {
+    /// The human can act (a control point).
+    Human(PlayerId),
+    /// The game is running (AI turns, end of turn, the human's missions).
+    Running,
+    Over,
+}
+
+/// Why `advance` returned.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Stop {
+    Human,
+    Over,
+    /// A turn did not finish (the watchdog): diagnostics.
+    Stuck(String),
+}
+
+/// Session settings (design §3).
+#[derive(Clone, Debug)]
+pub struct SessionOptions {
+    /// The game's directory: autosaves in `auto/`, the journal, manual saves. `None`: no files
+    /// (the journal is kept in memory).
+    pub saves_dir: Option<PathBuf>,
+    /// Autosaves kept (0 = none).
+    pub autosave_keep: usize,
+    /// Port of `updateTestEndTurn`'s AutoMoves: when nothing is ready but groups have queued
+    /// orders, send `auto_moves` (journaled), once per control episode.
+    pub auto_moves_when_idle: bool,
+    /// Most `update()` calls a command's settle runs.
+    pub settle_limit: u32,
+    /// Write a journal.
+    pub journal: bool,
+}
+
+impl Default for SessionOptions {
+    fn default() -> SessionOptions {
+        SessionOptions { saves_dir: None, autosave_keep: 20, auto_moves_when_idle: true, settle_limit: 10_000, journal: true }
+    }
+}
+
+/// Session-level failures.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlayError {
+    /// Bad new-game settings.
+    Setup(String),
+    /// A save that cannot be loaded (or taken over).
+    Load(String),
+    Io(String),
+    /// Not now (a decision is open, not at a control point, no saves directory).
+    Refused(String),
+}
+
+impl std::fmt::Display for PlayError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PlayError::Setup(s) => write!(f, "setup: {s}"),
+            PlayError::Load(s) => write!(f, "load: {s}"),
+            PlayError::Io(s) => write!(f, "io: {s}"),
+            PlayError::Refused(s) => write!(f, "refused: {s}"),
+        }
+    }
+}
+
+impl std::error::Error for PlayError {}
+
+/// Turn slices `advance` runs in one game turn before it gives up (as ffh-cli's run loop).
+pub const WATCHDOG_SLICES: u64 = 200_000;
+
+/// Messages kept for the human.
+const MESSAGES_KEPT: usize = 10_000;
+
+/// A game played by one human (design §3).
+pub struct Session {
+    pub g: Game,
+    pub human: PlayerId,
+    pub shared: Arc<SessionShared>,
+    advisor: Arc<Ai>,
+    messages: Vec<LogEntry>,
+    opts: SessionOptions,
+    auto_moves_tried: bool,
+    last_autosave: Option<SavePaths>,
+    /// A new game not yet at its first control point (see `advance`).
+    start_pending: bool,
+}
+
+impl Session {
+    /// Attaches controllers and the human-play flags to `g`; `journal` gets everything.
+    fn assemble(mut g: Game, human: PlayerId, answerer: Arc<dyn Answerer>, opts: SessionOptions, journal: Journal) -> Session {
+        let advisor = Arc::new(Ai::new());
+        let shared = Arc::new(SessionShared::new(journal));
+        let controller: ControllerRef = Arc::new(HumanController::new(advisor.clone(), answerer, shared.clone()));
+        setup::attach_controllers(&mut g, human, ffh_ai::ai_controller(), controller);
+        setup::configure_human(&mut g, human);
+        Session { g, human, shared, advisor, messages: Vec::new(), opts, auto_moves_tried: false, last_autosave: None, start_pending: false }
+    }
+
+    fn make_journal(opts: &SessionOptions) -> Result<Journal, PlayError> {
+        Ok(match (opts.journal, &opts.saves_dir) {
+            (false, _) => Journal::off(),
+            (true, None) => Journal::memory(),
+            (true, Some(dir)) => Journal::create_in(dir).map_err(|e| PlayError::Io(format!("{}: {e}", dir.display())))?,
+        })
+    }
+
+    /// A new game (design §2.6 "New game"); returns before the first `advance`.
+    pub fn new_game(ng: &NewGame, answerer: Arc<dyn Answerer>, opts: SessionOptions) -> Result<Session, PlayError> {
+        let journal = Self::make_journal(&opts)?;
+        Self::new_game_with(ng, answerer, opts, journal)
+    }
+
+    fn new_game_with(ng: &NewGame, answerer: Arc<dyn Answerer>, opts: SessionOptions, journal: Journal) -> Result<Session, PlayError> {
+        let g = setup::build_game(ffh_data::global(), ng).map_err(PlayError::Setup)?;
+        let mut s = Session::assemble(g, HUMAN_SLOT, answerer, opts, journal);
+        s.journal(&Line::New { setup: ng.to_json() });
+        s.g.game_init();
+        setup::set_human_options(&mut s.g, HUMAN_SLOT);
+        s.start_pending = true;
+        Ok(s)
+    }
+
+    /// A saved game (a turn boundary or a human control point). The human is the sidecar's, else
+    /// the first human slot. Without a sidecar no event popup is pending.
+    pub fn load(save: &[u8], sidecar: Option<&Sidecar>, answerer: Arc<dyn Answerer>, opts: SessionOptions) -> Result<Session, PlayError> {
+        let journal = Self::make_journal(&opts)?;
+        Self::load_with(save, sidecar, answerer, opts, journal)
+    }
+
+    fn load_with(save: &[u8], sidecar: Option<&Sidecar>, answerer: Arc<dyn Answerer>, opts: SessionOptions, journal: Journal) -> Result<Session, PlayError> {
+        let g = Game::load(ffh_data::global(), save).map_err(|e| PlayError::Load(e.to_string()))?;
+        let human = match sidecar {
+            Some(sc) => sc.human,
+            None => g
+                .civ_player_ids()
+                .find(|&p| g.setup.players[p.idx()].human)
+                .ok_or_else(|| PlayError::Load("the save has no human player (use take over)".into()))?,
+        };
+        if human.idx() >= g.num_civ_players() || !g.setup.players[human.idx()].human {
+            return Err(PlayError::Load(format!("player {} is not a human player of this save", human.0)));
+        }
+        let mut s = Session::assemble(g, human, answerer, opts, journal);
+        s.journal(&Line::Load { fnv: journal::fnv_hex(save), human });
+        if let Some(sc) = sidecar {
+            *s.shared.pending_events.lock().unwrap() = sc.pending_events.clone();
+            s.messages = sc.messages_tail.clone();
+        }
+        Ok(s)
+    }
+
+    /// Takes over slot `p` of an AI-only save at a turn boundary (a debugging aid, design §2.6).
+    pub fn take_over(save: &[u8], p: PlayerId, answerer: Arc<dyn Answerer>, opts: SessionOptions) -> Result<Session, PlayError> {
+        let mut g = Game::load(ffh_data::global(), save).map_err(|e| PlayError::Load(e.to_string()))?;
+        if !g.at_turn_boundary() {
+            return Err(PlayError::Load("take over needs a save at a turn boundary".into()));
+        }
+        if p.idx() >= g.num_civ_players() || !g.players[p].alive {
+            return Err(PlayError::Load(format!("player {} is not an alive civilization", p.0)));
+        }
+        if g.num_human_players() > 0 {
+            return Err(PlayError::Load("the save already has a human player (load it instead)".into()));
+        }
+        g.setup.players[p.idx()].human = true;
+        g.setup.players[p.idx()].slot_status = ffh_core::setup::SlotStatus::Taken;
+        g.player_update_human(p);
+        let journal = Self::make_journal(&opts)?;
+        let mut s = Session::assemble(g, p, answerer, opts, journal);
+        setup::set_human_options(&mut s.g, p);
+        s.journal(&Line::TakeOver { fnv: journal::fnv_hex(save), human: p });
+        Ok(s)
+    }
+
+    fn journal(&self, line: &Line) {
+        self.shared.journal.lock().unwrap().write(line);
+    }
+
+    // ---- phase, advance, execute --------------------------------------------------------------
+
+    /// The phase predicate (pure, design §2.2).
+    pub fn phase(&self) -> Phase {
+        phase(&self.g, self.human)
+    }
+
+    /// Runs the game until the human has control or the game ends (design §2.2). `on_slice` is
+    /// called after every `update()` while running (transports publish status there; it must
+    /// read only plain fields or go through a `QueryGuard`).
+    pub fn advance(&mut self, on_slice: &mut dyn FnMut(&Game)) -> Stop {
+        let mut slices: u64 = 0;
+        loop {
+            match self.phase() {
+                Phase::Over => {
+                    self.drain_log();
+                    return Stop::Over;
+                }
+                Phase::Human(h) => {
+                    self.drain_log();
+                    self.refresh_pending_events(h);
+                    // A new game is saved at its first control point (the human's first turn;
+                    // `game_init` leaves the first player's turn active, so the game starts
+                    // without a turn boundary).
+                    if std::mem::take(&mut self.start_pending) {
+                        self.checkpoint(Some("start"));
+                    }
+                    // updateTestEndTurn: nothing ready (and nothing busy) but queued orders ->
+                    // CvNetAutoMoves. At most once per control episode, so a stuck mission
+                    // cannot spin.
+                    if self.opts.auto_moves_when_idle
+                        && !self.auto_moves_tried
+                        && decision::ready_groups(&self.g, h).is_empty()
+                        && self.g.player_has_auto_unit(h)
+                    {
+                        self.auto_moves_tried = true;
+                        self.apply_journaled(h, &Command::AutoMoves, &Action::AutoMoves);
+                        continue;
+                    }
+                    return Stop::Human;
+                }
+                Phase::Running => {
+                    self.g.update();
+                    if self.g.at_turn_boundary() {
+                        self.boundary();
+                        slices = 0;
+                    }
+                    on_slice(&self.g);
+                    slices += 1;
+                    if slices > WATCHDOG_SLICES {
+                        return Stop::Stuck(diagnose(&self.g));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Applies `cmd` at a control point (design §2.2): validate (pure), journal, the C++ port,
+    /// then settle. Confirmations and errors change nothing.
+    pub fn execute(&mut self, cmd: &Command) -> Result<CmdOk, CmdErr> {
+        if self.shared.decision_open() {
+            return Err(CmdErr::DecisionPending);
+        }
+        let Phase::Human(h) = self.phase() else { return Err(CmdErr::NotYourTurn) };
+        let events = self.shared.events_of(h);
+        let plan = {
+            let g = QueryGuard::new(&self.g);
+            command::validate(&g, h, cmd, &Ctx { events: &events })?
+        };
+        match plan {
+            Plan::Noop => Ok(CmdOk::Applied { log: Vec::new(), accepted: None }),
+            Plan::Confirm(c) => Ok(CmdOk::NeedsConfirm(c)),
+            Plan::Apply(action) => Ok(self.apply_journaled(h, cmd, &action)),
+        }
+    }
+
+    fn apply_journaled(&mut self, h: PlayerId, cmd: &Command, action: &Action) -> CmdOk {
+        self.journal(&Line::Cmd { stamp: Stamp::of(&self.g), cmd: cmd.to_json() });
+        let mark = self.g.log.entries.len();
+        match action {
+            Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|&e| e != (h, *triggered)),
+            // C++: closing an event popup without a choice does nothing; the popup is gone.
+            Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|&(p, _)| p != h),
+            _ => {}
+        }
+        command::apply(&mut self.g, h, action);
+        self.settle(h);
+        self.auto_moves_tried = false;
+        let log: Vec<LogEntry> = self.g.log.entries[mark.min(self.g.log.entries.len())..].iter().filter(|e| visible_to(e, h)).cloned().collect();
+        self.drain_log();
+        CmdOk::Applied { log, accepted: None }
+    }
+
+    /// The exe's next frames after a command: at least one `update()` (the governor, war and
+    /// timers react), then while a human group is busy (missions in progress, combat).
+    fn settle(&mut self, h: PlayerId) {
+        let mut n = 0;
+        loop {
+            self.g.update();
+            n += 1;
+            if self.g.at_turn_boundary() {
+                self.boundary();
+            }
+            if self.phase() == Phase::Over || n >= self.opts.settle_limit || !human_busy(&self.g, h) {
+                break;
+            }
+        }
+    }
+
+    /// At a turn boundary: drain the log, journal a checkpoint, autosave.
+    fn boundary(&mut self) {
+        self.checkpoint(None);
+    }
+
+    /// Drains the log, journals a checkpoint and autosaves: the ring autosave of a turn
+    /// boundary, or (`start`) the new game's `auto/start` at its first control point.
+    fn checkpoint(&mut self, start: Option<&str>) {
+        self.drain_log();
+        let turn = self.g.game_turn();
+        self.journal(&Line::Checkpoint { turn, checksum: self.g.calculate_sync_checksum() });
+        if let (Some(dir), true) = (&self.opts.saves_dir, self.opts.autosave_keep > 0) {
+            let sidecar = self.sidecar();
+            let r = match start {
+                None => save::autosave(dir, turn, &self.g.save(), &sidecar, self.opts.autosave_keep),
+                Some(name) => save::write_bundle(&dir.join("auto"), name, &self.g.save(), &sidecar),
+            };
+            match r {
+                Ok(p) => self.last_autosave = Some(p),
+                Err(e) => eprintln!("ffh-play: autosave failed: {e}"),
+            }
+        }
+    }
+
+    /// Moves the game log into the message store (the human's messages only).
+    fn drain_log(&mut self) {
+        let h = self.human;
+        let entries = std::mem::take(&mut self.g.log.entries);
+        self.messages.extend(entries.into_iter().filter(|e| visible_to(e, h)));
+        if self.messages.len() > MESSAGES_KEPT {
+            let cut = self.messages.len() - MESSAGES_KEPT;
+            self.messages.drain(..cut);
+        }
+    }
+
+    /// Drops deferred events the popup would no longer show (`launchEventPopup`: the data is
+    /// gone or no event can be done).
+    fn refresh_pending_events(&mut self, h: PlayerId) {
+        let g = QueryGuard::new(&self.g);
+        self.shared.pending_events.lock().unwrap().retain(|&(p, id)| p != h || decision::pending_event(&g, h, id).is_some());
+    }
+
+    // ---- reads ---------------------------------------------------------------------------------
+
+    /// Reads the game under a `QueryGuard` (in-process readers such as the bot).
+    pub fn read<R>(&self, f: impl FnOnce(&Game) -> R) -> R {
+        guard::read(&self.g, f)
+    }
+
+    /// What waits for the human.
+    pub fn pending(&self) -> Pending {
+        let events = self.shared.events_of(self.human);
+        self.read(|g| decision::pending(g, self.human, &events))
+    }
+
+    /// The human's messages (oldest first).
+    pub fn messages(&self) -> &[LogEntry] {
+        &self.messages
+    }
+
+    pub fn stats(&self) -> Stats {
+        self.shared.stats.lock().unwrap().clone()
+    }
+
+    /// The private advisor (`ffh_ai::Ai`), e.g. for suggestions.
+    pub fn advisor(&self) -> &Arc<Ai> {
+        &self.advisor
+    }
+
+    /// The journal's lines when it is kept in memory.
+    pub fn journal_lines(&self) -> Option<Vec<String>> {
+        self.shared.journal.lock().unwrap().lines().map(<[String]>::to_vec)
+    }
+
+    pub fn journal_path(&self) -> Option<PathBuf> {
+        self.shared.journal.lock().unwrap().path().map(PathBuf::from)
+    }
+
+    pub fn last_autosave(&self) -> Option<&SavePaths> {
+        self.last_autosave.as_ref()
+    }
+
+    // ---- saves ---------------------------------------------------------------------------------
+
+    fn sidecar(&self) -> Sidecar {
+        let journal = self.shared.journal.lock().unwrap();
+        Sidecar {
+            human: self.human,
+            pending_events: self.shared.pending_events.lock().unwrap().clone(),
+            journal: journal.path().map(|p| p.display().to_string()),
+            journal_line: journal.count(),
+            messages_tail: self.messages.iter().rev().take(50).rev().cloned().collect(),
+        }
+    }
+
+    /// The save and its sidecar, if saving is allowed now: at a control point or a turn
+    /// boundary, never while a decision is open.
+    pub fn save_bytes(&self) -> Result<(Vec<u8>, Sidecar), PlayError> {
+        if self.shared.decision_open() {
+            return Err(PlayError::Refused("a decision is open".into()));
+        }
+        if !matches!(self.phase(), Phase::Human(_) | Phase::Over) && !self.g.at_turn_boundary() {
+            return Err(PlayError::Refused("saving is possible at a control point or a turn boundary".into()));
+        }
+        Ok((self.g.save(), self.sidecar()))
+    }
+
+    /// Saves `<saves_dir>/<name>.ffhsave` + `.ffhsess`.
+    pub fn save(&self, name: &str) -> Result<SavePaths, PlayError> {
+        let Some(dir) = &self.opts.saves_dir else { return Err(PlayError::Refused("no saves directory".into())) };
+        save::sanitize_name(name).map_err(PlayError::Refused)?;
+        let (bytes, sidecar) = self.save_bytes()?;
+        save::write_bundle(dir, name, &bytes, &sidecar).map_err(|e| PlayError::Io(e.to_string()))
+    }
+}
+
+/// Is entry `e` for the human `h` (its subject is `h`, or nobody)?
+pub fn visible_to(e: &LogEntry, h: PlayerId) -> bool {
+    e.player.is_none() || e.player == Some(h.0)
+}
+
+/// A human group is busy (a mission step under way, or combat).
+fn human_busy(g: &Game, h: PlayerId) -> bool {
+    g.players[h].groups.iter().any(|&grp| g.group_is_busy(grp) || g.group_is_cargo_busy(grp))
+}
+
+/// The phase predicate (design §2.2): pure, `&self` functions only.
+pub fn phase(g: &Game, h: PlayerId) -> Phase {
+    if g.game_state == GameStateType::GAMESTATE_OVER {
+        return Phase::Over;
+    }
+    let pl = &g.players[h];
+    if pl.alive && pl.human && pl.turn_active && !pl.auto_moves && !pl.end_turn && !human_busy(g, h) {
+        return Phase::Human(h);
+    }
+    Phase::Running
+}
+
+/// Why a turn does not finish: the active players' ready or busy groups (as ffh-cli's run loop).
+pub fn diagnose(g: &Game) -> String {
+    let mut out = format!("turn {} did not finish after {WATCHDOG_SLICES} slices;", g.game_turn());
+    for p in g.player_ids() {
+        let pl = &g.players[p];
+        if !pl.alive || !pl.turn_active {
+            continue;
+        }
+        out += &format!(" player {} (human {}, auto moves {}, end turn {}):", p.0, pl.human, pl.auto_moves, pl.end_turn);
+        for &grp in &pl.groups {
+            if g.group_ready_to_move(grp, true) || g.group_is_busy(grp) {
+                let head = g.group_get_head_unit(grp);
+                out += &format!(
+                    " group {} head {:?} ({}) missions {:?} activity {:?} busy {};",
+                    grp.0,
+                    head,
+                    head.map_or("-", |u| g.d.type_name(g.units[u].unit_type)),
+                    g.groups[grp].mission_queue.iter().map(|m| m.mission_type).collect::<Vec<_>>(),
+                    g.groups[grp].activity_type,
+                    g.group_is_busy(grp)
+                );
+            }
+        }
+    }
+    out
+}
+
+// ---- replay -------------------------------------------------------------------------------------
+
+/// Where a replay starts: a save (with its sidecar) taken at a checkpoint of the journal.
+pub struct ReplayFrom<'a> {
+    pub save: &'a [u8],
+    pub sidecar: Option<&'a Sidecar>,
+}
+
+/// Replays a journal (design §2.6): from its header, or from a save at one of its checkpoints.
+/// Every journaled command is re-applied at the same `(turn, slice)` and every decision
+/// answered from the journal; checkpoints are compared. Ends at the control point after the
+/// last input (or game over), returning the session; an error names the first divergence.
+pub fn replay(lines: Vec<Line>, from: Option<ReplayFrom>, opts: SessionOptions) -> Result<Session, String> {
+    let d = ffh_data::global();
+    let opts = SessionOptions { saves_dir: None, autosave_keep: 0, auto_moves_when_idle: false, journal: false, ..opts };
+    let (start, header) = match &from {
+        None => (1, lines.first().cloned().ok_or("empty journal")?),
+        Some(f) => {
+            let g = Game::load(d, f.save).map_err(|e| e.to_string())?;
+            let (turn, checksum) = (g.game_turn(), g.calculate_sync_checksum());
+            let pos = match f.sidecar.map(|s| s.journal_line) {
+                Some(n) if n > 0 && matches!(lines.get(n - 1), Some(Line::Checkpoint { turn: t, checksum: c }) if (*t, *c) == (turn, checksum)) => n,
+                _ => lines
+                    .iter()
+                    .position(|l| matches!(l, Line::Checkpoint { turn: t, checksum: c } if (*t, *c) == (turn, checksum)))
+                    .map(|i| i + 1)
+                    .ok_or_else(|| format!("the journal has no checkpoint for turn {turn} with checksum {checksum}"))?,
+            };
+            (pos, Line::Load { fnv: journal::fnv_hex(f.save), human: PlayerId(0) })
+        }
+    };
+    let cursor = Arc::new(Mutex::new(Cursor::new(lines, start)));
+    let answerer = Arc::new(JournalAnswerer { cursor: cursor.clone() });
+    let jr = Journal::replay(cursor.clone());
+    let mut s = match (&from, header) {
+        (None, Line::New { setup }) => {
+            let ng = NewGame::from_json(d, &setup).map_err(|e| e.to_string())?;
+            Session::new_game_with(&ng, answerer, opts, jr).map_err(|e| e.to_string())?
+        }
+        (Some(f), _) => Session::load_with(f.save, f.sidecar, answerer, opts, jr).map_err(|e| e.to_string())?,
+        (None, other) => return Err(format!("journal starts with a {} line: replay it with --from <save>", other.kind())),
+    };
+    let desync = |c: &Arc<Mutex<Cursor>>| c.lock().unwrap().desync.clone();
+    loop {
+        let stop = s.advance(&mut |_| {});
+        if let Some(e) = desync(&cursor) {
+            return Err(e);
+        }
+        let (next, pos) = {
+            let c = cursor.lock().unwrap();
+            (c.peek().cloned(), c.pos)
+        };
+        match next {
+            None => return Ok(s),
+            Some(Line::Cmd { stamp, cmd }) => {
+                if stop != Stop::Human {
+                    return Err(format!("journal line {}: a command, but the replay stopped: {stop:?}", pos + 1));
+                }
+                let here = Stamp::of(&s.g);
+                if stamp != here {
+                    return Err(format!(
+                        "journal line {}: command stamped turn {} slice {}, replay at turn {} slice {}",
+                        pos + 1,
+                        stamp.turn,
+                        stamp.slice,
+                        here.turn,
+                        here.slice
+                    ));
+                }
+                cursor.lock().unwrap().pos += 1;
+                let c = Command::from_json(d, &cmd).map_err(|e| format!("journal line {}: {e}", pos + 1))?;
+                match s.execute(&c) {
+                    Ok(CmdOk::Applied { .. }) => {}
+                    Ok(CmdOk::NeedsConfirm(c)) => return Err(format!("journal line {}: the command now needs confirmation: {c:?}", pos + 1)),
+                    Err(e) => return Err(format!("journal line {}: the command is refused: {e}", pos + 1)),
+                }
+                if let Some(e) = desync(&cursor) {
+                    return Err(e);
+                }
+            }
+            Some(other) => {
+                return Err(format!("journal line {}: {} line, but the replay is at a control point ({stop:?})", pos + 1, other.kind()));
+            }
+        }
+    }
+}
