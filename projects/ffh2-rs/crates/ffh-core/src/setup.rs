@@ -58,25 +58,27 @@ impl GameSetup {
 
     /// A standard game: `n` AI civs (random civs/leaders are chosen by `game_init`, port of the
     /// FfH RANDOM_CIVILIZATION block in `CvGame::init`),
-    /// [`Self::SPARE_SLOTS`] open slots, then the barbarian slot; given world size,
+    /// [`Self::SPARE_SLOTS`] open slots, then the barbarian slot (barbarian civilization and
+    /// leader, AI-controlled); given world size,
     /// normal speed/climate/sea level, first era, Noble difficulty.
     pub fn standard(d: &GameData, n_civs: usize, world: &str, seed: u32) -> GameSetup {
         let speed = d.t::<GameSpeedType>("GAMESPEED_NORMAL");
         let mut players = Vec::new();
         let n_slots = n_civs + Self::SPARE_SLOTS;
         for i in 0..=n_slots {
+            let barbarian = i == n_slots;
             players.push(PlayerSetup {
-                civ: None,
-                leader: None,
+                // The exe gives the barbarian slot BARBARIAN_CIVILIZATION / BARBARIAN_LEADER
+                // and an AI slot status (CvPlayer::init only brings computer/taken slots alive).
+                civ: if barbarian { opt_from_i32(d.defines.barbarian_civilization) } else { None },
+                leader: if barbarian { opt_from_i32(d.defines.barbarian_leader) } else { None },
                 team: TeamId(i as u8),
                 handicap: d.ty::<HandicapType>("HANDICAP_NOBLE"),
                 art_style: None,
-                slot_status: if i < n_civs {
+                slot_status: if i < n_civs || barbarian {
                     SlotStatus::Computer
-                } else if i < n_slots {
-                    SlotStatus::Open
                 } else {
-                    SlotStatus::Closed
+                    SlotStatus::Open
                 },
                 human: false,
                 leader_name: String::new(),

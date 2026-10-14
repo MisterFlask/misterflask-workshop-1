@@ -28,7 +28,7 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
 | CvPlayer | player/ | mod.rs, turn.rs, start.rs ported; economy in progress; units, cities, civics_religion, diplomacy_trade, events todo |
 | CvTeam / CvSelectionGroup / CvDeal | team/, group/, deal.rs | team tech+diplomacy, group (all) in progress; team misc, deal todo |
 | CvGame / CvGameCoreUtils / CvMapGenerator | game/, utils.rs, path.rs, mapgen/ | setup_init.rs + mapgen ported; turn.rs, utils.rs, path.rs in progress; world.rs, votes.rs todo |
-| CvPlayerAI::AI_foundValue (+ bonus values) | found_value.rs | in progress (rules need it: start plots, barbarian cities) |
+| CvPlayerAI::AI_foundValue (+ bonus values) | found_value.rs | ported (rules need it: start plots, barbarian cities); `AI_baseBonusVal` is recomputed instead of cached between resets |
 | CvCityAI::AI_assignWorkingPlots | governor.rs | new code: C++ rules-visible steps kept, choice by the governor |
 | CvFractal | mapgen/fractal.rs | done (bit-exact, parity-tested) |
 | Map script (BTS Fractal.py) | mapscript.rs | done (re-implementation; Python map scripts are not FFH2 rules) |
@@ -66,6 +66,11 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
   they decide whether a spell is castable at all for AI players (their game, their rules).
 - **Unspecified C++ evaluation order** (two RNG draws in one expression) follows MSVC x86:
   call arguments right to left, binary operands left to right (see CLAUDE.md).
+- **`AI_baseBonusVal` cache**: C++ keeps the first value per bonus until `AI_updateBonusValue`
+  resets it (each turn, team merge, empire split); the port recomputes it, so values can
+  differ only after cities/techs change between two resets.
+- **Barbarian slot**: the exe (not the DLL) gives it `BARBARIAN_CIVILIZATION` /
+  `BARBARIAN_LEADER` and an AI slot status; `GameSetup::standard` does the same.
 - **Path finding** replaces the exe's closed-source `FAStar` with an A* over the same DLL
   callbacks; tie-breaking between equal-cost paths cannot match the original exactly.
 - **Python `getUnitPlayerID`** (CustomFunctions) finds any unit by id; the original only found
