@@ -843,8 +843,13 @@ impl Game {
             }
         }
 
-        // AI: AI_updateBonusValue() for every alive member player of `other` (AI bonus
-        // valuation cache).
+        // AI_updateBonusValue() for every alive member player of `other` (the bonus value cache
+        // read by AI_foundValue).
+        for p in self.player_ids() {
+            if self.players[p].alive && self.players[p].team == other {
+                self.player_ai_update_bonus_value(p);
+            }
+        }
     }
 
     /// C++ `CvTeam::isTechShare`.
