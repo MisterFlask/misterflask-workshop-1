@@ -107,6 +107,16 @@ impl Game {
 
     /// C++ `CvPlayer::deleteCity(iID)`: destroys the city object and removes it from the owner list.
     pub fn player_delete_city(&mut self, p: PlayerId, c: CityId) {
+        // A plot's `m_workingCity` may still name the dead city; C++ `getWorkingCity()` then
+        // answers NULL. Clearing those references is equivalent and lets reads index directly.
+        let (x, y) = (self.cities[c].x, self.cities[c].y);
+        for i in 0..crate::defs::NUM_CITY_PLOTS {
+            if let Some(q) = self.plot_city(x, y, i) {
+                if self.map.plots[q].working_city == Some(c) {
+                    self.map.plots[q].working_city = None;
+                }
+            }
+        }
         self.cities.remove(c);
         self.players[p].cities.retain(|&x| x != c);
     }
