@@ -51,7 +51,8 @@ fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     v += info.trade_routes * 25 * n;
     v += info.worker_speed_modifier / 2 + info.military_production_modifier / 2;
     v -= info.war_weariness_modifier / 4;
-    v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * 10;
+    let broke = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 50;
+    v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * if broke { 40 } else { 15 };
     v
 }
 

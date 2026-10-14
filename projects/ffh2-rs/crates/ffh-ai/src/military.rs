@@ -244,6 +244,21 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         }
     }
 
+    // A city of ours in peril within a few turns: defend it.
+    if !v.peril.is_empty() {
+        let reach = v.flood.run(g, u, 5, false);
+        if let Some(r) = v.peril.iter().filter_map(|&(q, _)| reach.iter().find(|r| r.plot == q).copied()).min_by_key(|r| (r.turns, r.plot)) {
+            crate::trace!(g, p, "stack {:?} defends city at {:?}", grp, g.map.xy(r.plot));
+            if r.plot == here {
+                hold(g, grp);
+            } else {
+                move_to(g, grp, r.plot, 0);
+                finish(g, grp);
+            }
+            return;
+        }
+    }
+
     // A settler waits for an escort.
     if !v.escort_requests.is_empty() && g.groups[grp].units.len() == 1 {
         let reach = v.flood.run(g, u, 6, false);

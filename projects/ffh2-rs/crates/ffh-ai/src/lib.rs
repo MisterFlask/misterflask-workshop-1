@@ -28,6 +28,7 @@ pub mod sites;
 pub mod units;
 pub mod values;
 pub mod view;
+pub mod workers;
 
 /// Debug tracing: `FFH_AI_TRACE=all` or `FFH_AI_TRACE=<player id>` prints AI decisions to
 /// stderr. Read once; it only prints, so it cannot change the game.
@@ -88,6 +89,7 @@ impl Controller for Ai {
         }
         if !v.barbarian {
             empire::manage(g, p);
+            production::emergency(self, g, p);
             diplomacy::manage(g, &v);
             // War declarations change the picture.
             v = view::View::new(g, p);

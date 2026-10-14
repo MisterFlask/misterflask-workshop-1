@@ -210,7 +210,9 @@ fn builds_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
                 continue;
             }
             let mut v = 0;
-            let yw = [20, 15, 7];
+            // Improvements that grow (cottages) are worth their grown yield, discounted.
+            let grows = d.improvements[imp].improvement_upgrade.is_some();
+            let yw = [20, 15, if grows { 22 } else { 9 }];
             for y in 0..YieldType::NUM {
                 let yt = YieldType::from_usize(y);
                 let new = g.plot_calculate_improvement_yield_change(q, imp, yt, Some(p), false, false);

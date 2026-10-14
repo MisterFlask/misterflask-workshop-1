@@ -30,7 +30,7 @@ pub fn skip(g: &mut Game, grp: GroupId) {
     push(g, grp, MissionType::MISSION_SKIP, -1, -1, 0, false);
 }
 
-fn can_start(g: &Game, grp: GroupId, mission: MissionType, d1: i32, d2: i32) -> bool {
+pub(crate) fn can_start(g: &Game, grp: GroupId, mission: MissionType, d1: i32, d2: i32) -> bool {
     g.group_can_start_mission(grp, mission, d1, d2, None, false)
 }
 
@@ -126,7 +126,15 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
         if !alive(g, grp) {
             continue;
         }
-        if g.groups[grp].force_update || (role == Role::Settler && !g.groups[grp].mission_queue.is_empty() && g.groups[grp].mission_queue[0].mission_type == MissionType::MISSION_MOVE_TO) {
+        let replan = !g.groups[grp].mission_queue.is_empty()
+            && match role {
+                // Settlers re-plan every turn (danger and sites change).
+                Role::Settler => g.groups[grp].mission_queue[0].mission_type == MissionType::MISSION_MOVE_TO,
+                // Workers drop their job when enemies come near.
+                Role::Worker => g.group_get_head_unit(grp).is_some_and(|h| crate::workers::worker_in_danger(g, v, g.unit_plot(h))),
+                _ => false,
+            };
+        if g.groups[grp].force_update || replan {
             // Settlers re-plan every turn (danger and sites change).
             g.groups[grp].force_update = false;
             g.group_clear_mission_queue(grp);
@@ -142,8 +150,8 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
         }
         match role {
             Role::Settler => settler(ai, g, v, grp, head),
-            Role::Worker => worker(g, v, grp, head, false),
-            Role::SeaWorker => worker(g, v, grp, head, true),
+            Role::Worker => crate::workers::worker(g, v, grp, head, false),
+            Role::SeaWorker => crate::workers::worker(g, v, grp, head, true),
             Role::Garrison => garrison_unit(g, v, grp, head),
             Role::Army => crate::military::army(g, v, grp, head),
             Role::Explore => explore(g, v, grp, head),
@@ -366,110 +374,6 @@ fn hold_one_turn(g: &mut Game, grp: GroupId) {
 // ----------------------------------------------------------------------------
 // Workers
 // ----------------------------------------------------------------------------
-
-const YIELD_WEIGHT: [i32; 3] = [30, 25, 15];
-
-/// Value of performing `build` on `plot` for player `p` (0 = not worth it).
-fn build_value(g: &Game, p: PlayerId, plot: PlotIdx, build: BuildType) -> i32 {
-    let d = g.d;
-    let info = &d.builds[build];
-    let pl = &g.map.plots[plot];
-    if let Some(imp) = info.improvement {
-        if pl.improvement_type == Some(imp) {
-            return 0;
-        }
-        let mut v = 0;
-        for y in 0..YieldType::NUM {
-            let yt = YieldType::from_usize(y);
-            let new = g.plot_calculate_improvement_yield_change(plot, imp, yt, Some(p), false, false);
-            let old = pl.improvement_type.map_or(0, |o| g.plot_calculate_improvement_yield_change(plot, o, yt, Some(p), false, false));
-            v += (new - old) * YIELD_WEIGHT[y];
-        }
-        if let Some(b) = pl.bonus_type {
-            if g.teams[g.players[p].team].revealed_bonuses.contains(&b) || d.bonuses[b].tech_reveal.is_none() {
-                if d.improvements[imp].improvement_bonus[b].bonus_trade {
-                    v += 80;
-                }
-            }
-        }
-        if pl.improvement_type.is_some() && v < 40 {
-            return 0; // do not churn improvements
-        }
-        v
-    } else if let Some(route) = info.route {
-        if pl.route_type.is_some() {
-            return 0;
-        }
-        // Roads on worked bonus tiles and next to cities link resources and speed defense.
-        let _ = route;
-        let near_city = pl.plot_city.is_some() || pl.working_city.is_some() && pl.bonus_type.is_some();
-        if near_city { 15 } else { 0 }
-    } else {
-        0
-    }
-}
-
-fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
-    let p = v.p;
-    let here = g.unit_plot(u);
-    // Flee danger first.
-    if v.danger_at(here) > 0 && !g.map.plots[here].plot_city.is_some() {
-        if let Some(c) = nearest_city(g, p, here) {
-            move_to(g, grp, g.city_plot(c), 0);
-            if alive(g, grp) && g.group_ready_to_move(grp, false) {
-                skip(g, grp);
-            }
-            return;
-        }
-    }
-    let reach = v.flood.run(g, u, 6, false);
-    let builds: Vec<BuildType> = g.d.builds.keys().filter(|&b| g.d.units[g.units[u].unit_type].builds[b]).collect();
-    let mut best: Option<(PlotIdx, BuildType, i64)> = None;
-    for r in &reach {
-        let q = r.plot;
-        let pl = &g.map.plots[q];
-        if pl.owner != Some(p) || v.danger_at(q) > 0 || v.is_claimed(q) {
-            continue;
-        }
-        if sea != (pl.plot_type == PlotType::PLOT_OCEAN) {
-            continue;
-        }
-        if pl.working_city.is_none() && pl.plot_city.is_none() && !g.plot_is_city_radius(q) {
-            continue;
-        }
-        for &b in &builds {
-            if !g.unit_can_build(u, q, b, false) {
-                continue;
-            }
-            let value = build_value(g, p, q, b);
-            if value <= 0 {
-                continue;
-            }
-            let time = g.d.builds[b].time.max(1) / g.d.units[g.units[u].unit_type].work_rate.max(1);
-            let score = value as i64 * 100 / (r.turns as i64 * 2 + time as i64 + 2);
-            if best.map_or(true, |(_, _, s)| score > s) {
-                best = Some((q, b, score));
-            }
-        }
-    }
-    let Some((plot, build, _)) = best else {
-        hold(g, grp);
-        return;
-    };
-    v.claimed.push(plot);
-    if plot != here {
-        move_to(g, grp, plot, MOVE_SAFE_TERRITORY);
-        if !alive(g, grp) {
-            return;
-        }
-        push(g, grp, MissionType::MISSION_BUILD, build.i(), -1, 0, true);
-    } else {
-        push(g, grp, MissionType::MISSION_BUILD, build.i(), -1, 0, false);
-    }
-    if alive(g, grp) && g.group_ready_to_move(grp, false) {
-        skip(g, grp);
-    }
-}
 
 // ----------------------------------------------------------------------------
 // Military

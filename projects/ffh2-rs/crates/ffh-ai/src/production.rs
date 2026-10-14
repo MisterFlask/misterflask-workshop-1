@@ -59,6 +59,30 @@ pub fn push(g: &mut Game, c: CityId, choice: Choice) {
     }
 }
 
+/// Once per turn (C++ `CvCityAI::AI_doTurn` sets production dirty on danger): a city under
+/// threat that is not building a defender switches to one (the progress on the old item is
+/// kept by the rules).
+pub fn emergency(ai: &Ai, g: &mut Game, p: PlayerId) {
+    for c in g.players[p].cities.clone() {
+        if !g.cities.contains(c) || g.cities[c].order_queue.is_empty() {
+            continue;
+        }
+        let plot = g.city_plot(c);
+        let threat = local_threat(g, p, plot, 2);
+        if threat == 0 {
+            continue;
+        }
+        let (defenders, defense) = garrison(g, p, plot);
+        let building_fighter = g.city_production_unit(c).is_some_and(|u| g.d.units[u].combat > 0);
+        if building_fighter || defense * 3 / 2 >= threat && defenders > 0 {
+            continue;
+        }
+        crate::trace!(g, p, "{} under threat {} (defense {}): switching to defense", g.cities[c].name, threat, defense);
+        g.city_clear_order_queue(c);
+        choose(ai, g, c);
+    }
+}
+
 /// Last resort when the priority list found nothing: the cheapest useful building, else the
 /// strongest land unit per hammer, else any process.
 fn fallback(g: &Game, c: CityId) -> Option<Choice> {
@@ -205,6 +229,11 @@ fn civ_enemies_at_war(g: &Game, p: PlayerId) -> bool {
     g.teams.keys().any(|t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t))
 }
 
+/// The owner cannot pay for more: research slider pushed down to cover costs.
+pub fn financial_trouble(g: &Game, p: PlayerId) -> bool {
+    g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 40 && g.players[p].cities.len() > 1
+}
+
 /// City state used by the decision.
 struct Ctx {
     p: PlayerId,
@@ -218,6 +247,7 @@ struct Ctx {
     production: i32,
     happy_room: i32,
     at_war: bool,
+    broke: bool,
 }
 
 fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
@@ -241,6 +271,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         production: g.city_yield_rate(c, YieldType::YIELD_PRODUCTION),
         happy_room: g.city_happy_level(c) - g.city_unhappy_level(c, 0),
         at_war: civ_enemies_at_war(g, p),
+        broke: financial_trouble(g, p),
     };
     crate::trace!(g, p, "{}: threat {} defenders {} ({}) food {:+} prod {} happy {}", city.name, ctx.threat, ctx.defenders, ctx.defense, ctx.food_surplus, ctx.production, ctx.happy_room);
     if ctx.threat > 0 && crate::trace_on(p) {
@@ -303,7 +334,10 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         return Some(choice);
     }
 
-    // 4. Extra defenders up to the quota.
+    // 4. Extra defenders up to the quota (a broke empire keeps one per city unless threatened).
+    if ctx.broke && ctx.threat == 0 {
+        needed = needed.min(1 + i32::from(ctx.capital));
+    }
     if ctx.defenders < needed {
         if let Some(u) = best_unit(g, c, Role::Defense) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
@@ -312,7 +346,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
 
     // 5. A small mobile force to clear barbarians and animals near our lands.
     let attackers = count_ai(g, p, UnitAIType::UNITAI_ATTACK) + count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
-    let min_army = 1 + ctx.n_cities / 2;
+    let min_army = if ctx.broke { 1 + ctx.n_cities / 4 } else { 1 + ctx.n_cities / 2 };
     if attackers < min_army && ctx.production >= 3 {
         if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
@@ -339,6 +373,8 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     let mut army_target = ctx.n_cities * (2 + mil_flavor / 5) / 2 + 1;
     if ctx.at_war {
         army_target = army_target * 2 + 2;
+    } else if ctx.broke {
+        army_target = min_army;
     }
     let army_short = attackers < army_target;
     // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
@@ -359,6 +395,10 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
             continue;
         }
         let turns = g.city_production_turns_left_building(c, b, 0).max(1);
+        // Nothing that ties a city up for ages (wonders belong in productive cities).
+        if turns > 50 {
+            continue;
+        }
         let score = value * 100 / (turns + 3);
         if best_building.map_or(true, |(_, s)| score > s) {
             best_building = Some((b, score));
@@ -433,6 +473,10 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx) -> Option<Choice> {
         return None;
     }
     let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
+    // C++ AI_chooseProduction: no settlers while in financial trouble.
+    if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
+        return None;
+    }
     if ctx.at_war {
         max_settlers = (max_settlers + 1) / 2;
     }
@@ -597,10 +641,10 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 
         v += info.commerce_modifier[i] * rate * cw[i] / 10;
         v += info.global_commerce_modifier[i] * rate * cw[i] * n_cities.min(8) / 20;
     }
-    // Culture: border growth matters in a new city.
+    // Culture: border growth matters in a new city (cheap culture buildings only).
     let culture = info.commerce_change[CommerceType::COMMERCE_CULTURE.idx()];
-    if culture > 0 && city.culture_level.map_or(true, |l| l.i() <= 1) {
-        v += culture * 150;
+    if culture > 0 && info.production_cost <= 120 && city.culture_level.map_or(true, |l| l.i() <= 1) {
+        v += culture.min(3) * 150;
     }
 
     // Happiness and health, worth a citizen when the city is at its cap.

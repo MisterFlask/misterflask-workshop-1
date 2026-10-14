@@ -25,6 +25,10 @@ pub struct View {
     pub targets: Vec<crate::military::Target>,
     /// Targets already taken by a stack this turn.
     pub target_claims: Vec<(PlotIdx, GroupId)>,
+    /// Our cities whose visible threat exceeds their garrison (city plot, shortfall).
+    pub peril: Vec<(PlotIdx, i32)>,
+    /// Roads to build this turn (see `workers::road_plan`).
+    pub roads: Vec<(PlotIdx, i32)>,
     /// Plots (cities) where a settler waits for an escort.
     pub escort_requests: Vec<PlotIdx>,
     /// Our units committed to each city's garrison this turn.
@@ -92,6 +96,8 @@ impl View {
             danger: vec![0; g.map.num_plots()],
             claimed: Vec::new(),
             escort_requests: Vec::new(),
+            roads: Vec::new(),
+            peril: Vec::new(),
             targets: Vec::new(),
             target_claims: Vec::new(),
             garrison: BTreeMap::new(),
@@ -100,6 +106,15 @@ impl View {
         v.build_danger(g);
         if !v.barbarian {
             v.targets = crate::military::find_targets(g, &v);
+            v.roads = crate::workers::road_plan(g, p);
+            for &c in &g.players[p].cities {
+                let cp = g.city_plot(c);
+                let threat = crate::production::local_threat(g, p, cp, 3);
+                let defense = crate::production::garrison(g, p, cp).1 * 3 / 2;
+                if threat > defense {
+                    v.peril.push((cp, threat - defense));
+                }
+            }
         }
         v
     }

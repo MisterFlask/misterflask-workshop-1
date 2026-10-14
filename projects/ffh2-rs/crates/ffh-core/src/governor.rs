@@ -41,7 +41,7 @@ pub struct Weights {
 
 impl Default for Weights {
     fn default() -> Self {
-        Weights { food: 100, production: 15, commerce: 7, commerce_type: [100, 110, 60, 20], great_people: 3 }
+        Weights { food: 100, production: 15, commerce: 9, commerce_type: [100, 115, 60, 20], great_people: 3 }
     }
 }
 
@@ -507,6 +507,11 @@ impl Game {
         let blended: i32 = (0..CommerceType::NUM).map(|k| pct[k].max(0) * w.commerce_type[k]).sum::<i32>() / 100;
         if blended > 0 {
             w.commerce = w.commerce * blended / 100;
+        }
+        // An owner short of gold (research slider pushed down to pay the bills) needs commerce.
+        let research_pct = pct[CommerceType::COMMERCE_RESEARCH.idx()];
+        if research_pct < 50 && self.player_is_commerce_flexible(owner, CommerceType::COMMERCE_RESEARCH) {
+            w.commerce = w.commerce * (150 - research_pct) / 100;
         }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
             w.food = w.food * 160 / 100;
