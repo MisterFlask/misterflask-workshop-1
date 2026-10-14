@@ -283,6 +283,17 @@ impl GameData {
         self.reg.lookup::<T>(name).unwrap_or_else(|| panic!("unknown {} type {name}", T::CLASS))
     }
 
+    /// C++ `GC.getCivilizationInfo(civ).getCivilizationUnits(class)`: the civ's unit for a
+    /// unit class (`None` = this civ cannot have it).
+    pub fn civ_unit(&self, civ: CivilizationType, class: UnitClassType) -> Option<UnitType> {
+        self.civilizations[civ].civilization_units(class, self.unit_classes[class].default_unit_index)
+    }
+
+    /// C++ `GC.getCivilizationInfo(civ).getCivilizationBuildings(class)`.
+    pub fn civ_building(&self, civ: CivilizationType, class: BuildingClassType) -> Option<BuildingType> {
+        self.civilizations[civ].civilization_buildings(class, &self.building_classes)
+    }
+
     /// Type string of an index (C++ `getType()`).
     pub fn type_name<T: InfoId>(&self, t: T) -> &str {
         self.reg.type_name(t)
