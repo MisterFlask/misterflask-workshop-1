@@ -149,7 +149,9 @@ been pushed down to pay the bills; a culture-starved new city values culture.
 
 Score = value / (turns to research + 4), with one level of lookahead (children at a quarter of
 their static value). Value terms: the leader's favorite early techs and religion, flavors,
-AI weights; buildings the civ can use; land improvements counted on our cities' plots (growing
+AI weights; buildings the civ can use (a static value, plus production's marginal value of
+the building in the six cities that gain most: libraries where there is research to multiply,
+markets where there is gold); land improvements counted on our cities' plots (growing
 improvements such as cottages at two thirds of their grown yield, commerce worth more when
 broke); a better defender or attacker weighted by the military pressure we see (barbarians
 near our cities, war, time), with an early "get past warriors" bonus, also through the next
