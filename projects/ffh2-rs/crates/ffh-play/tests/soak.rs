@@ -56,7 +56,7 @@ fn soak(seed: u32, turns: i32) {
             }
         }
         for e in &p.events {
-            let options: Vec<_> = e.options.iter().filter(|o| o.1).map(|o| o.0).collect();
+            let options: Vec<_> = e.options.iter().filter(|o| o.enabled).map(|o| o.event).collect();
             let pick = s.read(|g| {
                 let data = g.player_get_event_triggered(h, e.triggered).cloned().unwrap();
                 ai.choose_event(g, h, &data, &options)

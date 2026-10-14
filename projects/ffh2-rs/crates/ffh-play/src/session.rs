@@ -101,6 +101,8 @@ pub struct Session {
     pub shared: Arc<SessionShared>,
     advisor: Arc<Ai>,
     messages: Vec<LogEntry>,
+    /// Messages ever added to `messages` (the store drops the oldest beyond its size).
+    messages_total: usize,
     opts: SessionOptions,
     auto_moves_tried: bool,
     last_autosave: Option<SavePaths>,
@@ -116,7 +118,18 @@ impl Session {
         let controller: ControllerRef = Arc::new(HumanController::new(advisor.clone(), answerer, shared.clone()));
         setup::attach_controllers(&mut g, human, ffh_ai::ai_controller(), controller);
         setup::configure_human(&mut g, human);
-        Session { g, human, shared, advisor, messages: Vec::new(), opts, auto_moves_tried: false, last_autosave: None, start_pending: false }
+        Session {
+            g,
+            human,
+            shared,
+            advisor,
+            messages: Vec::new(),
+            messages_total: 0,
+            opts,
+            auto_moves_tried: false,
+            last_autosave: None,
+            start_pending: false,
+        }
     }
 
     fn make_journal(opts: &SessionOptions) -> Result<Journal, PlayError> {
@@ -167,6 +180,7 @@ impl Session {
         if let Some(sc) = sidecar {
             *s.shared.pending_events.lock().unwrap() = sc.pending_events.clone();
             s.messages = sc.messages_tail.clone();
+            s.messages_total = s.messages.len();
         }
         Ok(s)
     }
@@ -275,7 +289,8 @@ impl Session {
 
     fn apply_journaled(&mut self, h: PlayerId, cmd: &Command, action: &Action) -> CmdOk {
         self.journal(&Line::Cmd { stamp: Stamp::of(&self.g), cmd: cmd.to_json() });
-        let mark = self.g.log.entries.len();
+        self.drain_log();
+        let mark = self.messages_total;
         match action {
             Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|&e| e != (h, *triggered)),
             // C++: closing an event popup without a choice does nothing; the popup is gone.
@@ -285,8 +300,11 @@ impl Session {
         command::apply(&mut self.g, h, action);
         self.settle(h);
         self.auto_moves_tried = false;
-        let log: Vec<LogEntry> = self.g.log.entries[mark.min(self.g.log.entries.len())..].iter().filter(|e| visible_to(e, h)).cloned().collect();
+        // The human's messages since the command started (turn boundaries during the settle
+        // drained some of them already).
         self.drain_log();
+        let new = (self.messages_total - mark).min(self.messages.len());
+        let log = self.messages[self.messages.len() - new..].to_vec();
         CmdOk::Applied { log, accepted: None }
     }
 
@@ -334,7 +352,9 @@ impl Session {
     fn drain_log(&mut self) {
         let h = self.human;
         let entries = std::mem::take(&mut self.g.log.entries);
+        let before = self.messages.len();
         self.messages.extend(entries.into_iter().filter(|e| visible_to(e, h)));
+        self.messages_total += self.messages.len() - before;
         if self.messages.len() > MESSAGES_KEPT {
             let cut = self.messages.len() - MESSAGES_KEPT;
             self.messages.drain(..cut);

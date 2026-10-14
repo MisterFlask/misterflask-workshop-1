@@ -108,7 +108,13 @@ fn capture_asks_keep_or_raze_inside_the_command() {
     let u = attacker.expect("a plot to attack from");
     assert!(asked.lock().unwrap().is_empty());
     assert_eq!(s.phase(), Phase::Human(h));
-    ok(&mut s, Command::Move { units: vec![u], x: cx, y: cy, append: false, declare_war: None });
+    let log = match s.execute(&Command::Move { units: vec![u], x: cx, y: cy, append: false, declare_war: None }) {
+        Ok(CmdOk::Applied { log, .. }) => log,
+        other => panic!("{other:?}"),
+    };
+    // The reply carries the human's messages the command produced.
+    assert!(log.iter().any(|e| e.text.contains("captured")), "{log:?}");
+    assert!(log.iter().all(|e| e.player.is_none() || e.player == Some(h.0)));
     let asked = asked.lock().unwrap();
     assert_eq!(asked.len(), 1, "one decision, asked during the command");
     // Acquiring a city makes a new city object on the plot (CvPlayer::acquireCity).
@@ -197,7 +203,11 @@ fn events_are_deferred_until_answered() {
     assert!(events.iter().all(|&e| s.g.player_get_event_occured(h, e).is_none()), "nothing applied yet");
     let p = s.pending();
     let pe = p.events.iter().find(|e| e.triggered == id).expect("pending");
-    let (event, _) = *pe.options.iter().find(|o| o.1).unwrap();
+    let event = pe.options.iter().find(|o| o.enabled).unwrap().event;
+    assert_eq!(pe.options.iter().map(|o| o.event).collect::<Vec<_>>(), *events, "every event of the trigger, in order");
+    let j = p.to_json();
+    let opts = j.req_arr("events").unwrap()[0].req_arr("options").unwrap();
+    assert!(opts.iter().all(|o| o.req_arr("effects").is_ok() && o.req::<bool>("enabled").is_ok()));
     // The end-turn gate counts it.
     match s.execute(&Command::EndTurn { force: false }) {
         Ok(CmdOk::NeedsConfirm(Confirm::EndTurn { events, .. })) => assert!(events >= 1),

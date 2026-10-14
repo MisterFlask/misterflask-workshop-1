@@ -237,11 +237,128 @@ pub struct PendingEvent {
     pub triggered: TriggeredId,
     pub trigger: EventTriggerType,
     pub text: String,
-    /// The trigger's events in order, with `canDoEvent` (disabled ones are shown greyed, as
-    /// the popup does).
-    pub options: Vec<(EventType, bool)>,
+    /// The trigger's events in order (disabled ones are shown greyed, as the popup does).
+    pub options: Vec<EventOption>,
     pub city: Option<CityId>,
     pub plot: Option<(i32, i32)>,
+}
+
+/// One button of an event popup.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EventOption {
+    pub event: EventType,
+    /// `canDoEvent`.
+    pub enabled: bool,
+    /// What it does, from the `EventInfo` fields (the help text `CvGameTextMgr::setEventHelp`
+    /// would show is not ported).
+    pub effects: Vec<String>,
+}
+
+/// A summary of an event's effects for player `p` (gold with inflation and tech cost, techs,
+/// units, buildings, promotions, happiness and health, culture, attitude, population, ...).
+pub fn event_effects(g: &Game, p: PlayerId, event: EventType, data: &EventTriggeredData) -> Vec<String> {
+    let d = g.d;
+    let e = &d.events[event];
+    let mut out = Vec::new();
+    let signed = |n: i32| format!("{n:+}");
+    let (gold, gold_max) = (g.player_get_event_cost(p, event, data.other_player, false), g.player_get_event_cost(p, event, data.other_player, true));
+    if gold != 0 || gold_max != 0 {
+        out.push(if gold == gold_max { format!("{} gold", signed(gold)) } else { format!("{}..{} gold", signed(gold), signed(gold_max)) });
+    }
+    if e.tech_percent != 0 {
+        let tech = g.player_get_best_event_tech(p, event, data.other_player).map_or_else(|| "a tech".to_string(), |t| names::display(d, t).into_owned());
+        out.push(format!("{}% of {tech}", e.tech_percent));
+    }
+    if let (Some(class), n) = (e.unit_class, e.num_units) {
+        if n != 0 {
+            out.push(format!("{n} x {}", names::display(d, class)));
+        }
+    }
+    if let Some(class) = e.building_class {
+        if e.building_change != 0 {
+            out.push(format!("{} {}", if e.building_change > 0 { "build" } else { "lose" }, names::display(d, class)));
+        }
+    }
+    if let Some(promo) = e.unit_promotion {
+        out.push(format!("promotion {}", names::display(d, promo)));
+    }
+    if e.unit_experience != 0 {
+        out.push(format!("{} experience", signed(e.unit_experience)));
+    }
+    let lasting = |n: i32, what: &str| {
+        if e.happy_turns > 0 {
+            format!("{} {what} for {} turns", signed(n), e.happy_turns)
+        } else {
+            format!("{} {what}", signed(n))
+        }
+    };
+    if e.happy != 0 {
+        out.push(lasting(e.happy, "happiness"));
+    }
+    if e.health != 0 {
+        out.push(lasting(e.health, "health"));
+    }
+    if e.hurry_anger != 0 {
+        out.push(format!("{} hurry anger", signed(e.hurry_anger)));
+    }
+    for (n, what) in [
+        (e.culture, "culture"),
+        (e.food, "food"),
+        (e.food_percent, "% food"),
+        (e.population_change, "population"),
+        (e.espionage_points, "espionage"),
+        (e.free_unit_support, "unit support"),
+        (e.global_counter, "Armageddon counter"),
+        (e.crime, "crime"),
+    ] {
+        if n != 0 {
+            out.push(format!("{} {what}", signed(n)));
+        }
+    }
+    if e.revolt_turns > 0 {
+        out.push(format!("{} turns of revolt", e.revolt_turns));
+    }
+    if e.our_attitude_modifier != 0 || e.attitude_modifier != 0 {
+        out.push(format!("attitude {}", signed(e.our_attitude_modifier + e.attitude_modifier)));
+    }
+    if e.golden_age {
+        out.push("golden age".into());
+    }
+    if e.declare_war {
+        out.push("war".into());
+    }
+    if e.disband_unit {
+        out.push("the unit is lost".into());
+    }
+    if let Some(f) = e.feature.filter(|_| e.feature_change != 0) {
+        out.push(format!("{} {}", if e.feature_change > 0 { "add" } else { "remove" }, names::display(d, f)));
+    }
+    if let Some(i) = e.improvement.filter(|_| e.improvement_change != 0) {
+        out.push(format!("{} {}", if e.improvement_change > 0 { "add" } else { "remove" }, names::display(d, i)));
+    }
+    if let Some(b) = e.bonus.filter(|_| e.bonus_change != 0) {
+        out.push(format!("{} {}", if e.bonus_change > 0 { "add" } else { "remove" }, names::display(d, b)));
+    }
+    if let Some(r) = e.route.filter(|_| e.route_change != 0) {
+        out.push(format!("{} {}", if e.route_change > 0 { "add" } else { "remove" }, names::display(d, r)));
+    }
+    if let Some(b) = e.bonus_revealed {
+        out.push(format!("reveal {}", names::display(d, b)));
+    }
+    if let Some(b) = e.bonus_gift {
+        out.push(format!("gift of {}", names::display(d, b)));
+    }
+    if !e.python_help.is_empty() {
+        let help = names::text(d, &e.python_help);
+        if !help.is_empty() && help != e.python_help {
+            out.push(help.to_string());
+        }
+    }
+    if !e.python_callback.is_empty() {
+        // FfH implements many events in Python (ported to `ffh::events`): not summarized.
+        out.push(format!("scripted effect ({})", e.python_callback));
+    }
+    out
 }
 
 /// A diplomatic vote waiting for the human (C++ BUTTONPOPUP_DIPLOVOTE).
@@ -283,7 +400,11 @@ impl Pending {
                 "triggered" => e.triggered,
                 "trigger" => Json::idx(e.trigger),
                 "text" => e.text.as_str(),
-                "options" => Json::Arr(e.options.iter().map(|&(ev, ok)| crate::jobj! { "event" => Json::idx(ev), "enabled" => ok }).collect()),
+                "options" => Json::Arr(e.options.iter().map(|o| crate::jobj! {
+                    "event" => Json::idx(o.event),
+                    "enabled" => o.enabled,
+                    "effects" => Json::Arr(o.effects.iter().map(Json::from).collect()),
+                }).collect()),
                 "city" => e.city,
                 "plot" => e.plot.map(|(x, y)| crate::jarr![x, y]),
             }).collect()),
@@ -309,10 +430,11 @@ impl Pending {
 pub fn pending_event(g: &Game, p: PlayerId, id: TriggeredId) -> Option<PendingEvent> {
     let data = g.player_get_event_triggered(p, id)?;
     let trigger = &g.d.event_triggers[data.trigger];
-    let options: Vec<(EventType, bool)> = trigger.events.iter().map(|&e| (e, g.player_can_do_event(p, e, data))).collect();
-    if !options.iter().any(|&(_, ok)| ok) {
+    let enabled: Vec<bool> = trigger.events.iter().map(|&e| g.player_can_do_event(p, e, data)).collect();
+    if !enabled.contains(&true) {
         return None;
     }
+    let options = trigger.events.iter().zip(enabled).map(|(&event, enabled)| EventOption { event, enabled, effects: event_effects(g, p, event, data) }).collect();
     let plot = (data.plot_x != ffh_core::defs::INVALID_PLOT_COORD && data.plot_y != ffh_core::defs::INVALID_PLOT_COORD).then_some((data.plot_x, data.plot_y));
     Some(PendingEvent { triggered: id, trigger: data.trigger, text: data.text.clone(), options, city: data.city, plot })
 }

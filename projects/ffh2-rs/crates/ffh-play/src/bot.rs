@@ -186,7 +186,7 @@ impl Bot {
     /// Events, votes, research.
     fn popups(&mut self, s: &mut Session, p: &Pending) {
         for e in &p.events {
-            let options: Vec<EventType> = e.options.iter().filter(|o| o.1).map(|o| o.0).collect();
+            let options: Vec<EventType> = e.options.iter().filter(|o| o.enabled).map(|o| o.event).collect();
             if options.is_empty() {
                 continue;
             }
