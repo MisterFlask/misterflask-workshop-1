@@ -807,6 +807,10 @@ impl Game {
     /// (CvMessageData.cpp): a free tech is granted (`setHasTech`) and the popup reopens for
     /// the remaining free techs; a research pick replaces the queue (`pushResearch(eTech, true)`).
     /// `szText` (popup header) and `bFront` (popup order) are UI only.
+    ///
+    /// The popup goes through `CvPlayer::addPopup`, which deletes it for a non-human player, so
+    /// for AI players the call does nothing (e.g. `CvTeam::setHasTech`'s "research next" popup
+    /// or the Iron Orb event's free tech).
     pub fn player_choose_tech(&mut self, p: PlayerId, discover: i32) {
         // `CvPlayer::addPopup` deletes popups for non-human players, so for an AI player this
         // does nothing (e.g. Python `chooseTech(1, ..)` in the Iron Orb event grants no tech).
@@ -1248,8 +1252,12 @@ impl Game {
                     // AI: AI_chooseResearch also returns early while getDisableResearch() > 0,
                     // clears the (empty) queue and first tries a teammate's current research
                     // and Python AI_chooseTech -- choice policy, left to the controller.
-                    if let Some(tech) = self.controller(p).choose_research(self, p) {
-                        self.player_push_research(p, tech, false);
+                    // AI_chooseResearch returns at once while research is disabled (FfH Stasis,
+                    // CvPlayerAI.cpp:5241), keeping the stored research for later.
+                    if self.players[p].disable_research == 0 {
+                        if let Some(tech) = self.controller(p).choose_research(self, p) {
+                            self.player_push_research(p, tech, false);
+                        }
                     }
 
                     force_research_choice = true;
@@ -2126,6 +2134,37 @@ mod tests {
         assert_eq!(g.player_get_war_weariness_percent_anger(p), 30);
         g.setup.options[GameOptionType::GAMEOPTION_NO_WAR_WEARINESS] = true;
         assert_eq!(g.player_get_war_weariness_percent_anger(p), 0);
+    }
+
+    /// Picks the same tech for every research and free-tech choice.
+    struct PickTech(TechType);
+
+    impl crate::controller::Controller for PickTech {
+        fn choose_research(&self, _g: &Game, _p: PlayerId) -> Option<TechType> {
+            Some(self.0)
+        }
+    }
+
+    #[test]
+    fn choose_tech_is_a_human_only_popup() {
+        let mut g = bannor();
+        let p = PlayerId(0);
+        let t = g.players[p].team;
+        g.players[p].founded_first_city = true;
+        let crafting = tech(&g, "TECH_CRAFTING");
+        g.controllers[p] = std::sync::Arc::new(PickTech(crafting));
+
+        // CvPlayer::addPopup deletes an AI player's popup: no research, no free tech
+        g.players[p].human = false;
+        g.player_choose_tech(p, 0);
+        assert_eq!(g.player_get_current_research(p), None);
+        g.player_choose_tech(p, 1);
+        assert!(!g.teams[t].has_tech[crafting]);
+
+        // a human picks the next research
+        g.players[p].human = true;
+        g.player_choose_tech(p, 0);
+        assert_eq!(g.players[p].research_queue, vec![crafting]);
     }
 
     #[test]
