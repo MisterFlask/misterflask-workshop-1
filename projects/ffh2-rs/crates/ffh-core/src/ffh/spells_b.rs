@@ -1137,7 +1137,9 @@ fn spell_roar(g: &mut Game, caster: UnitId, _call: &PyCall) {
             // Backwards, so units that flee do not shift the ones still to visit.
             let n = g.map.plots[loop_plot].units.len();
             for i in (0..n).rev() {
-                let Some(u) = plot_unit_at(g, loop_plot, i) else { continue };
+                // NULL unit (a fleeing transport took cargo listed before it along):
+                // `gc.getPlayer(-1).getTeam()` raises and the spell ends.
+                let Some(u) = plot_unit_at(g, loop_plot, i) else { return };
                 let team2 = g.players[g.units[u].owner].team;
                 if g.teams[team].at_war[team2] {
                     // (Messages when the unit flees.)
