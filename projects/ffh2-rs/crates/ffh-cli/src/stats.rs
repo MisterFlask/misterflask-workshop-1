@@ -7,7 +7,9 @@
 //! ..]}` (one row per ever-alive player, barbarians included with `barb: true`), `world:
 //! {"<turns played>": {..}}` (game-wide values at the same snapshots), `eliminated_at: {"<player>":
 //! <turns played>}` and `final_turn` (the last snapshot, always taken when the game stops).
-//! Field meanings are listed in docs/AI.md ("Tools").
+//! Field meanings are listed in docs/AI.md ("Tools"). `score_version: 2`: a civ's `score` is score
+//! v2, its share of the world in basis points (docs/SCORE.md); FFH2's score is `legacy_score`
+//! (output without `score_version` predates v2: there `score` is FFH2's).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -152,6 +154,9 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
     let disciple = d.ty::<UnitCombatType>("UNITCOMBAT_DISCIPLE");
     let legendary = d.ty::<CultureLevelType>("CULTURELEVEL_LEGENDARY");
     let barb_team = g.barbarian_team();
+    // Score v2 (share of the world, basis points) and its three shares (parts per million).
+    let scores = g.world_scores();
+    let shares = g.world_score_shares();
     let mut parts = Vec::new();
     for p in g.player_ids() {
         let pl = &g.players[p];
@@ -339,7 +344,7 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
             .int("research", research)
             .int("prod", prod)
             .int("gold", pl.gold)
-            .int("score", if barbarian { 0 } else { g.player_calculate_score(p, false, false) })
+            .int("score", if barbarian { 0 } else { scores[p.idx()] })
             .int("pct", pct)
             .int("maint", maint)
             .int("area_tiles", area_tiles)
@@ -359,7 +364,12 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
             // Land and people.
             .int("land", pl.total_land)
             .int("land_scored", pl.total_land_scored)
-            // Score: the current (FFH2) score's raw components.
+            // Score v2 (`score`, basis points of the world): its people, land and knowledge
+            // shares in parts per million. The legacy (FFH2) score and its raw components.
+            .int("score_pop_share", if barbarian { 0 } else { shares[p.idx()][0] })
+            .int("score_land_share", if barbarian { 0 } else { shares[p.idx()][1] })
+            .int("score_know_share", if barbarian { 0 } else { shares[p.idx()][2] })
+            .int("legacy_score", if barbarian { 0 } else { g.player_legacy_score(p) })
             .int("score_pop_raw", if barbarian { 0 } else { g.player_get_pop_score(p, true) })
             .int("score_land_raw", if barbarian { 0 } else { g.player_get_land_score(p, true) })
             .int("score_tech_raw", pl.tech_score)
@@ -555,7 +565,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
     let world_json: Vec<String> = snaps.iter().map(|(t, _, w)| format!("\"{t}\":{w}")).collect();
     let elim_json: Vec<String> = civ_ev.iter().filter_map(|(p, e)| e.elim_turn.map(|t| format!("\"{}\":{t}", p.0))).collect();
     println!(
-        "{{\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"outcome\":{},\"final_turn\":{},\"eliminated_at\":{{{}}},\"snapshots\":{{{}}},\"world_at\":{{{}}}}}",
+        "{{\"score_version\":2,\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"outcome\":{},\"final_turn\":{},\"eliminated_at\":{{{}}},\"snapshots\":{{{}}},\"world_at\":{{{}}}}}",
         cfg.seed,
         cfg.civs,
         cfg.world,

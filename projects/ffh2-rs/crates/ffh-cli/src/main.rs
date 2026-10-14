@@ -11,7 +11,9 @@
 //!                                    turns, plus the final state; events)
 //!
 //! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
-//! every N turns)  --option GAMEOPTION_X (repeatable)
+//! every N turns)  --option GAMEOPTION_X (repeatable)  --until-supremacy (stop at a victory, the
+//! last civ standing, or one team holding 1.5x the runner-up's score -- share of the world --
+//! for 30 turns, counted from turn 200; `--turns` stays the cap)
 
 mod run;
 mod stats;
