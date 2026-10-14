@@ -816,9 +816,6 @@ impl Game {
     /// C++ `CvPlot::getFoundValue`: cached `AI_foundValue` (or the `getCityFoundValue` Python
     /// callback) when the cache holds -1; also raises the area's best found value.
     /// Used by starting-plot selection. Non-const in C++ (fills the cache).
-    ///
-    /// AI: the C++ AI's city-site valuation (`CvPlayerAI::AI_foundValue`) is not ported, so a -1
-    /// entry stays -1 (and is returned) until the AI writes a value into `found_value`.
     pub fn plot_get_found_value(&mut self, p: PlotIdx, player: PlayerId) -> i32 {
         // C++: a NULL `m_aiFoundValue` reads 0; here the array always exists (0 by default).
         if self.map.plots[p].found_value[player] == -1 {
@@ -829,8 +826,9 @@ impl Game {
             }
 
             if result == -1 {
-                // AI: m_aiFoundValue[eIndex] = GET_PLAYER(eIndex).AI_foundValue(getX(), getY(), -1, true)
-                // (stored in a `short`): not ported, the cache keeps -1.
+                // C++ `m_aiFoundValue` is a `short` array: the stored value truncates.
+                let value = self.player_ai_found_value(player, x, y, -1, true, &[]);
+                self.map.plots[p].found_value[player] = value as i16 as i32;
             }
             // C++ quirk: a Python result other than -1 is never stored either (the cache stays -1).
 
@@ -846,13 +844,25 @@ impl Game {
     }
 
     /// C++ `CvPlot::isBestAdjacentFound` (non-const in C++ but read-only; UI action recommendation).
-    ///
-    /// AI: C++ compares `GET_PLAYER(eIndex).AI_foundValue(..)` of this plot with that of every
-    /// revealed adjacent plot (false if this plot's value is 0 or a neighbour's is higher). The
-    /// AI's city-site valuation is not ported; without a value the answer is false, as C++ gives
-    /// for a plot valued 0.
-    pub fn plot_is_best_adjacent_found(&self, _p: PlotIdx, _player: PlayerId) -> bool {
-        false
+    pub fn plot_is_best_adjacent_found(&self, p: PlotIdx, player: PlayerId) -> bool {
+        let (x, y) = self.map.xy(p);
+        let plot_value = self.player_ai_found_value(player, x, y, -1, false, &[]);
+
+        if plot_value == 0 {
+            return false;
+        }
+
+        let team = self.players[player].team;
+        for adjacent in adjacent_plots(self, p).into_iter().flatten() {
+            if self.map.plots[adjacent].revealed[team] {
+                let (ax, ay) = self.map.xy(adjacent);
+                if self.player_ai_found_value(player, ax, ay, -1, false, &[]) > plot_value {
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 
     // ------------------------------------------------------------------
