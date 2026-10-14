@@ -52,19 +52,31 @@ pub struct GameSetup {
 }
 
 impl GameSetup {
+    /// Open player slots reserved for players FFH2 adds mid-game (Infernals, Mercurians,
+    /// `formEmpire`, ...; C++ uses any of its 35 civ slots via `addPlayerAdvanced`).
+    pub const SPARE_SLOTS: usize = 4;
+
     /// A standard game: `n` AI civs (random civs/leaders are filled in by `Game::new`),
-    /// given world size, normal speed/climate/sea level, first era, Noble difficulty.
+    /// [`Self::SPARE_SLOTS`] open slots, then the barbarian slot; given world size,
+    /// normal speed/climate/sea level, first era, Noble difficulty.
     pub fn standard(d: &GameData, n_civs: usize, world: &str, seed: u32) -> GameSetup {
         let speed = d.t::<GameSpeedType>("GAMESPEED_NORMAL");
         let mut players = Vec::new();
-        for i in 0..=n_civs {
+        let n_slots = n_civs + Self::SPARE_SLOTS;
+        for i in 0..=n_slots {
             players.push(PlayerSetup {
                 civ: None,
                 leader: None,
                 team: TeamId(i as u8),
                 handicap: d.ty::<HandicapType>("HANDICAP_NOBLE"),
                 art_style: None,
-                slot_status: if i < n_civs { SlotStatus::Computer } else { SlotStatus::Closed },
+                slot_status: if i < n_civs {
+                    SlotStatus::Computer
+                } else if i < n_slots {
+                    SlotStatus::Open
+                } else {
+                    SlotStatus::Closed
+                },
                 human: false,
                 leader_name: String::new(),
                 civ_description: String::new(),
