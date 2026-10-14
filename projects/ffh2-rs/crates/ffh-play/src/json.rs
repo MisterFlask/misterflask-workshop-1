@@ -4,6 +4,9 @@
 //!   function of how the value was built: journals and views are byte-identical across runs.
 //! * Integers are `i64` ([`Json::Int`]); other numbers are `f64` ([`Json::Float`]). The parser
 //!   yields `Int` for every integer literal (no fraction, no exponent) that fits in an `i64`.
+//!   So there is no `u64` conversion (a value above `i64::MAX` would come back as a lossy
+//!   float): a `u64` that can exceed it, such as a hash, goes on the wire as a hex string.
+//!   `usize` (lengths, indices) converts within `0..=i64::MAX`.
 //! * The parser is strict RFC 8259: no comments, trailing commas, `NaN`, leading zeros, single
 //!   quotes or raw control characters in strings. It also rejects duplicate object keys (so a
 //!   command can never mean two things) and nesting deeper than [`MAX_DEPTH`] (input comes from
@@ -112,15 +115,11 @@ macro_rules! from_int {
 }
 from_int!(i8, i16, i32, i64, u8, u16, u32);
 
-impl From<u64> for Json {
-    fn from(v: u64) -> Json {
-        i64::try_from(v).map_or(Json::Float(v as f64), Json::Int)
-    }
-}
-
+/// Lengths and indices. Panics above `i64::MAX`, which no length or index reaches (they are at
+/// most `isize::MAX`).
 impl From<usize> for Json {
     fn from(v: usize) -> Json {
-        i64::try_from(v).map_or(Json::Float(v as f64), Json::Int)
+        Json::Int(i64::try_from(v).expect("usize above i64::MAX has no JSON integer form"))
     }
 }
 
@@ -400,7 +399,17 @@ macro_rules! from_json_int {
         }
     )* };
 }
-from_json_int!(i8, i16, i32, i64, u8, u16, u32, u64, usize);
+from_json_int!(i8, i16, i32, i64, u8, u16, u32);
+
+/// `0..=i64::MAX` (JSON integers are `i64`; on 32-bit targets `0..=usize::MAX`).
+impl FromJson for usize {
+    fn from_json(j: &Json) -> Option<usize> {
+        j.as_i64().and_then(|i| usize::try_from(i).ok())
+    }
+    fn expected() -> String {
+        format!("an integer in 0..={}", usize::try_from(i64::MAX).unwrap_or(usize::MAX))
+    }
+}
 
 impl FromJson for f64 {
     fn from_json(j: &Json) -> Option<f64> {
@@ -1139,9 +1148,8 @@ mod tests {
 
     #[test]
     fn accessors_and_conversions() {
-        assert_eq!(Json::from(3u64), Json::Int(3));
-        assert_eq!(Json::from(u64::MAX), Json::Float(u64::MAX as f64));
         assert_eq!(Json::from(5usize), Json::Int(5));
+        assert_eq!(Json::from(i64::MAX as usize), Json::Int(i64::MAX));
         assert_eq!(Json::from(vec![1u8, 2]), jarr![1, 2]);
         assert_eq!(Json::from(&[UnitId(4), UnitId(5)][..]), jarr![4, 5]);
         assert_eq!(Json::from(PlayerId(2)), Json::Int(2));
@@ -1161,5 +1169,32 @@ mod tests {
         let mut m = v.clone();
         *m.get_mut("a").unwrap() = Json::Null;
         assert_eq!(m.to_string(), r#"{"a":null}"#);
+    }
+
+    /// `usize` round-trips over its whole JSON range, and the error message states that range
+    /// (integers above `i64::MAX` parse as lossy floats, so they are refused).
+    #[test]
+    fn usize_range() {
+        for n in [0usize, 1, 312, u32::MAX as usize, i64::MAX as usize] {
+            let text = jobj! { "n" => n }.to_string();
+            assert_eq!(Json::parse(&text).unwrap().req::<usize>("n"), Ok(n), "{text}");
+        }
+        let expected = "expected an integer in 0..=9223372036854775807";
+        for (lit, shown) in [
+            ("9223372036854775808", "9.223372036854776e18"),
+            ("18446744073709551615", "1.8446744073709552e19"),
+            ("-1", "-1"),
+            ("1.5", "1.5"),
+        ] {
+            let v = Json::parse(&format!(r#"{{"n":{lit}}}"#)).unwrap();
+            assert_eq!(v.req::<usize>("n").unwrap_err().msg, format!("{expected}, got {shown}"), "{lit}");
+        }
+        assert_eq!(Json::parse("9223372036854775807").unwrap(), Json::Int(i64::MAX));
+    }
+
+    #[test]
+    #[should_panic(expected = "usize above i64::MAX")]
+    fn usize_above_i64_max_panics() {
+        let _ = Json::from(usize::MAX);
     }
 }
