@@ -74,6 +74,9 @@ impl Game {
         if py_cities_destroy_features(self, x, y) {
             // UNOFFICIAL_PATCH 10/30/09 Mongoose & jdog5000: don't remove flood plains from
             // tiles when founding a city.
+            // C++ quirk: FLOOD_PLAINS_FEATURE is not among the text defines converted to type
+            // indices (SetPostGlobalsGlobalDefines), so getDefineINT reads the string's address,
+            // which matches no feature: flood plains ARE removed. The define reads as -1 here.
             if let Some(feature) = self.map.plots[plot].feature_type {
                 if Some(feature) != opt_from_i32(defines.flood_plains_feature) {
                     self.plot_set_feature_type(plot, None);

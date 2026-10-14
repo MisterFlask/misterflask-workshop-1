@@ -60,8 +60,8 @@ Info tables (`ffh-data`):
 - Hard-coded C++ enum values are consts: `UnitAIType::UNITAI_ATTACK`,
   `DomainType::DOMAIN_LAND`, `YieldType::YIELD_FOOD` (see `enums.rs`, generated).
 - Global defines: `data.defines.max_hit_points` (generated `defines_gen.rs`; one
-  field per define, lowercase name). Text defines are resolved type indices (i32,
-  -1 = none) -- convert with `opt_from_i32`.
+  field per define, lowercase name). Text defines listed in C++ `SetPostGlobalsGlobalDefines` are
+  resolved type indices (i32, -1 = none; other text defines read as -1) -- convert with `opt_from_i32`.
 - Type names hard-coded in C++/Python: `data.t::<PromotionType>("PROMOTION_HERO")`
   (panics if unknown) or `data.ty::<T>(..)` (Option). Cache in hot paths.
 

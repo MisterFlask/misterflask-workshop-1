@@ -37,5 +37,6 @@ Residual risk: a BTS-only define the mod also edited would go unnoticed. FFH2's
   entries are flattened in place (matches the C++ enum order).
 - `CIV4AutomateInfos.xml` entries have no `<Type>`; names come from the
   `AutomateTypes` list in `GlobalTypes.xml` (as in C++).
-- Text-valued defines (`BARBARIAN_CIVILIZATION`, `SLAVE_UNIT`, ...) resolve to type
-  indices, like C++ `SetPostGlobalsGlobalDefines`.
+- Text-valued defines listed in C++ `SetPostGlobalsGlobalDefines` (`BARBARIAN_CIVILIZATION`,
+  `SLAVE_UNIT`, ...) resolve to type indices; other text defines read as -1 as ints (C++
+  `getDefineINT` returns the string's address there, matching no type; e.g. FLOOD_PLAINS_FEATURE).
