@@ -20,6 +20,7 @@ use ffh_data::*;
 pub mod casting;
 pub mod diplomacy;
 pub mod empire;
+pub mod military;
 pub mod production;
 pub mod reach;
 pub mod research;

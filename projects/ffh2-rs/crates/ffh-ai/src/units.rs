@@ -45,7 +45,7 @@ pub fn hold(g: &mut Game, grp: GroupId) {
     skip(g, grp);
 }
 
-fn alive(g: &Game, grp: GroupId) -> bool {
+pub(crate) fn alive(g: &Game, grp: GroupId) -> bool {
     g.groups.contains(grp) && !g.groups[grp].units.is_empty()
 }
 
@@ -145,7 +145,7 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
             Role::Worker => worker(g, v, grp, head, false),
             Role::SeaWorker => worker(g, v, grp, head, true),
             Role::Garrison => garrison_unit(g, v, grp, head),
-            Role::Army => army(g, v, grp, head),
+            Role::Army => crate::military::army(g, v, grp, head),
             Role::Explore => explore(g, v, grp, head),
             Role::GreatPerson => great_person(g, v, grp, head),
             Role::Missionary => missionary(g, v, grp, head),
@@ -161,7 +161,7 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
 /// ends a unit's turn with a mission, `MISSION_SKIP` as the fallback).
 pub fn finalize(g: &mut Game, p: PlayerId) {
     for grp in g.players[p].groups.clone() {
-        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+        if alive(g, grp) && g.group_ready_to_move(grp, true) {
             skip(g, grp);
         }
     }
@@ -475,7 +475,7 @@ fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
 // Military
 // ----------------------------------------------------------------------------
 
-fn nearest_city(g: &Game, p: PlayerId, from: PlotIdx) -> Option<CityId> {
+pub(crate) fn nearest_city(g: &Game, p: PlayerId, from: PlotIdx) -> Option<CityId> {
     let (x, y) = g.map.xy(from);
     g.players[p].cities.iter().copied().min_by_key(|&c| (g.plot_distance(x, y, g.cities[c].x, g.cities[c].y), c))
 }
@@ -576,134 +576,6 @@ pub(crate) fn attack_adjacent(g: &mut Game, v: &View, grp: GroupId, u: UnitId, m
     }
 }
 
-/// Enemy city our army marches on: the closest known enemy city to any of our cities.
-fn war_target(g: &Game, v: &View) -> Option<CityId> {
-    if v.civ_enemies.is_empty() {
-        return None;
-    }
-    let ours: Vec<(i32, i32)> = g.players[v.p].cities.iter().map(|&c| (g.cities[c].x, g.cities[c].y)).collect();
-    let mut best: Option<(CityId, i32)> = None;
-    for pl in g.players.iter() {
-        if !pl.alive || !v.civ_enemies.contains(&pl.team) {
-            continue;
-        }
-        for &c in &pl.cities {
-            let cp = g.city_plot(c);
-            if !g.map.plots[cp].revealed[v.team] {
-                continue;
-            }
-            let (cx, cy) = (g.cities[c].x, g.cities[c].y);
-            let dist = ours.iter().map(|&(x, y)| g.plot_distance(x, y, cx, cy)).min().unwrap_or(i32::MAX);
-            if best.map_or(true, |(bc, bd)| dist < bd || (dist == bd && c < bc)) {
-                best = Some((c, dist));
-            }
-        }
-    }
-    best.map(|(c, _)| c)
-}
-
-fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
-    let p = v.p;
-    let here = g.unit_plot(u);
-    let hurt = g.units[u].damage * 100 / g.d.defines.max_hit_points.max(1) > 40;
-
-    // Opportunistic attacks with good odds.
-    if attack_adjacent(g, v, grp, u, if hurt { 850 } else { 700 }) {
-        return;
-    }
-    if !alive(g, grp) || !g.units.contains(u) {
-        return;
-    }
-    if hurt && v.danger_at(here) == 0 {
-        if can_start(g, grp, MissionType::MISSION_HEAL, -1, -1) {
-            push(g, grp, MissionType::MISSION_HEAL, -1, -1, 0, false);
-            return;
-        }
-    }
-
-    if let Some(target) = war_target(g, v) {
-        let tp = g.city_plot(target);
-        let (tx, ty) = g.map.xy(tp);
-        let (x, y) = g.map.xy(here);
-        let dist = g.plot_distance(x, y, tx, ty);
-        if dist <= 1 {
-            // Assault when the odds against the best defender are acceptable.
-            if attack_adjacent(g, v, grp, u, 550) {
-                return;
-            }
-            if alive(g, grp) && g.group_ready_to_move(grp, false) {
-                hold(g, grp);
-            }
-            return;
-        }
-        // March to a plot next to the target.
-        let reach = v.flood.run(g, u, 15, false);
-        let staging = reach
-            .iter()
-            .filter(|r| {
-                let (rx, ry) = g.map.xy(r.plot);
-                g.plot_distance(rx, ry, tx, ty) == 1
-            })
-            .min_by_key(|r| (r.turns, std::cmp::Reverse(g.plot_defense_modifier(r.plot, Some(v.team), true)), r.plot));
-        if let Some(r) = staging.copied() {
-            move_to(g, grp, r.plot, 0);
-            if alive(g, grp) && g.group_ready_to_move(grp, false) {
-                hold(g, grp);
-            }
-            return;
-        }
-    }
-
-    // An undefended city of ours (a fresh one, typically founded by the settler we escorted):
-    // become its garrison.
-    if let Some(c) = g.map.plots[here].plot_city.filter(|&c| g.cities[c].owner == p) {
-        if garrison(g, p, here).0 == 0 && v.garrison.get(&c).copied().unwrap_or(0) == 0 {
-            *v.garrison.entry(c).or_insert(0) += 1;
-            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_CITY_DEFENSE);
-            if let Some(ng) = g.units[u].group {
-                hold(g, ng);
-            }
-            return;
-        }
-    }
-
-    // A settler waits for an escort.
-    if !v.escort_requests.is_empty() {
-        let reach = v.flood.run(g, u, 6, false);
-        if let Some((i, r)) = v.escort_requests.iter().enumerate().filter_map(|(i, &q)| reach.iter().find(|r| r.plot == q).map(|r| (i, *r))).min_by_key(|(_, r)| (r.turns, r.plot)) {
-            v.escort_requests.remove(i);
-            if r.plot != here {
-                move_to(g, grp, r.plot, 0);
-            }
-            if alive(g, grp) && g.group_ready_to_move(grp, false) {
-                skip(g, grp);
-            }
-            return;
-        }
-    }
-
-    // Peacetime: hunt nearby barbarians and animals in or near our lands.
-    let reach = v.flood.run(g, u, 3, true);
-    if let Some(r) = best_hunt_target(g, v, u, &reach) {
-        move_to(g, grp, r.plot, 0);
-        if alive(g, grp) && g.group_ready_to_move(grp, false) {
-            hold(g, grp);
-        }
-        return;
-    }
-    // Otherwise reinforce the city with the most danger, else stay put.
-    if g.map.plots[here].plot_city.is_some() {
-        hold(g, grp);
-    } else if let Some(c) = nearest_city(g, p, here) {
-        move_to(g, grp, g.city_plot(c), 0);
-        if alive(g, grp) && g.group_ready_to_move(grp, false) {
-            hold(g, grp);
-        }
-    } else {
-        hold(g, grp);
-    }
-}
-
 /// Reachable plot next to a visible enemy unit we are likely to beat, close to our lands.
 fn best_hunt_target(g: &Game, v: &View, u: UnitId, reach: &[Reached]) -> Option<Reached> {
     let my_power = attack_power(g, u);
@@ -779,12 +651,14 @@ fn explore(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         None => {
             // Nothing left to explore: become a regular army unit.
             g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_ATTACK);
-            army(g, v, grp, u);
+            if let Some(ng) = g.units[u].group {
+                crate::military::army(g, v, ng, u);
+            }
         }
     }
 }
 
-fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+pub(crate) fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     // Barbarians and animals are aggressive: attack anything they can beat.
     if attack_adjacent(g, v, grp, u, 500) {
         return;
@@ -896,7 +770,7 @@ fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let here = g.unit_plot(u);
-    if let Some(target) = war_target(g, v) {
+    if let Some(target) = crate::military::war_target(g, v) {
         let tp = g.city_plot(target);
         let (tx, ty) = g.map.xy(tp);
         let reach = v.flood.run(g, u, 15, false);

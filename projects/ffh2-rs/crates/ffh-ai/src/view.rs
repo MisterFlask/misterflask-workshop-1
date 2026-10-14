@@ -21,6 +21,10 @@ pub struct View {
     pub danger: Vec<i32>,
     /// Plots our units already target this turn (city sites, builds), to spread them out.
     pub claimed: Vec<PlotIdx>,
+    /// Field army targets near our lands (see `military::find_targets`).
+    pub targets: Vec<crate::military::Target>,
+    /// Targets already taken by a stack this turn.
+    pub target_claims: Vec<(PlotIdx, GroupId)>,
     /// Plots (cities) where a settler waits for an escort.
     pub escort_requests: Vec<PlotIdx>,
     /// Our units committed to each city's garrison this turn.
@@ -88,10 +92,15 @@ impl View {
             danger: vec![0; g.map.num_plots()],
             claimed: Vec::new(),
             escort_requests: Vec::new(),
+            targets: Vec::new(),
+            target_claims: Vec::new(),
             garrison: BTreeMap::new(),
             flood: Flood::default(),
         };
         v.build_danger(g);
+        if !v.barbarian {
+            v.targets = crate::military::find_targets(g, &v);
+        }
         v
     }
 

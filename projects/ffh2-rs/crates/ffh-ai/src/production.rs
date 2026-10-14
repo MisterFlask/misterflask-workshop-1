@@ -135,6 +135,29 @@ pub fn local_threat(g: &Game, p: PlayerId, plot: PlotIdx, range: i32) -> i32 {
     threat
 }
 
+/// A barbarian lair or a (non-animal) barbarian unit within `range` plots.
+pub fn barbarians_near(g: &Game, p: PlayerId, plot: PlotIdx, range: i32) -> bool {
+    let team = g.players[p].team;
+    let barb = g.barbarian_player();
+    let (x, y) = g.map.xy(plot);
+    for dx in -range..=range {
+        for dy in -range..=range {
+            let Some(q) = g.plot_xy(x, y, dx, dy) else { continue };
+            let pl = &g.map.plots[q];
+            if !pl.revealed[team] {
+                continue;
+            }
+            if pl.improvement_type.is_some_and(|i| g.d.improvements[i].spawn_unit_type.is_some_and(|u| !g.d.units[u].animal)) {
+                return true;
+            }
+            if g.plot_is_visible(q, team) && pl.units.iter().any(|&u| g.units[u].owner == barb && !g.d.units[g.units[u].unit_type].animal) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn count_ai(g: &Game, p: PlayerId, unit_ai: UnitAIType) -> i32 {
     let pl = &g.players[p];
     pl.ai_num_ai_units[unit_ai] + pl.ai_num_train_ai_units[unit_ai]
@@ -220,14 +243,31 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         at_war: civ_enemies_at_war(g, p),
     };
     crate::trace!(g, p, "{}: threat {} defenders {} ({}) food {:+} prod {} happy {}", city.name, ctx.threat, ctx.defenders, ctx.defense, ctx.food_surplus, ctx.production, ctx.happy_room);
+    if ctx.threat > 0 && crate::trace_on(p) {
+        let (x, y) = g.map.xy(plot);
+        for dx in -3..=3 {
+            for dy in -3..=3 {
+                let Some(q) = g.plot_xy(x, y, dx, dy) else { continue };
+                for &u in &g.map.plots[q].units {
+                    if g.units[u].owner != p {
+                        crate::trace!(g, p, "   threat unit {} owner {:?} at ({},{}) impr {:?} visible {}", d.units[g.units[u].unit_type].base.type_, g.units[u].owner, dx, dy, g.map.plots[q].improvement_type.map(|i| d.improvements[i].base.type_.clone()), g.plot_is_visible(q, pl.team));
+                    }
+                }
+            }
+        }
+    }
     let flavor = |name: &str| match (leader, d.ty::<FlavorType>(name)) {
         (Some(l), Some(f)) => l.flavor_value[f],
         _ => 0,
     };
     let mil_flavor = flavor("FLAVOR_MILITARY");
 
-    // Garrison quota: one, the capital and threatened cities more.
-    let mut needed = 1 + i32::from(ctx.capital && ctx.n_cities > 2) + i32::from(ctx.threat > 0);
+    // Garrison quota: one, the capital and threatened cities more, cities near barbarian lairs
+    // or barbarians more.
+    let mut needed = 1 + i32::from(ctx.capital && (ctx.n_cities > 1 || g.game_turn() > 30)) + i32::from(ctx.threat > 0);
+    if barbarians_near(g, p, plot, 5) {
+        needed += 1;
+    }
     if ctx.at_war {
         needed += 1;
     }

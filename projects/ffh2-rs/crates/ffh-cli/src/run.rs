@@ -177,6 +177,29 @@ pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Gam
             t0 = Instant::now();
             updates_this_turn = 0;
         } else if updates_this_turn > 100_000 {
+            for p in g.player_ids() {
+                if !g.players[p].alive || !g.players[p].turn_active {
+                    continue;
+                }
+                for &grp in &g.players[p].groups {
+                    if g.group_ready_to_move(grp, true) || g.group_is_busy(grp) {
+                        let head = g.group_get_head_unit(grp);
+                        eprintln!(
+                            "stuck: player {} group {:?} units {} head {:?} ({}) ai {:?} missions {:?} activity {:?} busy {} moves {:?}",
+                            p.0,
+                            grp,
+                            g.groups[grp].units.len(),
+                            head,
+                            head.map_or("-".into(), |h| g.d.units[g.units[h].unit_type].base.type_.clone()),
+                            head.and_then(|h| g.units[h].ai_type),
+                            g.groups[grp].mission_queue.iter().map(|m| m.mission_type).collect::<Vec<_>>(),
+                            g.groups[grp].activity_type,
+                            g.group_is_busy(grp),
+                            head.map(|h| g.unit_moves_left(h))
+                        );
+                    }
+                }
+            }
             panic!("turn {turn} did not finish after {updates_this_turn} updates (a player never ends its turn)");
         }
     }
@@ -209,6 +232,17 @@ pub fn report(g: &Game) -> String {
             pl.cities.len(),
             pl.total_population,
             pl.units.len()
+        );
+        out += &format!(
+            "     costs: units {} supply {} maintenance {} civics {} inflation {}% -> {}; commerce gold {} research {}\n",
+            g.player_calculate_unit_cost(p),
+            g.player_calculate_unit_supply(p),
+            g.player_get_total_maintenance(p),
+            g.player_get_civic_upkeep(p, None, false),
+            g.player_calculate_inflation_rate(p),
+            g.player_calculate_inflated_costs(p),
+            g.player_get_commerce_rate(p, CommerceType::COMMERCE_GOLD),
+            g.player_get_commerce_rate(p, CommerceType::COMMERCE_RESEARCH)
         );
         let mut roles: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
         for &u in &pl.units {
