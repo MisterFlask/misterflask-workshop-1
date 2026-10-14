@@ -118,14 +118,25 @@ pub struct UnitResetInfo {
 }
 
 impl UnitResetInfo {
-    /// Reads the values `CvUnit::reset` takes from `m_pUnitInfo`.
-    #[allow(unused_variables)]
+    /// Reads the values `CvUnit::reset` takes from `m_pUnitInfo` (CvUnit.cpp:335-536, the
+    /// `(NO_UNIT != m_eUnitType) ? m_pUnitInfo->getX() : 0` members). `m_iGroupSize` (formation
+    /// size) is graphics and not ported.
     pub fn from_info(info: &UnitInfo) -> UnitResetInfo {
-        // Needs the ffh-data `UnitInfo` fields (combat, cargo_space, defensive_strike_chance,
-        // defensive_strike_damage, hidden_nationality, ignore_building_defense, immortal,
-        // immune_to_defensive_strike, combat_defense, combat_limit, gold_from_combat,
-        // invisible_type, damage_type_combat).
-        todo!("CvUnit::reset")
+        UnitResetInfo {
+            combat: info.combat,
+            cargo_space: info.cargo_space,
+            defensive_strike_chance: info.defensive_strike_chance,
+            defensive_strike_damage: info.defensive_strike_damage,
+            hidden_nationality: info.hidden_nationality,
+            ignore_building_defense: info.ignore_building_defense,
+            immortal: info.immortal,
+            immune_to_defensive_strike: info.immune_to_defensive_strike,
+            combat_defense: info.combat_defense,
+            combat_limit: info.combat_limit,
+            gold_from_combat: info.gold_from_combat,
+            invisible_type: info.invisible_type,
+            damage_type_combat: info.damage_type_combat.clone(),
+        }
     }
 }
 
@@ -658,5 +669,35 @@ mod tests {
         assert!(blank.has_promotion.is_empty());
         assert_eq!(blank.base_combat, 0);
         assert_eq!(blank.invisible_type, Some(InvisibleType(0)));
+    }
+
+    #[test]
+    fn reset_info_from_unit_info() {
+        let d = ffh_data::global();
+        let info = |name: &str| UnitResetInfo::from_info(&d.units[d.t::<UnitType>(name)]);
+
+        // Units/CIV4UnitInfos.xml values.
+        let archer = info("UNIT_ARCHER_SCORPION_CLAN");
+        assert_eq!((archer.combat, archer.combat_defense, archer.combat_limit), (3, 5, 100));
+        assert_eq!((archer.defensive_strike_chance, archer.defensive_strike_damage), (20, 10));
+        assert_eq!(archer.invisible_type, None);
+        assert!(!archer.immortal && !archer.hidden_nationality);
+        assert_eq!(archer.damage_type_combat[DamageType::DAMAGE_POISON], 1);
+        assert_eq!(archer.damage_type_combat.iter().sum::<i32>(), 1);
+
+        let pirate = info("UNIT_PIRATE");
+        assert_eq!((pirate.cargo_space, pirate.gold_from_combat, pirate.combat), (1, 3, 8));
+
+        let shadowrider = info("UNIT_SHADOWRIDER");
+        assert!(shadowrider.ignore_building_defense && shadowrider.immune_to_defensive_strike);
+
+        let brigit = info("UNIT_BRIGIT");
+        assert!(brigit.immortal);
+        assert_eq!(brigit.damage_type_combat[DamageType::DAMAGE_HOLY], 3);
+
+        // `reset` copies them into the new unit.
+        let t = d.t::<UnitType>("UNIT_BRIGIT");
+        let unit = Unit::new(UnitId(1), t, PlayerId(0), d, &brigit);
+        assert_eq!((unit.immortal, unit.base_combat, unit.total_damage_type_combat), (1, 6, 3));
     }
 }
