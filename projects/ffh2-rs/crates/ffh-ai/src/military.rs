@@ -59,7 +59,7 @@ pub struct Assessment {
     /// Our attackers able to fight now.
     pub n_att: i32,
     /// Expected "defender kills" of the whole stack, per mille: each attacker counts its odds
-    /// plus a quarter of the rest (a lost fight still wounds the defender); collateral
+    /// plus a third of the rest (a lost fight still wounds the defender); collateral
     /// attackers count more against stacks.
     pub effective: i32,
 }
@@ -87,7 +87,7 @@ fn assess(g: &Game, grp: GroupId, q: PlotIdx) -> Option<Assessment> {
         let odds = g.get_combat_odds(u, def);
         best = best.max(odds);
         n_def = n_def.max(g.plot_get_num_visible_enemy_defenders(q, u));
-        effective += odds + (1000 - odds) / 4;
+        effective += odds + (1000 - odds) / 3;
         if g.d.units[g.units[u].unit_type].collateral_damage > 0 {
             effective += 250;
         }
@@ -106,7 +106,7 @@ pub fn attack_ok(a: &Assessment, city: bool) -> bool {
     if a.best < 100 {
         return false;
     }
-    let need = a.n_def * if city { 1100 } else { 1000 };
+    let need = a.n_def * 1000 + if city { 300 } else { 0 };
     a.effective >= need && (a.best >= 300 || a.n_att >= a.n_def + 2)
 }
 
@@ -214,8 +214,8 @@ pub fn war_target_from(g: &Game, v: &View, from: Option<PlotIdx>) -> Option<City
             if dist == i32::MAX {
                 continue;
             }
-            // Weakly defended cities first.
-            let defenders = g.map.plots[cp].units.len() as i32;
+            // Weakly defended cities first (what we can see of them).
+            let defenders = if g.plot_is_visible(cp, v.team) { g.map.plots[cp].units.len() as i32 } else { 2 };
             let score = dist + defenders * 2;
             if best.map_or(true, |(bc, bd)| score < bd || (score == bd && c < bc)) {
                 best = Some((c, score));
@@ -223,6 +223,26 @@ pub fn war_target_from(g: &Game, v: &View, from: Option<PlotIdx>) -> Option<City
         }
     }
     best.map(|(c, _)| c)
+}
+
+/// A barbarian city for an otherwise idle army: the nearest one we know of on the stack's
+/// landmass, not too far.
+fn barbarian_city_target(g: &Game, v: &View, from: PlotIdx) -> Option<CityId> {
+    let barb = g.barbarian_player();
+    let (fx, fy) = g.map.xy(from);
+    let area = g.map.plots[from].area;
+    g.players[barb]
+        .cities
+        .iter()
+        .copied()
+        .filter(|&c| {
+            let cp = g.city_plot(c);
+            g.map.plots[cp].revealed[v.team] && g.map.plots[cp].area == area
+        })
+        .map(|c| (g.plot_distance(fx, fy, g.cities[c].x, g.cities[c].y), c))
+        .filter(|&(dist, _)| dist <= 20)
+        .min()
+        .map(|(_, c)| c)
 }
 
 /// Stack strength in rough power units (sum of attack power of its fighters).
@@ -324,6 +344,16 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     // Hunt: the best target in reach that the stack can take.
     if hunt(g, v, grp, u) {
         return;
+    }
+
+    // Peacetime campaign: clear a barbarian city (stacks of several attackers gather first).
+    if v.civ_enemies.is_empty() && attackers(g, grp).len() >= 2 {
+        if let Some(target) = barbarian_city_target(g, v, here) {
+            crate::trace!(g, p, "stack {:?} ({} units) campaigns against {}", grp, g.groups[grp].units.len(), g.cities[target].name);
+            if war_move(g, v, grp, u, target) {
+                return;
+            }
+        }
     }
 
     // Gather: join the nearest other stack within a few turns, else hold in the nearest city.
