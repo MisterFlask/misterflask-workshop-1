@@ -32,6 +32,9 @@ pub mod view;
 #[derive(Default)]
 pub struct Ai {
     pub(crate) sites: Mutex<sites::SiteCaches>,
+    /// Game turn of each player's last full `play_turn` (C++ calls `AI_unitUpdate` on every
+    /// `update` until the turn ends; empire-level decisions are made once per turn).
+    played: Mutex<std::collections::BTreeMap<PlayerId, i32>>,
 }
 
 impl Ai {
@@ -53,7 +56,14 @@ impl Controller for Ai {
         if !g.players[p].alive {
             return;
         }
+        let turn = g.game_turn();
+        let first_call = self.played.lock().unwrap().insert(p, turn) != Some(turn);
         let mut v = view::View::new(g, p);
+        if !first_call {
+            // Called again in the same turn: only groups that still need orders.
+            units::play(self, g, &mut v);
+            return;
+        }
         if !v.barbarian {
             empire::manage(g, p);
             diplomacy::manage(g, &v);
