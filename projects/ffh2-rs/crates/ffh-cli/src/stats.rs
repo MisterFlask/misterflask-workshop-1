@@ -102,9 +102,12 @@ fn snapshot(g: &Game) -> String {
         let ships = pl.units.iter().filter(|&&u| g.unit_get_domain_type(u) == DomainType::DOMAIN_SEA).count();
         let pct = pl.commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
         let maint = if barbarian { 0 } else { g.player_get_total_maintenance(p) };
+        let ucost = if barbarian { 0 } else { g.player_calculate_unit_cost(p) + g.player_calculate_unit_supply(p) };
+        let civ_upkeep = if barbarian { 0 } else { g.player_get_civic_upkeep(p, None, false) };
+        let commerce = g.player_get_commerce_rate(p, CommerceType::COMMERCE_GOLD) + g.player_get_commerce_rate(p, CommerceType::COMMERCE_RESEARCH);
         let prod: i32 = pl.cities.iter().map(|&c| g.city_yield_rate(c, YieldType::YIELD_PRODUCTION)).sum();
         parts.push(format!(
-            "{{\"p\":{},\"civ\":\"{}\",\"barb\":{},\"alive\":{},\"cities\":{},\"pop\":{},\"techs\":{},\"units\":{},\"mil\":{},\"workers\":{},\"settlers\":{},\"animals\":{},\"impr\":{},\"research\":{},\"prod\":{},\"gold\":{},\"score\":{},\"pct\":{},\"maint\":{},\"area_tiles\":{},\"area_civs\":{},\"overseas\":{},\"ships\":{}}}",
+            "{{\"p\":{},\"civ\":\"{}\",\"barb\":{},\"alive\":{},\"cities\":{},\"pop\":{},\"techs\":{},\"units\":{},\"mil\":{},\"workers\":{},\"settlers\":{},\"animals\":{},\"impr\":{},\"research\":{},\"prod\":{},\"gold\":{},\"score\":{},\"pct\":{},\"maint\":{},\"area_tiles\":{},\"area_civs\":{},\"overseas\":{},\"ships\":{},\"ucost\":{},\"civ_upkeep\":{},\"commerce\":{}}}",
             p.0,
             civ,
             barbarian,
@@ -127,7 +130,10 @@ fn snapshot(g: &Game) -> String {
             area_tiles,
             area_civs,
             overseas,
-            ships
+            ships,
+            ucost,
+            civ_upkeep,
+            commerce
         ));
     }
     format!("[{}]", parts.join(","))

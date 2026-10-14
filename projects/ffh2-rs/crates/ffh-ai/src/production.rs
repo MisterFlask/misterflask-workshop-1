@@ -151,7 +151,11 @@ fn fallback(g: &Game, c: CityId) -> Option<Choice> {
         }
     }
     // Field units (they hunt and campaign) rather than garrisons the treasury cannot carry.
-    if let Some(u) = best_unit(g, c, Role::Attack) {
+    // When the treasury cannot carry more, the strongest one (support costs the same for any
+    // unit, and the weakest are the ones disbanded): the hammers buy quality, not numbers.
+    let at_war = civ_enemies_at_war(g, p);
+    let unit = if crate::economy::can_afford_unit(g, p, true, at_war) { best_unit(g, c, Role::Attack) } else { strongest_unit(g, c, Role::Attack) };
+    if let Some(u) = unit {
         return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
     }
     if let Some(u) = best_unit(g, c, Role::Defense) {
@@ -914,6 +918,15 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         }
     }
     best.map(|(u, _)| u)
+}
+
+/// The strongest unit this city can train for `role`, whatever it costs.
+fn strongest_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
+    let d = g.d;
+    d.units
+        .keys()
+        .filter(|&u| d.units[u].domain_type == Some(DomainType::DOMAIN_LAND) && role_ok(&d.units[u], role) && g.city_can_train(c, u, false, false, false, false))
+        .max_by_key(|&u| (type_attack_power(d, u), d.units[u].production_cost, std::cmp::Reverse(u)))
 }
 
 fn best_missionary(g: &Game, c: CityId, r: ReligionType) -> Option<UnitType> {

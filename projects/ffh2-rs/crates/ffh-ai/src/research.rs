@@ -39,6 +39,10 @@ struct Ctx {
     home_full: bool,
     /// We can already build a ship that carries land units.
     has_transport: bool,
+    /// Cities with no building left to build.
+    idle_cities: i32,
+    /// We know a process (production to research or gold).
+    has_process: bool,
 }
 
 /// Unit types `p` could train with its techs plus `extra` (ignores resources and buildings).
@@ -139,6 +143,8 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
         rate: g.player_calculate_research_rate(p, None).max(1),
         home_full: crate::naval::home_is_full(g, p) || crate::naval::settler_waiting(g, p).is_some(),
         has_transport: false,
+        idle_cities: pl.cities.iter().filter(|&&c| !g.d.buildings.keys().any(|b| g.city_can_construct(c, b, false, false, false))).count() as i32,
+        has_process: g.d.processes.iter().any(|pr| pr.tech_prereq.map_or(true, |t| g.team_is_has_tech(team, Some(t)))),
     };
     ctx.has_transport = g.d.units.keys().any(|u| {
         let info = &g.d.units[u];
@@ -369,6 +375,11 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
         } else if vals.tech_children[t].iter().any(|&ch| transport_tech(ch)) {
             value += 600;
         }
+    }
+
+    // Processes (research, wealth) for cities that have nothing left to build.
+    if ctx.idle_cities > 0 && !ctx.has_process && d.processes.iter().any(|pr| pr.tech_prereq == Some(t)) {
+        value += 400 * ctx.idle_cities.min(6) + 300;
     }
 
     // Military: a better defender / attacker, as pressure demands.
