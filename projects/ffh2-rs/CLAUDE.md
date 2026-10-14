@@ -34,6 +34,10 @@ When porting, read the C++/Python being ported -- never port from memory.
   `BTreeMap` or sort first). No wall-clock, no thread-dependent ordering.
 - **Integer math in rules,** as in the C++ (it uses `int` with percentages).
   Port floating-point only where the C++ itself uses float, with the same ops.
+- **Unspecified evaluation order** (two RNG draws in one C++ expression): follow what the
+  original DLL compiler (MSVC 2003, x86) does -- function-call *arguments* are evaluated
+  right to left (`f(rand(a), rand(b))` draws `b` first); operands of binary operators left
+  to right (`rand(a) + rand(b)` draws `a` first). Comment `// C++ quirk: MSVC evaluation order`.
 - **Faithfulness first.** Port C++ semantics exactly, including quirks; if a quirk
   is an obvious bug that changes no gameplay, keep it and add a `// C++ quirk:` note.
   Never "improve" rules silently. Deliberate deviations go in docs/PORTING.md.
