@@ -377,9 +377,12 @@ impl Session {
         let h = self.human;
         let entries = std::mem::take(&mut self.g.log.entries);
         let before = self.messages.len();
-        if !entries.is_empty() {
+        // Only untagged entries read the game (under a guard).
+        if entries.iter().any(|e| e.player.is_none()) {
             let g = QueryGuard::new(&self.g);
             self.messages.extend(entries.into_iter().filter_map(|e| self.fog.filter(&g, h, e)));
+        } else {
+            self.messages.extend(entries.into_iter().filter_map(|e| self.fog.filter(&self.g, h, e)));
         }
         self.fog.update(&self.g, h);
         self.messages_total += self.messages.len() - before;

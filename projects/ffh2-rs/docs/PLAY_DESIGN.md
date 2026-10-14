@@ -391,7 +391,7 @@ pub struct Pending { pub events: Vec<PendingEvent>, pub votes: Vec<PendingVote>,
 // command.rs
 pub enum Command {
     Move { units: Vec<UnitId>, x: i32, y: i32, append: bool, declare_war: bool },
-    Mission { units: Vec<UnitId>, mission: MissionType, data1: i32, data2: i32, flags: i32, append: bool },
+    Mission { units: Vec<UnitId>, mission: MissionType, data1: i32, data2: i32, flags: i32, append: bool },  // flags: 0 only (§4.5)
     DoCommand { units: Vec<UnitId>, command: CommandType, data1: i32, data2: i32, alt: bool, confirmed: bool },
     JoinGroup { unit: UnitId, head: Option<UnitId> },
     AutoMission { unit: UnitId },
@@ -917,7 +917,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
    * **Votes.** An unanswered vote gets the extra turn and then abstains. An answered vote calls `cast_vote`.
    * **Free techs.** A free tech blocks, and two free techs give two decisions.
    * **Autoplay.** With autoplay, every method delegates to the advisor.
-7. **T7 — fuzz.** A seeded mix of well-formed commands (from the enumerated actions) and malformed or foreign-owned ones, over 100 turns. No panic. Each invalid command gets `invalid`, `not_owner`, `gone` or `cannot`, and **save bytes before == after**.
+7. **T7 — fuzz.** A seeded mix of well-formed commands (from the enumerated actions) and malformed or foreign-owned ones, over 100 turns. No panic. Each invalid command gets `invalid`, `not_owner`, `gone` or `cannot`, and **save bytes before == after**. The malformed ones include well-typed values no exe path sends (extreme `i32` data such as a specialist change of `i32::MAX`, slider changes, mission flags and data), run with a per-command time limit: before the P1 review fixes such a command hung the game thread or overflowed rather than being refused; the debug-assertion build must not panic on them either.
 8. **T8 — fog.** Every turn of T1, for every unit, plot and city in the view and the map:
    * revealed or visible per the §4.4 rules;
    * no invisible unit, no unrevealed bonus, no unmet player.
