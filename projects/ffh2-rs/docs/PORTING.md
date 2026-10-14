@@ -168,8 +168,9 @@ and artefacts of C++ container order need not.
 
 ## Next steps
 
-1. **Save/load** (in progress in `crates/ffh-core/src/save/`): a round-trip test (save at turn N,
-   load, same checksums as an uninterrupted run).
+1. **Save/load**: done (`crates/ffh-core/src/save/`, `Game::save` / `Game::load`; resume test in
+   `crates/ffh-ai/tests/save_resume.rs`). Scenarios (world-builder saves + ScenarioFunctions.py) are out
+   of scope for now; the focus is the sandbox game.
 2. **Controller hooks** for the remaining rules-side stand-ins: `confirm_settlement` (Kuriotates
    `BUTTONPOPUP_CONFIRMSETTLEMENT`), the barbarian city defender (`AI_bestUnitAI`), and the
    favorite religion (`AI_doFavoriteReligion`).
