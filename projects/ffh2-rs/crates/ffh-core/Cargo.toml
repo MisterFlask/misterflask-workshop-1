@@ -1,0 +1,9 @@
+[package]
+name = "ffh-core"
+description = "FFH2 rules engine: deterministic simulation ported from the FFH2 0.41 DLL and Python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ffh-data = { path = "../ffh-data" }

@@ -1,0 +1,15 @@
+[package]
+name = "ffh-cli"
+description = "Headless runner: autoplay, benchmarks, inspection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ffh"
+path = "src/main.rs"
+
+[dependencies]
+ffh-data = { path = "../ffh-data" }
+ffh-core = { path = "../ffh-core" }
+ffh-ai = { path = "../ffh-ai" }

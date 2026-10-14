@@ -1,0 +1,10 @@
+[package]
+name = "ffh-ai"
+description = "FFH2 AI players (new design, not a port of the C++ AI)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ffh-data = { path = "../ffh-data" }
+ffh-core = { path = "../ffh-core" }
