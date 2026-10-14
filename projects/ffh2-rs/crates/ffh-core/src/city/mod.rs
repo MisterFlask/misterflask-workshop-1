@@ -20,7 +20,7 @@
 //! distinguishing argument (`getProductionNeeded(UnitTypes)` -> `city_production_needed_unit`),
 //! all-types variants of per-type updates are plural (`updateCommerce()` ->
 //! `city_update_commerces`). Trivial accessors are field accesses (see "Trivial accessors" in
-//! `docs/porting/city.md`). Unported bodies are `todo!("CvCity::<name>")`.
+//! `docs/porting/city.md`).
 
 #![allow(unused_imports)]
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
