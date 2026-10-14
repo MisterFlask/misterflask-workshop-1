@@ -109,7 +109,11 @@ const ORDER: &[Step] = &[
 const ECONOMY2: [&str; 5] = ["TECH_TRADE", "TECH_SANITATION", "TECH_CURRENCY", "TECH_CONSTRUCTION", "TECH_TAXATION"];
 
 /// The ordered research goals of `p` (known techs and techs `p` can never research left out).
+/// The barbarians have none: their research stays with the plain score (their units).
 pub fn goals(g: &Game, p: PlayerId) -> Vec<Goal> {
+    if g.player_is_barbarian(p) {
+        return Vec::new();
+    }
     let d = g.d;
     let pl = &g.players[p];
     let team = pl.team;
@@ -379,6 +383,7 @@ mod tests {
         let p = PlayerId(0);
         let team = g.players[p].team;
         let t = |name: &str| d.t::<TechType>(name);
+        assert!(goals(&g, g.barbarian_player()).is_empty());
         let goals = goals(&g, p);
         assert!(!goals.is_empty());
         assert!(goals.iter().all(|gl| !g.team_is_has_tech(team, Some(gl.tech))));
