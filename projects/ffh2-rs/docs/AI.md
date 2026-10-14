@@ -14,8 +14,11 @@ searches, Python callbacks). `ffh-ai` is a new design with three hard requiremen
   target: at most a few bounded floods per group, one real path for the chosen target.
 - **Deterministic.** Decisions are pure functions of the game state. The AI never draws from
   the game RNG (its "random" war rolls hash the turn and player), never iterates a
-  HashMap/HashSet, never reads the clock. Its only memory (site caches, "already played this
-  turn") is recomputed when the turn changes, so save/load cannot change its choices.
+  HashMap/HashSet, never reads the clock. Its only memory outside `Game` is a shortcut a fresh
+  controller rebuilds identically: the site cache lives for one `update()` call (saves happen
+  between updates), and "already played this turn" is also derived from the game state (the
+  rules call again within a turn only while some unit is moving, i.e. has spent moves). So a
+  game saved and resumed with a new controller plays on exactly (`tests/save_resume.rs`).
 
 ## Where the rules call the AI
 
@@ -28,6 +31,7 @@ searches, Python callbacks). `ffh-ai` is a new design with three hard requiremen
 | `CvPlayerAI::AI_chooseResearch` / `AI_chooseFreeTech` | `choose_research` | `research.rs` |
 | `CvPlayerAI::AI_conquerCity` | `raze_conquered_city` | `diplomacy.rs` |
 | `CvPlayerAI::AI_considerOffer` | `consider_offer` | `diplomacy.rs` |
+| `CvPlayerAI::AI_doAdvancedStart` (from `CvPlayer::setTurnActive`) | `play_turn` while start points remain | `advanced_start.rs` |
 | `CvPlayerAI::AI_chooseEvent`, elections, votes, captured/gifted units | defaults in `controller.rs` | -- |
 | `CvCityAI::AI_assignWorkingPlots` (citizens) | `Game::city_assign_working_plots` | `ffh-core/src/governor.rs` |
 
@@ -38,10 +42,20 @@ counters, war success, war plans) that the diplomacy below reads.
 
 ## A turn (`play_turn`)
 
+0. **Advanced start** (`advanced_start.rs`, `GAMEOPTION_ADVANCED_START`): while the player has
+   start points, C++ `AI_doAdvancedStart`'s plan with fixed choices instead of its random
+   draws: the capital on the starting plot, ~10% of the points on revealing the land around
+   it, the leader's unit share (10% + `iBuildUnitProb`/3) on defenders, workers and field
+   units, the rest on cities (best found value within 8 plots, 500 + 250 x cities minimum)
+   with culture, improvements for the citizens they can keep happy and population to work
+   them, technologies (research's pick; a quarter of the city points while placing cities),
+   an explorer and buildings by value per point; then `ADVANCEDSTARTACTION_EXIT`.
 1. **Empire** (`empire.rs`): research when the queue is empty; civics every 10 turns when
    the gain beats the anarchy; state religion; the highest research slider that keeps the
    treasury from running dry; a bankrupt empire (slider at the bottom, still losing gold)
-   scraps surplus garrison units, never below what production wants in that city.
+   scraps surplus garrison units, never below what production wants in that city; an empire
+   paying unit support with research at a fifth or less disbands its weakest field units
+   (never heroes) down to a mobile force of 1 + cities/4 while at peace.
 2. **Emergency production** (`production::emergency`): a city whose visible threat exceeds
    its garrison switches to a defender (the rules keep the hammers); a capital or a city near
    barbarians that has only one defender after turn 30 puts a second one first.
@@ -53,10 +67,12 @@ counters, war success, war plans) that the diplomacy below reads.
 5. **Units** (`units.rs`): promotions and upgrades first (also for fortified garrisons that
    get no orders), then every group that needs orders gets one decision by its head unit's
    role (`Unit::ai_type`, set when the city trains it):
-   - **settlers** go to the best reachable site (`sites.rs`), re-planned every turn; a site
-     under danger needs an escort, which the settler picks up (a field unit or a spare
-     garrison unit) or waits for in its city; the first city is founded in place unless a
-     clearly better site is reachable this turn;
+   - **settlers** go to the best reachable site (`sites.rs`), re-planned every turn (and
+     never left asleep); a site under danger needs an escort, which the settler picks up (a
+     field unit or a spare garrison unit) or waits for in its city; the first city is founded
+     in place unless a clearly better site is reachable this turn; when no safe path exists
+     (it crosses a neighbour's land) an escorted settler takes the direct one; with no site
+     left on its landmass it goes overseas (see Naval);
    - **workers** (`workers.rs`), see below;
    - **garrisons** fill each city's quota;
    - **field armies** (`military.rs`), see below;
@@ -64,7 +80,8 @@ counters, war success, war plans) that the diplomacy below reads.
    - **great people** discover, join as specialists or start a golden age;
    - **missionaries** go to our cities without the state religion; **casters** move with the
      army or to the most threatened city; barbarians and animals attack what they can beat,
-     else roam. Any group still idle is skipped so the turn always ends.
+     else roam; **ships** see Naval. Units aboard a ship get no orders (the ship lands them).
+     Any group still idle is skipped so the turn always ends.
 6. **End-of-turn spells** (`casting.rs`): FfH's own AI casts spells at the end of every turn
    (`CvGame::updateMoves`, "BETTER AI (Spellcasting end of turn)"): `CvUnit::chooseSpell`, then
    buffs and summons, ported term by term with this AI's values.
@@ -75,13 +92,19 @@ counters, war success, war plans) that the diplomacy below reads.
 (a process at the head is re-decided every turn, so a city is never idle):
 
 1. no defender, or a garrison overwhelmed by the visible threat -> best defender;
-2. the first worker once there is something to improve;
+2. the first worker once there is something to improve; a transport for a settler waiting in
+   port (also forced to the head of that city's queue by `emergency`), a sea explorer while
+   our land is full and nothing is known overseas, work boats for unimproved sea resources;
 3. a second defender after turn 30 in the capital and in cities near barbarians;
 4. an explorer from the capital while a fifth of the home landmass is unknown;
 5. settlers while sites remain on the city's landmass and nothing threatens it: at most
-   (cities+1)/2 at a time (half at war), none while bankrupt, from cities of size 2+ (size 1
-   if the city is at its happy cap); while growing toward a settler the city builds only
-   short items (warriors that explore and escort);
+   (cities+1)/2 at a time (half at war), none while bankrupt, from cities of size 3+ (4+ with
+   a food surplus of 3; size 1 if the city is at its happy cap: a settler eats the food
+   surplus as production, so a size-2 city needs 30+ turns for one), not from a city more
+   than twice as slow as our fastest one on that landmass; with no site left at home, one
+   overseas settler at a time from a coastal city of size 3+ that has or can build a
+   transport; while growing toward a settler the city builds only short items (warriors
+   that explore and escort);
 6. FfH tier-2 units need a building in the training city (Archery Range for archers,
    Training Yard for axemen, ...): when one would open a defender or attacker a third
    stronger, about half the cities build it;
@@ -89,15 +112,29 @@ counters, war success, war plans) that the diplomacy below reads.
 8. a small mobile force (1 + cities/2) for barbarians and animals; more workers as worked
    plots need improving; heroes (not at the cost of the first expansion);
 9. the army target (larger for military-minded leaders, doubled at war or while preparing
-   one), a third of it siege engines at war, and a couple of siege engines whenever a stack
-   is camped at a city it cannot take; in peacetime army and buildings alternate;
+   one; at war the attackers are chosen for strength against cities -- city attack bonus,
+   first strikes, collateral -- not mobility), a third of it siege engines at war, and a
+   couple of siege engines whenever a stack is camped at a city it cannot take; in peacetime
+   army and buildings alternate;
 10. buildings by marginal value per production turn (yields, commerce, culture for a new
     city, happiness and health when capped, maintenance savings, specialists, experience,
     ...); casters; missionaries; projects that do not need dedicated logic; a process.
 
 Nothing left to build: workers, then field units (never garrisons a broke treasury would
-scrap). Units are chosen by power squared per production turn, so stronger units win unless
-much dearer.
+scrap); when no more units are affordable, the strongest one whatever it costs (support is
+the same for any unit and the weakest are disbanded first, so idle hammers buy quality).
+Units are chosen by power squared per production turn, so stronger units win unless much
+dearer.
+
+**Unit support** (`economy.rs`): FfH units beyond the free ones (handicap, civics,
+population) cost gold every turn. Every optional unit (extra defenders beyond one per city
+and two in the capital, the mobile force beyond its first unit, the army target, siege
+engines for a camped stack, cheap units while growing, casters) is built only while one more
+unit is affordable with research at 60% (30% at war or while preparing one): the estimate
+takes the marginal unit cost (handicap/AI/era percentages and inflation as they apply now)
+against the gold the empire would make at that slider. Without it, AIs that had run out of
+buildings trained units until research was at zero and nothing but units was left to
+build.
 
 **Citizens** (`governor.rs`, in ffh-core; replaces `AI_assignWorkingPlots` and is used by the
 rules wherever the C++ asks the city AI): a greedy assignment plus a swap pass. Food is valued
@@ -118,7 +155,10 @@ broke); a better defender or attacker weighted by the military pressure we see (
 near our cities, war, time), with an early "get past warriors" bonus, also through the next
 tech (Mining -> Bronze Working); the first arcane unit; happiness buildings when cities are
 capped; better civics than the ones we run (City States and Aristocracy cut maintenance);
-technology and open-borders trading with the civs we know.
+technology and open-borders trading with the civs we know; the first transport when our
+landmass is full or a settler waits in port (and the tech before it); processes (Writing,
+Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1` with
+`FFH_AI_TRACE` lists every candidate's value and score.
 
 ## Workers (`workers.rs`)
 
@@ -147,7 +187,10 @@ Each army group is a stack; per decision, in order:
 8. war: march on the target city (preparing: gather on the rally city -- the city nearest the
    target -- without crossing the border; too small: gather there first), stage on the best
    defensive plot next to it, bombard with siege engines, assault when the stack estimate
-   allows, fall back to wait for siege engines when hopeless;
+   allows (at a city we mean to take, a stack that with our other stacks around the city
+   has three attackers per defender attacks even at poor odds: each lost fight still takes
+   about a third of a defender's health and defenders do not heal between the fights of a
+   turn), fall back to wait for siege engines when hopeless;
 9. hunt the best barbarian/animal/lair target within 6 turns it can take (entering an empty
    lair destroys it);
 10. peacetime campaign: the nearest known barbarian city on our landmass (within 20 plots),
@@ -160,6 +203,23 @@ fight still wounds) plus collateral. Attack when the best odds are 65%+, or when
 kills cover the defenders (plus a margin for cities) with decent odds or a numbers advantage.
 `assault` then attacks repeatedly through `MISSION_MOVE_TO` with `MOVE_DIRECT_ATTACK` until the
 plot falls or the odds turn bad, and moves in.
+
+## Naval (`naval.rs`)
+
+- **Overseas sites**: when no site is left on a landmass where we have cities, `sites.rs` also
+  scores the coastal plots of other landmasses within 14 plots of our coastal cities.
+- **Settling by sea**: a settler with no site it can walk to goes to the nearest coastal city
+  and boards a transport there (`loadUnit`, its escort too when there is room); production
+  builds the transport (`UNITAI_SETTLER_SEA`; Trireme, Caravel, Galleon...) in that port.
+  The transport floods the sea (25 turns), sails next to the best site it can reach and
+  moves the cargo onto it (what C++ `groupAmphibMove` orders); the settler founds on its next
+  turn. An empty transport sails to a port where a settler waits, else waits in port; cargo
+  it has no plan for is unloaded in port.
+- **Sea explorers** (`UNITAI_EXPLORE_SEA`, one at a time) reveal coasts while our land is full
+  and nothing overseas is known; when nothing is left to reveal, one that can carry becomes a
+  transport.
+- **Work boats** improve sea resources in our borders (one per unimproved resource, at most
+  one per city at a time).
 
 ## Diplomacy (`diplomacy.rs`)
 
@@ -183,11 +243,13 @@ never with the civ it prepares a war against.
 - **Reachability**: `reach.rs` floods once from a unit (Dijkstra on movement points, bounded
   by a turn budget, unrevealed plots assumed passable) and scores every reached plot; only the
   chosen target gets a real path through the rules' `MISSION_MOVE_TO`.
-- **City sites** (`sites.rs`): scored once per turn per player, only within 7 plots of our
-  cities, greedily picked with city spacing.
+- **City sites** (`sites.rs`): scored at most once per `update()` per player, only within 7
+  plots of our cities (overseas: coastal plots within 14 of our coastal cities, only when
+  the home landmasses are full), greedily picked with city spacing.
 - Targets, peril and the road plan are computed once per turn per player.
-- Measured with `ffh bench` (6 civs, standard map, 300 turns): about 20-30 ms per turn on
-  one core, two thirds of it inside the controller (including the moves it orders).
+- Measured with `ffh stats` (6 civs, standard map, 300 turns, 20 seeds): about 24 ms per
+  turn on average (four games in parallel on four cores), two thirds of it inside the
+  controller (including the moves it orders).
 
 ## Tools
 
@@ -201,17 +263,28 @@ never with the civ it prepares a war against.
   plots (worked, yields, improvements).
 - `FFH_AI_TRACE=all|<player>` traces AI decisions to stderr; `FFH_LOG=all|<player>` prints the
   game log.
+- `--option GAMEOPTION_X` (repeatable) turns game options on for any of these commands (for
+  example `GAMEOPTION_ADVANCED_START`).
 
 ## Known gaps (future work)
 
-- No naval play: no transports or invasions, no settling of other islands; naval units hold
-  in port. Civs alone on a small island stay small and may never meet the others.
-- No hurrying (gold or population), no wonder racing, no vassals or defensive pacts, the vote
-  sources (Overcouncil / Undercouncil) use the defaults.
+- Naval: no amphibious invasions (wars only target cities on landmasses we share; good
+  transports come late in the tech tree), no naval combat, escorts or blockades; ships only
+  settle, explore and fish. Overseas settling sends one settler at a time.
+- Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
+  land; expansion is slow because settlers wait until no enemy is near their city. Letting
+  them go out under a held threat founded more cities but lost many more to the barbarians
+  (measured), so the gate stays.
+- Expansion is slow everywhere in the first 100 turns (about two cities): settlers cost 220
+  hammers on normal speed and cities wait for size 3-4 and for the barbarians to leave.
+- Economy: research at about half the commerce by turn 300; cottages need Education,
+  libraries Writing; maintenance and civic upkeep take a third of the commerce. Gating
+  expansion on the research it leaves was tried (fewer cities, no better score by turn 300).
+- Wars rarely take civ cities: tier-1/2 attackers against fortified defenders in cities need
+  siege engines and casters; stacks act one at a time (a grinding assault counts the other
+  stacks around the city but does not wait for them).
+- No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
+  defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
   terraforming, and no dedicated logic for civ-specific mechanics (Sheaim planar gates,
   Infernal and Mercurian projects, Kuriotates settlements, Armageddon rituals).
-- The economy is the main limit: most civs run their research slider low by turn 200 because
-  of city maintenance; cottages need Education, trading Trade.
-- Wars rarely take civ cities: city defenders with walls and hills often beat the attackers
-  available, and stacks wait for siege engines that come late in the tech tree.
