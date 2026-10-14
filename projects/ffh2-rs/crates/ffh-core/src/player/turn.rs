@@ -1195,6 +1195,9 @@ pub(crate) fn reassign_player_advanced(g: &mut Game, old: PlayerId, new: PlayerI
     g.setup.players[oi].handicap = handicap;
     g.setup.players[oi].slot_status = slot_status;
     g.setup.players[oi].human = human;
+    // The controllers are this port's form of the slot claim / net id, which C++ swaps too
+    // (whoever played `old` now plays `new`).
+    g.controllers.raw.swap(oi, ni);
 
     for o in 0..PlayerOptionType::NUM {
         let o = PlayerOptionType::from_usize(o);

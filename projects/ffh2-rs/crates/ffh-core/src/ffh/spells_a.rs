@@ -317,35 +317,7 @@ fn caster_at_war(g: &Game, caster: UnitId, team: TeamId) -> bool {
 /// (the old slot's are cleared); `setActivePlayer` is UI. Both players then update their team
 /// and human flag, and with a timer the new slot becomes a temporary player of `old`.
 fn reassign_player_advanced(g: &mut Game, old: PlayerId, new: PlayerId, timer: i32) {
-    let n = g.num_civ_players();
-    if old.idx() >= n || new.idx() >= n {
-        return;
-    }
-    let (o, nw) = (old.idx(), new.idx());
-    let handicap = g.setup.players[nw].handicap;
-    let slot_status = g.setup.players[nw].slot_status;
-    let human = g.setup.players[nw].human;
-    g.setup.players[nw].handicap = g.setup.players[o].handicap;
-    g.setup.players[nw].slot_status = g.setup.players[o].slot_status;
-    g.setup.players[nw].human = g.setup.players[o].human;
-    g.setup.players[o].handicap = handicap;
-    g.setup.players[o].slot_status = slot_status;
-    g.setup.players[o].human = human;
-    g.controllers.raw.swap(o, nw);
-    for opt in g.players[new].options.keys() {
-        let v = g.players[old].options[opt];
-        g.players[new].options[opt] = v;
-        g.players[old].options[opt] = false;
-    }
-    g.player_update_team_type(old);
-    g.player_update_team_type(new);
-    g.player_update_human(old);
-    g.player_update_human(new);
-    if timer != -1 {
-        // CvPlayer::changeTempPlayerTimer / setRealPlayer (plain member updates).
-        g.players[new].temp_player_timer += timer;
-        g.players[new].real_player = Some(old);
-    }
+    crate::player::turn::reassign_player_advanced(g, old, new, timer);
 }
 
 // ---------------------------------------------------------------------------------------------
