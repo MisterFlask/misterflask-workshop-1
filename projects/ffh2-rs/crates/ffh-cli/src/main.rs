@@ -9,7 +9,7 @@
 //!                                    (per-civ snapshots after T1, T2, .. turns; events)
 //!
 //! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
-//! every N turns)
+//! every N turns)  --option GAMEOPTION_X (repeatable)
 
 mod run;
 mod stats;
@@ -17,7 +17,7 @@ mod stats;
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--at T1,T2,..]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--at T1,T2,..]");
     std::process::exit(2)
 }
 
@@ -37,6 +37,7 @@ fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
             "--civs" => cfg.civs = val(i).parse().unwrap_or_else(|_| usage()),
             "--size" => cfg.world = val(i),
             "--turns" => cfg.turns = val(i).parse().unwrap_or_else(|_| usage()),
+            "--option" => cfg.options.push(val(i)),
             "--report" => cfg.report_every = val(i).parse().unwrap_or_else(|_| usage()),
             "--at" => at = val(i).split(',').map(|t| t.parse().unwrap_or_else(|_| usage())).collect(),
             _ => usage(),

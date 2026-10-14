@@ -9,7 +9,7 @@ use ffh_core::controller::{Controller, ControllerRef};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_core::mapscript::FractalMapScript;
-use ffh_core::setup::GameSetup;
+
 use ffh_core::structs::*;
 use ffh_data::*;
 
@@ -94,11 +94,13 @@ pub struct RunConfig {
     pub verbose: bool,
     /// Print `report` every this many turns (0 = never).
     pub report_every: i32,
+    /// Game options (`GAMEOPTION_*` type names) to turn on.
+    pub options: Vec<String>,
 }
 
 impl Default for RunConfig {
     fn default() -> Self {
-        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0 }
+        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0, options: Vec::new() }
     }
 }
 
@@ -114,8 +116,9 @@ pub struct TurnStat {
 /// A new game with the AI on every slot; the returned `Timed` measures AI time.
 pub fn new_game(cfg: &RunConfig) -> (Game, Arc<Timed>) {
     let d = ffh_data::global();
-    let setup = GameSetup::standard(d, cfg.civs, &cfg.world, cfg.seed);
-    let mut g = Game::new(d, setup);
+    let mut o = ffh_core::setup::SetupOptions::new(d, cfg.civs, &cfg.world, cfg.seed);
+    o.options = cfg.options.iter().map(|name| d.t::<GameOptionType>(name)).collect();
+    let mut g = Game::new_with_options(d, &o);
     g.map_script = Arc::new(FractalMapScript::default());
     let timed = Arc::new(Timed::new(ffh_ai::ai_controller()));
     let ai: ControllerRef = timed.clone();
@@ -352,7 +355,7 @@ mod tests {
     /// Same seed, same game: every per-turn sync checksum must match.
     #[test]
     fn same_seed_same_game() {
-        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0 };
+        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0, options: Vec::new() };
         let (mut a, _) = new_game(&cfg);
         let sa = autoplay(&mut a, &cfg);
         let (mut b, _) = new_game(&cfg);
@@ -366,13 +369,28 @@ mod tests {
     /// Different seeds should give different games.
     #[test]
     fn different_seed_different_game() {
-        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0 };
-        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0 } };
+        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, options: Vec::new() };
+        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0, options: Vec::new() } };
         let (mut a, _) = new_game(&cfg1);
         let (mut b, _) = new_game(&cfg2);
         let sa = autoplay(&mut a, &cfg1);
         let sb = autoplay(&mut b, &cfg2);
         assert_ne!(sa.last().map(|s| s.checksum), sb.last().map(|s| s.checksum));
+    }
+
+    /// With GAMEOPTION_ADVANCED_START the AI spends its points (cities, units) and leaves
+    /// advanced start on its first turn.
+    #[test]
+    fn ai_spends_advanced_start_points() {
+        let cfg = RunConfig { seed: 3, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 2, verbose: false, report_every: 0, options: vec!["GAMEOPTION_ADVANCED_START".into()] };
+        let (mut g, _) = new_game(&cfg);
+        autoplay(&mut g, &cfg);
+        for p in g.player_ids() {
+            if g.players[p].alive && !g.player_is_barbarian(p) {
+                assert!(!g.players[p].cities.is_empty(), "player {p:?} has no city");
+                assert_eq!(g.players[p].advanced_start_points, -1);
+            }
+        }
     }
 }
 
@@ -416,4 +434,5 @@ pub fn inspect(g: &Game, p: PlayerId) -> String {
         }
     }
     out
+
 }

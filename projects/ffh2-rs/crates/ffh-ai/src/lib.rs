@@ -17,6 +17,7 @@ use ffh_core::ids::*;
 use ffh_core::structs::*;
 use ffh_data::*;
 
+pub mod advanced_start;
 pub mod casting;
 pub mod diplomacy;
 pub mod empire;
@@ -78,6 +79,10 @@ impl Controller for Ai {
     fn play_turn(&self, g: &mut Game, p: PlayerId) {
         if !g.players[p].alive {
             return;
+        }
+        // C++ setTurnActive -> AI_doAdvancedStart while the player still has start points.
+        if g.players[p].advanced_start_points >= 0 && !g.players[p].human && !g.player_is_barbarian(p) {
+            advanced_start::run(g, p);
         }
         let turn = g.game_turn();
         let first_call = self.played.lock().unwrap().insert(p, turn) != Some(turn);
