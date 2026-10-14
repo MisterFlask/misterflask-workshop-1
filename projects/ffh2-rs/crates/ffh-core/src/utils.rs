@@ -1129,7 +1129,13 @@ impl Game {
     /// C++ `atWar(eTeamA, eTeamB)` (`CvTeam::isAtWar` is the `Team::at_war` field).
     #[inline]
     pub fn at_war(&self, a: TeamId, b: TeamId) -> bool {
-        debug_assert_eq!(self.teams[a].at_war[b], self.teams[b].at_war[a]);
+        // C++ quirk: the C++ FAssert of symmetry fails for teams FfH creates mid-game
+        // (`addPlayerAdvanced`: Infernals, `formEmpire`), which are at war with the barbarians
+        // one-sidedly; checked here for every other pair.
+        debug_assert!(
+            self.teams[a].at_war[b] == self.teams[b].at_war[a] || self.team_is_barbarian(a) || self.team_is_barbarian(b),
+            "at_war({a:?}, {b:?}) is not symmetric"
+        );
         debug_assert!(a != b || !self.teams[a].at_war[b]);
         self.teams[a].at_war[b]
     }

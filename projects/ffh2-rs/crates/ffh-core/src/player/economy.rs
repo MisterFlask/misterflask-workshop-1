@@ -1447,7 +1447,10 @@ impl Game {
     pub fn player_change_trade_routes(&mut self, p: PlayerId, change: i32) {
         if change != 0 {
             self.players[p].trade_routes += change;
-            debug_assert!(self.players[p].trade_routes >= 0);
+            // C++ quirk: the C++ `FAssert(>= 0)` can fail: `CvPlayer::setTeam` (FfH
+            // `addPlayerAdvanced` puts the Mercurians on their summoner's team) does not process the
+            // team's `bTeamShare` buildings for the new member, who still loses them with the
+            // team's cities (e.g. Basium converting a teammate's Great Lighthouse city).
             self.player_update_trade_routes(p);
         }
     }
@@ -1456,7 +1459,7 @@ impl Game {
     pub fn player_change_coastal_trade_routes(&mut self, p: PlayerId, change: i32) {
         if change != 0 {
             self.players[p].coastal_trade_routes += change;
-            debug_assert!(self.players[p].coastal_trade_routes >= 0);
+            // See `player_change_trade_routes` (C++ quirk: can go negative).
             self.player_update_trade_routes(p);
         }
     }
