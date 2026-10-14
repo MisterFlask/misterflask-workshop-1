@@ -105,6 +105,7 @@ impl Controller for Ai {
         if !v.barbarian {
             empire::manage(g, p);
             production::emergency(self, g, p);
+            expansion::prepare_escorts(g, p); // early-expansion
             diplomacy::manage(g, &v);
             // War declarations change the picture.
             v = view::View::new(g, p);
