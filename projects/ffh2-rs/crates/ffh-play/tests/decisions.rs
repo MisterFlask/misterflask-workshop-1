@@ -455,6 +455,80 @@ fn commands_are_checked_like_the_exe() {
     let _ = AdvisorAnswerer;
 }
 
+/// The AutoMoves rule (`updateTestEndTurn`) fires at most once per control episode: when the
+/// orders it continues leave a group ready to auto again, `advance` returns instead of sending
+/// AutoMoves forever; a save there resumes without sending it again; the human's next command
+/// starts a new episode.
+#[test]
+fn auto_moves_fires_once_per_control_episode() {
+    let (mut s, _) = duel(20, |_, _| 0);
+    to_turn(&mut s, 3);
+    let h = s.human;
+    // No barbarians or animals around: a human group in danger drops its orders (autoMission).
+    let barbarian = s.g.barbarian_player();
+    for u in s.g.players[barbarian].units.clone() {
+        s.g.unit_kill(u, false, None);
+    }
+    // A land group of ours and a destination two or more turns away (found with a finder of
+    // our own, as the interface does).
+    let mut target = None;
+    'search: for &grp in &s.g.players[h].groups {
+        let head = s.g.groups[grp].units[0];
+        if s.g.unit_get_domain_type(head) != DomainType::DOMAIN_LAND || !s.g.group_ready_to_move(grp, true) {
+            continue;
+        }
+        let (x, y) = (s.g.units[head].x, s.g.units[head].y);
+        let mut finder = ffh_core::path::PathFinder::new(ffh_core::path::FinderKind::Path);
+        finder.set_group(Some(grp));
+        for r in 3..8 {
+            for (dx, dy) in [(r, 0), (-r, 0), (0, r), (0, -r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+                let Some(p) = s.g.plot_xy(x, y, dx, dy) else { continue };
+                let (tx, ty) = (s.g.map.plots[p].x, s.g.map.plots[p].y);
+                if finder.generate_path(&s.g, x, y, tx, ty, false, 0, false) && finder.path_turns().is_some_and(|t| t >= 2) {
+                    target = Some((grp, tx, ty));
+                    break 'search;
+                }
+            }
+        }
+    }
+    let (grp, tx, ty) = target.expect("a land group with a destination two turns away");
+    for other in s.g.players[h].groups.clone() {
+        if other != grp && s.g.group_ready_to_move(other, true) {
+            s.g.group_set_activity_type(other, ActivityType::ACTIVITY_SLEEP);
+        }
+    }
+    let turn = s.g.game_turn();
+    s.g.group_insert_at_end_mission_queue(grp, MissionData { mission_type: MissionType::MISSION_MOVE_TO, data1: tx, data2: ty, flags: 0, push_turn: turn }, false);
+    let auto_moves = |s: &Session| s.journal_lines().unwrap().iter().filter(|l| l.contains("\"c\":\"auto_moves\"")).count();
+    let idle_with_orders = |s: &Session| ffh_play::decision::ready_groups(&s.g, h).is_empty() && s.g.player_has_auto_unit(h);
+    let refill = |s: &mut Session| {
+        for u in s.g.groups[grp].units.clone() {
+            s.g.units[u].moves = 0;
+        }
+    };
+    assert!(idle_with_orders(&s));
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert_eq!(auto_moves(&s), 1, "the queued order is continued");
+    assert!(!s.g.groups[grp].mission_queue.is_empty(), "the move takes more than one turn");
+    // As if the order had not progressed: the group can move and still has it queued.
+    refill(&mut s);
+    assert!(idle_with_orders(&s));
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert_eq!(auto_moves(&s), 1, "AutoMoves at most once per control episode");
+    // A save here resumes in the same episode.
+    let (bytes, sidecar) = s.save_bytes().unwrap();
+    assert!(sidecar.auto_moves_tried);
+    let mut r = Session::load(&bytes, Some(&sidecar), Arc::new(AdvisorAnswerer), SessionOptions::default()).unwrap();
+    assert_eq!(r.advance(&mut |_| {}), Stop::Human);
+    assert_eq!(auto_moves(&r), 0, "the resumed session sends it again");
+    // The human's next command starts a new episode.
+    ok(&mut s, Command::SetOption { option: PlayerOptionType::PLAYEROPTION_QUICK_MOVES, value: true });
+    refill(&mut s);
+    assert!(idle_with_orders(&s));
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    assert_eq!(auto_moves(&s), 2);
+}
+
 /// Parameters no exe path sends are refused before any rules call (review of P1): specialist
 /// changes other than +/-1 (a huge one looped the governor for hours), slider steps other than
 /// COMMERCE_PERCENT_CHANGE_INCREMENTS (overflow), mission flags (AI movement modes),

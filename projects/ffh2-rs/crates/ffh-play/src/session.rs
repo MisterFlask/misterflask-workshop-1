@@ -104,6 +104,8 @@ pub struct Session {
     /// Messages ever added to `messages` (the store drops the oldest beyond its size).
     messages_total: usize,
     opts: SessionOptions,
+    /// The AutoMoves rule fired in this control episode (since the human's last applied
+    /// command); saved in the sidecar, so a resumed session does not send it again.
     auto_moves_tried: bool,
     last_autosave: Option<SavePaths>,
     /// A new game not yet at its first control point (see `advance`).
@@ -181,6 +183,7 @@ impl Session {
             *s.shared.pending_events.lock().unwrap() = sc.pending_events.clone();
             s.messages = sc.messages_tail.clone();
             s.messages_total = s.messages.len();
+            s.auto_moves_tried = sc.auto_moves_tried;
         }
         Ok(s)
     }
@@ -239,7 +242,8 @@ impl Session {
                         self.checkpoint(Some("start"));
                     }
                     // updateTestEndTurn: nothing ready (and nothing busy) but queued orders ->
-                    // CvNetAutoMoves. At most once per control episode, so a stuck mission
+                    // CvNetAutoMoves. At most once per control episode (until the human's next
+                    // applied command), so a mission that leaves its group ready to auto again
                     // cannot spin.
                     if self.opts.auto_moves_when_idle
                         && !self.auto_moves_tried
@@ -283,7 +287,13 @@ impl Session {
         match plan {
             Plan::Noop => Ok(CmdOk::Applied { log: Vec::new(), accepted: None }),
             Plan::Confirm(c) => Ok(CmdOk::NeedsConfirm(c)),
-            Plan::Apply(action) => Ok(self.apply_journaled(h, cmd, &action)),
+            Plan::Apply(action) => {
+                // The human acted: a new control episode, in which the AutoMoves rule may fire
+                // again. Reset before applying, so a turn boundary autosaved during the settle
+                // records the episode's state as the uninterrupted run has it.
+                self.auto_moves_tried = false;
+                Ok(self.apply_journaled(h, cmd, &action))
+            }
         }
     }
 
@@ -299,7 +309,6 @@ impl Session {
         }
         command::apply(&mut self.g, h, action);
         self.settle(h);
-        self.auto_moves_tried = false;
         // The human's messages since the command started (turn boundaries during the settle
         // drained some of them already).
         self.drain_log();
@@ -418,6 +427,7 @@ impl Session {
             journal: journal.path().map(|p| p.display().to_string()),
             journal_line: journal.count(),
             messages_tail: self.messages.iter().rev().take(50).rev().cloned().collect(),
+            auto_moves_tried: self.auto_moves_tried,
         }
     }
 

@@ -144,9 +144,10 @@ pub fn execute(&mut self, cmd: &Command) -> Result<CmdOk, CmdErr> {
     if let Plan::NeedsConfirm(c) = plan { return Ok(CmdOk::confirm(c)) }   // not journaled, no state change
     self.journal.cmd(self.g.game_turn(), self.g.turn_slice, cmd);
     let log_mark = self.g.log.entries.len();
+    self.auto_moves_tried = false;                      // the human acted: a new control episode (reset before
+                                                        // applying, so an autosave in the settle records it)
     command::apply(&mut self.g, h, &plan);              // CvNet ports; may raise blocking decisions
     self.settle(h);                                     // >= 1 update(), then while a human group is busy (<= 10_000)
-    self.auto_moves_tried = false;
     Ok(CmdOk::applied(self.take_log_since(log_mark)))
 }
 ```
@@ -247,7 +248,7 @@ Cost of the guard:
 
 **Save bundle.** A save is two files:
 * `<name>.ffhsave`: plain `Game::save()` bytes, loadable by any tool;
-* `<name>.ffhsess`: a small JSON sidecar `{v:1, human, pending_events:[[p,id],..], journal:"<path>", journal_line:N, messages_tail:[..]}`.
+* `<name>.ffhsess`: a small JSON sidecar `{v:1, human, pending_events:[[p,id],..], journal:"<path>", journal_line:N, messages_tail:[..], auto_moves_tried}` (`auto_moves_tried`, optional: the AutoMoves rule already fired at this control point).
 
 The sidecar holds the only session state that matters to the rules: deferred event ids. These are the C++ `m_listPopups` content, which C++ saves with the player. Pending votes, research and idle cities are derived from `Game`.
 
@@ -788,7 +789,7 @@ Each phase is independently testable and committable. `cargo build --release && 
   * a minimal bot that reads `&Game` through `Session::read`.
 * Tests: T1–T6 and T9 (§8). This phase decides every semantic question; the rest is presentation.
 * **As built (done).** The API is §3 minus what belongs to P3 (`Session::query`, `UiState`, the report). No ffh-core, ffh-ai, ffh-cli or `controller.rs` edit; no engine hook was needed (the P7 list stands). Semantics pinned down, with the C++ each follows (all re-read in `/home/user/ref/ffh2`):
-  * **Loop** (§2.2) as designed: `phase` is the pure predicate; `advance` drains the log at every control point and turn boundary, journals a checkpoint and autosaves at every turn boundary (`auto/T####`) and at a new game's first control point (`auto/start`: `game_init` leaves the first player's turn active, so a game starts without a boundary), and runs the 200k-slice watchdog; `execute` validates under a `QueryGuard`, journals, applies, settles (≥ 1 `update()`, then while a human group is busy, ≤ `settle_limit`). `on_slice` gets a plain `&Game` (transports must read plain fields or take a guard). The AutoMoves rule (`updateTestEndTurn`) fires once per control episode when no group is ready and some has queued orders. `updateTestEndTurn`'s *automatic end of turn* (`sendTurnComplete` when nothing is ready and a unit moved) is **not** ported: the human always ends the turn, as with `PLAYEROPTION_WAIT_END_TURN`.
+  * **Loop** (§2.2) as designed: `phase` is the pure predicate; `advance` drains the log at every control point and turn boundary, journals a checkpoint and autosaves at every turn boundary (`auto/T####`) and at a new game's first control point (`auto/start`: `game_init` leaves the first player's turn active, so a game starts without a boundary), and runs the 200k-slice watchdog; `execute` validates under a `QueryGuard`, journals, applies, settles (≥ 1 `update()`, then while a human group is busy, ≤ `settle_limit`). `on_slice` gets a plain `&Game` (transports must read plain fields or take a guard). The AutoMoves rule (`updateTestEndTurn`) fires once per control episode when no group is ready and some has queued orders. An episode ends when a command of the human is applied (`execute` resets the flag before applying; the AutoMoves `advance` sends itself does not), and the flag is in the sidecar, so a session resumed at that control point does not send AutoMoves again (P1 review: the flag used to be reset by the AutoMoves it guarded; `tests/decisions.rs` covers a group left ready to auto). `updateTestEndTurn`'s *automatic end of turn* (`sendTurnComplete` when nothing is ready and a unit moved) is **not** ported: the human always ends the turn, as with `PLAYEROPTION_WAIT_END_TURN`.
   * **Ready groups** (`decision::ready_groups`, used by the AutoMoves rule, the end-turn gate and `pending.ready_groups`) are `readyToMove(bAny = true)` groups **without** automated and FfH AI-controlled groups: C++ moves those in `AI_unitUpdate`, here they idle until the P7 automation hook (F15), and would otherwise block the gate and AutoMoves forever. They are listed as `pending.ai_groups_idle`.
   * **Research-site rule** (F5): the mark is `ResearchMark {turn, slice, player, team tech count, overflow research}`, not only `(turn, slice, p)`: nothing changes between `doResearch`'s two calls, so a later call in the same slice after a tech was acquired (research-next during AI turns) is not taken for the `AI_chooseResearch` call. Verified by T6 both ways.
   * **Selection checks** (`selection.rs`): the exe checks an action on the *interface selection list*, a `CvSelectionGroup` of the selected units, before sending it (`canHandleAction`). `selection.rs` ports `canStartMission`, `canDoCommand`, `canEverDoCommand`, `isBusy` and `getBestBuildRoute` over the selected units, so a selection that is not a whole group is checked like the exe does, before any join. With shift (append) and a mirrored group, the mission plot is the group's last mission plot when visible (`canHandleAction`). Selections must be on one plot, distinct, the human's.

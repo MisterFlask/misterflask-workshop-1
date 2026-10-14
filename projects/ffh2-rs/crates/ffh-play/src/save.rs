@@ -27,6 +27,8 @@ pub struct Sidecar {
     pub journal_line: usize,
     /// The human's latest messages.
     pub messages_tail: Vec<LogEntry>,
+    /// The session's AutoMoves rule already fired at this control point (absent: false).
+    pub auto_moves_tried: bool,
 }
 
 pub fn log_entry_json(e: &LogEntry) -> Json {
@@ -46,6 +48,7 @@ impl Sidecar {
             "journal" => self.journal.as_deref(),
             "journal_line" => self.journal_line,
             "messages_tail" => Json::Arr(self.messages_tail.iter().map(log_entry_json).collect()),
+            "auto_moves_tried" => self.auto_moves_tried,
         }
     }
 
@@ -71,6 +74,7 @@ impl Sidecar {
             journal: j.opt("journal").map_err(e)?,
             journal_line: j.req("journal_line").map_err(e)?,
             messages_tail,
+            auto_moves_tried: j.get_or("auto_moves_tried", false).map_err(e)?,
         })
     }
 }
@@ -169,8 +173,12 @@ mod tests {
             journal: Some("saves/journal.jsonl".into()),
             journal_line: 12,
             messages_tail: vec![LogEntry { turn: 3, player: Some(0), text: "hi \"there\"".into() }],
+            auto_moves_tried: true,
         };
         assert_eq!(Sidecar::from_json(&Json::parse(&s.to_json().to_string()).unwrap()).unwrap(), s);
+        // Optional members of version 1 read as their defaults.
+        let old = Json::parse(r#"{"v":1,"human":0,"pending_events":[],"journal":null,"journal_line":3,"messages_tail":[]}"#).unwrap();
+        assert!(!Sidecar::from_json(&old).unwrap().auto_moves_tried);
 
         let dir = std::env::temp_dir().join(format!("ffh-play-save-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
