@@ -19,14 +19,14 @@ impl Game {
         }
     }
     /// Trigger `PythonCanDoCity(eTrigger, ePlayer, iCityId)`.
-    pub fn py_trigger_can_do_city(&mut self, trigger: EventTriggerType, p: PlayerId, c: CityId) -> bool {
+    pub fn py_trigger_can_do_city(&self, trigger: EventTriggerType, p: PlayerId, c: CityId) -> bool {
         match &tables(self.d).trigger_can_do_city[trigger] {
             Some(b) => (b.f)(self, trigger, p, c),
             None => true,
         }
     }
     /// Trigger `PythonCanDoUnit(eTrigger, ePlayer, iUnitId)`.
-    pub fn py_trigger_can_do_unit(&mut self, trigger: EventTriggerType, p: PlayerId, u: UnitId) -> bool {
+    pub fn py_trigger_can_do_unit(&self, trigger: EventTriggerType, p: PlayerId, u: UnitId) -> bool {
         match &tables(self.d).trigger_can_do_unit[trigger] {
             Some(b) => (b.f)(self, trigger, p, u),
             None => true,

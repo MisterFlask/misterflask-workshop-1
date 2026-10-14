@@ -29,9 +29,9 @@ pub type VoteFn = fn(&mut Game, VoteType, i32, &PyCall);
 /// Trigger `PythonCanDo(triggerData)`.
 pub type TriggerCanDoFn = fn(&mut Game, &mut EventTriggeredData) -> bool;
 /// Trigger `PythonCanDoCity(eTrigger, ePlayer, iCityId)`.
-pub type TriggerCityFn = fn(&mut Game, EventTriggerType, PlayerId, CityId) -> bool;
+pub type TriggerCityFn = fn(&Game, EventTriggerType, PlayerId, CityId) -> bool;
 /// Trigger `PythonCanDoUnit(eTrigger, ePlayer, iUnitId)`.
-pub type TriggerUnitFn = fn(&mut Game, EventTriggerType, PlayerId, UnitId) -> bool;
+pub type TriggerUnitFn = fn(&Game, EventTriggerType, PlayerId, UnitId) -> bool;
 /// Trigger `PythonCallback(triggerData, ePlayer)`.
 pub type TriggerCallbackFn = fn(&mut Game, &EventTriggeredData, PlayerId);
 /// Event `PythonCanDo(eEvent, triggerData)`.

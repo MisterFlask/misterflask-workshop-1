@@ -1437,15 +1437,7 @@ impl Game {
     /// The `PythonCanDoUnit(eTrigger, ePlayer, iUnitId)` call of `CvUnit::getTriggerValue`
     /// (`callFunction(PYRandomEventModule, ..)`; a 0 result rejects the unit).
     fn unit_trigger_python_can_do_unit(&self, trigger: EventTriggerType, owner: PlayerId, u: UnitId) -> bool {
-        // SIGNATURE: `Game::py_trigger_can_do_unit` (ffh/random_events.rs) and its
-        // `TriggerUnitFn` (ffh/dispatch.rs) take `&mut Game`, but C++ `getTriggerValue` is const
-        // and runs from const code (`CvPlot::canTrigger`, `CvPlayer::getEventTriggerWeight`), so
-        // this `&self` port cannot call the hook. The FFH2 `canTrigger*Unit` callbacks only read
-        // state: once the hook takes `&self`, this becomes
-        // `self.py_trigger_can_do_unit(trigger, owner, u)`. No callback is bound yet, so the
-        // hook would answer true as well.
-        let _ = (trigger, owner, u);
-        true
+        self.py_trigger_can_do_unit(trigger, owner, u)
     }
 
     /// C++ `CvUnit::canApplyEvent` (CvUnit.cpp:18160-18197).
