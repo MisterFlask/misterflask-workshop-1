@@ -12,8 +12,8 @@
 //! avoids starvation is worth 60 per point; while the city wants to grow (it has happy
 //! faces to spare and good tiles to work) food up to a growth target (6 at size 1, falling
 //! to 2 at size 5) is worth 23-38 depending on how much room there is, food past the target
-//! a third of that; a city that cannot usefully grow (at its happy cap, avoiding growth)
-//! values extra food at 2. While the city builds a food-production unit (settlers,
+//! a third of that; a city avoiding growth values extra food at 2, a city at its happy cap
+//! at -3 (growing would only add an angry citizen). While the city builds a food-production unit (settlers,
 //! workers) its surplus becomes hammers, so food is valued like production.
 //!
 //! Algorithm: always work the city centre; fill forced specialists; then add citizens
@@ -139,8 +139,13 @@ fn food_step_value(w: &Weights, f: &FoodContext, s: i32) -> i32 {
     if f.food_is_production {
         return w.production;
     }
-    if f.avoid_growth || f.growth_room <= 0 {
+    if f.avoid_growth {
         return 2;
+    }
+    if f.growth_room <= 0 {
+        // At the happy cap a new citizen would be angry (eats, does not work): a surplus only
+        // grows the city into disorder, so it is slightly unwelcome.
+        return -3;
     }
     let mut g = 20 + 3 * f.growth_room.min(6);
     if f.health_room <= 0 {

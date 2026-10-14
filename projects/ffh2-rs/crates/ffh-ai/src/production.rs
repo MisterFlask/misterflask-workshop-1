@@ -23,10 +23,32 @@ pub enum Choice {
 
 pub fn choose(ai: &Ai, g: &mut Game, c: CityId) {
     let p = g.cities[c].owner;
+    if !g.cities[c].order_queue.is_empty() {
+        // Asked again with an order queued (production made dirty, or the head is a process
+        // the rules re-ask about every turn): a process gives way to a fresh choice; anything
+        // else keeps being built.
+        if g.city_is_production_process(c) {
+            g.city_clear_order_queue(c);
+        } else {
+            return;
+        }
+    }
     if g.player_is_barbarian(p) {
         // FfH barbarian cities pick from a fixed list (CustomFunctions.BarbCityProduction).
         if g.cf_barb_city_production(c) {
             return;
+        }
+    }
+    // An undefended city with one of our fighters standing in it (the starting warrior, an
+    // escort): that unit becomes the garrison instead of training a new one.
+    let plot = g.city_plot(c);
+    if !g.player_is_barbarian(p) && garrison(g, p, plot).0 == 0 {
+        let spare = g.map.plots[plot].units.iter().copied().find(|&u| {
+            let unit = &g.units[u];
+            unit.owner == p && g.d.units[unit.unit_type].combat > 0 && g.unit_get_domain_type(u) == DomainType::DOMAIN_LAND && matches!(unit.ai_type, Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_COUNTER) | Some(UnitAIType::UNITAI_RESERVE))
+        });
+        if let Some(u) = spare {
+            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_CITY_DEFENSE);
         }
     }
     if let Some(choice) = decide(ai, g, c) {
@@ -270,7 +292,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         food_surplus: g.city_yield_rate(c, YieldType::YIELD_FOOD) - g.city_food_consumption(c, false, 0),
         production: g.city_yield_rate(c, YieldType::YIELD_PRODUCTION),
         happy_room: g.city_happy_level(c) - g.city_unhappy_level(c, 0),
-        at_war: civ_enemies_at_war(g, p),
+        at_war: civ_enemies_at_war(g, p) || crate::diplomacy::preparing_target(g, pl.team).is_some(),
         broke: financial_trouble(g, p),
     };
     crate::trace!(g, p, "{}: threat {} defenders {} ({}) food {:+} prod {} happy {}", city.name, ctx.threat, ctx.defenders, ctx.defense, ctx.food_surplus, ctx.production, ctx.happy_room);
@@ -377,6 +399,15 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         army_target = min_army;
     }
     let army_short = attackers < army_target;
+    // At war (or preparing): a third of the army in siege engines.
+    if ctx.at_war && army_short {
+        let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
+        if siege * 3 < attackers + 1 {
+            if let Some(u) = best_unit(g, c, Role::Siege) {
+                return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
+            }
+        }
+    }
     // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
     if army_short && (ctx.at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
         if let Some(u) = best_unit(g, c, Role::Attack) {
@@ -532,6 +563,7 @@ pub enum Role {
     Hero,
     Mage,
     Explore,
+    Siege,
 }
 
 fn is_hero(info: &UnitInfo) -> bool {
@@ -552,6 +584,7 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
         Role::Hero => is_hero(info) && info.combat > 0,
         Role::Mage => info.default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) || has(UnitAIType::UNITAI_WARWIZARD),
         Role::Explore => has(UnitAIType::UNITAI_EXPLORE),
+        Role::Siege => fighter && (has(UnitAIType::UNITAI_ATTACK_CITY) || has(UnitAIType::UNITAI_COLLATERAL)) && (info.bombard_rate > 0 || info.collateral_damage > 0),
     }
 }
 
@@ -579,12 +612,15 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         let turns = g.city_production_turns_left_unit(c, u, 0).max(1) as i64;
         let power = match role {
             Role::Defense => type_city_defense(info),
-            Role::Attack | Role::Hero => {
+            Role::Attack | Role::Hero | Role::Siege => {
                 let mut v = type_attack_power(d, u) as i64;
                 v += v * (info.moves.max(1) as i64 - 1) / 4;
                 v += v * (info.first_strikes * 2 + info.chance_first_strikes) as i64 / 20;
                 v += v * info.withdrawal_probability as i64 / 200;
                 v += info.collateral_damage as i64;
+                if role == Role::Siege {
+                    v += (info.bombard_rate * 20) as i64 + info.collateral_damage as i64 * 2;
+                }
                 v
             }
             Role::Worker => 100 + info.work_rate as i64,

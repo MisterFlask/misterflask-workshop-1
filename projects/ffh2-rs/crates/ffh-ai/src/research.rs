@@ -293,10 +293,15 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
     // Military: a better defender / attacker, as pressure demands.
     let (def, att) = best_military(g, p, ctx, Some(t));
     if def > ctx.best_defense {
-        value += ((def - ctx.best_defense) / 100 * (40 + 60 * ctx.pressure)) as i32;
+        value += ((def - ctx.best_defense) * (150 + 100 * ctx.pressure) / 100) as i32;
     }
     if att > ctx.best_attack {
-        value += ((att - ctx.best_attack) / 100 * (20 + 30 * ctx.pressure)) as i32;
+        value += ((att - ctx.best_attack) * (80 + 60 * ctx.pressure) / 100) as i32;
+    }
+    // FfH AI_chooseTech "early military beeline": past the first turns, get beyond warriors.
+    let tier1 = ctx.best_attack <= 400 && ctx.best_defense <= 400;
+    if tier1 && g.game_turn() >= 25 && (def > ctx.best_defense || att > ctx.best_attack) {
+        value += 500;
     }
     // Casters: the first arcane unit.
     if let Some(l) = leader {

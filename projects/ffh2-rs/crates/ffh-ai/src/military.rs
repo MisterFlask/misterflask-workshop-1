@@ -49,9 +49,23 @@ fn attackers(g: &Game, grp: GroupId) -> Vec<UnitId> {
     g.groups[grp].units.iter().copied().filter(|&u| attack_power(g, u) > 0 && g.unit_can_attack(u) && g.unit_moves_left(u) > 0).collect()
 }
 
-/// Fight estimate against plot `q`: (best odds of our attackers vs their best defender, per
-/// mille; defenders there; our attackers able to fight).
-fn assess(g: &Game, grp: GroupId, q: PlotIdx) -> Option<(i32, i32, i32)> {
+/// Fight estimate against a plot.
+#[derive(Copy, Clone, Debug)]
+pub struct Assessment {
+    /// Best odds (per mille) of one of our attackers against their best defender.
+    pub best: i32,
+    /// Defenders there.
+    pub n_def: i32,
+    /// Our attackers able to fight now.
+    pub n_att: i32,
+    /// Expected "defender kills" of the whole stack, per mille: each attacker counts its odds
+    /// plus a quarter of the rest (a lost fight still wounds the defender); collateral
+    /// attackers count more against stacks.
+    pub effective: i32,
+}
+
+/// Fight estimate against plot `q`.
+fn assess(g: &Game, grp: GroupId, q: PlotIdx) -> Option<Assessment> {
     let mut atts = attackers(g, grp);
     if atts.is_empty() {
         return None;
@@ -60,26 +74,40 @@ fn assess(g: &Game, grp: GroupId, q: PlotIdx) -> Option<(i32, i32, i32)> {
     let owner = g.groups[grp].owner;
     let mut best = 0;
     let mut n_def = 0;
-    for &u in atts.iter().take(3) {
+    let mut effective = 0;
+    let mut any = false;
+    for &u in atts.iter().take(MAX_STACK) {
         if !g.unit_can_move_or_attack_into(u, q, false) {
             continue;
         }
+        any = true;
         let Some(def) = g.plot_get_best_defender(q, None, Some(owner), Some(u), false, false, false) else {
-            return Some((1000, 0, atts.len() as i32));
+            return Some(Assessment { best: 1000, n_def: 0, n_att: atts.len() as i32, effective: 1000 * atts.len() as i32 });
         };
-        best = best.max(g.get_combat_odds(u, def));
+        let odds = g.get_combat_odds(u, def);
+        best = best.max(odds);
         n_def = n_def.max(g.plot_get_num_visible_enemy_defenders(q, u));
+        effective += odds + (1000 - odds) / 4;
+        if g.d.units[g.units[u].unit_type].collateral_damage > 0 {
+            effective += 250;
+        }
     }
-    Some((best, n_def.max(1), atts.len() as i32))
+    if !any {
+        return None;
+    }
+    Some(Assessment { best, n_def: n_def.max(1), n_att: atts.len() as i32, effective })
 }
 
-/// Is an assault worth it with these numbers?
-pub fn attack_ok(odds: i32, n_att: i32, n_def: i32, city: bool) -> bool {
-    let city_bonus = if city { 50 } else { 0 };
-    odds >= 650
-        || (odds >= 450 - city_bonus && n_att >= n_def + 1)
-        || (odds >= 250 - city_bonus && n_att >= 2 * n_def + 1)
-        || (odds >= 150 && n_att >= 3 * n_def + 2)
+/// Is an assault worth it?
+pub fn attack_ok(a: &Assessment, city: bool) -> bool {
+    if a.best >= 650 {
+        return true;
+    }
+    if a.best < 100 {
+        return false;
+    }
+    let need = a.n_def * if city { 1100 } else { 1000 };
+    a.effective >= need && (a.best >= 300 || a.n_att >= a.n_def + 2)
 }
 
 /// Attack plot `q` with the group until it falls or the odds turn bad. True if we fought.
@@ -94,11 +122,12 @@ pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
         if !g.plot_is_visible_enemy_unit_for_unit(q, head) {
             break;
         }
-        let Some((odds, n_def, n_att)) = assess(g, grp, q) else { break };
+        let Some(a) = assess(g, grp, q) else { break };
+        let (n_def, n_att) = (a.n_def, a.n_att);
         if n_def == 0 {
             break;
         }
-        if !attack_ok(odds, n_att, n_def, city) {
+        if !attack_ok(&a, city) {
             break;
         }
         g.groups[grp].ai_group_attack = false;
@@ -152,13 +181,20 @@ fn rally_city(g: &Game, p: PlayerId, target: PlotIdx) -> Option<CityId> {
 
 /// Enemy city our army marches on: the closest known enemy city to any of our cities.
 pub fn war_target(g: &Game, v: &View) -> Option<CityId> {
-    if v.civ_enemies.is_empty() {
+    war_target_from(g, v, None)
+}
+
+/// [`war_target`] for a stack at `from`: distances are measured from the stack (so a stack
+/// keeps the target it is closing in on).
+pub fn war_target_from(g: &Game, v: &View, from: Option<PlotIdx>) -> Option<CityId> {
+    let preparing = crate::diplomacy::preparing_target(g, v.team);
+    if v.civ_enemies.is_empty() && preparing.is_none() {
         return None;
     }
     let ours: Vec<(i32, i32, Option<AreaId>)> = g.players[v.p].cities.iter().map(|&c| (g.cities[c].x, g.cities[c].y, g.map.plots[g.city_plot(c)].area)).collect();
     let mut best: Option<(CityId, i32)> = None;
     for pl in g.players.iter() {
-        if !pl.alive || !v.civ_enemies.contains(&pl.team) {
+        if !pl.alive || !(v.civ_enemies.contains(&pl.team) || v.civ_enemies.is_empty() && preparing == Some(pl.team)) {
             continue;
         }
         for &c in &pl.cities {
@@ -168,7 +204,13 @@ pub fn war_target(g: &Game, v: &View) -> Option<CityId> {
             }
             let (cx, cy) = (g.cities[c].x, g.cities[c].y);
             let area = g.map.plots[cp].area;
-            let dist = ours.iter().filter(|o| o.2 == area).map(|&(x, y, _)| g.plot_distance(x, y, cx, cy)).min().unwrap_or(i32::MAX);
+            let dist = match from {
+                Some(f) if g.map.plots[f].area == area => {
+                    let (fx, fy) = g.map.xy(f);
+                    g.plot_distance(fx, fy, cx, cy)
+                }
+                _ => ours.iter().filter(|o| o.2 == area).map(|&(x, y, _)| g.plot_distance(x, y, cx, cy)).min().unwrap_or(i32::MAX),
+            };
             if dist == i32::MAX {
                 continue;
             }
@@ -273,7 +315,7 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     }
 
     // War.
-    if let Some(target) = war_target(g, v) {
+    if let Some(target) = war_target_from(g, v, Some(here)) {
         if war_move(g, v, grp, u, target) {
             return;
         }
@@ -345,12 +387,12 @@ fn best_adjacent(g: &Game, grp: GroupId, here: PlotIdx, hurt: bool) -> Option<Pl
         if city.is_some_and(|c| !g.player_is_barbarian(g.cities[c].owner)) {
             continue;
         }
-        let Some((odds, n_def, n_att)) = assess(g, grp, q) else { continue };
-        let ok = if hurt { odds >= 750 } else { attack_ok(odds, n_att, n_def, city.is_some()) };
+        let Some(a) = assess(g, grp, q) else { continue };
+        let ok = if hurt { a.best >= 750 } else { attack_ok(&a, city.is_some()) };
         if !ok {
             continue;
         }
-        let score = odds + if city.is_some() { 300 } else { 0 };
+        let score = a.best + if city.is_some() { 300 } else { 0 };
         if best.map_or(true, |(_, s)| score > s) {
             best = Some((q, score));
         }
@@ -393,7 +435,7 @@ fn hunt(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {
         // Exact check where it matters: the best odds against what stands there.
         if t.units > 0 {
             match assess(g, grp, t.plot) {
-                Some((odds, n_def, n)) if attack_ok(odds, n, n_def, t.city) || odds >= 300 && n >= 2 => {}
+                Some(a) if attack_ok(&a, t.city) || a.best >= 300 && a.n_att >= 2 => {}
                 _ => continue,
             }
         }
@@ -439,15 +481,48 @@ fn war_move(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, target: CityId)
     let size = g.groups[grp].units.len() as i32;
     let their_defenders = g.map.plots[tp].units.iter().filter(|&&e| g.units[e].owner == g.cities[target].owner && defense_power(g, e) > 0).count() as i32;
     let needed = (their_defenders + 2).clamp(3, MAX_STACK as i32);
+    // Preparing a war: gather on the rally city, do not cross the border yet.
+    if !g.at_war(v.team, g.players[g.cities[target].owner].team) {
+        let Some(rally) = rally_city(g, p, tp) else { return false };
+        let rp = g.city_plot(rally);
+        if rp == here {
+            hold(g, grp);
+        } else {
+            move_to(g, grp, rp, 0);
+            finish(g, grp);
+        }
+        return true;
+    }
     if dist <= 1 {
+        if crate::trace_on(p) {
+            let a = assess(g, grp, tp);
+            crate::trace!(g, p, "stack {:?} ({} units) next to {}: {:?}", grp, size, g.cities[target].name, a);
+        }
+        // Siege engines knock the walls down first.
+        if g.cities[target].defense_damage < 100 && crate::units::can_start(g, grp, MissionType::MISSION_BOMBARD, -1, -1) {
+            crate::units::push(g, grp, MissionType::MISSION_BOMBARD, -1, -1, 0, false);
+            if !alive(g, grp) {
+                return true;
+            }
+        }
         if assault(g, grp, tp) {
             finish(g, grp);
             return true;
         }
-        // Not yet: hold next to the city (reinforcements come to the same target).
-        if alive(g, grp) {
-            hold(g, grp);
+        if !alive(g, grp) {
+            return true;
         }
+        // Hopeless without siege: fall back to the rally city and wait for engines.
+        let has_siege = g.groups[grp].units.iter().any(|&o| g.d.units[g.units[o].unit_type].bombard_rate > 0);
+        if !has_siege && assess(g, grp, tp).is_some_and(|a| a.best < 60 && a.effective < a.n_def * 700) {
+            if let Some(rally) = rally_city(g, p, tp) {
+                move_to(g, grp, g.city_plot(rally), 0);
+                finish(g, grp);
+                return true;
+            }
+        }
+        // Not yet: hold next to the city (reinforcements come to the same target).
+        hold(g, grp);
         return true;
     }
     if size < needed && dist > 3 {
