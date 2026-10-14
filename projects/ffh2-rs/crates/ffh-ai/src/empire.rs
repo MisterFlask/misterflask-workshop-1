@@ -11,6 +11,57 @@ pub fn manage(g: &mut Game, p: PlayerId) {
     religion(g, p);
     sliders(g, p);
     disband(g, p);
+    hurry(g, p);
+}
+
+/// Hurry production where it matters (FfH allows it under some civics: gold under Arete,
+/// Caste System, Guilds, Military State; population under Slavery): a defender for a city
+/// under threat, a settler or worker; with gold well above the reserve, anything nearly done
+/// buys its last turns. Population only from a city at its happy cap, one citizen at a time,
+/// once the anger from the last one has passed.
+fn hurry(g: &mut Game, p: PlayerId) {
+    let d = g.d;
+    let hurries: Vec<HurryType> = d.hurries.keys().filter(|&h| g.player_can_hurry(p, h)).collect();
+    if hurries.is_empty() {
+        return;
+    }
+    let reserve = 30 + 5 * g.players[p].cities.len() as i32;
+    for c in g.players[p].cities.clone() {
+        let urgent = match g.city_production_unit(c) {
+            Some(u) => {
+                let info = &d.units[u];
+                let plot = g.city_plot(c);
+                let threatened = crate::production::local_threat(g, p, plot, 2) > crate::production::garrison(g, p, plot).1;
+                info.found || info.work_rate > 0 && info.combat == 0 || threatened && info.combat > 0
+            }
+            None => false,
+        };
+        let turns = g.city_production_turns_left(c);
+        if turns <= 1 {
+            continue;
+        }
+        for &h in &hurries {
+            if !g.city_can_hurry(c, h, false) {
+                continue;
+            }
+            if d.hurries[h].gold_per_production > 0 {
+                let cost = g.city_hurry_gold(c, h);
+                let rich = g.players[p].gold - cost > reserve * 3 && turns <= 4;
+                if (urgent && g.players[p].gold - cost >= reserve) || rich {
+                    crate::trace!(g, p, "hurries {} with {} gold", g.cities[c].name, cost);
+                    g.city_hurry(c, h);
+                    break;
+                }
+            } else if d.hurries[h].production_per_population > 0 {
+                let capped = g.city_happy_level(c) - g.city_unhappy_level(c, 0) <= 0;
+                if urgent && capped && g.cities[c].population >= 4 && g.city_hurry_population(c, h) == 1 && g.cities[c].hurry_anger_timer == 0 {
+                    crate::trace!(g, p, "hurries {} with a citizen", g.cities[c].name);
+                    g.city_hurry(c, h);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /// A bankrupt empire (research slider at the bottom and still losing gold) disbands its
