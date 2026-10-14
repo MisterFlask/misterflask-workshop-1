@@ -47,3 +47,16 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
   the Python AI hooks (`AI_chooseTech`, `AI_chooseProduction`, `AI_MageTurn`,
   `CustomFunctions.warScript`, ...): replaced by the new AI in `ffh-ai`.
 - UI, graphics, sound, networking, Python screens, worldbuilder, replays.
+
+## Deliberate deviations
+
+- **AI-only Python restrictions are AI policy, not rules.** FFH2's CvGameUtils
+  `cannotTrain`, `cannotConstruct`, `cannotCreate`, `cannotResearch` and `canBuild`
+  contain `if not pPlayer.isHuman(): ...` branches that stop *AI* players from
+  building/researching certain things (e.g. more than one scout, airships, religion
+  techs the leader dislikes). These encode the old AI's build policy; the new AI
+  makes its own choices, so these branches are not ported. All branches that apply
+  to every player are ported.
+- **`CustomFunctions.warScript`/`dogpile`** (AI war declarations called from
+  `onBeginPlayerTurn` for AI players) are AI behaviour and are replaced by the new
+  AI's diplomacy.
