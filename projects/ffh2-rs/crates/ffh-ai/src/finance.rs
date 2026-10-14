@@ -17,6 +17,9 @@
 //!   when a cheaper civic would win ([`civics_due`]);
 //! - **unit support** (`empire::disband`): obsolete and surplus units go first while support
 //!   keeps research below its target ([`disband`]);
+//! - **research** (`empire::research`): the cheapest tech that unlocks a cost-cutting civic or
+//!   a Courthouse-like building, while research is down to 30% or the deficit is structural
+//!   ([`escape_tech`]);
 //! - **citizens** (ffh-core `governor_weights`): commerce is weighted by the same measured
 //!   shortfall, computed there from the rules;
 //! - **expansion**: [`city_affordable`] for the settler logic (not wired in).
@@ -388,6 +391,89 @@ pub fn disband(g: &mut Game, p: PlayerId) -> bool {
         done += 1;
     }
     done > 0
+}
+
+// ---------------------------------------------------------------------------------------------
+// Research
+// ---------------------------------------------------------------------------------------------
+
+/// The cheapest way out of a deficit through research: among the techs that unlock a civic we
+/// would adopt (by `empire::civic_value`) and that costs at least 3 gold per turn less than the
+/// one we run (City States or Aristocracy out of Despotism), or a building that cuts our
+/// cities' maintenance by that much (Courthouse; counted at half, it is built one city at a
+/// time), the one with the most gold saved per beaker on the way (prerequisites included).
+/// `None` unless there is a deficit at the target share and research is down to 30% or the
+/// deficit is structural.
+pub fn escape_tech(g: &Game, p: PlayerId) -> Option<TechType> {
+    let f = state(g, p);
+    if !f.flexible || f.deficit() == 0 || !(f.structural() || f.research_pct <= 30) {
+        return None;
+    }
+    let d = g.d;
+    let team = g.players[p].team;
+    let civ = g.player_get_civilization_type(p)?;
+    // (tech, gold saved per turn x100)
+    let mut gains: Vec<(TechType, i32)> = Vec::new();
+    let mut add = |t: TechType, v: i32| {
+        if let Some(e) = gains.iter_mut().find(|(o, _)| *o == t) {
+            e.1 = e.1.max(v);
+        } else {
+            gains.push((t, v));
+        }
+    };
+    let current = &g.players[p].civics;
+    for c in d.civics.keys() {
+        let info = &d.civics[c];
+        let (Some(t), Some(opt)) = (info.tech_prereq, info.civic_option_type) else { continue };
+        if g.team_is_has_tech(team, Some(t)) || !g.player_can_ever_research(p, t) {
+            continue;
+        }
+        let Some(cur) = current[opt] else { continue };
+        let saved = civic_cost_x100(g, p, cur) - civic_cost_x100(g, p, c);
+        if saved < 300 || crate::empire::civic_value(g, p, c) <= crate::empire::civic_value(g, p, cur) {
+            continue;
+        }
+        add(t, saved);
+    }
+    for b in d.buildings.keys() {
+        let info = &d.buildings[b];
+        if info.maintenance_modifier >= 0 || info.prereq_religion.is_some() {
+            continue;
+        }
+        let Some(t) = info.prereq_and_tech else { continue };
+        if g.team_is_has_tech(team, Some(t)) || !g.player_can_ever_research(p, t) || !info.prereq_and_techs.iter().flatten().all(|&o| o == t || g.team_is_has_tech(team, Some(o))) {
+            continue;
+        }
+        let Some(class) = info.building_class_type else { continue };
+        if d.civ_building(civ, class) != Some(b) || d.building_classes[class].max_global_instances > 0 || d.building_classes[class].max_player_instances > 0 {
+            continue;
+        }
+        let saved: i32 = g.players[p].cities.iter().map(|&c| -info.maintenance_modifier * g.cities[c].maintenance.max(0) / 100).sum();
+        if saved / 2 >= 300 {
+            add(t, saved / 2);
+        }
+    }
+    let mut best: Option<(TechType, i64)> = None;
+    for (t, saved) in gains {
+        let cost = g.player_find_path_length(p, t, true).max(1) as i64;
+        let score = saved as i64 * 10000 / cost;
+        if best.map_or(true, |(_, s)| score > s) {
+            best = Some((t, score));
+        }
+    }
+    best.map(|(t, _)| t)
+}
+
+/// `empire::research` hook: research [`escape_tech`] now (the beakers already spent on the
+/// current tech stay with it in the rules). True when the escape tech is being researched.
+pub fn escape_research(g: &mut Game, p: PlayerId) -> bool {
+    let Some(t) = escape_tech(g, p) else { return false };
+    if g.players[p].researching_tech[t] {
+        return true;
+    }
+    let f = state(g, p);
+    crate::trace!(g, p, "finance: research {} to cut costs (deficit {}, costs {}% of commerce, {} turns of reserve)", g.d.techs[t].base.type_, f.deficit(), f.cost_share(), f.reserve_turns());
+    g.player_push_research(p, t, true)
 }
 
 // ---------------------------------------------------------------------------------------------

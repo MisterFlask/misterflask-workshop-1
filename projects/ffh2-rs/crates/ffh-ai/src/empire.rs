@@ -170,6 +170,7 @@ fn disband_field_units(g: &mut Game, p: PlayerId, max: i32) {
 }
 
 fn research(g: &mut Game, p: PlayerId) {
+    if crate::finance::escape_research(g, p) { return; } // bankruptcy-guard
     if !g.players[p].research_queue.is_empty() {
         return;
     }
