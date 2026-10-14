@@ -485,8 +485,9 @@ pub fn escape_research(g: &mut Game, p: PlayerId) -> bool {
 /// number-of-cities part it adds to every other city) and half the average civic upkeep per
 /// city; it brings half an average city's commerce, of which the gold share counts. Settlers
 /// already on their way count as cities. For the settler logic; not wired in yet (measured
-/// wired into `production::settler_choice` on seeds 1-12: no civ at 20% research or less by
-/// turn 200 or 300, minimum techs 11 at turn 300, but 7% fewer cities and no better score).
+/// wired into `production::settler_choice` on seeds 1-12: one civ at 20% research or less at
+/// turn 200, none at turn 300, minimum techs 11 at turn 300, but 7% fewer cities and no better
+/// score).
 pub fn city_affordable(g: &Game, p: PlayerId) -> bool {
     let f = state(g, p);
     if !f.flexible {

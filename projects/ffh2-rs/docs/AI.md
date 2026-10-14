@@ -50,12 +50,14 @@ counters, war success, war plans) that the diplomacy below reads.
    with culture, improvements for the citizens they can keep happy and population to work
    them, technologies (research's pick; a quarter of the city points while placing cities),
    an explorer and buildings by value per point; then `ADVANCEDSTARTACTION_EXIT`.
-1. **Empire** (`empire.rs`): research when the queue is empty; civics every 10 turns when
-   the gain beats the anarchy; state religion; the highest research slider that keeps the
-   treasury from running dry; a bankrupt empire (slider at the bottom, still losing gold)
-   scraps surplus garrison units, never below what production wants in that city; an empire
-   paying unit support with research at a fifth or less disbands its weakest field units
-   (never heroes) down to a mobile force of 1 + cities/4 while at peace.
+1. **Empire** (`empire.rs`): research when the queue is empty (a broke empire first
+   researches its way out, see Finance); civics every 10 turns when the gain beats the
+   anarchy (sooner under a structural deficit); state religion; the highest research slider
+   that keeps the treasury from running dry; unit support that holds research below its
+   target is cut first (see Finance); a bankrupt empire (slider at the bottom, still losing
+   gold) scraps surplus garrison units, never below what production wants in that city; an
+   empire paying unit support with research at a fifth or less disbands its weakest field
+   units (never heroes) down to a mobile force of 1 + cities/4 while at peace.
 2. **Emergency production** (`production::emergency`): a city whose visible threat exceeds
    its garrison switches to a defender (the rules keep the hammers); a capital or a city near
    barbarians that has only one defender after turn 30 puts a second one first.
@@ -143,7 +145,58 @@ the city has, the first two points of surplus count double (a city at +0 never g
 than the growth target counts a third; at the happy cap a surplus is slightly unwelcome;
 food building a settler counts as production. Hammers below a minimum count double;
 commerce follows the sliders and is worth up to twice as much when the research slider has
-been pushed down to pay the bills; a culture-starved new city values culture.
+been pushed down to pay the bills, or when the costs measured from the rules would leave
+less than 60% for research (3 points of weight per point of shortfall in percent of the
+commerce; merchants and scientists gain with it over poor tiles); a culture-starved new city
+values culture.
+
+## Finance (`finance.rs`)
+
+The zero-research death spiral: an empire whose costs (city maintenance, civic upkeep, unit
+support, inflated) eat its commerce pushes the slider down to pay them, and at zero research
+never reaches the techs that cut those costs (City States: Cartography; Aristocracy and
+Courthouses: Code of Laws), so it stays there for the rest of the game. `finance::state`
+reads the empire's finances from the rules' numbers (no cache): the gold rate at the
+research share we want to keep (60% at peace, 40% at war), the cost breakdown, whether the
+deficit is **structural** (maintenance and civic upkeep alone eat what that share leaves for
+gold) or temporary (unit support), and the turns of reserve left. The responses, each a
+single hook tagged `bankruptcy-guard`:
+
+- **Escape research** (`empire::research`): while research is down to 30% or the deficit is
+  structural, the tech (prerequisites included) with the most gold saved per beaker: one that
+  unlocks a civic we would adopt that costs 3+ gold a turn less than ours, or a building that
+  cuts maintenance by as much (Courthouse, counted at half). The current research keeps its
+  beakers. This is the decisive response: without it the others leave twice as many civs at
+  20% research or less.
+- **Civics** (`empire::civic_value`, `empire::civics`): upkeep and maintenance are valued at
+  the broke rate (40 points per gold) as soon as the deficit is structural, maintenance from
+  the cities' actual distance and number-of-cities parts; Aristocracy is charged for the
+  cottages FfH's AI-only `canBuild` bans under it once Education is near; a structural
+  deficit re-checks civics outside the 10-turn cadence when a cheaper civic would win.
+- **Unit support** (`empire::disband`): while support takes a tenth of the commerce and keeps
+  research below its target (at peace), up to two units a turn go, obsolete ones first
+  (weakest relative to what we can train now): field units beyond 1 + cities/4, garrison
+  units beyond one per city (two in the capital and near barbarians) where no threat is in
+  sight, idle workers beyond twice the need. Disbanding more (from 5% of the commerce) lost
+  more cities to barbarians.
+- **Citizens**: the governor's commerce weight above.
+- `finance::city_affordable` (a new city's maintenance and upkeep against the gold left at
+  the target share) is for the settler logic and not wired in. Wired into `settler_choice`
+  it removed nearly all the remaining traps (on seeds 1-12 one civ at 20% research or less at
+  turn 200, none at turn 300) at the cost of 7% of the cities and no better score.
+
+Measured (6 civs, standard map, 300 turns, seeds 1-12; seeds 13-24 in brackets): civs at 20%
+research or less at turn 200 24 -> 4 [24 -> 8], at turn 300 17 -> 4 [16 -> 8], at 0% at turn
+300 10 -> 3 [11 -> 4]; mean research slider at turn 300 53% -> 64% [50% -> 59%]; mean techs
+19.8 -> 22.5 [20.2 -> 22.7], score 803 -> 887 [846 -> 920]; unit support 11.8% -> 9.5% of the
+commerce [11.7% -> 8.5%]; no measurable change in turn time.
+
+Tried and dropped (no measurable gain on seeds 1-12): scaling the value of
+maintenance and commerce buildings (Courthouse, Market, Library, Harbor) by the share of
+commerce lost to costs in `production::decide`; a fallback for cities with nothing left to
+build that prefers a worker with work waiting or a garrison upgrade over the strongest unit
+(the fallback is only reached by cities that know no process: `decide` picks a process
+whenever one is available); capping optional units at 12% of the commerce.
 
 ## Research (`research.rs`)
 
@@ -279,9 +332,11 @@ never with the civ it prepares a war against.
   (measured), so the gate stays.
 - Expansion is slow everywhere in the first 100 turns (about two cities): settlers cost 220
   hammers on normal speed and cities wait for size 3-4 and for the barbarians to leave.
-- Economy: research at about half the commerce by turn 300; cottages need Education,
-  libraries Writing; maintenance and civic upkeep take a third of the commerce. Gating
-  expansion on the research it leaves was tried (fewer cities, no better score by turn 300).
+- Economy: research at about 60% of the commerce by turn 300; cottages need
+  Education, libraries Writing; maintenance and civic upkeep take a quarter of the commerce.
+  The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
+  Cartography: only the settler gate (`finance::city_affordable`, not wired in) prevents that,
+  and gating expansion costs cities (no better score by turn 300).
 - Wars rarely take civ cities: tier-1/2 attackers against fortified defenders in cities need
   siege engines and casters; stacks act one at a time (a grinding assault counts the other
   stacks around the city but does not wait for them).
