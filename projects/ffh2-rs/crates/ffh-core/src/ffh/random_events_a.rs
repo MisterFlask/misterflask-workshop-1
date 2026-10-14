@@ -40,7 +40,7 @@
 //! - Two Python bugs end functions early and are kept: `doOrderVsVeilTemple1` reads an undefined
 //!   `player` (NameError before its city loop) and `applyWBLordOfTheBalorsTemptStatiusYes` reads
 //!   `pPlayer` before assigning it (UnboundLocalError on its first statement: it does nothing).
-//! - `AI_getAttitude` (CvPlayerAI) has no ffh-core method: see `ai_get_attitude` below.
+//! - `AI_getAttitude` (CvPlayerAI) is `Game::player_ai_get_attitude`: see `ai_get_attitude` below.
 
 use crate::ffh::dispatch::*;
 use crate::ffh::game_utils::py_div;
@@ -454,23 +454,12 @@ fn is_limited_wonder(d: &GameData, building: BuildingType) -> bool {
     d.buildings[building].building_class_type.map_or(false, |bc| is_limited_wonder_class(d, bc))
 }
 
-/// `pPlayer.AI_getAttitude(ePlayer)`: `p`'s attitude towards `other` (C++
-/// `CvPlayerAI::AI_getAttitude(ePlayer, bForced = true)`). ffh-core has no player-level method
-/// (the C++ AI is not ported). The forced cases of `AI_getAttitudeVal` are ported (same team, or
-/// `p`'s team an uncapitulated vassal of `other`'s: +100, Friendly; either player barbarian:
-/// -100, Furious); otherwise this is the declared team-level `CvTeamAI::AI_getAttitude`, the
-/// average of the member players' attitudes towards the other team (and its vassals/masters),
-/// which is exactly this pair's attitude when both teams have one member and no vassals.
+/// `pPlayer.AI_getAttitude(ePlayer)`: `p`'s attitude towards `other` (CyPlayer forwards to
+/// `CvPlayerAI::AI_getAttitude(ePlayer, bForced = true)`, the player-level attitude:
+/// `Game::player_ai_get_attitude`, the forced cases of `AI_getAttitudeVal` and then the
+/// controller).
 fn ai_get_attitude(g: &Game, p: PlayerId, other: PlayerId) -> AttitudeType {
-    let team = g.players[p].team;
-    let other_team = g.players[other].team;
-    if team == other_team || (g.teams[team].vassal[other_team] && !g.teams[team].capitulated) {
-        return AttitudeType::ATTITUDE_FRIENDLY;
-    }
-    if g.player_is_barbarian(p) || g.player_is_barbarian(other) {
-        return AttitudeType::ATTITUDE_FURIOUS;
-    }
-    g.team_ai_get_attitude(team, other_team, true)
+    g.player_ai_get_attitude(p, other, true)
 }
 
 /// `iUnit = gc.getInfoTypeForString(..); if CyGame().getUnitCreatedCount(iUnit) == 0:
@@ -1465,8 +1454,13 @@ fn apply_hyborems_whisper3(g: &mut Game, _event: EventType, data: &EventTriggere
 }
 
 /// `applyIronOrb3(argsList)`: one free tech (`chooseTech(1, text, True)`; text and bFront are UI).
+/// `CvPlayer::chooseTech` only queues the tech-chooser popup, and `CvPlayer::addPopup` deletes
+/// the popups of non-human players: an AI player gets nothing (unlike the DLL's own free techs,
+/// which call `AI_chooseFreeTech` for AI players).
 fn apply_iron_orb3(g: &mut Game, _event: EventType, data: &EventTriggeredData) {
-    g.player_choose_tech(data.player, 1);
+    if g.players[data.player].human {
+        g.player_choose_tech(data.player, 1);
+    }
 }
 
 /// `doJudgementRight(argsList)`.
@@ -3411,6 +3405,51 @@ mod tests {
         assert_eq!(g.players[capria].ai_attitude_extra[capria], 0, "not towards itself");
         do_sign_dagda(&mut g, &data(capria), capria);
         assert_eq!(g.players[arendel].ai_attitude_extra[capria], 0);
+    }
+
+    /// `pPlayer2.AI_getAttitude(iPlayer)` is the player-level attitude: a leader whose team is an
+    /// uncapitulated vassal of the event player's team is Friendly towards him, whatever other
+    /// vassals the master has (the team-level average would count them in).
+    #[test]
+    fn pron_reads_the_player_attitude() {
+        let mut g = game(&[
+            ("CIVILIZATION_BANNOR", "LEADER_CAPRIA"),
+            ("CIVILIZATION_LJOSALFAR", "LEADER_ARENDEL"),
+            ("CIVILIZATION_CALABIM", "LEADER_ALEXIS"),
+        ]);
+        let (capria, arendel, alexis) = (PlayerId(0), PlayerId(1), PlayerId(2));
+        let (tc, ta, tx) = (g.players[capria].team, g.players[arendel].team, g.players[alexis].team);
+        g.teams[tc].vassal[ta] = true;
+        g.teams[tx].vassal[ta] = true;
+        g.teams[ta].has_met[tc] = true;
+        assert_eq!(ai_get_attitude(&g, capria, arendel), AttitudeType::ATTITUDE_FRIENDLY);
+        assert_eq!(g.team_ai_get_attitude(tc, ta, true), AttitudeType::ATTITUDE_PLEASED);
+        assert!(can_trigger_pron_capria(&mut g, &mut data(arendel)));
+    }
+
+    /// Counts the free-tech choices the rules ask a controller for.
+    struct CountFreeTechs(std::sync::atomic::AtomicUsize);
+
+    impl crate::controller::Controller for CountFreeTechs {
+        fn choose_free_tech(&self, _g: &Game, _p: PlayerId) -> Option<TechType> {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            None
+        }
+    }
+
+    /// `chooseTech` only opens a popup, which `CvPlayer::addPopup` deletes for AI players.
+    #[test]
+    fn iron_orb_tech_is_a_human_popup() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let mut g = game(&[("CIVILIZATION_BANNOR", "LEADER_SABATHIEL")]);
+        let p = PlayerId(0);
+        let counter = std::sync::Arc::new(CountFreeTechs(AtomicUsize::new(0)));
+        g.controllers[p] = counter.clone();
+        apply_iron_orb3(&mut g, EventType(0), &data(p));
+        assert_eq!(counter.0.load(Ordering::Relaxed), 0, "AI: no tech choice");
+        g.players[p].human = true;
+        apply_iron_orb3(&mut g, EventType(0), &data(p));
+        assert_eq!(counter.0.load(Ordering::Relaxed), 1);
     }
 
     #[test]
