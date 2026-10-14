@@ -78,6 +78,9 @@ impl Controller for Timed {
     fn choose_religion(&self, g: &Game, p: PlayerId) -> Option<ReligionType> {
         self.time(|| self.inner.choose_religion(g, p))
     }
+    fn attitude(&self, g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
+        self.time(|| self.inner.attitude(g, p, towards))
+    }
     fn update_automated_group(&self, g: &mut Game, grp: GroupId) -> bool {
         self.time(|| self.inner.update_automated_group(g, grp))
     }

@@ -79,6 +79,13 @@ pub trait Controller: Send + Sync {
         None
     }
 
+    /// C++ `CvPlayerAI::AI_getAttitude(ePlayer)`: player `p`'s attitude towards `towards`.
+    /// Rules code reads it in a few places (FfH event trigger `PrereqCivilizationPleased`;
+    /// AI memory bookkeeping); team attitude (`CvTeamAI::AI_getAttitude`) averages members.
+    fn attitude(&self, _g: &Game, _p: PlayerId, _towards: PlayerId) -> AttitudeType {
+        AttitudeType::ATTITUDE_CAUTIOUS
+    }
+
     /// C++ `CvSelectionGroupAI::AI_update` for automated (non-AI-controlled) groups of
     /// human players, e.g. automated workers/explorers. Return true if the group acted.
     fn update_automated_group(&self, _g: &mut Game, _grp: GroupId) -> bool {

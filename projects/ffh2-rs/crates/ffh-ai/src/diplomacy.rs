@@ -38,6 +38,24 @@ pub fn relation(g: &Game, p: PlayerId, other: PlayerId) -> i32 {
     r
 }
 
+/// Attitude from the relation score (C++ `AI_getAttitude` thresholds are not reproduced).
+pub fn attitude(g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
+    if p == towards {
+        return AttitudeType::ATTITUDE_FRIENDLY;
+    }
+    let mut r = relation(g, p, towards);
+    if g.at_war(g.players[p].team, g.players[towards].team) {
+        r -= 2;
+    }
+    match r {
+        i32::MIN..=-4 => AttitudeType::ATTITUDE_FURIOUS,
+        -3..=-1 => AttitudeType::ATTITUDE_ANNOYED,
+        0 => AttitudeType::ATTITUDE_CAUTIOUS,
+        1..=2 => AttitudeType::ATTITUDE_PLEASED,
+        _ => AttitudeType::ATTITUDE_FRIENDLY,
+    }
+}
+
 fn capital_xy(g: &Game, p: PlayerId) -> Option<(i32, i32)> {
     g.players[p].capital_city.map(|c| (g.cities[c].x, g.cities[c].y))
 }

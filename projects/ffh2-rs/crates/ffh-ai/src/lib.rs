@@ -92,6 +92,10 @@ impl Controller for Ai {
         diplomacy::consider_offer(g, p, from, they_give, we_give)
     }
 
+    fn attitude(&self, g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
+        diplomacy::attitude(g, p, towards)
+    }
+
     fn choose_religion(&self, g: &Game, p: PlayerId) -> Option<ReligionType> {
         g.players[p].personality_type.and_then(|l| g.d.leader_heads[l].favorite_religion)
     }
