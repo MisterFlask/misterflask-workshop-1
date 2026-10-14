@@ -38,14 +38,16 @@ fn cmd_autoplay(args: &[String], verbose: bool) {
     let mut cfg = parse_run_config(args);
     cfg.verbose = verbose;
     let t = Instant::now();
-    let mut g = run::new_game(&cfg);
+    let (mut g, timed) = run::new_game(&cfg);
     let setup_time = t.elapsed();
+    let ai_at_setup = timed.total();
     let t = Instant::now();
     let stats = run::autoplay(&mut g, &cfg);
     let play_time = t.elapsed();
+    let ai_time = timed.total() - ai_at_setup;
     let n = stats.len().max(1) as f64;
     println!(
-        "seed {} civs {} {}: setup {:.1} ms, {} turns in {:.2} s ({:.2} ms/turn, slowest {:.2} ms)",
+        "seed {} civs {} {}: setup {:.1} ms, {} turns in {:.2} s ({:.2} ms/turn, slowest {:.2} ms; {:.0}% inside the AI controller, incl. the moves it orders)",
         cfg.seed,
         cfg.civs,
         cfg.world,
@@ -53,7 +55,8 @@ fn cmd_autoplay(args: &[String], verbose: bool) {
         stats.len(),
         play_time.as_secs_f64(),
         play_time.as_secs_f64() * 1000.0 / n,
-        stats.iter().map(|s| s.elapsed.as_secs_f64() * 1000.0).fold(0.0, f64::max)
+        stats.iter().map(|s| s.elapsed.as_secs_f64() * 1000.0).fold(0.0, f64::max),
+        100.0 * ai_time.as_secs_f64() / play_time.as_secs_f64().max(1e-9)
     );
     if let Some(last) = stats.last() {
         println!("final checksum {:08x} at turn {}", last.checksum as u32, last.turn);
