@@ -1162,11 +1162,8 @@ fn civ_is_ai_playable(g: &Game, civ: CivilizationType) -> bool {
 }
 
 /// C++ `CvCityAI::AI_assignWorkingPlots`: the citizen governor's per-city entry point.
-///
-/// SIGNATURE: the project names it `Game::city_assign_working_plots` (governor.rs, new code),
-/// which does not exist yet; call it from here once it does.
-fn city_ai_assign_working_plots(_g: &mut Game, _c: CityId) {
-    todo!("CvCityAI::AI_assignWorkingPlots (governor entry point Game::city_assign_working_plots)")
+fn city_ai_assign_working_plots(g: &mut Game, c: CityId) {
+    g.city_assign_working_plots(c);
 }
 
 /// C++ `CvInitCore::reassignPlayerAdvanced(eOldID, eNewID, iTimer)` (FfH; `doTurn` uses it when

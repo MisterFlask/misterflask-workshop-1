@@ -198,3 +198,231 @@ mod tests {
         assert_eq!(a.tiles.len() as i32 + a.specialists.iter().map(|s| s.1).sum::<i32>(), 2);
     }
 }
+
+// ----------------------------------------------------------------------------
+// Game entry points (C++ CvCityAI::AI_assignWorkingPlots and helpers)
+// ----------------------------------------------------------------------------
+
+use crate::defs::CITY_HOME_PLOT;
+use crate::game::Game;
+use crate::ids::*;
+
+impl Game {
+    /// Replaces C++ `CvCityAI::AI_assignWorkingPlots`. The rules-visible steps keep the C++
+    /// order (clear assignments of automated cities, `verifyWorkingPlots`, forced specialists,
+    /// max-specialist clamps, the home plot, removal while over the limit, the proportional
+    /// spread of extra specialists over forced types); the choice of which plots and specialists
+    /// to use is [`assign`]. `AI_juggleCitizens` is not needed: automated cities are reassigned
+    /// from scratch.
+    pub fn city_assign_working_plots(&mut self, c: CityId) {
+        if self.d.defines.ai_shouldnt_manage_plot_assignment != 0 {
+            return;
+        }
+        let owner = self.cities[c].owner;
+        let automated = !self.city_is_human(c) || self.cities[c].citizens_automated;
+
+        if automated {
+            for i in 0..self.city_num_city_plots(c).max(0) as usize {
+                self.city_set_working_plot(c, i, false);
+            }
+        }
+
+        // AI: AI_updateSpecialYieldMultiplier (AI-only cache).
+
+        self.city_verify_working_plots(c);
+
+        let mut specialist_forced = false;
+        let mut total_forced = 0;
+        for s in self.d.specialists.keys() {
+            let forced = self.cities[c].force_specialist_count[s];
+            if forced > 0 {
+                specialist_forced = true;
+                total_forced += forced;
+            }
+            if automated || self.cities[c].specialist_count[s] < forced {
+                self.city_set_specialist_count(c, s, forced);
+            }
+        }
+
+        for s in self.d.specialists.keys() {
+            if !self.city_is_specialist_valid(c, s, 0) {
+                let max = self.cities[c].max_specialist_count[s];
+                if self.cities[c].specialist_count[s] > max {
+                    self.city_set_specialist_count(c, s, max);
+                }
+            }
+        }
+
+        if let Some(home) = self.city_index_plot(c, CITY_HOME_PLOT) {
+            let work = self.cities[c].population > 0 && self.city_can_work(c, home);
+            self.city_set_working_plot(c, CITY_HOME_PLOT, work);
+        }
+
+        while self.city_extra_population(c) < 0 {
+            if !self.city_remove_worst_citizen(c) {
+                break;
+            }
+        }
+
+        let extra = self.city_extra_population(c);
+        if extra > 0 {
+            self.city_place_citizens(c, extra, true);
+        }
+
+        let initial_extra_specialists = self.city_extra_specialists(c);
+        let mut extra_specialists = initial_extra_specialists;
+        if specialist_forced && extra_specialists > 0 {
+            for s in self.d.specialists.keys() {
+                if !self.city_is_specialist_valid(c, s, 1) {
+                    continue;
+                }
+                let forced = self.cities[c].force_specialist_count[s];
+                if forced <= 0 {
+                    continue;
+                }
+                let mut count = self.cities[c].specialist_count[s];
+                let max = self.cities[c].max_specialist_count[s];
+                let mut to_add = (initial_extra_specialists * forced + total_forced / 2) / total_forced;
+                if extra_specialists < to_add {
+                    to_add = extra_specialists;
+                }
+                count += to_add;
+                extra_specialists -= to_add;
+                if count > max && !self.player_is_specialist_valid(owner, s) {
+                    extra_specialists += count - max;
+                    count = max;
+                }
+                self.city_set_specialist_count(c, s, count);
+            }
+        }
+
+        let extra = self.city_extra_specialists(c);
+        if extra > 0 {
+            self.city_place_citizens(c, extra, false);
+        }
+
+        self.cities[c].ai_assign_work_dirty = false;
+    }
+
+    /// Candidate specialists for `c` with how many more of each may be added.
+    fn governor_specialists(&self, c: CityId) -> Vec<SpecialistOption> {
+        let owner = self.cities[c].owner;
+        let mut out = Vec::new();
+        for s in self.d.specialists.keys() {
+            if !self.city_is_specialist_valid(c, s, 1) {
+                continue;
+            }
+            let city = &self.cities[c];
+            let unlimited = self.player_is_specialist_valid(owner, s) || city.force_specialist_count[s] > 0;
+            let max_more = if unlimited { i32::MAX } else { (city.max_specialist_count[s] - city.specialist_count[s]).max(0) };
+            if max_more == 0 {
+                continue;
+            }
+            let yields = std::array::from_fn(|i| self.player_specialist_yield(owner, s, YieldType::from_usize(i)));
+            let commerce = std::array::from_fn(|i| self.player_specialist_commerce(owner, s, CommerceType::from_usize(i)));
+            out.push(SpecialistOption { specialist: s, yields, commerce, great_people: self.d.specialists[s].great_people_rate_change, max_more });
+        }
+        out
+    }
+
+    fn governor_weights(&self, c: CityId) -> Weights {
+        let mut w = Weights::default();
+        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
+            w.food += 2;
+        }
+        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_PRODUCTION) {
+            w.production += 2;
+        }
+        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_COMMERCE) {
+            w.commerce += 2;
+        }
+        if self.city_ai_is_emphasize_great_people(c) {
+            w.great_people += 3;
+        }
+        w
+    }
+
+    /// Places `n` citizens on tiles (if `workers`) and specialists, chosen by [`assign`].
+    fn city_place_citizens(&mut self, c: CityId, n: i32, workers: bool) {
+        let mut tiles = Vec::new();
+        if workers {
+            for i in 0..self.city_num_city_plots(c).max(0) as usize {
+                if i == CITY_HOME_PLOT || self.cities[c].working_plot[i] {
+                    continue;
+                }
+                let Some(plot) = self.city_index_plot(c, i) else { continue };
+                if !self.city_can_work(c, plot) {
+                    continue;
+                }
+                tiles.push(TileOption { city_plot: i, yields: self.map.plots[plot].yields, commerce: [0; CommerceType::NUM] });
+            }
+        }
+        let population = self.cities[c].population;
+        let avoid_growth = self.city_ai_stop_growth(c) || self.city_unhappy_level(c, 1) > self.city_happy_level(c);
+        let input = GovernorInput {
+            citizens: n,
+            food_consumption: 0,
+            base_food: self.city_food_difference(c, false),
+            growth_target: 2 + population / 4,
+            avoid_growth,
+            tiles,
+            specialists: self.governor_specialists(c),
+            weights: self.governor_weights(c),
+        };
+        let a = assign(&input);
+        for i in a.tiles {
+            self.city_set_working_plot(c, i, true);
+        }
+        for (s, k) in a.specialists {
+            self.city_change_specialist_count(c, s, k);
+        }
+    }
+
+    /// Replaces C++ `CvCityAI::AI_removeWorstCitizen`: drop a specialist above the forced
+    /// count, else the least valuable worked plot, else a forced specialist.
+    fn city_remove_worst_citizen(&mut self, c: CityId) -> bool {
+        let w = self.governor_weights(c);
+        let owner = self.cities[c].owner;
+        let spec_value = |g: &Game, s: SpecialistType| -> i32 {
+            let y: [i32; 3] = std::array::from_fn(|i| g.player_specialist_yield(owner, s, YieldType::from_usize(i)));
+            let cm: [i32; 4] = std::array::from_fn(|i| g.player_specialist_commerce(owner, s, CommerceType::from_usize(i)));
+            value(&w, w.food, &y, &cm, g.d.specialists[s].great_people_rate_change)
+        };
+        let mut worst: Option<(SpecialistType, i32)> = None;
+        for s in self.d.specialists.keys() {
+            let city = &self.cities[c];
+            if city.specialist_count[s] > city.force_specialist_count[s] {
+                let v = spec_value(self, s);
+                if worst.map_or(true, |(_, b)| v < b) {
+                    worst = Some((s, v));
+                }
+            }
+        }
+        if let Some((s, _)) = worst {
+            self.city_change_specialist_count(c, s, -1);
+            return true;
+        }
+        let mut worst_tile: Option<(usize, i32)> = None;
+        for i in 0..self.city_num_city_plots(c).max(0) as usize {
+            if i == CITY_HOME_PLOT || !self.cities[c].working_plot[i] {
+                continue;
+            }
+            let Some(plot) = self.city_index_plot(c, i) else { continue };
+            let v = value(&w, w.food, &self.map.plots[plot].yields, &[0; CommerceType::NUM], 0);
+            if worst_tile.map_or(true, |(_, b)| v < b) {
+                worst_tile = Some((i, v));
+            }
+        }
+        if let Some((i, _)) = worst_tile {
+            self.city_set_working_plot(c, i, false);
+            return true;
+        }
+        for s in self.d.specialists.keys() {
+            if self.cities[c].specialist_count[s] > 0 {
+                self.city_change_specialist_count(c, s, -1);
+                return true;
+            }
+        }
+        false
+    }
+}
