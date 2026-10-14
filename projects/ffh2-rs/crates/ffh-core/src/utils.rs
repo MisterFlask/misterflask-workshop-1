@@ -466,9 +466,9 @@ pub fn get_land_plots_score(land_plots: i32) -> i32 {
     land_plots
 }
 
-/// C++ `getTechScore`: `era + 1`.
+/// C++ `getTechScore`: `era + 1` (C++ `getEra()` is -1 = `NO_ERA` for a tech without one).
 pub fn get_tech_score(d: &GameData, tech: TechType) -> i32 {
-    todo!("CvGameCoreUtils::getTechScore (needs TechInfo::era)")
+    opt_to_i32(d.techs[tech].era) + 1
 }
 
 /// C++ `getWonderScore`.
@@ -481,57 +481,142 @@ pub fn get_wonder_score(d: &GameData, wonder_class: BuildingClassType) -> i32 {
 }
 
 // ------------------------------------------------------------------------------------------
-// Data-only predicates (bodies need info fields that are being filled in)
+// Data-only predicates
 // ------------------------------------------------------------------------------------------
 
-/// C++ `isPromotionValid(ePromotion, eUnit, bLeader)`.
+/// C++ `isPromotionValid(ePromotion, eUnit, bLeader)` (FfH version: no BtS "Blitz needs more
+/// than one move" rule and no recursive prerequisite-promotion checks).
 pub fn is_promotion_valid(d: &GameData, promotion: PromotionType, unit: UnitType, leader: bool) -> bool {
-    todo!("CvGameCoreUtils::isPromotionValid")
+    let k_unit = &d.units[unit];
+    let k_promotion = &d.promotions[promotion];
+
+    if k_unit.free_promotions[promotion] {
+        return true;
+    }
+
+    let Some(unit_combat) = k_unit.unit_combat_type else {
+        return false;
+    };
+
+    if !leader && k_promotion.leader {
+        return false;
+    }
+
+    if !k_promotion.unit_combat[unit_combat] {
+        return false;
+    }
+
+    if k_unit.only_defensive {
+        if k_promotion.city_attack_percent != 0
+            || k_promotion.withdrawal_change != 0
+            || k_promotion.collateral_damage_change != 0
+            || k_promotion.blitz
+            || k_promotion.amphib
+            || k_promotion.river
+            || k_promotion.hills_attack_percent != 0
+        {
+            return false;
+        }
+    }
+
+    if k_unit.ignore_terrain_cost && k_promotion.move_discount_change != 0 {
+        return false;
+    }
+
+    // FfH: Modified by Kael 06/28/2008 -- BtS rejected Blitz for units with 1 move; removed.
+
+    if k_unit.collateral_damage == 0 || k_unit.collateral_damage_limit == 0 || k_unit.collateral_damage_max_units == 0 {
+        if k_promotion.collateral_damage_change != 0 {
+            return false;
+        }
+    }
+
+    if k_unit.interception_probability == 0 && k_promotion.intercept_change != 0 {
+        return false;
+    }
+
+    // FfH: Modified by Kael 09/03/2007 -- BtS also required the promotion's prerequisite
+    // promotion (and one of the two OR prerequisites) to be valid for the unit; removed.
+
+    true
 }
 
-/// C++ `finalImprovementUpgrade(eImprovement, iCount)`.
+/// C++ `finalImprovementUpgrade(eImprovement, iCount = 0)`: the end of the improvement's
+/// upgrade chain; `None` (NO_IMPROVEMENT) once more than `GC.getNumImprovementInfos()` steps
+/// were taken (a cycle).
 pub fn final_improvement_upgrade(d: &GameData, improvement: ImprovementType, count: i32) -> Option<ImprovementType> {
-    todo!("CvGameCoreUtils::finalImprovementUpgrade")
+    if count > d.improvements.len() as i32 {
+        return None;
+    }
+
+    match d.improvements[improvement].improvement_upgrade {
+        Some(upgrade) => final_improvement_upgrade(d, upgrade, count + 1),
+        None => Some(improvement),
+    }
 }
 
 /// C++ `isReligionTech`.
 pub fn is_religion_tech(d: &GameData, tech: TechType) -> bool {
-    todo!("CvGameCoreUtils::isReligionTech")
+    d.religions.iter().any(|r| r.tech_prereq == Some(tech))
 }
 
 /// C++ `isCorporationTech`.
 pub fn is_corporation_tech(d: &GameData, tech: TechType) -> bool {
-    todo!("CvGameCoreUtils::isCorporationTech")
+    d.corporations.iter().any(|c| c.tech_prereq == Some(tech))
 }
 
-/// C++ `isTechRequiredForUnit`.
+/// C++ `isTechRequiredForUnit`. (`UnitInfo::prereq_and_techs` holds only the listed techs;
+/// the C++ scans `NUM_UNIT_AND_TECH_PREREQS` slots whose unused entries are NO_TECH.)
 pub fn is_tech_required_for_unit(d: &GameData, tech: TechType, unit: UnitType) -> bool {
-    todo!("CvGameCoreUtils::isTechRequiredForUnit")
+    let info = &d.units[unit];
+
+    if info.prereq_and_tech == Some(tech) {
+        return true;
+    }
+
+    info.prereq_and_techs.iter().any(|&t| t == tech)
 }
 
 /// C++ `isTechRequiredForBuilding`.
 pub fn is_tech_required_for_building(d: &GameData, tech: TechType, building: BuildingType) -> bool {
-    todo!("CvGameCoreUtils::isTechRequiredForBuilding")
+    let info = &d.buildings[building];
+
+    if info.prereq_and_tech == Some(tech) {
+        return true;
+    }
+
+    // C++ loops over `GC.getNUM_BUILDING_AND_TECH_PREREQS()` slots (the length of this list).
+    if info.prereq_and_techs.iter().any(|&t| t == Some(tech)) {
+        return true;
+    }
+
+    if let Some(special) = info.special_building_type {
+        if d.special_buildings[special].tech_prereq == Some(tech) {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// C++ `isTechRequiredForProject`.
 pub fn is_tech_required_for_project(d: &GameData, tech: TechType, project: ProjectType) -> bool {
-    todo!("CvGameCoreUtils::isTechRequiredForProject")
+    d.projects[project].tech_prereq == Some(tech)
 }
 
 /// C++ `isWorldUnitClass`: `getMaxGlobalInstances() != -1`.
 pub fn is_world_unit_class(d: &GameData, unit_class: UnitClassType) -> bool {
-    todo!("CvGameCoreUtils::isWorldUnitClass")
+    d.unit_classes[unit_class].max_global_instances != -1
 }
 
 /// C++ `isTeamUnitClass`: `getMaxTeamInstances() != -1`.
 pub fn is_team_unit_class(d: &GameData, unit_class: UnitClassType) -> bool {
-    todo!("CvGameCoreUtils::isTeamUnitClass")
+    d.unit_classes[unit_class].max_team_instances != -1
 }
 
 /// C++ `isNationalUnitClass`: `getMaxPlayerInstances() != -1`.
 pub fn is_national_unit_class(d: &GameData, unit_class: UnitClassType) -> bool {
-    todo!("CvGameCoreUtils::isNationalUnitClass")
+    d.unit_classes[unit_class].max_player_instances != -1
 }
 
 /// C++ `isLimitedUnitClass`.
@@ -541,17 +626,17 @@ pub fn is_limited_unit_class(d: &GameData, unit_class: UnitClassType) -> bool {
 
 /// C++ `isWorldWonderClass`: `getMaxGlobalInstances() != -1`.
 pub fn is_world_wonder_class(d: &GameData, building_class: BuildingClassType) -> bool {
-    todo!("CvGameCoreUtils::isWorldWonderClass")
+    d.building_classes[building_class].max_global_instances != -1
 }
 
 /// C++ `isTeamWonderClass`: `getMaxTeamInstances() != -1`.
 pub fn is_team_wonder_class(d: &GameData, building_class: BuildingClassType) -> bool {
-    todo!("CvGameCoreUtils::isTeamWonderClass")
+    d.building_classes[building_class].max_team_instances != -1
 }
 
 /// C++ `isNationalWonderClass`: `getMaxPlayerInstances() != -1`.
 pub fn is_national_wonder_class(d: &GameData, building_class: BuildingClassType) -> bool {
-    todo!("CvGameCoreUtils::isNationalWonderClass")
+    d.building_classes[building_class].max_player_instances != -1
 }
 
 /// C++ `isLimitedWonderClass`.
@@ -561,17 +646,43 @@ pub fn is_limited_wonder_class(d: &GameData, building_class: BuildingClassType) 
 
 /// C++ `limitedWonderClassLimit`: sum of the global/team/player limits, -1 if unlimited.
 pub fn limited_wonder_class_limit(d: &GameData, building_class: BuildingClassType) -> i32 {
-    todo!("CvGameCoreUtils::limitedWonderClassLimit")
+    let info = &d.building_classes[building_class];
+    let mut count = 0;
+    let mut is_limited = false;
+
+    let mut max = info.max_global_instances;
+    if max != -1 {
+        count += max;
+        is_limited = true;
+    }
+
+    max = info.max_team_instances;
+    if max != -1 {
+        count += max;
+        is_limited = true;
+    }
+
+    max = info.max_player_instances;
+    if max != -1 {
+        count += max;
+        is_limited = true;
+    }
+
+    if is_limited {
+        count
+    } else {
+        -1
+    }
 }
 
-/// C++ `isWorldProject`.
+/// C++ `isWorldProject`: `getMaxGlobalInstances() != -1`.
 pub fn is_world_project(d: &GameData, project: ProjectType) -> bool {
-    todo!("CvGameCoreUtils::isWorldProject")
+    d.projects[project].max_global_instances != -1
 }
 
-/// C++ `isTeamProject`.
+/// C++ `isTeamProject`: `getMaxTeamInstances() != -1`.
 pub fn is_team_project(d: &GameData, project: ProjectType) -> bool {
-    todo!("CvGameCoreUtils::isTeamProject")
+    d.projects[project].max_team_instances != -1
 }
 
 /// C++ `isLimitedProject`.
@@ -579,9 +690,45 @@ pub fn is_limited_project(d: &GameData, project: ProjectType) -> bool {
     is_world_project(d, project) || is_team_project(d, project)
 }
 
-/// C++ `isPlotEventTrigger`.
+/// C++ `isPlotEventTrigger`: the trigger needs plots with some property (picked per plot).
 pub fn is_plot_event_trigger(d: &GameData, trigger: EventTriggerType) -> bool {
-    todo!("CvGameCoreUtils::isPlotEventTrigger")
+    let k_trigger = &d.event_triggers[trigger];
+
+    if k_trigger.num_plots_required > 0 {
+        if k_trigger.plot_type.is_some() {
+            return true;
+        }
+
+        if !k_trigger.features_required.is_empty() {
+            return true;
+        }
+
+        if !k_trigger.terrains_required.is_empty() {
+            return true;
+        }
+
+        if !k_trigger.improvements_required.is_empty() {
+            return true;
+        }
+
+        if !k_trigger.bonuses_required.is_empty() {
+            return true;
+        }
+
+        if !k_trigger.routes_required.is_empty() {
+            return true;
+        }
+
+        if k_trigger.units_on_plot && !k_trigger.units_required.is_empty() {
+            return true;
+        }
+
+        if k_trigger.prereq_event_city && !k_trigger.pick_city {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// C++ `baseYieldToSymbol`.
@@ -836,7 +983,21 @@ pub fn turn_month_for_game(
 
 /// C++ `getTurnMonthForGame(iGameTurn, iStartYear, eCalendar, eSpeed)`.
 pub fn get_turn_month_for_game(d: &GameData, game_turn: i32, start_year: i32, calendar: CalendarType, speed: GameSpeedType) -> i32 {
-    todo!("CvGameCoreUtils::getTurnMonthForGame (needs GameSpeedInfo turn increments; then call turn_month_for_game)")
+    // `GC.getGameSpeedInfo(eSpeed).getGameTurnInfo(i)` for `i < getNumTurnIncrements()`.
+    let increments: Vec<(i32, i32)> = d.game_speeds[speed]
+        .game_turn_info
+        .iter()
+        .map(|t| (t.month_increment, t.num_game_turns_per_increment))
+        .collect();
+    turn_month_for_game(
+        game_turn,
+        start_year,
+        calendar,
+        &increments,
+        d.months.len() as i32,
+        d.seasons.len() as i32,
+        d.defines.weeks_per_months,
+    )
 }
 
 /// C++ `getTurnYearForGame(iGameTurn, iStartYear, eCalendar, eSpeed)`.
@@ -942,12 +1103,27 @@ impl Game {
     /// C++ `plotCity(iX, iY, iIndex)`. FfH: if a city stands on (x, y) and
     /// `index > pCity->getNumCityPlots()` (C++ quirk: `>`, not `>=`) the result is `None`.
     pub fn plot_city(&self, x: i32, y: i32, index: usize) -> Option<PlotIdx> {
-        todo!("CvGameCoreUtils::plotCity (needs CvPlot::getPlotCity / CvCity::getNumCityPlots)")
+        // FfH: Added by Kael 11/18/2007
+        // C++ dereferences `GC.getMapINLINE().plot(iX, iY)` (crashes off the map);
+        // `getPlotCity()` is `getCity(m_plotCity)` (NULL for a destroyed city).
+        let center = self.map.plot_xy(x, y).expect("plotCity: (x, y) is not on the map");
+        if let Some(city) = self.map.plots[center].plot_city.filter(|&c| self.cities.contains(c)) {
+            // C++ quirk: `>` lets index 21 through for a radius-2 city (21 plots, indices 0..=20).
+            if index as i32 > self.city_num_city_plots(city) {
+                return None;
+            }
+        }
+        // FfH: End Add
+
+        self.map.plot_xy(x + CITY_PLOT_X[index], y + CITY_PLOT_Y[index])
     }
 
     /// C++ `plotCityXY(const CvCity* pCity, const CvPlot* pPlot)` (FfH: uses the city's plot radius).
     pub fn plot_city_xy_for(&self, city: CityId, plot: PlotIdx) -> Option<usize> {
-        todo!("CvGameCoreUtils::plotCityXY (needs city coordinates and CvCity::getPlotRadius)")
+        let c = &self.cities[city];
+        let (x, y) = self.map.xy(plot);
+        // FfH: Modified by Kael 12/03/2007 (`getPlotRadius()` is the `plot_radius` field)
+        plot_city_xy_radius(self.dx_wrap(x - c.x), self.dy_wrap(y - c.y), c.plot_radius)
     }
 
     /// C++ `atWar(eTeamA, eTeamB)` (`CvTeam::isAtWar` is the `Team::at_war` field).
@@ -970,100 +1146,258 @@ impl Game {
     /// C++ `isPotentialEnemy(eOurTeam, eTheirTeam)` (UNOFFICIAL_PATCH: sneak attack only if
     /// war can be declared). `AI_isSneakAttackReady` is AI war-plan bookkeeping (`Team` fields).
     pub fn is_potential_enemy(&self, our_team: TeamId, their_team: Option<TeamId>) -> bool {
-        todo!("CvGameCoreUtils::isPotentialEnemy")
+        let Some(their_team) = their_team else {
+            return false;
+        };
+
+        // UNOFFICIAL_PATCH 05/05/09 jdog5000 (original BtS: `atWar || AI_isSneakAttackReady`):
+        // fixes the AI launching invasions while unable to declare war.
+        self.at_war(our_team, their_team)
+            || (self.team_ai_is_sneak_attack_ready(our_team, their_team) && self.team_can_declare_war(our_team, their_team))
     }
 
     /// C++ `isBeforeUnitCycle(pFirstUnit, pSecondUnit)`.
     pub fn is_before_unit_cycle(&self, first: UnitId, second: UnitId) -> bool {
-        todo!("CvGameCoreUtils::isBeforeUnitCycle")
+        debug_assert!(first != second, "isBeforeUnitCycle: same unit");
+        let (a, b) = (&self.units[first], &self.units[second]);
+
+        if a.owner != b.owner {
+            return a.owner < b.owner;
+        }
+
+        let (domain_a, domain_b) = (self.unit_get_domain_type(first), self.unit_get_domain_type(second));
+        if domain_a != domain_b {
+            return domain_a < domain_b;
+        }
+
+        let (combat_a, combat_b) = (self.unit_base_combat_str(first), self.unit_base_combat_str(second));
+        if combat_a != combat_b {
+            return combat_a > combat_b;
+        }
+
+        if a.unit_type != b.unit_type {
+            return a.unit_type > b.unit_type;
+        }
+
+        if a.level != b.level {
+            return a.level > b.level;
+        }
+
+        if a.experience != b.experience {
+            return a.experience > b.experience;
+        }
+
+        // C++ `getID()`: the per-player FFreeListTrashArray id, which grows with every unit the
+        // owner creates; both units have the same owner here, so the global id (creation order)
+        // orders them the same way.
+        first < second
     }
 
     /// C++ `getCombatOdds(pAttacker, pDefender)`: fill a [`CombatOddsInput`] from the units and
     /// call [`combat_odds`] with `COMBAT_DIE_SIDES` / `COMBAT_DAMAGE`.
     pub fn get_combat_odds(&self, attacker: UnitId, defender: UnitId) -> i32 {
-        todo!("CvGameCoreUtils::getCombatOdds")
+        // C++ `pDefender->plot()` (a pointer: NULL off the map).
+        let defender_plot = self.unit_plot_opt(defender);
+        let k = CombatOddsInput {
+            // FfH: Modified by Kael 09/02/2007 (BtS: `currCombatStr(NULL, NULL)` and
+            // `currFirepower(NULL, NULL)`): the attacker's strength against this defender.
+            attacker_strength: self.unit_curr_combat_str(attacker, None, Some(defender), None),
+            attacker_firepower: self.unit_curr_firepower(attacker, None, Some(defender)),
+            defender_strength: self.unit_curr_combat_str(defender, defender_plot, Some(attacker), None),
+            defender_firepower: self.unit_curr_firepower(defender, defender_plot, Some(attacker)),
+            attacker_hit_points: self.unit_curr_hit_points(attacker),
+            defender_hit_points: self.unit_curr_hit_points(defender),
+            defender_max_hit_points: self.unit_max_hit_points(defender),
+            // `combatLimit()` returns the FfH `m_iCombatLimit` member.
+            attacker_combat_limit: self.units[attacker].combat_limit,
+            attacker_first_strikes: self.unit_first_strikes(attacker),
+            attacker_chance_first_strikes: self.unit_chance_first_strikes(attacker),
+            attacker_immune_to_first_strikes: self.unit_immune_to_first_strikes(attacker),
+            defender_first_strikes: self.unit_first_strikes(defender),
+            defender_chance_first_strikes: self.unit_chance_first_strikes(defender),
+            defender_immune_to_first_strikes: self.unit_immune_to_first_strikes(defender),
+        };
+
+        debug_assert!(k.attacker_strength + k.defender_strength > 0);
+        debug_assert!(k.attacker_firepower + k.defender_firepower > 0);
+
+        combat_odds(&k, self.d.defines.combat_die_sides, self.d.defines.combat_damage)
     }
 
     /// C++ `getEspionageModifier(eOurTeam, eTargetTeam)` (see [`espionage_modifier`]).
     pub fn get_espionage_modifier(&self, our_team: TeamId, target_team: TeamId) -> i32 {
-        todo!("CvGameCoreUtils::getEspionageModifier")
+        debug_assert!(our_team != target_team);
+        debug_assert!(our_team != self.barbarian_team());
+        debug_assert!(target_team != self.barbarian_team());
+
+        let target_points = self.teams[target_team].espionage_points_ever;
+        let our_points = self.teams[our_team].espionage_points_ever;
+
+        espionage_modifier(self.d.defines.espionage_spending_multiplier, target_points, our_points)
     }
 
-    /// C++ `getDiscoveryTech(eUnit, ePlayer)`.
+    /// C++ `getDiscoveryTech(eUnit, ePlayer)`: the researchable tech whose flavors best match
+    /// the unit type's (first one on ties; `None` if no tech scores above 0).
     pub fn get_discovery_tech(&self, unit: UnitType, player: PlayerId) -> Option<TechType> {
-        todo!("CvGameCoreUtils::getDiscoveryTech")
+        let mut best_tech = None;
+        let mut best_value = 0;
+        let unit_info = &self.d.units[unit];
+        let num_flavor_types = self.d.reg.count::<FlavorType>();
+
+        for tech in self.d.techs.keys() {
+            if self.player_can_research(player, tech, false) {
+                let tech_info = &self.d.techs[tech];
+                let mut value = 0;
+
+                for j in 0..num_flavor_types {
+                    let flavor = FlavorType::from_usize(j);
+                    value += tech_info.flavor_value[flavor] * unit_info.flavor_value[flavor];
+                }
+
+                if value > best_value {
+                    best_value = value;
+                    best_tech = Some(tech);
+                }
+            }
+        }
+
+        best_tech
     }
 
-    /// C++ `getWorldSizeMaxConscript(eCivic)`.
+    /// C++ `getWorldSizeMaxConscript(eCivic)` (`GC.getMapINLINE().getWorldSize()` is the
+    /// init-core world size).
     pub fn get_world_size_max_conscript(&self, civic: CivicType) -> i32 {
-        todo!("CvGameCoreUtils::getWorldSizeMaxConscript")
+        let mut max_conscript = self.d.civics[civic].max_conscript;
+
+        max_conscript *= 0.max(self.d.worlds[self.setup.world_size].max_conscript_modifier + 100);
+        max_conscript /= 100;
+
+        max_conscript
     }
 
     // ---- PlotUnitFunc's (C++ PUF_*); signature `PlotUnitFunc` ----
 
     /// C++ `PUF_isGroupHead`.
     pub fn puf_is_group_head(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isGroupHead")
+        self.unit_is_group_head(u)
     }
 
     /// C++ `PUF_isPlayer` (data1 = player).
     pub fn puf_is_player(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isPlayer")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        self.units[u].owner.i() == data1
     }
 
     /// C++ `PUF_isTeam` (data1 = team).
     pub fn puf_is_team(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isTeam")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        self.unit_get_team(u).i() == data1
     }
 
     /// C++ `PUF_isCombatTeam` (data1 = team, data2 = viewing team).
     pub fn puf_is_combat_team(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isCombatTeam")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        let for_team = puf_data_team(data2);
+        let combat_owner = self.unit_get_combat_owner(u, Some(for_team), self.unit_plot_opt(u));
+
+        // C++ `isInvisible(eTeam, bDebug = false, bCheckCargo = false)`.
+        self.players[combat_owner].team.i() == data1 && !self.unit_is_invisible(u, for_team, false)
     }
 
     /// C++ `PUF_isOtherPlayer` (data1 = player).
     pub fn puf_is_other_player(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isOtherPlayer")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        self.units[u].owner.i() != data1
     }
 
     /// C++ `PUF_isOtherTeam` (data1 = player).
     pub fn puf_is_other_team(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isOtherTeam")
+        let team = self.players[puf_data_player(data1)].team;
+        if self.unit_can_coexist_with_enemy_unit(u, Some(team)) {
+            return false;
+        }
+
+        self.unit_get_team(u) != team
     }
 
     /// C++ `PUF_isEnemy` (data1 = player, data2 = alwaysHostile flag). FfH: `isAlwaysHostile`.
     pub fn puf_is_enemy(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isEnemy")
+        debug_assert!(data2 != -1, "Invalid data argument, should be >= 0");
+        let other_team = self.players[puf_data_player(data1)].team;
+        let our_team = self.players[self.unit_get_combat_owner(u, Some(other_team), self.unit_plot_opt(u))].team;
+
+        if self.unit_can_coexist_with_enemy_unit(u, Some(other_team)) {
+            return false;
+        }
+
+        // FfH: Added by Kael 10/01/2007
+        if other_team != our_team && self.unit_is_always_hostile(u, None) {
+            return true;
+        }
+        // FfH: End Add
+
+        if data2 != 0 {
+            other_team != our_team
+        } else {
+            self.at_war(other_team, our_team)
+        }
     }
 
     /// C++ `PUF_isVisible` (data1 = player).
     pub fn puf_is_visible(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isVisible")
+        // C++ `isInvisible(eTeam, bDebug = false)` (default `bCheckCargo = true`).
+        !self.unit_is_invisible(u, self.players[puf_data_player(data1)].team, true)
     }
 
     /// C++ `PUF_isVisibleDebug` (data1 = player).
     pub fn puf_is_visible_debug(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isVisibleDebug")
+        // C++ `isInvisible(eTeam, bDebug = true)`: `bDebug` only matters in debug mode (never on
+        // here; `unit_is_invisible` drops it), so this is `PUF_isVisible`.
+        !self.unit_is_invisible(u, self.players[puf_data_player(data1)].team, true)
     }
 
     /// C++ `PUF_canSiege` (data1 = player).
     pub fn puf_can_siege(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_canSiege")
+        self.unit_can_siege(u, self.players[puf_data_player(data1)].team)
     }
 
     /// C++ `PUF_isPotentialEnemy` (data1 = player, data2 = alwaysHostile flag).
     pub fn puf_is_potential_enemy(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isPotentialEnemy")
+        debug_assert!(data2 != -1, "Invalid data argument, should be >= 0");
+        let other_team = self.players[puf_data_player(data1)].team;
+        let our_team = self.players[self.unit_get_combat_owner(u, Some(other_team), self.unit_plot_opt(u))].team;
+
+        if self.unit_can_coexist_with_enemy_unit(u, Some(other_team)) {
+            return false;
+        }
+
+        if data2 != 0 {
+            other_team != our_team
+        } else {
+            self.is_potential_enemy(other_team, Some(our_team))
+        }
     }
 
     /// C++ `PUF_canDeclareWar` (data1 = player, data2 = alwaysHostile flag).
     pub fn puf_can_declare_war(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_canDeclareWar")
+        debug_assert!(data2 != -1, "Invalid data argument, should be >= 0");
+        let other_team = self.players[puf_data_player(data1)].team;
+        let our_team = self.players[self.unit_get_combat_owner(u, Some(other_team), self.unit_plot_opt(u))].team;
+
+        if self.unit_can_coexist_with_enemy_unit(u, Some(other_team)) {
+            return false;
+        }
+
+        if data2 != 0 {
+            false
+        } else {
+            self.team_can_declare_war(other_team, our_team)
+        }
     }
 
     /// C++ `PUF_canDefend`.
     pub fn puf_can_defend(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_canDefend")
+        self.unit_can_defend(u, None)
     }
 
     /// C++ `PUF_cannotDefend`.
@@ -1088,62 +1422,65 @@ impl Game {
 
     /// C++ `PUF_canAirAttack`.
     pub fn puf_can_air_attack(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_canAirAttack")
+        self.unit_can_air_attack(u)
     }
 
     /// C++ `PUF_canAirDefend`.
     pub fn puf_can_air_defend(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_canAirDefend")
+        self.unit_can_air_defend(u, None)
     }
 
     /// C++ `PUF_isFighting`.
     pub fn puf_is_fighting(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isFighting")
+        self.unit_is_fighting(u)
     }
 
     /// C++ `PUF_isAnimal`.
     pub fn puf_is_animal(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isAnimal")
+        self.unit_is_animal(u)
     }
 
     /// C++ `PUF_isMilitaryHappiness`.
     pub fn puf_is_military_happiness(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isMilitaryHappiness")
+        self.unit_is_military_happiness(u)
     }
 
     /// C++ `PUF_isInvestigate`.
     pub fn puf_is_investigate(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isInvestigate")
+        self.unit_is_investigate(u)
     }
 
     /// C++ `PUF_isCounterSpy`.
     pub fn puf_is_counter_spy(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isCounterSpy")
+        self.unit_is_counter_spy(u)
     }
 
     /// C++ `PUF_isSpy`.
     pub fn puf_is_spy(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isSpy")
+        self.unit_is_spy(u)
     }
 
     /// C++ `PUF_isDomainType` (data1 = domain).
     pub fn puf_is_domain_type(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isDomainType")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        self.unit_get_domain_type(u).i() == data1
     }
 
     /// C++ `PUF_isUnitType` (data1 = unit type).
     pub fn puf_is_unit_type(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isUnitType")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        self.units[u].unit_type.i() == data1
     }
 
     /// C++ `PUF_isUnitAIType` (data1 = unit AI type; reads the `Unit::ai_type` bookkeeping field).
     pub fn puf_is_unit_ai_type(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isUnitAIType")
+        debug_assert!(data1 != -1, "Invalid data argument, should be >= 0");
+        opt_to_i32(self.units[u].ai_type) == data1
     }
 
     /// C++ `PUF_isCityAIType` (`CvUnitAI::AI_isCityAIType`).
     pub fn puf_is_city_ai_type(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isCityAIType")
+        self.unit_ai_is_city_ai_type(u)
     }
 
     /// C++ `PUF_isNotCityAIType`.
@@ -1153,13 +1490,29 @@ impl Game {
 
     /// C++ `PUF_isNoMission`.
     pub fn puf_is_no_mission(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isNoMission")
+        // C++ dereferences `getGroup()` (crashes for a unit without a group).
+        let group = self.units[u].group.expect("PUF_isNoMission: unit without a selection group");
+        self.groups[group].activity_type != ActivityType::ACTIVITY_MISSION
     }
 
     /// C++ `PUF_isFiniteRange`.
     pub fn puf_is_finite_range(&self, u: UnitId, data1: i32, data2: i32) -> bool {
-        todo!("CvGameCoreUtils::PUF_isFiniteRange")
+        self.unit_get_domain_type(u) != DomainType::DOMAIN_AIR || self.d.units[self.units[u].unit_type].air_range > 0
     }
+}
+
+/// A `PlotUnitFunc` data argument naming a player (C++ `(PlayerTypes)iData`).
+#[inline]
+fn puf_data_player(data: i32) -> PlayerId {
+    debug_assert!(data != -1, "Invalid data argument, should be >= 0");
+    PlayerId::from_usize(data as usize)
+}
+
+/// A `PlotUnitFunc` data argument naming a team (C++ `(TeamTypes)iData`).
+#[inline]
+fn puf_data_team(data: i32) -> TeamId {
+    debug_assert!(data != -1, "Invalid data argument, should be >= 0");
+    TeamId::from_usize(data as usize)
 }
 
 #[cfg(test)]
@@ -1447,5 +1800,340 @@ mod tests {
         assert!(g.at_war_opt(Some(a), Some(b)));
         assert!(!g.at_war_opt(None, Some(b)));
         assert!(!g.at_war(a, TeamId(2)));
+    }
+
+    // ---- data-only helpers (expected values read off the vendored FFH2 XML) ----
+
+    #[test]
+    fn tech_score_and_tech_requirements() {
+        let d = ffh_data::global();
+        let tech = |s: &str| d.t::<TechType>(s);
+        let unit = |s: &str| d.t::<UnitType>(s);
+
+        // era + 1: ancient, classical, medieval
+        assert_eq!(get_tech_score(d, tech("TECH_AGRICULTURE")), 1);
+        assert_eq!(get_tech_score(d, tech("TECH_WRITING")), 2);
+        assert_eq!(get_tech_score(d, tech("TECH_GUILDS")), 3);
+
+        // the seven religions' founding techs
+        assert!(is_religion_tech(d, tech("TECH_ORDERS_FROM_HEAVEN")));
+        assert!(is_religion_tech(d, tech("TECH_HONOR")));
+        assert!(!is_religion_tech(d, tech("TECH_AGRICULTURE")));
+        assert_eq!(d.techs.keys().filter(|&t| is_religion_tech(d, t)).count(), 7);
+        // FFH2 has no corporations
+        assert!(d.techs.keys().all(|t| !is_corporation_tech(d, t)));
+
+        // UNIT_CHARIOT: PrereqTech TECH_TRADE + TechTypes [TECH_CONSTRUCTION]
+        assert!(is_tech_required_for_unit(d, tech("TECH_TRADE"), unit("UNIT_CHARIOT")));
+        assert!(is_tech_required_for_unit(d, tech("TECH_CONSTRUCTION"), unit("UNIT_CHARIOT")));
+        assert!(!is_tech_required_for_unit(d, tech("TECH_BRONZE_WORKING"), unit("UNIT_CHARIOT")));
+        assert!(is_tech_required_for_unit(d, tech("TECH_BRONZE_WORKING"), unit("UNIT_AXEMAN")));
+        assert!(d.techs.keys().all(|t| !is_tech_required_for_unit(d, t, unit("UNIT_WARRIOR"))));
+
+        let granary = d.t::<BuildingType>("BUILDING_GRANARY");
+        assert!(is_tech_required_for_building(d, tech("TECH_AGRICULTURE"), granary));
+        assert!(!is_tech_required_for_building(d, tech("TECH_MINING"), granary));
+        // a temple (SPECIALBUILDING_TEMPLE has no tech prerequisite of its own)
+        let temple = d.t::<BuildingType>("BUILDING_TEMPLE_OF_THE_ORDER");
+        assert!(is_tech_required_for_building(d, tech("TECH_ORDERS_FROM_HEAVEN"), temple));
+        assert_eq!(d.techs.keys().filter(|&t| is_tech_required_for_building(d, t, temple)).count(), 1);
+
+        let bane = d.t::<ProjectType>("PROJECT_BANE_DIVINE");
+        assert!(is_tech_required_for_project(d, tech("TECH_MALEVOLENT_DESIGNS"), bane));
+        assert!(!is_tech_required_for_project(d, tech("TECH_AGRICULTURE"), bane));
+        let samhain = d.t::<ProjectType>("PROJECT_SAMHAIN");
+        assert!(d.techs.keys().all(|t| !is_tech_required_for_project(d, t, samhain)));
+    }
+
+    #[test]
+    fn limited_classes_and_projects() {
+        let d = ffh_data::global();
+        let unit_class = |s: &str| d.t::<UnitClassType>(s);
+        let building_class = |s: &str| d.t::<BuildingClassType>(s);
+
+        // world unit (hero), national unit (4 per player), unlimited
+        let herne = unit_class("UNITCLASS_HERNE");
+        assert!(is_world_unit_class(d, herne) && !is_team_unit_class(d, herne) && !is_national_unit_class(d, herne));
+        let ira = unit_class("UNITCLASS_IRA");
+        assert!(!is_world_unit_class(d, ira) && is_national_unit_class(d, ira) && is_limited_unit_class(d, ira));
+        assert!(!is_limited_unit_class(d, unit_class("UNITCLASS_WARRIOR")));
+        assert!(d.unit_classes.keys().all(|c| !is_team_unit_class(d, c)));
+
+        let heron_throne = building_class("BUILDINGCLASS_HERON_THRONE");
+        assert!(is_world_wonder_class(d, heron_throne) && !is_national_wonder_class(d, heron_throne));
+        assert_eq!(limited_wonder_class_limit(d, heron_throne), 1);
+        assert_eq!(get_wonder_score(d, heron_throne), 5);
+        let palace = building_class("BUILDINGCLASS_PALACE");
+        assert!(!is_world_wonder_class(d, palace) && is_national_wonder_class(d, palace));
+        assert_eq!(limited_wonder_class_limit(d, palace), 1);
+        let granary = building_class("BUILDINGCLASS_GRANARY");
+        assert!(!is_limited_wonder_class(d, granary));
+        assert_eq!(limited_wonder_class_limit(d, granary), -1);
+        assert_eq!(get_wonder_score(d, granary), 0);
+        let count = |f: fn(&GameData, BuildingClassType) -> bool| d.building_classes.keys().filter(|&c| f(d, c)).count();
+        assert_eq!((count(is_world_wonder_class), count(is_team_wonder_class), count(is_national_wonder_class)), (38, 0, 20));
+
+        let bane = d.t::<ProjectType>("PROJECT_BANE_DIVINE");
+        assert!(is_world_project(d, bane) && !is_team_project(d, bane) && is_limited_project(d, bane));
+        assert!(!is_limited_project(d, d.t::<ProjectType>("PROJECT_ELEGY_OF_THE_SHEAIM")));
+    }
+
+    #[test]
+    fn promotion_validity() {
+        let d = ffh_data::global();
+        let valid = |p: &str, u: &str| is_promotion_valid(d, d.t::<PromotionType>(p), d.t::<UnitType>(u), false);
+
+        assert!(valid("PROMOTION_COMBAT1", "UNIT_WARRIOR"));
+        assert!(valid("PROMOTION_AMPHIBIOUS", "UNIT_WARRIOR"));
+        assert!(!valid("PROMOTION_BARRAGE1", "UNIT_WARRIOR")); // not for melee
+
+        // no unit combat: only free promotions
+        assert!(!valid("PROMOTION_COMBAT1", "UNIT_WORKER"));
+        assert!(!valid("PROMOTION_COMBAT1", "UNIT_AIR_ELEMENTAL"));
+        assert!(valid("PROMOTION_FLYING", "UNIT_AIR_ELEMENTAL"));
+        // only defensive (an animal): no city attack, no blitz
+        assert!(valid("PROMOTION_COMBAT1", "UNIT_ELEPHANT"));
+        assert!(!valid("PROMOTION_CITY_RAIDER1", "UNIT_ELEPHANT"));
+        assert!(!valid("PROMOTION_BURNING_BLOOD", "UNIT_ELEPHANT"));
+        // collateral damage promotions need a collateral damage unit
+        assert!(valid("PROMOTION_BARRAGE1", "UNIT_CATAPULT"));
+        assert!(!valid("PROMOTION_BARRAGE1", "UNIT_BATTERING_RAM"));
+
+        // Over all (promotion, unit) pairs; the count comes from an independent evaluation of
+        // the C++ rules over the XML. FFH2 has no leader promotions, so bLeader changes nothing.
+        let mut n = 0;
+        for p in d.promotions.keys() {
+            for u in d.units.keys() {
+                let v = is_promotion_valid(d, p, u, false);
+                assert_eq!(v, is_promotion_valid(d, p, u, true));
+                n += v as usize;
+            }
+        }
+        assert_eq!((n, d.promotions.len() * d.units.len()), (26312, 84825));
+    }
+
+    #[test]
+    fn final_improvement_upgrades() {
+        let d = ffh_data::global();
+        let imp = |s: &str| d.t::<ImprovementType>(s);
+        let fin = |s: &str, count| final_improvement_upgrade(d, imp(s), count);
+
+        // cottage -> hamlet -> village -> town -> enclave
+        assert_eq!(fin("IMPROVEMENT_COTTAGE", 0), Some(imp("IMPROVEMENT_ENCLAVE")));
+        assert_eq!(fin("IMPROVEMENT_TOWN", 0), Some(imp("IMPROVEMENT_ENCLAVE")));
+        assert_eq!(fin("IMPROVEMENT_FORT", 0), Some(imp("IMPROVEMENT_CITADEL")));
+        assert_eq!(fin("IMPROVEMENT_PIRATE_COVE", 0), Some(imp("IMPROVEMENT_PIRATE_PORT")));
+        assert_eq!(fin("IMPROVEMENT_FARM", 0), Some(imp("IMPROVEMENT_FARM")));
+        // more than GC.getNumImprovementInfos() steps give NO_IMPROVEMENT
+        let n = d.improvements.len() as i32;
+        assert_eq!(n, 81);
+        assert_eq!(fin("IMPROVEMENT_FARM", n), Some(imp("IMPROVEMENT_FARM")));
+        assert_eq!(fin("IMPROVEMENT_FARM", n + 1), None);
+        assert_eq!(fin("IMPROVEMENT_COTTAGE", n), None);
+        assert_eq!(fin("IMPROVEMENT_COTTAGE", n - 4), Some(imp("IMPROVEMENT_ENCLAVE")));
+        assert_eq!(fin("IMPROVEMENT_COTTAGE", n - 3), None);
+    }
+
+    #[test]
+    fn plot_event_triggers() {
+        let d = ffh_data::global();
+        let plot_trigger = |s: &str| is_plot_event_trigger(d, d.t::<EventTriggerType>(s));
+
+        assert!(plot_trigger("EVENTTRIGGER_VOLCANO")); // iPlotType 0 (PLOT_PEAK)
+        assert!(plot_trigger("EVENTTRIGGER_ANTELOPE")); // features
+        assert!(plot_trigger("EVENTTRIGGER_DUSTBOWL")); // terrains, 4 plots
+        assert!(plot_trigger("EVENTTRIGGER_FARM_BANDITS")); // improvements
+        assert!(plot_trigger("EVENTTRIGGER_TWO_HEADED_COW")); // bonuses
+        assert!(plot_trigger("EVENTTRIGGER_WASHED_OUT")); // routes
+        assert!(plot_trigger("EVENTTRIGGER_DUSTBOWL_CONT")); // prereq event plot, no picked city
+        assert!(!plot_trigger("EVENTTRIGGER_ALCHEMIST")); // a plot without any plot property
+        assert!(!plot_trigger("EVENTTRIGGER_AMURITE_TRIAL")); // no plot
+
+        // count from an independent evaluation of the C++ rules over the XML
+        assert_eq!(d.event_triggers.keys().filter(|&t| is_plot_event_trigger(d, t)).count(), 56);
+    }
+
+    #[test]
+    fn turn_month_from_game_speed() {
+        let d = ffh_data::global();
+        let normal = d.t::<GameSpeedType>("GAMESPEED_NORMAL");
+        let quick = d.t::<GameSpeedType>("GAMESPEED_QUICK");
+        assert_eq!(d.game_speeds[normal].game_turn_info, vec![GameTurnInfo { month_increment: 12, num_game_turns_per_increment: 690 }]);
+
+        assert_eq!(get_turn_month_for_game(d, 7, 0, CalendarType::CALENDAR_DEFAULT, normal), 84);
+        assert_eq!(get_turn_year_for_game(d, 7, 0, CalendarType::CALENDAR_DEFAULT, normal), 7);
+        assert_eq!(get_turn_year_for_game(d, 7, -4000, CalendarType::CALENDAR_DEFAULT, normal), -3993);
+        // past the last increment (480 turns on quick) the last month increment continues
+        assert_eq!(get_turn_year_for_game(d, 500, 0, CalendarType::CALENDAR_DEFAULT, quick), 500);
+        assert_eq!(get_turn_month_for_game(d, 500, 0, CalendarType::CALENDAR_DEFAULT, quick), 6000);
+        // 12 months, 4 seasons, WEEKS_PER_MONTHS 4
+        assert_eq!(get_turn_month_for_game(d, 5, 1, CalendarType::CALENDAR_SEASONS, normal), 12 + 15);
+        assert_eq!(get_turn_month_for_game(d, 9, 0, CalendarType::CALENDAR_WEEKS, normal), 2);
+        assert_eq!(get_turn_month_for_game(d, 9, 0, CalendarType::CALENDAR_MONTHS, normal), 9);
+        assert_eq!(get_turn_year_for_game(d, 9, 0, CalendarType::CALENDAR_BI_YEARLY, normal), 18);
+    }
+
+    // ---- helpers that read game state ----
+
+    /// A game with real `Player` objects (not `player_init`ed) on a `w` x `h` map.
+    fn test_game(w: i32, h: i32, wrap_x: bool) -> Game {
+        use crate::map::{Map, MapInitData};
+        use crate::player::Player;
+        let d = ffh_data::global();
+        let mut g = Game::new(d, crate::setup::GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 1));
+        let (num_players, num_teams) = (g.num_players(), g.num_teams());
+        g.map = Map::new(d, &MapInitData { grid_w: w, grid_h: h, wrap_x, ..Default::default() }, num_players, num_teams);
+        for p in g.player_ids() {
+            g.players[p] = Player::new(d, p, &g.setup.players[p.idx()], num_players, num_teams);
+        }
+        g
+    }
+
+    /// C++ `CvPlayer::addCity` + `reset`, registered on its plot (no `CvCity::init`).
+    fn add_city(g: &mut Game, owner: PlayerId, x: i32, y: i32) -> CityId {
+        let (num_players, num_teams) = (g.num_players(), g.num_teams());
+        let id = g.cities.next_id();
+        let c = g.player_add_city(owner, crate::city::City::new(g.d, num_players, num_teams, id, owner, x, y, 0));
+        let p = g.map.plot_idx(x, y).unwrap();
+        g.map.plots[p].plot_city = Some(c);
+        c
+    }
+
+    /// C++ `CvPlayer::addUnit` + `reset`, with the coordinates set directly (no `init`/`setXY`).
+    fn add_unit(g: &mut Game, owner: PlayerId, unit_type: &str, x: i32, y: i32) -> UnitId {
+        use crate::unit::{Unit, UnitResetInfo};
+        let d = g.d;
+        let t = d.t::<UnitType>(unit_type);
+        let id = g.units.next_id();
+        let u = g.player_add_unit(owner, Unit::new(id, t, owner, d, &UnitResetInfo::from_info(&d.units[t])));
+        g.units[u].x = x;
+        g.units[u].y = y;
+        u
+    }
+
+    #[test]
+    fn plot_city_follows_the_city_radius() {
+        let mut g = test_game(10, 8, false);
+        let at = |g: &Game, i: usize| g.map.plot_idx(4 + CITY_PLOT_X[i], 4 + CITY_PLOT_Y[i]);
+
+        // no city on (4, 4): any of the 37 indices
+        assert_eq!(g.plot_city(4, 4, CITY_HOME_PLOT), g.map.plot_idx(4, 4));
+        assert_eq!(g.plot_city(4, 4, 36), at(&g, 36));
+        // off the (non-wrapping) map
+        assert_eq!(g.plot_city(0, 0, 5), None);
+
+        let c = add_city(&mut g, PlayerId(0), 4, 4);
+        assert_eq!(g.cities[c].plot_radius, 2);
+        assert_eq!(g.plot_city(4, 4, 20), at(&g, 20));
+        // C++ quirk: `iIndex > getNumCityPlots()` lets index 21 (radius 3) through
+        assert_eq!(g.plot_city(4, 4, 21), at(&g, 21));
+        assert_eq!(g.plot_city(4, 4, 22), None);
+        g.cities[c].plot_radius = 3;
+        assert_eq!(g.plot_city(4, 4, 36), at(&g, 36));
+
+        // a destroyed city (stale id on the plot) no longer limits the index
+        g.cities[c].plot_radius = 2;
+        g.player_delete_city(PlayerId(0), c);
+        assert_eq!(g.plot_city(4, 4, 30), at(&g, 30));
+    }
+
+    #[test]
+    fn plot_city_xy_for_uses_the_city_radius() {
+        let mut g = test_game(10, 8, true);
+        let c = add_city(&mut g, PlayerId(0), 0, 4);
+        let p = |g: &Game, x, y| g.map.plot_idx(x, y).unwrap();
+
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 0, 4)), Some(CITY_HOME_PLOT));
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 2, 5)), plot_city_xy(2, 1));
+        // x wraps: (9, 4) is one plot west of the city
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 9, 4)), plot_city_xy(-1, 0));
+        // radius 2: no (2, 2) corners, no third ring
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 2, 6)), None);
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 3, 4)), None);
+        g.cities[c].plot_radius = 3;
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 2, 6)), plot_city_xy(2, 2));
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 7, 4)), plot_city_xy(-3, 0));
+        assert_eq!(g.plot_city_xy_for(c, p(&g, 4, 4)), None);
+    }
+
+    #[test]
+    fn team_level_helpers() {
+        let mut g = test_game(4, 4, false);
+        let d = g.d;
+        let (a, b) = (TeamId(0), TeamId(1));
+
+        // espionage: ESPIONAGE_SPENDING_MULTIPLIER 100
+        assert_eq!(g.get_espionage_modifier(a, b), 0);
+        g.teams[b].espionage_points_ever = 30;
+        assert_eq!(g.get_espionage_modifier(a, b), 200);
+        assert_eq!(g.get_espionage_modifier(b, a), 50);
+
+        // potential enemies (canDeclareWar is only asked once the sneak attack is ready)
+        assert!(!g.is_potential_enemy(a, None));
+        assert!(!g.is_potential_enemy(a, Some(b)));
+        g.teams[a].ai_war_plan[b] = Some(WarPlanType::WARPLAN_PREPARING_TOTAL);
+        assert!(!g.is_potential_enemy(a, Some(b)));
+        g.teams[a].at_war[b] = true;
+        g.teams[b].at_war[a] = true;
+        assert!(g.is_potential_enemy(a, Some(b)) && g.is_potential_enemy(b, Some(a)));
+
+        // CIVIC_MILITARY_STATE: iMaxConscript 3, scaled by the world size modifier
+        let military_state = d.t::<CivicType>("CIVIC_MILITARY_STATE");
+        for (world, expect) in [
+            ("WORLDSIZE_DUEL", 1),
+            ("WORLDSIZE_TINY", 2),
+            ("WORLDSIZE_SMALL", 3),
+            ("WORLDSIZE_STANDARD", 3),
+            ("WORLDSIZE_LARGE", 4),
+            ("WORLDSIZE_HUGE", 5),
+        ] {
+            g.setup.world_size = d.t::<WorldSizeType>(world);
+            assert_eq!(g.get_world_size_max_conscript(military_state), expect, "{world}");
+        }
+        assert_eq!(g.get_world_size_max_conscript(d.t::<CivicType>("CIVIC_DESPOTISM")), 0);
+    }
+
+    #[test]
+    fn unit_filters_and_cycle_order() {
+        use crate::group::SelectionGroup;
+        let mut g = test_game(6, 4, false);
+        let d = g.d;
+        let (p0, p1) = (PlayerId(0), PlayerId(1));
+        let warrior = add_unit(&mut g, p0, "UNIT_WARRIOR", 1, 1);
+        let worker = add_unit(&mut g, p0, "UNIT_WORKER", 1, 1);
+        let other = add_unit(&mut g, p1, "UNIT_WARRIOR", 1, 1);
+
+        assert!(g.puf_is_player(warrior, p0.i(), -1) && !g.puf_is_player(warrior, p1.i(), -1));
+        assert!(g.puf_is_other_player(other, p0.i(), -1) && !g.puf_is_other_player(other, p1.i(), -1));
+        assert!(g.puf_is_team(other, 1, -1) && !g.puf_is_team(other, 0, -1));
+        assert!(g.puf_is_unit_type(warrior, d.t::<UnitType>("UNIT_WARRIOR").i(), -1));
+        assert!(!g.puf_is_unit_type(worker, d.t::<UnitType>("UNIT_WARRIOR").i(), -1));
+
+        // unit AI type (NO_UNITAI after reset)
+        let city_defense = UnitAIType::UNITAI_CITY_DEFENSE;
+        assert!(!g.puf_is_unit_ai_type(warrior, city_defense.i(), -1));
+        assert!(!g.puf_is_city_ai_type(warrior, -1, -1) && g.puf_is_not_city_ai_type(warrior, -1, -1));
+        g.units[warrior].ai_type = Some(city_defense);
+        assert!(g.puf_is_unit_ai_type(warrior, city_defense.i(), -1));
+        assert!(g.puf_is_city_ai_type(warrior, -1, -1) && !g.puf_is_not_city_ai_type(warrior, -1, -1));
+
+        assert!(!g.puf_is_fighting(warrior, -1, -1));
+        g.units[warrior].combat_unit = Some(other);
+        assert!(g.puf_is_fighting(warrior, -1, -1));
+
+        // group head and mission activity
+        let group = g.groups.next_id();
+        g.player_add_selection_group(p0, SelectionGroup::new(group, p0));
+        g.groups[group].units = vec![worker, warrior];
+        g.units[warrior].group = Some(group);
+        g.units[worker].group = Some(group);
+        assert!(g.puf_is_group_head(worker, -1, -1) && !g.puf_is_group_head(warrior, -1, -1));
+        assert!(g.puf_is_no_mission(warrior, -1, -1));
+        g.groups[group].activity_type = ActivityType::ACTIVITY_MISSION;
+        assert!(!g.puf_is_no_mission(warrior, -1, -1));
+
+        // different owners: the lower player id cycles first
+        assert!(g.is_before_unit_cycle(warrior, other));
+        assert!(!g.is_before_unit_cycle(other, worker));
     }
 }
