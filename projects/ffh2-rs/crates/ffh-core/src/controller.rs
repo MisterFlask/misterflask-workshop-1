@@ -93,6 +93,25 @@ pub trait Controller: Send + Sync {
     }
 }
 
+impl Game {
+    /// C++ `CvPlayerAI::AI_getAttitude(ePlayer, bForced)`: the `bForced` overrides are rules
+    /// (a teammate, or the master of our non-capitulated vassal team, is FRIENDLY; anything
+    /// involving the barbarians is FURIOUS); otherwise the controller's attitude.
+    pub fn player_ai_get_attitude(&self, p: PlayerId, towards: PlayerId, forced: bool) -> AttitudeType {
+        if forced {
+            let team = self.players[p].team;
+            let their_team = self.players[towards].team;
+            if team == their_team || (self.teams[team].vassal[their_team] && !self.teams[team].capitulated) {
+                return AttitudeType::ATTITUDE_FRIENDLY;
+            }
+            if self.player_is_barbarian(p) || self.player_is_barbarian(towards) {
+                return AttitudeType::ATTITUDE_FURIOUS;
+            }
+        }
+        self.controller(p).attitude(self, p, towards)
+    }
+}
+
 /// Controller with all-default behaviour.
 #[derive(Default)]
 pub struct NullController;

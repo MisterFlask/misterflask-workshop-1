@@ -126,6 +126,8 @@ C++ -> Rust mapping:
 - `GC.getGameINLINE().getActivePlayer()` -> `self.active_player` (always `None` headless, so
   "active player" UI branches never run; combat is never shown, i.e. always quick);
   `gDLL->GetAutorun()` -> `self.autorun`.
+- `CvPlayerAI::AI_getAttitude(ePlayer, bForced = true)` read by rules ->
+  `self.player_ai_get_attitude(p, other, forced)` (forced overrides, then the controller).
 - `CvPlayerAI::AI_foundValue` (needed by starting plots and barbarian cities) ->
   `self.player_ai_found_value(p, x, y, min_rival_range, starting_loc, &[])` (`found_value.rs`).
 

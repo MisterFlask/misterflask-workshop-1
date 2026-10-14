@@ -1280,10 +1280,7 @@ impl Game {
     /// 4 = FRIENDLY), integer-divided by the number of pairs; CAUTIOUS without pairs. The
     /// player attitude (C++ `CvPlayerAI::AI_getAttitude`) is the controller's
     /// (`Controller::attitude`, the new AI's relations).
-    // SIGNATURE: `Controller::attitude` takes no `bForced`, so `forced` is not passed on. (In
-    // C++ it makes `CvPlayerAI::AI_getAttitudeVal` answer FRIENDLY for a teammate or for the
-    // master of a non-capitulated vassal, and FURIOUS between barbarians and anyone, before any
-    // personal factor.)
+    /// `forced` applies the C++ `bForced` overrides (`Game::player_ai_get_attitude`).
     pub fn team_ai_get_attitude(&self, t: TeamId, other: TeamId, forced: bool) -> AttitudeType {
         debug_assert!(other != t, "shouldn't call this function on ourselves");
 
@@ -1297,7 +1294,7 @@ impl Game {
                         if self.players[j].alive && i != j {
                             let team_loop = self.players[j].team;
                             if team_loop == other || self.teams[team_loop].vassal[other] || self.teams[other].vassal[team_loop] {
-                                attitude += self.controller(i).attitude(self, i, j).i();
+                                attitude += self.player_ai_get_attitude(i, j, forced).i();
                                 count += 1;
                             }
                         }
@@ -1333,7 +1330,7 @@ impl Game {
                     for j in self.player_ids() {
                         if self.players[j].alive {
                             if self.players[j].team == other {
-                                attitude_val += self.controller(i).attitude(self, i, j).i();
+                                attitude_val += self.player_ai_get_attitude(i, j, forced).i();
                                 count += 1;
                             }
                         }
