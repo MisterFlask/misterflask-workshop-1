@@ -69,12 +69,10 @@ counters, war success, war plans) that the diplomacy below reads.
 5. **Units** (`units.rs`): promotions and upgrades first (also for fortified garrisons that
    get no orders), then every group that needs orders gets one decision by its head unit's
    role (`Unit::ai_type`, set when the city trains it):
-   - **settlers** go to the best reachable site (`sites.rs`), re-planned every turn (and
-     never left asleep); a site under danger needs an escort, which the settler picks up (a
-     field unit or a spare garrison unit) or waits for in its city; the first city is founded
-     in place unless a clearly better site is reachable this turn; when no safe path exists
-     (it crosses a neighbour's land) an escorted settler takes the direct one; with no site
-     left on its landmass it goes overseas (see Naval);
+   - **settlers** (`expansion.rs`, see "Settlers and escorts" below) go with an escort to the
+     best reachable site whose danger the escort covers; the first city is founded in place
+     unless a clearly better site is reachable this turn; with no site left on its landmass a
+     settler goes overseas (see Naval);
    - **workers** (`workers.rs`), see below;
    - **garrisons** fill each city's quota;
    - **field armies** (`military.rs`), see below;
@@ -106,7 +104,8 @@ counters, war success, war plans) that the diplomacy below reads.
    than twice as slow as our fastest one on that landmass; with no site left at home, one
    overseas settler at a time from a coastal city of size 3+ that has or can build a
    transport; while growing toward a settler the city builds only short items (warriors
-   that explore and escort);
+   that explore and escort); a settler 3 turns from done (or waiting in the city) with no
+   fighter to spare gets the cheapest adequate escort queued behind it (`expansion.rs`);
 6. FfH tier-2 units need a building in the training city (Archery Range for archers,
    Training Yard for axemen, ...): when one would open a defender or attacker a third
    stronger, about half the cities build it;
@@ -214,6 +213,43 @@ technology and open-borders trading with the civs we know; the first transport w
 landmass is full or a settler waits in port (and the tech before it); processes (Writing,
 Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1` with
 `FFH_AI_TRACE` lists every candidate's value and score.
+
+## Settlers and escorts (`expansion.rs`)
+
+`settler_choice` (when a city builds settlers, item 5 above) and the settler role live here.
+A settler never leaves a city alone: a city founded without a defender trains one at one or
+two hammers a turn, and the barbarians took such cities within a few turns of founding.
+
+- **Escort**: the settler takes a fighter from its plot (field units first, else a garrison
+  unit the city can spare: two defenders stay in the capital, one elsewhere, and the rest
+  must still hold the visible threat), a second one when the best site needs more. Once per
+  turn (`prepare_escorts`), a city 3 turns or less from a settler, or holding one that waits,
+  with no fighter to spare queues the cheapest unit that defends at least 70% as well as its
+  best one, so both leave together; the escort becomes the new city's first garrison. Waiting
+  settlers also ask single field units within 6 turns to come (`View::escort_requests`).
+- **Risk**: each reachable site's risk is the worst danger on the straight line there, or
+  twice the danger at the site (the new city has to hold it). A settler goes only where its
+  escort's defense covers the risk; with none it waits in the city (up to 10 turns, then it
+  goes only where nothing can reach it; an escorted one then accepts twice its escort). A
+  settler in the field whose sites all turned dangerous walks back to the nearest city.
+- **Target**: sites are scored value / (turns + 3) and re-planned every turn; the site the
+  settler was walking to (kept as the group's `MISSIONAI_FOUND` plot, saved with the game)
+  scores 1.5x, so settlers no longer flip between sites of similar value.
+
+Measured over seeds 1-48 (6 civs, standard, 300 turns) against the version without them:
+settlers destroyed 50 -> 28, cities razed 38 -> 32, cities captured by barbarians 77 -> 71,
+techs at turn 300 19.6 -> 19.8; each part matters (without the forced wait captures were
+104, without escort production 112). Cities per civ are unchanged (2.1 at turn 100).
+
+Tried and dropped (same seeds): two settlers at a time for one or two cities, sites within 5
+plots of our cities, the capital giving up its second defender as an escort, settlers at size
+2 or before the first worker, deferring buildings while a city grows toward a settler, and
+chopping forests while a settler is built (C++ `bChop`). The fastest mix had 2.4-2.5 cities
+per civ at turn 100 (4th city at turn 131 instead of 150) but 0.8-1.4 fewer techs and fewer
+points at turn 300, the same number of cities by then, and more cities lost to barbarians,
+also on top of the finance and research changes. The rules couple barbarian cities to ours:
+`createBarbarianCities` starts once civs average two cities and its target grows with the
+number of civ cities, so faster expansion brings more barbarian cities sooner.
 
 ## Workers (`workers.rs`)
 
@@ -330,8 +366,10 @@ never with the civ it prepares a war against.
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
   (measured), so the gate stays.
-- Expansion is slow everywhere in the first 100 turns (about two cities): settlers cost 220
-  hammers on normal speed and cities wait for size 3-4 and for the barbarians to leave.
+- Expansion is slow everywhere in the first 100 turns (about two cities; second city at
+  turn 70, third at 110): settlers cost 220 hammers on normal speed (120 + the new-city
+  production value) and cities wait for size 3-4 and for the barbarians to leave. Faster
+  openings were measured and cost research by turn 300 (see "Settlers and escorts").
 - Economy: research at about 60% of the commerce by turn 300; cottages need
   Education, libraries Writing; maintenance and civic upkeep take a quarter of the commerce.
   The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
