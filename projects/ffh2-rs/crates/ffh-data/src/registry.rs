@@ -380,7 +380,9 @@ impl<'a> Rd<'a> {
         let mut v = IdxVec::from_elem(def, n);
         for (k, val) in self.pair_iter(tag) {
             if let Some(key) = self.resolve::<K>(k.text()) {
-                v[key] = val.and_then(|x| parse_int(x.text())).unwrap_or(def);
+                // C++ GetNextXmlVal(&p[i]) defaults to 0 (not the list default) when the
+                // value element is missing.
+                v[key] = val.and_then(|x| parse_int(x.text())).unwrap_or(0);
             }
         }
         v
@@ -395,7 +397,7 @@ impl<'a> Rd<'a> {
         let mut v = IdxVec::from_elem(def, n);
         for (k, val) in self.pair_iter(tag) {
             if let Some(key) = self.resolve::<K>(k.text()) {
-                v[key] = val.and_then(|x| parse_bool(x.text())).unwrap_or(def);
+                v[key] = val.and_then(|x| parse_bool(x.text())).unwrap_or(false);
             }
         }
         v
@@ -406,7 +408,7 @@ impl<'a> Rd<'a> {
         let mut v = IdxVec::from_elem(def, n);
         for (k, val) in self.pair_iter(tag) {
             if let Some(key) = self.resolve::<K>(k.text()) {
-                v[key] = val.and_then(|x| x.text().trim().parse().ok()).unwrap_or(def);
+                v[key] = val.and_then(|x| x.text().trim().parse().ok()).unwrap_or(0.0);
             }
         }
         v
