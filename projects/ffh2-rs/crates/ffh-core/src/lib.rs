@@ -10,6 +10,7 @@ pub mod controller;
 pub mod deal;
 pub mod defs;
 pub mod ffh;
+pub mod found_value;
 pub mod game;
 pub mod governor;
 pub mod group;

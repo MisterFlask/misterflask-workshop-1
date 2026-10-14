@@ -1,0 +1,819 @@
+//! Unit control: every group that needs orders this turn gets exactly one decision by its
+//! head unit's role (`Unit::ai_type`). Decisions are issued as missions through the rules
+//! (`pushMission`), so the AI can only do what a human could.
+
+use ffh_core::defs::*;
+use ffh_core::game::Game;
+use ffh_core::ids::*;
+use ffh_data::*;
+
+use crate::production::garrison;
+use crate::reach::Reached;
+use crate::sites;
+use crate::view::{attack_power, View};
+use crate::Ai;
+
+// ----------------------------------------------------------------------------
+// Mission helpers
+// ----------------------------------------------------------------------------
+
+pub fn push(g: &mut Game, grp: GroupId, mission: MissionType, d1: i32, d2: i32, flags: i32, append: bool) {
+    g.group_push_mission(grp, mission, d1, d2, flags, append, false, None, None, None);
+}
+
+pub fn move_to(g: &mut Game, grp: GroupId, plot: PlotIdx, flags: i32) {
+    let (x, y) = g.map.xy(plot);
+    push(g, grp, MissionType::MISSION_MOVE_TO, x, y, flags, false);
+}
+
+pub fn skip(g: &mut Game, grp: GroupId) {
+    push(g, grp, MissionType::MISSION_SKIP, -1, -1, 0, false);
+}
+
+fn can_start(g: &Game, grp: GroupId, mission: MissionType, d1: i32, d2: i32) -> bool {
+    g.group_can_start_mission(grp, mission, d1, d2, None, false)
+}
+
+/// Fortify (or sleep, or skip) in place.
+pub fn hold(g: &mut Game, grp: GroupId) {
+    for m in [MissionType::MISSION_FORTIFY, MissionType::MISSION_SLEEP] {
+        if can_start(g, grp, m, -1, -1) {
+            push(g, grp, m, -1, -1, 0, false);
+            return;
+        }
+    }
+    skip(g, grp);
+}
+
+fn alive(g: &Game, grp: GroupId) -> bool {
+    g.groups.contains(grp) && !g.groups[grp].units.is_empty()
+}
+
+// ----------------------------------------------------------------------------
+// Roles
+// ----------------------------------------------------------------------------
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum Role {
+    Garrison,
+    Settler,
+    Worker,
+    SeaWorker,
+    Army,
+    Explore,
+    GreatPerson,
+    Missionary,
+    Caster,
+    Animal,
+    Naval,
+    Other,
+}
+
+fn role_of(g: &Game, u: UnitId) -> Role {
+    let unit = &g.units[u];
+    let info = &g.d.units[unit.unit_type];
+    if g.unit_get_domain_type(u) == DomainType::DOMAIN_SEA {
+        return if matches!(unit.ai_type, Some(UnitAIType::UNITAI_WORKER_SEA)) || info.unit_ai_type[UnitAIType::UNITAI_WORKER_SEA] { Role::SeaWorker } else { Role::Naval };
+    }
+    let ai = unit.ai_type.or(info.default_unit_ai_type).unwrap_or(UnitAIType::UNITAI_UNKNOWN);
+    match ai {
+        UnitAIType::UNITAI_SETTLE => Role::Settler,
+        UnitAIType::UNITAI_WORKER => Role::Worker,
+        UnitAIType::UNITAI_CITY_DEFENSE | UnitAIType::UNITAI_CITY_COUNTER | UnitAIType::UNITAI_CITY_SPECIAL => Role::Garrison,
+        UnitAIType::UNITAI_EXPLORE => Role::Explore,
+        UnitAIType::UNITAI_MISSIONARY => Role::Missionary,
+        UnitAIType::UNITAI_PROPHET | UnitAIType::UNITAI_ARTIST | UnitAIType::UNITAI_SCIENTIST | UnitAIType::UNITAI_GENERAL | UnitAIType::UNITAI_MERCHANT | UnitAIType::UNITAI_ENGINEER => Role::GreatPerson,
+        UnitAIType::UNITAI_MAGE | UnitAIType::UNITAI_WARWIZARD | UnitAIType::UNITAI_TERRAFORMER | UnitAIType::UNITAI_MANA_UPGRADE | UnitAIType::UNITAI_MEDIC => Role::Caster,
+        UnitAIType::UNITAI_ANIMAL => Role::Animal,
+        _ => {
+            if info.found {
+                Role::Settler
+            } else if info.combat > 0 || info.combat_defense > 0 {
+                Role::Army
+            } else if info.builds.iter().any(|&b| b) {
+                Role::Worker
+            } else {
+                Role::Other
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Turn driver
+// ----------------------------------------------------------------------------
+
+/// Decide for every group of `v.p` that needs orders, in role priority order.
+pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
+    let p = v.p;
+    let mut order: Vec<(Role, GroupId)> = Vec::new();
+    for &grp in &g.players[p].groups {
+        if let Some(head) = g.group_get_head_unit(grp) {
+            order.push((role_of(g, head), grp));
+        }
+    }
+    order.sort();
+
+    for (role, grp) in order {
+        if !alive(g, grp) {
+            continue;
+        }
+        if g.groups[grp].force_update {
+            g.groups[grp].force_update = false;
+            g.group_clear_mission_queue(grp);
+            g.group_set_activity_type(grp, ActivityType::ACTIVITY_AWAKE);
+        }
+        if !g.group_ready_to_move(grp, false) {
+            continue;
+        }
+        let Some(head) = g.group_get_head_unit(grp) else { continue };
+        upkeep(g, head);
+        if !alive(g, grp) || !g.units.contains(head) {
+            continue;
+        }
+        match role {
+            Role::Settler => settler(ai, g, v, grp, head),
+            Role::Worker => worker(g, v, grp, head, false),
+            Role::SeaWorker => worker(g, v, grp, head, true),
+            Role::Garrison => garrison_unit(g, v, grp, head),
+            Role::Army => army(g, v, grp, head),
+            Role::Explore => explore(g, v, grp, head),
+            Role::GreatPerson => great_person(g, v, grp, head),
+            Role::Missionary => missionary(g, v, grp, head),
+            Role::Caster => caster(g, v, grp, head),
+            Role::Animal => barbarian(g, v, grp, head),
+            Role::Naval | Role::Other => hold(g, grp),
+        }
+    }
+    finalize(g, p);
+}
+
+/// Make sure no group is left ready to move, so the turn can end (C++ `AI_update` always
+/// ends a unit's turn with a mission, `MISSION_SKIP` as the fallback).
+pub fn finalize(g: &mut Game, p: PlayerId) {
+    for grp in g.players[p].groups.clone() {
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            skip(g, grp);
+        }
+    }
+}
+
+/// Promotions and upgrades before the unit acts.
+fn upkeep(g: &mut Game, u: UnitId) {
+    // Promote while possible (FfH units may have several picks).
+    for _ in 0..8 {
+        if !g.units.contains(u) || !g.units[u].promotion_ready {
+            break;
+        }
+        let Some(best) = best_promotion(g, u) else { break };
+        g.unit_promote(u, Some(best), None);
+    }
+    if !g.units.contains(u) {
+        return;
+    }
+    // Upgrade when gold is comfortable.
+    let p = g.units[u].owner;
+    let ut = g.units[u].unit_type;
+    let civ = g.player_get_civilization_type(p);
+    let mut best: Option<(UnitType, i32)> = None;
+    for (class, &ok) in g.d.units[ut].upgrade_unit_class.iter_enumerated() {
+        if !ok {
+            continue;
+        }
+        let Some(target) = civ.and_then(|c| g.d.civ_unit(c, class)) else { continue };
+        if !g.unit_can_upgrade(u, Some(target), false) {
+            continue;
+        }
+        let power = g.d.units[target].combat + g.d.units[target].combat_defense;
+        if best.map_or(true, |(_, b)| power > b) {
+            best = Some((target, power));
+        }
+    }
+    if let Some((target, _)) = best {
+        if g.players[p].gold > 100 {
+            g.unit_upgrade(u, Some(target));
+        }
+    }
+}
+
+/// Value of a promotion for this unit (AI heuristic; C++ `AI_promotionValue` is not ported).
+pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType) -> i32 {
+    let info = &g.d.promotions[promo];
+    let unit = &g.units[u];
+    let caster = matches!(unit.ai_type, Some(UnitAIType::UNITAI_MAGE) | Some(UnitAIType::UNITAI_WARWIZARD));
+    let defender = matches!(unit.ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER));
+    let mut v = info.ai_weight;
+    v += info.combat_percent * 2 + info.extra_combat_str * 40 + info.extra_combat_defense * if defender { 40 } else { 15 };
+    v += info.city_defense_percent * if defender { 3 } else { 0 };
+    v += info.city_attack_percent * if defender { 0 } else { 2 };
+    v += info.first_strikes_change * 30 + info.chance_first_strikes_change * 15;
+    v += info.moves_change * if defender { 5 } else { 60 };
+    v += info.withdrawal_change * 2;
+    v += info.combat_heal_percent / 2 + info.same_tile_heal_change + info.adjacent_tile_heal_change;
+    v += info.spell_damage_modify * if caster { 2 } else { 0 };
+    v += info.damage_type_combat.iter().sum::<i32>() * 40;
+    if caster {
+        v += info.spell_caster_xp * 3;
+    }
+    v.max(1)
+}
+
+fn best_promotion(g: &Game, u: UnitId) -> Option<PromotionType> {
+    let mut best: Option<(PromotionType, i32)> = None;
+    for promo in g.d.promotions.keys() {
+        if !g.unit_can_promote(u, Some(promo), None) {
+            continue;
+        }
+        let v = promotion_value(g, u, promo);
+        if best.map_or(true, |(_, b)| v > b) {
+            best = Some((promo, v));
+        }
+    }
+    best.map(|(p, _)| p)
+}
+
+// ----------------------------------------------------------------------------
+// Settlers
+// ----------------------------------------------------------------------------
+
+fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    let first_city = g.players[p].cities.is_empty();
+    let candidates = sites::sites(ai, g, p);
+    let reach = v.flood.run(g, u, if first_city { 3 } else { 10 }, false);
+    let mut best: Option<(PlotIdx, i64)> = None;
+    for &(site, value) in &candidates {
+        if v.is_claimed(site) {
+            continue;
+        }
+        let Some(r) = reach.iter().find(|r| r.plot == site) else { continue };
+        if v.danger_at(site) > 0 && !first_city {
+            continue;
+        }
+        // Founding on the first turn matters more than a slightly better plot.
+        let score = value as i64 * 10 / (r.turns as i64 + if first_city { 1 } else { 3 });
+        if best.map_or(true, |(_, s)| score > s) {
+            best = Some((site, score));
+        }
+    }
+    let Some((site, _)) = best.or_else(|| {
+        // No scored site: the first settler founds where it stands if it can.
+        if first_city && g.unit_can_found(u, here, false) { Some((here, 0)) } else { None }
+    }) else {
+        // Nowhere to go: wait in a city.
+        hold(g, grp);
+        return;
+    };
+    v.claimed.push(site);
+    if site == here {
+        if can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
+            push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, false);
+        } else {
+            skip(g, grp);
+        }
+        return;
+    }
+    move_to(g, grp, site, MOVE_SAFE_TERRITORY);
+    if alive(g, grp) && g.group_ready_to_move(grp, false) {
+        // Path failed (or no moves left): try again next turn.
+        skip(g, grp);
+    } else if alive(g, grp) && g.unit_plot(u) == site && can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
+        push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, true);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Workers
+// ----------------------------------------------------------------------------
+
+const YIELD_WEIGHT: [i32; 3] = [30, 25, 15];
+
+/// Value of performing `build` on `plot` for player `p` (0 = not worth it).
+fn build_value(g: &Game, p: PlayerId, plot: PlotIdx, build: BuildType) -> i32 {
+    let d = g.d;
+    let info = &d.builds[build];
+    let pl = &g.map.plots[plot];
+    if let Some(imp) = info.improvement {
+        if pl.improvement_type == Some(imp) {
+            return 0;
+        }
+        let mut v = 0;
+        for y in 0..YieldType::NUM {
+            let yt = YieldType::from_usize(y);
+            let new = g.plot_calculate_improvement_yield_change(plot, imp, yt, Some(p), false, false);
+            let old = pl.improvement_type.map_or(0, |o| g.plot_calculate_improvement_yield_change(plot, o, yt, Some(p), false, false));
+            v += (new - old) * YIELD_WEIGHT[y];
+        }
+        if let Some(b) = pl.bonus_type {
+            if g.teams[g.players[p].team].revealed_bonuses.contains(&b) || d.bonuses[b].tech_reveal.is_none() {
+                if d.improvements[imp].improvement_bonus[b].bonus_trade {
+                    v += 80;
+                }
+            }
+        }
+        if pl.improvement_type.is_some() && v < 40 {
+            return 0; // do not churn improvements
+        }
+        v
+    } else if let Some(route) = info.route {
+        if pl.route_type.is_some() {
+            return 0;
+        }
+        // Roads on worked bonus tiles and next to cities link resources and speed defense.
+        let _ = route;
+        let near_city = pl.plot_city.is_some() || pl.working_city.is_some() && pl.bonus_type.is_some();
+        if near_city { 15 } else { 0 }
+    } else {
+        0
+    }
+}
+
+fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    // Flee danger first.
+    if v.danger_at(here) > 0 && !g.map.plots[here].plot_city.is_some() {
+        if let Some(c) = nearest_city(g, p, here) {
+            move_to(g, grp, g.city_plot(c), 0);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+            return;
+        }
+    }
+    let reach = v.flood.run(g, u, 6, false);
+    let builds: Vec<BuildType> = g.d.builds.keys().filter(|&b| g.d.units[g.units[u].unit_type].builds[b]).collect();
+    let mut best: Option<(PlotIdx, BuildType, i64)> = None;
+    for r in &reach {
+        let q = r.plot;
+        let pl = &g.map.plots[q];
+        if pl.owner != Some(p) || v.danger_at(q) > 0 || v.is_claimed(q) {
+            continue;
+        }
+        if sea != (pl.plot_type == PlotType::PLOT_OCEAN) {
+            continue;
+        }
+        if pl.working_city.is_none() && pl.plot_city.is_none() && !g.plot_is_city_radius(q) {
+            continue;
+        }
+        for &b in &builds {
+            if !g.unit_can_build(u, q, b, false) {
+                continue;
+            }
+            let value = build_value(g, p, q, b);
+            if value <= 0 {
+                continue;
+            }
+            let time = g.d.builds[b].time.max(1) / g.d.units[g.units[u].unit_type].work_rate.max(1);
+            let score = value as i64 * 100 / (r.turns as i64 * 2 + time as i64 + 2);
+            if best.map_or(true, |(_, _, s)| score > s) {
+                best = Some((q, b, score));
+            }
+        }
+    }
+    let Some((plot, build, _)) = best else {
+        hold(g, grp);
+        return;
+    };
+    v.claimed.push(plot);
+    if plot != here {
+        move_to(g, grp, plot, MOVE_SAFE_TERRITORY);
+        if !alive(g, grp) {
+            return;
+        }
+        push(g, grp, MissionType::MISSION_BUILD, build.i(), -1, 0, true);
+    } else {
+        push(g, grp, MissionType::MISSION_BUILD, build.i(), -1, 0, false);
+    }
+    if alive(g, grp) && g.group_ready_to_move(grp, false) {
+        skip(g, grp);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Military
+// ----------------------------------------------------------------------------
+
+fn nearest_city(g: &Game, p: PlayerId, from: PlotIdx) -> Option<CityId> {
+    let (x, y) = g.map.xy(from);
+    g.players[p].cities.iter().copied().min_by_key(|&c| (g.plot_distance(x, y, g.cities[c].x, g.cities[c].y), c))
+}
+
+/// Defenders a city wants (garrison quota).
+fn garrison_quota(g: &Game, v: &View, c: CityId) -> i32 {
+    let plot = g.city_plot(c);
+    let mut q = 1 + i32::from(g.city_is_capital(c));
+    if v.danger_at(plot) > 0 {
+        q += 1 + v.danger_at(plot) / 1000;
+    }
+    q.min(5)
+}
+
+fn garrison_unit(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    if let Some(c) = g.map.plots[here].plot_city.filter(|&c| g.cities[c].owner == p) {
+        let have = v.garrison.get(&c).copied().unwrap_or(0);
+        if have < garrison_quota(g, v, c) || attack_adjacent(g, v, grp, u, 800) {
+            *v.garrison.entry(c).or_insert(0) += 1;
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                hold(g, grp);
+            }
+            return;
+        }
+    }
+    // Go to the city that most needs a defender.
+    let reach = v.flood.run(g, u, 8, false);
+    let mut best: Option<(CityId, i32)> = None;
+    for &c in &g.players[p].cities {
+        let cp = g.city_plot(c);
+        let Some(r) = reach.iter().find(|r| r.plot == cp) else { continue };
+        let have = v.garrison.get(&c).copied().unwrap_or(0) + garrison(g, p, cp).0 * i32::from(cp != here);
+        let need = garrison_quota(g, v, c) - have;
+        if need <= 0 {
+            continue;
+        }
+        let score = need * 100 - r.turns * 10;
+        if best.map_or(true, |(_, s)| score > s) {
+            best = Some((c, score));
+        }
+    }
+    match best {
+        Some((c, _)) => {
+            *v.garrison.entry(c).or_insert(0) += 1;
+            move_to(g, grp, g.city_plot(c), 0);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                hold(g, grp);
+            }
+        }
+        None => {
+            if g.map.plots[here].plot_city.is_some() {
+                hold(g, grp);
+            } else if let Some(c) = nearest_city(g, p, here) {
+                move_to(g, grp, g.city_plot(c), 0);
+                if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                    hold(g, grp);
+                }
+            } else {
+                hold(g, grp);
+            }
+        }
+    }
+}
+
+/// Attack an adjacent (one move) enemy if the odds are at least `min_odds` (of 1000).
+/// Returns true if an attack was made.
+fn attack_adjacent(g: &mut Game, v: &View, grp: GroupId, u: UnitId, min_odds: i32) -> bool {
+    if attack_power(g, u) == 0 || !g.unit_can_attack(u) || g.unit_moves_left(u) <= 0 {
+        return false;
+    }
+    let here = g.unit_plot(u);
+    let (x, y) = g.map.xy(here);
+    let mut best: Option<(PlotIdx, i32)> = None;
+    for dir in 0..DirectionType::NUM {
+        let Some(q) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
+        if !g.plot_is_visible_enemy_unit_for_unit(q, u) {
+            continue;
+        }
+        if !g.unit_can_move_or_attack_into(u, q, false) {
+            continue;
+        }
+        let Some(def) = g.plot_get_best_defender(q, None, Some(g.units[u].owner), Some(u), false, false, false) else { continue };
+        let odds = g.get_combat_odds(u, def);
+        let city_bonus = if g.map.plots[q].plot_city.is_some() { 100 } else { 0 };
+        let score = odds + city_bonus;
+        if odds >= min_odds && best.map_or(true, |(_, s)| score > s) {
+            best = Some((q, score));
+        }
+    }
+    let _ = v;
+    if let Some((q, _)) = best {
+        move_to(g, grp, q, MOVE_DIRECT_ATTACK);
+        true
+    } else {
+        false
+    }
+}
+
+/// Enemy city our army marches on: the closest known enemy city to any of our cities.
+fn war_target(g: &Game, v: &View) -> Option<CityId> {
+    if v.civ_enemies.is_empty() {
+        return None;
+    }
+    let ours: Vec<(i32, i32)> = g.players[v.p].cities.iter().map(|&c| (g.cities[c].x, g.cities[c].y)).collect();
+    let mut best: Option<(CityId, i32)> = None;
+    for pl in g.players.iter() {
+        if !pl.alive || !v.civ_enemies.contains(&pl.team) {
+            continue;
+        }
+        for &c in &pl.cities {
+            let cp = g.city_plot(c);
+            if !g.map.plots[cp].revealed[v.team] {
+                continue;
+            }
+            let (cx, cy) = (g.cities[c].x, g.cities[c].y);
+            let dist = ours.iter().map(|&(x, y)| g.plot_distance(x, y, cx, cy)).min().unwrap_or(i32::MAX);
+            if best.map_or(true, |(bc, bd)| dist < bd || (dist == bd && c < bc)) {
+                best = Some((c, dist));
+            }
+        }
+    }
+    best.map(|(c, _)| c)
+}
+
+fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    let hurt = g.units[u].damage * 100 / g.d.defines.max_hit_points.max(1) > 40;
+
+    // Opportunistic attacks with good odds.
+    if attack_adjacent(g, v, grp, u, if hurt { 850 } else { 700 }) {
+        return;
+    }
+    if !alive(g, grp) || !g.units.contains(u) {
+        return;
+    }
+    if hurt && v.danger_at(here) == 0 {
+        if can_start(g, grp, MissionType::MISSION_HEAL, -1, -1) {
+            push(g, grp, MissionType::MISSION_HEAL, -1, -1, 0, false);
+            return;
+        }
+    }
+
+    if let Some(target) = war_target(g, v) {
+        let tp = g.city_plot(target);
+        let (tx, ty) = g.map.xy(tp);
+        let (x, y) = g.map.xy(here);
+        let dist = g.plot_distance(x, y, tx, ty);
+        if dist <= 1 {
+            // Assault when the odds against the best defender are acceptable.
+            if attack_adjacent(g, v, grp, u, 550) {
+                return;
+            }
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                hold(g, grp);
+            }
+            return;
+        }
+        // March to a plot next to the target.
+        let reach = v.flood.run(g, u, 15, false);
+        let staging = reach
+            .iter()
+            .filter(|r| {
+                let (rx, ry) = g.map.xy(r.plot);
+                g.plot_distance(rx, ry, tx, ty) == 1
+            })
+            .min_by_key(|r| (r.turns, std::cmp::Reverse(g.plot_defense_modifier(r.plot, Some(v.team), true)), r.plot));
+        if let Some(r) = staging.copied() {
+            move_to(g, grp, r.plot, 0);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                hold(g, grp);
+            }
+            return;
+        }
+    }
+
+    // Peacetime: hunt nearby barbarians and animals in or near our lands.
+    let reach = v.flood.run(g, u, 3, true);
+    if let Some(r) = best_hunt_target(g, v, u, &reach) {
+        move_to(g, grp, r.plot, 0);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            hold(g, grp);
+        }
+        return;
+    }
+    // Otherwise reinforce the city with the most danger, else stay put.
+    if g.map.plots[here].plot_city.is_some() {
+        hold(g, grp);
+    } else if let Some(c) = nearest_city(g, p, here) {
+        move_to(g, grp, g.city_plot(c), 0);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            hold(g, grp);
+        }
+    } else {
+        hold(g, grp);
+    }
+}
+
+/// Reachable plot next to a visible enemy unit we are likely to beat, close to our lands.
+fn best_hunt_target(g: &Game, v: &View, u: UnitId, reach: &[Reached]) -> Option<Reached> {
+    let my_power = attack_power(g, u);
+    if my_power == 0 {
+        return None;
+    }
+    let mut best: Option<(Reached, i32)> = None;
+    for r in reach {
+        if r.turns == 0 || !g.plot_is_visible_enemy_unit_for_unit(r.plot, u) {
+            continue;
+        }
+        let owner = g.map.plots[r.plot].owner;
+        if owner.is_some_and(|o| o != v.p) && g.map.plots[r.plot].plot_city.is_some() {
+            continue; // cities are war targets, not hunting targets
+        }
+        let enemy_power: i32 = g.map.plots[r.plot].units.iter().map(|&e| attack_power(g, e).max(crate::view::defense_power(g, e))).max().unwrap_or(0);
+        if enemy_power * 10 > my_power * 8 {
+            continue;
+        }
+        let score = 1000 - r.turns * 100 + if owner == Some(v.p) { 300 } else { 0 };
+        if best.map_or(true, |(_, s)| score > s) {
+            best = Some((*r, score));
+        }
+    }
+    best.map(|(r, _)| r)
+}
+
+fn explore(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    if attack_adjacent(g, v, grp, u, 750) {
+        return;
+    }
+    if !alive(g, grp) || !g.units.contains(u) {
+        return;
+    }
+    let team = v.team;
+    let reach = v.flood.run(g, u, 8, false);
+    let mut best: Option<(PlotIdx, i32)> = None;
+    for r in &reach {
+        if r.turns == 0 && r.plot == g.unit_plot(u) {
+            continue;
+        }
+        if v.danger_at(r.plot) > attack_power(g, u) || v.is_claimed(r.plot) {
+            continue;
+        }
+        let (x, y) = g.map.xy(r.plot);
+        let mut unrevealed = 0;
+        for dx in -2..=2 {
+            for dy in -2..=2 {
+                if let Some(q) = g.plot_xy(x, y, dx, dy) {
+                    if !g.map.plots[q].revealed[team] {
+                        unrevealed += 1;
+                    }
+                }
+            }
+        }
+        let goody = if g.plot_is_revealed_goody(r.plot, Some(team)) { 60 } else { 0 };
+        if unrevealed == 0 && goody == 0 {
+            continue;
+        }
+        let score = (unrevealed * 10 + goody * 10) * 10 / (r.turns + 1);
+        if best.map_or(true, |(_, s)| score > s) {
+            best = Some((r.plot, score));
+        }
+    }
+    match best {
+        Some((plot, _)) => {
+            v.claimed.push(plot);
+            move_to(g, grp, plot, 0);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+        }
+        None => {
+            // Nothing left to explore: become a regular army unit.
+            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_ATTACK);
+            army(g, v, grp, u);
+        }
+    }
+}
+
+fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    // Barbarians and animals are aggressive: attack anything they can beat.
+    if attack_adjacent(g, v, grp, u, 500) {
+        return;
+    }
+    if !alive(g, grp) || !g.units.contains(u) {
+        return;
+    }
+    let reach = v.flood.run(g, u, 4, true);
+    if let Some(r) = best_hunt_target(g, v, u, &reach) {
+        move_to(g, grp, r.plot, 0);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            skip(g, grp);
+        }
+        return;
+    }
+    // Wander: a deterministic pseudo-random reachable plot.
+    let n = reach.len();
+    if n > 1 {
+        let k = (u.0 as usize).wrapping_mul(2654435761).wrapping_add(g.game_turn() as usize * 40503) % n;
+        let target = reach[k].plot;
+        move_to(g, grp, target, 0);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            skip(g, grp);
+        }
+        return;
+    }
+    skip(g, grp);
+}
+
+// ----------------------------------------------------------------------------
+// Great people, missionaries, casters
+// ----------------------------------------------------------------------------
+
+fn great_person(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    let Some(capital) = g.players[p].capital_city else {
+        hold(g, grp);
+        return;
+    };
+    let cp = g.city_plot(capital);
+    if here != cp {
+        move_to(g, grp, cp, MOVE_SAFE_TERRITORY);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            skip(g, grp);
+        }
+        return;
+    }
+    // Lightbulb a tech, else settle as a super specialist, else start a golden age.
+    if can_start(g, grp, MissionType::MISSION_DISCOVER, -1, -1) {
+        push(g, grp, MissionType::MISSION_DISCOVER, -1, -1, 0, false);
+        return;
+    }
+    let ut = g.units[u].unit_type;
+    let specs: Vec<SpecialistType> = g.d.units[ut].great_peoples.iter_enumerated().filter(|(_, &b)| b).map(|(s, _)| s).collect();
+    for s in specs {
+        if can_start(g, grp, MissionType::MISSION_JOIN, s.i(), -1) {
+            push(g, grp, MissionType::MISSION_JOIN, s.i(), -1, 0, false);
+            return;
+        }
+    }
+    if can_start(g, grp, MissionType::MISSION_GOLDEN_AGE, -1, -1) {
+        push(g, grp, MissionType::MISSION_GOLDEN_AGE, -1, -1, 0, false);
+        return;
+    }
+    hold(g, grp);
+}
+
+fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let ut = g.units[u].unit_type;
+    let religions: Vec<ReligionType> = g.d.units[ut].religion_spreads.iter_enumerated().filter(|(_, &n)| n > 0).map(|(r, _)| r).collect();
+    let reach = v.flood.run(g, u, 10, false);
+    let mut best: Option<(PlotIdx, ReligionType, i32)> = None;
+    for &c in &g.players[p].cities {
+        let cp = g.city_plot(c);
+        let Some(r) = reach.iter().find(|r| r.plot == cp) else { continue };
+        for &rel in &religions {
+            if g.cities[c].has_religion[rel] || v.is_claimed(cp) {
+                continue;
+            }
+            let score = g.cities[c].population * 10 - r.turns * 5;
+            if best.map_or(true, |(_, _, s)| score > s) {
+                best = Some((cp, rel, score));
+            }
+        }
+    }
+    let Some((plot, rel, _)) = best else {
+        hold(g, grp);
+        return;
+    };
+    v.claimed.push(plot);
+    if plot != g.unit_plot(u) {
+        move_to(g, grp, plot, MOVE_SAFE_TERRITORY);
+        if !alive(g, grp) {
+            return;
+        }
+        push(g, grp, MissionType::MISSION_SPREAD, rel.i(), -1, 0, true);
+    } else {
+        push(g, grp, MissionType::MISSION_SPREAD, rel.i(), -1, 0, false);
+    }
+    if alive(g, grp) && g.group_ready_to_move(grp, false) {
+        skip(g, grp);
+    }
+}
+
+/// Casters stay where the fighting is (spells are cast at the end of the turn, see
+/// `casting.rs`): with the army when at war, else in the most threatened city.
+fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    if let Some(target) = war_target(g, v) {
+        let tp = g.city_plot(target);
+        let (tx, ty) = g.map.xy(tp);
+        let reach = v.flood.run(g, u, 15, false);
+        if let Some(r) = reach.iter().filter(|r| {
+            let (rx, ry) = g.map.xy(r.plot);
+            g.plot_distance(rx, ry, tx, ty) == 1 && g.map.plots[r.plot].units.iter().any(|&o| g.units[o].owner == p && attack_power(g, o) > 0)
+        }).min_by_key(|r| (r.turns, r.plot)) {
+            let plot = r.plot;
+            if plot != here {
+                move_to(g, grp, plot, 0);
+            }
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+            return;
+        }
+    }
+    let worst = g.players[p].cities.iter().copied().max_by_key(|&c| (v.danger_at(g.city_plot(c)), std::cmp::Reverse(c)));
+    match worst {
+        Some(c) if g.city_plot(c) != here => {
+            move_to(g, grp, g.city_plot(c), MOVE_SAFE_TERRITORY);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+        }
+        _ => skip(g, grp),
+    }
+}

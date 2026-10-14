@@ -13,6 +13,8 @@ pub struct StaticValues {
     pub building_value: IdxVec<BuildingType, i32>,
     /// What a tech unlocks, by category, for research choice.
     pub tech_unlocks: IdxVec<TechType, TechUnlocks>,
+    /// Techs that list this tech as an AND or OR prerequisite.
+    pub tech_children: IdxVec<TechType, Vec<TechType>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -86,7 +88,15 @@ impl StaticValues {
                 tech_unlocks[t].builds.push(b);
             }
         }
-        StaticValues { unit_power, building_value, tech_unlocks }
+        let mut tech_children: IdxVec<TechType, Vec<TechType>> = IdxVec::from_elem(Vec::new(), d.techs.len());
+        for (t, info) in d.techs.iter_enumerated() {
+            for &pre in info.prereq_and_techs.iter().chain(info.prereq_or_techs.iter()) {
+                if !tech_children[pre].contains(&t) {
+                    tech_children[pre].push(t);
+                }
+            }
+        }
+        StaticValues { unit_power, building_value, tech_unlocks, tech_children }
     }
 }
 
