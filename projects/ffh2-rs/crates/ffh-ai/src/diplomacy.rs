@@ -150,6 +150,12 @@ pub fn manage(g: &mut Game, v: &View) {
         }
     }
 
+    // Trade with friendly neighbours every few turns (staggered): technologies swapped one for
+    // one at similar cost, open borders.
+    if (turn + p.0 as i32) % 5 == 0 {
+        trade(g, p);
+    }
+
     // One war at a time.
     if !v.civ_enemies.is_empty() {
         return;
@@ -259,6 +265,67 @@ pub fn manage(g: &mut Game, v: &View) {
     }
 }
 
+fn tech_item(t: TechType) -> TradeData {
+    TradeData { item_type: TradeableItem::TRADE_TECHNOLOGIES, data: t.i(), offering: false, hidden: false }
+}
+
+/// Tech swaps and open borders with the AI leaders of teams we know and like well enough.
+fn trade(g: &mut Game, p: PlayerId) {
+    let team = g.players[p].team;
+    for other in g.player_ids() {
+        let op = &g.players[other];
+        if other == p || !op.alive || op.human || op.team == team || g.player_is_barbarian(other) || !is_team_leader(g, other) {
+            continue;
+        }
+        let ot = op.team;
+        if !g.teams[team].has_met[ot] || g.at_war(team, ot) || relation(g, p, other) < 0 {
+            continue;
+        }
+        // Open borders (trade routes, passage).
+        if !g.team_is_open_borders(team, ot) && relation(g, p, other) >= 1 {
+            let item = TradeData { item_type: TradeableItem::TRADE_OPEN_BORDERS, data: 0, offering: false, hidden: false };
+            if g.player_can_trade_item(p, other, &item, true) && g.player_can_trade_item(other, p, &item, true) {
+                let ours = vec![item.clone()];
+                let theirs = vec![item];
+                if g.controller(other).consider_offer(g, other, p, &ours, &theirs) {
+                    crate::trace!(g, p, "open borders with {:?}", other);
+                    g.implement_deal(p, other, &ours, &theirs, false);
+                }
+            }
+        }
+        // The tech of theirs we value most, for the tech of ours closest in cost.
+        let cost = |t: TechType| g.team_get_research_cost(team, t).max(1);
+        let mut want: Option<(TechType, i32)> = None;
+        for t in g.d.techs.keys() {
+            if g.team_is_has_tech(team, Some(t)) || !g.player_can_research(p, t, false) || !g.player_can_trade_item(other, p, &tech_item(t), true) {
+                continue;
+            }
+            let c = cost(t);
+            if want.map_or(true, |(_, b)| c > b) {
+                want = Some((t, c));
+            }
+        }
+        let Some((get, get_cost)) = want else { continue };
+        let mut give: Option<(TechType, i32)> = None;
+        for t in g.d.techs.keys() {
+            if !g.team_is_has_tech(team, Some(t)) || g.team_is_has_tech(ot, Some(t)) || !g.player_can_trade_item(p, other, &tech_item(t), true) {
+                continue;
+            }
+            let diff = (cost(t) - get_cost).abs();
+            if give.map_or(true, |(_, b)| diff < b) {
+                give = Some((t, diff));
+            }
+        }
+        let Some((give, _)) = give else { continue };
+        let ours = vec![tech_item(give)];
+        let theirs = vec![tech_item(get)];
+        if g.controller(other).consider_offer(g, other, p, &ours, &theirs) {
+            crate::trace!(g, p, "trades {} for {} with {:?}", g.d.techs[give].base.type_, g.d.techs[get].base.type_, other);
+            g.implement_deal(p, other, &ours, &theirs, false);
+        }
+    }
+}
+
 /// Can our units realistically take `other`'s cities: our best trainable attacker against
 /// their best city defender (fortified, with city bonuses), or siege engines to wear the
 /// walls down.
@@ -352,6 +419,15 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
     }
     if all(they_give, TradeableItem::TRADE_OPEN_BORDERS) && all(we_give, TradeableItem::TRADE_OPEN_BORDERS) {
         return !g.at_war(team, their_team) && relation(g, p, from) >= 1;
+    }
+    // Technology for technology: worth at least four fifths of what we give, with a civ we do
+    // not dislike, and never to the one we are preparing a war against.
+    if all(they_give, TradeableItem::TRADE_TECHNOLOGIES) && all(we_give, TradeableItem::TRADE_TECHNOLOGIES) {
+        if g.at_war(team, their_team) || relation(g, p, from) < 0 || preparing_target(g, team) == Some(their_team) {
+            return false;
+        }
+        let value = |items: &[TradeData]| items.iter().map(|t| g.team_get_research_cost(team, TechType::from_usize(t.data as usize))).sum::<i32>();
+        return value(they_give) * 5 >= value(we_give) * 4;
     }
     false
 }

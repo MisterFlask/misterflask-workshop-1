@@ -326,6 +326,15 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
     // Land improvements and resources.
     value += builds_value(g, p, t, ctx);
 
+    // Trading with the civs we know: technologies above all.
+    let met = g.team_ids().into_iter().filter(|&o| o != ctx.team && o != g.barbarian_team() && g.team_is_alive(o) && g.teams[ctx.team].has_met[o]).count() as i32;
+    if d.techs[t].tech_trading {
+        value += 250 * met.min(5);
+    }
+    if d.techs[t].open_borders_trading {
+        value += 60 * met.min(5);
+    }
+
     // Civics better than what we run now (City States and Aristocracy cut maintenance).
     for &civic in &unlocks.civics {
         let Some(opt) = d.civics[civic].civic_option_type else { continue };
