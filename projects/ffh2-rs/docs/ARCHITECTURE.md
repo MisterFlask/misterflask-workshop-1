@@ -16,6 +16,7 @@ ffh-data   XML -> typed info tables (GameData). No game state.
 ffh-core   Rules engine. Owns all mutable game state (Game). Deterministic.
 ffh-ai     Controllers (the new AI). Reads state, issues the same calls a human UI would.
 ffh-cli    `ffh` binary: autoplay, benchmarks, inspection.
+ffh-stress `ffh-stress` binary: AI games over a matrix of game settings, crashes caught per game.
 ```
 
 `ffh-core` must stay free of OS dependencies (no filesystem/threads/clock in the
@@ -73,3 +74,5 @@ resolved once at startup instead of `eval`-ing strings per call.
   unmodified against stubs and generates fixtures the Rust tests compare against.
 - Simulation: autoplay soak tests (no panics, invariants hold), determinism tests
   (same seed -> same final state hash), and benchmarks (turn time at late game).
+- Stress: `ffh-stress` plays AI games over the settings matrix (also on a build with debug
+  assertions and overflow checks) and cross-checks city/unit/group/area/team bookkeeping.

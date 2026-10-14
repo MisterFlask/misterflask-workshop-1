@@ -5,28 +5,28 @@ C++ source: `CvGameCoreDLL/CvUnit.h` and `CvUnit.cpp` (18545 lines, 671 function
 `crates/ffh-core/src/unit/`.
 
 Line numbers refer to the FFH2 0.41 reference (`/home/user/ref/ffh2/CvGameCoreDLL`); counts
-are function lines including the signature and braces. Each `unit/<topic>.rs` file below is
-one porting assignment: its methods are declared with their final signatures and a
-`/// C++ CvUnit::name (CvUnit.cpp:a-b)` doc line; replace each `todo!("CvUnit::name")` with
-the port and flip the status column here.
+are function lines including the signature and braces. Each `unit/<topic>.rs` file below holds
+the methods listed for it, each with a `/// C++ CvUnit::name (CvUnit.cpp:a-b)` doc line.
+
+**Status: ported and audited.** Every method has a complete body (no `todo!` left), and each file
+was compared line by line with the C++ in the audit wave.
 
 ## Files
 
-| Rust file | C++ functions | C++ lines | Rust methods | ported now |
+| Rust file | C++ functions | C++ lines | Rust methods | ported |
 |---|---:|---:|---:|---:|
 | `unit/mod.rs` | 1 (`reset`) | 214 | `Unit::new` | yes |
-| `unit/lifecycle.rs` | 35 | 2100 | 35 | 6 |
-| `unit/movement.rs` | 68 | 1706 | 68 | 13 |
-| `unit/combat.rs` | 51 | 3180 | 51 | 4 |
-| `unit/promotions.rs` | 141 | 1974 | 141 | 55 |
-| `unit/actions.rs` | 46 | 1940 | 46 | 1 |
-| `unit/missions.rs` | 52 | 1883 | 52 | 1 |
-| `unit/ffh.rs` | 98 | 2406 | 98 | 57 |
-| **total** | 492 | 15403 | 491 | 137 |
+| `unit/lifecycle.rs` | 35 | 2100 | 35 | 35 |
+| `unit/movement.rs` | 68 | 1706 | 68 | 68 |
+| `unit/combat.rs` | 51 | 3180 | 51 | 51 |
+| `unit/promotions.rs` | 141 | 1974 | 141 | 141 |
+| `unit/actions.rs` | 46 | 1940 | 46 | 46 |
+| `unit/missions.rs` | 52 | 1883 | 52 | 52 |
+| `unit/ffh.rs` | 98 | 2406 | 98 | 98 |
+| **total** | 492 | 15403 | 491 | 491 |
 
 Plus 124 trivial C++ accessors that are plain field access (556 lines) and 60 excluded
-functions (1454 lines), listed at the end. "ported now" = bodies that only touch `Unit`
-fields / global defines; everything else is `todo!("CvUnit::name")`.
+functions (1454 lines), listed at the end.
 
 ## Conventions specific to CvUnit
 
@@ -57,7 +57,7 @@ fields / global defines; everything else is `todo!("CvUnit::name")`.
 - Python callbacks reached from CvUnit (spell `PyRequirement`/`PyResult`, promotion `PyPerTurn`,
   improvement/feature `PythonOnMove`/`PythonAtRange`, `getExperienceNeeded`, `doPillageGold`,
   `getUpgradePriceOverride`, `unitCannotMoveInto`, `cannotSpreadReligion`, `postCombatWon/Lost`,
-  event trigger `PythonCanDoUnit`, CvEventReporter events) go to `crate::ffh` stubs.
+  event trigger `PythonCanDoUnit`, CvEventReporter events) go to their ports in `crate::ffh`.
 - C++ `FAssert`s are debug-build checks (no-ops in the shipped DLL) and are not ported as
   runtime checks: the C++ itself violates some of them (`pillage()` drives `extra_withdrawal`
   negative while fighting an interceptor; a promotion has a negative `iCargoChange`).
@@ -74,42 +74,42 @@ CvUnit lifecycle: `init`, `convert`, `kill`, `doTurn`, selection-group membershi
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::init` | CvUnit.cpp:106-308 | 203 | `unit_init` | todo |
-| `CvUnit::convert` | CvUnit.cpp:570-719 | 150 | `unit_convert` | todo |
-| `CvUnit::kill` | CvUnit.cpp:722-1002 | 281 | `unit_kill` | todo |
-| `CvUnit::doTurn` | CvUnit.cpp:1011-1269 | 259 | `unit_do_turn` | todo |
+| `CvUnit::init` | CvUnit.cpp:106-308 | 203 | `unit_init` | ported |
+| `CvUnit::convert` | CvUnit.cpp:570-719 | 150 | `unit_convert` | ported |
+| `CvUnit::kill` | CvUnit.cpp:722-1002 | 281 | `unit_kill` | ported |
+| `CvUnit::doTurn` | CvUnit.cpp:1011-1269 | 259 | `unit_do_turn` | ported |
 | `CvUnit::isInGroup` | CvUnit.cpp:10724-10727 | 4 | `unit_is_in_group` | ported |
-| `CvUnit::isGroupHead` | CvUnit.cpp:10730-10733 | 4 | `unit_is_group_head` | todo |
-| `CvUnit::canJoinGroup` | CvUnit.cpp:10742-10811 | 70 | `unit_can_join_group` | todo |
-| `CvUnit::joinGroup` | CvUnit.cpp:10814-10944 | 131 | `unit_join_group` | todo |
-| `CvUnit::setXY` | CvUnit.cpp:10995-11579 | 585 | `unit_set_xy` | todo |
+| `CvUnit::isGroupHead` | CvUnit.cpp:10730-10733 | 4 | `unit_is_group_head` | ported |
+| `CvUnit::canJoinGroup` | CvUnit.cpp:10742-10811 | 70 | `unit_can_join_group` | ported |
+| `CvUnit::joinGroup` | CvUnit.cpp:10814-10944 | 131 | `unit_join_group` | ported |
+| `CvUnit::setXY` | CvUnit.cpp:10995-11579 | 585 | `unit_set_xy` | ported |
 | `CvUnit::at` | CvUnit.cpp:11582-11585 | 4 | `unit_at` | ported |
-| `CvUnit::atPlot` | CvUnit.cpp:11588-11591 | 4 | `unit_at_plot` | todo |
-| `CvUnit::plot` | CvUnit.cpp:11594-11597 | 4 | `unit_plot_opt` | todo |
+| `CvUnit::atPlot` | CvUnit.cpp:11588-11591 | 4 | `unit_at_plot` | ported |
+| `CvUnit::plot` | CvUnit.cpp:11594-11597 | 4 | `unit_plot_opt` | ported |
 | (none) | | | `unit_plot` | ported (convenience) |
-| `CvUnit::getArea` | CvUnit.cpp:11600-11603 | 4 | `unit_area` | todo |
-| `CvUnit::area` | CvUnit.cpp:11606-11609 | 4 | `unit_area` | todo |
-| `CvUnit::onMap` | CvUnit.cpp:11612-11615 | 4 | `unit_on_map` | todo |
-| `CvUnit::getReconPlot` | CvUnit.cpp:11631-11634 | 4 | `unit_get_recon_plot` | todo |
-| `CvUnit::setReconPlot` | CvUnit.cpp:11637-11665 | 29 | `unit_set_recon_plot` | todo |
-| `CvUnit::setDamage` | CvUnit.cpp:11687-11721 | 35 | `unit_set_damage` | todo |
-| `CvUnit::changeDamage` | CvUnit.cpp:11724-11727 | 4 | `unit_change_damage` | todo |
-| `CvUnit::doDelayedDeath` | CvUnit.cpp:12643-12652 | 10 | `unit_do_delayed_death` | todo |
-| `CvUnit::getVisualOwner` | CvUnit.cpp:12736-12760 | 25 | `unit_get_visual_owner` | todo |
-| `CvUnit::getCombatOwner` | CvUnit.cpp:12763-12774 | 12 | `unit_get_combat_owner` | todo |
-| `CvUnit::getTeam` | CvUnit.cpp:12776-12779 | 4 | `unit_get_team` | todo |
+| `CvUnit::getArea` | CvUnit.cpp:11600-11603 | 4 | `unit_area` | ported |
+| `CvUnit::area` | CvUnit.cpp:11606-11609 | 4 | `unit_area` | ported |
+| `CvUnit::onMap` | CvUnit.cpp:11612-11615 | 4 | `unit_on_map` | ported |
+| `CvUnit::getReconPlot` | CvUnit.cpp:11631-11634 | 4 | `unit_get_recon_plot` | ported |
+| `CvUnit::setReconPlot` | CvUnit.cpp:11637-11665 | 29 | `unit_set_recon_plot` | ported |
+| `CvUnit::setDamage` | CvUnit.cpp:11687-11721 | 35 | `unit_set_damage` | ported |
+| `CvUnit::changeDamage` | CvUnit.cpp:11724-11727 | 4 | `unit_change_damage` | ported |
+| `CvUnit::doDelayedDeath` | CvUnit.cpp:12643-12652 | 10 | `unit_do_delayed_death` | ported |
+| `CvUnit::getVisualOwner` | CvUnit.cpp:12736-12760 | 25 | `unit_get_visual_owner` | ported |
+| `CvUnit::getCombatOwner` | CvUnit.cpp:12763-12774 | 12 | `unit_get_combat_owner` | ported |
+| `CvUnit::getTeam` | CvUnit.cpp:12776-12779 | 4 | `unit_get_team` | ported |
 | `CvUnit::setCapturingPlayer` | CvUnit.cpp:12788-12799 | 12 | `unit_set_capturing_player` | ported |
-| `CvUnit::getName` | CvUnit.cpp:12997-13009 | 13 | `unit_get_name` | todo |
-| `CvUnit::getNameKey` | CvUnit.cpp:13012-13022 | 11 | `unit_get_name_key` | todo |
+| `CvUnit::getName` | CvUnit.cpp:12997-13009 | 13 | `unit_get_name` | ported |
+| `CvUnit::getNameKey` | CvUnit.cpp:13012-13022 | 11 | `unit_get_name_key` | ported |
 | `CvUnit::setName` | CvUnit.cpp:13031-13041 | 11 | `unit_set_name` | ported |
-| `CvUnit::getTriggerValue` | CvUnit.cpp:18082-18158 | 77 | `unit_get_trigger_value` | todo |
-| `CvUnit::canApplyEvent` | CvUnit.cpp:18160-18197 | 38 | `unit_can_apply_event` | todo |
-| `CvUnit::applyEvent` | CvUnit.cpp:18199-18245 | 47 | `unit_apply_event` | todo |
-| `CvUnitAI::AI_init` | CvUnitAI.cpp:41-52 | 12 | `unit_ai_init` | todo |
+| `CvUnit::getTriggerValue` | CvUnit.cpp:18082-18158 | 77 | `unit_get_trigger_value` | ported |
+| `CvUnit::canApplyEvent` | CvUnit.cpp:18160-18197 | 38 | `unit_can_apply_event` | ported |
+| `CvUnit::applyEvent` | CvUnit.cpp:18199-18245 | 47 | `unit_apply_event` | ported |
+| `CvUnitAI::AI_init` | CvUnitAI.cpp:41-52 | 12 | `unit_ai_init` | ported |
 | `CvUnitAI::AI_isCityAIType` | CvUnitAI.cpp:1376-1382 | 7 | `unit_ai_is_city_ai_type` | ported |
-| `CvUnitAI::AI_setUnitAIType` | CvUnitAI.cpp:1432-1448 | 17 | `unit_ai_set_unit_ai_type` | todo |
-| `CvUnitAI::getOriginPlot` | CvUnitAI.cpp:19100-19107 | 8 | `unit_ai_get_origin_plot` | todo |
-| `CvUnitAI::setOriginPlot` | CvUnitAI.cpp:19109-19121 | 13 | `unit_ai_set_origin_plot` | todo |
+| `CvUnitAI::AI_setUnitAIType` | CvUnitAI.cpp:1432-1448 | 17 | `unit_ai_set_unit_ai_type` | ported |
+| `CvUnitAI::getOriginPlot` | CvUnitAI.cpp:19100-19107 | 8 | `unit_ai_get_origin_plot` | ported |
+| `CvUnitAI::setOriginPlot` | CvUnitAI.cpp:19109-19121 | 13 | `unit_ai_set_origin_plot` | ported |
 
 ## unit/movement.rs -- 68 C++ functions, 1706 C++ lines
 
@@ -117,74 +117,74 @@ CvUnit movement: territory/area entry, `canMoveInto`, `move`, paths, loading and
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::getPathEndTurnPlot` | CvUnit.cpp:2914-2917 | 4 | `unit_get_path_end_turn_plot` | todo |
-| `CvUnit::generatePath` | CvUnit.cpp:2920-2923 | 4 | `unit_generate_path` | todo |
-| `CvUnit::canEnterTerritory` | CvUnit.cpp:2926-2987 | 62 | `unit_can_enter_territory` | todo |
-| `CvUnit::canEnterArea` | CvUnit.cpp:2990-3009 | 20 | `unit_can_enter_area` | todo |
-| `CvUnit::getDeclareWarMove` | CvUnit.cpp:3013-3057 | 45 | `unit_get_declare_war_move` | todo |
-| `CvUnit::willRevealByMove` | CvUnit.cpp:3059-3078 | 20 | `unit_will_reveal_by_move` | todo |
-| `CvUnit::canMoveInto` | CvUnit.cpp:3080-3444 | 365 | `unit_can_move_into` | todo |
-| `CvUnit::canMoveOrAttackInto` | CvUnit.cpp:3447-3450 | 4 | `unit_can_move_or_attack_into` | todo |
-| `CvUnit::canMoveThrough` | CvUnit.cpp:3453-3456 | 4 | `unit_can_move_through` | todo |
-| `CvUnit::move` | CvUnit.cpp:3598-3645 | 48 | `unit_move` | todo |
-| `CvUnit::jumpToNearestValidPlot` | CvUnit.cpp:3648-3727 | 80 | `unit_jump_to_nearest_valid_plot` | todo |
-| `CvUnit::canLoadUnit` | CvUnit.cpp:4094-4164 | 71 | `unit_can_load_unit` | todo |
-| `CvUnit::loadUnit` | CvUnit.cpp:4167-4175 | 9 | `unit_load_unit` | todo |
-| `CvUnit::shouldLoadOnMove` | CvUnit.cpp:4177-4233 | 57 | `unit_should_load_on_move` | todo |
-| `CvUnit::canLoad` | CvUnit.cpp:4236-4255 | 20 | `unit_can_load` | todo |
-| `CvUnit::load` | CvUnit.cpp:4258-4296 | 39 | `unit_load` | todo |
-| `CvUnit::canUnload` | CvUnit.cpp:4299-4337 | 39 | `unit_can_unload` | todo |
-| `CvUnit::unload` | CvUnit.cpp:4340-4348 | 9 | `unit_unload` | todo |
+| `CvUnit::getPathEndTurnPlot` | CvUnit.cpp:2914-2917 | 4 | `unit_get_path_end_turn_plot` | ported |
+| `CvUnit::generatePath` | CvUnit.cpp:2920-2923 | 4 | `unit_generate_path` | ported |
+| `CvUnit::canEnterTerritory` | CvUnit.cpp:2926-2987 | 62 | `unit_can_enter_territory` | ported |
+| `CvUnit::canEnterArea` | CvUnit.cpp:2990-3009 | 20 | `unit_can_enter_area` | ported |
+| `CvUnit::getDeclareWarMove` | CvUnit.cpp:3013-3057 | 45 | `unit_get_declare_war_move` | ported |
+| `CvUnit::willRevealByMove` | CvUnit.cpp:3059-3078 | 20 | `unit_will_reveal_by_move` | ported |
+| `CvUnit::canMoveInto` | CvUnit.cpp:3080-3444 | 365 | `unit_can_move_into` | ported |
+| `CvUnit::canMoveOrAttackInto` | CvUnit.cpp:3447-3450 | 4 | `unit_can_move_or_attack_into` | ported |
+| `CvUnit::canMoveThrough` | CvUnit.cpp:3453-3456 | 4 | `unit_can_move_through` | ported |
+| `CvUnit::move` | CvUnit.cpp:3598-3645 | 48 | `unit_move` | ported |
+| `CvUnit::jumpToNearestValidPlot` | CvUnit.cpp:3648-3727 | 80 | `unit_jump_to_nearest_valid_plot` | ported |
+| `CvUnit::canLoadUnit` | CvUnit.cpp:4094-4164 | 71 | `unit_can_load_unit` | ported |
+| `CvUnit::loadUnit` | CvUnit.cpp:4167-4175 | 9 | `unit_load_unit` | ported |
+| `CvUnit::shouldLoadOnMove` | CvUnit.cpp:4177-4233 | 57 | `unit_should_load_on_move` | ported |
+| `CvUnit::canLoad` | CvUnit.cpp:4236-4255 | 20 | `unit_can_load` | ported |
+| `CvUnit::load` | CvUnit.cpp:4258-4296 | 39 | `unit_load` | ported |
+| `CvUnit::canUnload` | CvUnit.cpp:4299-4337 | 39 | `unit_can_unload` | ported |
+| `CvUnit::unload` | CvUnit.cpp:4340-4348 | 9 | `unit_unload` | ported |
 | `CvUnit::canUnloadAll` | CvUnit.cpp:4351-4359 | 9 | `unit_can_unload_all` | ported |
-| `CvUnit::unloadAll` | CvUnit.cpp:4362-4384 | 23 | `unit_unload_all` | todo |
-| `CvUnit::getInvisibleType` | CvUnit.cpp:8519-8557 | 39 | `unit_get_invisible_type` | todo |
-| `CvUnit::getNumSeeInvisibleTypes` | CvUnit.cpp:8559-8570 | 12 | `unit_get_num_see_invisible_types` | todo |
-| `CvUnit::getSeeInvisibleType` | CvUnit.cpp:8572-8583 | 12 | `unit_get_see_invisible_type` | todo |
-| `CvUnit::visibilityRange` | CvUnit.cpp:8604-8618 | 15 | `unit_visibility_range` | todo |
-| `CvUnit::baseMoves` | CvUnit.cpp:8621-8624 | 4 | `unit_base_moves` | todo |
-| `CvUnit::maxMoves` | CvUnit.cpp:8627-8630 | 4 | `unit_max_moves` | todo |
-| `CvUnit::movesLeft` | CvUnit.cpp:8633-8636 | 4 | `unit_moves_left` | todo |
-| `CvUnit::canMove` | CvUnit.cpp:8639-8657 | 19 | `unit_can_move` | todo |
+| `CvUnit::unloadAll` | CvUnit.cpp:4362-4384 | 23 | `unit_unload_all` | ported |
+| `CvUnit::getInvisibleType` | CvUnit.cpp:8519-8557 | 39 | `unit_get_invisible_type` | ported |
+| `CvUnit::getNumSeeInvisibleTypes` | CvUnit.cpp:8559-8570 | 12 | `unit_get_num_see_invisible_types` | ported |
+| `CvUnit::getSeeInvisibleType` | CvUnit.cpp:8572-8583 | 12 | `unit_get_see_invisible_type` | ported |
+| `CvUnit::visibilityRange` | CvUnit.cpp:8604-8618 | 15 | `unit_visibility_range` | ported |
+| `CvUnit::baseMoves` | CvUnit.cpp:8621-8624 | 4 | `unit_base_moves` | ported |
+| `CvUnit::maxMoves` | CvUnit.cpp:8627-8630 | 4 | `unit_max_moves` | ported |
+| `CvUnit::movesLeft` | CvUnit.cpp:8633-8636 | 4 | `unit_moves_left` | ported |
+| `CvUnit::canMove` | CvUnit.cpp:8639-8657 | 19 | `unit_can_move` | ported |
 | `CvUnit::hasMoved` | CvUnit.cpp:8660-8663 | 4 | `unit_has_moved` | ported |
-| `CvUnit::canCoexistWithEnemyUnit` | CvUnit.cpp:8885-8903 | 19 | `unit_can_coexist_with_enemy_unit` | todo |
-| `CvUnit::alwaysInvisible` | CvUnit.cpp:10165-10168 | 4 | `unit_always_invisible` | todo |
-| `CvUnit::canMoveImpassable` | CvUnit.cpp:10198-10209 | 12 | `unit_can_move_impassable` | todo |
-| `CvUnit::canMoveAllTerrain` | CvUnit.cpp:10211-10222 | 12 | `unit_can_move_all_terrain` | todo |
-| `CvUnit::flatMovementCost` | CvUnit.cpp:10224-10235 | 12 | `unit_flat_movement_cost` | todo |
-| `CvUnit::ignoreTerrainCost` | CvUnit.cpp:10238-10249 | 12 | `unit_ignore_terrain_cost` | todo |
-| `CvUnit::isNeverInvisible` | CvUnit.cpp:10252-10255 | 4 | `unit_is_never_invisible` | todo |
-| `CvUnit::isInvisible` | CvUnit.cpp:10258-10323 | 66 | `unit_is_invisible` | todo |
-| `CvUnit::isInvisibleInPlot` | CvUnit.cpp:10326-10380 | 55 | `unit_is_invisible_in_plot` | todo |
-| `CvUnit::specialCargo` | CvUnit.cpp:10561-10564 | 4 | `unit_special_cargo` | todo |
-| `CvUnit::domainCargo` | CvUnit.cpp:10567-10570 | 4 | `unit_domain_cargo` | todo |
+| `CvUnit::canCoexistWithEnemyUnit` | CvUnit.cpp:8885-8903 | 19 | `unit_can_coexist_with_enemy_unit` | ported |
+| `CvUnit::alwaysInvisible` | CvUnit.cpp:10165-10168 | 4 | `unit_always_invisible` | ported |
+| `CvUnit::canMoveImpassable` | CvUnit.cpp:10198-10209 | 12 | `unit_can_move_impassable` | ported |
+| `CvUnit::canMoveAllTerrain` | CvUnit.cpp:10211-10222 | 12 | `unit_can_move_all_terrain` | ported |
+| `CvUnit::flatMovementCost` | CvUnit.cpp:10224-10235 | 12 | `unit_flat_movement_cost` | ported |
+| `CvUnit::ignoreTerrainCost` | CvUnit.cpp:10238-10249 | 12 | `unit_ignore_terrain_cost` | ported |
+| `CvUnit::isNeverInvisible` | CvUnit.cpp:10252-10255 | 4 | `unit_is_never_invisible` | ported |
+| `CvUnit::isInvisible` | CvUnit.cpp:10258-10323 | 66 | `unit_is_invisible` | ported |
+| `CvUnit::isInvisibleInPlot` | CvUnit.cpp:10326-10380 | 55 | `unit_is_invisible_in_plot` | ported |
+| `CvUnit::specialCargo` | CvUnit.cpp:10561-10564 | 4 | `unit_special_cargo` | ported |
+| `CvUnit::domainCargo` | CvUnit.cpp:10567-10570 | 4 | `unit_domain_cargo` | ported |
 | `CvUnit::changeCargoSpace` | CvUnit.cpp:10578-10586 | 9 | `unit_change_cargo_space` | ported |
 | `CvUnit::isFull` | CvUnit.cpp:10588-10591 | 4 | `unit_is_full` | ported |
-| `CvUnit::cargoSpaceAvailable` | CvUnit.cpp:10594-10613 | 20 | `unit_cargo_space_available` | todo |
+| `CvUnit::cargoSpaceAvailable` | CvUnit.cpp:10594-10613 | 20 | `unit_cargo_space_available` | ported |
 | `CvUnit::hasCargo` | CvUnit.cpp:10616-10619 | 4 | `unit_has_cargo` | ported |
-| `CvUnit::canCargoAllMove` | CvUnit.cpp:10622-10650 | 29 | `unit_can_cargo_all_move` | todo |
-| `CvUnit::canCargoEnterArea` | CvUnit.cpp:10652-10673 | 22 | `unit_can_cargo_enter_area` | todo |
-| `CvUnit::getUnitAICargo` | CvUnit.cpp:10675-10690 | 16 | `unit_get_unit_ai_cargo` | todo |
+| `CvUnit::canCargoAllMove` | CvUnit.cpp:10622-10650 | 29 | `unit_can_cargo_all_move` | ported |
+| `CvUnit::canCargoEnterArea` | CvUnit.cpp:10652-10673 | 22 | `unit_can_cargo_enter_area` | ported |
+| `CvUnit::getUnitAICargo` | CvUnit.cpp:10675-10690 | 16 | `unit_get_unit_ai_cargo` | ported |
 | `CvUnit::changeMoves` | CvUnit.cpp:11771-11774 | 4 | `unit_change_moves` | ported |
-| `CvUnit::finishMoves` | CvUnit.cpp:11777-11780 | 4 | `unit_finish_moves` | todo |
+| `CvUnit::finishMoves` | CvUnit.cpp:11777-11780 | 4 | `unit_finish_moves` | ported |
 | `CvUnit::changeCargo` | CvUnit.cpp:11876-11880 | 5 | `unit_change_cargo` | ported |
-| `CvUnit::getCargoUnits` | CvUnit.cpp:11882-11902 | 21 | `unit_get_cargo_units` | todo |
-| `CvUnit::changeExtraVisibilityRange` | CvUnit.cpp:12100-12111 | 12 | `unit_change_extra_visibility_range` | todo |
+| `CvUnit::getCargoUnits` | CvUnit.cpp:11882-11902 | 21 | `unit_get_cargo_units` | ported |
+| `CvUnit::changeExtraVisibilityRange` | CvUnit.cpp:12100-12111 | 12 | `unit_change_extra_visibility_range` | ported |
 | `CvUnit::getImmobileTimer` | CvUnit.cpp:12516-12527 | 12 | `unit_get_immobile_timer` | ported |
-| `CvUnit::setImmobileTimer` | CvUnit.cpp:12529-12551 | 23 | `unit_set_immobile_timer` | todo |
-| `CvUnit::changeImmobileTimer` | CvUnit.cpp:12553-12559 | 7 | `unit_change_immobile_timer` | todo |
+| `CvUnit::setImmobileTimer` | CvUnit.cpp:12529-12551 | 23 | `unit_set_immobile_timer` | ported |
+| `CvUnit::changeImmobileTimer` | CvUnit.cpp:12553-12559 | 7 | `unit_change_immobile_timer` | ported |
 | `CvUnit::isCargo` | CvUnit.cpp:12918-12921 | 4 | `unit_is_cargo` | ported |
-| `CvUnit::setTransportUnit` | CvUnit.cpp:12924-12978 | 55 | `unit_set_transport_unit` | todo |
+| `CvUnit::setTransportUnit` | CvUnit.cpp:12924-12978 | 55 | `unit_set_transport_unit` | ported |
 | `CvUnit::isTerrainDoubleMove` | CvUnit.cpp:13064-13069 | 6 | `unit_is_terrain_double_move` | ported |
 | `CvUnit::changeTerrainDoubleMoveCount` | CvUnit.cpp:13072-13078 | 7 | `unit_change_terrain_double_move_count` | ported |
 | `CvUnit::isFeatureDoubleMove` | CvUnit.cpp:13089-13094 | 6 | `unit_is_feature_double_move` | ported |
 | `CvUnit::changeFeatureDoubleMoveCount` | CvUnit.cpp:13097-13103 | 7 | `unit_change_feature_double_move_count` | ported |
-| `CvUnit::potentialWarAction` | CvUnit.cpp:13651-13672 | 22 | `unit_potential_war_action` | todo |
-| `CvUnit::getOpenPlot` | CvUnit.cpp:16728-16763 | 36 | `unit_get_open_plot` | todo |
-| `CvUnit::withdrawlToNearestValidPlot` | CvUnit.cpp:16805-16864 | 60 | `unit_withdrawl_to_nearest_valid_plot` | todo |
-| `CvUnit::isEnemy` | CvUnit.cpp:18011-18029 | 19 | `unit_is_enemy` | todo |
-| `CvUnit::isPotentialEnemy` | CvUnit.cpp:18031-18039 | 9 | `unit_is_potential_enemy` | todo |
-| `CvUnit::isAlwaysHostile` | CvUnit.cpp:18339-18360 | 22 | `unit_is_always_hostile` | todo |
-| `CvUnit::verifyStackValid` | CvUnit.cpp:18362-18373 | 12 | `unit_verify_stack_valid` | todo |
+| `CvUnit::potentialWarAction` | CvUnit.cpp:13651-13672 | 22 | `unit_potential_war_action` | ported |
+| `CvUnit::getOpenPlot` | CvUnit.cpp:16728-16763 | 36 | `unit_get_open_plot` | ported |
+| `CvUnit::withdrawlToNearestValidPlot` | CvUnit.cpp:16805-16864 | 60 | `unit_withdrawl_to_nearest_valid_plot` | ported |
+| `CvUnit::isEnemy` | CvUnit.cpp:18011-18029 | 19 | `unit_is_enemy` | ported |
+| `CvUnit::isPotentialEnemy` | CvUnit.cpp:18031-18039 | 9 | `unit_is_potential_enemy` | ported |
+| `CvUnit::isAlwaysHostile` | CvUnit.cpp:18339-18360 | 22 | `unit_is_always_hostile` | ported |
+| `CvUnit::verifyStackValid` | CvUnit.cpp:18362-18373 | 12 | `unit_verify_stack_valid` | ported |
 
 ## unit/combat.rs -- 51 C++ functions, 3180 C++ lines
 
@@ -192,57 +192,57 @@ CvUnit combat: strength (`maxCombatStr` & co., `isBetterDefenderThan`, attack/de
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::updateAirStrike` | CvUnit.cpp:1272-1329 | 58 | `unit_update_air_strike` | todo |
-| `CvUnit::resolveAirCombat` | CvUnit.cpp:1331-1412 | 82 | `unit_resolve_air_combat` | todo |
-| `CvUnit::updateAirCombat` | CvUnit.cpp:1415-1582 | 168 | `unit_update_air_combat` | todo |
-| `CvUnit::resolveCombat` | CvUnit.cpp:1584-1783 | 200 | `unit_resolve_combat` | todo |
-| `CvUnit::updateCombat` | CvUnit.cpp:1786-2251 | 466 | `unit_update_combat` | todo |
-| `CvUnit::isBetterDefenderThan` | CvUnit.cpp:2479-2646 | 168 | `unit_is_better_defender_than` | todo |
-| `CvUnit::attack` | CvUnit.cpp:3459-3467 | 9 | `unit_attack` | todo |
-| `CvUnit::fightInterceptor` | CvUnit.cpp:3469-3476 | 8 | `unit_fight_interceptor` | todo |
-| `CvUnit::attackForDamage` | CvUnit.cpp:3478-3595 | 118 | `unit_attack_for_damage` | todo |
+| `CvUnit::updateAirStrike` | CvUnit.cpp:1272-1329 | 58 | `unit_update_air_strike` | ported |
+| `CvUnit::resolveAirCombat` | CvUnit.cpp:1331-1412 | 82 | `unit_resolve_air_combat` | ported |
+| `CvUnit::updateAirCombat` | CvUnit.cpp:1415-1582 | 168 | `unit_update_air_combat` | ported |
+| `CvUnit::resolveCombat` | CvUnit.cpp:1584-1783 | 200 | `unit_resolve_combat` | ported |
+| `CvUnit::updateCombat` | CvUnit.cpp:1786-2251 | 466 | `unit_update_combat` | ported |
+| `CvUnit::isBetterDefenderThan` | CvUnit.cpp:2479-2646 | 168 | `unit_is_better_defender_than` | ported |
+| `CvUnit::attack` | CvUnit.cpp:3459-3467 | 9 | `unit_attack` | ported |
+| `CvUnit::fightInterceptor` | CvUnit.cpp:3469-3476 | 8 | `unit_fight_interceptor` | ported |
+| `CvUnit::attackForDamage` | CvUnit.cpp:3478-3595 | 118 | `unit_attack_for_damage` | ported |
 | `CvUnit::isFighting` | CvUnit.cpp:8905-8908 | 4 | `unit_is_fighting` | ported |
-| `CvUnit::isAttacking` | CvUnit.cpp:8911-8914 | 4 | `unit_is_attacking` | todo |
-| `CvUnit::isDefending` | CvUnit.cpp:8917-8920 | 4 | `unit_is_defending` | todo |
-| `CvUnit::isCombat` | CvUnit.cpp:8923-8926 | 4 | `unit_is_combat` | todo |
-| `CvUnit::maxCombatStr` | CvUnit.cpp:8997-9557 | 561 | `unit_max_combat_str` | todo |
-| `CvUnit::currCombatStr` | CvUnit.cpp:9560-9563 | 4 | `unit_curr_combat_str` | todo |
-| `CvUnit::currFirepower` | CvUnit.cpp:9566-9569 | 4 | `unit_curr_firepower` | todo |
-| `CvUnit::currEffectiveStr` | CvUnit.cpp:9574-9582 | 9 | `unit_curr_effective_str` | todo |
+| `CvUnit::isAttacking` | CvUnit.cpp:8911-8914 | 4 | `unit_is_attacking` | ported |
+| `CvUnit::isDefending` | CvUnit.cpp:8917-8920 | 4 | `unit_is_defending` | ported |
+| `CvUnit::isCombat` | CvUnit.cpp:8923-8926 | 4 | `unit_is_combat` | ported |
+| `CvUnit::maxCombatStr` | CvUnit.cpp:8997-9557 | 561 | `unit_max_combat_str` | ported |
+| `CvUnit::currCombatStr` | CvUnit.cpp:9560-9563 | 4 | `unit_curr_combat_str` | ported |
+| `CvUnit::currFirepower` | CvUnit.cpp:9566-9569 | 4 | `unit_curr_firepower` | ported |
+| `CvUnit::currEffectiveStr` | CvUnit.cpp:9574-9582 | 9 | `unit_curr_effective_str` | ported |
 | `CvUnit::canFight` | CvUnit.cpp:9596-9608 | 13 | `unit_can_fight` | ported |
-| `CvUnit::canAttack` | CvUnit.cpp:9611-9636 | 26 | `unit_can_attack` | todo |
-| `CvUnit::canAttack` | CvUnit.cpp:9637-9659 | 23 | `unit_can_attack_unit` | todo |
-| `CvUnit::canDefend` | CvUnit.cpp:9661-9689 | 29 | `unit_can_defend` | todo |
-| `CvUnit::canSiege` | CvUnit.cpp:9692-9710 | 19 | `unit_can_siege` | todo |
-| `CvUnit::airBaseCombatStr` | CvUnit.cpp:9713-9716 | 4 | `unit_air_base_combat_str` | todo |
-| `CvUnit::airMaxCombatStr` | CvUnit.cpp:9719-9766 | 48 | `unit_air_max_combat_str` | todo |
-| `CvUnit::airCurrCombatStr` | CvUnit.cpp:9769-9772 | 4 | `unit_air_curr_combat_str` | todo |
-| `CvUnit::airCombatLimit` | CvUnit.cpp:9798-9801 | 4 | `unit_air_combat_limit` | todo |
-| `CvUnit::canAirAttack` | CvUnit.cpp:9804-9807 | 4 | `unit_can_air_attack` | todo |
-| `CvUnit::canAirDefend` | CvUnit.cpp:9810-9844 | 35 | `unit_can_air_defend` | todo |
-| `CvUnit::airCombatDamage` | CvUnit.cpp:9847-9875 | 29 | `unit_air_combat_damage` | todo |
-| `CvUnit::rangeCombatDamage` | CvUnit.cpp:9878-9897 | 20 | `unit_range_combat_damage` | todo |
-| `CvUnit::bestInterceptor` | CvUnit.cpp:9900-9948 | 49 | `unit_best_interceptor` | todo |
-| `CvUnit::bestSeaPillageInterceptor` | CvUnit.cpp:9951-10001 | 51 | `unit_best_sea_pillage_interceptor` | todo |
-| `CvUnit::getAttackPlot` | CvUnit.cpp:11904-11907 | 4 | `unit_get_attack_plot` | todo |
-| `CvUnit::setAttackPlot` | CvUnit.cpp:11910-11927 | 18 | `unit_set_attack_plot` | todo |
+| `CvUnit::canAttack` | CvUnit.cpp:9611-9636 | 26 | `unit_can_attack` | ported |
+| `CvUnit::canAttack` | CvUnit.cpp:9637-9659 | 23 | `unit_can_attack_unit` | ported |
+| `CvUnit::canDefend` | CvUnit.cpp:9661-9689 | 29 | `unit_can_defend` | ported |
+| `CvUnit::canSiege` | CvUnit.cpp:9692-9710 | 19 | `unit_can_siege` | ported |
+| `CvUnit::airBaseCombatStr` | CvUnit.cpp:9713-9716 | 4 | `unit_air_base_combat_str` | ported |
+| `CvUnit::airMaxCombatStr` | CvUnit.cpp:9719-9766 | 48 | `unit_air_max_combat_str` | ported |
+| `CvUnit::airCurrCombatStr` | CvUnit.cpp:9769-9772 | 4 | `unit_air_curr_combat_str` | ported |
+| `CvUnit::airCombatLimit` | CvUnit.cpp:9798-9801 | 4 | `unit_air_combat_limit` | ported |
+| `CvUnit::canAirAttack` | CvUnit.cpp:9804-9807 | 4 | `unit_can_air_attack` | ported |
+| `CvUnit::canAirDefend` | CvUnit.cpp:9810-9844 | 35 | `unit_can_air_defend` | ported |
+| `CvUnit::airCombatDamage` | CvUnit.cpp:9847-9875 | 29 | `unit_air_combat_damage` | ported |
+| `CvUnit::rangeCombatDamage` | CvUnit.cpp:9878-9897 | 20 | `unit_range_combat_damage` | ported |
+| `CvUnit::bestInterceptor` | CvUnit.cpp:9900-9948 | 49 | `unit_best_interceptor` | ported |
+| `CvUnit::bestSeaPillageInterceptor` | CvUnit.cpp:9951-10001 | 51 | `unit_best_sea_pillage_interceptor` | ported |
+| `CvUnit::getAttackPlot` | CvUnit.cpp:11904-11907 | 4 | `unit_get_attack_plot` | ported |
+| `CvUnit::setAttackPlot` | CvUnit.cpp:11910-11927 | 18 | `unit_set_attack_plot` | ported |
 | `CvUnit::changeCombatTimer` | CvUnit.cpp:11945-11948 | 4 | `unit_change_combat_timer` | ported |
 | `CvUnit::changeCombatFirstStrikes` | CvUnit.cpp:11961-11964 | 4 | `unit_change_combat_first_strikes` | ported |
-| `CvUnit::setCombatUnit` | CvUnit.cpp:12838-12909 | 72 | `unit_set_combat_unit` | todo |
-| `CvUnit::doDefensiveStrike` | CvUnit.cpp:16206-16259 | 54 | `unit_do_defensive_strike` | todo |
-| `CvUnit::combatWon` | CvUnit.cpp:16306-16560 | 255 | `unit_combat_won` | todo |
-| `CvUnit::canAdvance` | CvUnit.cpp:17230-17251 | 22 | `unit_can_advance` | todo |
-| `CvUnit::collateralCombat` | CvUnit.cpp:17254-17382 | 129 | `unit_collateral_combat` | todo |
-| `CvUnit::flankingStrikeCombat` | CvUnit.cpp:17385-17468 | 84 | `unit_flanking_strike_combat` | todo |
-| `CvUnit::interceptTest` | CvUnit.cpp:17472-17490 | 19 | `unit_intercept_test` | todo |
-| `CvUnit::airStrikeTarget` | CvUnit.cpp:17493-17511 | 19 | `unit_air_strike_target` | todo |
-| `CvUnit::canAirStrike` | CvUnit.cpp:17514-17547 | 34 | `unit_can_air_strike` | todo |
-| `CvUnit::airStrike` | CvUnit.cpp:17550-17587 | 38 | `unit_air_strike` | todo |
-| `CvUnit::canRangeStrike` | CvUnit.cpp:17589-17622 | 34 | `unit_can_range_strike` | todo |
-| `CvUnit::canRangeStrikeAt` | CvUnit.cpp:17624-17660 | 37 | `unit_can_range_strike_at` | todo |
-| `CvUnit::rangeStrike` | CvUnit.cpp:17663-17726 | 64 | `unit_range_strike` | todo |
-| `CvUnit::isTargetOf` | CvUnit.cpp:17980-18009 | 30 | `unit_is_target_of` | todo |
-| `CvUnit::getDefenderCombatValues` | CvUnit.cpp:18051-18080 | 30 | `unit_get_defender_combat_values` | todo |
+| `CvUnit::setCombatUnit` | CvUnit.cpp:12838-12909 | 72 | `unit_set_combat_unit` | ported |
+| `CvUnit::doDefensiveStrike` | CvUnit.cpp:16206-16259 | 54 | `unit_do_defensive_strike` | ported |
+| `CvUnit::combatWon` | CvUnit.cpp:16306-16560 | 255 | `unit_combat_won` | ported |
+| `CvUnit::canAdvance` | CvUnit.cpp:17230-17251 | 22 | `unit_can_advance` | ported |
+| `CvUnit::collateralCombat` | CvUnit.cpp:17254-17382 | 129 | `unit_collateral_combat` | ported |
+| `CvUnit::flankingStrikeCombat` | CvUnit.cpp:17385-17468 | 84 | `unit_flanking_strike_combat` | ported |
+| `CvUnit::interceptTest` | CvUnit.cpp:17472-17490 | 19 | `unit_intercept_test` | ported |
+| `CvUnit::airStrikeTarget` | CvUnit.cpp:17493-17511 | 19 | `unit_air_strike_target` | ported |
+| `CvUnit::canAirStrike` | CvUnit.cpp:17514-17547 | 34 | `unit_can_air_strike` | ported |
+| `CvUnit::airStrike` | CvUnit.cpp:17550-17587 | 38 | `unit_air_strike` | ported |
+| `CvUnit::canRangeStrike` | CvUnit.cpp:17589-17622 | 34 | `unit_can_range_strike` | ported |
+| `CvUnit::canRangeStrikeAt` | CvUnit.cpp:17624-17660 | 37 | `unit_can_range_strike_at` | ported |
+| `CvUnit::rangeStrike` | CvUnit.cpp:17663-17726 | 64 | `unit_range_strike` | ported |
+| `CvUnit::isTargetOf` | CvUnit.cpp:17980-18009 | 30 | `unit_is_target_of` | ported |
+| `CvUnit::getDefenderCombatValues` | CvUnit.cpp:18051-18080 | 30 | `unit_get_defender_combat_values` | ported |
 
 ## unit/promotions.rs -- 141 C++ functions, 1974 C++ lines
 
@@ -250,90 +250,90 @@ CvUnit promotions, experience and levels, leaders (great generals), upgrades, an
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::canPromote` | CvUnit.cpp:7717-7776 | 60 | `unit_can_promote` | todo |
-| `CvUnit::promote` | CvUnit.cpp:7778-7835 | 58 | `unit_promote` | todo |
-| `CvUnit::lead` | CvUnit.cpp:7837-7877 | 41 | `unit_lead` | todo |
-| `CvUnit::canLead` | CvUnit.cpp:7880-7920 | 41 | `unit_can_lead` | todo |
-| `CvUnit::canGiveExperience` | CvUnit.cpp:7923-7943 | 21 | `unit_can_give_experience` | todo |
-| `CvUnit::giveExperience` | CvUnit.cpp:7945-7980 | 36 | `unit_give_experience` | todo |
-| `CvUnit::getStackExperienceToGive` | CvUnit.cpp:7982-7985 | 4 | `unit_get_stack_experience_to_give` | todo |
-| `CvUnit::upgradePrice` | CvUnit.cpp:7987-8027 | 41 | `unit_upgrade_price` | todo |
-| `CvUnit::upgradeAvailable` | CvUnit.cpp:8030-8064 | 35 | `unit_upgrade_available` | todo |
-| `CvUnit::canUpgrade` | CvUnit.cpp:8067-8138 | 72 | `unit_can_upgrade` | todo |
-| `CvUnit::isReadyForUpgrade` | CvUnit.cpp:8140-8153 | 14 | `unit_is_ready_for_upgrade` | todo |
-| `CvUnit::hasUpgrade` | CvUnit.cpp:8159-8162 | 4 | `unit_has_upgrade` | todo |
-| `CvUnit::hasUpgrade` | CvUnit.cpp:8168-8171 | 4 | `unit_has_upgrade_to` | todo |
-| `CvUnit::getUpgradeCity` | CvUnit.cpp:8178-8214 | 37 | `unit_get_upgrade_city` | todo |
-| `CvUnit::getUpgradeCity` | CvUnit.cpp:8222-8428 | 207 | `unit_get_upgrade_city_for` | todo |
-| `CvUnit::upgrade` | CvUnit.cpp:8430-8470 | 41 | `unit_upgrade` | todo |
-| `CvUnit::getHandicapType` | CvUnit.cpp:8473-8476 | 4 | `unit_get_handicap_type` | todo |
-| `CvUnit::getCivilizationType` | CvUnit.cpp:8479-8482 | 4 | `unit_get_civilization_type` | todo |
-| `CvUnit::getSpecialUnitType` | CvUnit.cpp:8494-8497 | 4 | `unit_get_special_unit_type` | todo |
-| `CvUnit::getCaptureUnitType` | CvUnit.cpp:8500-8504 | 5 | `unit_get_capture_unit_type` | todo |
-| `CvUnit::getUnitCombatType` | CvUnit.cpp:8507-8510 | 4 | `unit_get_unit_combat_type` | todo |
-| `CvUnit::getDomainType` | CvUnit.cpp:8513-8516 | 4 | `unit_get_domain_type` | todo |
-| `CvUnit::flavorValue` | CvUnit.cpp:8586-8589 | 4 | `unit_flavor_value` | todo |
+| `CvUnit::canPromote` | CvUnit.cpp:7717-7776 | 60 | `unit_can_promote` | ported |
+| `CvUnit::promote` | CvUnit.cpp:7778-7835 | 58 | `unit_promote` | ported |
+| `CvUnit::lead` | CvUnit.cpp:7837-7877 | 41 | `unit_lead` | ported |
+| `CvUnit::canLead` | CvUnit.cpp:7880-7920 | 41 | `unit_can_lead` | ported |
+| `CvUnit::canGiveExperience` | CvUnit.cpp:7923-7943 | 21 | `unit_can_give_experience` | ported |
+| `CvUnit::giveExperience` | CvUnit.cpp:7945-7980 | 36 | `unit_give_experience` | ported |
+| `CvUnit::getStackExperienceToGive` | CvUnit.cpp:7982-7985 | 4 | `unit_get_stack_experience_to_give` | ported |
+| `CvUnit::upgradePrice` | CvUnit.cpp:7987-8027 | 41 | `unit_upgrade_price` | ported |
+| `CvUnit::upgradeAvailable` | CvUnit.cpp:8030-8064 | 35 | `unit_upgrade_available` | ported |
+| `CvUnit::canUpgrade` | CvUnit.cpp:8067-8138 | 72 | `unit_can_upgrade` | ported |
+| `CvUnit::isReadyForUpgrade` | CvUnit.cpp:8140-8153 | 14 | `unit_is_ready_for_upgrade` | ported |
+| `CvUnit::hasUpgrade` | CvUnit.cpp:8159-8162 | 4 | `unit_has_upgrade` | ported |
+| `CvUnit::hasUpgrade` | CvUnit.cpp:8168-8171 | 4 | `unit_has_upgrade_to` | ported |
+| `CvUnit::getUpgradeCity` | CvUnit.cpp:8178-8214 | 37 | `unit_get_upgrade_city` | ported |
+| `CvUnit::getUpgradeCity` | CvUnit.cpp:8222-8428 | 207 | `unit_get_upgrade_city_for` | ported |
+| `CvUnit::upgrade` | CvUnit.cpp:8430-8470 | 41 | `unit_upgrade` | ported |
+| `CvUnit::getHandicapType` | CvUnit.cpp:8473-8476 | 4 | `unit_get_handicap_type` | ported |
+| `CvUnit::getCivilizationType` | CvUnit.cpp:8479-8482 | 4 | `unit_get_civilization_type` | ported |
+| `CvUnit::getSpecialUnitType` | CvUnit.cpp:8494-8497 | 4 | `unit_get_special_unit_type` | ported |
+| `CvUnit::getCaptureUnitType` | CvUnit.cpp:8500-8504 | 5 | `unit_get_capture_unit_type` | ported |
+| `CvUnit::getUnitCombatType` | CvUnit.cpp:8507-8510 | 4 | `unit_get_unit_combat_type` | ported |
+| `CvUnit::getDomainType` | CvUnit.cpp:8513-8516 | 4 | `unit_get_domain_type` | ported |
+| `CvUnit::flavorValue` | CvUnit.cpp:8586-8589 | 4 | `unit_flavor_value` | ported |
 | `CvUnit::isBarbarian` | CvUnit.cpp:8592-8595 | 4 | `unit_is_barbarian` | ported |
-| `CvUnit::isHuman` | CvUnit.cpp:8598-8601 | 4 | `unit_is_human` | todo |
-| `CvUnit::airRange` | CvUnit.cpp:8666-8669 | 4 | `unit_air_range` | todo |
-| `CvUnit::nukeRange` | CvUnit.cpp:8672-8675 | 4 | `unit_nuke_range` | todo |
-| `CvUnit::isAnimal` | CvUnit.cpp:8799-8802 | 4 | `unit_is_animal` | todo |
-| `CvUnit::isNoBadGoodies` | CvUnit.cpp:8805-8808 | 4 | `unit_is_no_bad_goodies` | todo |
-| `CvUnit::isOnlyDefensive` | CvUnit.cpp:8811-8822 | 12 | `unit_is_only_defensive` | todo |
-| `CvUnit::isNoCapture` | CvUnit.cpp:8825-8836 | 12 | `unit_is_no_capture` | todo |
-| `CvUnit::isRivalTerritory` | CvUnit.cpp:8839-8842 | 4 | `unit_is_rival_territory` | todo |
-| `CvUnit::isMilitaryHappiness` | CvUnit.cpp:8845-8848 | 4 | `unit_is_military_happiness` | todo |
-| `CvUnit::isInvestigate` | CvUnit.cpp:8851-8854 | 4 | `unit_is_investigate` | todo |
-| `CvUnit::isCounterSpy` | CvUnit.cpp:8857-8860 | 4 | `unit_is_counter_spy` | todo |
-| `CvUnit::isSpy` | CvUnit.cpp:8863-8866 | 4 | `unit_is_spy` | todo |
-| `CvUnit::isFound` | CvUnit.cpp:8869-8872 | 4 | `unit_is_found` | todo |
-| `CvUnit::isGoldenAge` | CvUnit.cpp:8875-8883 | 9 | `unit_is_golden_age` | todo |
+| `CvUnit::isHuman` | CvUnit.cpp:8598-8601 | 4 | `unit_is_human` | ported |
+| `CvUnit::airRange` | CvUnit.cpp:8666-8669 | 4 | `unit_air_range` | ported |
+| `CvUnit::nukeRange` | CvUnit.cpp:8672-8675 | 4 | `unit_nuke_range` | ported |
+| `CvUnit::isAnimal` | CvUnit.cpp:8799-8802 | 4 | `unit_is_animal` | ported |
+| `CvUnit::isNoBadGoodies` | CvUnit.cpp:8805-8808 | 4 | `unit_is_no_bad_goodies` | ported |
+| `CvUnit::isOnlyDefensive` | CvUnit.cpp:8811-8822 | 12 | `unit_is_only_defensive` | ported |
+| `CvUnit::isNoCapture` | CvUnit.cpp:8825-8836 | 12 | `unit_is_no_capture` | ported |
+| `CvUnit::isRivalTerritory` | CvUnit.cpp:8839-8842 | 4 | `unit_is_rival_territory` | ported |
+| `CvUnit::isMilitaryHappiness` | CvUnit.cpp:8845-8848 | 4 | `unit_is_military_happiness` | ported |
+| `CvUnit::isInvestigate` | CvUnit.cpp:8851-8854 | 4 | `unit_is_investigate` | ported |
+| `CvUnit::isCounterSpy` | CvUnit.cpp:8857-8860 | 4 | `unit_is_counter_spy` | ported |
+| `CvUnit::isSpy` | CvUnit.cpp:8863-8866 | 4 | `unit_is_spy` | ported |
+| `CvUnit::isFound` | CvUnit.cpp:8869-8872 | 4 | `unit_is_found` | ported |
+| `CvUnit::isGoldenAge` | CvUnit.cpp:8875-8883 | 9 | `unit_is_golden_age` | ported |
 | `CvUnit::maxHitPoints` | CvUnit.cpp:8929-8932 | 4 | `unit_max_hit_points` | ported |
 | `CvUnit::currHitPoints` | CvUnit.cpp:8935-8938 | 4 | `unit_curr_hit_points` | ported |
 | `CvUnit::isHurt` | CvUnit.cpp:8941-8944 | 4 | `unit_is_hurt` | ported |
 | `CvUnit::isDead` | CvUnit.cpp:8947-8950 | 4 | `unit_is_dead` | ported |
 | `CvUnit::baseCombatStr` | CvUnit.cpp:8958-8971 | 14 | `unit_base_combat_str` | ported |
 | `CvUnit::baseCombatStrDefense` | CvUnit.cpp:8979-8987 | 9 | `unit_base_combat_str_defense` | ported |
-| `CvUnit::isFortifyable` | CvUnit.cpp:10016-10024 | 9 | `unit_is_fortifyable` | todo |
-| `CvUnit::fortifyModifier` | CvUnit.cpp:10027-10044 | 18 | `unit_fortify_modifier` | todo |
-| `CvUnit::experienceNeeded` | CvUnit.cpp:10047-10065 | 19 | `unit_experience_needed` | todo |
-| `CvUnit::attackXPValue` | CvUnit.cpp:10068-10081 | 14 | `unit_attack_xp_value` | todo |
-| `CvUnit::defenseXPValue` | CvUnit.cpp:10084-10097 | 14 | `unit_defense_xp_value` | todo |
-| `CvUnit::maxXPValue` | CvUnit.cpp:10100-10129 | 30 | `unit_max_xp_value` | todo |
-| `CvUnit::firstStrikes` | CvUnit.cpp:10132-10135 | 4 | `unit_first_strikes` | todo |
-| `CvUnit::chanceFirstStrikes` | CvUnit.cpp:10138-10141 | 4 | `unit_chance_first_strikes` | todo |
-| `CvUnit::maxFirstStrikes` | CvUnit.cpp:10144-10147 | 4 | `unit_max_first_strikes` | todo |
-| `CvUnit::immuneToFirstStrikes` | CvUnit.cpp:10171-10174 | 4 | `unit_immune_to_first_strikes` | todo |
-| `CvUnit::noDefensiveBonus` | CvUnit.cpp:10177-10180 | 4 | `unit_no_defensive_bonus` | todo |
-| `CvUnit::ignoreBuildingDefense` | CvUnit.cpp:10183-10195 | 13 | `unit_ignore_building_defense` | todo |
-| `CvUnit::isNukeImmune` | CvUnit.cpp:10384-10387 | 4 | `unit_is_nuke_immune` | todo |
-| `CvUnit::maxInterceptionProbability` | CvUnit.cpp:10390-10393 | 4 | `unit_max_interception_probability` | todo |
-| `CvUnit::currInterceptionProbability` | CvUnit.cpp:10396-10406 | 11 | `unit_curr_interception_probability` | todo |
-| `CvUnit::evasionProbability` | CvUnit.cpp:10409-10412 | 4 | `unit_evasion_probability` | todo |
-| `CvUnit::withdrawalProbability` | CvUnit.cpp:10415-10430 | 16 | `unit_withdrawal_probability` | todo |
-| `CvUnit::collateralDamage` | CvUnit.cpp:10433-10436 | 4 | `unit_collateral_damage` | todo |
-| `CvUnit::collateralDamageLimit` | CvUnit.cpp:10439-10442 | 4 | `unit_collateral_damage_limit` | todo |
-| `CvUnit::collateralDamageMaxUnits` | CvUnit.cpp:10445-10448 | 4 | `unit_collateral_damage_max_units` | todo |
-| `CvUnit::cityAttackModifier` | CvUnit.cpp:10451-10454 | 4 | `unit_city_attack_modifier` | todo |
-| `CvUnit::cityDefenseModifier` | CvUnit.cpp:10457-10460 | 4 | `unit_city_defense_modifier` | todo |
-| `CvUnit::animalCombatModifier` | CvUnit.cpp:10463-10466 | 4 | `unit_animal_combat_modifier` | todo |
-| `CvUnit::hillsAttackModifier` | CvUnit.cpp:10469-10472 | 4 | `unit_hills_attack_modifier` | todo |
-| `CvUnit::hillsDefenseModifier` | CvUnit.cpp:10475-10478 | 4 | `unit_hills_defense_modifier` | todo |
-| `CvUnit::terrainAttackModifier` | CvUnit.cpp:10481-10486 | 6 | `unit_terrain_attack_modifier` | todo |
-| `CvUnit::terrainDefenseModifier` | CvUnit.cpp:10489-10494 | 6 | `unit_terrain_defense_modifier` | todo |
-| `CvUnit::featureAttackModifier` | CvUnit.cpp:10497-10502 | 6 | `unit_feature_attack_modifier` | todo |
-| `CvUnit::featureDefenseModifier` | CvUnit.cpp:10504-10509 | 6 | `unit_feature_defense_modifier` | todo |
-| `CvUnit::unitClassAttackModifier` | CvUnit.cpp:10511-10516 | 6 | `unit_unit_class_attack_modifier` | todo |
-| `CvUnit::unitClassDefenseModifier` | CvUnit.cpp:10519-10524 | 6 | `unit_unit_class_defense_modifier` | todo |
-| `CvUnit::unitCombatModifier` | CvUnit.cpp:10527-10532 | 6 | `unit_unit_combat_modifier` | todo |
-| `CvUnit::domainModifier` | CvUnit.cpp:10535-10540 | 6 | `unit_domain_modifier` | todo |
-| `CvUnit::bombardRate` | CvUnit.cpp:10543-10546 | 4 | `unit_bombard_rate` | todo |
-| `CvUnit::airBombBaseRate` | CvUnit.cpp:10549-10552 | 4 | `unit_air_bomb_base_rate` | todo |
-| `CvUnit::airBombCurrRate` | CvUnit.cpp:10555-10558 | 4 | `unit_air_bomb_curr_rate` | todo |
+| `CvUnit::isFortifyable` | CvUnit.cpp:10016-10024 | 9 | `unit_is_fortifyable` | ported |
+| `CvUnit::fortifyModifier` | CvUnit.cpp:10027-10044 | 18 | `unit_fortify_modifier` | ported |
+| `CvUnit::experienceNeeded` | CvUnit.cpp:10047-10065 | 19 | `unit_experience_needed` | ported |
+| `CvUnit::attackXPValue` | CvUnit.cpp:10068-10081 | 14 | `unit_attack_xp_value` | ported |
+| `CvUnit::defenseXPValue` | CvUnit.cpp:10084-10097 | 14 | `unit_defense_xp_value` | ported |
+| `CvUnit::maxXPValue` | CvUnit.cpp:10100-10129 | 30 | `unit_max_xp_value` | ported |
+| `CvUnit::firstStrikes` | CvUnit.cpp:10132-10135 | 4 | `unit_first_strikes` | ported |
+| `CvUnit::chanceFirstStrikes` | CvUnit.cpp:10138-10141 | 4 | `unit_chance_first_strikes` | ported |
+| `CvUnit::maxFirstStrikes` | CvUnit.cpp:10144-10147 | 4 | `unit_max_first_strikes` | ported |
+| `CvUnit::immuneToFirstStrikes` | CvUnit.cpp:10171-10174 | 4 | `unit_immune_to_first_strikes` | ported |
+| `CvUnit::noDefensiveBonus` | CvUnit.cpp:10177-10180 | 4 | `unit_no_defensive_bonus` | ported |
+| `CvUnit::ignoreBuildingDefense` | CvUnit.cpp:10183-10195 | 13 | `unit_ignore_building_defense` | ported |
+| `CvUnit::isNukeImmune` | CvUnit.cpp:10384-10387 | 4 | `unit_is_nuke_immune` | ported |
+| `CvUnit::maxInterceptionProbability` | CvUnit.cpp:10390-10393 | 4 | `unit_max_interception_probability` | ported |
+| `CvUnit::currInterceptionProbability` | CvUnit.cpp:10396-10406 | 11 | `unit_curr_interception_probability` | ported |
+| `CvUnit::evasionProbability` | CvUnit.cpp:10409-10412 | 4 | `unit_evasion_probability` | ported |
+| `CvUnit::withdrawalProbability` | CvUnit.cpp:10415-10430 | 16 | `unit_withdrawal_probability` | ported |
+| `CvUnit::collateralDamage` | CvUnit.cpp:10433-10436 | 4 | `unit_collateral_damage` | ported |
+| `CvUnit::collateralDamageLimit` | CvUnit.cpp:10439-10442 | 4 | `unit_collateral_damage_limit` | ported |
+| `CvUnit::collateralDamageMaxUnits` | CvUnit.cpp:10445-10448 | 4 | `unit_collateral_damage_max_units` | ported |
+| `CvUnit::cityAttackModifier` | CvUnit.cpp:10451-10454 | 4 | `unit_city_attack_modifier` | ported |
+| `CvUnit::cityDefenseModifier` | CvUnit.cpp:10457-10460 | 4 | `unit_city_defense_modifier` | ported |
+| `CvUnit::animalCombatModifier` | CvUnit.cpp:10463-10466 | 4 | `unit_animal_combat_modifier` | ported |
+| `CvUnit::hillsAttackModifier` | CvUnit.cpp:10469-10472 | 4 | `unit_hills_attack_modifier` | ported |
+| `CvUnit::hillsDefenseModifier` | CvUnit.cpp:10475-10478 | 4 | `unit_hills_defense_modifier` | ported |
+| `CvUnit::terrainAttackModifier` | CvUnit.cpp:10481-10486 | 6 | `unit_terrain_attack_modifier` | ported |
+| `CvUnit::terrainDefenseModifier` | CvUnit.cpp:10489-10494 | 6 | `unit_terrain_defense_modifier` | ported |
+| `CvUnit::featureAttackModifier` | CvUnit.cpp:10497-10502 | 6 | `unit_feature_attack_modifier` | ported |
+| `CvUnit::featureDefenseModifier` | CvUnit.cpp:10504-10509 | 6 | `unit_feature_defense_modifier` | ported |
+| `CvUnit::unitClassAttackModifier` | CvUnit.cpp:10511-10516 | 6 | `unit_unit_class_attack_modifier` | ported |
+| `CvUnit::unitClassDefenseModifier` | CvUnit.cpp:10519-10524 | 6 | `unit_unit_class_defense_modifier` | ported |
+| `CvUnit::unitCombatModifier` | CvUnit.cpp:10527-10532 | 6 | `unit_unit_combat_modifier` | ported |
+| `CvUnit::domainModifier` | CvUnit.cpp:10535-10540 | 6 | `unit_domain_modifier` | ported |
+| `CvUnit::bombardRate` | CvUnit.cpp:10543-10546 | 4 | `unit_bombard_rate` | ported |
+| `CvUnit::airBombBaseRate` | CvUnit.cpp:10549-10552 | 4 | `unit_air_bomb_base_rate` | ported |
+| `CvUnit::airBombCurrRate` | CvUnit.cpp:10555-10558 | 4 | `unit_air_bomb_curr_rate` | ported |
 | `CvUnit::setExperience` | CvUnit.cpp:11788-11800 | 13 | `unit_set_experience` | ported |
-| `CvUnit::changeExperience` | CvUnit.cpp:11802-11840 | 39 | `unit_change_experience` | todo |
-| `CvUnit::setLevel` | CvUnit.cpp:11847-11864 | 18 | `unit_set_level` | todo |
-| `CvUnit::changeLevel` | CvUnit.cpp:11866-11869 | 4 | `unit_change_level` | todo |
+| `CvUnit::changeExperience` | CvUnit.cpp:11802-11840 | 39 | `unit_change_experience` | ported |
+| `CvUnit::setLevel` | CvUnit.cpp:11847-11864 | 18 | `unit_set_level` | ported |
+| `CvUnit::changeLevel` | CvUnit.cpp:11866-11869 | 4 | `unit_change_level` | ported |
 | `CvUnit::setFortifyTurns` | CvUnit.cpp:11971-11980 | 10 | `unit_set_fortify_turns` | ported |
 | `CvUnit::changeFortifyTurns` | CvUnit.cpp:11982-11985 | 4 | `unit_change_fortify_turns` | ported |
 | `CvUnit::isBlitz` | CvUnit.cpp:11992-11995 | 4 | `unit_is_blitz` | ported |
@@ -364,7 +364,7 @@ CvUnit promotions, experience and levels, leaders (great generals), upgrades, an
 | `CvUnit::changeExtraFriendlyHeal` | CvUnit.cpp:12253-12257 | 5 | `unit_change_extra_friendly_heal` | ported |
 | `CvUnit::changeSameTileHeal` | CvUnit.cpp:12264-12268 | 5 | `unit_change_same_tile_heal` | ported |
 | `CvUnit::changeAdjacentTileHeal` | CvUnit.cpp:12275-12279 | 5 | `unit_change_adjacent_tile_heal` | ported |
-| `CvUnit::getExtraCombatPercent` | CvUnit.cpp:12281-12294 | 14 | `unit_get_extra_combat_percent` | todo |
+| `CvUnit::getExtraCombatPercent` | CvUnit.cpp:12281-12294 | 14 | `unit_get_extra_combat_percent` | ported |
 | `CvUnit::changeExtraCombatPercent` | CvUnit.cpp:12296-12304 | 9 | `unit_change_extra_combat_percent` | ported |
 | `CvUnit::changeExtraCityAttackPercent` | CvUnit.cpp:12311-12319 | 9 | `unit_change_extra_city_attack_percent` | ported |
 | `CvUnit::changeExtraCityDefensePercent` | CvUnit.cpp:12326-12334 | 9 | `unit_change_extra_city_defense_percent` | ported |
@@ -376,21 +376,21 @@ CvUnit promotions, experience and levels, leaders (great generals), upgrades, an
 | `CvUnit::changeUpgradeDiscount` | CvUnit.cpp:12416-12424 | 9 | `unit_change_upgrade_discount` | ported |
 | `CvUnit::changeExperiencePercent` | CvUnit.cpp:12431-12439 | 9 | `unit_change_experience_percent` | ported |
 | `CvUnit::changeKamikazePercent` | CvUnit.cpp:12446-12454 | 9 | `unit_change_kamikaze_percent` | ported |
-| `CvUnit::setPromotionReady` | CvUnit.cpp:12591-12621 | 31 | `unit_set_promotion_ready` | todo |
-| `CvUnit::testPromotionReady` | CvUnit.cpp:12624-12627 | 4 | `unit_test_promotion_ready` | todo |
-| `CvUnit::getUnitClassType` | CvUnit.cpp:12813-12816 | 4 | `unit_get_unit_class_type` | todo |
+| `CvUnit::setPromotionReady` | CvUnit.cpp:12591-12621 | 31 | `unit_set_promotion_ready` | ported |
+| `CvUnit::testPromotionReady` | CvUnit.cpp:12624-12627 | 4 | `unit_test_promotion_ready` | ported |
+| `CvUnit::getUnitClassType` | CvUnit.cpp:12813-12816 | 4 | `unit_get_unit_class_type` | ported |
 | `CvUnit::changeExtraDomainModifier` | CvUnit.cpp:12989-12994 | 6 | `unit_change_extra_domain_modifier` | ported |
 | `CvUnit::changeExtraTerrainAttackPercent` | CvUnit.cpp:13114-13125 | 12 | `unit_change_extra_terrain_attack_percent` | ported |
 | `CvUnit::changeExtraTerrainDefensePercent` | CvUnit.cpp:13135-13146 | 12 | `unit_change_extra_terrain_defense_percent` | ported |
 | `CvUnit::changeExtraFeatureAttackPercent` | CvUnit.cpp:13156-13167 | 12 | `unit_change_extra_feature_attack_percent` | ported |
 | `CvUnit::changeExtraFeatureDefensePercent` | CvUnit.cpp:13177-13188 | 12 | `unit_change_extra_feature_defense_percent` | ported |
 | `CvUnit::changeExtraUnitCombatModifier` | CvUnit.cpp:13198-13203 | 6 | `unit_change_extra_unit_combat_modifier` | ported |
-| `CvUnit::canAcquirePromotion` | CvUnit.cpp:13206-13347 | 142 | `unit_can_acquire_promotion` | todo |
-| `CvUnit::isPromotionValid` | CvUnit.cpp:13349-13383 | 35 | `unit_is_promotion_valid` | todo |
-| `CvUnit::canAcquirePromotionAny` | CvUnit.cpp:13386-13399 | 14 | `unit_can_acquire_promotion_any` | todo |
-| `CvUnit::setHasPromotion` | CvUnit.cpp:13410-13620 | 211 | `unit_set_has_promotion` | todo |
-| `CvUnit::isSuicide` | CvUnit.cpp:18041-18044 | 4 | `unit_is_suicide` | todo |
-| `CvUnit::getDropRange` | CvUnit.cpp:18046-18049 | 4 | `unit_get_drop_range` | todo |
+| `CvUnit::canAcquirePromotion` | CvUnit.cpp:13206-13347 | 142 | `unit_can_acquire_promotion` | ported |
+| `CvUnit::isPromotionValid` | CvUnit.cpp:13349-13383 | 35 | `unit_is_promotion_valid` | ported |
+| `CvUnit::canAcquirePromotionAny` | CvUnit.cpp:13386-13399 | 14 | `unit_can_acquire_promotion_any` | ported |
+| `CvUnit::setHasPromotion` | CvUnit.cpp:13410-13620 | 211 | `unit_set_has_promotion` | ported |
+| `CvUnit::isSuicide` | CvUnit.cpp:18041-18044 | 4 | `unit_is_suicide` | ported |
+| `CvUnit::getDropRange` | CvUnit.cpp:18046-18049 | 4 | `unit_get_drop_range` | ported |
 
 ## unit/actions.rs -- 46 C++ functions, 1940 C++ lines
 
@@ -398,52 +398,52 @@ CvUnit commands and actions: `canDoCommand`/`doCommand`, automation, scrap/gift,
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::canDoCommand` | CvUnit.cpp:2649-2785 | 137 | `unit_can_do_command` | todo |
-| `CvUnit::doCommand` | CvUnit.cpp:2788-2905 | 118 | `unit_do_command` | todo |
-| `CvUnit::canAutomate` | CvUnit.cpp:3730-3820 | 91 | `unit_can_automate` | todo |
-| `CvUnit::automate` | CvUnit.cpp:3920-3928 | 9 | `unit_automate` | todo |
-| `CvUnit::canScrap` | CvUnit.cpp:3931-3950 | 20 | `unit_can_scrap` | todo |
-| `CvUnit::scrap` | CvUnit.cpp:3953-3974 | 22 | `unit_scrap` | todo |
-| `CvUnit::canGift` | CvUnit.cpp:3977-4054 | 78 | `unit_can_gift` | todo |
-| `CvUnit::gift` | CvUnit.cpp:4057-4091 | 35 | `unit_gift` | todo |
+| `CvUnit::canDoCommand` | CvUnit.cpp:2649-2785 | 137 | `unit_can_do_command` | ported |
+| `CvUnit::doCommand` | CvUnit.cpp:2788-2905 | 118 | `unit_do_command` | ported |
+| `CvUnit::canAutomate` | CvUnit.cpp:3730-3820 | 91 | `unit_can_automate` | ported |
+| `CvUnit::automate` | CvUnit.cpp:3920-3928 | 9 | `unit_automate` | ported |
+| `CvUnit::canScrap` | CvUnit.cpp:3931-3950 | 20 | `unit_can_scrap` | ported |
+| `CvUnit::scrap` | CvUnit.cpp:3953-3974 | 22 | `unit_scrap` | ported |
+| `CvUnit::canGift` | CvUnit.cpp:3977-4054 | 78 | `unit_can_gift` | ported |
+| `CvUnit::gift` | CvUnit.cpp:4057-4091 | 35 | `unit_gift` | ported |
 | `CvUnit::canHold` | CvUnit.cpp:4387-4390 | 4 | `unit_can_hold` | ported |
-| `CvUnit::canSleep` | CvUnit.cpp:4393-4406 | 14 | `unit_can_sleep` | todo |
-| `CvUnit::canFortify` | CvUnit.cpp:4409-4422 | 14 | `unit_can_fortify` | todo |
-| `CvUnit::canAirPatrol` | CvUnit.cpp:4425-4443 | 19 | `unit_can_air_patrol` | todo |
-| `CvUnit::canSeaPatrol` | CvUnit.cpp:4446-4469 | 24 | `unit_can_sea_patrol` | todo |
-| `CvUnit::canHeal` | CvUnit.cpp:4501-4519 | 19 | `unit_can_heal` | todo |
-| `CvUnit::canSentry` | CvUnit.cpp:4522-4535 | 14 | `unit_can_sentry` | todo |
-| `CvUnit::healRate` | CvUnit.cpp:4538-4673 | 136 | `unit_heal_rate` | todo |
-| `CvUnit::healTurns` | CvUnit.cpp:4676-4703 | 28 | `unit_heal_turns` | todo |
-| `CvUnit::doHeal` | CvUnit.cpp:4706-4709 | 4 | `unit_do_heal` | todo |
-| `CvUnit::canAirlift` | CvUnit.cpp:4712-4744 | 33 | `unit_can_airlift` | todo |
-| `CvUnit::canAirliftAt` | CvUnit.cpp:4747-4782 | 36 | `unit_can_airlift_at` | todo |
-| `CvUnit::airlift` | CvUnit.cpp:4785-4815 | 31 | `unit_airlift` | todo |
-| `CvUnit::isNukeVictim` | CvUnit.cpp:4818-4855 | 38 | `unit_is_nuke_victim` | todo |
-| `CvUnit::canNuke` | CvUnit.cpp:4858-4866 | 9 | `unit_can_nuke` | todo |
-| `CvUnit::canNukeAt` | CvUnit.cpp:4869-4904 | 36 | `unit_can_nuke_at` | todo |
-| `CvUnit::nuke` | CvUnit.cpp:4907-5084 | 178 | `unit_nuke` | todo |
-| `CvUnit::canRecon` | CvUnit.cpp:5087-5105 | 19 | `unit_can_recon` | todo |
-| `CvUnit::canReconAt` | CvUnit.cpp:5109-5123 | 15 | `unit_can_recon_at` | todo |
-| `CvUnit::recon` | CvUnit.cpp:5126-5155 | 30 | `unit_recon` | todo |
-| `CvUnit::canParadrop` | CvUnit.cpp:5158-5176 | 19 | `unit_can_paradrop` | todo |
-| `CvUnit::canParadropAt` | CvUnit.cpp:5180-5222 | 43 | `unit_can_paradrop_at` | todo |
-| `CvUnit::paradrop` | CvUnit.cpp:5225-5260 | 36 | `unit_paradrop` | todo |
-| `CvUnit::canAirBomb` | CvUnit.cpp:5263-5281 | 19 | `unit_can_air_bomb` | todo |
-| `CvUnit::canAirBombAt` | CvUnit.cpp:5284-5337 | 54 | `unit_can_air_bomb_at` | todo |
-| `CvUnit::airBomb` | CvUnit.cpp:5340-5431 | 92 | `unit_air_bomb` | todo |
-| `CvUnit::bombardTarget` | CvUnit.cpp:5434-5470 | 37 | `unit_bombard_target` | todo |
-| `CvUnit::canBombard` | CvUnit.cpp:5473-5496 | 24 | `unit_can_bombard` | todo |
-| `CvUnit::bombard` | CvUnit.cpp:5499-5560 | 62 | `unit_bombard` | todo |
-| `CvUnit::canPillage` | CvUnit.cpp:5563-5620 | 58 | `unit_can_pillage` | todo |
-| `CvUnit::pillage` | CvUnit.cpp:5623-5750 | 128 | `unit_pillage` | todo |
-| `CvUnit::canPlunder` | CvUnit.cpp:5753-5789 | 37 | `unit_can_plunder` | todo |
-| `CvUnit::plunder` | CvUnit.cpp:5792-5806 | 15 | `unit_plunder` | todo |
-| `CvUnit::updatePlunder` | CvUnit.cpp:5809-5854 | 46 | `unit_update_plunder` | todo |
-| `CvUnit::isAutomated` | CvUnit.cpp:10004-10007 | 4 | `unit_is_automated` | todo |
-| `CvUnit::isWaiting` | CvUnit.cpp:10010-10013 | 4 | `unit_is_waiting` | todo |
-| `CvUnit::setBlockading` | CvUnit.cpp:12677-12685 | 9 | `unit_set_blockading` | todo |
-| `CvUnit::collectBlockadeGold` | CvUnit.cpp:12687-12728 | 42 | `unit_collect_blockade_gold` | todo |
+| `CvUnit::canSleep` | CvUnit.cpp:4393-4406 | 14 | `unit_can_sleep` | ported |
+| `CvUnit::canFortify` | CvUnit.cpp:4409-4422 | 14 | `unit_can_fortify` | ported |
+| `CvUnit::canAirPatrol` | CvUnit.cpp:4425-4443 | 19 | `unit_can_air_patrol` | ported |
+| `CvUnit::canSeaPatrol` | CvUnit.cpp:4446-4469 | 24 | `unit_can_sea_patrol` | ported |
+| `CvUnit::canHeal` | CvUnit.cpp:4501-4519 | 19 | `unit_can_heal` | ported |
+| `CvUnit::canSentry` | CvUnit.cpp:4522-4535 | 14 | `unit_can_sentry` | ported |
+| `CvUnit::healRate` | CvUnit.cpp:4538-4673 | 136 | `unit_heal_rate` | ported |
+| `CvUnit::healTurns` | CvUnit.cpp:4676-4703 | 28 | `unit_heal_turns` | ported |
+| `CvUnit::doHeal` | CvUnit.cpp:4706-4709 | 4 | `unit_do_heal` | ported |
+| `CvUnit::canAirlift` | CvUnit.cpp:4712-4744 | 33 | `unit_can_airlift` | ported |
+| `CvUnit::canAirliftAt` | CvUnit.cpp:4747-4782 | 36 | `unit_can_airlift_at` | ported |
+| `CvUnit::airlift` | CvUnit.cpp:4785-4815 | 31 | `unit_airlift` | ported |
+| `CvUnit::isNukeVictim` | CvUnit.cpp:4818-4855 | 38 | `unit_is_nuke_victim` | ported |
+| `CvUnit::canNuke` | CvUnit.cpp:4858-4866 | 9 | `unit_can_nuke` | ported |
+| `CvUnit::canNukeAt` | CvUnit.cpp:4869-4904 | 36 | `unit_can_nuke_at` | ported |
+| `CvUnit::nuke` | CvUnit.cpp:4907-5084 | 178 | `unit_nuke` | ported |
+| `CvUnit::canRecon` | CvUnit.cpp:5087-5105 | 19 | `unit_can_recon` | ported |
+| `CvUnit::canReconAt` | CvUnit.cpp:5109-5123 | 15 | `unit_can_recon_at` | ported |
+| `CvUnit::recon` | CvUnit.cpp:5126-5155 | 30 | `unit_recon` | ported |
+| `CvUnit::canParadrop` | CvUnit.cpp:5158-5176 | 19 | `unit_can_paradrop` | ported |
+| `CvUnit::canParadropAt` | CvUnit.cpp:5180-5222 | 43 | `unit_can_paradrop_at` | ported |
+| `CvUnit::paradrop` | CvUnit.cpp:5225-5260 | 36 | `unit_paradrop` | ported |
+| `CvUnit::canAirBomb` | CvUnit.cpp:5263-5281 | 19 | `unit_can_air_bomb` | ported |
+| `CvUnit::canAirBombAt` | CvUnit.cpp:5284-5337 | 54 | `unit_can_air_bomb_at` | ported |
+| `CvUnit::airBomb` | CvUnit.cpp:5340-5431 | 92 | `unit_air_bomb` | ported |
+| `CvUnit::bombardTarget` | CvUnit.cpp:5434-5470 | 37 | `unit_bombard_target` | ported |
+| `CvUnit::canBombard` | CvUnit.cpp:5473-5496 | 24 | `unit_can_bombard` | ported |
+| `CvUnit::bombard` | CvUnit.cpp:5499-5560 | 62 | `unit_bombard` | ported |
+| `CvUnit::canPillage` | CvUnit.cpp:5563-5620 | 58 | `unit_can_pillage` | ported |
+| `CvUnit::pillage` | CvUnit.cpp:5623-5750 | 128 | `unit_pillage` | ported |
+| `CvUnit::canPlunder` | CvUnit.cpp:5753-5789 | 37 | `unit_can_plunder` | ported |
+| `CvUnit::plunder` | CvUnit.cpp:5792-5806 | 15 | `unit_plunder` | ported |
+| `CvUnit::updatePlunder` | CvUnit.cpp:5809-5854 | 46 | `unit_update_plunder` | ported |
+| `CvUnit::isAutomated` | CvUnit.cpp:10004-10007 | 4 | `unit_is_automated` | ported |
+| `CvUnit::isWaiting` | CvUnit.cpp:10010-10013 | 4 | `unit_is_waiting` | ported |
+| `CvUnit::setBlockading` | CvUnit.cpp:12677-12685 | 9 | `unit_set_blockading` | ported |
+| `CvUnit::collectBlockadeGold` | CvUnit.cpp:12687-12728 | 42 | `unit_collect_blockade_gold` | ported |
 
 ## unit/missions.rs -- 52 C++ functions, 1883 C++ lines
 
@@ -452,57 +452,57 @@ CvUnit missions: spy actions (sabotage, destroy, steal plans, infiltrate, espion
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
 | `CvUnit::sabotageCost` | CvUnit.cpp:5857-5860 | 4 | `unit_sabotage_cost` | ported |
-| `CvUnit::sabotageProb` | CvUnit.cpp:5864-5908 | 45 | `unit_sabotage_prob` | todo |
-| `CvUnit::canSabotage` | CvUnit.cpp:5911-5942 | 32 | `unit_can_sabotage` | todo |
-| `CvUnit::sabotage` | CvUnit.cpp:5945-6016 | 72 | `unit_sabotage` | todo |
-| `CvUnit::destroyCost` | CvUnit.cpp:6019-6047 | 29 | `unit_destroy_cost` | todo |
-| `CvUnit::destroyProb` | CvUnit.cpp:6050-6097 | 48 | `unit_destroy_prob` | todo |
-| `CvUnit::canDestroy` | CvUnit.cpp:6100-6135 | 36 | `unit_can_destroy` | todo |
-| `CvUnit::destroy` | CvUnit.cpp:6138-6195 | 58 | `unit_destroy` | todo |
-| `CvUnit::stealPlansCost` | CvUnit.cpp:6198-6210 | 13 | `unit_steal_plans_cost` | todo |
-| `CvUnit::stealPlansProb` | CvUnit.cpp:6214-6259 | 46 | `unit_steal_plans_prob` | todo |
-| `CvUnit::canStealPlans` | CvUnit.cpp:6262-6292 | 31 | `unit_can_steal_plans` | todo |
-| `CvUnit::stealPlans` | CvUnit.cpp:6295-6352 | 58 | `unit_steal_plans` | todo |
-| `CvUnit::canFound` | CvUnit.cpp:6355-6379 | 25 | `unit_can_found` | todo |
-| `CvUnit::found` | CvUnit.cpp:6382-6441 | 60 | `unit_found` | todo |
-| `CvUnit::canSpread` | CvUnit.cpp:6444-6542 | 99 | `unit_can_spread` | todo |
-| `CvUnit::spread` | CvUnit.cpp:6545-6609 | 65 | `unit_spread` | todo |
-| `CvUnit::canSpreadCorporation` | CvUnit.cpp:6612-6698 | 87 | `unit_can_spread_corporation` | todo |
-| `CvUnit::spreadCorporationCost` | CvUnit.cpp:6700-6730 | 31 | `unit_spread_corporation_cost` | todo |
-| `CvUnit::spreadCorporation` | CvUnit.cpp:6732-6775 | 44 | `unit_spread_corporation` | todo |
-| `CvUnit::canJoin` | CvUnit.cpp:6778-6822 | 45 | `unit_can_join` | todo |
-| `CvUnit::join` | CvUnit.cpp:6825-6849 | 25 | `unit_join` | todo |
-| `CvUnit::canConstruct` | CvUnit.cpp:6852-6904 | 53 | `unit_can_construct` | todo |
-| `CvUnit::construct` | CvUnit.cpp:6907-6933 | 27 | `unit_construct` | todo |
-| `CvUnit::getDiscoveryTech` | CvUnit.cpp:6936-6939 | 4 | `unit_get_discovery_tech` | todo |
-| `CvUnit::getDiscoverResearch` | CvUnit.cpp:6942-6964 | 23 | `unit_get_discover_research` | todo |
-| `CvUnit::canDiscover` | CvUnit.cpp:6967-6989 | 23 | `unit_can_discover` | todo |
-| `CvUnit::discover` | CvUnit.cpp:6992-7014 | 23 | `unit_discover` | todo |
-| `CvUnit::getMaxHurryProduction` | CvUnit.cpp:7017-7034 | 18 | `unit_get_max_hurry_production` | todo |
-| `CvUnit::getHurryProduction` | CvUnit.cpp:7037-7054 | 18 | `unit_get_hurry_production` | todo |
-| `CvUnit::canHurry` | CvUnit.cpp:7057-7092 | 36 | `unit_can_hurry` | todo |
-| `CvUnit::hurry` | CvUnit.cpp:7095-7119 | 25 | `unit_hurry` | todo |
-| `CvUnit::getTradeGold` | CvUnit.cpp:7122-7149 | 28 | `unit_get_trade_gold` | todo |
-| `CvUnit::canTrade` | CvUnit.cpp:7152-7185 | 34 | `unit_can_trade` | todo |
-| `CvUnit::trade` | CvUnit.cpp:7188-7205 | 18 | `unit_trade` | todo |
-| `CvUnit::getGreatWorkCulture` | CvUnit.cpp:7208-7225 | 18 | `unit_get_great_work_culture` | todo |
-| `CvUnit::canGreatWork` | CvUnit.cpp:7228-7253 | 26 | `unit_can_great_work` | todo |
-| `CvUnit::greatWork` | CvUnit.cpp:7256-7292 | 37 | `unit_great_work` | todo |
-| `CvUnit::getEspionagePoints` | CvUnit.cpp:7295-7305 | 11 | `unit_get_espionage_points` | todo |
-| `CvUnit::canInfiltrate` | CvUnit.cpp:7307-7339 | 33 | `unit_can_infiltrate` | todo |
-| `CvUnit::infiltrate` | CvUnit.cpp:7342-7361 | 20 | `unit_infiltrate` | todo |
-| `CvUnit::canEspionage` | CvUnit.cpp:7364-7423 | 60 | `unit_can_espionage` | todo |
-| `CvUnit::espionage` | CvUnit.cpp:7425-7488 | 64 | `unit_espionage` | todo |
-| `CvUnit::testSpyIntercepted` | CvUnit.cpp:7490-7556 | 67 | `unit_test_spy_intercepted` | todo |
-| `CvUnit::getSpyInterceptPercent` | CvUnit.cpp:7558-7585 | 28 | `unit_get_spy_intercept_percent` | todo |
-| `CvUnit::isIntruding` | CvUnit.cpp:7587-7602 | 16 | `unit_is_intruding` | todo |
-| `CvUnit::canGoldenAge` | CvUnit.cpp:7604-7620 | 17 | `unit_can_golden_age` | todo |
-| `CvUnit::goldenAge` | CvUnit.cpp:7623-7643 | 21 | `unit_golden_age` | todo |
-| `CvUnit::canBuild` | CvUnit.cpp:7646-7679 | 34 | `unit_can_build` | todo |
-| `CvUnit::build` | CvUnit.cpp:7682-7714 | 33 | `unit_build` | todo |
-| `CvUnit::canBuildRoute` | CvUnit.cpp:8679-8698 | 20 | `unit_can_build_route` | todo |
-| `CvUnit::getBuildType` | CvUnit.cpp:8700-8765 | 66 | `unit_get_build_type` | todo |
-| `CvUnit::workRate` | CvUnit.cpp:8768-8796 | 29 | `unit_work_rate` | todo |
+| `CvUnit::sabotageProb` | CvUnit.cpp:5864-5908 | 45 | `unit_sabotage_prob` | ported |
+| `CvUnit::canSabotage` | CvUnit.cpp:5911-5942 | 32 | `unit_can_sabotage` | ported |
+| `CvUnit::sabotage` | CvUnit.cpp:5945-6016 | 72 | `unit_sabotage` | ported |
+| `CvUnit::destroyCost` | CvUnit.cpp:6019-6047 | 29 | `unit_destroy_cost` | ported |
+| `CvUnit::destroyProb` | CvUnit.cpp:6050-6097 | 48 | `unit_destroy_prob` | ported |
+| `CvUnit::canDestroy` | CvUnit.cpp:6100-6135 | 36 | `unit_can_destroy` | ported |
+| `CvUnit::destroy` | CvUnit.cpp:6138-6195 | 58 | `unit_destroy` | ported |
+| `CvUnit::stealPlansCost` | CvUnit.cpp:6198-6210 | 13 | `unit_steal_plans_cost` | ported |
+| `CvUnit::stealPlansProb` | CvUnit.cpp:6214-6259 | 46 | `unit_steal_plans_prob` | ported |
+| `CvUnit::canStealPlans` | CvUnit.cpp:6262-6292 | 31 | `unit_can_steal_plans` | ported |
+| `CvUnit::stealPlans` | CvUnit.cpp:6295-6352 | 58 | `unit_steal_plans` | ported |
+| `CvUnit::canFound` | CvUnit.cpp:6355-6379 | 25 | `unit_can_found` | ported |
+| `CvUnit::found` | CvUnit.cpp:6382-6441 | 60 | `unit_found` | ported |
+| `CvUnit::canSpread` | CvUnit.cpp:6444-6542 | 99 | `unit_can_spread` | ported |
+| `CvUnit::spread` | CvUnit.cpp:6545-6609 | 65 | `unit_spread` | ported |
+| `CvUnit::canSpreadCorporation` | CvUnit.cpp:6612-6698 | 87 | `unit_can_spread_corporation` | ported |
+| `CvUnit::spreadCorporationCost` | CvUnit.cpp:6700-6730 | 31 | `unit_spread_corporation_cost` | ported |
+| `CvUnit::spreadCorporation` | CvUnit.cpp:6732-6775 | 44 | `unit_spread_corporation` | ported |
+| `CvUnit::canJoin` | CvUnit.cpp:6778-6822 | 45 | `unit_can_join` | ported |
+| `CvUnit::join` | CvUnit.cpp:6825-6849 | 25 | `unit_join` | ported |
+| `CvUnit::canConstruct` | CvUnit.cpp:6852-6904 | 53 | `unit_can_construct` | ported |
+| `CvUnit::construct` | CvUnit.cpp:6907-6933 | 27 | `unit_construct` | ported |
+| `CvUnit::getDiscoveryTech` | CvUnit.cpp:6936-6939 | 4 | `unit_get_discovery_tech` | ported |
+| `CvUnit::getDiscoverResearch` | CvUnit.cpp:6942-6964 | 23 | `unit_get_discover_research` | ported |
+| `CvUnit::canDiscover` | CvUnit.cpp:6967-6989 | 23 | `unit_can_discover` | ported |
+| `CvUnit::discover` | CvUnit.cpp:6992-7014 | 23 | `unit_discover` | ported |
+| `CvUnit::getMaxHurryProduction` | CvUnit.cpp:7017-7034 | 18 | `unit_get_max_hurry_production` | ported |
+| `CvUnit::getHurryProduction` | CvUnit.cpp:7037-7054 | 18 | `unit_get_hurry_production` | ported |
+| `CvUnit::canHurry` | CvUnit.cpp:7057-7092 | 36 | `unit_can_hurry` | ported |
+| `CvUnit::hurry` | CvUnit.cpp:7095-7119 | 25 | `unit_hurry` | ported |
+| `CvUnit::getTradeGold` | CvUnit.cpp:7122-7149 | 28 | `unit_get_trade_gold` | ported |
+| `CvUnit::canTrade` | CvUnit.cpp:7152-7185 | 34 | `unit_can_trade` | ported |
+| `CvUnit::trade` | CvUnit.cpp:7188-7205 | 18 | `unit_trade` | ported |
+| `CvUnit::getGreatWorkCulture` | CvUnit.cpp:7208-7225 | 18 | `unit_get_great_work_culture` | ported |
+| `CvUnit::canGreatWork` | CvUnit.cpp:7228-7253 | 26 | `unit_can_great_work` | ported |
+| `CvUnit::greatWork` | CvUnit.cpp:7256-7292 | 37 | `unit_great_work` | ported |
+| `CvUnit::getEspionagePoints` | CvUnit.cpp:7295-7305 | 11 | `unit_get_espionage_points` | ported |
+| `CvUnit::canInfiltrate` | CvUnit.cpp:7307-7339 | 33 | `unit_can_infiltrate` | ported |
+| `CvUnit::infiltrate` | CvUnit.cpp:7342-7361 | 20 | `unit_infiltrate` | ported |
+| `CvUnit::canEspionage` | CvUnit.cpp:7364-7423 | 60 | `unit_can_espionage` | ported |
+| `CvUnit::espionage` | CvUnit.cpp:7425-7488 | 64 | `unit_espionage` | ported |
+| `CvUnit::testSpyIntercepted` | CvUnit.cpp:7490-7556 | 67 | `unit_test_spy_intercepted` | ported |
+| `CvUnit::getSpyInterceptPercent` | CvUnit.cpp:7558-7585 | 28 | `unit_get_spy_intercept_percent` | ported |
+| `CvUnit::isIntruding` | CvUnit.cpp:7587-7602 | 16 | `unit_is_intruding` | ported |
+| `CvUnit::canGoldenAge` | CvUnit.cpp:7604-7620 | 17 | `unit_can_golden_age` | ported |
+| `CvUnit::goldenAge` | CvUnit.cpp:7623-7643 | 21 | `unit_golden_age` | ported |
+| `CvUnit::canBuild` | CvUnit.cpp:7646-7679 | 34 | `unit_can_build` | ported |
+| `CvUnit::build` | CvUnit.cpp:7682-7714 | 33 | `unit_build` | ported |
+| `CvUnit::canBuildRoute` | CvUnit.cpp:8679-8698 | 20 | `unit_can_build_route` | ported |
+| `CvUnit::getBuildType` | CvUnit.cpp:8700-8765 | 66 | `unit_get_build_type` | ported |
+| `CvUnit::workRate` | CvUnit.cpp:8768-8796 | 29 | `unit_work_rate` | ported |
 
 ## unit/ffh.rs -- 98 C++ functions, 2406 C++ lines
 
@@ -510,28 +510,28 @@ FfH2 additions to CvUnit: spells (`canCast`, `cast`, ...), summons, damage types
 
 | C++ function | C++ lines | count | Rust method | status |
 |---|---|---:|---|---|
-| `CvUnit::canSpellAutomate` | CvUnit.cpp:3827-3915 | 89 | `unit_can_spell_automate` | todo |
-| `CvUnit::canCast` | CvUnit.cpp:13675-14101 | 427 | `unit_can_cast` | todo |
-| `CvUnit::canCreateUnit` | CvUnit.cpp:14103-14140 | 38 | `unit_can_create_unit` | todo |
-| `CvUnit::canAddPromotion` | CvUnit.cpp:14142-14234 | 93 | `unit_can_add_promotion` | todo |
-| `CvUnit::canCreateBuilding` | CvUnit.cpp:14236-14247 | 12 | `unit_can_create_building` | todo |
-| `CvUnit::canCreateFeature` | CvUnit.cpp:14249-14271 | 23 | `unit_can_create_feature` | todo |
-| `CvUnit::canCreateImprovement` | CvUnit.cpp:14273-14288 | 16 | `unit_can_create_improvement` | todo |
-| `CvUnit::canDispel` | CvUnit.cpp:14290-14330 | 41 | `unit_can_dispel` | todo |
-| `CvUnit::canImmobile` | CvUnit.cpp:14332-14359 | 28 | `unit_can_immobile` | todo |
-| `CvUnit::canPush` | CvUnit.cpp:14361-14391 | 31 | `unit_can_push` | todo |
-| `CvUnit::canRemovePromotion` | CvUnit.cpp:14393-14482 | 90 | `unit_can_remove_promotion` | todo |
-| `CvUnit::canSpreadReligion` | CvUnit.cpp:14484-14501 | 18 | `unit_can_spread_religion` | todo |
-| `CvUnit::cast` | CvUnit.cpp:14503-14675 | 173 | `unit_cast` | todo |
-| `CvUnit::castAddPromotion` | CvUnit.cpp:14677-14793 | 117 | `unit_cast_add_promotion` | todo |
-| `CvUnit::castDamage` | CvUnit.cpp:14795-14838 | 44 | `unit_cast_damage` | todo |
-| `CvUnit::castDispel` | CvUnit.cpp:14840-14893 | 54 | `unit_cast_dispel` | todo |
-| `CvUnit::castImmobile` | CvUnit.cpp:14895-14940 | 46 | `unit_cast_immobile` | todo |
-| `CvUnit::castPush` | CvUnit.cpp:14942-14998 | 57 | `unit_cast_push` | todo |
-| `CvUnit::castRemovePromotion` | CvUnit.cpp:15000-15080 | 81 | `unit_cast_remove_promotion` | todo |
-| `CvUnit::castConvertUnit` | CvUnit.cpp:15082-15088 | 7 | `unit_cast_convert_unit` | todo |
-| `CvUnit::castCreateUnit` | CvUnit.cpp:15090-15175 | 86 | `unit_cast_create_unit` | todo |
-| `CvUnit::isImmuneToSpell` | CvUnit.cpp:15197-15245 | 49 | `unit_is_immune_to_spell` | todo |
+| `CvUnit::canSpellAutomate` | CvUnit.cpp:3827-3915 | 89 | `unit_can_spell_automate` | ported |
+| `CvUnit::canCast` | CvUnit.cpp:13675-14101 | 427 | `unit_can_cast` | ported |
+| `CvUnit::canCreateUnit` | CvUnit.cpp:14103-14140 | 38 | `unit_can_create_unit` | ported |
+| `CvUnit::canAddPromotion` | CvUnit.cpp:14142-14234 | 93 | `unit_can_add_promotion` | ported |
+| `CvUnit::canCreateBuilding` | CvUnit.cpp:14236-14247 | 12 | `unit_can_create_building` | ported |
+| `CvUnit::canCreateFeature` | CvUnit.cpp:14249-14271 | 23 | `unit_can_create_feature` | ported |
+| `CvUnit::canCreateImprovement` | CvUnit.cpp:14273-14288 | 16 | `unit_can_create_improvement` | ported |
+| `CvUnit::canDispel` | CvUnit.cpp:14290-14330 | 41 | `unit_can_dispel` | ported |
+| `CvUnit::canImmobile` | CvUnit.cpp:14332-14359 | 28 | `unit_can_immobile` | ported |
+| `CvUnit::canPush` | CvUnit.cpp:14361-14391 | 31 | `unit_can_push` | ported |
+| `CvUnit::canRemovePromotion` | CvUnit.cpp:14393-14482 | 90 | `unit_can_remove_promotion` | ported |
+| `CvUnit::canSpreadReligion` | CvUnit.cpp:14484-14501 | 18 | `unit_can_spread_religion` | ported |
+| `CvUnit::cast` | CvUnit.cpp:14503-14675 | 173 | `unit_cast` | ported |
+| `CvUnit::castAddPromotion` | CvUnit.cpp:14677-14793 | 117 | `unit_cast_add_promotion` | ported |
+| `CvUnit::castDamage` | CvUnit.cpp:14795-14838 | 44 | `unit_cast_damage` | ported |
+| `CvUnit::castDispel` | CvUnit.cpp:14840-14893 | 54 | `unit_cast_dispel` | ported |
+| `CvUnit::castImmobile` | CvUnit.cpp:14895-14940 | 46 | `unit_cast_immobile` | ported |
+| `CvUnit::castPush` | CvUnit.cpp:14942-14998 | 57 | `unit_cast_push` | ported |
+| `CvUnit::castRemovePromotion` | CvUnit.cpp:15000-15080 | 81 | `unit_cast_remove_promotion` | ported |
+| `CvUnit::castConvertUnit` | CvUnit.cpp:15082-15088 | 7 | `unit_cast_convert_unit` | ported |
+| `CvUnit::castCreateUnit` | CvUnit.cpp:15090-15175 | 86 | `unit_cast_create_unit` | ported |
+| `CvUnit::isImmuneToSpell` | CvUnit.cpp:15197-15245 | 49 | `unit_is_immune_to_spell` | ported |
 | `CvUnit::changeDuration` | CvUnit.cpp:15267-15270 | 4 | `unit_change_duration` | ported |
 | `CvUnit::isAlive` | CvUnit.cpp:15282-15285 | 4 | `unit_is_alive` | ported |
 | `CvUnit::changeAlive` | CvUnit.cpp:15287-15293 | 7 | `unit_change_alive` | ported |
@@ -550,7 +550,7 @@ FfH2 additions to CvUnit: spells (`canCast`, `cast`, ...), summons, damage types
 | `CvUnit::isHeld` | CvUnit.cpp:15386-15389 | 4 | `unit_is_held` | ported |
 | `CvUnit::changeHeld` | CvUnit.cpp:15391-15397 | 7 | `unit_change_held` | ported |
 | `CvUnit::isHiddenNationality` | CvUnit.cpp:15399-15409 | 11 | `unit_is_hidden_nationality` | ported |
-| `CvUnit::changeHiddenNationality` | CvUnit.cpp:15411-15427 | 17 | `unit_change_hidden_nationality` | todo |
+| `CvUnit::changeHiddenNationality` | CvUnit.cpp:15411-15427 | 17 | `unit_change_hidden_nationality` | ported |
 | `CvUnit::changeIgnoreBuildingDefense` | CvUnit.cpp:15429-15435 | 7 | `unit_change_ignore_building_defense` | ported |
 | `CvUnit::isImmortal` | CvUnit.cpp:15437-15440 | 4 | `unit_is_immortal` | ported |
 | `CvUnit::changeImmortal` | CvUnit.cpp:15442-15452 | 11 | `unit_change_immortal` | ported |
@@ -563,7 +563,7 @@ FfH2 additions to CvUnit: spells (`canCast`, `cast`, ...), summons, damage types
 | `CvUnit::isImmuneToMagic` | CvUnit.cpp:15497-15500 | 4 | `unit_is_immune_to_magic` | ported |
 | `CvUnit::changeImmuneToMagic` | CvUnit.cpp:15502-15508 | 7 | `unit_change_immune_to_magic` | ported |
 | `CvUnit::isInvisibleFromPromotion` | CvUnit.cpp:15510-15513 | 4 | `unit_is_invisible_from_promotion` | ported |
-| `CvUnit::changeInvisibleFromPromotion` | CvUnit.cpp:15515-15528 | 14 | `unit_change_invisible_from_promotion` | todo |
+| `CvUnit::changeInvisibleFromPromotion` | CvUnit.cpp:15515-15528 | 14 | `unit_change_invisible_from_promotion` | ported |
 | `CvUnit::isSeeInvisible` | CvUnit.cpp:15530-15533 | 4 | `unit_is_see_invisible` | ported |
 | `CvUnit::changeSeeInvisible` | CvUnit.cpp:15535-15541 | 7 | `unit_change_see_invisible` | ported |
 | `CvUnit::changeOnlyDefensive` | CvUnit.cpp:15543-15549 | 7 | `unit_change_only_defensive` | ported |
@@ -577,37 +577,37 @@ FfH2 additions to CvUnit: spells (`canCast`, `cast`, ...), summons, damage types
 | `CvUnit::changeWaterWalking` | CvUnit.cpp:15595-15601 | 7 | `unit_change_water_walking` | ported |
 | `CvUnit::changeBetterDefenderThanPercent` | CvUnit.cpp:15608-15614 | 7 | `unit_change_better_defender_than_percent` | ported |
 | `CvUnit::changeCombatHealPercent` | CvUnit.cpp:15621-15627 | 7 | `unit_change_combat_heal_percent` | ported |
-| `CvUnit::calcCombatLimit` | CvUnit.cpp:15629-15648 | 20 | `unit_calc_combat_limit` | todo |
+| `CvUnit::calcCombatLimit` | CvUnit.cpp:15629-15648 | 20 | `unit_calc_combat_limit` | ported |
 | `CvUnit::changeCombatPercentInBorders` | CvUnit.cpp:15655-15662 | 8 | `unit_change_combat_percent_in_borders` | ported |
 | `CvUnit::changeCombatPercentGlobalCounter` | CvUnit.cpp:15669-15676 | 8 | `unit_change_combat_percent_global_counter` | ported |
 | `CvUnit::changeFreePromotionPick` | CvUnit.cpp:15683-15689 | 7 | `unit_change_free_promotion_pick` | ported |
 | `CvUnit::changeGoldFromCombat` | CvUnit.cpp:15696-15702 | 7 | `unit_change_gold_from_combat` | ported |
-| `CvUnit::mutate` | CvUnit.cpp:15709-15722 | 14 | `unit_mutate` | todo |
-| `CvUnit::getWithdrawlProbDefensive` | CvUnit.cpp:15724-15732 | 9 | `unit_get_withdrawl_prob_defensive` | todo |
-| `CvUnit::setRace` | CvUnit.cpp:15744-15751 | 8 | `unit_set_race` | todo |
+| `CvUnit::mutate` | CvUnit.cpp:15709-15722 | 14 | `unit_mutate` | ported |
+| `CvUnit::getWithdrawlProbDefensive` | CvUnit.cpp:15724-15732 | 9 | `unit_get_withdrawl_prob_defensive` | ported |
+| `CvUnit::setRace` | CvUnit.cpp:15744-15751 | 8 | `unit_set_race` | ported |
 | `CvUnit::changeResist` | CvUnit.cpp:15773-15776 | 4 | `unit_change_resist` | ported |
 | `CvUnit::changeResistModify` | CvUnit.cpp:15788-15791 | 4 | `unit_change_resist_modify` | ported |
-| `CvUnit::getSpellCasterXP` | CvUnit.cpp:15803-15810 | 8 | `unit_get_spell_caster_xp` | todo |
+| `CvUnit::getSpellCasterXP` | CvUnit.cpp:15803-15810 | 8 | `unit_get_spell_caster_xp` | ported |
 | `CvUnit::changeSpellCasterXP` | CvUnit.cpp:15812-15818 | 7 | `unit_change_spell_caster_xp` | ported |
 | `CvUnit::changeSpellDamageModify` | CvUnit.cpp:15825-15831 | 7 | `unit_change_spell_damage_modify` | ported |
 | `CvUnit::changeWorkRateModify` | CvUnit.cpp:15848-15854 | 7 | `unit_change_work_rate_modify` | ported |
-| `CvUnit::isResisted` | CvUnit.cpp:15856-15866 | 11 | `unit_is_resisted` | todo |
-| `CvUnit::getResistChance` | CvUnit.cpp:15868-15895 | 28 | `unit_get_resist_chance` | todo |
+| `CvUnit::isResisted` | CvUnit.cpp:15856-15866 | 11 | `unit_is_resisted` | ported |
+| `CvUnit::getResistChance` | CvUnit.cpp:15868-15895 | 28 | `unit_get_resist_chance` | ported |
 | `CvUnit::changeBaseCombatStr` | CvUnit.cpp:15897-15900 | 4 | `unit_change_base_combat_str` | ported |
 | `CvUnit::changeBaseCombatStrDefense` | CvUnit.cpp:15902-15905 | 4 | `unit_change_base_combat_str_defense` | ported |
-| `CvUnit::getExtraSpellMove` | CvUnit.cpp:16090-16104 | 15 | `unit_get_extra_spell_move` | todo |
-| `CvUnit::doDamage` | CvUnit.cpp:16106-16204 | 99 | `unit_do_damage` | todo |
-| `CvUnit::doEscape` | CvUnit.cpp:16261-16267 | 7 | `unit_do_escape` | todo |
-| `CvUnit::doImmortalRebirth` | CvUnit.cpp:16269-16304 | 36 | `unit_do_immortal_rebirth` | todo |
-| `CvUnit::setWeapons` | CvUnit.cpp:16562-16617 | 56 | `unit_set_weapons` | todo |
-| `CvUnit::changeBonusAffinity` | CvUnit.cpp:16619-16626 | 8 | `unit_change_bonus_affinity` | todo |
-| `CvUnit::updateBonusAffinity` | CvUnit.cpp:16633-16648 | 16 | `unit_update_bonus_affinity` | todo |
+| `CvUnit::getExtraSpellMove` | CvUnit.cpp:16090-16104 | 15 | `unit_get_extra_spell_move` | ported |
+| `CvUnit::doDamage` | CvUnit.cpp:16106-16204 | 99 | `unit_do_damage` | ported |
+| `CvUnit::doEscape` | CvUnit.cpp:16261-16267 | 7 | `unit_do_escape` | ported |
+| `CvUnit::doImmortalRebirth` | CvUnit.cpp:16269-16304 | 36 | `unit_do_immortal_rebirth` | ported |
+| `CvUnit::setWeapons` | CvUnit.cpp:16562-16617 | 56 | `unit_set_weapons` | ported |
+| `CvUnit::changeBonusAffinity` | CvUnit.cpp:16619-16626 | 8 | `unit_change_bonus_affinity` | ported |
+| `CvUnit::updateBonusAffinity` | CvUnit.cpp:16633-16648 | 16 | `unit_update_bonus_affinity` | ported |
 | `CvUnit::changeDamageTypeCombat` | CvUnit.cpp:16650-16657 | 8 | `unit_change_damage_type_combat` | ported |
 | `CvUnit::getDamageTypeResist` | CvUnit.cpp:16669-16681 | 13 | `unit_get_damage_type_resist` | ported |
 | `CvUnit::changeDamageTypeResist` | CvUnit.cpp:16683-16689 | 7 | `unit_change_damage_type_resist` | ported |
-| `CvUnit::countUnitsWithinRange` | CvUnit.cpp:16691-16726 | 36 | `unit_count_units_within_range` | todo |
-| `CvUnit::betray` | CvUnit.cpp:16765-16781 | 17 | `unit_betray` | todo |
-| `CvUnit::updateTerraformer` | CvUnit.cpp:16783-16798 | 16 | `unit_update_terraformer` | todo |
+| `CvUnit::countUnitsWithinRange` | CvUnit.cpp:16691-16726 | 36 | `unit_count_units_within_range` | ported |
+| `CvUnit::betray` | CvUnit.cpp:16765-16781 | 17 | `unit_betray` | ported |
+| `CvUnit::updateTerraformer` | CvUnit.cpp:16783-16798 | 16 | `unit_update_terraformer` | ported |
 
 ## Trivial accessors -> `Unit` fields
 
@@ -826,9 +826,6 @@ FfH2 additions to CvUnit: spells (`canCast`, `cast`, ...), summons, damage types
   `m_pUnitInfo` (use `d.units[unit_type]`), `CvUnitAI::m_iAutomatedAbortTurn` and
   `m_bPermanentSummon` (AI-internal only).
 - `Unit::new` is `reset(iID, eUnit, eOwner, false)`; the `CvUnitInfo` values reset copies are
-  passed in a `UnitResetInfo` (`UnitResetInfo::from_info` is a `todo!` until ffh-data's
-  `UnitInfo` has the fields). `Default` is the C++ constructor's `reset(0, NO_UNIT, NO_PLAYER,
-  true)` (no per-type arrays), with type/owner index 0 standing in for NO_UNIT/NO_PLAYER.
-- Ported now: bodies that only touch `Unit` fields, global defines or other ported methods
-  (counters, `change*` of promotion effects, hit points, base strength, `setFortifyTurns`,
-  `setExperience`, `isCargo`/`isFighting`, `isHiddenNationality`, FfH status flags, ...).
+  passed in a `UnitResetInfo` (`UnitResetInfo::from_info`). `Default` is the C++ constructor's
+  `reset(0, NO_UNIT, NO_PLAYER, true)` (no per-type arrays), with type/owner index 0 standing in
+  for NO_UNIT/NO_PLAYER.

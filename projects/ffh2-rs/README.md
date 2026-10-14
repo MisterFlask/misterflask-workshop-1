@@ -61,4 +61,7 @@ Python map scripts (a Fractal generator ships instead).
 
 ## Status
 
-See `docs/PORTING.md`.
+The rules port is complete (no `todo!()` left in `ffh-core`) and audited line by line against
+the C++/Python, and stress-tested with about 1,400 AI games over all game settings. AI-only games
+play end to end; the AI itself is the main open work (`docs/AI.md`). Details, deliberate
+deviations and next steps: `docs/PORTING.md`.

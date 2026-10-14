@@ -4,9 +4,9 @@
 //!
 //! Citizen *assignment* (`AI_assignWorkingPlots`) is the governor (`crate::governor`). The
 //! player's citizen buttons (`alterSpecialistCount`, `alterWorkingPlot`) also call
-//! `AI_addBestCitizen` / `AI_removeWorstCitizen`, which the governor does not expose; the
-//! private stand-ins at the end of this file keep the C++ structure of those two functions and
-//! value the candidates the way the governor does.
+//! `AI_addBestCitizen` / `AI_removeWorstCitizen`; their stand-ins
+//! (`city_ai_add_best_citizen`, `city_ai_remove_worst_citizen`) live in `governor.rs`, keep
+//! the C++ structure of those two functions and value the candidates the way the governor does.
 
 use super::range;
 use crate::defs::*;
@@ -1989,16 +1989,6 @@ impl Game {
     fn city_building_class_health_change(&self, c: CityId, class: Option<BuildingClassType>) -> i32 {
         class.map_or(0, |class| self.city_building_health_change(c, class))
     }
-
-    // ---- governor stand-ins for CvCityAI::AI_addBestCitizen / AI_removeWorstCitizen ----
-    //
-    // SIGNATURE: governor.rs exposes only `city_assign_working_plots`; its worst-citizen removal
-    // (`city_remove_worst_citizen`, no ignored specialist), weights and specialist options are
-    // private, and it has no add-one-citizen entry point. The player's citizen buttons need both
-    // (C++ callers: `alterSpecialistCount`, `alterWorkingPlot`), so the two stand-ins below keep
-    // the C++ structure of the CvCityAI functions (which citizens free population, the default
-    // specialist first, the ignored specialist, the C++ tie rules) and value candidates like the
-    // governor (`citizen_value`, `city_citizen_weights`). They belong in governor.rs.
 
 }
 
