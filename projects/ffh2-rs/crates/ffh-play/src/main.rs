@@ -12,8 +12,10 @@
 //!                                      a scripted human plays the human slot (design §8 T1);
 //!                                      with --saves: journal and autosaves in DIR
 //!   ffh-play replay JOURNAL [--from SAVE]
-//!                                      replay a journal from its header or from an autosave at
-//!                                      one of its checkpoints; exit code 1 at a divergence
+//!                                      replay a journal from its header (a new game), from the
+//!                                      save its load / take-over header names, or from an
+//!                                      autosave at one of its checkpoints; exit code 1 at a
+//!                                      divergence
 //!   ffh-play journal print JOURNAL     the journal as lines for people
 
 use ffh_play::jobj;

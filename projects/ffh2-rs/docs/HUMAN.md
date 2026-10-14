@@ -31,9 +31,11 @@ cargo build --release
 * `bot` plays the human slot with the scripted test bot (design §8 T1) and prints one line per
   turn and the bot's and session's counters. With `--saves DIR` it writes the journal and the
   autosaves there.
-* `replay` re-plays a journal from its first line, or from an autosave of the same game, and
-  stops with exit code 1 at the first difference (a stamp, a checkpoint checksum, a decision of
-  another kind). Use it to reproduce a bug: send the journal and the last autosave.
+* `replay` re-plays a journal from its first line (a new game), or `--from` an autosave of the
+  same game; a journal that starts with a load or take-over line replays `--from` the save it was
+  loaded from (its sidecar next to it) or taken over from. It stops with exit code 1 at the first
+  difference (a stamp, a checkpoint checksum, a decision of another kind). Use it to reproduce a
+  bug: send the journal and the last autosave (or the save the session was loaded from).
 * `journal print` shows a journal with type names.
 
 ## The session (library API)

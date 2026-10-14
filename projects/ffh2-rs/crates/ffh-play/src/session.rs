@@ -190,6 +190,11 @@ impl Session {
 
     /// Takes over slot `p` of an AI-only save at a turn boundary (a debugging aid, design §2.6).
     pub fn take_over(save: &[u8], p: PlayerId, answerer: Arc<dyn Answerer>, opts: SessionOptions) -> Result<Session, PlayError> {
+        let journal = Self::make_journal(&opts)?;
+        Self::take_over_with(save, p, answerer, opts, journal)
+    }
+
+    fn take_over_with(save: &[u8], p: PlayerId, answerer: Arc<dyn Answerer>, opts: SessionOptions, journal: Journal) -> Result<Session, PlayError> {
         let mut g = Game::load(ffh_data::global(), save).map_err(|e| PlayError::Load(e.to_string()))?;
         if !g.at_turn_boundary() {
             return Err(PlayError::Load("take over needs a save at a turn boundary".into()));
@@ -203,7 +208,6 @@ impl Session {
         g.setup.players[p.idx()].human = true;
         g.setup.players[p.idx()].slot_status = ffh_core::setup::SlotStatus::Taken;
         g.player_update_human(p);
-        let journal = Self::make_journal(&opts)?;
         let mut s = Session::assemble(g, p, answerer, opts, journal);
         setup::set_human_options(&mut s.g, p);
         s.journal(&Line::TakeOver { fnv: journal::fnv_hex(save), human: p });
@@ -503,22 +507,42 @@ pub fn diagnose(g: &Game) -> String {
 
 // ---- replay -------------------------------------------------------------------------------------
 
-/// Where a replay starts: a save (with its sidecar) taken at a checkpoint of the journal.
+/// Where a replay starts: the save a `load` / `take_over` journal names in its header, or a save
+/// (with its sidecar) taken at one of the journal's checkpoints.
 pub struct ReplayFrom<'a> {
     pub save: &'a [u8],
     pub sidecar: Option<&'a Sidecar>,
 }
 
-/// Replays a journal (design §2.6): from its header, or from a save at one of its checkpoints.
-/// Every journaled command is re-applied at the same `(turn, slice)` and every decision
-/// answered from the journal; checkpoints are compared. Ends at the control point after the
-/// last input (or game over), returning the session; an error names the first divergence.
+/// How the replaying session is built.
+enum ReplayStart {
+    New(crate::json::Json),
+    /// `Session::load` of the `--from` save (with its sidecar).
+    Load,
+    /// `Session::take_over` of the `--from` AI save.
+    TakeOver(PlayerId),
+}
+
+/// Replays a journal (design §2.6): from its header (a new game), from the save its `load` or
+/// `take_over` header names (by FNV hash), or from a save at one of its checkpoints. Every
+/// journaled command is re-applied at the same `(turn, slice)` and every decision answered from
+/// the journal; checkpoints are compared. Ends at the control point after the last input (or
+/// game over), returning the session; an error names the first divergence.
 pub fn replay(lines: Vec<Line>, from: Option<ReplayFrom>, opts: SessionOptions) -> Result<Session, String> {
     let d = ffh_data::global();
     let opts = SessionOptions { saves_dir: None, autosave_keep: 0, auto_moves_when_idle: false, journal: false, ..opts };
-    let (start, header) = match &from {
-        None => (1, lines.first().cloned().ok_or("empty journal")?),
-        Some(f) => {
+    let (pos, start) = match (&from, lines.first()) {
+        (_, None) => return Err("empty journal".into()),
+        (None, Some(Line::New { setup })) => (1, ReplayStart::New(setup.clone())),
+        (None, Some(Line::Load { fnv, .. } | Line::TakeOver { fnv, .. })) => {
+            return Err(format!("journal starts with a {} line: replay it with --from <the save it names, FNV {fnv}>", lines[0].kind()))
+        }
+        (None, Some(other)) => return Err(format!("journal starts with a {} line, not a header", other.kind())),
+        // The save the journal's session started from.
+        (Some(f), Some(Line::Load { fnv, .. })) if *fnv == journal::fnv_hex(f.save) => (1, ReplayStart::Load),
+        (Some(f), Some(Line::TakeOver { fnv, human })) if *fnv == journal::fnv_hex(f.save) => (1, ReplayStart::TakeOver(*human)),
+        // A save at one of its checkpoints (an autosave or a save at a turn boundary).
+        (Some(f), Some(_)) => {
             let g = Game::load(d, f.save).map_err(|e| e.to_string())?;
             let (turn, checksum) = (g.game_turn(), g.calculate_sync_checksum());
             let pos = match f.sidecar.map(|s| s.journal_line) {
@@ -527,21 +551,22 @@ pub fn replay(lines: Vec<Line>, from: Option<ReplayFrom>, opts: SessionOptions) 
                     .iter()
                     .position(|l| matches!(l, Line::Checkpoint { turn: t, checksum: c } if (*t, *c) == (turn, checksum)))
                     .map(|i| i + 1)
-                    .ok_or_else(|| format!("the journal has no checkpoint for turn {turn} with checksum {checksum}"))?,
+                    .ok_or_else(|| format!("the save is neither the one the journal's header names nor at one of its checkpoints (no checkpoint for turn {turn} with checksum {checksum})"))?,
             };
-            (pos, Line::Load { fnv: journal::fnv_hex(f.save), human: PlayerId(0) })
+            (pos, ReplayStart::Load)
         }
     };
-    let cursor = Arc::new(Mutex::new(Cursor::new(lines, start)));
+    let cursor = Arc::new(Mutex::new(Cursor::new(lines, pos)));
     let answerer = Arc::new(JournalAnswerer { cursor: cursor.clone() });
     let jr = Journal::replay(cursor.clone());
-    let mut s = match (&from, header) {
-        (None, Line::New { setup }) => {
+    let mut s = match (start, &from) {
+        (ReplayStart::New(setup), _) => {
             let ng = NewGame::from_json(d, &setup).map_err(|e| e.to_string())?;
             Session::new_game_with(&ng, answerer, opts, jr).map_err(|e| e.to_string())?
         }
-        (Some(f), _) => Session::load_with(f.save, f.sidecar, answerer, opts, jr).map_err(|e| e.to_string())?,
-        (None, other) => return Err(format!("journal starts with a {} line: replay it with --from <save>", other.kind())),
+        (ReplayStart::Load, Some(f)) => Session::load_with(f.save, f.sidecar, answerer, opts, jr).map_err(|e| e.to_string())?,
+        (ReplayStart::TakeOver(p), Some(f)) => Session::take_over_with(f.save, p, answerer, opts, jr).map_err(|e| e.to_string())?,
+        (_, None) => unreachable!("load and take-over starts need a save"),
     };
     let desync = |c: &Arc<Mutex<Cursor>>| c.lock().unwrap().desync.clone();
     loop {

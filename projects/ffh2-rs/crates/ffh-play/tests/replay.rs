@@ -1,6 +1,7 @@
 //! T4: journal replay (design §8). A bot game with a journal file and autosaves is replayed
 //! from its header and from an autosave at one of its checkpoints: the final saves must be
-//! byte-identical. A journal with one stamp changed fails at that line.
+//! byte-identical. A journal with one stamp changed fails at that line. Journals of loaded and
+//! taken-over sessions replay from the save their header names.
 
 mod common;
 
@@ -10,7 +11,7 @@ use common::{bot_session, new_game, TempDir};
 use ffh_play::journal::{self, Line};
 use ffh_play::save::read_bundle;
 use ffh_play::session::{replay, ReplayFrom};
-use ffh_play::{bot, SessionOptions, Stop};
+use ffh_play::{bot, Session, SessionOptions, Stop};
 
 #[test]
 fn t4_replay_journal() {
@@ -73,4 +74,67 @@ fn t4_replay_journal() {
     let printed: Vec<String> = lines.iter().map(|l| journal::pretty(d, l)).collect();
     assert!(printed.iter().any(|l| l.contains("research TECH_")), "{:?}", &printed[..10]);
     assert!(Path::new(&path).exists());
+}
+
+/// A journal that starts with a `load` header replays from the save that header names (with its
+/// sidecar, as the session loaded it), and one that starts with `take_over` from the AI save it
+/// names; replaying either from its header alone asks for that save.
+#[test]
+fn t4_replay_load_and_take_over_journals() {
+    let dir = TempDir::new("replay-load");
+    // Load: a bot game saved at turn 8, loaded into a new saves directory, played to turn 14.
+    let ng = new_game(4);
+    let (mut s, mut b) = bot_session(&ng, Some(dir.0.join("first")));
+    assert_eq!(bot::run(&mut s, &mut b, 8, |_, _| {}), Stop::Human);
+    let paths = s.save("t8").unwrap();
+    drop(s);
+    let (save, sidecar) = read_bundle(&paths.save).unwrap();
+    let opts = SessionOptions { saves_dir: Some(dir.0.join("loaded")), ..Default::default() };
+    let mut s = Session::load(&save, sidecar.as_ref(), b.answerer(), opts).unwrap();
+    assert_eq!(bot::run(&mut s, &mut b, 14, |_, _| {}), Stop::Human);
+    let (final_save, _) = s.save_bytes().unwrap();
+    let lines = journal::read_file(&s.journal_path().unwrap()).unwrap();
+    drop(s);
+    assert!(matches!(lines[0], Line::Load { .. }));
+    assert!(lines.iter().any(|l| l.kind() == "cmd"));
+    let err = replay(lines.clone(), None, SessionOptions::default()).err().expect("a load journal needs its save");
+    assert!(err.contains("--from"), "{err}");
+    let r = replay(lines.clone(), Some(ReplayFrom { save: &save, sidecar: sidecar.as_ref() }), SessionOptions::default())
+        .unwrap_or_else(|e| panic!("replay from the loaded save: {e}"));
+    assert!(r.g.save() == final_save, "replay from the loaded save ends in a different game");
+    // An autosave of the loaded session is at one of its checkpoints.
+    let auto = dir.0.join("loaded/auto/T0012.ffhsave");
+    let (save12, sidecar12) = read_bundle(&auto).unwrap();
+    let r = replay(lines.clone(), Some(ReplayFrom { save: &save12, sidecar: sidecar12.as_ref() }), SessionOptions::default())
+        .unwrap_or_else(|e| panic!("replay from {}: {e}", auto.display()));
+    assert!(r.g.save() == final_save);
+
+    // Take over: slot 1 of an AI-only duel at a turn boundary, played for 4 turns.
+    let d = ffh_data::global();
+    let o = ffh_core::setup::SetupOptions::new(d, 2, "WORLDSIZE_DUEL", 21);
+    let mut g = ffh_core::game::Game::new_with_options(d, &o);
+    g.map_script = std::sync::Arc::new(ffh_core::mapscript::FractalMapScript::default());
+    let ai = ffh_ai::ai_controller();
+    for p in g.player_ids() {
+        g.controllers[p] = ai.clone();
+    }
+    g.autorun = true;
+    g.game_init();
+    while g.game_turn() < 6 || !g.at_turn_boundary() {
+        g.update();
+    }
+    let ai_save = g.save();
+    let mut b = bot::Bot::new(21);
+    let opts = SessionOptions { saves_dir: Some(dir.0.join("taken")), ..Default::default() };
+    let mut s = Session::take_over(&ai_save, ffh_core::ids::PlayerId(1), b.answerer(), opts).unwrap();
+    assert_eq!(bot::run(&mut s, &mut b, 10, |_, _| {}), Stop::Human);
+    let (final_save, _) = s.save_bytes().unwrap();
+    let lines = journal::read_file(&s.journal_path().unwrap()).unwrap();
+    drop(s);
+    assert!(matches!(lines[0], Line::TakeOver { .. }));
+    assert!(replay(lines.clone(), None, SessionOptions::default()).is_err());
+    let r = replay(lines, Some(ReplayFrom { save: &ai_save, sidecar: None }), SessionOptions::default())
+        .unwrap_or_else(|e| panic!("replay from the AI save: {e}"));
+    assert_eq!(r.human, ffh_core::ids::PlayerId(1));
+    assert!(r.g.save() == final_save, "replay from the AI save ends in a different game");
 }
