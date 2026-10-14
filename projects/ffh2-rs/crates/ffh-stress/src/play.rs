@@ -180,6 +180,7 @@ fn play(s: &Settings, g: &mut Game) {
     let mut stop_turn = end_turn;
     let mut ended = false;
     let mut grant = parse_grant(g, s);
+    let check_every: i32 = std::env::var("FFH_STRESS_CHECK").ok().and_then(|v| v.parse().ok()).unwrap_or(5);
     while g.game_state != GameStateType::GAMESTATE_OVER && g.game_turn() < stop_turn {
         if g.game_state != GameStateType::GAMESTATE_ON && !ended {
             ended = true;
@@ -201,6 +202,9 @@ fn play(s: &Settings, g: &mut Game) {
             TURN.store(turn, Ordering::Relaxed);
             println!("PROGRESS\t{turn}");
             flush_log(g);
+            if check_every > 0 && turn % check_every == 0 {
+                crate::check::check(g);
+            }
             updates_this_turn = 0;
         } else if updates_this_turn > 100_000 {
             panic!("turn {turn} did not finish after {updates_this_turn} updates (a player never ends its turn)");

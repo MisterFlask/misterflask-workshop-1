@@ -12,6 +12,8 @@
 //!   ffh-stress list [opts]           print the games of a matrix (one `run` command each)
 //!
 //! FFH_STRESS_LOG=1 makes `run` print the game log (LOG lines) turn by turn.
+//! `run` cross-checks the rules' redundant bookkeeping (`check.rs`) every 5 turns
+//! (FFH_STRESS_CHECK=N: every N turns, 0 = never).
 //!
 //! Settings (`run`): --seed N --civs N --size WORLDSIZE_X --speed GAMESPEED_X
 //!   --handicap HANDICAP_X (game handicap) --player-handicap HANDICAP_X (AI slots)
@@ -24,6 +26,7 @@
 //!   --random N (games in the random matrix) --out FILE (TSV of all results)
 //!   --filter TEXT (only games whose settings contain TEXT)
 
+mod check;
 mod matrix;
 mod play;
 mod settings;
