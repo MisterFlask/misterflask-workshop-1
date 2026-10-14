@@ -1969,7 +1969,7 @@ impl Game {
                         // paiBonusCount[eBonus]++ (only read when !bStartingLoc)
 
                         // (!bStartingLoc && no tradeable bonus && first of its kind) ? 80 : 20
-                        temp_value = self.player_ai_bonus_val(p, b, 1).wrapping_mul(20);
+                        temp_value = self.setup_ai_bonus_val(p, b, 1).wrapping_mul(20);
                         temp_value = temp_value.wrapping_mul(if starting_loc { 100 } else { greed });
                         temp_value /= 100;
 
@@ -2301,18 +2301,18 @@ impl Game {
     }
 
     /// C++ `CvPlayerAI::AI_bonusVal(eBonus, iChange)` (C++ default `iChange = 1`).
-    fn player_ai_bonus_val(&self, p: PlayerId, bonus: BonusType, change: i32) -> i32 {
+    fn setup_ai_bonus_val(&self, p: PlayerId, bonus: BonusType, change: i32) -> i32 {
         let d = self.d;
         let mut value = 0;
         let bonus_count = self.player_get_num_available_bonuses(p, bonus);
         if change == 0 || (change == 1 && bonus_count == 0) || (change == -1 && bonus_count == 1) {
             // This is assuming the none-to-one or one-to-none case.
-            value += self.player_ai_base_bonus_val(p, bonus);
-            value += self.player_ai_corporation_bonus_val(p, bonus);
+            value += self.setup_ai_base_bonus_val(p, bonus);
+            value += self.setup_ai_corporation_bonus_val(p, bonus);
         } else {
             // This is basically the marginal value of an additional instance of a bonus.
-            value += self.player_ai_base_bonus_val(p, bonus) / 5;
-            value += self.player_ai_corporation_bonus_val(p, bonus);
+            value += self.setup_ai_base_bonus_val(p, bonus) / 5;
+            value += self.setup_ai_corporation_bonus_val(p, bonus);
         }
 
         // FfH: Added by Kael 12/08/2007
@@ -2329,7 +2329,7 @@ impl Game {
 
     /// C++ `CvPlayerAI::AI_baseBonusVal(eBonus)`: bonus value sans corporations. The C++ caches
     /// it in `m_aiBonusValue` until the player's techs/cities change; recomputed here.
-    fn player_ai_base_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
+    fn setup_ai_base_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
         let d = self.d;
         let pl = &self.players[p];
         let team = pl.team;
@@ -2550,7 +2550,7 @@ impl Game {
     }
 
     /// C++ `CvPlayerAI::AI_corporationBonusVal(eBonus)`.
-    fn player_ai_corporation_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
+    fn setup_ai_corporation_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
         let d = self.d;
         let mut value = 0;
         let num_cities = self.players[p].num_cities();
