@@ -564,8 +564,12 @@ impl Game {
                                     ai_choose_free_tech(self, player);
                                 }
                             } else {
-                                // TXT_KEY_MISC_FIRST_TECH_CHOOSE_FREE tech chooser (CvPlayer::chooseTech).
-                                self.player_choose_tech(player, first_free_techs);
+                                // TXT_KEY_MISC_FIRST_TECH_CHOOSE_FREE tech chooser (CvPlayer::chooseTech): a
+                                // popup, which CvPlayer::addPopup drops for a non-human ePlayer (an AI
+                                // member of a human team gets no free tech).
+                                if self.players[player].human {
+                                    self.player_choose_tech(player, first_free_techs);
+                                }
                             }
 
                             // TXT_KEY_MISC_SOMEONE_FIRST_TO_TECH / UNKNOWN_FIRST_TO_TECH messages to every
@@ -613,8 +617,12 @@ impl Game {
                 if announce {
                     if self.final_initialized {
                         if self.player_is_research(player) && self.player_get_current_research(player).is_none() {
-                            // TXT_KEY_MISC_WHAT_TO_RESEARCH_NEXT tech chooser (CvPlayer::chooseTech).
-                            self.player_choose_tech(player, 0);
+                            // TXT_KEY_MISC_WHAT_TO_RESEARCH_NEXT tech chooser (CvPlayer::chooseTech): a
+                            // popup, which CvPlayer::addPopup drops for non-human players (AI players
+                            // choose their research in their own turn).
+                            if self.players[player].human {
+                                self.player_choose_tech(player, 0);
+                            }
                         }
                     }
                 }
@@ -1160,6 +1168,45 @@ mod tests {
             g.teams[t].ever_alive_count += 1;
         }
         g
+    }
+
+    /// Always researches the same tech (`Controller::choose_research`).
+    struct Researches(TechType);
+
+    impl crate::controller::Controller for Researches {
+        fn choose_research(&self, _g: &Game, _p: PlayerId) -> Option<TechType> {
+            Some(self.0)
+        }
+    }
+
+    #[test]
+    fn only_human_players_pick_their_next_research_when_a_tech_arrives() {
+        // C++ setHasTech ends with ePlayer's chooseTech(0) when it has nothing to research: a
+        // popup, which CvPlayer::addPopup drops for non-human players.
+        for human in [false, true] {
+            let mut g = game(1);
+            let d = g.d;
+            let (p, t) = (PlayerId(0), TeamId(0));
+            g.setup.players[0].civ = Some(d.t::<CivilizationType>("CIVILIZATION_BANNOR"));
+            g.setup.players[0].leader = Some(d.t::<LeaderHeadType>("LEADER_SABATHIEL"));
+            g.players[p].human = human;
+            g.players[p].founded_first_city = true;
+            g.final_initialized = true;
+            let startable: Vec<TechType> = d
+                .techs
+                .iter_enumerated()
+                .filter(|&(tech, info)| {
+                    info.prereq_and_techs.is_empty() && info.prereq_or_techs.is_empty() && !info.repeat && g.player_can_ever_research(p, tech)
+                })
+                .map(|(tech, _)| tech)
+                .collect();
+            let (learned, next) = (startable[0], startable[1]);
+            g.controllers[p] = std::sync::Arc::new(Researches(next));
+
+            g.team_set_has_tech(t, learned, true, Some(p), false, true);
+            assert!(g.team_is_has_tech(t, Some(learned)));
+            assert_eq!(g.player_get_current_research(p), if human { Some(next) } else { None });
+        }
     }
 
     #[test]
