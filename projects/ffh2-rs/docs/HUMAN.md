@@ -72,7 +72,11 @@ loop {
 `vote`, `set_option`, `auto_moves`, `end_turn`, `autoplay` (`propose_deal` comes with P3). Each
 is the port of what Civ4 sends for that input; design §4.5 and the "As built" notes of P1 in
 §7 list the rules calls and checks. Their JSON form is the protocol request (`{"c": "move",
-"units": [..], "x": .., "y": ..}`), with type names or indices.
+"units": [..], "x": .., "y": ..}`), with type names or indices. Parameters are accepted only in
+the form the Civ4 interface sends them: missions without movement `flags` (0) and with the data
+their button carries (a plot, a build/religion/specialist/building, else -1), no
+`MISSION_MOVE_TO_UNIT`, specialist changes of +1/-1 where the city screen shows the button,
+slider steps of ±`COMMERCE_PERCENT_CHANGE_INCREMENTS` (10), `TASK_LIBERATE` with `data1` 0.
 
 ### Decisions and popups
 

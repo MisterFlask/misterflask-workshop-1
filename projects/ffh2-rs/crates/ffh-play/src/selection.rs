@@ -50,18 +50,12 @@ fn best_build_route(g: &Game, units: &[UnitId], plot: PlotIdx) -> Option<RouteTy
     best_route
 }
 
-/// `(UnitTypes)` of a MOVE_TO_UNIT mission: `data1` = owner, `data2` = unit id.
-fn mission_target_unit(g: &Game, player: i32, unit: i32) -> Option<UnitId> {
-    if player < 0 || player as usize >= g.num_players() || unit < 0 {
-        return None;
-    }
-    let u = UnitId(unit as u32);
-    g.units.get(u).filter(|t| t.owner == PlayerId(player as u8)).map(|_| u)
-}
-
 /// Missions a player can push (the others are engine-internal: combat, death, animations).
+/// `MISSION_MOVE_TO_UNIT` is AI-only: its mission info is not `bVisible`, has no hotkey and no
+/// interface mode, so the exe has no action that sends it (accepting it would also let a client
+/// follow, and probe for, foreign units it cannot see).
 pub fn is_player_mission(m: MissionType) -> bool {
-    m.idx() < MissionType::MISSION_DIE_ANIMATION.idx()
+    m.idx() < MissionType::MISSION_DIE_ANIMATION.idx() && m != MissionType::MISSION_MOVE_TO_UNIT
 }
 
 /// `CvSelectionGroup::canStartMission(eMission, iData1, iData2, pPlot, bTestVisible)` over the
@@ -76,7 +70,6 @@ pub fn can_start_mission(g: &Game, units: &[UnitId], mission: MissionType, data1
         let ok = match mission {
             MissionType::MISSION_MOVE_TO => !g.plot_at(plot, data1, data2),
             MissionType::MISSION_ROUTE_TO => !g.plot_at(plot, data1, data2) || best_build_route(g, units, plot).is_some(),
-            MissionType::MISSION_MOVE_TO_UNIT => mission_target_unit(g, data1, data2).is_some_and(|t| !g.unit_at_plot(t, plot)),
             MissionType::MISSION_SKIP => g.unit_can_hold(u, plot),
             MissionType::MISSION_SLEEP => g.unit_can_sleep(u, plot),
             MissionType::MISSION_FORTIFY => g.unit_can_fortify(u, plot),

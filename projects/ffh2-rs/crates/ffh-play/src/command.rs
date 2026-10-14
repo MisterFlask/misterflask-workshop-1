@@ -229,6 +229,8 @@ fn task_data1(d: &GameData, j: &Json, t: TaskType) -> Result<i32, FieldError> {
         TaskType::TASK_HURRY => typed_data::<HurryType>(d, j, "data1"),
         TaskType::TASK_SET_EMPHASIZE => typed_data::<EmphasizeType>(d, j, "data1"),
         TaskType::TASK_CHANGE_SPECIALIST => typed_data::<SpecialistType>(d, j, "data1"),
+        // The only value the exe sends (`liberate(iData1 != 0)`).
+        TaskType::TASK_LIBERATE => j.get_or("data1", 0),
         _ => j.get_or("data1", -1),
     }
 }
@@ -535,9 +537,15 @@ fn in_range(what: &str, v: i32, n: usize) -> Result<usize, CmdErr> {
     }
 }
 
-/// `data1`/`data2` of a mission, in range for the mission's type.
+/// `data1`/`data2` of a mission, as the exe sends them: the target plot for the interface-mode
+/// missions (go to, route to, airlift, nuke, recon, paradrop, air bomb, range attack); the type
+/// of a build / religion / corporation / specialist / building action
+/// (`CvActionInfo::getMissionData`) with `data2` -1; the LEADUNIT popup's unit id (or -1) for
+/// LEAD; the espionage popup's values; and -1, -1 for every other mission (`handleAction` sends
+/// `getMissionData()` = -1 and -1).
 fn check_mission_data(g: &Game, m: MissionType, data1: i32, data2: i32) -> Result<(), CmdErr> {
     let d = g.d;
+    let no_data2 = || if data2 == -1 { Ok(()) } else { Err(invalid(format!("field `data2`: must be -1 for this mission, got {data2}"))) };
     match m {
         MissionType::MISSION_MOVE_TO
         | MissionType::MISSION_ROUTE_TO
@@ -547,13 +555,20 @@ fn check_mission_data(g: &Game, m: MissionType, data1: i32, data2: i32) -> Resul
         | MissionType::MISSION_PARADROP
         | MissionType::MISSION_AIRBOMB
         | MissionType::MISSION_RANGE_ATTACK => on_map(g, data1, data2).map(|_| ()),
-        MissionType::MISSION_MOVE_TO_UNIT => in_range("player", data1, g.num_players()).map(|_| ()),
-        MissionType::MISSION_BUILD => in_range("build", data1, d.builds.len()).map(|_| ()),
-        MissionType::MISSION_SPREAD => in_range("religion", data1, d.religions.len()).map(|_| ()),
-        MissionType::MISSION_SPREAD_CORPORATION => in_range("corporation", data1, d.corporations.len()).map(|_| ()),
-        MissionType::MISSION_JOIN => in_range("specialist", data1, d.specialists.len()).map(|_| ()),
-        MissionType::MISSION_CONSTRUCT => in_range("building", data1, d.buildings.len()).map(|_| ()),
-        _ => Ok(()),
+        MissionType::MISSION_BUILD => in_range("build", data1, d.builds.len()).and_then(|_| no_data2()),
+        MissionType::MISSION_SPREAD => in_range("religion", data1, d.religions.len()).and_then(|_| no_data2()),
+        MissionType::MISSION_SPREAD_CORPORATION => in_range("corporation", data1, d.corporations.len()).and_then(|_| no_data2()),
+        MissionType::MISSION_JOIN => in_range("specialist", data1, d.specialists.len()).and_then(|_| no_data2()),
+        MissionType::MISSION_CONSTRUCT => in_range("building", data1, d.buildings.len()).and_then(|_| no_data2()),
+        MissionType::MISSION_LEAD => {
+            if data1 < -1 {
+                return Err(invalid(format!("field `data1`: a unit id or -1, got {data1}")));
+            }
+            no_data2()
+        }
+        MissionType::MISSION_ESPIONAGE => Ok(()),
+        _ if data1 != -1 => Err(invalid(format!("field `data1`: must be -1 for this mission, got {data1}"))),
+        _ => no_data2(),
     }
 }
 
@@ -587,6 +602,11 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             selection_of(g, h, units)?;
             if !selection::is_player_mission(*mission) {
                 return Err(invalid(format!("{} is not a mission a player gives", names::name(d, *mission))));
+            }
+            // Every exe path sends iFlags = 0 (handleAction, selectionListMove, DECLAREWARMOVE):
+            // the movement flags (MOVE_THROUGH_ENEMY, MOVE_DIRECT_ATTACK, ...) are AI-only.
+            if *flags != 0 {
+                return Err(invalid(format!("field `flags`: must be 0 (the exe sends no movement flags), got {flags}")));
             }
             check_mission_data(g, *mission, *data1, *data2)?;
             // canHandleAction's mission plot: with shift (append) the group's last mission plot
@@ -742,9 +762,28 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
                     in_range("emphasize", *data1, d.emphasizes.len())?;
                 }
                 TaskType::TASK_CHANGE_SPECIALIST => {
-                    in_range("specialist", *data1, d.specialists.len())?;
-                    if *data2 == 0 {
-                        return Err(invalid("field `data2`: the change must not be 0"));
+                    // The city screen's specialist +/- buttons (WIDGET_CHANGE_SPECIALIST with
+                    // iData2 = 1 or -1, CvMainInterface.py), shown as updateCitizenButtons does.
+                    let s = SpecialistType::from_usize(in_range("specialist", *data1, d.specialists.len())?);
+                    let city = &g.cities[c];
+                    let count = if city.citizens_automated {
+                        city.specialist_count[s].max(city.force_specialist_count[s])
+                    } else {
+                        city.specialist_count[s]
+                    };
+                    match *data2 {
+                        1 => {
+                            let room = city.citizens_automated || count < city.population + g.city_total_free_specialists(c);
+                            if !(g.city_is_specialist_valid(c, s, 1) && room) {
+                                return Err(cannot(format!("no more {} possible", names::name(d, s))));
+                            }
+                        }
+                        -1 => {
+                            if count <= 0 {
+                                return Err(cannot(format!("no {} to remove", names::name(d, s))));
+                            }
+                        }
+                        other => return Err(invalid(format!("field `data2`: the change is 1 or -1 (the +/- buttons), got {other}"))),
                     }
                 }
                 TaskType::TASK_CHANGE_WORKING_PLOT | TaskType::TASK_CLEAR_WORKING_OVERRIDE => {
@@ -756,6 +795,11 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
                     }
                 }
                 TaskType::TASK_LIBERATE => {
+                    // The liberate button and the FREE_COLONY popup send iData1 = 0
+                    // (`liberate(bConquest = false)`); 1 is the conquest path of acquireCity.
+                    if *data1 != 0 {
+                        return Err(invalid(format!("field `data1`: must be 0 for TASK_LIBERATE, got {data1}")));
+                    }
                     if g.city_liberation_player(c, false).is_none() {
                         return Err(cannot("nobody to liberate the city to"));
                     }
@@ -802,8 +846,10 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
         }
 
         Command::PercentChange { commerce, change } => {
-            if *change == 0 {
-                return Err(invalid("field `change`: must not be 0"));
+            // The slider buttons send +/- COMMERCE_PERCENT_CHANGE_INCREMENTS (CvMainInterface.py).
+            let step = d.defines.commerce_percent_change_increments;
+            if *change != step && *change != -step {
+                return Err(invalid(format!("field `change`: must be {step} or -{step} (COMMERCE_PERCENT_CHANGE_INCREMENTS), got {change}")));
             }
             if !g.player_is_commerce_flexible(h, *commerce) {
                 return Err(cannot(format!("{} is not adjustable", names::name(d, *commerce))));

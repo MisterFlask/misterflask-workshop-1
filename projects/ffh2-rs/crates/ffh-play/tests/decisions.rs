@@ -454,3 +454,75 @@ fn commands_are_checked_like_the_exe() {
     // The advisor answerer exists for soak runs.
     let _ = AdvisorAnswerer;
 }
+
+/// Parameters no exe path sends are refused before any rules call (review of P1): specialist
+/// changes other than +/-1 (a huge one looped the governor for hours), slider steps other than
+/// COMMERCE_PERCENT_CHANGE_INCREMENTS (overflow), mission flags (AI movement modes),
+/// MOVE_TO_UNIT (follows and probes for foreign units), mission data the action does not carry,
+/// and liberation with the conquest flag.
+#[test]
+fn parameters_the_exe_never_sends_are_refused() {
+    let (mut s, _) = duel(19, |_, _| 0);
+    to_turn(&mut s, 3);
+    let h = s.human;
+    let d = s.g.d;
+    let my_city = s.g.players[h].cities[0];
+    let my_unit = s.g.players[h].units[0];
+    let other = s.g.civ_player_ids().find(|&p| p != h && s.g.players[p].alive).unwrap();
+    let foreign_unit = s.g.players[other].units[0];
+    let citizen = d.t::<SpecialistType>("SPECIALIST_CITIZEN");
+    let specialist = |data2: i32| Command::DoTask {
+        city: my_city,
+        task: TaskType::TASK_CHANGE_SPECIALIST,
+        data1: citizen.idx() as i32,
+        data2,
+        option: false,
+        alt: false,
+        shift: false,
+        ctrl: false,
+    };
+    let percent = |change: i32| Command::PercentChange { commerce: CommerceType::COMMERCE_RESEARCH, change };
+    let mission = |m: MissionType, data1: i32, data2: i32, flags: i32| Command::Mission { units: vec![my_unit], mission: m, data1, data2, flags, append: false };
+    let (ux, uy) = (s.g.units[my_unit].x, s.g.units[my_unit].y);
+    let (tx, ty) = if ux > 0 { (ux - 1, uy) } else { (ux + 1, uy) };
+    let liberate = Command::DoTask { city: my_city, task: TaskType::TASK_LIBERATE, data1: 1, data2: -1, option: false, alt: false, shift: false, ctrl: false };
+    let before = s.g.save();
+    for (c, what) in [
+        (specialist(i32::MAX), "specialist +MAX"),
+        (specialist(i32::MIN), "specialist MIN"),
+        (specialist(2), "specialist +2"),
+        (specialist(0), "specialist 0"),
+        (percent(i32::MAX), "percent +MAX"),
+        (percent(i32::MIN), "percent MIN"),
+        (percent(5), "percent 5"),
+        (mission(MissionType::MISSION_MOVE_TO, tx, ty, 0x20), "MOVE_THROUGH_ENEMY"),
+        (mission(MissionType::MISSION_MOVE_TO, tx, ty, -1), "flags -1"),
+        (mission(MissionType::MISSION_MOVE_TO_UNIT, other.i(), foreign_unit.0 as i32, 0), "MOVE_TO_UNIT"),
+        (mission(MissionType::MISSION_SKIP, 5, -1, 0), "SKIP data1"),
+        (mission(MissionType::MISSION_FORTIFY, -1, 7, 0), "FORTIFY data2"),
+        (mission(MissionType::MISSION_GOLDEN_AGE, 0, -1, 0), "golden age animation"),
+        (mission(MissionType::MISSION_BUILD, 0, 3, 0), "BUILD data2"),
+        (liberate, "liberate with the conquest flag"),
+    ] {
+        assert!(matches!(s.execute(&c), Err(CmdErr::Invalid(_))), "{what}: {:?}", s.execute(&c));
+    }
+    // A citizen specialist cannot be removed when there is none.
+    if s.g.cities[my_city].specialist_count[citizen] == 0 && s.g.cities[my_city].force_specialist_count[citizen] == 0 {
+        assert!(matches!(s.execute(&specialist(-1)), Err(CmdErr::Cannot(_))));
+    }
+    assert!(s.g.save() == before, "a refused command changed the game");
+    // What the buttons send is applied.
+    let research = s.g.players[h].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+    let step = d.defines.commerce_percent_change_increments;
+    ok(&mut s, percent(-step));
+    assert_eq!(s.g.players[h].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()], research - step);
+    ok(&mut s, percent(step));
+    assert_eq!(s.g.players[h].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()], research);
+    ok(&mut s, specialist(1));
+    let city = &s.g.cities[my_city];
+    assert!(city.specialist_count[citizen].max(city.force_specialist_count[citizen]) >= 1);
+    ok(&mut s, specialist(-1));
+    // A decoded liberate without data1 is the button's (0).
+    let j = ffh_play::json::Json::parse(&format!(r#"{{"c":"do_task","city":{},"task":"TASK_LIBERATE"}}"#, my_city.0)).unwrap();
+    assert!(matches!(Command::from_json(d, &j), Ok(Command::DoTask { data1: 0, .. })));
+}
