@@ -739,7 +739,9 @@ impl Game {
     pub fn player_change_specialist_extra_commerce(&mut self, p: PlayerId, commerce: CommerceType, change: i32) {
         if change != 0 {
             self.players[p].specialist_extra_commerce[commerce.idx()] += change;
-            debug_assert!(self.players[p].specialist_extra_commerce[commerce.idx()] >= 0);
+            // C++ quirk: can go negative (the C++ FAssert fails) for a player added to a team
+            // mid-game, who loses the team's `bTeamShare` buildings without having had them
+            // (see `player_change_trade_routes`).
             self.player_update_commerce_type(p, commerce);
             self.player_ai_make_assign_work_dirty(p);
         }

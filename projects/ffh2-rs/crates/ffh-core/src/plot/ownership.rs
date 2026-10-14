@@ -1218,7 +1218,9 @@ impl Game {
     pub fn plot_change_blockaded_count(&mut self, p: PlotIdx, team: TeamId, change: i32) {
         if change != 0 {
             self.map.plots[p].blockaded_count[team] += change;
-            debug_assert!(self.map.plots[p].blockaded_count[team] >= 0);
+            // C++ quirk: can go negative (the C++ FAssert fails): `CvUnit::changeHiddenNationality`
+            // calls `updatePlunder(-1)` for any ship losing its hidden nationality (e.g. the
+            // Revelation spell), blockading or not, and with the hidden unit's enemies.
             debug_assert!(self.map.plots[p].blockaded_count[team] == 0 || self.plot_is_water(p));
 
             if let Some(working_city) = live_city(self, self.map.plots[p].working_city) {

@@ -11,6 +11,8 @@
 //!                                    too), N at a time, then print a summary
 //!   ffh-stress list [opts]           print the games of a matrix (one `run` command each)
 //!
+//! FFH_STRESS_LOG=1 makes `run` print the game log (LOG lines) turn by turn.
+//!
 //! Settings (`run`): --seed N --civs N --size WORLDSIZE_X --speed GAMESPEED_X
 //!   --handicap HANDICAP_X (game handicap) --player-handicap HANDICAP_X (AI slots)
 //!   --era ERA_X --climate CLIMATE_X --sea SEALEVEL_X --options GAMEOPTION_A,GAMEOPTION_B

@@ -129,8 +129,18 @@ pub fn new_game(s: &Settings) -> Result<Game, String> {
         g.controllers[p] = ai.clone();
     }
     g.autorun = true;
+    // FFH_STRESS_LOG=1: print the game log (messages, events) as it grows.
+    g.log.enabled = std::env::var_os("FFH_STRESS_LOG").is_some();
     g.game_init();
+    flush_log(&mut g);
     Ok(g)
+}
+
+/// Prints and clears the game log entries (only filled with FFH_STRESS_LOG set).
+fn flush_log(g: &mut Game) {
+    for e in g.log.entries.drain(..) {
+        println!("LOG\t{}\t{}\t{}", e.turn, e.player.map_or("-".to_string(), |p| p.to_string()), e.text);
+    }
 }
 
 /// Plays `s.turns` turns (or until the game ends), as `ffh-cli`'s `run::autoplay`.
@@ -146,6 +156,7 @@ fn play(s: &Settings, g: &mut Game) {
             turn = g.game_turn();
             TURN.store(turn, Ordering::Relaxed);
             println!("PROGRESS\t{turn}");
+            flush_log(g);
             updates_this_turn = 0;
         } else if updates_this_turn > 100_000 {
             panic!("turn {turn} did not finish after {updates_this_turn} updates (a player never ends its turn)");
