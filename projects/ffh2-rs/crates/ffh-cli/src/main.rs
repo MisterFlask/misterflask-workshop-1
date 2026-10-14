@@ -113,6 +113,15 @@ fn main() {
         Some("lookup") => cmd_lookup(args.get(1).map(|s| s.as_str()).unwrap_or_else(|| usage())),
         Some("autoplay") => cmd_autoplay(&args[1..], true),
         Some("bench") => cmd_autoplay(&args[1..], false),
+        Some("inspect") => {
+            // ffh inspect <player> [run options]: play, then print that player's cities.
+            let player: u8 = args.get(1).and_then(|a| a.parse().ok()).unwrap_or_else(|| usage());
+            let cfg = parse_run_config(&args[2..]);
+            let (mut g, _) = run::new_game(&cfg);
+            run::autoplay(&mut g, &cfg);
+            print!("{}", run::report(&g));
+            print!("{}", run::inspect(&g, ffh_core::ids::PlayerId(player)));
+        }
         Some("stats") => {
             let (cfg, at) = parse_run_config_at(&args[1..]);
             stats::cmd_stats(&cfg, &at);

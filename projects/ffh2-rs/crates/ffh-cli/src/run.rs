@@ -348,3 +348,45 @@ mod tests {
         assert_ne!(sa.last().map(|s| s.checksum), sb.last().map(|s| s.checksum));
     }
 }
+
+/// Detailed city view for one player: every plot of every city (worked or not) with terrain,
+/// feature, bonus, improvement, route and yields.
+pub fn inspect(g: &Game, p: PlayerId) -> String {
+    let d = g.d;
+    let mut out = String::new();
+    let name = |s: &str| s.split('_').skip(1).collect::<Vec<_>>().join("_");
+    for &c in &g.players[p].cities {
+        let city = &g.cities[c];
+        out += &format!(
+            "city {} size {} yields {:?} food {:+} happy {:+} health {:+} prod {:?} specialists {:?}\n",
+            city.name,
+            city.population,
+            [0, 1, 2].map(|y| g.city_yield_rate(c, YieldType::from_usize(y))),
+            g.city_food_difference(c, true),
+            g.city_happy_level(c) - g.city_unhappy_level(c, 0),
+            g.city_good_health(c) - g.city_bad_health(c, false, 0),
+            city.order_queue.first().map(|o| (o.order_type, o.data1)),
+            city.specialist_count.iter().enumerate().filter(|(_, &n)| n > 0).map(|(s, &n)| (name(&d.specialists[SpecialistType::from_usize(s)].base.type_), n)).collect::<Vec<_>>()
+        );
+        for i in 0..ffh_core::defs::NUM_CITY_PLOTS {
+            let Some(q) = g.city_index_plot(c, i) else { continue };
+            let pl = &g.map.plots[q];
+            if pl.working_city != Some(c) {
+                continue;
+            }
+            out += &format!(
+                "   {} {:>2} {:?} {:?} {:<10} {:<14} {:<12} {:<18} {}\n",
+                if city.working_plot[i] { "W" } else { " " },
+                i,
+                pl.yields,
+                pl.plot_type,
+                pl.terrain_type.map_or("-".into(), |t| name(&d.terrains[t].base.type_)),
+                pl.feature_type.map_or("-".into(), |f| name(&d.features[f].base.type_)),
+                pl.bonus_type.map_or("-".into(), |b| name(&d.bonuses[b].base.type_)),
+                pl.improvement_type.map_or("-".into(), |m| name(&d.improvements[m].base.type_)),
+                if pl.route_type.is_some() { "road" } else { "" }
+            );
+        }
+    }
+    out
+}

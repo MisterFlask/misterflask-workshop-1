@@ -296,7 +296,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     // Garrison quota: one, the capital and threatened cities more, cities near barbarian lairs
     // or barbarians more.
     let mut needed = 1 + i32::from(ctx.capital && (ctx.n_cities > 1 || g.game_turn() > 30)) + i32::from(ctx.threat > 0);
-    if barbarians_near(g, p, plot, 5) {
+    if barbarians_near(g, p, plot, 3) {
         needed += 1;
     }
     if ctx.at_war {
@@ -685,7 +685,9 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 
     // Granary-like food storage: worth more while the city grows.
     v += info.food_kept * food.min(12) / 4;
     v += info.worker_speed_modifier / 2;
-    v += info.maintenance_modifier.min(0) * -g.city_maintenance(c).max(0) / 100 * 8;
+    // Maintenance savings are gold (80 per gold per turn, more when short of gold).
+    let gold_value = if financial_trouble(g, p) { 160 } else { 80 };
+    v += -info.maintenance_modifier * g.cities[c].maintenance.max(0) / 100 * gold_value / 100;
     v += info.heal_rate_change * 2;
     v += info.ai_weight;
     if let Some(l) = g.players[p].personality_type.map(|l| &d.leader_heads[l]) {

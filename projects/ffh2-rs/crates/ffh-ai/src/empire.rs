@@ -9,6 +9,53 @@ pub fn manage(g: &mut Game, p: PlayerId) {
     civics(g, p);
     religion(g, p);
     sliders(g, p);
+    disband(g, p);
+}
+
+/// A bankrupt empire (research slider at the bottom and still losing gold) disbands its
+/// weakest surplus garrison units: never a city's last defender (two in the capital), never a
+/// unit that would defect to the barbarians, at most two per turn.
+fn disband(g: &mut Game, p: PlayerId) {
+    if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) || g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] > 10 {
+        return;
+    }
+    if g.player_calculate_gold_rate(p) >= 0 && g.players[p].gold > 30 || g.player_calculate_unit_cost(p) == 0 {
+        return;
+    }
+    let mut done = 0;
+    for c in g.players[p].cities.clone() {
+        if done >= 2 {
+            break;
+        }
+        let plot = g.city_plot(c);
+        if crate::production::local_threat(g, p, plot, 3) > 0 {
+            continue;
+        }
+        let keep = 1 + i32::from(g.city_is_capital(c));
+        let mut garrison: Vec<UnitId> = g.map.plots[plot]
+            .units
+            .iter()
+            .copied()
+            .filter(|&u| {
+                let unit = &g.units[u];
+                unit.owner == p
+                    && matches!(unit.ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER))
+                    && g.d.units[unit.unit_type].combat > 0
+            })
+            .collect();
+        if garrison.len() as i32 <= keep {
+            continue;
+        }
+        garrison.sort_by_key(|&u| (crate::view::defense_power(g, u), u));
+        let u = garrison[0];
+        let betrays = g.d.promotions.keys().any(|pr| g.units[u].has_promotion[pr] && g.d.promotions[pr].betrayal_chance != 0);
+        if betrays || !g.unit_can_scrap(u) {
+            continue;
+        }
+        crate::trace!(g, p, "bankrupt: disbanding {} in {}", g.d.units[g.units[u].unit_type].base.type_, g.cities[c].name);
+        g.unit_scrap(u);
+        done += 1;
+    }
 }
 
 fn research(g: &mut Game, p: PlayerId) {
