@@ -1,7 +1,7 @@
 //! Type names <-> indices for every info table and every hard-coded C++ enum, and text lookup.
 //!
 //! The protocol accepts a type reference as its XML/C++ type name (`"UNIT_WARRIOR"`) or as its
-//! integer index (`44`), and answers with indices (design §4.1). This module decodes both forms
+//! integer index, and answers with indices (design §4.1). This module decodes both forms
 //! for every type ([`decode`], [`field`]), names every index ([`name`]) and finds display text
 //! ([`display`]). [`KINDS`] lists all of them with type-erased accessors, for the data tables,
 //! `inspect {kind}` and the `ffh-play names` / `lookup` commands.
@@ -13,10 +13,12 @@
 //! * hard-coded C++ enums with no XML (`ActivityType`, `OrderType`, `TaskType`, ...): the
 //!   generated `NAMES` arrays of `ffh_data::enums`.
 //!
-//! Plus `PlayerVoteTypes` (negative sentinels or a player id), which is not an index type.
+//! Plus `PlayerVoteTypes` (negative sentinels, or a team id in team votes), which is not an index
+//! type: [`decode_player_vote`] accepts only the choices the C++ DIPLOVOTE popup can send.
 
 use std::borrow::Cow;
 
+use ffh_core::ids::TeamId;
 use ffh_core::structs::PlayerVote;
 use ffh_data::*;
 
@@ -330,22 +332,34 @@ pub fn text<'d>(d: &'d GameData, key: &'d str) -> &'d str {
     d.text.get(key)
 }
 
-/// Display name of a value: its description text (cut at FfH2's ':' gender separator), or,
-/// when it has no description or the text is missing, its [`humanize`]d type name. (The vendored
-/// text is FfH2's own file only, so descriptions FfH2 inherits from BtS, such as
-/// `TXT_KEY_UNIT_WARRIOR`, have no text.)
+/// Display name of a value: its full description text, with Civ4 markup such as `[ICON_TRADE]`
+/// kept (`VOTE_LIBERTY` -> "Global Civic: Liberty"), or its [`humanize`]d type name when it has
+/// no description, the text is missing or empty, or the text holds an unfilled `%D1`-style
+/// placeholder (the Somnium memories: `%D1: "Learn how to play Somnium!"`).
+///
+/// The full text, not `Text::name`: that cuts at the first ':', which FfH2's English text uses
+/// only as prose ("Global Civic: Liberty", "Single Currency: +1 Trade Route ..."); no English
+/// entry of CIV4GameText_FFH2.xml has `<Text>`/`<Gender>` forms. The vendored text is FfH2's own
+/// file only, so descriptions FfH2 inherits from BtS, such as `TXT_KEY_UNIT_WARRIOR`, have no
+/// text and use the type name.
 pub fn display<T: Named>(d: &GameData, v: T) -> Cow<'_, str> {
     display_of(T::text_key(d, v), T::name(d, v), d)
 }
 
 fn display_of<'d>(key: Option<&'d str>, name: &'d str, d: &'d GameData) -> Cow<'d, str> {
     if let Some(k) = key {
-        let t = d.text.name(k);
-        if t != k && !t.is_empty() {
+        let t = d.text.get(k).trim();
+        if t != k && !t.is_empty() && !has_placeholder(t) {
             return Cow::Borrowed(t);
         }
     }
     Cow::Owned(humanize(name))
+}
+
+/// Whether `t` holds a Civ4 text placeholder (`%s1`, `%d2`, `%D1`, `%F1`, ...): a '%', a letter
+/// and a digit. A plain percent sign ("by 75%, ...") is not one.
+fn has_placeholder(t: &str) -> bool {
+    t.as_bytes().windows(3).any(|w| w[0] == b'%' && w[1].is_ascii_alphabetic() && w[2].is_ascii_digit())
 }
 
 /// A readable name from a type name: the class prefix is dropped and words are capitalized
@@ -431,37 +445,77 @@ pub fn kind_names_json(d: &GameData, k: &Kind) -> Json {
 // PlayerVoteTypes
 // ---------------------------------------------------------------------------------------------
 
-/// C++ `PlayerVoteTypes` sentinels (CvEnums.h). Values >= 0 are votes for a player.
+/// C++ `PlayerVoteTypes` sentinels (CvEnums.h), to name vote *state* (`CvPlayer::getVote`).
+/// A value >= 0 is a vote for a **team**, cast only in team votes (secretary general and
+/// victory votes: `CvGame::castVote` compares it with `getTeam()`; ffh-core `team_vote`). The
+/// last two are internal: `NO_PLAYER_VOTE` = not voted yet, `NO_PLAYER_VOTE_CHECKED` = not
+/// voted after the extra turn `doVoteResults` gives.
 pub const PLAYER_VOTE_NAMES: &[(&str, PlayerVote)] = &[
-    ("NO_PLAYER_VOTE_CHECKED", PlayerVote::NO_PLAYER_VOTE_CHECKED),
+    ("PLAYER_VOTE_YES", PlayerVote::PLAYER_VOTE_YES),
+    ("PLAYER_VOTE_NO", PlayerVote::PLAYER_VOTE_NO),
     ("PLAYER_VOTE_NEVER", PlayerVote::PLAYER_VOTE_NEVER),
     ("PLAYER_VOTE_ABSTAIN", PlayerVote::PLAYER_VOTE_ABSTAIN),
-    ("PLAYER_VOTE_NO", PlayerVote::PLAYER_VOTE_NO),
-    ("PLAYER_VOTE_YES", PlayerVote::PLAYER_VOTE_YES),
     ("NO_PLAYER_VOTE", PlayerVote::NO_PLAYER_VOTE),
+    ("NO_PLAYER_VOTE_CHECKED", PlayerVote::NO_PLAYER_VOTE_CHECKED),
 ];
 
-/// C++ name of a sentinel vote (`None` for a vote for a player).
+/// The sentinel choices a vote answer may name (`-5..=-2`): the YES / NO / NEVER / ABSTAIN
+/// buttons of the C++ DIPLOVOTE popup, the first four of [`PLAYER_VOTE_NAMES`].
+pub const PLAYER_VOTE_CHOICES: &[(&str, PlayerVote)] = &[
+    ("PLAYER_VOTE_YES", PlayerVote::PLAYER_VOTE_YES),
+    ("PLAYER_VOTE_NO", PlayerVote::PLAYER_VOTE_NO),
+    ("PLAYER_VOTE_NEVER", PlayerVote::PLAYER_VOTE_NEVER),
+    ("PLAYER_VOTE_ABSTAIN", PlayerVote::PLAYER_VOTE_ABSTAIN),
+];
+
+/// Exclusive upper bound of a team id in a vote choice: C++ `MAX_CIV_TEAMS` (=
+/// `MAX_CIV_PLAYERS`, 35 in FfH2 0.41). The barbarian team is never a candidate.
+pub const MAX_CIV_TEAMS: usize = ffh_core::defs::MAX_CIV_PLAYERS;
+
+/// C++ name of a sentinel vote (`None` for a team vote).
 pub fn player_vote_name(v: PlayerVote) -> Option<&'static str> {
     PLAYER_VOTE_NAMES.iter().find(|(_, x)| *x == v).map(|(n, _)| *n)
 }
 
-/// Decodes a vote choice: a C++ name (`"PLAYER_VOTE_YES"`), a short name (`"YES"`, `"NO"`,
-/// `"NEVER"`, `"ABSTAIN"`), or an integer (a sentinel or a player id; whether that player can be
-/// voted for is the command's check).
+/// The team a vote is for (`None` for a sentinel). In C++ a non-negative `PlayerVoteTypes` is a
+/// `TeamTypes` (ffh-core's `PlayerVote::player()` reads it as a player id, which is the same
+/// number only when every player is alone on its team).
+pub fn voted_team(v: PlayerVote) -> Option<TeamId> {
+    u8::try_from(v.0).ok().map(TeamId)
+}
+
+/// Decodes a vote choice as the C++ `BUTTONPOPUP_DIPLOVOTE` popup can send it
+/// (`CvDLLButtonPopup::launchDiploVotePopup`): `YES`, `NO`, `NEVER` or `ABSTAIN` (C++ name
+/// `"PLAYER_VOTE_YES"`, short name `"YES"`, or the value: -2, -3, -5, -4), or, in a team vote, a team id
+/// in `0..MAX_CIV_TEAMS`. The internal sentinels `NO_PLAYER_VOTE` (-1) and
+/// `NO_PLAYER_VOTE_CHECKED` (-6) are refused: casting them would reset the vote or skip the extra
+/// turn a missing vote gets.
+///
+/// This checks the form only. The `vote` command checks what the popup offers for that vote:
+/// a team vote takes only team ids (alive, `is_team_vote_eligible`, the vassal restriction) and
+/// ABSTAIN (not offered to a vassal of an eligible team); other votes take YES, NO, NEVER (only
+/// if `player_can_defy_resolution`) and ABSTAIN.
 pub fn decode_player_vote(j: &Json) -> Result<PlayerVote, String> {
+    const HINT: &str = "a vote choice is YES, NO, NEVER, ABSTAIN or (in a team vote) a team id";
     if let Json::Str(s) = j {
-        let full = format!("PLAYER_VOTE_{s}");
-        return PLAYER_VOTE_NAMES
-            .iter()
-            .find(|(n, _)| *n == s || *n == full)
-            .map(|(_, v)| *v)
-            .ok_or_else(|| format!("unknown PlayerVote {s:?}"));
+        let short = s.strip_prefix("PLAYER_VOTE_").unwrap_or(s);
+        let full = format!("PLAYER_VOTE_{short}");
+        if let Some((_, v)) = PLAYER_VOTE_CHOICES.iter().find(|(n, _)| *n == full) {
+            return Ok(*v);
+        }
+        return Err(match PLAYER_VOTE_NAMES.iter().find(|(n, _)| n == s) {
+            Some((n, _)) => format!("{n} is vote state, not a choice ({HINT})"),
+            None => format!("unknown vote choice {s:?} ({HINT})"),
+        });
     }
     match j.as_i64() {
-        Some(i) if (-6..=u8::MAX as i64).contains(&i) => Ok(PlayerVote(i as i32)),
-        Some(i) => Err(format!("PlayerVote {i} out of range -6..=255")),
-        None => Err(format!("expected a PlayerVote name or integer, got {}", j.kind())),
+        Some(i @ -5..=-2) => Ok(PlayerVote(i as i32)),
+        Some(i) if i >= 0 && (i as u64) < MAX_CIV_TEAMS as u64 => Ok(PlayerVote(i as i32)),
+        Some(i @ (-1 | -6)) => {
+            Err(format!("{i} ({}) is vote state, not a choice ({HINT})", player_vote_name(PlayerVote(i as i32)).unwrap_or("?")))
+        }
+        Some(i) => Err(format!("vote choice {i} out of range: -5..=-2 or a team id in 0..{MAX_CIV_TEAMS}")),
+        None => Err(format!("expected a vote choice name or integer, got {}", j.kind())),
     }
 }
 
@@ -471,22 +525,69 @@ mod tests {
 
     #[test]
     fn player_votes() {
+        // The names are C++ CvEnums.h PlayerVoteTypes.
         for (n, v) in PLAYER_VOTE_NAMES {
-            assert_eq!(decode_player_vote(&Json::from(*n)), Ok(*v));
-            assert_eq!(decode_player_vote(&Json::Int(v.0 as i64)), Ok(*v));
             assert_eq!(player_vote_name(*v), Some(*n));
+            assert_eq!(voted_team(*v), None);
+        }
+        assert_eq!(PLAYER_VOTE_NAMES[..4], *PLAYER_VOTE_CHOICES);
+        // Every choice the DIPLOVOTE popup has: by C++ name, short name, value, integral float.
+        for (n, v) in PLAYER_VOTE_CHOICES {
+            assert_eq!(decode_player_vote(&Json::from(*n)), Ok(*v));
+            assert_eq!(decode_player_vote(&Json::from(&n["PLAYER_VOTE_".len()..])), Ok(*v));
+            assert_eq!(decode_player_vote(&Json::Int(v.0 as i64)), Ok(*v));
+            assert_eq!(decode_player_vote(&Json::Float(v.0 as f64)), Ok(*v));
         }
         assert_eq!(decode_player_vote(&Json::from("YES")), Ok(PlayerVote::PLAYER_VOTE_YES));
         assert_eq!(decode_player_vote(&Json::from("NO")), Ok(PlayerVote::PLAYER_VOTE_NO));
         assert_eq!(decode_player_vote(&Json::from("NEVER")), Ok(PlayerVote::PLAYER_VOTE_NEVER));
         assert_eq!(decode_player_vote(&Json::from("ABSTAIN")), Ok(PlayerVote::PLAYER_VOTE_ABSTAIN));
+        assert_eq!(PlayerVote::PLAYER_VOTE_NEVER.0..=PlayerVote::PLAYER_VOTE_YES.0, -5..=-2);
+
+        // Team votes: a team id (C++ (PlayerVoteTypes)eTeam), barbarians excluded.
+        assert_eq!(MAX_CIV_TEAMS, 35);
+        assert_eq!(decode_player_vote(&Json::Int(0)), Ok(PlayerVote(0)));
         assert_eq!(decode_player_vote(&Json::Int(3)), Ok(PlayerVote(3)));
+        assert_eq!(decode_player_vote(&Json::Int(34)), Ok(PlayerVote(34)));
+        assert_eq!(voted_team(PlayerVote(3)), Some(TeamId(3)));
         assert_eq!(player_vote_name(PlayerVote(3)), None);
-        assert!(decode_player_vote(&Json::from("MAYBE")).is_err());
+
+        // Internal sentinels are vote state, never a choice: -1 would reset the vote, -6 would
+        // skip the extra turn doVoteResults gives a missing vote.
+        let state = "is vote state, not a choice (a vote choice is YES, NO, NEVER, ABSTAIN or (in a team vote) a team id)";
+        assert_eq!(decode_player_vote(&Json::Int(-1)), Err(format!("-1 (NO_PLAYER_VOTE) {state}")));
+        assert_eq!(decode_player_vote(&Json::Int(-6)), Err(format!("-6 (NO_PLAYER_VOTE_CHECKED) {state}")));
+        assert_eq!(decode_player_vote(&Json::Float(-6.0)), Err(format!("-6 (NO_PLAYER_VOTE_CHECKED) {state}")));
+        assert_eq!(decode_player_vote(&Json::from("NO_PLAYER_VOTE")), Err(format!("NO_PLAYER_VOTE {state}")));
+        assert_eq!(
+            decode_player_vote(&Json::from("NO_PLAYER_VOTE_CHECKED")),
+            Err(format!("NO_PLAYER_VOTE_CHECKED {state}"))
+        );
+
+        let range = "out of range: -5..=-2 or a team id in 0..35";
+        assert_eq!(decode_player_vote(&Json::Int(35)), Err(format!("vote choice 35 {range}")));
+        assert_eq!(decode_player_vote(&Json::Int(-7)), Err(format!("vote choice -7 {range}")));
+        assert_eq!(decode_player_vote(&Json::Int(i64::MAX)), Err(format!("vote choice {} {range}", i64::MAX)));
+        assert!(decode_player_vote(&Json::from("MAYBE")).unwrap_err().starts_with("unknown vote choice \"MAYBE\""));
         assert!(decode_player_vote(&Json::from("")).is_err());
-        assert!(decode_player_vote(&Json::Int(-7)).is_err());
-        assert!(decode_player_vote(&Json::Int(256)).is_err());
-        assert!(decode_player_vote(&Json::Bool(true)).is_err());
+        assert!(decode_player_vote(&Json::from("PLAYER_VOTE_")).is_err());
+        assert!(decode_player_vote(&Json::from("yes")).is_err());
+        assert!(decode_player_vote(&Json::from("PLAYER_VOTE_PLAYER_VOTE_YES")).is_err());
+        assert!(decode_player_vote(&Json::Float(0.5)).is_err());
+        assert_eq!(
+            decode_player_vote(&Json::Bool(true)),
+            Err("expected a vote choice name or integer, got a boolean".to_string())
+        );
+    }
+
+    #[test]
+    fn placeholders() {
+        assert!(has_placeholder("%D1: \"Learn how to play Somnium!\""));
+        assert!(has_placeholder("x %s1"));
+        assert!(!has_placeholder("Reduces the cost by 75%, increases crime by 5%"));
+        assert!(!has_placeholder("%"));
+        assert!(!has_placeholder("100%D"));
+        assert!(!has_placeholder(""));
     }
 
     #[test]

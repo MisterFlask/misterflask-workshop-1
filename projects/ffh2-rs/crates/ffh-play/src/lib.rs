@@ -8,7 +8,7 @@
 //! Status: phase P0 (skeleton).
 //! * [`json`]: the JSON value, writer and strict parser used by the protocol and the journal.
 //! * [`names`]: type names <-> indices for every info table and hard-coded C++ enum, so the
-//!   protocol accepts `"UNIT_WARRIOR"` or `44` wherever a type is expected.
+//!   protocol accepts `"UNIT_WARRIOR"` or its index wherever a type is expected.
 
 pub mod json;
 pub mod names;

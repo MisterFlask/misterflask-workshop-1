@@ -209,6 +209,37 @@ fn display_names_and_text() {
     assert_eq!(names::display(d, ActivityType::ACTIVITY_SLEEP), "Sleep");
     assert_eq!(names::display(d, d.t::<BonusType>("BONUS_MANA_FIRE")), "Fire Mana");
     assert_eq!(names::text(d, "TXT_KEY_NO_SUCH_KEY"), "TXT_KEY_NO_SUCH_KEY");
+
+    // The full description: FfH2's English text has no gendered forms, and a ':' is prose.
+    assert_eq!(names::display(d, d.t::<VoteType>("VOTE_LIBERTY")), "Global Civic: Liberty");
+    assert_eq!(
+        names::display(d, d.t::<VoteType>("VOTE_SINGLE_CURRENCY")),
+        "Single Currency: +1 Trade Route ([ICON_TRADE]) in all cities"
+    );
+    // An unfilled placeholder (`%D1: "..."`) falls back to the type name, so the two Somnium
+    // memories stay readable and distinct.
+    let pos = names::display(d, d.t::<MemoryType>("MEMORY_SOMNIUM_POSITIVE"));
+    let neg = names::display(d, d.t::<MemoryType>("MEMORY_SOMNIUM_NEGATIVE"));
+    assert_eq!((pos.as_ref(), neg.as_ref()), ("Somnium Positive", "Somnium Negative"));
+
+    // Over every kind: no display holds a placeholder, and a description with a ':' is shown
+    // whole (the 9 votes, at least).
+    let placeholder = |s: &str| s.as_bytes().windows(3).any(|w| w[0] == b'%' && w[1].is_ascii_alphabetic() && w[2].is_ascii_digit());
+    let mut with_colon = 0;
+    for k in KINDS {
+        for i in 0..(k.count)(d) {
+            let disp = k.display(d, i);
+            assert!(!placeholder(&disp) && disp.trim() == disp, "{}[{i}] displays {disp:?}", k.kind);
+            if let Some(key) = (k.text_key)(d, i) {
+                let t = names::text(d, key);
+                if t.contains(':') && !placeholder(t) {
+                    assert_eq!(disp, t, "{}[{i}]", k.kind);
+                    with_colon += 1;
+                }
+            }
+        }
+    }
+    assert!(with_colon >= 9, "only {with_colon} descriptions with a ':'");
 }
 
 #[test]

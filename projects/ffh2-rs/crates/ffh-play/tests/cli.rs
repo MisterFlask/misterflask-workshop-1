@@ -28,6 +28,14 @@ fn lookup_prints_one_json_line_per_reference() {
 
     let (code, _) = run(&["lookup", "TECH_NECROMANCY"]);
     assert_eq!(code, 0);
+
+    // Display names are the full description (not cut at a ':'), or the type name when the
+    // text has an unfilled placeholder.
+    let (code, out) = run(&["lookup", "VOTE_LIBERTY", "MEMORY_SOMNIUM_POSITIVE", "MEMORY_SOMNIUM_NEGATIVE"]);
+    assert_eq!(code, 0);
+    let display: Vec<String> =
+        out.lines().map(|l| Json::parse(l).unwrap().req::<String>("display").unwrap()).collect();
+    assert_eq!(display, ["Global Civic: Liberty", "Somnium Positive", "Somnium Negative"]);
 }
 
 #[test]
