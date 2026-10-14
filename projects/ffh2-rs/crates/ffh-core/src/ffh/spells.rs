@@ -75,8 +75,8 @@ impl Game {
 }
 
 impl Game {
-    /// Unit type of a unit (C++ `getUnitType()`); field access once the Unit struct lands.
-    fn unit_type_of(&self, _u: UnitId) -> UnitType {
-        todo!("Unit::unit_type field access (skeleton merge)")
+    /// Unit type of a unit (C++ `getUnitType()`).
+    fn unit_type_of(&self, u: UnitId) -> UnitType {
+        self.units[u].unit_type
     }
 }
