@@ -58,6 +58,7 @@ pub fn choose(ai: &Ai, g: &mut Game, c: CityId) {
     if g.cities[c].order_queue.is_empty() {
         // Never leave a city idle: anything it can make.
         if let Some(choice) = fallback(g, c) {
+            crate::trace!(g, p, "{} size {} falls back to {}", g.cities[c].name, g.cities[c].population, choice_name(g, choice));
             push(g, c, choice);
         }
     }
@@ -130,11 +131,19 @@ fn fallback(g: &Game, c: CityId) -> Option<Choice> {
     if let Some((b, _)) = best {
         return Some(Choice::Construct(b));
     }
-    if let Some(u) = best_unit(g, c, Role::Defense) {
-        return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
+    // Nothing left to build: workers (they pay for themselves) before more soldiers.
+    let p = g.cities[c].owner;
+    if count_ai(g, p, UnitAIType::UNITAI_WORKER) < 2 * g.players[p].cities.len() as i32 {
+        if let Some(u) = best_unit(g, c, Role::Worker) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
+        }
     }
+    // Field units (they hunt and campaign) rather than garrisons the treasury cannot carry.
     if let Some(u) = best_unit(g, c, Role::Attack) {
         return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
+    }
+    if let Some(u) = best_unit(g, c, Role::Defense) {
+        return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
     }
     d.processes.keys().find(|&pr| g.city_can_maintain(c, pr, false)).map(Choice::Maintain)
 }

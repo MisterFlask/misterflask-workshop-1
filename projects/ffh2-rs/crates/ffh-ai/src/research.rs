@@ -326,6 +326,13 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
     // Land improvements and resources.
     value += builds_value(g, p, t, ctx);
 
+    // Civics better than what we run now (City States and Aristocracy cut maintenance).
+    for &civic in &unlocks.civics {
+        let Some(opt) = d.civics[civic].civic_option_type else { continue };
+        let current = pl.civics[opt].map_or(0, |c| crate::empire::civic_value(g, p, c));
+        value += ((crate::empire::civic_value(g, p, civic) - current) / 4).clamp(0, 2000);
+    }
+
     // Military: a better defender / attacker, as pressure demands.
     value += military_value(g, p, ctx, &[t]);
     // Casters: the first arcane unit.

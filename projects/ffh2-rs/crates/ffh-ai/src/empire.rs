@@ -1,5 +1,6 @@
 //! Empire-level choices: research queue, civics, state religion, commerce sliders.
 
+use ffh_core::defs::*;
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
@@ -31,7 +32,8 @@ fn disband(g: &mut Game, p: PlayerId) {
         if crate::production::local_threat(g, p, plot, 3) > 0 {
             continue;
         }
-        let keep = 1 + i32::from(g.city_is_capital(c));
+        // As many as production wants there (see production::decide).
+        let keep = if g.city_is_capital(c) || crate::production::barbarians_near(g, p, plot, 4) { 2 } else { 1 };
         let mut garrison: Vec<UnitId> = g.map.plots[plot]
             .units
             .iter()
@@ -68,7 +70,7 @@ fn research(g: &mut Game, p: PlayerId) {
 }
 
 /// Value of running `civic` (AI heuristic).
-fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
+pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     let d = g.d;
     let info = &d.civics[civic];
     let pl = &g.players[p];
@@ -99,7 +101,35 @@ fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     v += info.worker_speed_modifier / 2 + info.military_production_modifier / 2;
     v -= info.war_weariness_modifier / 4;
     let broke = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 50;
-    v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * if broke { 40 } else { 15 };
+    let gold_w = if broke { 40 } else { 15 };
+    v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * gold_w;
+    // City maintenance (roughly half distance, half number of cities).
+    let maintenance = g.player_get_total_maintenance(p);
+    v -= (info.distance_maintenance_modifier + info.num_cities_maintenance_modifier) * maintenance * gold_w / 200;
+    // Happiness from garrisons (FfH God King / BtS Hereditary Rule), worth most to capped cities.
+    let capped = pl.cities.iter().filter(|&&c| g.city_happy_level(c) - g.city_unhappy_level(c, 0) <= 0).count() as i32;
+    if info.happy_per_military_unit != 0 {
+        v += info.happy_per_military_unit * 2 * (40 * capped + 10 * (n - capped));
+    }
+    v -= info.food_consumption_per_population * pop * 20;
+    // Yields on the improvements we work.
+    if info.improvement_yield_changes.iter().any(|y| y.iter().any(|&x| x != 0)) {
+        for &c in &pl.cities {
+            for k in 0..NUM_CITY_PLOTS {
+                if k == CITY_HOME_PLOT || !g.cities[c].working_plot[k] {
+                    continue;
+                }
+                let Some(q) = g.city_index_plot(c, k) else { continue };
+                if let Some(imp) = g.map.plots[q].improvement_type {
+                    let y = info.improvement_yield_changes[imp];
+                    v += y[0] * 20 + y[1] * 15 + y[2] * 9;
+                }
+            }
+        }
+    }
+    for k in 0..CommerceType::NUM {
+        v += info.specialist_extra_commerce[k] * pl.cities.iter().map(|&c| g.cities[c].specialist_population).sum::<i32>() * 8;
+    }
     v
 }
 
