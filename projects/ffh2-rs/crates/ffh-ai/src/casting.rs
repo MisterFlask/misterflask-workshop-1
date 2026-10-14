@@ -11,9 +11,10 @@ use ffh_data::*;
 
 use crate::production::building_value;
 use crate::units::promotion_value;
-use crate::view::{type_attack_power, type_defense_power};
+use crate::view::{type_attack_power, type_defense_power, View};
 
-pub fn end_turn(g: &mut Game, p: PlayerId) {
+pub fn end_turn(g: &mut Game, v: &View) {
+    let p = v.p;
     // C++ AI_setSummonSuicideMode(true): summons created now attack on their own.
     g.players[p].sum_sui_mode = true;
     for u in g.players[p].units.clone() {
@@ -21,20 +22,47 @@ pub fn end_turn(g: &mut Game, p: PlayerId) {
             continue;
         }
         if let Some(spell) = choose_spell(g, u) {
-            g.unit_cast(u, spell);
+            cast_and_act(g, v, u, spell);
         }
         if !g.units.contains(u) || g.units[u].death_delay {
             continue;
         }
         if is_buffer(g, u) {
-            buff_cast(g, u);
+            buff_cast(g, v, u);
         }
         if !g.units.contains(u) || g.units[u].death_delay {
             continue;
         }
-        summon_cast(g, u);
+        summon_cast(g, v, u);
     }
     g.players[p].sum_sui_mode = false;
+}
+
+/// Cast, then let summons created in suicide mode attack at once (C++ `castCreateUnit` runs
+/// their `AI_update` -> `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`, i.e. any target
+/// at odds of 5% or better). Unit ids are never reused, so new units have larger ids.
+fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType) {
+    let p = v.p;
+    let max_before = g.players[p].units.iter().copied().max();
+    g.unit_cast(u, spell);
+    let summons: Vec<UnitId> = g.players[p]
+        .units
+        .iter()
+        .copied()
+        .filter(|&n| max_before.map_or(true, |m| n > m) && g.units[n].ai_suicide_summon)
+        .collect();
+    for n in summons {
+        // Attack while alive with moves left (blitzing summons may attack more than once).
+        for _ in 0..4 {
+            if !g.units.contains(n) || g.unit_moves_left(n) <= 0 {
+                break;
+            }
+            let Some(grp) = g.units[n].group else { break };
+            if !crate::units::attack_adjacent(g, v, grp, n, 50) {
+                break;
+            }
+        }
+    }
 }
 
 fn unit_value(d: &GameData, ut: UnitType) -> i32 {
@@ -174,7 +202,7 @@ fn is_buffer(g: &Game, u: UnitId) -> bool {
 }
 
 /// C++ `CvUnitAI::AI_BuffCast`.
-fn buff_cast(g: &mut Game, u: UnitId) {
+fn buff_cast(g: &mut Game, v: &View, u: UnitId) {
     if g.units[u].has_casted {
         return;
     }
@@ -200,12 +228,12 @@ fn buff_cast(g: &mut Game, u: UnitId) {
         }
     }
     if let Some(s) = best {
-        g.unit_cast(u, s);
+        cast_and_act(g, v, u, s);
     }
 }
 
 /// C++ `CvUnitAI::AI_SummonCast` (only when enemies are within the summon's reach).
-fn summon_cast(g: &mut Game, u: UnitId) {
+fn summon_cast(g: &mut Game, v: &View, u: UnitId) {
     if g.units[u].has_casted {
         return;
     }
@@ -222,6 +250,6 @@ fn summon_cast(g: &mut Game, u: UnitId) {
         }
     }
     if let Some(s) = best {
-        g.unit_cast(u, s);
+        cast_and_act(g, v, u, s);
     }
 }

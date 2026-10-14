@@ -464,7 +464,7 @@ fn garrison_unit(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 
 /// Attack an adjacent (one move) enemy if the odds are at least `min_odds` (of 1000).
 /// Returns true if an attack was made.
-fn attack_adjacent(g: &mut Game, v: &View, grp: GroupId, u: UnitId, min_odds: i32) -> bool {
+pub(crate) fn attack_adjacent(g: &mut Game, v: &View, grp: GroupId, u: UnitId, min_odds: i32) -> bool {
     if attack_power(g, u) == 0 || !g.unit_can_attack(u) || g.unit_moves_left(u) <= 0 {
         return false;
     }

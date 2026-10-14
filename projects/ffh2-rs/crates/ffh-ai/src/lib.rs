@@ -71,7 +71,7 @@ impl Controller for Ai {
             v = view::View::new(g, p);
         }
         units::play(self, g, &mut v);
-        casting::end_turn(g, p);
+        casting::end_turn(g, &v);
         // Spells may have summoned units or used moves: make sure nothing is left ready.
         units::finalize(g, p);
     }
