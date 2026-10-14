@@ -71,6 +71,7 @@ fn disband(g: &mut Game, p: PlayerId) {
     if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) || g.player_calculate_unit_cost(p) == 0 {
         return;
     }
+    if crate::finance::disband(g, p) { return; } // bankruptcy-guard
     let pct = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
     // Field units go first, as soon as research has dropped to a fifth.
     if pct > 10 && pct <= 20 {
