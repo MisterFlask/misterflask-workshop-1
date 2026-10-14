@@ -265,9 +265,12 @@ never with the civ it prepares a war against.
     (turns played when found dead), `era`, `religion` (state religion), `vassal`;
   - size: `cities`, `pop`, `land` (plots owned), `land_scored`, `area_tiles`, `area_civs`
     (other civs on the capital's landmass), `overseas` cities;
-  - score: `score` (FFH2 `calculateScore`) and its raw inputs `score_pop_raw`, `score_land_raw`,
-    `score_tech_raw` (sum of era+1 over known techs), `score_wonders_raw` (5 per limited wonder);
-    Civ4 `power` and `assets`;
+  - score (top-level `score_version: 2`; docs/SCORE.md): `score` (share of the world in basis
+    points, 10000 = all of it) and its shares `score_pop_share`, `score_land_share`,
+    `score_know_share` (parts per million); `legacy_score` (FFH2 `calculateScore`, which was
+    `score` in output without `score_version`) and its raw inputs `score_pop_raw`,
+    `score_land_raw`, `score_tech_raw` (sum of era+1 over known techs), `score_wonders_raw` (5
+    per limited wonder); Civ4 `power` and `assets`;
   - technology: `techs` known, `tech_cost` (beakers of known techs at this game's settings),
     `tech_progress` (beakers into unfinished techs), `research` (beakers/turn), `pct` (research
     slider), `research_commerce`;
@@ -294,8 +297,8 @@ never with the civ it prepares a war against.
     vanished with this player's units on the ruins), `lost_civ`, `lost_barb` (taken or razed by
     them), `lost_other`, `founded`, `cities_lost_rule` (Civ4 `getCitiesLost`), `players_killed`.
   Game-wide (`world_at`): `game_turn`, `alive_civs`, `war_pairs`, `armageddon` (counter %),
-  `land_plots`, `estimate_end_turn`, and the score's `max_*`/`init_*` (population, land, tech,
-  wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
+  `land_plots`, `estimate_end_turn`, and the legacy score's `max_*`/`init_*` (population, land,
+  tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
   Mercurian Gate; the Infernals and empires formed by events get a new team), so aggregate by
   `team`.
   `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare

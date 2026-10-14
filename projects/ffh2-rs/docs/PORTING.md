@@ -157,6 +157,33 @@ and artefacts of C++ container order need not.
   (`AI_DirectDamageCast`, `AI_SummonCast`, `AI_BuffCast`) is omitted; `CvUnit::found`'s
   `isUnitAllowedPermDefense` conversion (CvUnitAI bookkeeping) is omitted.
 
+**Game score (user decision: the score measures relative success)**
+
+- **The score is a share of the world, not FFH2's `calculateScore`** (details, rationale and the
+  held-out evidence: `docs/SCORE.md`). A civ's score is the average of its shares of the world's
+  people (city sizes), land (owned land plots) and knowledge (its team's tech score, era + 1 per
+  tech, counted once per team and split among the members by population), in basis points:
+  alive civs always sum to 10000 and score at least 1 (largest-remainder rounding); dead players
+  and barbarians score 0. A vassal keeps half of its people and land and its master's leader gets
+  the rest (a total-conserving version of `getPopScore`/`getLandScore`'s half credit). Integer
+  only (`Game::world_scores`, `game/turn.rs`). FFH2's formula is kept only as
+  `player_legacy_score` for tools; no rule reads it. The final/victory variants of
+  `getScoreComponent` (Hall of Fame, replays: not ported) were removed. Save format 2.
+  Player-visible effects:
+  - **Time victory** goes to the team with the largest share of the world at max turns (a tie
+    still means no winner). In the 26 time-victory games of the score dataset the winner changed
+    in 10.
+  - **Score victory**: `target_score` is in basis points of the world (5000 = half); 0 = off.
+  - **Ranks** (`updateScore`, ties to the higher index) follow the new score, and with them
+    Ascension's Godslayer target, the switch-civs random event (rank 1 human) and the Cut Losers,
+    High to Low and Flexible Difficulty challenge options.
+  - **Barbarian-trait war** (a human Barbarian-trait civ at 1.5x the rank-1 player's score):
+    identical up to turn 100, somewhat more frequent mid-game (a player leads the runner-up by
+    1.5x in 6/11/11/14% of snapshots at turns 150/200/300/500, against 3/8/6/11% with FFH2's
+    score).
+  - The score is also marked dirty when land plots, vassals or team membership change (FFH2's
+    score only read the lagged land score).
+
 **Small differences**
 
 - **`deleteCity` clears the plots' working-city references** to the dead city (C++ leaves them,

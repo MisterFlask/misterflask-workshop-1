@@ -105,7 +105,7 @@ Turn flow and turn-loop unit checks, alive/turn-active state, identity and names
 | `player_has_ready_unit` | `CvPlayer::hasReadyUnit` | 3381-3397 | 17 | **ported** |
 | `player_has_auto_unit` | `CvPlayer::hasAutoUnit` | 3400-3416 | 17 | **ported** |
 | `player_has_busy_unit` | `CvPlayer::hasBusyUnit` | 3419-3441 | 23 | **ported** |
-| `player_calculate_score` | `CvPlayer::calculateScore` | 3456-3479 | 24 | **ported** |
+| `player_calculate_score` | `CvPlayer::calculateScore` | 3456-3479 | 24 | **replaced** by score v2 (`world_scores`, docs/SCORE.md); FFH2's formula is `player_legacy_score` |
 | `player_get_average_population` | `CvPlayer::getAveragePopulation` | 8482-8490 | 9 | **ported** |
 | `player_change_total_population` | `CvPlayer::changeTotalPopulation` | 8493-8505 | 13 | **ported** |
 | `player_get_real_population` | `CvPlayer::getRealPopulation` | 8508-8525 | 18 | **ported** |
