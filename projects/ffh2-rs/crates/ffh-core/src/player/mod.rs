@@ -835,8 +835,8 @@ fn reset_player(g: &mut Game, p: PlayerId) {
 }
 
 /// C++ `CvPlayerAI::AI_reset(false)`, rules-visible part: this player's AI bookkeeping fields
-/// and the other players' entries about it. (The other CvPlayerAI members are AI-only state,
-/// not kept in `Player`.)
+/// (including the `AI_baseBonusVal` cache) and the other players' entries about it. (The other
+/// CvPlayerAI members are AI-only state, not kept in `Player`.)
 fn ai_reset(g: &mut Game, p: PlayerId) {
     {
         let pl = &mut g.players[p];
@@ -853,6 +853,8 @@ fn ai_reset(g: &mut Game, p: PlayerId) {
             memory.fill(0);
         }
     }
+    // m_aiBonusValue: re-allocated with every entry -1 (the AI_baseBonusVal cache).
+    g.player_ai_update_bonus_value(p);
 
     for other in g.player_ids() {
         let o = &mut g.players[other];
