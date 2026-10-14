@@ -590,7 +590,7 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> Settle
     if area_sites == 0 {
         return No;
     }
-    let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
+    let mut max_settlers = ((ctx.n_cities + 2) / 2).max(1).min(area_sites);
     // C++ AI_chooseProduction: no settlers while in financial trouble.
     if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
         return No;
@@ -611,10 +611,21 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> Settle
     if ctx.n_cities > 1 && ctx.food_surplus.max(0) + ctx.production < 4 {
         return No;
     }
-    match best_unit(g, c, Role::Settler) {
-        Some(u) => SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE)),
-        None => No,
+    let Some(u) = best_unit(g, c, Role::Settler) else { return No };
+    // A slow city leaves settlers to a much faster one on the same landmass (it would hold the
+    // settler slot for ages while the fast city waits).
+    let turns = g.city_production_turns_left_unit(c, u, 0);
+    let fastest = pl
+        .cities
+        .iter()
+        .filter(|&&o| o != c && g.map.plots[g.city_plot(o)].area == area && !g.city_is_occupation(o))
+        .map(|&o| g.city_production_turns_left_unit(o, u, 0))
+        .min()
+        .unwrap_or(i32::MAX);
+    if turns > 15 && turns > fastest.saturating_mul(2).saturating_add(4) {
+        return No;
     }
+    SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE))
 }
 
 /// Projects worth building by default (positive AI weight, not a world-ending or self-harming
