@@ -56,7 +56,6 @@ WANT = {
     "ProjectTypes": "ProjectType",
     "ProcessTypes": "ProcessType",
     "VoteTypes": "VoteType",
-    "PlayerVoteTypes": "PlayerVoteType",
     "DenialTypes": "DenialType",
     "DomainTypes": "DomainType",
     "UnitClassTypes": "UnitClassType",

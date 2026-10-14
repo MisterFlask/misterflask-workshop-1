@@ -69,6 +69,59 @@ Readers (`crates/ffh-data/src/registry.rs`, struct `Rd`) mirror `CvXMLLoadUtilit
 `SetCommerce` -> `rd.commerces("Tag")`; fixed ref lists -> `rd.ref_list_fixed`.
 Replicate C++ defaults exactly (e.g. `iMaxGlobalInstances` defaults to -1).
 
+## Rules engine conventions (`ffh-core`)
+
+`Game` (`game.rs`) owns all state: `d: &'static GameData`, `setup` (CvInitCore),
+`map` (CvMap: plots + areas), `players`/`teams` (`IdxVec<PlayerId|TeamId, _>`, sized
+to this game, barbarian last), slabs `units`/`cities`/`groups`/`plot_groups`/`deals`
+(global, keyed by never-reused ids; per-owner id lists live on `Player`),
+`soren_rand`/`map_rand` (`CvRandom`), `log`, `controllers`, plus CvGame's own members.
+
+C++ -> Rust mapping:
+- Methods of class `CvFoo` become `impl Game` methods named `<foo>_<method>` taking the
+  object id first: `CvUnit::canMoveInto(pPlot, bAttack)` ->
+  `fn unit_can_move_into(&self, u: UnitId, plot: PlotIdx, attack: bool) -> bool`.
+  Prefixes: `unit_` (UnitId), `city_` (CityId), `player_` (PlayerId), `team_` (TeamId),
+  `plot_` (PlotIdx), `group_` (GroupId), `area_` (AreaId), `plot_group_` (PlotGroupId),
+  `deal_` (DealId), `map_` (CvMap), none for CvGame. C++ `const` -> `&self`, else `&mut self`.
+- Trivial getters/setters (`return m_iFoo;`, `m_iFoo = iNewValue;` with no side effects)
+  are NOT methods: use fields (`self.units[u].damage`). Anything with logic, asserts that
+  clamp, or side effects IS a method (`change_damage` that kills, `set_owner`, ...).
+- Struct fields: `m_iFooBar` -> `foo_bar: i32`; `m_bFoo` -> `foo: bool`; enum members ->
+  `Option<XType>` (or `XType` if never NONE); `m_paiFoo` dense by X -> `IdxVec<XType, i32>`;
+  per-player/per-team arrays -> `IdxVec<PlayerId|TeamId, T>` sized `num_players()/num_teams()`;
+  `IDInfo` -> `Option<UnitId|CityId>`; `CLinkList<IDInfo>` -> `Vec<UnitId>` (ordered);
+  coordinates stay `x: i32, y: i32` where C++ stores them.
+- Pointers: `CvPlot*` -> `PlotIdx`/`Option<PlotIdx>`, `CvUnit*` -> `UnitId`/`Option<UnitId>`,
+  `CvCity*` -> `CityId`/`Option<CityId>`, `CvArea*` -> `AreaId`, `CvSelectionGroup*` -> `GroupId`.
+- Globals: `GET_PLAYER(e)` -> `self.players[e]`; `GET_TEAM(t)` -> `self.teams[t]`;
+  `GC.getMapINLINE().plotINLINE(x, y)` -> `self.map.plot_xy(x, y)` (Option, wraps);
+  `GC.getXInfo(e)` -> `self.d.xs[e]`; `GC.getDefineINT("X")` -> `self.d.defines.x`;
+  `getSorenRandNum(n, "s")` -> `self.soren_rand_num(n, "s")`; `MAX_PLAYERS` loops ->
+  `self.player_ids()`; `BARBARIAN_PLAYER` -> `self.barbarian_player()`.
+- Iterating a player's units/cities/groups while mutating: clone the id list first
+  (`for u in self.players[p].units.clone()`), and re-check `self.units.contains(u)`
+  if the loop body can destroy units.
+- AI calls inside rules code:
+  * decisions (`AI_conquerCity`, `AI_chooseResearch`, `AI_chooseEvent`, ...) ->
+    `self.controller(p).<method>(self, ..)` (see `controller.rs`; add a method with a
+    sensible default if one is missing);
+  * AI bookkeeping state read/written by rules (memory counts, war plans, war success,
+    contact counters, unit AI type, group flag, mission AI) -> plain fields (e.g.
+    `Unit::ai_type`, `Team::ai_war_plan`, `Player::ai_memory_count`); keep C++ semantics;
+  * citizen assignment (`AI_assignWorkingPlots`, `AI_addBestCitizen`, `AI_removeWorstCitizen`)
+    -> `self.city_assign_working_plots(c)` etc. in `governor.rs` (new code);
+  * other AI (`AI_*Value`, `AI_update`, `AI_doTurn`, auto-cast...) -> omit, leaving a
+    `// AI: <call>` comment where behaviour depended on it.
+- Python callbacks (`CvEventReporter::*`, `gDLL->getPythonIFace()->callFunction(..)`,
+  `PyResult`/`PyRequirement` spells, CvGameUtils hooks) -> functions in `crate::ffh::*`
+  (ports of the FFH2 Python). Until ported, call a stub there rather than dropping the call.
+- UI/graphics/sound/network (`gDLL->getInterfaceIFace()`, entities, flags, popups for
+  humans) -> omit. Messages may go to `self.log.msg(turn, Some(p), || text)`.
+
+Every `todo!()` left in core code means "not yet ported"; keep the C++ function name in
+the message (`todo!("CvUnit::airStrike")`) so remaining work is greppable.
+
 ## Workflow
 
 - Work in small, compiling steps; commit with clear messages.
