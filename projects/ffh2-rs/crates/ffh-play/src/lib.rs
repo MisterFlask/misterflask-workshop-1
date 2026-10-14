@@ -16,6 +16,7 @@
 //! * [`command`], [`selection`]: commands as ports of the C++ human input paths.
 //! * [`decision`]: blocking decisions and the pending items of a control point.
 //! * [`guard`]: [`QueryGuard`], which keeps reads of `&Game` free of side effects.
+//! * [`view`]: what the human may see (P1: the fog rules of the game log).
 //! * [`setup`], [`save`], [`journal`], [`bot`] (a scripted human for tests).
 
 pub mod bot;
@@ -30,6 +31,7 @@ pub mod save;
 pub mod selection;
 pub mod session;
 pub mod setup;
+pub mod view;
 
 pub use command::{CmdErr, CmdOk, Command, Confirm};
 pub use decision::{Decision, DecisionKind, Pending};

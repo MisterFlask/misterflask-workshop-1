@@ -139,6 +139,9 @@ These hold for every request and reply of the protocol (design §4.1):
 * Automation and FfH AI-controlled units idle (ffh-ai has no `update_automated_group` yet); the
   automate commands are refused, and such groups do not count as ready.
 * Civ4 ends your turn by itself when nothing is left to move; here you always end it.
+* Messages Civ4 sends only to some players (wars between others, captured or razed cities) are
+  recognized by their text and shown under Civ4's condition (you met both teams, you revealed
+  the city); event world news are not shown yet, as their sender is not recorded.
 * Human-only popups without a rules hook (Kuriotates settlements, the raze popup's gift button,
   telling disband from raze): see design §5.2 and P7.
 

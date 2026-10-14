@@ -20,6 +20,7 @@ use crate::human::{Answerer, HumanController, SessionShared, Stats};
 use crate::journal::{self, Cursor, Journal, JournalAnswerer, Line, Stamp};
 use crate::save::{self, SavePaths, Sidecar};
 use crate::setup::{self, NewGame, HUMAN_SLOT};
+use crate::view::fog::LogFog;
 
 /// Who has control.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -103,6 +104,8 @@ pub struct Session {
     messages: Vec<LogEntry>,
     /// Messages ever added to `messages` (the store drops the oldest beyond its size).
     messages_total: usize,
+    /// Which log entries the human receives (design §4.4).
+    fog: LogFog,
     opts: SessionOptions,
     /// The AutoMoves rule fired in this control episode (since the human's last applied
     /// command); saved in the sidecar, so a resumed session does not send it again.
@@ -120,6 +123,7 @@ impl Session {
         let controller: ControllerRef = Arc::new(HumanController::new(advisor.clone(), answerer, shared.clone()));
         setup::attach_controllers(&mut g, human, ffh_ai::ai_controller(), controller);
         setup::configure_human(&mut g, human);
+        let fog = LogFog::new(&g, human);
         Session {
             g,
             human,
@@ -127,6 +131,7 @@ impl Session {
             advisor,
             messages: Vec::new(),
             messages_total: 0,
+            fog,
             opts,
             auto_moves_tried: false,
             last_autosave: None,
@@ -366,12 +371,17 @@ impl Session {
         }
     }
 
-    /// Moves the game log into the message store (the human's messages only).
+    /// Moves the game log into the message store: the entries C++ would send to the human
+    /// ([`LogFog`]).
     fn drain_log(&mut self) {
         let h = self.human;
         let entries = std::mem::take(&mut self.g.log.entries);
         let before = self.messages.len();
-        self.messages.extend(entries.into_iter().filter(|e| visible_to(e, h)));
+        if !entries.is_empty() {
+            let g = QueryGuard::new(&self.g);
+            self.messages.extend(entries.into_iter().filter_map(|e| self.fog.filter(&g, h, e)));
+        }
+        self.fog.update(&self.g, h);
         self.messages_total += self.messages.len() - before;
         if self.messages.len() > MESSAGES_KEPT {
             let cut = self.messages.len() - MESSAGES_KEPT;
@@ -471,11 +481,6 @@ impl Session {
         let (bytes, sidecar) = self.save_bytes()?;
         save::write_bundle(dir, name, &bytes, &sidecar).map_err(|e| PlayError::Io(e.to_string()))
     }
-}
-
-/// Is entry `e` for the human `h` (its subject is `h`, or nobody)?
-pub fn visible_to(e: &LogEntry, h: PlayerId) -> bool {
-    e.player.is_none() || e.player == Some(h.0)
 }
 
 /// A human group is busy (a mission step under way, or combat).

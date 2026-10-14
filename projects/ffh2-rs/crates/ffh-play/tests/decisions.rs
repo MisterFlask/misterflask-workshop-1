@@ -13,6 +13,8 @@ use ffh_play::command::{CmdErr, CmdOk, Command, Confirm};
 use ffh_play::decision::{Decision, DecisionKind};
 use ffh_play::human::{AdvisorAnswerer, Answer, Answerer, FnAnswerer, HumanController, SessionShared};
 use ffh_play::journal::Journal;
+use ffh_core::log::LogEntry;
+use ffh_play::view::fog::LogFog;
 use ffh_play::{NewGame, Phase, Session, SessionOptions, Stop};
 
 /// What the answerer saw: (kind, the decision, a probe of the game at that moment).
@@ -112,8 +114,10 @@ fn capture_asks_keep_or_raze_inside_the_command() {
         Ok(CmdOk::Applied { log, .. }) => log,
         other => panic!("{other:?}"),
     };
-    // The reply carries the human's messages the command produced.
+    // The reply carries the human's messages the command produced, including the untagged
+    // capture message (C++ sends it to the players who revealed the city: we did).
     assert!(log.iter().any(|e| e.text.contains("captured")), "{log:?}");
+    assert!(log.iter().any(|e| e.player.is_none() && e.text.contains(") was captured by the ")), "{log:?}");
     assert!(log.iter().all(|e| e.player.is_none() || e.player == Some(h.0)));
     let asked = asked.lock().unwrap();
     assert_eq!(asked.len(), 1, "one decision, asked during the command");
@@ -294,6 +298,86 @@ fn event_popups_are_checked_once_when_shown() {
     let event = s.pending().events.into_iter().find(|e| e.triggered == id).unwrap().options.into_iter().find(|o| o.enabled).expect("an option is doable again").event;
     ok(&mut s, Command::Event { triggered: id, event });
     assert!(!s.shared.events_of(h).contains(&id));
+}
+
+/// The game log reaches the human as C++ `addMessage` would: untagged entries only under their
+/// C++ condition (war and peace: both teams met; captured / razed / liberated: the city
+/// revealed; circumnavigation: anonymous unless met), unknown untagged entries held back (P1
+/// review: every untagged entry used to reach the human).
+#[test]
+fn the_log_keeps_the_fog() {
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, 22);
+    ng.opponents = 2;
+    ng.world = d.t("WORLDSIZE_DUEL");
+    let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), SessionOptions::default()).unwrap();
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    let h = s.human;
+    while s.g.cities.iter().all(|(_, c)| c.owner == h) {
+        ok(&mut s, Command::EndTurn { force: true });
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    }
+    let my = s.g.players[h].team;
+    let others: Vec<TeamId> = s.g.civ_team_ids().filter(|&t| t != my && s.g.team_is_alive(t)).collect();
+    let (a, b) = (others[0], others[1]);
+    for t in [a, b] {
+        s.g.teams[my].has_met[t] = false;
+        s.g.teams[t].has_met[my] = false;
+    }
+    let reply = |s: &mut Session| match s.execute(&Command::SetOption { option: PlayerOptionType::PLAYEROPTION_QUICK_MOVES, value: true }) {
+        Ok(CmdOk::Applied { log, .. }) => log,
+        other => panic!("{other:?}"),
+    };
+    // A war between two civilizations we have not met.
+    s.g.team_meet(a, b, false);
+    s.g.team_declare_war(a, b, false, None);
+    assert!(s.g.log.entries.iter().any(|e| e.text.contains("declared war")), "logged");
+    reply(&mut s);
+    assert!(s.messages().iter().all(|e| !e.text.contains("declared war")), "{:?}", s.messages());
+    // Met both: their peace is news.
+    s.g.team_meet(my, a, false);
+    s.g.team_meet(my, b, false);
+    s.g.team_make_peace(a, b, true);
+    // (Logged before the command, so drained into the store, not into its reply.)
+    reply(&mut s);
+    let peace = format!("Team {a} made peace with team {b}");
+    assert!(s.messages().iter().any(|e| e.player.is_none() && e.text == peace), "{:?}", s.messages());
+
+    // The filter itself, on the formats of the ffh-core log sites.
+    let fog = LogFog::new(&s.g, h);
+    let untagged = |text: String| LogEntry { turn: 1, player: None, text };
+    let shown = |text: String| fog.filter(&s.g, h, untagged(text)).map(|e| e.text);
+    let (c, city) = s.g.cities.iter().find(|(_, c)| c.owner != h).map(|(c, city)| (c, d.text.name(&city.name).to_string())).unwrap();
+    let revealed = s.g.cities[c].revealed[my];
+    for text in [format!("{city} (Someone) was captured by the Elves"), format!("{city} was razed by the Elves"), format!("{city} liberated: player 1 -> player 2")] {
+        assert_eq!(shown(text.clone()).is_some(), revealed, "{text}");
+    }
+    s.g.cities[c].revealed[my] = !revealed;
+    let fog = LogFog::new(&s.g, h);
+    assert_eq!(fog.filter(&s.g, h, untagged(format!("{city} was razed by the Elves"))).is_some(), !revealed);
+    // A city revealed at the previous drain and gone since (razed: here renamed) still counts.
+    s.g.cities[c].revealed[my] = true;
+    let mut fog = LogFog::new(&s.g, h);
+    let name = std::mem::replace(&mut s.g.cities[c].name, "Nowhere Else".into());
+    assert!(fog.filter(&s.g, h, untagged(format!("{city} was razed by the Elves"))).is_some());
+    assert!(LogFog::new(&s.g, h).filter(&s.g, h, untagged(format!("{city} was razed by the Elves"))).is_none());
+    fog.update(&s.g, h);
+    assert!(fog.filter(&s.g, h, untagged(format!("{city} was razed by the Elves"))).is_none(), "forgotten at the next drain");
+    s.g.cities[c].name = name;
+    s.g.cities[c].revealed[my] = revealed;
+    let fog = LogFog::new(&s.g, h);
+    let shown = |text: String| fog.filter(&s.g, h, untagged(text)).map(|e| e.text);
+    // Circumnavigation: anonymous for a team we have not met.
+    let unmet = s.g.civ_team_ids().find(|&t| t != my && !s.g.teams[my].has_met[t] && s.g.team_is_alive(t));
+    if let Some(t) = unmet {
+        assert_eq!(shown(format!("Team {t} has circumnavigated the globe (+1 sea moves)")).as_deref(), Some("An unknown civilization has circumnavigated the globe!"));
+    }
+    assert_eq!(shown(format!("Team {a} has circumnavigated the globe (+1 sea moves)")), Some(format!("Team {a} has circumnavigated the globe (+1 sea moves)")));
+    // Untagged text nobody recognizes (event world news) is held back; tagged entries go to
+    // their player only.
+    assert_eq!(shown("The Elves have discovered a strange artifact".into()), None);
+    assert!(fog.filter(&s.g, h, LogEntry { turn: 1, player: Some(h.0), text: "mine".into() }).is_some());
+    assert!(fog.filter(&s.g, h, LogEntry { turn: 1, player: Some(h.0 + 1), text: "theirs".into() }).is_none());
 }
 
 /// Votes: unanswered, the vote gets C++'s extra turn and is then counted as abstain; answered,
