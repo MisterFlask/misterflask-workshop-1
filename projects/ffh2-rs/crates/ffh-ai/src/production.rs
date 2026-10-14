@@ -9,6 +9,7 @@ use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
 
+use crate::expansion::SettlerPlan;
 use crate::sites;
 use crate::view::type_attack_power;
 use crate::Ai;
@@ -457,7 +458,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     }
 
     // 3. Settlers while good sites remain in reach.
-    let settler = settler_choice(ai, g, c, &ctx, ctx.threat == 0);
+    let settler = crate::expansion::settler_choice(ai, g, c, ctx.p, ctx.threat, ctx.defense); // early-expansion
     if let SettlerPlan::Now(choice) = settler {
         return Some(choice);
     }
@@ -642,88 +643,6 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
     }
     best_process.map(|(pr, _)| Choice::Maintain(pr))
-}
-
-#[derive(PartialEq, Eq)]
-enum SettlerPlan {
-    No,
-    /// Build one now.
-    Now(Choice),
-    /// Once the city has grown.
-    Soon,
-}
-
-/// Settlers: while sites remain in this city's area, a bounded number at a time, from cities
-/// big enough to pay for them (food goes into settler production, so growth stops).
-fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> SettlerPlan {
-    use SettlerPlan::No;
-    let p = ctx.p;
-    let pl = &g.players[p];
-    if !safe || g.city_is_occupation(c) {
-        return No;
-    }
-    let settlers = count_ai(g, p, UnitAIType::UNITAI_SETTLE);
-    let max_cities = if pl.max_cities > 0 { pl.max_cities } else { i32::MAX };
-    if ctx.n_cities + settlers >= max_cities {
-        return No;
-    }
-    let area = g.map.plots[g.city_plot(c)].area;
-    let sites = sites::sites(ai, g, p);
-    let area_sites = sites.iter().filter(|(q, _)| g.map.plots[*q].area == area).count() as i32;
-    if area_sites == 0 {
-        // Overseas: one settler at a time, from a coastal city that has (or can build) a ship.
-        let overseas = sites::overseas_sites(ai, g, p);
-        if overseas.is_empty() || settlers > 0 || !crate::naval::is_coastal_city(g, c) || ctx.pop < 3 {
-            return No;
-        }
-        if crate::naval::num_transports(g, p) == 0 && best_unit(g, c, Role::Transport).is_none() {
-            return No;
-        }
-        if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
-            return No;
-        }
-        return match best_unit(g, c, Role::Settler) {
-            Some(u) => SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE)),
-            None => No,
-        };
-    }
-    let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
-    // C++ AI_chooseProduction: no settlers while in financial trouble.
-    if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
-        return No;
-    }
-    if ctx.at_war {
-        max_settlers = (max_settlers + 1) / 2;
-    }
-    if settlers >= max_settlers {
-        return No;
-    }
-    // Size: grow first while growth is cheap and happy (a settler eats the food surplus as
-    // production, so a size-2 city takes 30+ turns for one, a size-4 city half that); a city at
-    // its happy cap gains nothing from growing, so it builds settlers at once.
-    let min_pop = if ctx.happy_room <= 0 { 1 } else if ctx.food_surplus >= 3 { 4 } else { 3 };
-    if ctx.pop < min_pop {
-        return if settlers == 0 && ctx.n_cities <= 3 { SettlerPlan::Soon } else { No };
-    }
-    // A city with almost no output would take forever; let better cities build them.
-    if ctx.n_cities > 1 && ctx.food_surplus.max(0) + ctx.production < 4 {
-        return No;
-    }
-    let Some(u) = best_unit(g, c, Role::Settler) else { return No };
-    // A slow city leaves settlers to a much faster one on the same landmass (it would hold the
-    // settler slot for ages while the fast city waits).
-    let turns = g.city_production_turns_left_unit(c, u, 0);
-    let fastest = pl
-        .cities
-        .iter()
-        .filter(|&&o| o != c && g.map.plots[g.city_plot(o)].area == area && !g.city_is_occupation(o))
-        .map(|&o| g.city_production_turns_left_unit(o, u, 0))
-        .min()
-        .unwrap_or(i32::MAX);
-    if turns > 15 && turns > fastest.saturating_mul(2).saturating_add(4) {
-        return No;
-    }
-    SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE))
 }
 
 /// Projects worth building by default (positive AI weight, not a world-ending or self-harming

@@ -9,7 +9,6 @@ use ffh_data::*;
 
 use crate::production::garrison;
 use crate::reach::Reached;
-use crate::sites;
 use crate::view::{attack_power, View};
 use crate::Ai;
 
@@ -182,7 +181,7 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
             continue;
         }
         match role {
-            Role::Settler => settler(ai, g, v, grp, head),
+            Role::Settler => crate::expansion::settler(ai, g, v, grp, head),
             Role::Worker => crate::workers::worker(g, v, grp, head, false),
             Role::SeaWorker => crate::workers::worker(g, v, grp, head, true),
             Role::Garrison => garrison_unit(g, v, grp, head),
@@ -293,135 +292,6 @@ fn best_promotion(g: &Game, u: UnitId) -> Option<PromotionType> {
         }
     }
     best.map(|(p, _)| p)
-}
-
-// ----------------------------------------------------------------------------
-// Settlers
-// ----------------------------------------------------------------------------
-
-fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
-    let p = v.p;
-    let here = g.unit_plot(u);
-    let first_city = g.players[p].cities.is_empty();
-    let candidates = sites::sites(ai, g, p);
-    let reach = v.flood.run(g, u, if first_city { 3 } else { 10 }, false);
-    let mut best: Option<(PlotIdx, i64)> = None;
-    for &(site, value) in &candidates {
-        if v.is_claimed(site) {
-            continue;
-        }
-        let Some(r) = reach.iter().find(|r| r.plot == site) else { continue };
-        // Danger at the site: only an escorted settler goes (or founds where it stands).
-        if v.danger_at(site) > 0 && !first_city && site != here && !escorted(g, grp) {
-            continue;
-        }
-        // Founding on the first turn matters more than a slightly better plot.
-        let score = value as i64 * 10 / (r.turns as i64 + if first_city { 1 } else { 3 });
-        if best.map_or(true, |(_, s)| score > s) {
-            best = Some((site, score));
-        }
-    }
-    // The first city: found in place unless a clearly better site is a step away.
-    if first_city && g.unit_can_found(u, here, false) {
-        let (x, y) = g.map.xy(here);
-        let here_value = g.player_ai_found_value(p, x, y, -1, false, &[]) as i64;
-        let better = best.is_some_and(|(site, _)| {
-            let r = reach.iter().find(|r| r.plot == site).map_or(9, |r| r.turns);
-            let (sx, sy) = g.map.xy(site);
-            r == 0 && (g.player_ai_found_value(p, sx, sy, -1, false, &[]) as i64) * 100 > here_value * 125
-        });
-        if !better {
-            best = Some((here, 0));
-        }
-    }
-    if best.is_none() && !first_city && crate::naval::settler_overseas(ai, g, v, grp, u) {
-        return;
-    }
-    let Some((site, _)) = best.or_else(|| {
-        // No scored site: the first settler founds where it stands if it can.
-        if first_city && g.unit_can_found(u, here, false) { Some((here, 0)) } else { None }
-    }) else {
-        // Nowhere to go: wait in a city.
-        hold(g, grp);
-        return;
-    };
-    v.claimed.push(site);
-    crate::trace!(g, p, "settler {:?} at {:?} -> site {:?} (danger here {}, site {})", u, g.map.xy(here), g.map.xy(site), v.danger_at(here), v.danger_at(site));
-    if site != here && !first_city && !escorted(g, grp) {
-        // Leaving our lands without an escort gets settlers eaten by animals and barbarians:
-        // take a spare fighter from this plot, else wait for one (a while) in a city.
-        if let Some(e) = find_escort(g, v, here, grp) {
-            crate::trace!(g, p, "settler {:?} takes escort {:?}", u, e);
-            g.unit_join_group(e, Some(grp), true);
-        } else if g.map.plots[here].plot_city.is_some() && g.game_turn() - g.units[u].game_turn_created < 8 {
-            v.escort_requests.push(here);
-            hold_one_turn(g, grp);
-            return;
-        }
-    }
-    if site == here {
-        if can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
-            push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, false);
-        } else {
-            skip(g, grp);
-        }
-        return;
-    }
-    move_to(g, grp, site, MOVE_SAFE_TERRITORY);
-    if alive(g, grp) && g.group_ready_to_move(grp, false) && g.unit_moves_left(u) > 0 && (escorted(g, grp) || v.danger_at(site) == 0) {
-        // No safe path (it crosses a neighbour's or unrevealed land): the direct way.
-        move_to(g, grp, site, 0);
-    }
-    if alive(g, grp) && g.group_ready_to_move(grp, false) {
-        // Path failed (or no moves left): try again next turn.
-        skip(g, grp);
-    } else if alive(g, grp) && g.unit_plot(u) == site && can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
-        push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, true);
-    }
-}
-
-/// Does the group hold a unit that can fight?
-fn escorted(g: &Game, grp: GroupId) -> bool {
-    g.groups[grp].units.iter().any(|&o| attack_power(g, o) > 0 || crate::view::defense_power(g, o) > 0 && !g.d.units[g.units[o].unit_type].found)
-}
-
-/// A fighter on `plot` that can leave: not the last garrison of a city there.
-fn find_escort(g: &Game, v: &View, plot: PlotIdx, grp: GroupId) -> Option<UnitId> {
-    let p = v.p;
-    let city = g.map.plots[plot].plot_city.filter(|&c| g.cities[c].owner == p);
-    let garrison_n = city.map_or(0, |_| garrison(g, p, plot).0);
-    // The capital keeps two defenders, other cities one.
-    let keep = if city.is_some_and(|c| g.city_is_capital(c)) { 2 } else { 1 };
-    let mut best: Option<(UnitId, i32)> = None;
-    for &o in &g.map.plots[plot].units {
-        let unit = &g.units[o];
-        if unit.owner != p || unit.group == Some(grp) || g.unit_get_domain_type(o) != DomainType::DOMAIN_LAND {
-            continue;
-        }
-        let info = &g.d.units[unit.unit_type];
-        if info.combat <= 0 || info.found || g.unit_moves_left(o) <= 0 {
-            continue;
-        }
-        let is_garrison = matches!(unit.ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER) | Some(UnitAIType::UNITAI_CITY_SPECIAL));
-        let ok = match unit.ai_type {
-            Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_COUNTER) | Some(UnitAIType::UNITAI_RESERVE) | Some(UnitAIType::UNITAI_ATTACK_CITY) => true,
-            _ => is_garrison && garrison_n > keep,
-        };
-        if !ok {
-            continue;
-        }
-        // Field units before garrison units.
-        let d = crate::view::defense_power(g, o) + if is_garrison { 0 } else { 100_000 };
-        if best.map_or(true, |(_, b)| d > b) {
-            best = Some((o, d));
-        }
-    }
-    best.map(|(o, _)| o)
-}
-
-/// End this group's turn without fortifying (it acts again next turn).
-fn hold_one_turn(g: &mut Game, grp: GroupId) {
-    skip(g, grp);
 }
 
 // ----------------------------------------------------------------------------
