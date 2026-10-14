@@ -690,7 +690,7 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
 }
 
 /// Defense strength of a unit type in a city (FfH units have a separate defense value).
-fn type_city_defense(info: &UnitInfo) -> i64 {
+pub(crate) fn type_city_defense(info: &UnitInfo) -> i64 {
     let dmg: i32 = info.damage_type_combat.iter().sum();
     let base = if info.combat_defense > 0 { info.combat_defense } else { info.combat };
     let mut v = ((base + dmg) * 100) as i64 * (100 + info.city_defense_modifier.max(-50)) as i64 / 100;

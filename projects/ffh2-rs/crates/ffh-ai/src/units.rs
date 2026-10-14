@@ -106,6 +106,20 @@ fn role_of(g: &Game, u: UnitId) -> Role {
 /// Decide for every group of `v.p` that needs orders, in role priority order.
 pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
     let p = v.p;
+    // Promotions and upgrades for units that will not get orders this turn (fortified
+    // garrisons, sentries); the others get theirs before acting.
+    if !v.barbarian {
+        for u in g.players[p].units.clone() {
+            if !g.units.contains(u) {
+                continue;
+            }
+            let Some(grp) = g.units[u].group else { continue };
+            if g.group_ready_to_move(grp, false) {
+                continue;
+            }
+            upkeep(g, u);
+        }
+    }
     let mut order: Vec<(Role, GroupId)> = Vec::new();
     for &grp in &g.players[p].groups {
         if let Some(head) = g.group_get_head_unit(grp) {
@@ -201,13 +215,19 @@ fn upkeep(g: &mut Game, u: UnitId) {
         if !g.unit_can_upgrade(u, Some(target), false) {
             continue;
         }
-        let power = g.d.units[target].combat + g.d.units[target].combat_defense;
+        let defender = matches!(g.units[u].ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER));
+        let power = if defender { crate::production::type_city_defense(&g.d.units[target]) as i32 } else { crate::view::type_attack_power(g.d, target) };
         if best.map_or(true, |(_, b)| power > b) {
             best = Some((target, power));
         }
     }
     if let Some((target, _)) = best {
-        if g.players[p].gold > 100 {
+        // Keep a reserve for a few turns of deficit; defenders first.
+        let reserve = 20 + 3 * g.players[p].cities.len() as i32;
+        let defender = matches!(g.units[u].ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER));
+        let price = g.unit_upgrade_price(u, target);
+        if g.players[p].gold - price >= if defender { reserve } else { reserve * 2 } {
+            crate::trace!(g, p, "upgrade {} -> {} ({} gold)", g.d.units[ut].base.type_, g.d.units[target].base.type_, price);
             g.unit_upgrade(u, Some(target));
             // C++ AI_upgrade: upgrade(eBestUnit); doDelayedDeath(); -- the old unit goes now.
             if g.units.contains(u) {
