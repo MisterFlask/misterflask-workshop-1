@@ -39,7 +39,7 @@ use std::collections::BTreeMap;
 use crate::defs::INVALID_PLOT_COORD;
 use crate::game::Game;
 use crate::ids::*;
-use crate::setup::PlayerSetup;
+use crate::setup::{PlayerSetup, SlotStatus};
 use crate::structs::*;
 use ffh_data::*;
 
@@ -655,9 +655,240 @@ impl Game {
     /// alignment, global counter limit, max anarchy, extra yield thresholds, initial
     /// civics, event state and the settler extra cost; then AI_init (peace weight,
     /// civic/religion timers).
-    #[allow(unused_variables)]
     pub fn player_init(&mut self, p: PlayerId) {
-        todo!("CvPlayer::init")
+        let d = self.d;
+
+        //--------------------------------
+        // Init saved data: reset(eID), which ends with AI_reset(false).
+        reset_player(self, p);
+
+        //--------------------------------
+        // Init containers: `Player::new` created them empty.
+        // Init non-saved data: setupGraphical() is graphics only.
+
+        //--------------------------------
+        // Init other game data
+        let team = self.players[p].team;
+        self.teams[team].num_members += 1;
+
+        let slot_status = self.setup.players[p.idx()].slot_status;
+        if slot_status == SlotStatus::Taken || slot_status == SlotStatus::Computer {
+            self.player_set_alive(p, true);
+
+            // Dead code in FfH (CvGame::isOption locks RANDOM_PERSONALITIES off); kept as in C++.
+            if self.is_option(GameOptionType::GAMEOPTION_RANDOM_PERSONALITIES) {
+                if !self.player_is_barbarian(p) && !self.player_is_minor_civ(p) {
+                    let mut best_value = 0;
+                    let mut best_personality: Option<LeaderHeadType> = None;
+
+                    for leader in d.leader_heads.keys() {
+                        if leader.i() != d.defines.barbarian_leader {
+                            // XXX minor civ???
+                            let mut value = 1 + self.soren_rand_num(10000, "Choosing Personality");
+
+                            for other in self.civ_player_ids() {
+                                if self.players[other].alive && self.players[other].personality_type == Some(leader) {
+                                    value /= 2;
+                                }
+                            }
+
+                            if value > best_value {
+                                best_value = value;
+                                best_personality = Some(leader);
+                            }
+                        }
+                    }
+
+                    if best_personality.is_some() {
+                        self.players[p].personality_type = best_personality;
+                    }
+                }
+            }
+
+            // changeBaseFreeUnits & co: plain changes (their only side effects are UI dirty bits).
+            let df = &d.defines;
+            self.players[p].base_free_units += df.initial_base_free_units;
+            self.players[p].base_free_military_units += df.initial_base_free_military_units;
+            self.players[p].free_units_population_percent += df.initial_free_units_population_percent;
+            self.players[p].free_military_units_population_percent += df.initial_free_military_units_population_percent;
+            self.players[p].gold_per_unit += df.initial_gold_per_unit;
+            self.player_change_trade_routes(p, df.initial_trade_routes);
+            self.player_change_state_religion_happiness(p, df.initial_state_religion_happiness);
+            self.player_change_non_state_religion_happiness(p, df.initial_non_state_religion_happiness);
+
+            for y in 0..YieldType::NUM {
+                let y = YieldType::from_usize(y);
+                self.player_change_trade_yield_modifier(p, y, d.yields[y].trade_modifier);
+            }
+
+            for c in 0..CommerceType::NUM {
+                let c = CommerceType::from_usize(c);
+                self.player_set_commerce_percent(p, c, d.commerces[c].initial_percent);
+            }
+
+            // C++ indexes the info arrays with these unchecked; a taken/computer slot always
+            // has a leader and a civilization.
+            let leader = self.player_get_leader_type(p).expect("CvPlayer::init: taken/computer slot without a leader");
+            let civ = self
+                .player_get_civilization_type(p)
+                .expect("CvPlayer::init: taken/computer slot without a civilization");
+
+            // FfH: Modified by Kael (the BtS trait effects moved into setHasTrait)
+            for t in d.traits.keys() {
+                if d.leader_heads[leader].has_trait[t] {
+                    self.player_set_has_trait(p, t, true);
+                }
+            }
+
+            // FfH: Added by Kael 08/14/2007
+            if let Some(civ_trait) = d.civilizations[civ].civ_trait {
+                self.player_set_has_trait(p, civ_trait, true);
+            }
+            // setAlignment: plain store (+ UI dirty bit)
+            self.players[p].alignment = d.leader_heads[leader].alignment;
+            // CvGame::changeGlobalCounterLimit
+            self.global_counter_limit += df.global_counter_limit_per_player;
+            // FfH: End Add
+
+            self.player_update_max_anarchy_turns(p);
+
+            for y in 0..YieldType::NUM {
+                self.player_update_extra_yield_threshold(p, YieldType::from_usize(y));
+            }
+
+            for o in d.civic_options.keys() {
+                self.player_set_civics(p, o, d.civilizations[civ].civilization_initial_civics[o]);
+            }
+
+            for e in d.events.keys() {
+                self.player_reset_event_occured(p, e, false);
+            }
+
+            for t in d.event_triggers.keys() {
+                self.player_reset_trigger_fired(p, t);
+            }
+
+            for uc in d.unit_classes.keys() {
+                if let Some(unit) = d.civ_unit(civ, uc) {
+                    if d.units[unit].found {
+                        let cost = self.player_get_new_city_production_value(p);
+                        self.player_set_unit_extra_cost(p, uc, cost);
+                    }
+                }
+            }
+        }
+
+        ai_init(self, p);
+    }
+}
+
+/// C++ `CvPlayer::reset(eID)` for a game slot (`bConstructorCall = false`), including `uninit`
+/// and the trailing `CvPlayerAI::AI_reset(false)`.
+///
+/// `Player::new` holds the per-member defaults; this adds what `reset` does outside the
+/// player itself: the C++ `removeAll()` of the plot group / city / unit / selection group
+/// lists deletes those objects (here: from the game slabs; the lists are empty for every slot
+/// C++ (re)initializes in practice), and other players' entries about this player are cleared.
+fn reset_player(g: &mut Game, p: PlayerId) {
+    let old = std::mem::take(&mut g.players[p]);
+    for id in old.plot_groups {
+        g.plot_groups.remove(id);
+    }
+    for id in old.cities {
+        g.cities.remove(id);
+    }
+    for id in old.units {
+        g.units.remove(id);
+    }
+    for id in old.groups {
+        g.groups.remove(id);
+    }
+
+    let (num_players, num_teams) = (g.num_players(), g.num_teams());
+    let fresh = Player::new(g.d, p, &g.setup.players[p.idx()], num_players, num_teams);
+    g.players[p] = fresh;
+
+    // C++ placeholders (slots not initialized yet) have no team and are skipped; here their
+    // arrays are still empty, so `get_mut` skips them the same way.
+    let team = g.players[p].team;
+    for other in g.player_ids() {
+        // GET_PLAYER(iI).m_aiGoldPerTurnByPlayer[getID()] = 0 (raw store: m_iGoldPerTurn is
+        // not adjusted)
+        if let Some(v) = g.players[other].gold_per_turn_by_player.get_mut(p) {
+            *v = 0;
+        }
+        // C++ loops teams, then the players of each team: every player with a team gets
+        // setEspionageSpendingWeightAgainstTeam(getTeam(), 0) (clamp + compare + UI dirty bit,
+        // i.e. a plain store of 0).
+        if let Some(v) = g.players[other].espionage_spending_weight_against_team.get_mut(team) {
+            *v = 0;
+        }
+    }
+
+    ai_reset(g, p);
+}
+
+/// C++ `CvPlayerAI::AI_reset(false)`, rules-visible part: this player's AI bookkeeping fields
+/// and the other players' entries about it. (The other CvPlayerAI members are AI-only state,
+/// not kept in `Player`.)
+fn ai_reset(g: &mut Game, p: PlayerId) {
+    {
+        let pl = &mut g.players[p];
+        pl.ai_civic_timer = 0;
+        pl.ai_religion_timer = 0;
+        pl.ai_num_train_ai_units.fill(0);
+        pl.ai_num_ai_units.fill(0);
+        pl.ai_peacetime_trade_value.fill(0);
+        pl.ai_peacetime_grant_value.fill(0);
+        pl.ai_gold_traded_to.fill(0);
+        pl.ai_attitude_extra.fill(0);
+        pl.ai_first_contact.fill(false);
+        for memory in pl.ai_memory_count.iter_mut() {
+            memory.fill(0);
+        }
+    }
+
+    for other in g.player_ids() {
+        let o = &mut g.players[other];
+        if let Some(v) = o.ai_peacetime_trade_value.get_mut(p) {
+            *v = 0;
+        }
+        if let Some(v) = o.ai_peacetime_grant_value.get_mut(p) {
+            *v = 0;
+        }
+        if let Some(v) = o.ai_gold_traded_to.get_mut(p) {
+            *v = 0;
+        }
+        if let Some(v) = o.ai_attitude_extra.get_mut(p) {
+            *v = 0;
+        }
+        if let Some(v) = o.ai_first_contact.get_mut(p) {
+            *v = false;
+        }
+        if let Some(memory) = o.ai_memory_count.get_mut(p) {
+            memory.fill(0);
+        }
+    }
+}
+
+/// C++ `CvPlayerAI::AI_init()`: `AI_reset(false)` again, then for taken/computer slots the
+/// AI weights and timers.
+fn ai_init(g: &mut Game, p: PlayerId) {
+    ai_reset(g, p);
+
+    //--------------------------------
+    // Init other game data
+    let slot_status = g.setup.players[p.idx()].slot_status;
+    if slot_status == SlotStatus::Taken || slot_status == SlotStatus::Computer {
+        let d = g.d;
+        let personality = g.players[p].personality_type.expect("CvPlayerAI::AI_init: getPersonalityType() is NO_LEADER");
+        let info = &d.leader_heads[personality];
+        // AI: AI_setPeaceWeight(getBasePeaceWeight() + rand): the peace weight is AI-only state
+        // (not kept); the draw stays so the game RNG matches C++.
+        let _peace_weight = info.base_peace_weight + g.soren_rand_num(info.peace_weight_rand, "AI Peace Weight");
+        // AI: AI_setEspionageWeight(getEspionageWeight()) (AI-only state).
+        g.players[p].ai_religion_timer = 1;
+        g.players[p].ai_civic_timer = if g.players[p].max_anarchy_turns == 0 { 1 } else { 2 };
     }
 }
 
