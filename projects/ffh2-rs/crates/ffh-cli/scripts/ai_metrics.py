@@ -131,7 +131,7 @@ def main():
     ap.add_argument('--label', default='current')
     ap.add_argument('--option', action='append', default=[], help='GAMEOPTION_X to turn on (repeatable)')
     ap.add_argument('--until-supremacy', action='store_true',
-                    help='stop each game at victory, last civ standing, or clear supremacy (2x runner-up score held 25 turns, from turn 100)')
+                    help='stop each game at victory, last civ standing, or clear supremacy (1.5x runner-up score held 30 turns, from turn 150)')
     args = ap.parse_args()
     seeds = parse_seeds(args.seeds)
     at = [int(t) for t in args.at.split(',')]
