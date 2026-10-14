@@ -176,10 +176,11 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
             continue;
         }
         let mut value = tech_value(g, p, t, &ctx) as i64;
-        // Lookahead: a share of what the techs this one leads to are worth.
+        // Lookahead: a share of what the techs this one leads to are worth (with the
+        // improvements they bring: cottages behind Education).
         for &child in &values(g.d).tech_children[t] {
             if !g.team_is_has_tech(team, Some(child)) {
-                value += tech_value_static(g, p, child) as i64 / 4;
+                value += (tech_value_static(g, p, child) + builds_value(g, p, child, &ctx)) as i64 / 4;
                 // A better unit one step further (Mining -> Bronze Working) counts in part.
                 let or_ok = g.d.techs[child].prereq_or_techs.is_empty() || g.d.techs[child].prereq_or_techs.iter().any(|&o| o == t || g.team_is_has_tech(team, Some(o)));
                 if or_ok {
