@@ -1,0 +1,53 @@
+# ffh2-rs
+
+A Rust port of **Fall from Heaven 2** (0.41), the Civilization IV: Beyond the Sword mod:
+the rules engine is ported function by function from the mod's C++ DLL and rules Python;
+the AI is new. Base mod only; no UI (headless runner).
+
+## Why
+
+- **Speed.** FFH2's late game spends most of its turn time in the C++ AI (repeated path
+  searches and per-unit plot scans) and in Python callbacks. Here the rules are compiled
+  Rust, the Python is Rust, and the AI is designed for bounded cost per turn.
+- **A stable base for changes.** One language, typed data tables, deterministic simulation
+  (same seed = same game), and tests.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `data/xml`, `data/text` | FFH2 0.41 gameplay XML (+ the stock BtS files it inherits), English text |
+| `crates/ffh-data` | XML -> typed info tables (port of `CvInfos` / `CvXMLLoadUtility`) |
+| `crates/ffh-core` | rules engine: CvGame, CvPlayer, CvTeam, CvCity, CvUnit, CvPlot, CvSelectionGroup, CvMap, map generation, deals, and the rules Python (`src/ffh/`: spells, events, random events, custom functions, CvGameUtils hooks) |
+| `crates/ffh-ai` | the new AI (implements `ffh_core::Controller`) |
+| `crates/ffh-cli` | `ffh` binary: data checks, AI-only autoplay, benchmarks |
+| `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `porting/*.md` (C++ function maps) |
+| `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness |
+
+## Build and run
+
+Rust stable, no external crates.
+
+```
+cargo build --release
+cargo test --release
+./target/release/ffh data                                  # load all XML, report warnings
+./target/release/ffh autoplay --seed 1 --civs 4 --size WORLDSIZE_SMALL --turns 100
+./target/release/ffh bench --seed 1 --civs 8 --size WORLDSIZE_STANDARD --turns 300
+```
+
+`autoplay` prints one line per turn (time, units, cities, sync checksum) and a final
+per-player summary; `bench` prints only the timing summary.
+
+## Faithfulness
+
+Rules code follows the C++ line by line, including its quirks (marked `// C++ quirk:`), with
+the same random-number calls in the same order (the C++ `CvRandom` and `CvFractal` are
+verified bit-exact against the original source). The rules Python is ported the same way.
+What is deliberately different is listed in `docs/PORTING.md`; the main items are the AI
+(new), the exe's closed-source A* (re-implemented over the DLL's own callbacks) and the
+Python map scripts (a Fractal generator ships instead).
+
+## Status
+
+See `docs/PORTING.md`.
