@@ -4,3 +4,4 @@ node_modules/
 __pycache__/
 raw_materials/
 .claude/worktrees/
+projects/ffh2-rs/saves/
