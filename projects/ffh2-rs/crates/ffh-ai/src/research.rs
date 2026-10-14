@@ -175,6 +175,9 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         let left = g.team_get_research_left(team, t).max(1) as i64;
         let turns = left / ctx.rate as i64;
         let score = value * 1000 / (turns + 4);
+        if crate::trace_on(p) && std::env::var("FFH_AI_TRACE_TECH").is_ok() {
+            crate::trace!(g, p, "  tech {} value {} turns {} score {}", g.d.techs[t].base.type_, value, turns, score);
+        }
         if score > best_score {
             best_score = score;
             best = Some(t);

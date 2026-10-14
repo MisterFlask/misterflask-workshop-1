@@ -248,6 +248,32 @@ pub fn has_worker_builds(g: &Game, p: PlayerId) -> bool {
     g.d.builds.iter().any(|b| (b.improvement.is_some() || b.route.is_some()) && b.tech_prereq.map_or(true, |t| g.team_is_has_tech(team, Some(t))))
 }
 
+/// Water resources in this city's radius (our borders) that a work boat could improve now.
+pub fn sea_resources_unimproved(g: &Game, c: CityId) -> i32 {
+    let p = g.cities[c].owner;
+    let team = g.players[p].team;
+    let d = g.d;
+    let mut n = 0;
+    for i in 0..NUM_CITY_PLOTS {
+        let Some(q) = g.city_index_plot(c, i) else { continue };
+        let plot = &g.map.plots[q];
+        if plot.owner != Some(p) || plot.improvement_type.is_some() || !g.plot_is_water(q) {
+            continue;
+        }
+        let Some(bonus) = plot.bonus_type else { continue };
+        if d.bonuses[bonus].tech_reveal.is_some_and(|t| !g.team_is_has_tech(team, Some(t))) {
+            continue;
+        }
+        let ok = d.builds.iter_enumerated().any(|(b, info)| {
+            info.improvement.is_some_and(|imp| d.improvements[imp].improvement_bonus[bonus].bonus_trade) && g.player_can_build(p, q, b, false, false)
+        });
+        if ok {
+            n += 1;
+        }
+    }
+    n
+}
+
 /// Plots worked by our cities that have no improvement (a measure of worker demand).
 pub fn unimproved_worked_plots(g: &Game, p: PlayerId) -> i32 {
     let mut n = 0;
@@ -418,6 +444,15 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     let settler = settler_choice(ai, g, c, &ctx, ctx.threat == 0);
     if let SettlerPlan::Now(choice) = settler {
         return Some(choice);
+    }
+    // Work boats for sea resources nobody improves yet.
+    if safe && sea_resources_unimproved(g, c) > 0 {
+        let need: i32 = pl.cities.iter().map(|&o| sea_resources_unimproved(g, o)).sum();
+        if count_ai(g, p, UnitAIType::UNITAI_WORKER_SEA) < need.min(ctx.n_cities) {
+            if let Some(u) = best_unit(g, c, Role::SeaWorker) {
+                return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER_SEA));
+            }
+        }
     }
     // Growing toward a settler: nothing that ties the city up for long.
     let max_turns = if settler == SettlerPlan::Soon { 12 } else { 50 };
@@ -675,6 +710,18 @@ pub enum Role {
     Mage,
     Explore,
     Siege,
+    /// Work boats (sea resources).
+    SeaWorker,
+    /// Ships that carry land units.
+    Transport,
+    /// Ships that reveal the seas.
+    SeaExplore,
+}
+
+impl Role {
+    fn sea(self) -> bool {
+        matches!(self, Role::SeaWorker | Role::Transport | Role::SeaExplore)
+    }
 }
 
 fn is_hero(info: &UnitInfo) -> bool {
@@ -695,6 +742,9 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
         Role::Hero => is_hero(info) && info.combat > 0,
         Role::Mage => info.default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) || has(UnitAIType::UNITAI_WARWIZARD),
         Role::Explore => has(UnitAIType::UNITAI_EXPLORE),
+        Role::SeaWorker => has(UnitAIType::UNITAI_WORKER_SEA) && info.combat == 0,
+        Role::Transport => info.cargo_space > 0 && info.domain_cargo == Some(DomainType::DOMAIN_LAND) && info.special_cargo.is_none(),
+        Role::SeaExplore => info.combat > 0 && (has(UnitAIType::UNITAI_EXPLORE_SEA) || has(UnitAIType::UNITAI_ATTACK_SEA)),
         Role::Siege => fighter && (has(UnitAIType::UNITAI_ATTACK_CITY) || has(UnitAIType::UNITAI_COLLATERAL)) && (info.bombard_rate > 0 || info.collateral_damage > 0),
     }
 }
@@ -765,7 +815,8 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
     let mut best: Option<(UnitType, i64)> = None;
     for u in d.units.keys() {
         let info = &d.units[u];
-        if info.domain_type != Some(DomainType::DOMAIN_LAND) || !role_ok(info, role) {
+        let domain = if role.sea() { DomainType::DOMAIN_SEA } else { DomainType::DOMAIN_LAND };
+        if info.domain_type != Some(domain) || !role_ok(info, role) {
             continue;
         }
         if !g.city_can_train(c, u, false, false, false, false) {
@@ -786,6 +837,9 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
                 v
             }
             Role::Worker => 100 + info.work_rate as i64,
+            Role::SeaWorker => 100,
+            Role::Transport => info.cargo_space as i64 * 100 + info.moves as i64 * 30 + info.combat as i64 * 5,
+            Role::SeaExplore => info.moves as i64 * 60 + info.combat as i64 * 10 + 50 * i64::from(info.unit_ai_type[UnitAIType::UNITAI_EXPLORE_SEA]),
             Role::Settler => 100,
             Role::Mage | Role::Explore => 100 + info.moves as i64 * 10 + info.tier as i64 * 50,
         } + info.ai_weight as i64;
@@ -794,7 +848,7 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         }
         // Strength matters more than cost: weaker but cheaper units only win by a margin.
         let score = match role {
-            Role::Worker | Role::Settler => power * 1000 / turns,
+            Role::Worker | Role::Settler | Role::SeaWorker | Role::Transport | Role::SeaExplore => power * 1000 / turns,
             _ => power * power / 100 * 1000 / (turns + 4),
         };
         if best.map_or(true, |(_, s)| score > s) {
