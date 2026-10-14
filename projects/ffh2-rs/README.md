@@ -21,6 +21,7 @@ the AI is new. Base mod only; no UI (headless runner).
 | `crates/ffh-core` | rules engine: CvGame, CvPlayer, CvTeam, CvCity, CvUnit, CvPlot, CvSelectionGroup, CvMap, map generation, deals, and the rules Python (`src/ffh/`: spells, events, random events, custom functions, CvGameUtils hooks) |
 | `crates/ffh-ai` | the new AI (implements `ffh_core::Controller`) |
 | `crates/ffh-cli` | `ffh` binary: data checks, AI-only autoplay, benchmarks |
+| `crates/ffh-stress` | `ffh-stress` binary: AI games over a matrix of game settings (speed, handicap, era, world size, civs, climate, sea level, options, teams, victories), crashes caught per game |
 | `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `porting/*.md` (C++ function maps) |
 | `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness |
 
@@ -34,6 +35,16 @@ cargo test --release
 ./target/release/ffh data                                  # load all XML, report warnings
 ./target/release/ffh autoplay --seed 1 --civs 4 --size WORLDSIZE_SMALL --turns 100
 ./target/release/ffh bench --seed 1 --civs 8 --size WORLDSIZE_STANDARD --turns 300
+```
+
+Stress runs (each game in a child process; panics, aborts and hangs are reported with the
+settings to reproduce them; a checked build adds debug assertions and overflow checks):
+
+```
+./target/release/ffh-stress batch --matrix all --seeds 1,2 --turns 400 --out results.tsv
+./target/release/ffh-stress run --seed 3 --civs 12 --size WORLDSIZE_TINY --speed GAMESPEED_QUICK --options GAMEOPTION_RAGING_BARBARIANS
+CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS=true \
+  cargo build --release --target-dir target/checked -p ffh-stress
 ```
 
 `autoplay` prints one line per turn (time, units, cities, sync checksum) and a final
