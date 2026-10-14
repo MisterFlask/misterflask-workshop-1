@@ -48,7 +48,7 @@ def summarize(results, at):
             continue
 
         def stat(field, pool=alive):
-            v = [c[field] for c in pool]
+            v = [c[field] for c in pool if field in c]
             if not v:
                 return '-'
             return '%.1f [%d-%d]' % (sum(v) / len(v), min(v), max(v))
@@ -56,6 +56,9 @@ def summarize(results, at):
             'cities': stat('cities'), 'pop': stat('pop'), 'techs': stat('techs'), 'mil': stat('mil'),
             'workers': stat('workers'), 'impr': stat('impr'), 'research': stat('research'), 'prod': stat('prod'),
             'alive': '%d/%d' % (len(alive), len(civs)),
+            'pct': stat('pct'), 'maint': stat('maint'), 'gold': stat('gold'), 'overseas': stat('overseas'), 'ships': stat('ships'),
+            'alone': stat('cities', [c for c in alive if c.get('area_civs') == 0]),
+            'shared': stat('cities', [c for c in alive if c.get('area_civs', 0) > 0]),
             'barb_units': '%.0f' % (sum(b['units'] for b in barbs) / max(1, len(barbs))),
             'barb_cities': '%.1f' % (sum(b['cities'] for b in barbs) / max(1, len(barbs))),
         }))
@@ -81,6 +84,8 @@ def print_report(results, at, label=''):
         print('turn %3d: alive %s | cities %s | pop %s | techs %s' % (t, row['alive'], row['cities'], row['pop'], row['techs']))
         print('          mil %s | workers %s | impr %s | research %s | prod %s | barb units %s cities %s' % (
             row['mil'], row['workers'], row['impr'], row['research'], row['prod'], row['barb_units'], row['barb_cities']))
+        print('          slider %s | maint %s | gold %s | overseas %s | ships %s | cities alone %s, shared %s' % (
+            row['pct'], row['maint'], row['gold'], row['overseas'], row['ships'], row['alone'], row['shared']))
     tot = totals(results)
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)

@@ -89,9 +89,22 @@ fn snapshot(g: &Game) -> String {
             }
         }
         let research = g.player_calculate_research_rate(p, None);
+        // Geography: the capital's landmass, civs sharing it, our cities elsewhere, ships.
+        let home = pl.capital_city.filter(|&c| g.cities.contains(c)).and_then(|c| g.map.plots[g.city_plot(c)].area);
+        let area_tiles = home.map_or(0, |a| g.map.areas[a].num_tiles);
+        let area_civs = g
+            .player_ids()
+            .into_iter()
+            .filter(|&o| o != p && g.players[o].alive && !g.player_is_barbarian(o))
+            .filter(|&o| home.is_some() && g.players[o].cities.iter().any(|&c| g.map.plots[g.city_plot(c)].area == home))
+            .count();
+        let overseas = pl.cities.iter().filter(|&&c| g.map.plots[g.city_plot(c)].area != home).count();
+        let ships = pl.units.iter().filter(|&&u| g.unit_get_domain_type(u) == DomainType::DOMAIN_SEA).count();
+        let pct = pl.commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+        let maint = if barbarian { 0 } else { g.player_get_total_maintenance(p) };
         let prod: i32 = pl.cities.iter().map(|&c| g.city_yield_rate(c, YieldType::YIELD_PRODUCTION)).sum();
         parts.push(format!(
-            "{{\"p\":{},\"civ\":\"{}\",\"barb\":{},\"alive\":{},\"cities\":{},\"pop\":{},\"techs\":{},\"units\":{},\"mil\":{},\"workers\":{},\"settlers\":{},\"animals\":{},\"impr\":{},\"research\":{},\"prod\":{},\"gold\":{},\"score\":{}}}",
+            "{{\"p\":{},\"civ\":\"{}\",\"barb\":{},\"alive\":{},\"cities\":{},\"pop\":{},\"techs\":{},\"units\":{},\"mil\":{},\"workers\":{},\"settlers\":{},\"animals\":{},\"impr\":{},\"research\":{},\"prod\":{},\"gold\":{},\"score\":{},\"pct\":{},\"maint\":{},\"area_tiles\":{},\"area_civs\":{},\"overseas\":{},\"ships\":{}}}",
             p.0,
             civ,
             barbarian,
@@ -108,7 +121,13 @@ fn snapshot(g: &Game) -> String {
             research,
             prod,
             pl.gold,
-            if barbarian { 0 } else { g.player_calculate_score(p, false, false) }
+            if barbarian { 0 } else { g.player_calculate_score(p, false, false) },
+            pct,
+            maint,
+            area_tiles,
+            area_civs,
+            overseas,
+            ships
         ));
     }
     format!("[{}]", parts.join(","))
