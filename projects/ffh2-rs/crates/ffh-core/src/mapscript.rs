@@ -300,3 +300,132 @@ pub fn generate_terrain(
     }
     out
 }
+
+// ---------------------------------------------------------------------------
+// MapScript implementation ("Fractal")
+// ---------------------------------------------------------------------------
+
+use crate::game::Game;
+use crate::mapgen::MapScript;
+
+/// BTS `Fractal.py`: FractalWorld plot types, TerrainGenerator, FeatureGenerator;
+/// rivers, lakes, bonuses, goodies and start plots use the DLL defaults.
+#[derive(Default)]
+pub struct FractalMapScript {
+    pub world: FractalWorldParams,
+}
+
+impl FractalMapScript {
+    /// `FeatureGenerator` (iJunglePercent=80, iForestPercent=60, jungle_grain=5, forest_grain=6).
+    fn add_features_impl(&self, g: &mut Game) {
+        let d = g.d;
+        let (w, h) = (g.map.grid_width, g.map.grid_height);
+        let flags = wrap_flags(g.map.wrap_x, g.map.wrap_y);
+        let wi = &d.worlds[g.setup.world_size];
+        let jungle_grain = 5 + wi.feature_grain_change;
+        let forest_grain = 6 + wi.feature_grain_change;
+        let jungle_percent = 80;
+        let forest_percent = 60;
+        let jungles = Fractal::init(w, h, jungle_grain, &mut g.map_rand, flags, None, -1, -1);
+        let forests = Fractal::init(w, h, forest_grain, &mut g.map_rand, flags, None, -1, -1);
+        let jungle_bottom = jungles.height_from_percent((100 - jungle_percent) / 2);
+        let jungle_top = jungles.height_from_percent((100 + jungle_percent) / 2);
+        let forest_level = forests.height_from_percent(forest_percent);
+        let ice = d.ty::<FeatureType>("FEATURE_ICE");
+        let jungle = d.ty::<FeatureType>("FEATURE_JUNGLE");
+        let forest = d.ty::<FeatureType>("FEATURE_FOREST");
+        let jungle_latitude = d.climates[g.setup.climate].jungle_latitude;
+        let half = (h / 2) as f32;
+        for y in 0..h {
+            for x in 0..w {
+                let p = match g.map.plot_idx(x, y) {
+                    Some(p) => p,
+                    None => continue,
+                };
+                let lat = ((h / 2) - y).abs() as f32 / half;
+                // generic appearance-probability pass
+                for f in d.features.keys() {
+                    if g.plot_can_have_feature(p, Some(f)) && g.map_rand_num(10000, "Add Feature PYTHON") < d.features[f].appearance_probability {
+                        g.plot_set_feature_type(p, Some(f));
+                    }
+                }
+                if g.map.plots[p].feature_type.is_none() {
+                    if let Some(ice) = ice {
+                        if g.plot_can_have_feature(p, Some(ice)) {
+                            let edge_y = y == 0 || y == h - 1;
+                            let edge_x = x == 0 || x == w - 1;
+                            let place = match (g.map.wrap_x, g.map.wrap_y) {
+                                (true, false) => edge_y,
+                                (false, true) => edge_x,
+                                (false, false) => edge_x || edge_y,
+                                (true, true) => false,
+                            };
+                            if place {
+                                g.plot_set_feature_type(p, Some(ice));
+                            }
+                        }
+                    }
+                }
+                if g.map.plots[p].feature_type.is_none() {
+                    if let Some(jungle) = jungle {
+                        if g.plot_can_have_feature(p, Some(jungle)) {
+                            let jh = jungles.height(x, y);
+                            let threshold = jungle_bottom as f32 + (jungle_top - jungle_bottom) as f32 * jungle_latitude as f32 * lat;
+                            if jh <= jungle_top && jh as f32 >= threshold {
+                                g.plot_set_feature_type(p, Some(jungle));
+                            }
+                        }
+                    }
+                }
+                if g.map.plots[p].feature_type.is_none() {
+                    if let Some(forest) = forest {
+                        if g.plot_can_have_feature(p, Some(forest)) && forests.height(x, y) >= forest_level {
+                            g.plot_set_feature_type(p, Some(forest));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl MapScript for FractalMapScript {
+    fn name(&self) -> &str {
+        "Fractal"
+    }
+
+    fn get_wrap_x(&self, _g: &Game) -> Option<bool> {
+        Some(true)
+    }
+
+    fn get_wrap_y(&self, _g: &Game) -> Option<bool> {
+        Some(false)
+    }
+
+    fn generate_plot_types(&self, g: &mut Game) -> Option<Vec<PlotType>> {
+        let sea = g.d.sea_levels[g.setup.sea_level].sea_level_change;
+        let (w, h, wx, wy) = (g.map.grid_width, g.map.grid_height, g.map.wrap_x, g.map.wrap_y);
+        Some(generate_plot_types(w, h, wx, wy, sea, &mut g.map_rand, &self.world))
+    }
+
+    fn generate_terrain_types(&self, g: &mut Game) -> Option<Vec<TerrainType>> {
+        let d = g.d;
+        let (w, h, wx, wy) = (g.map.grid_width, g.map.grid_height, g.map.wrap_x, g.map.wrap_y);
+        let is_water: Vec<bool> = g.map.plots.iter().map(|p| p.plot_type == PlotType::PLOT_OCEAN).collect();
+        let current: Vec<Option<TerrainType>> = g.map.plots.iter().map(|p| p.terrain_type).collect();
+        let tp = TerrainParams::new(d, g.setup.climate, g.setup.world_size);
+        let ts = TerrainSet::from_data(d);
+        let land = generate_terrain(w, h, wx, wy, &is_water, &mut g.map_rand, &tp, &ts);
+        Some(
+            land.iter()
+                .zip(current.iter())
+                .map(|(l, c)| l.or(*c).unwrap_or(ts.grass))
+                .collect(),
+        )
+    }
+
+    fn add_features(&self, g: &mut Game) -> bool {
+        self.add_features_impl(g);
+        true
+    }
+}

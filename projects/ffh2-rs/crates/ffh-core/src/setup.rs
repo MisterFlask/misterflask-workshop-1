@@ -56,7 +56,8 @@ impl GameSetup {
     /// `formEmpire`, ...; C++ uses any of its 35 civ slots via `addPlayerAdvanced`).
     pub const SPARE_SLOTS: usize = 4;
 
-    /// A standard game: `n` AI civs (random civs/leaders are filled in by `Game::new`),
+    /// A standard game: `n` AI civs (random civs/leaders are chosen by `game_init`, port of the
+    /// FfH RANDOM_CIVILIZATION block in `CvGame::init`),
     /// [`Self::SPARE_SLOTS`] open slots, then the barbarian slot; given world size,
     /// normal speed/climate/sea level, first era, Noble difficulty.
     pub fn standard(d: &GameData, n_civs: usize, world: &str, seed: u32) -> GameSetup {

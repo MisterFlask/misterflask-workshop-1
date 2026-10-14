@@ -22,12 +22,14 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
 | CvRandom | rng.rs | done (bit-exact, parity-tested) |
 | CvStructs.h | structs.rs | done |
 | CvDefines.h | defs.rs | done |
-| CvMap / CvPlot / CvArea / CvPlotGroup | map.rs, plot/, area.rs, plot_group.rs | skeleton in progress |
-| CvUnit | unit/ | skeleton in progress |
-| CvCity | city/ | skeleton in progress |
-| CvPlayer | player/ | skeleton in progress |
-| CvTeam / CvSelectionGroup / CvDeal | team, group, deal | skeleton in progress |
-| CvGame / CvGameCoreUtils / CvMapGenerator / CvFractal | game/, utils.rs, path.rs, mapgen | skeleton in progress |
+| CvMap / CvPlot / CvArea / CvPlotGroup | map.rs, plot/, area.rs, plot_group.rs | skeleton (docs/porting/map.md) |
+| CvUnit | unit/ | skeleton (docs/porting/unit.md) |
+| CvCity | city/ | skeleton (docs/porting/city.md) |
+| CvPlayer | player/ | skeleton (docs/porting/player.md) |
+| CvTeam / CvSelectionGroup / CvDeal | team/, group/, deal.rs | skeleton (docs/porting/team_group_deal.md) |
+| CvGame / CvGameCoreUtils / CvMapGenerator | game/, utils.rs, path.rs, mapgen/ | skeleton (docs/porting/game.md) |
+| CvFractal | mapgen/fractal.rs | done (bit-exact, parity-tested) |
+| Map script (BTS Fractal.py) | mapscript.rs | done (re-implementation; Python map scripts are not FFH2 rules) |
 
 ## Python (ffh-core/src/ffh)
 

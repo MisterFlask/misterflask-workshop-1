@@ -13,6 +13,9 @@ use crate::ids::*;
 use ffh_data::*;
 
 impl Game {
+    /// `gameStart` -> `onGameStart` (FFH2: GAMEOPTION_THAW temporary terrain, goblin-fort
+    /// archers, trophies; called once when a new game starts).
+    pub fn ev_game_start(&mut self) {}
     /// `CvEventReporter::gameEnd` -> `onGameEnd`.
     pub fn ev_game_end(&mut self) {}
     /// `beginGameTurn` -> `onBeginGameTurn`.
