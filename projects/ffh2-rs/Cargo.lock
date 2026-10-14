@@ -29,3 +29,12 @@ dependencies = [
 [[package]]
 name = "ffh-data"
 version = "0.1.0"
+
+[[package]]
+name = "ffh-stress"
+version = "0.1.0"
+dependencies = [
+ "ffh-ai",
+ "ffh-core",
+ "ffh-data",
+]
