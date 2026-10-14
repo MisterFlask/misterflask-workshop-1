@@ -7,7 +7,7 @@ events (captures, razes, wars, eliminations), barbarian strength and timings.
 
 usage: ai_metrics.py [--bin target/release/ffh] [--seeds 1-6] [--civs 6]
                      [--size WORLDSIZE_STANDARD] [--turns 300] [--at 100,200,300]
-                     [--out results.json] [--compare old.json] [--jobs 4]
+                     [--out results.json] [--compare old.json] [--jobs 4] [--option GAMEOPTION_X]
 """
 import argparse
 import json
@@ -29,6 +29,8 @@ def parse_seeds(s):
 def run_one(args, seed):
     cmd = [args.bin, 'stats', '--seed', str(seed), '--civs', str(args.civs), '--size', args.size,
            '--turns', str(args.turns), '--at', args.at]
+    for opt in args.option:
+        cmd += ['--option', opt]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {'seed': seed, 'error': (r.stderr or r.stdout)[-2000:]}
@@ -112,6 +114,7 @@ def main():
     ap.add_argument('--compare', default=None)
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--label', default='current')
+    ap.add_argument('--option', action='append', default=[], help='GAMEOPTION_X to turn on (repeatable)')
     args = ap.parse_args()
     seeds = parse_seeds(args.seeds)
     at = [int(t) for t in args.at.split(',')]

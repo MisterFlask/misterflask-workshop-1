@@ -395,6 +395,20 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
         }
     }
 
+    // Buildings for our cities as they are now (libraries where there is research to
+    // multiply, markets where there is gold, ...): production's marginal value per turn in
+    // the six cities that gain most.
+    for &b in &unlocks.buildings {
+        let binfo = &d.buildings[b];
+        let Some(class) = binfo.building_class_type else { continue };
+        if ctx.civ.and_then(|c| d.civ_building(c, class)) != Some(b) || binfo.prereq_religion.is_some() || d.building_classes[class].max_global_instances > 0 {
+            continue;
+        }
+        let mut gains: Vec<i32> = pl.cities.iter().map(|&c| crate::production::building_value(g, c, b, 0).max(0)).collect();
+        gains.sort_unstable_by(|a, b| b.cmp(a));
+        value += gains.iter().take(6).sum::<i32>() / 4;
+    }
+
     // Happiness buildings when cities are capped.
     if ctx.unhappy_cities > 0 {
         for &b in &unlocks.buildings {
