@@ -303,6 +303,8 @@ struct Ctx {
     happy_room: i32,
     at_war: bool,
     broke: bool,
+    /// One more military unit is affordable (see `economy::can_afford_unit`).
+    afford: bool,
 }
 
 fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
@@ -327,7 +329,9 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         happy_room: g.city_happy_level(c) - g.city_unhappy_level(c, 0),
         at_war: civ_enemies_at_war(g, p) || crate::diplomacy::preparing_target(g, pl.team).is_some(),
         broke: financial_trouble(g, p),
+        afford: false,
     };
+    let ctx = Ctx { afford: crate::economy::can_afford_unit(g, p, true, ctx.at_war), ..ctx };
     crate::trace!(g, p, "{}: threat {} defenders {} ({}) food {:+} prod {} happy {}", city.name, ctx.threat, ctx.defenders, ctx.defense, ctx.food_surplus, ctx.production, ctx.happy_room);
     if ctx.threat > 0 && crate::trace_on(p) {
         let (x, y) = g.map.xy(plot);
@@ -430,6 +434,9 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if ctx.broke && ctx.threat == 0 {
         needed = needed.min(1 + i32::from(ctx.capital));
     }
+    if !ctx.afford && ctx.threat == 0 {
+        needed = needed.min(1 + i32::from(ctx.capital));
+    }
     if ctx.defenders < needed {
         if let Some(u) = best_unit(g, c, Role::Defense) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
@@ -439,7 +446,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     // 5. A small mobile force to clear barbarians and animals near our lands.
     let attackers = count_ai(g, p, UnitAIType::UNITAI_ATTACK) + count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
     let min_army = if ctx.broke { 1 + ctx.n_cities / 4 } else { 1 + ctx.n_cities / 2 };
-    if attackers < min_army && (ctx.production >= 3 || settler == SettlerPlan::Soon) {
+    if attackers < min_army && (ctx.production >= 3 || settler == SettlerPlan::Soon) && (ctx.afford || attackers == 0) {
         if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
         }
@@ -470,11 +477,14 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     } else if ctx.broke {
         army_target = min_army;
     }
+    if !ctx.afford {
+        army_target = army_target.min(attackers);
+    }
     let army_short = attackers < army_target;
     // At war (or preparing): a third of the army in siege engines. A stack camped next to a
     // city it cannot take (a barbarian town, say) asks for a couple as well.
     let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
-    if (ctx.at_war && army_short && siege * 3 < attackers + 1) || (siege < 2 && besieging(g, p)) {
+    if (ctx.at_war && army_short && siege * 3 < attackers + 1) || (siege < 2 && besieging(g, p) && ctx.afford) {
         if let Some(u) = best_unit(g, c, Role::Siege) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
         }
@@ -511,7 +521,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
             return Some(Choice::Construct(b));
         }
     }
-    if settler == SettlerPlan::Soon {
+    if settler == SettlerPlan::Soon && ctx.afford {
         // Cheap units while the city grows: they explore, escort and hunt.
         if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
@@ -521,7 +531,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     // 10. Casters and missionaries.
     let mages = count_ai(g, p, UnitAIType::UNITAI_MAGE) + count_ai(g, p, UnitAIType::UNITAI_WARWIZARD);
     let mage_target = (ctx.n_cities + 2) / 4 + leader.map_or(0, |l| i32::from(l.ai_value_mage > 100));
-    if mages < mage_target {
+    if mages < mage_target && ctx.afford {
         if let Some(u) = best_unit(g, c, Role::Mage) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_MAGE));
         }
@@ -590,7 +600,7 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> Settle
     if area_sites == 0 {
         return No;
     }
-    let mut max_settlers = ((ctx.n_cities + 2) / 2).max(1).min(area_sites);
+    let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
     // C++ AI_chooseProduction: no settlers while in financial trouble.
     if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
         return No;

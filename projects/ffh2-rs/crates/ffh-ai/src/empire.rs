@@ -68,10 +68,20 @@ fn hurry(g: &mut Game, p: PlayerId) {
 /// weakest surplus garrison units: never a city's last defender (two in the capital), never a
 /// unit that would defect to the barbarians, at most two per turn.
 fn disband(g: &mut Game, p: PlayerId) {
-    if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) || g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] > 10 {
+    if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) || g.player_calculate_unit_cost(p) == 0 {
         return;
     }
-    if g.player_calculate_gold_rate(p) >= 0 && g.players[p].gold > 30 || g.player_calculate_unit_cost(p) == 0 {
+    let pct = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+    // Field units go first, as soon as research has dropped to a fifth.
+    if pct > 10 && pct <= 20 {
+        disband_field_units(g, p, 1);
+        return;
+    }
+    if pct > 10 {
+        return;
+    }
+    if g.player_calculate_gold_rate(p) >= 0 && g.players[p].gold > 30 {
+        disband_field_units(g, p, 1);
         return;
     }
     let mut done = 0;
@@ -106,6 +116,53 @@ fn disband(g: &mut Game, p: PlayerId) {
             continue;
         }
         crate::trace!(g, p, "bankrupt: disbanding {} in {}", g.d.units[g.units[u].unit_type].base.type_, g.cities[c].name);
+        g.unit_scrap(u);
+        done += 1;
+    }
+    disband_field_units(g, p, 2 - done);
+}
+
+/// Field units beyond a small mobile force (1 + cities / 4) when the empire cannot pay for
+/// them and is at peace: the weakest, least experienced first, never heroes or units that
+/// would defect.
+fn disband_field_units(g: &mut Game, p: PlayerId, max: i32) {
+    if max <= 0 || g.player_calculate_unit_cost(p) == 0 {
+        return;
+    }
+    let team = g.players[p].team;
+    let at_war = g.teams.keys().any(|t| t != team && t != g.barbarian_team() && g.teams[t].alive_count > 0 && g.at_war(team, t))
+        || crate::diplomacy::preparing_target(g, team).is_some();
+    if at_war {
+        return;
+    }
+    let field = |g: &Game, u: UnitId| {
+        let unit = &g.units[u];
+        matches!(unit.ai_type, Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_RESERVE) | Some(UnitAIType::UNITAI_COUNTER) | Some(UnitAIType::UNITAI_ATTACK_CITY) | Some(UnitAIType::UNITAI_COLLATERAL))
+            && g.d.units[unit.unit_type].combat > 0
+            && g.unit_get_domain_type(u) == DomainType::DOMAIN_LAND
+    };
+    let mut units: Vec<UnitId> = g.players[p].units.iter().copied().filter(|&u| field(g, u)).collect();
+    let keep = 1 + g.players[p].cities.len() as i32 / 4;
+    if units.len() as i32 <= keep {
+        return;
+    }
+    units.sort_by_key(|&u| (crate::view::attack_power(g, u) + 50 * g.units[u].experience, u));
+    let mut done = 0;
+    for u in units {
+        if done >= max || !g.units.contains(u) {
+            break;
+        }
+        let n = g.players[p].units.iter().filter(|&&o| field(g, o)).count() as i32;
+        if n <= keep {
+            break;
+        }
+        let info = &g.d.units[g.units[u].unit_type];
+        let hero = info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO) || info.unit_class_type.is_some_and(|c| g.d.unit_classes[c].max_global_instances > 0 || g.d.unit_classes[c].max_player_instances > 0);
+        let betrays = g.d.promotions.keys().any(|pr| g.units[u].has_promotion[pr] && g.d.promotions[pr].betrayal_chance != 0);
+        if hero || betrays || g.units[u].duration > 0 || !g.unit_can_scrap(u) {
+            continue;
+        }
+        crate::trace!(g, p, "cannot pay: disbanding field unit {}", info.base.type_);
         g.unit_scrap(u);
         done += 1;
     }
