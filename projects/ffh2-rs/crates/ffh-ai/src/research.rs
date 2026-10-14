@@ -358,7 +358,8 @@ fn tech_value_static(g: &Game, p: PlayerId, t: TechType) -> i32 {
     value += 60 * unlocks.civics.len() as i32;
     if let Some(r) = unlocks.religion {
         if g.religion_game_turn_founded[r] == -1 && !pl.agnostic {
-            value += 400;
+            // Founding it: the holy city, a free disciple, temples and the religion's civics.
+            value += 1500;
             if let Some(l) = leader {
                 if l.favorite_religion == Some(r) || l.favorite_early_religion == Some(r) {
                     value += 1200;
