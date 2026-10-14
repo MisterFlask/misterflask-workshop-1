@@ -507,7 +507,8 @@ impl Game {
     }
 
     /// The governor's weights for city `c`: the default values, commerce valued by the owner's
-    /// sliders (research a little above gold), plus the player-set emphasize flags.
+    /// sliders (research a little above gold) and by its shortfall of gold, plus the player-set
+    /// emphasize flags.
     fn governor_weights(&self, c: CityId) -> Weights {
         let mut w = Weights::default();
         let owner = self.cities[c].owner;
@@ -517,10 +518,13 @@ impl Game {
         if blended > 0 {
             w.commerce = w.commerce * blended / 100;
         }
-        // An owner short of gold (research slider pushed down to pay the bills) needs commerce.
+        // An owner short of gold needs commerce, up to twice as much: by how far the research
+        // slider has been pushed down to pay the bills, or by the measured shortfall (costs that
+        // eat the commerce before the slider has fallen).
         let research_pct = pct[CommerceType::COMMERCE_RESEARCH.idx()];
-        if research_pct < 50 && self.player_is_commerce_flexible(owner, CommerceType::COMMERCE_RESEARCH) {
-            w.commerce = w.commerce * (200 - 2 * research_pct) / 100;
+        if self.player_is_commerce_flexible(owner, CommerceType::COMMERCE_RESEARCH) {
+            let boost = (100 - 2 * research_pct).max(0).max(self.governor_shortfall_percent(owner));
+            w.commerce = w.commerce * (100 + boost) / 100;
         }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
             w.food = w.food * 160 / 100;
@@ -539,6 +543,18 @@ impl Game {
             w.commerce_type[CommerceType::COMMERCE_CULTURE.idx()] = 100;
         }
         w
+    }
+
+    /// How short of gold the owner is (0-100): the gold it would lack with research at 60%
+    /// (costs, inflated, against the 40% of its gold + research commerce left for gold), three
+    /// times as a percent of that commerce.
+    fn governor_shortfall_percent(&self, p: PlayerId) -> i32 {
+        let commerce = self.player_get_commerce_rate(p, CommerceType::COMMERCE_GOLD) + self.player_get_commerce_rate(p, CommerceType::COMMERCE_RESEARCH);
+        if commerce <= 0 {
+            return 0;
+        }
+        let short = self.player_calculate_inflated_costs(p) - self.players[p].gold_per_turn - commerce * 40 / 100;
+        (short * 300 / commerce).clamp(0, 100)
     }
 
     /// What city `c` wants from food (see [`FoodContext`]). `placing` citizens are about to be

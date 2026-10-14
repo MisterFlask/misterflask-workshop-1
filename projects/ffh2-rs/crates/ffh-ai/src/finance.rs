@@ -17,6 +17,8 @@
 //!   when a cheaper civic would win ([`civics_due`]);
 //! - **unit support** (`empire::disband`): obsolete and surplus units go first while support
 //!   keeps research below its target ([`disband`]);
+//! - **citizens** (ffh-core `governor_weights`): commerce is weighted by the same measured
+//!   shortfall, computed there from the rules;
 //! - **expansion**: [`city_affordable`] for the settler logic (not wired in).
 //!
 //! Everything is a pure function of the game state: no cache, no random draw.
