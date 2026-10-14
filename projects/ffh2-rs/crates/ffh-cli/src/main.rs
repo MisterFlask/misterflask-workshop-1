@@ -5,8 +5,10 @@
 //!   ffh lookup <TYPE_NAME>           print the class/index of a type name
 //!   ffh autoplay [opts]              play an AI-only game, print per-turn stats and a summary
 //!   ffh bench [opts]                 like autoplay, print only timings
-//!   ffh stats [opts] [--at T1,T2,..]  play a game, print one JSON line of AI metrics
-//!                                    (per-civ snapshots after T1, T2, .. turns; events)
+//!   ffh stats [opts] [--at T1,T2,..] [--every N]
+//!                                    play a game, print one JSON line of AI metrics
+//!                                    (per-civ snapshots after T1, T2, .. turns, or every N
+//!                                    turns, plus the final state; events)
 //!
 //! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
 //! every N turns)  --option GAMEOPTION_X (repeatable)
@@ -17,7 +19,7 @@ mod stats;
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--until-supremacy] [--at T1,T2,..]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--until-supremacy] [--at T1,T2,..] [--every N]");
     std::process::exit(2)
 }
 
@@ -25,10 +27,11 @@ fn parse_run_config(args: &[String]) -> run::RunConfig {
     parse_run_config_at(args).0
 }
 
-/// Run options plus the `--at` list of `ffh stats`.
+/// Run options plus the `--at` list of `ffh stats` (`--every N` adds N, 2N, .. up to `--turns`).
 fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
     let mut cfg = run::RunConfig::default();
     let mut at = Vec::new();
+    let mut every = 0i32;
     let mut i = 0;
     while i < args.len() {
         let val = |i: usize| args.get(i + 1).cloned().unwrap_or_else(|| usage());
@@ -45,9 +48,15 @@ fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
             }
             "--report" => cfg.report_every = val(i).parse().unwrap_or_else(|_| usage()),
             "--at" => at = val(i).split(',').map(|t| t.parse().unwrap_or_else(|_| usage())).collect(),
+            "--every" => every = val(i).parse().unwrap_or_else(|_| usage()),
             _ => usage(),
         }
         i += 2;
+    }
+    if every > 0 {
+        at.extend((1..=cfg.turns / every).map(|k| k * every));
+        at.sort_unstable();
+        at.dedup();
     }
     (cfg, at)
 }

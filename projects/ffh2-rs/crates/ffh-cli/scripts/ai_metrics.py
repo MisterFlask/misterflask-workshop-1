@@ -8,7 +8,11 @@ events (captures, razes, wars, eliminations), barbarian strength and timings.
 usage: ai_metrics.py [--bin target/release/ffh] [--seeds 1-6] [--civs 6]
                      [--size WORLDSIZE_STANDARD] [--turns 300] [--at 100,200,300]
                      [--out results.json] [--compare old.json] [--jobs 4] [--option GAMEOPTION_X]
-                     [--until-supremacy]
+                     [--until-supremacy] [--every N]
+
+--every N also snapshots every N turns (and `ffh stats` always adds the final state). Each saved
+game carries per-civ snapshots (`snapshots`), game-wide values (`world_at`), the outcome and the
+turn each civ was eliminated (`eliminated_at`); see docs/AI.md "Tools" for the fields.
 """
 import argparse
 import json
@@ -34,6 +38,8 @@ def run_one(args, seed):
         cmd += ['--option', opt]
     if args.until_supremacy:
         cmd += ['--until-supremacy']
+    if args.every:
+        cmd += ['--every', str(args.every)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         return {'seed': seed, 'error': (r.stderr or r.stdout)[-2000:]}
@@ -125,6 +131,7 @@ def main():
     ap.add_argument('--size', default='WORLDSIZE_STANDARD')
     ap.add_argument('--turns', type=int, default=300)
     ap.add_argument('--at', default='100,200,300')
+    ap.add_argument('--every', type=int, default=0, help='also snapshot every N turns')
     ap.add_argument('--out', default=None)
     ap.add_argument('--compare', default=None)
     ap.add_argument('--jobs', type=int, default=4)
@@ -135,6 +142,8 @@ def main():
     args = ap.parse_args()
     seeds = parse_seeds(args.seeds)
     at = [int(t) for t in args.at.split(',')]
+    if args.every:
+        at = sorted(set(at) | set(range(args.every, args.turns + 1, args.every)))
     with ThreadPoolExecutor(max_workers=args.jobs) as ex:
         results = list(ex.map(lambda s: run_one(args, s), seeds))
     if args.out:
