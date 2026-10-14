@@ -67,7 +67,8 @@ Readers (`crates/ffh-data/src/registry.rs`, struct `Rd`) mirror `CvXMLLoadUtilit
 `SetVariableListTagPair(&p, "Tag", .., GC.getNumXInfos(), def)` -> `rd.pairs_int::<XType>("Tag", def)`
 (also `pairs_bool`, `pairs_string`, `pairs_ref`); `SetYields` -> `rd.yields("Tag")`;
 `SetCommerce` -> `rd.commerces("Tag")`; fixed ref lists -> `rd.ref_list_fixed`.
-Replicate C++ defaults exactly (e.g. `iMaxGlobalInstances` defaults to -1).
+Replicate C++ defaults exactly: use `int_or(tag, d)` only where the C++ call passes a default `d`
+(most calls pass none, so absent ints are 0 even when the XML conventionally writes -1).
 
 ## Rules engine conventions (`ffh-core`)
 
