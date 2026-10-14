@@ -17,7 +17,7 @@ use crate::ids::*;
 use crate::player::set_turn_history;
 use crate::player::turn::reassign_player_advanced;
 use crate::structs::*;
-use crate::utils::get_turn_year_for_game;
+use crate::utils::{get_tech_score, get_turn_year_for_game};
 use ffh_data::*;
 
 impl Game {
@@ -914,7 +914,8 @@ impl Game {
     ///
     /// Deliberate deviation (docs/PORTING.md): FFH2's `calculateScore` is replaced by "your share
     /// of the world": the average of the player's share of all people (city sizes), all owned
-    /// land plots and all knowledge (team tech score, split among the team by population).
+    /// land plots and all knowledge (team tech score -- the largest of its alive members', see
+    /// below -- split among the team by population).
     /// A vassal keeps half (floored) of its people and land; the rest goes to its master's
     /// leader. Integer only, players in id order: deterministic.
     pub fn world_score_shares(&self) -> Vec<[i64; 3]> {
@@ -951,19 +952,28 @@ impl Game {
             }
         }
 
-        // Knowledge: team tech score (equal for every member), counted once per team.
+        // Knowledge: the team's tech score, counted once per team: the largest `tech_score` of
+        // its alive members. Members share the team's techs and normally have equal tech scores;
+        // they differ only by a repeatable tech (Future Tech), which adds its score each time
+        // the team learns it but is never `has_tech`, so a member that joins later
+        // (`addPlayerAdvanced` credits only `isHasTech` techs, as in C++) lacks those repeats.
         let mut know_team: Vec<Option<i64>> = vec![None; num_teams];
         let mut members = vec![0i64; num_teams];
         let mut team_pop = vec![0i64; num_teams];
         for &p in &scored {
             let t = self.players[p].team.idx();
             let know = (self.players[p].tech_score as i64).max(0);
-            match know_team[t] {
-                None => know_team[t] = Some(know),
-                Some(k) => debug_assert_eq!(k, know, "team {t}: members disagree on the tech score"),
-            }
+            know_team[t] = Some(know_team[t].map_or(know, |k| k.max(know)));
             members[t] += 1;
             team_pop[t] += pop[p.idx()];
+        }
+        if cfg!(debug_assertions) {
+            // Every member holds at least the team's (non-repeatable) known techs.
+            for &p in &scored {
+                let team = self.players[p].team;
+                let known: i32 = self.d.techs.keys().filter(|&x| self.teams[team].has_tech[x]).map(|x| get_tech_score(self.d, x)).sum();
+                debug_assert!(self.players[p].tech_score >= known, "player {p:?}: tech score {} below its team's techs {known}", self.players[p].tech_score);
+            }
         }
 
         let total_pop: i64 = pop.iter().sum();
@@ -2246,6 +2256,24 @@ mod tests {
         let free_orphan = score_state(&team, &[false, true, true, false], &pop, &land, &know, &[]);
         assert_eq!(orphan.world_scores(), free_orphan.world_scores());
         assert_score_invariants(&orphan, &orphan.world_scores());
+    }
+
+    /// A repeatable tech (Future Tech) adds to the tech score of the members on the team when it
+    /// is learned, but a member that joins later is not credited for it (C++ addPlayerAdvanced
+    /// counts `isHasTech` techs only). The team's knowledge is the full count, whichever member
+    /// comes first.
+    #[test]
+    fn knowledge_counts_repeat_techs_once_per_team() {
+        let team = [0, 1, 0];
+        let (pop, land) = ([10, 10, 5], [50, 50, 20]);
+        let full = score_state(&team, &[true; 3], &pop, &land, &[178, 150], &[]);
+        let mut founder_first = score_state(&team, &[true; 3], &pop, &land, &[178, 150], &[]);
+        founder_first.players[PlayerId(2)].tech_score = 172;
+        let mut joiner_first = score_state(&team, &[true; 3], &pop, &land, &[178, 150], &[]);
+        joiner_first.players[PlayerId(0)].tech_score = 172;
+        assert_eq!(founder_first.world_scores(), full.world_scores());
+        assert_eq!(joiner_first.world_scores(), full.world_scores());
+        assert_score_invariants(&joiner_first, &joiner_first.world_scores());
     }
 
     #[test]
