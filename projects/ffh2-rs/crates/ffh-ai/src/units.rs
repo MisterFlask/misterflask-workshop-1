@@ -269,7 +269,8 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             continue;
         }
         let Some(r) = reach.iter().find(|r| r.plot == site) else { continue };
-        if v.danger_at(site) > 0 && !first_city {
+        // Danger at the site: only an escorted settler goes (or founds where it stands).
+        if v.danger_at(site) > 0 && !first_city && site != here && !escorted(g, grp) {
             continue;
         }
         // Founding on the first turn matters more than a slightly better plot.
