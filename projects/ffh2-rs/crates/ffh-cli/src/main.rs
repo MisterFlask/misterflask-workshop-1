@@ -6,14 +6,15 @@
 //!   ffh autoplay [opts]              play an AI-only game, print per-turn stats and a summary
 //!   ffh bench [opts]                 like autoplay, print only timings
 //!
-//! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N
+//! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
+//! every N turns)
 
 mod run;
 
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N]");
     std::process::exit(2)
 }
 
@@ -27,6 +28,7 @@ fn parse_run_config(args: &[String]) -> run::RunConfig {
             "--civs" => cfg.civs = val(i).parse().unwrap_or_else(|_| usage()),
             "--size" => cfg.world = val(i),
             "--turns" => cfg.turns = val(i).parse().unwrap_or_else(|_| usage()),
+            "--report" => cfg.report_every = val(i).parse().unwrap_or_else(|_| usage()),
             _ => usage(),
         }
         i += 2;

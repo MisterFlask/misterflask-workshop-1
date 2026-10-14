@@ -92,11 +92,13 @@ pub struct RunConfig {
     pub world: String,
     pub turns: i32,
     pub verbose: bool,
+    /// Print `report` every this many turns (0 = never).
+    pub report_every: i32,
 }
 
 impl Default for RunConfig {
     fn default() -> Self {
-        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false }
+        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0 }
     }
 }
 
@@ -150,6 +152,9 @@ pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
                 );
             }
             stats.push(stat);
+            if cfg.report_every > 0 && (turn + 1) % cfg.report_every == 0 {
+                print!("{}", report(g));
+            }
             turn = g.game_turn();
             t0 = Instant::now();
             updates_this_turn = 0;
@@ -158,6 +163,76 @@ pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
         }
     }
     stats
+}
+
+/// Per alive player: research, gold, techs, units by AI role, and each city's size and
+/// production (a diagnostic for AI work).
+pub fn report(g: &Game) -> String {
+    let d = g.d;
+    let mut out = format!("== report at turn {} ==\n", g.game_turn());
+    for p in g.player_ids() {
+        let pl = &g.players[p];
+        if !pl.alive {
+            continue;
+        }
+        let civ = g.player_get_civilization_type(p).map_or("?".to_string(), |c| d.civilizations[c].base.type_.clone());
+        let techs = g.teams[pl.team].has_tech.iter().filter(|&&b| b).count();
+        let research = g.player_get_current_research(p).map_or("-".to_string(), |t| d.techs[t].base.type_.clone());
+        out += &format!(
+            "  {:2} {} techs={} research={} (+{}/turn) gold={} rate={:+} sliders={:?} cities={} pop={} units={}\n",
+            p.0,
+            civ,
+            techs,
+            research,
+            g.player_calculate_research_rate(p, None),
+            pl.gold,
+            g.player_calculate_gold_rate(p),
+            pl.commerce_percent,
+            pl.cities.len(),
+            pl.total_population,
+            pl.units.len()
+        );
+        let mut roles: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+        for &u in &pl.units {
+            let role = g.units[u].ai_type.map_or("NONE".to_string(), |a| unit_ai_name(a).to_string());
+            *roles.entry(role).or_default() += 1;
+        }
+        out += "     units:";
+        for (r, n) in &roles {
+            out += &format!(" {r}={n}");
+        }
+        out += "\n";
+        for &c in &pl.cities {
+            let city = &g.cities[c];
+            let prod = if let Some(u) = g.city_production_unit(c) {
+                d.units[u].base.type_.clone()
+            } else if let Some(b) = g.city_production_building(c) {
+                d.buildings[b].base.type_.clone()
+            } else {
+                city.order_queue.first().map_or("-".to_string(), |o| format!("{:?}", o.order_type))
+            };
+            out += &format!(
+                "     city {} size={} food={:+} ({}/{}) yields={:?} commerce={:?} prod={}\n",
+                city.name,
+                city.population,
+                g.city_food_difference(c, true),
+                city.food,
+                g.city_growth_threshold(c),
+                [0, 1, 2].map(|y| g.city_yield_rate(c, YieldType::from_usize(y))),
+                [0, 1, 2, 3].map(|k| g.city_commerce_rate(c, CommerceType::from_usize(k))),
+                prod
+            );
+        }
+    }
+    out
+}
+
+fn unit_ai_name(a: UnitAIType) -> &'static str {
+    const NAMES: [&str; 13] = [
+        "UNKNOWN", "ANIMAL", "SETTLE", "WORKER", "ATTACK", "ATTACK_CITY", "COLLATERAL", "PILLAGE", "RESERVE", "COUNTER",
+        "CITY_DEFENSE", "CITY_COUNTER", "CITY_SPECIAL",
+    ];
+    NAMES.get(a.i() as usize).copied().unwrap_or("OTHER")
 }
 
 /// One line per player: civ, leader, cities, population, units, score.
@@ -194,7 +269,7 @@ mod tests {
     #[test]
     #[ignore]
     fn same_seed_same_game() {
-        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false };
+        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0 };
         let (mut a, _) = new_game(&cfg);
         let sa = autoplay(&mut a, &cfg);
         let (mut b, _) = new_game(&cfg);
@@ -209,8 +284,8 @@ mod tests {
     #[test]
     #[ignore]
     fn different_seed_different_game() {
-        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false };
-        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, seed: 0 } };
+        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0 };
+        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0 } };
         let (mut a, _) = new_game(&cfg1);
         let (mut b, _) = new_game(&cfg2);
         let sa = autoplay(&mut a, &cfg1);
