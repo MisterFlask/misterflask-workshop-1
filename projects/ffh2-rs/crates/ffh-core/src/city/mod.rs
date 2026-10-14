@@ -519,6 +519,53 @@ pub(crate) fn order_type_data<T: Idx>(o: &OrderData) -> T {
     T::from_usize(o.data1 as usize)
 }
 
+/// C++ `GC.getUnitInfo(eUnit).getUnitClassType()` (every unit has a class; C++ would index
+/// arrays with -1 otherwise).
+#[inline]
+fn unit_class_of(d: &GameData, unit: UnitType) -> UnitClassType {
+    d.units[unit].unit_class_type.expect("CvUnitInfo without a unit class")
+}
+
+/// C++ `GC.getBuildingInfo(eBuilding).getBuildingClassType()`.
+#[inline]
+fn building_class_of(d: &GameData, building: BuildingType) -> BuildingClassType {
+    d.buildings[building].building_class_type.expect("CvBuildingInfo without a building class")
+}
+
+/// C++ `(DomainTypes)GC.getUnitInfo(eUnit).getDomainType()`.
+#[inline]
+fn unit_domain_of(d: &GameData, unit: UnitType) -> DomainType {
+    d.units[unit].domain_type.expect("CvUnitInfo without a domain")
+}
+
+/// C++ `CvCityAI::AI_chooseProduction()` as called by rules code (`doProduction`, `popOrder`,
+/// `setProductionAutomated`): the owner's controller decides
+/// (`Controller::choose_production`, which pushes orders through `city_push_order`).
+///
+/// C++ clears `m_bChooseProductionDirty` inside `AI_chooseProduction` when it re-decides
+/// ("only clear the dirty bit if we actually do a check"). The controller replaces that
+/// function, so the flag is cleared here before asking it; a controller that keeps the
+/// current production and wants to be asked again next turn sets the flag again.
+fn ai_choose_production(g: &mut Game, c: CityId) {
+    g.cities[c].ai_choose_production_dirty = false;
+    let owner = g.cities[c].owner;
+    g.controller(owner).choose_production(g, c);
+}
+
+/// C++ `CvCityAI::AI_reset()` for the AI bookkeeping fields `City` keeps (the other
+/// `CvCityAI` members are AI-only caches and are not ported).
+fn ai_reset(city: &mut City) {
+    city.ai_emphasize_avoid_growth_count = 0;
+    city.ai_emphasize_great_people_count = 0;
+    city.ai_assign_work_dirty = false;
+    city.ai_choose_production_dirty = false;
+    city.ai_emphasize_yield_count = [0; YieldType::NUM];
+    city.ai_emphasize_commerce_count = [0; CommerceType::NUM];
+    city.ai_emphasize_avoid_angry_citizens_count = 0;
+    city.ai_emphasize_avoid_unhealthy_citizens_count = 0;
+    city.ai_emphasize.fill(false);
+}
+
 /// A C++ `mutable int` cache slot, written from `&self` methods (`Cell`-like). Backed by a
 /// relaxed atomic rather than `Cell` so `City` (and `Game`) stay `Sync`: the simulation is
 /// single-threaded, and readers sharing a `&Game` can only race to store the same value.
