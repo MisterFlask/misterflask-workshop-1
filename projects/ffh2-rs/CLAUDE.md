@@ -123,6 +123,26 @@ C++ -> Rust mapping:
 Every `todo!()` left in core code means "not yet ported"; keep the C++ function name in
 the message (`todo!("CvUnit::airStrike")`) so remaining work is greppable.
 
+## Python porting conventions (`ffh-core/src/ffh/`)
+
+FFH2 Python talks to the DLL through the Cy* wrappers (CyUnit, CyCity, CyPlayer, ...),
+which forward to the C++ methods -- so port each Cy call to the corresponding ported
+`Game` method or field:
+- `pUnit.getX()` -> `self.units[u].x`; `pUnit.setHasPromotion(e, True)` ->
+  `self.unit_set_has_promotion(u, e, true)`; `pPlayer.initUnit(..)` -> `self.player_init_unit(..)`.
+- `gc.getInfoTypeForString('PROMOTION_X')` -> `self.d.t::<PromotionType>("PROMOTION_X")`
+  (hoist out of loops). `gc.getDefineINT('X')` -> `self.d.defines.x`.
+- `CyMap().plot(x, y)` -> `self.map.plot_xy(x, y)`; it returns `None` off-map, and the
+  Python NULL-plot then answers defaults (`isNone()` true, counts 0) -- port that explicitly.
+- `CyGame().getSorenRandNum(n, "s")` -> `self.soren_rand_num(n, "s")` (same order/count).
+- Python 2 integer `/` floors: use `crate::ffh::game_utils::py_div`; `%` on negative values
+  follows Python (`rem_euclid` for positive divisors). `range(a, b)` -> `a..b`.
+- `PyPlayer(i).getUnitList()` / `getCityList()` -> clone the id lists from `self.players[p]`.
+- UI-only calls (`CyInterface().addMessage`, popups, sounds, `CyEngine` effects) -> omit
+  (or `self.log.msg`). Human-only popup choices -> controller decision for that player.
+- Callback names stored in XML are dispatched through tables built once from `PyCall`
+  (`ffh/pycall.rs`); every name referenced by XML must resolve (a test checks this).
+
 ## Workflow
 
 - Work in small, compiling steps; commit with clear messages.
