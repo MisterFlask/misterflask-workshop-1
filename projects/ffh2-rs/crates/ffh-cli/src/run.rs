@@ -123,6 +123,10 @@ pub fn new_game(cfg: &RunConfig) -> (Game, Arc<Timed>) {
         g.controllers[p] = ai.clone();
     }
     g.autorun = true;
+    // FFH_LOG=1 (all players) or FFH_LOG=<player id>: print the game log as it is written.
+    if std::env::var("FFH_LOG").is_ok() {
+        g.log.enabled = true;
+    }
     g.game_init();
     (g, timed)
 }
@@ -130,6 +134,11 @@ pub fn new_game(cfg: &RunConfig) -> (Game, Arc<Timed>) {
 /// Runs `game.update()` until `cfg.turns` turns have been played or the game ends.
 /// Returns one record per completed game turn.
 pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
+    autoplay_with(g, cfg, |_, _| {})
+}
+
+/// [`autoplay`], calling `on_turn` after every completed game turn.
+pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Game, &TurnStat)) -> Vec<TurnStat> {
     let mut stats = Vec::new();
     let end_turn = g.game_turn() + cfg.turns;
     let mut turn = g.game_turn();
@@ -139,6 +148,14 @@ pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
     while g.game_state == GameStateType::GAMESTATE_ON && g.game_turn() < end_turn {
         g.update();
         updates_this_turn += 1;
+        if g.log.enabled && !g.log.entries.is_empty() {
+            let filter: Option<u8> = std::env::var("FFH_LOG").ok().and_then(|v| v.parse().ok());
+            for e in g.log.entries.drain(..) {
+                if filter.map_or(true, |f| e.player == Some(f)) {
+                    eprintln!("LOG t{} p{:?}: {}", e.turn, e.player, e.text);
+                }
+            }
+        }
         if g.game_turn() != turn {
             let stat = TurnStat { turn, elapsed: t0.elapsed(), checksum: g.calculate_sync_checksum(), units: g.units.len(), cities: g.cities.len() };
             if cfg.verbose {
@@ -151,6 +168,7 @@ pub fn autoplay(g: &mut Game, cfg: &RunConfig) -> Vec<TurnStat> {
                     stat.checksum as u32
                 );
             }
+            on_turn(g, &stat);
             stats.push(stat);
             if cfg.report_every > 0 && (turn + 1) % cfg.report_every == 0 {
                 print!("{}", report(g));
@@ -211,8 +229,10 @@ pub fn report(g: &Game) -> String {
             } else {
                 city.order_queue.first().map_or("-".to_string(), |o| format!("{:?}", o.order_type))
             };
+            let happy = g.city_happy_level(c) - g.city_unhappy_level(c, 0);
+            let health = g.city_good_health(c) - g.city_bad_health(c, false, 0);
             out += &format!(
-                "     city {} size={} food={:+} ({}/{}) yields={:?} commerce={:?} prod={}\n",
+                "     city {} size={} food={:+} ({}/{}) yields={:?} commerce={:?} happy={:+} health={:+} prod={} ({}/{})\n",
                 city.name,
                 city.population,
                 g.city_food_difference(c, true),
@@ -220,7 +240,11 @@ pub fn report(g: &Game) -> String {
                 g.city_growth_threshold(c),
                 [0, 1, 2].map(|y| g.city_yield_rate(c, YieldType::from_usize(y))),
                 [0, 1, 2, 3].map(|k| g.city_commerce_rate(c, CommerceType::from_usize(k))),
-                prod
+                happy,
+                health,
+                prod,
+                if city.order_queue.is_empty() { 0 } else { g.city_production(c) },
+                if city.order_queue.is_empty() { 0 } else { g.city_production_needed(c) }
             );
         }
     }

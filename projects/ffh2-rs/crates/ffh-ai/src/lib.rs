@@ -28,6 +28,27 @@ pub mod units;
 pub mod values;
 pub mod view;
 
+/// Debug tracing: `FFH_AI_TRACE=all` or `FFH_AI_TRACE=<player id>` prints AI decisions to
+/// stderr. Read once; it only prints, so it cannot change the game.
+pub fn trace_on(p: PlayerId) -> bool {
+    static TRACE: std::sync::OnceLock<Option<i32>> = std::sync::OnceLock::new();
+    let t = TRACE.get_or_init(|| match std::env::var("FFH_AI_TRACE") {
+        Ok(v) if v == "all" => Some(-1),
+        Ok(v) => v.parse().ok(),
+        Err(_) => None,
+    });
+    matches!(*t, Some(-1)) || *t == Some(p.0 as i32)
+}
+
+#[macro_export]
+macro_rules! trace {
+    ($g:expr, $p:expr, $($arg:tt)*) => {
+        if $crate::trace_on($p) {
+            eprintln!("[t{} p{}] {}", $g.game_turn(), $p.0, format!($($arg)*));
+        }
+    };
+}
+
 /// The AI controller. One instance may serve any number of players.
 #[derive(Default)]
 pub struct Ai {

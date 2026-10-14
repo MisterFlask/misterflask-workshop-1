@@ -5,21 +5,30 @@
 //!   ffh lookup <TYPE_NAME>           print the class/index of a type name
 //!   ffh autoplay [opts]              play an AI-only game, print per-turn stats and a summary
 //!   ffh bench [opts]                 like autoplay, print only timings
+//!   ffh stats [opts] [--at T1,T2,..]  play a game, print one JSON line of AI metrics
+//!                                    (per-civ snapshots after T1, T2, .. turns; events)
 //!
 //! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
 //! every N turns)
 
 mod run;
+mod stats;
 
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--at T1,T2,..]");
     std::process::exit(2)
 }
 
 fn parse_run_config(args: &[String]) -> run::RunConfig {
+    parse_run_config_at(args).0
+}
+
+/// Run options plus the `--at` list of `ffh stats`.
+fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
     let mut cfg = run::RunConfig::default();
+    let mut at = Vec::new();
     let mut i = 0;
     while i < args.len() {
         let val = |i: usize| args.get(i + 1).cloned().unwrap_or_else(|| usage());
@@ -29,11 +38,12 @@ fn parse_run_config(args: &[String]) -> run::RunConfig {
             "--size" => cfg.world = val(i),
             "--turns" => cfg.turns = val(i).parse().unwrap_or_else(|_| usage()),
             "--report" => cfg.report_every = val(i).parse().unwrap_or_else(|_| usage()),
+            "--at" => at = val(i).split(',').map(|t| t.parse().unwrap_or_else(|_| usage())).collect(),
             _ => usage(),
         }
         i += 2;
     }
-    cfg
+    (cfg, at)
 }
 
 fn cmd_autoplay(args: &[String], verbose: bool) {
@@ -103,6 +113,10 @@ fn main() {
         Some("lookup") => cmd_lookup(args.get(1).map(|s| s.as_str()).unwrap_or_else(|| usage())),
         Some("autoplay") => cmd_autoplay(&args[1..], true),
         Some("bench") => cmd_autoplay(&args[1..], false),
+        Some("stats") => {
+            let (cfg, at) = parse_run_config_at(&args[1..]);
+            stats::cmd_stats(&cfg, &at);
+        }
         Some(_) => usage(),
     }
 }

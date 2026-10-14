@@ -30,6 +30,9 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
             best = Some(t);
         }
     }
+    if let Some(t) = best {
+        crate::trace!(g, p, "research {}", g.d.techs[t].base.type_);
+    }
     best
 }
 

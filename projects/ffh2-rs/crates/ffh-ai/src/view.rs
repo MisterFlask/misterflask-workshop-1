@@ -21,6 +21,8 @@ pub struct View {
     pub danger: Vec<i32>,
     /// Plots our units already target this turn (city sites, builds), to spread them out.
     pub claimed: Vec<PlotIdx>,
+    /// Plots (cities) where a settler waits for an escort.
+    pub escort_requests: Vec<PlotIdx>,
     /// Our units committed to each city's garrison this turn.
     pub garrison: BTreeMap<CityId, i32>,
     /// Reusable flood buffers.
@@ -85,6 +87,7 @@ impl View {
             civ_enemies,
             danger: vec![0; g.map.num_plots()],
             claimed: Vec::new(),
+            escort_requests: Vec::new(),
             garrison: BTreeMap::new(),
             flood: Flood::default(),
         };

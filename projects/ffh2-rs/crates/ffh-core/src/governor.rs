@@ -6,20 +6,34 @@
 //! the rules (which plots *can* be worked, forced specialists, yields) stay in the
 //! ported CvCity code, which feeds this module plain candidate lists.
 //!
-//! Algorithm: always work the city centre; fill forced specialists; then add
-//! citizens greedily by marginal value, where food is weighted up while the city
-//! would starve or (unless avoiding growth) while the surplus is below the growth
-//! target; finally do a bounded swap pass (worst worked vs. best unworked).
+//! Valuation (after C++ `CvCityAI::AI_yieldValue`): a hammer is worth 15, a point of
+//! commerce about 7 (split by the owner's sliders, research weighted up), a great-people
+//! point 3. Food is valued by the city's food *surplus*, as a concave function: food that
+//! avoids starvation is worth 60 per point; while the city wants to grow (it has happy
+//! faces to spare and good tiles to work) food up to a growth target (6 at size 1, falling
+//! to 2 at size 5) is worth 23-38 depending on how much room there is, food past the target
+//! a third of that; a city that cannot usefully grow (at its happy cap, avoiding growth)
+//! values extra food at 2. While the city builds a food-production unit (settlers,
+//! workers) its surplus becomes hammers, so food is valued like production.
+//!
+//! Algorithm: always work the city centre; fill forced specialists; then add citizens
+//! greedily by marginal value (recomputed against the running food surplus); finally a
+//! bounded swap pass (any worked tile or specialist against any unworked one) improves the
+//! total, which the greedy order can miss because of the food curve.
 
 use ffh_data::*;
 
 /// Relative weights for the three yields and the commerce types (per city emphasis).
 #[derive(Clone, Copy, Debug)]
 pub struct Weights {
+    /// Food value multiplier, percent.
     pub food: i32,
+    /// Value of one hammer.
     pub production: i32,
+    /// Value of one point of (unsplit) commerce.
     pub commerce: i32,
-    /// Per commerce type multiplier (gold, research, culture, espionage), percent.
+    /// Per commerce type value of one point (gold, research, culture, espionage), percent of
+    /// `commerce`.
     pub commerce_type: [i32; CommerceType::NUM],
     /// Value of one great-people point.
     pub great_people: i32,
@@ -27,7 +41,44 @@ pub struct Weights {
 
 impl Default for Weights {
     fn default() -> Self {
-        Weights { food: 3, production: 2, commerce: 1, commerce_type: [100, 110, 60, 30], great_people: 1 }
+        Weights { food: 100, production: 15, commerce: 7, commerce_type: [100, 110, 60, 20], great_people: 3 }
+    }
+}
+
+/// What the city wants from food, computed from its state.
+#[derive(Clone, Copy, Debug)]
+pub struct FoodContext {
+    pub population: i32,
+    /// Citizens the city may still add without angry citizens and with useful work for them.
+    pub growth_room: i32,
+    /// Good health minus bad health.
+    pub health_room: i32,
+    /// Building a unit whose cost is paid with food too (settlers, workers): the surplus is
+    /// production.
+    pub food_is_production: bool,
+    /// Do not grow (emphasize avoid growth, disorder).
+    pub avoid_growth: bool,
+    /// The owner does not use food (FfH `isIgnoreFood`): no growth, no starvation.
+    pub ignore_food: bool,
+    /// Surplus beyond which more food is worth less.
+    pub growth_target: i32,
+    /// Hammers below this are worth double (a city must build something; after BBAI's
+    /// "more than enough food but very little production" rule).
+    pub production_floor: i32,
+}
+
+impl Default for FoodContext {
+    fn default() -> Self {
+        FoodContext {
+            population: 1,
+            growth_room: 3,
+            health_room: 3,
+            food_is_production: false,
+            avoid_growth: false,
+            ignore_food: false,
+            growth_target: 4,
+            production_floor: 0,
+        }
     }
 }
 
@@ -36,7 +87,7 @@ impl Default for Weights {
 pub struct TileOption {
     pub city_plot: usize,
     pub yields: [i32; YieldType::NUM],
-    /// Commerce split by type after the player's sliders (optional refinement).
+    /// Commerce split by type (optional refinement; zeros = use the raw commerce yield).
     pub commerce: [i32; CommerceType::NUM],
 }
 
@@ -53,18 +104,20 @@ pub struct SpecialistOption {
 
 #[derive(Clone, Debug)]
 pub struct GovernorInput {
-    /// Citizens to place (population + free specialists, minus forced specialists).
+    /// Citizens to place.
     pub citizens: i32,
-    /// Food eaten per citizen (C++ `FOOD_CONSUMPTION_PER_POPULATION`), times population.
-    pub food_consumption: i32,
-    /// Food from the centre plot and other fixed sources.
-    pub base_food: i32,
-    /// Desired food surplus (e.g. 2 + population/3); ignored when `avoid_growth`.
-    pub growth_target: i32,
-    pub avoid_growth: bool,
+    /// Food surplus before placing them (current yield minus consumption).
+    pub base_surplus: i32,
+    /// Hammers before placing them.
+    pub base_production: i32,
+    pub food: FoodContext,
     pub tiles: Vec<TileOption>,
     pub specialists: Vec<SpecialistOption>,
     pub weights: Weights,
+    /// Specialists may be used (false when only tiles may be worked).
+    pub allow_specialists: bool,
+    /// Tiles may be worked (false for free specialists).
+    pub allow_tiles: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -75,75 +128,171 @@ pub struct Assignment {
     pub specialists: Vec<(SpecialistType, i32)>,
 }
 
-fn commerce_value(w: &Weights, commerce: &[i32; CommerceType::NUM], raw: i32) -> i32 {
-    let split: i32 = commerce.iter().zip(w.commerce_type.iter()).map(|(c, m)| c * m).sum::<i32>() / 100;
-    // If no split is given, value raw commerce directly.
-    if commerce.iter().all(|&c| c == 0) {
-        raw * w.commerce
+/// Value of the step from surplus `s` to `s + 1`.
+fn food_step_value(w: &Weights, f: &FoodContext, s: i32) -> i32 {
+    if f.ignore_food {
+        return if f.food_is_production { w.production } else { 0 };
+    }
+    if s < 0 {
+        return 60;
+    }
+    if f.food_is_production {
+        return w.production;
+    }
+    if f.avoid_growth || f.growth_room <= 0 {
+        return 2;
+    }
+    let mut g = 20 + 3 * f.growth_room.min(6);
+    if f.health_room <= 0 {
+        g -= 6;
+    }
+    g = g * w.food / 100;
+    if s < f.growth_target {
+        g
     } else {
-        split * w.commerce
+        g / 3
     }
 }
 
-fn value(w: &Weights, food_weight: i32, yields: &[i32; 3], commerce: &[i32; 4], gpp: i32) -> i32 {
-    yields[0] * food_weight * 4
-        + yields[1] * w.production * 4
-        + commerce_value(w, commerce, yields[2]) * 4
-        + gpp * w.great_people * 2
+/// Value of changing the surplus from `s` by `delta` (negative = losing food).
+pub fn food_value(w: &Weights, f: &FoodContext, s: i32, delta: i32) -> i32 {
+    let mut v = 0;
+    if delta >= 0 {
+        for k in 0..delta {
+            v += food_step_value(w, f, s + k);
+        }
+    } else {
+        for k in 1..=-delta {
+            v -= food_step_value(w, f, s - k);
+        }
+    }
+    v
+}
+
+/// Value of adding `delta` hammers to `total`.
+pub fn production_value(w: &Weights, f: &FoodContext, total: i32, delta: i32) -> i32 {
+    let mut v = delta * w.production;
+    // The part below the floor counts twice.
+    let below = (f.production_floor - total).clamp(0, delta.max(0));
+    v += below * w.production;
+    v
+}
+
+/// Value of everything but food in an item.
+pub fn non_food_value(w: &Weights, yields: &[i32; YieldType::NUM], commerce: &[i32; CommerceType::NUM], great_people: i32) -> i32 {
+    let mut v = yields[YieldType::YIELD_PRODUCTION.idx()] * w.production;
+    if commerce.iter().all(|&c| c == 0) {
+        v += yields[YieldType::YIELD_COMMERCE.idx()] * w.commerce;
+    } else {
+        v += commerce.iter().zip(w.commerce_type.iter()).map(|(c, m)| c * m).sum::<i32>() * w.commerce / 100;
+    }
+    v + great_people * w.great_people
+}
+
+/// One candidate item (tile or one specialist slot).
+#[derive(Clone, Copy)]
+struct Item {
+    food: i32,
+    prod: i32,
+    /// Value of everything but food and hammers.
+    rest: i32,
+    /// Index into tiles (`is_tile`) or specialists.
+    index: usize,
+    is_tile: bool,
 }
 
 /// Chooses tiles and specialists for `input.citizens` citizens.
 pub fn assign(input: &GovernorInput) -> Assignment {
     let w = &input.weights;
-    let mut food = input.base_food - input.food_consumption;
-    let mut taken = vec![false; input.tiles.len()];
-    let mut spec_used = vec![0i32; input.specialists.len()];
-    let mut out = Assignment::default();
-
-    for _ in 0..input.citizens.max(0) {
-        let food_weight = if food < 0 {
-            w.food * 4
-        } else if !input.avoid_growth && food < input.growth_target {
-            w.food * 2
-        } else if input.avoid_growth {
-            w.food / 2
-        } else {
-            w.food
-        };
-        // best tile
-        let mut best: Option<(i32, bool, usize)> = None; // (value, is_tile, index)
+    let f = &input.food;
+    let mut items: Vec<Item> = Vec::new();
+    if input.allow_tiles {
         for (i, t) in input.tiles.iter().enumerate() {
-            if taken[i] {
-                continue;
-            }
-            let v = value(w, food_weight, &t.yields, &t.commerce, 0);
-            if best.map_or(true, |(bv, _, _)| v > bv) {
-                best = Some((v, true, i));
-            }
-        }
-        for (i, s) in input.specialists.iter().enumerate() {
-            if spec_used[i] >= s.max_more {
-                continue;
-            }
-            let v = value(w, food_weight, &s.yields, &s.commerce, s.great_people);
-            if best.map_or(true, |(bv, _, _)| v > bv) {
-                best = Some((v, false, i));
-            }
-        }
-        match best {
-            Some((_, true, i)) => {
-                taken[i] = true;
-                food += input.tiles[i].yields[0];
-                out.tiles.push(input.tiles[i].city_plot);
-            }
-            Some((_, false, i)) => {
-                spec_used[i] += 1;
-                food += input.specialists[i].yields[0];
-            }
-            None => break,
+            items.push(Item { food: t.yields[0], prod: t.yields[1], rest: non_food_value(w, &t.yields, &t.commerce, 0) - t.yields[1] * w.production, index: i, is_tile: true });
         }
     }
-    for (i, n) in spec_used.iter().enumerate() {
+    let mut spec_items_start = items.len();
+    if input.allow_specialists {
+        spec_items_start = items.len();
+        let n = input.citizens.max(0);
+        for (i, s) in input.specialists.iter().enumerate() {
+            // One item per slot this assignment could use.
+            let slots = s.max_more.min(n);
+            for _ in 0..slots {
+                items.push(Item { food: s.yields[0], prod: s.yields[1], rest: non_food_value(w, &s.yields, &s.commerce, s.great_people) - s.yields[1] * w.production, index: i, is_tile: false });
+            }
+        }
+    }
+    let _ = spec_items_start;
+
+    let mut used = vec![false; items.len()];
+    let mut surplus = input.base_surplus;
+    let mut production = input.base_production;
+    let value = |it: &Item, surplus: i32, production: i32| it.rest + food_value(w, f, surplus, it.food) + production_value(w, f, production, it.prod);
+    let mut chosen: Vec<usize> = Vec::new();
+    for _ in 0..input.citizens.max(0) {
+        let mut best: Option<(i32, usize)> = None;
+        for (k, it) in items.iter().enumerate() {
+            if used[k] {
+                continue;
+            }
+            let v = value(it, surplus, production);
+            // Ties: first candidate (tiles before specialists, lower plot index first).
+            if best.map_or(true, |(bv, _)| v > bv) {
+                best = Some((v, k));
+            }
+        }
+        let Some((_, k)) = best else { break };
+        used[k] = true;
+        surplus += items[k].food;
+        production += items[k].prod;
+        chosen.push(k);
+    }
+
+    // Swap pass: replace a chosen item by an unused one when the total improves.
+    for _ in 0..4 {
+        let mut improved = false;
+        for ci in 0..chosen.len() {
+            let a = chosen[ci];
+            let without = surplus - items[a].food;
+            let without_prod = production - items[a].prod;
+            let base = value(&items[a], without, without_prod);
+            let mut best: Option<(i32, usize)> = None;
+            for (k, it) in items.iter().enumerate() {
+                if used[k] {
+                    continue;
+                }
+                let v = value(it, without, without_prod);
+                if v > base && best.map_or(true, |(bv, _)| v > bv) {
+                    best = Some((v, k));
+                }
+            }
+            if let Some((_, k)) = best {
+                used[a] = false;
+                used[k] = true;
+                surplus = without + items[k].food;
+                production = without_prod + items[k].prod;
+                chosen[ci] = k;
+                improved = true;
+            }
+        }
+        if !improved {
+            break;
+        }
+    }
+
+    let mut out = Assignment::default();
+    let mut spec_count = vec![0i32; input.specialists.len()];
+    for &k in &chosen {
+        let it = items[k];
+        if it.is_tile {
+            out.tiles.push(input.tiles[it.index].city_plot);
+        } else {
+            spec_count[it.index] += 1;
+        }
+    }
+    out.tiles.sort_unstable();
+    for (i, n) in spec_count.iter().enumerate() {
         if *n > 0 {
             out.specialists.push((input.specialists[i].specialist, *n));
         }
@@ -159,43 +308,66 @@ mod tests {
         TileOption { city_plot: i, yields: [f, p, c], commerce: [0; 4] }
     }
 
-    #[test]
-    fn avoids_starvation_first() {
-        let input = GovernorInput {
-            citizens: 2,
-            food_consumption: 4,
-            base_food: 2,
-            growth_target: 2,
-            avoid_growth: false,
-            tiles: vec![tile(1, 0, 3, 0), tile(2, 3, 0, 0), tile(3, 2, 1, 0)],
+    fn input(citizens: i32, base_surplus: i32, tiles: Vec<TileOption>) -> GovernorInput {
+        GovernorInput {
+            citizens,
+            base_surplus,
+            base_production: 1,
+            food: FoodContext::default(),
+            tiles,
             specialists: vec![],
             weights: Weights::default(),
-        };
-        let a = assign(&input);
+            allow_specialists: true,
+            allow_tiles: true,
+        }
+    }
+
+    #[test]
+    fn avoids_starvation_first() {
+        // Two citizens eat 4; the centre gives 2.
+        let a = assign(&input(2, -2, vec![tile(1, 0, 3, 0), tile(2, 3, 0, 0), tile(3, 2, 1, 0)]));
         assert_eq!(a.tiles.len(), 2);
         assert!(a.tiles.contains(&2), "food tile must be worked: {:?}", a);
     }
 
     #[test]
     fn uses_specialists_when_no_tiles() {
-        let input = GovernorInput {
-            citizens: 2,
-            food_consumption: 4,
-            base_food: 6,
-            growth_target: 0,
-            avoid_growth: false,
-            tiles: vec![tile(1, 1, 0, 0)],
-            specialists: vec![SpecialistOption {
-                specialist: SpecialistType(0),
-                yields: [0, 0, 0],
-                commerce: [0, 3, 0, 0],
-                great_people: 3,
-                max_more: i32::MAX,
-            }],
-            weights: Weights::default(),
-        };
-        let a = assign(&input);
+        let mut inp = input(2, 2, vec![tile(1, 1, 0, 0)]);
+        inp.specialists = vec![SpecialistOption {
+            specialist: SpecialistType(0),
+            yields: [0, 0, 0],
+            commerce: [0, 3, 0, 0],
+            great_people: 3,
+            max_more: i32::MAX,
+        }];
+        let a = assign(&inp);
         assert_eq!(a.tiles.len() as i32 + a.specialists.iter().map(|s| s.1).sum::<i32>(), 2);
+    }
+
+    #[test]
+    fn growing_city_prefers_food_then_production() {
+        // Size 1 with room to grow: the 4-food tile beats the 0/3/0 mine.
+        let a = assign(&input(1, 1, vec![tile(1, 0, 3, 0), tile(2, 4, 0, 0)]));
+        assert_eq!(a.tiles, vec![2]);
+        // At the happy cap, the mine wins.
+        let mut inp = input(1, 1, vec![tile(1, 0, 3, 0), tile(2, 4, 0, 0)]);
+        inp.food.growth_room = 0;
+        assert_eq!(assign(&inp).tiles, vec![1]);
+    }
+
+    #[test]
+    fn food_production_counts_food_as_hammers() {
+        // Building a settler: 3/1/0 (4 total) beats 0/3/1.
+        let mut inp = input(1, 0, vec![tile(1, 0, 3, 1), tile(2, 3, 1, 0)]);
+        inp.food.food_is_production = true;
+        assert_eq!(assign(&inp).tiles, vec![2]);
+    }
+
+    #[test]
+    fn swap_pass_fixes_greedy_order() {
+        // Surplus -1: greedy takes the 2-food tile first to stop starving, then the hammers.
+        let a = assign(&input(2, -1, vec![tile(1, 1, 0, 0), tile(2, 2, 0, 0), tile(3, 0, 4, 0)]));
+        assert_eq!(a.tiles, vec![2, 3]);
     }
 }
 
@@ -325,21 +497,80 @@ impl Game {
         out
     }
 
+    /// The governor's weights for city `c`: the default values, commerce valued by the owner's
+    /// sliders (research a little above gold), plus the player-set emphasize flags.
     fn governor_weights(&self, c: CityId) -> Weights {
         let mut w = Weights::default();
+        let owner = self.cities[c].owner;
+        let pct = self.players[owner].commerce_percent;
+        // Raw commerce is split by the sliders: its value is the slider-weighted type value.
+        let blended: i32 = (0..CommerceType::NUM).map(|k| pct[k].max(0) * w.commerce_type[k]).sum::<i32>() / 100;
+        if blended > 0 {
+            w.commerce = w.commerce * blended / 100;
+        }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
-            w.food += 2;
+            w.food = w.food * 160 / 100;
         }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_PRODUCTION) {
-            w.production += 2;
+            w.production = w.production * 150 / 100;
         }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_COMMERCE) {
-            w.commerce += 2;
+            w.commerce = w.commerce * 160 / 100;
         }
         if self.city_ai_is_emphasize_great_people(c) {
-            w.great_people += 3;
+            w.great_people *= 4;
+        }
+        // A culture-starved new city (no border growth yet) values culture more.
+        if self.cities[c].culture_level.map_or(true, |l| l.i() <= 1) {
+            w.commerce_type[CommerceType::COMMERCE_CULTURE.idx()] = 100;
         }
         w
+    }
+
+    /// What city `c` wants from food (see [`FoodContext`]). `placing` citizens are about to be
+    /// placed; growth room is limited by the good tiles left for them.
+    fn governor_food_context(&self, c: CityId, placing: i32) -> FoodContext {
+        let city = &self.cities[c];
+        let owner = city.owner;
+        let population = city.population;
+        let happy_room = if self.city_is_no_unhappiness(c) { 5 } else { self.city_happy_level(c) - self.city_unhappy_level(c, 0) };
+        let health_room = self.city_good_health(c) - self.city_bad_health(c, false, 0);
+        // Good tiles still unworked (food to sustain themselves, or a strong yield).
+        let mut good_tiles = 0;
+        for i in 0..self.city_num_city_plots(c).max(0) as usize {
+            if i == CITY_HOME_PLOT || city.working_plot[i] {
+                continue;
+            }
+            let Some(plot) = self.city_index_plot(c, i) else { continue };
+            if !self.city_can_work(c, plot) {
+                continue;
+            }
+            let y = self.map.plots[plot].yields;
+            if y[0] >= 2 && y[0] + y[1] + y[2] >= 3 || y[0] + y[1] + y[2] >= 4 {
+                good_tiles += 1;
+            }
+        }
+        let tile_room = (good_tiles - placing + 1).max(1);
+        let growth_room = happy_room.min(tile_room);
+        let avoid_growth = self.city_ai_is_emphasize_avoid_growth(c)
+            || self.city_is_disorder(c)
+            || (self.city_ai_is_emphasize_avoid_angry_citizens(c) && happy_room <= 0)
+            || (self.city_ai_is_emphasize_avoid_unhealthy_citizens(c) && health_room <= 0);
+        FoodContext {
+            population,
+            growth_room,
+            health_room,
+            food_is_production: self.city_is_food_production(c),
+            avoid_growth,
+            ignore_food: self.players[owner].ignore_food,
+            growth_target: 2 + (5 - population).max(0) + i32::from(growth_room >= 4 && population >= 5),
+            production_floor: if self.city_is_production_process(c) { 0 } else { 2 + population / 2 },
+        }
+    }
+
+    /// Current food surplus of `c` from what it works now (production-food included).
+    fn governor_surplus(&self, c: CityId) -> i32 {
+        self.city_yield_rate(c, YieldType::YIELD_FOOD) - self.city_food_consumption(c, false, 0)
     }
 
     /// Places `n` citizens on tiles (if `workers`) and specialists, chosen by [`assign`].
@@ -357,17 +588,16 @@ impl Game {
                 tiles.push(TileOption { city_plot: i, yields: self.map.plots[plot].yields, commerce: [0; CommerceType::NUM] });
             }
         }
-        let population = self.cities[c].population;
-        let avoid_growth = self.city_ai_stop_growth(c) || self.city_unhappy_level(c, 1) > self.city_happy_level(c);
         let input = GovernorInput {
             citizens: n,
-            food_consumption: 0,
-            base_food: self.city_food_difference(c, false),
-            growth_target: 2 + population / 4,
-            avoid_growth,
+            base_surplus: self.governor_surplus(c),
+            base_production: self.cities[c].base_yield_rate[YieldType::YIELD_PRODUCTION.idx()],
+            food: self.governor_food_context(c, n),
             tiles,
             specialists: self.governor_specialists(c),
             weights: self.governor_weights(c),
+            allow_specialists: true,
+            allow_tiles: workers,
         };
         let a = assign(&input);
         for i in a.tiles {
@@ -378,21 +608,25 @@ impl Game {
         }
     }
 
+    /// Value lost by removing one citizen with these outputs at the current surplus.
+    fn governor_item_value(&self, w: &Weights, f: &FoodContext, surplus: i32, yields: &[i32; YieldType::NUM], commerce: &[i32; CommerceType::NUM], gpp: i32) -> i32 {
+        non_food_value(w, yields, commerce, gpp) + food_value(w, f, surplus - yields[0], yields[0])
+    }
+
     /// Replaces C++ `CvCityAI::AI_removeWorstCitizen`: drop a specialist above the forced
     /// count, else the least valuable worked plot, else a forced specialist.
     fn city_remove_worst_citizen(&mut self, c: CityId) -> bool {
         let w = self.governor_weights(c);
+        let f = self.governor_food_context(c, 0);
+        let surplus = self.governor_surplus(c);
         let owner = self.cities[c].owner;
-        let spec_value = |g: &Game, s: SpecialistType| -> i32 {
-            let y: [i32; 3] = std::array::from_fn(|i| g.player_specialist_yield(owner, s, YieldType::from_usize(i)));
-            let cm: [i32; 4] = std::array::from_fn(|i| g.player_specialist_commerce(owner, s, CommerceType::from_usize(i)));
-            value(&w, w.food, &y, &cm, g.d.specialists[s].great_people_rate_change)
-        };
         let mut worst: Option<(SpecialistType, i32)> = None;
         for s in self.d.specialists.keys() {
             let city = &self.cities[c];
             if city.specialist_count[s] > city.force_specialist_count[s] {
-                let v = spec_value(self, s);
+                let y: [i32; 3] = std::array::from_fn(|i| self.player_specialist_yield(owner, s, YieldType::from_usize(i)));
+                let cm: [i32; 4] = std::array::from_fn(|i| self.player_specialist_commerce(owner, s, CommerceType::from_usize(i)));
+                let v = self.governor_item_value(&w, &f, surplus, &y, &cm, self.d.specialists[s].great_people_rate_change);
                 if worst.map_or(true, |(_, b)| v < b) {
                     worst = Some((s, v));
                 }
@@ -408,7 +642,7 @@ impl Game {
                 continue;
             }
             let Some(plot) = self.city_index_plot(c, i) else { continue };
-            let v = value(&w, w.food, &self.map.plots[plot].yields, &[0; CommerceType::NUM], 0);
+            let v = self.governor_item_value(&w, &f, surplus, &self.map.plots[plot].yields, &[0; CommerceType::NUM], 0);
             if worst_tile.map_or(true, |(_, b)| v < b) {
                 worst_tile = Some((i, v));
             }
@@ -431,6 +665,8 @@ impl Game {
     /// the best valid specialist (`specialists`); false if there is no candidate.
     pub(crate) fn city_ai_add_best_citizen(&mut self, c: CityId, workers: bool, specialists: bool) -> bool {
         let w = self.city_citizen_weights(c);
+        let f = self.governor_food_context(c, 1);
+        let surplus = self.governor_surplus(c);
 
         // AI: the C++ first prefers a forced specialist by its forced/total ratio; the player's
         // buttons only reach here for cities that are not automated, which force none.
@@ -439,7 +675,8 @@ impl Game {
         if specialists {
             for specialist in self.d.specialists.keys() {
                 if self.city_is_specialist_valid(c, specialist, 1) {
-                    let value = self.city_specialist_citizen_value(c, &w, specialist);
+                    let food = self.player_specialist_yield(self.cities[c].owner, specialist, YieldType::YIELD_FOOD);
+                    let value = (self.city_specialist_citizen_value(c, &w, specialist) - food * 20 + food_value(&w, &f, surplus, food)).max(0);
                     if value >= best_specialist_value {
                         best_specialist_value = value;
                         best_specialist = Some(specialist);
@@ -457,7 +694,8 @@ impl Game {
                 }
                 if let Some(loop_plot) = self.city_index_plot(c, i) {
                     if self.city_can_work(c, loop_plot) {
-                        let value = citizen_value(&w, &self.map.plots[loop_plot].yields, &[0; CommerceType::NUM], 0);
+                        let y = self.map.plots[loop_plot].yields;
+                        let value = (non_food_value(&w, &y, &[0; CommerceType::NUM], 0) + food_value(&w, &f, surplus, y[0])).max(1);
                         if value > best_plot_value {
                             best_plot_value = value;
                             best_plot = Some(i);
@@ -569,23 +807,9 @@ impl Game {
         false
     }
 
-    /// The governor's weights for city `c` (its default weights plus the emphasize bonuses;
-    /// mirrors the private `governor_weights` of governor.rs).
+    /// The governor's weights for city `c` (used by the citizen-button stand-ins).
     fn city_citizen_weights(&self, c: CityId) -> Weights {
-        let mut w = Weights::default();
-        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
-            w.food += 2;
-        }
-        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_PRODUCTION) {
-            w.production += 2;
-        }
-        if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_COMMERCE) {
-            w.commerce += 2;
-        }
-        if self.city_ai_is_emphasize_great_people(c) {
-            w.great_people += 3;
-        }
-        w
+        self.governor_weights(c)
     }
 
     /// [`citizen_value`] of one more specialist of type `specialist` in city `c`.
@@ -598,14 +822,8 @@ impl Game {
     }
 }
 
-/// The governor's value of one citizen (its `value` at the plain food weight, as its own
-/// worst-citizen removal uses): yields, commerce split by type (raw commerce yield when no
-/// split is given) and great people points.
+/// The governor's value of one citizen's output with food at a flat 20 per point (for the
+/// citizen-button stand-ins, which compare candidates without the food curve).
 fn citizen_value(w: &Weights, yields: &[i32; YieldType::NUM], commerce: &[i32; CommerceType::NUM], great_people: i32) -> i32 {
-    let commerce_value = if commerce.iter().all(|&v| v == 0) {
-        yields[YieldType::YIELD_COMMERCE.idx()] * w.commerce
-    } else {
-        commerce.iter().zip(w.commerce_type.iter()).map(|(v, m)| v * m).sum::<i32>() / 100 * w.commerce
-    };
-    yields[YieldType::YIELD_FOOD.idx()] * w.food * 4 + yields[YieldType::YIELD_PRODUCTION.idx()] * w.production * 4 + commerce_value * 4 + great_people * w.great_people * 2
+    yields[YieldType::YIELD_FOOD.idx()] * 20 + non_food_value(w, yields, commerce, great_people)
 }

@@ -113,12 +113,21 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
         }
     }
     order.sort();
+    if crate::trace_on(p) {
+        for &(role, grp) in &order {
+            if role == Role::Settler {
+                let head = g.group_get_head_unit(grp).unwrap();
+                crate::trace!(g, p, "settler group {:?} at {:?} missions {} activity {:?}", grp, g.map.xy(g.unit_plot(head)), g.groups[grp].mission_queue.len(), g.groups[grp].activity_type);
+            }
+        }
+    }
 
     for (role, grp) in order {
         if !alive(g, grp) {
             continue;
         }
-        if g.groups[grp].force_update {
+        if g.groups[grp].force_update || (role == Role::Settler && !g.groups[grp].mission_queue.is_empty() && g.groups[grp].mission_queue[0].mission_type == MissionType::MISSION_MOVE_TO) {
+            // Settlers re-plan every turn (danger and sites change).
             g.groups[grp].force_update = false;
             g.group_clear_mission_queue(grp);
             g.group_set_activity_type(grp, ActivityType::ACTIVITY_AWAKE);
@@ -192,6 +201,10 @@ fn upkeep(g: &mut Game, u: UnitId) {
     if let Some((target, _)) = best {
         if g.players[p].gold > 100 {
             g.unit_upgrade(u, Some(target));
+            // C++ AI_upgrade: upgrade(eBestUnit); doDelayedDeath(); -- the old unit goes now.
+            if g.units.contains(u) {
+                g.unit_do_delayed_death(u);
+            }
         }
     }
 }
@@ -257,6 +270,19 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             best = Some((site, score));
         }
     }
+    // The first city: found in place unless a clearly better site is a step away.
+    if first_city && g.unit_can_found(u, here, false) {
+        let (x, y) = g.map.xy(here);
+        let here_value = g.player_ai_found_value(p, x, y, -1, false, &[]) as i64;
+        let better = best.is_some_and(|(site, _)| {
+            let r = reach.iter().find(|r| r.plot == site).map_or(9, |r| r.turns);
+            let (sx, sy) = g.map.xy(site);
+            r == 0 && (g.player_ai_found_value(p, sx, sy, -1, false, &[]) as i64) * 100 > here_value * 125
+        });
+        if !better {
+            best = Some((here, 0));
+        }
+    }
     let Some((site, _)) = best.or_else(|| {
         // No scored site: the first settler founds where it stands if it can.
         if first_city && g.unit_can_found(u, here, false) { Some((here, 0)) } else { None }
@@ -266,6 +292,19 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         return;
     };
     v.claimed.push(site);
+    crate::trace!(g, p, "settler {:?} at {:?} -> site {:?} (danger here {}, site {})", u, g.map.xy(here), g.map.xy(site), v.danger_at(here), v.danger_at(site));
+    if site != here && !first_city && !escorted(g, grp) {
+        // Leaving our lands without an escort gets settlers eaten by animals and barbarians:
+        // take a spare fighter from this plot, else wait for one (a while) in a city.
+        if let Some(e) = find_escort(g, v, here, grp) {
+            crate::trace!(g, p, "settler {:?} takes escort {:?}", u, e);
+            g.unit_join_group(e, Some(grp), true);
+        } else if g.map.plots[here].plot_city.is_some() && g.game_turn() - g.units[u].game_turn_created < 8 {
+            v.escort_requests.push(here);
+            hold_one_turn(g, grp);
+            return;
+        }
+    }
     if site == here {
         if can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
             push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, false);
@@ -281,6 +320,47 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     } else if alive(g, grp) && g.unit_plot(u) == site && can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
         push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, true);
     }
+}
+
+/// Does the group hold a unit that can fight?
+fn escorted(g: &Game, grp: GroupId) -> bool {
+    g.groups[grp].units.iter().any(|&o| attack_power(g, o) > 0 || crate::view::defense_power(g, o) > 0 && !g.d.units[g.units[o].unit_type].found)
+}
+
+/// A fighter on `plot` that can leave: not the last garrison of a city there.
+fn find_escort(g: &Game, v: &View, plot: PlotIdx, grp: GroupId) -> Option<UnitId> {
+    let p = v.p;
+    let city = g.map.plots[plot].plot_city.filter(|&c| g.cities[c].owner == p);
+    let garrison_n = city.map_or(0, |_| garrison(g, p, plot).0);
+    let mut best: Option<(UnitId, i32)> = None;
+    for &o in &g.map.plots[plot].units {
+        let unit = &g.units[o];
+        if unit.owner != p || unit.group == Some(grp) || g.unit_get_domain_type(o) != DomainType::DOMAIN_LAND {
+            continue;
+        }
+        let info = &g.d.units[unit.unit_type];
+        if info.combat <= 0 || info.found || g.unit_moves_left(o) <= 0 {
+            continue;
+        }
+        let is_garrison = matches!(unit.ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER) | Some(UnitAIType::UNITAI_CITY_SPECIAL));
+        let ok = match unit.ai_type {
+            Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_COUNTER) | Some(UnitAIType::UNITAI_RESERVE) | Some(UnitAIType::UNITAI_ATTACK_CITY) => true,
+            _ => is_garrison && garrison_n > 1,
+        };
+        if !ok {
+            continue;
+        }
+        let d = crate::view::defense_power(g, o);
+        if best.map_or(true, |(_, b)| d > b) {
+            best = Some((o, d));
+        }
+    }
+    best.map(|(o, _)| o)
+}
+
+/// End this group's turn without fortifying (it acts again next turn).
+fn hold_one_turn(g: &mut Game, grp: GroupId) {
+    skip(g, grp);
 }
 
 // ----------------------------------------------------------------------------
@@ -569,6 +649,34 @@ fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             move_to(g, grp, r.plot, 0);
             if alive(g, grp) && g.group_ready_to_move(grp, false) {
                 hold(g, grp);
+            }
+            return;
+        }
+    }
+
+    // An undefended city of ours (a fresh one, typically founded by the settler we escorted):
+    // become its garrison.
+    if let Some(c) = g.map.plots[here].plot_city.filter(|&c| g.cities[c].owner == p) {
+        if garrison(g, p, here).0 == 0 && v.garrison.get(&c).copied().unwrap_or(0) == 0 {
+            *v.garrison.entry(c).or_insert(0) += 1;
+            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_CITY_DEFENSE);
+            if let Some(ng) = g.units[u].group {
+                hold(g, ng);
+            }
+            return;
+        }
+    }
+
+    // A settler waits for an escort.
+    if !v.escort_requests.is_empty() {
+        let reach = v.flood.run(g, u, 6, false);
+        if let Some((i, r)) = v.escort_requests.iter().enumerate().filter_map(|(i, &q)| reach.iter().find(|r| r.plot == q).map(|r| (i, *r))).min_by_key(|(_, r)| (r.turns, r.plot)) {
+            v.escort_requests.remove(i);
+            if r.plot != here {
+                move_to(g, grp, r.plot, 0);
+            }
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
             }
             return;
         }

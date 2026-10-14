@@ -1,13 +1,16 @@
 //! City production (C++ `CvCityAI::AI_chooseProduction`, FfH's `CvGameUtils.AI_chooseProduction`
-//! Python): a short priority list (emergency defense, workers, settlers, heroes, army, buildings
-//! by marginal value, casters, missionaries), then a process.
+//! Python): a priority list -- garrison, emergency defense, the first worker, settlers while
+//! good sites remain, minimal army, more workers, buildings by marginal value per turn of
+//! production, army to its target, casters, missionaries -- then a process. Whatever happens,
+//! a city is never left without an order (`fallback`).
 
+use ffh_core::defs::{CITY_HOME_PLOT, NUM_CITY_PLOTS};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
 
 use crate::sites;
-use crate::view::{type_attack_power, type_defense_power};
+use crate::view::type_attack_power;
 use crate::Ai;
 
 #[derive(Copy, Clone, Debug)]
@@ -27,7 +30,23 @@ pub fn choose(ai: &Ai, g: &mut Game, c: CityId) {
         }
     }
     if let Some(choice) = decide(ai, g, c) {
+        crate::trace!(g, p, "{} size {} builds {}", g.cities[c].name, g.cities[c].population, choice_name(g, choice));
         push(g, c, choice);
+    }
+    if g.cities[c].order_queue.is_empty() {
+        // Never leave a city idle: anything it can make.
+        if let Some(choice) = fallback(g, c) {
+            push(g, c, choice);
+        }
+    }
+}
+
+pub fn choice_name(g: &Game, choice: Choice) -> String {
+    match choice {
+        Choice::Train(u, ai) => format!("{} ({:?})", g.d.units[u].base.type_, ai),
+        Choice::Construct(b) => g.d.buildings[b].base.type_.clone(),
+        Choice::Create(pr) => g.d.projects[pr].base.type_.clone(),
+        Choice::Maintain(pr) => g.d.processes[pr].base.type_.clone(),
     }
 }
 
@@ -38,6 +57,32 @@ pub fn push(g: &mut Game, c: CityId, choice: Choice) {
         Choice::Create(pr) => g.city_push_order(c, OrderType::ORDER_CREATE, pr.i(), -1, false, false, false, false),
         Choice::Maintain(pr) => g.city_push_order(c, OrderType::ORDER_MAINTAIN, pr.i(), -1, false, false, false, false),
     }
+}
+
+/// Last resort when the priority list found nothing: the cheapest useful building, else the
+/// strongest land unit per hammer, else any process.
+fn fallback(g: &Game, c: CityId) -> Option<Choice> {
+    let d = g.d;
+    let mut best: Option<(BuildingType, i32)> = None;
+    for b in d.buildings.keys() {
+        if !building_allowed(g, c, b) || !g.city_can_construct(c, b, false, false, false) {
+            continue;
+        }
+        let turns = g.city_production_turns_left_building(c, b, 0);
+        if best.map_or(true, |(_, t)| turns < t) {
+            best = Some((b, turns));
+        }
+    }
+    if let Some((b, _)) = best {
+        return Some(Choice::Construct(b));
+    }
+    if let Some(u) = best_unit(g, c, Role::Defense) {
+        return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
+    }
+    if let Some(u) = best_unit(g, c, Role::Attack) {
+        return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
+    }
+    d.processes.keys().find(|&pr| g.city_can_maintain(c, pr, false)).map(Choice::Maintain)
 }
 
 /// Our units on the city plot able to defend it, and their summed defense power.
@@ -75,8 +120,14 @@ pub fn local_threat(g: &Game, p: PlayerId, plot: PlotIdx, range: i32) -> i32 {
             for &u in &g.map.plots[q].units {
                 let ut = g.units[u].owner;
                 let their_team = g.players[ut].team;
+                // Animals cannot enter owned land: no threat to a city.
+                if g.d.units[g.units[u].unit_type].animal {
+                    continue;
+                }
                 if their_team != team && g.at_war(team, their_team) {
-                    threat += crate::view::attack_power(g, u);
+                    // Nearer units weigh more (distance 1: full, 3: a third).
+                    let dist = dx.abs().max(dy.abs()).max(1);
+                    threat += crate::view::attack_power(g, u) * (range + 1 - dist) / range;
                 }
             }
         }
@@ -84,9 +135,66 @@ pub fn local_threat(g: &Game, p: PlayerId, plot: PlotIdx, range: i32) -> i32 {
     threat
 }
 
-fn count_ai(g: &Game, p: PlayerId, unit_ai: UnitAIType) -> i32 {
+pub fn count_ai(g: &Game, p: PlayerId, unit_ai: UnitAIType) -> i32 {
     let pl = &g.players[p];
     pl.ai_num_ai_units[unit_ai] + pl.ai_num_train_ai_units[unit_ai]
+}
+
+/// Can our workers build anything useful yet (an improvement or route whose tech we have)?
+pub fn has_worker_builds(g: &Game, p: PlayerId) -> bool {
+    let team = g.players[p].team;
+    g.d.builds.iter().any(|b| (b.improvement.is_some() || b.route.is_some()) && b.tech_prereq.map_or(true, |t| g.team_is_has_tech(team, Some(t))))
+}
+
+/// Plots worked by our cities that have no improvement (a measure of worker demand).
+pub fn unimproved_worked_plots(g: &Game, p: PlayerId) -> i32 {
+    let mut n = 0;
+    for &c in &g.players[p].cities {
+        for i in 0..NUM_CITY_PLOTS {
+            if i == CITY_HOME_PLOT || !g.cities[c].working_plot[i] {
+                continue;
+            }
+            if let Some(q) = g.city_index_plot(c, i) {
+                let plot = &g.map.plots[q];
+                if plot.improvement_type.is_none() && plot.plot_type != PlotType::PLOT_OCEAN {
+                    n += 1;
+                }
+            }
+        }
+    }
+    n
+}
+
+/// Buildings the AI never builds by itself: a new palace (moves the capital), buildings with
+/// no effect but a cost the generic valuation cannot see the downside of.
+fn building_allowed(g: &Game, c: CityId, b: BuildingType) -> bool {
+    let info = &g.d.buildings[b];
+    if info.capital {
+        // Only if we have lost our palace.
+        return g.players[g.cities[c].owner].capital_city.map_or(true, |cap| !g.cities.contains(cap));
+    }
+    true
+}
+
+fn civ_enemies_at_war(g: &Game, p: PlayerId) -> bool {
+    let team = g.players[p].team;
+    let barb = g.barbarian_team();
+    g.teams.keys().any(|t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t))
+}
+
+/// City state used by the decision.
+struct Ctx {
+    p: PlayerId,
+    n_cities: i32,
+    capital: bool,
+    pop: i32,
+    threat: i32,
+    defenders: i32,
+    defense: i32,
+    food_surplus: i32,
+    production: i32,
+    happy_room: i32,
+    at_war: bool,
 }
 
 fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
@@ -95,26 +203,44 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     let p = city.owner;
     let pl = &g.players[p];
     let plot = g.city_plot(c);
-    let n_cities = pl.cities.len() as i32;
     let barbarian = g.player_is_barbarian(p);
     let leader = pl.personality_type.map(|l| &d.leader_heads[l]);
-
-    let threat = local_threat(g, p, plot, 3);
     let (defenders, defense) = garrison(g, p, plot);
-    let capital = g.city_is_capital(c);
-    let mut needed = 1 + i32::from(capital) + i32::from(threat > 0);
+    let ctx = Ctx {
+        p,
+        n_cities: pl.cities.len() as i32,
+        capital: g.city_is_capital(c),
+        pop: city.population,
+        threat: local_threat(g, p, plot, 3),
+        defenders,
+        defense,
+        food_surplus: g.city_yield_rate(c, YieldType::YIELD_FOOD) - g.city_food_consumption(c, false, 0),
+        production: g.city_yield_rate(c, YieldType::YIELD_PRODUCTION),
+        happy_room: g.city_happy_level(c) - g.city_unhappy_level(c, 0),
+        at_war: civ_enemies_at_war(g, p),
+    };
+    crate::trace!(g, p, "{}: threat {} defenders {} ({}) food {:+} prod {} happy {}", city.name, ctx.threat, ctx.defenders, ctx.defense, ctx.food_surplus, ctx.production, ctx.happy_room);
+    let flavor = |name: &str| match (leader, d.ty::<FlavorType>(name)) {
+        (Some(l), Some(f)) => l.flavor_value[f],
+        _ => 0,
+    };
+    let mil_flavor = flavor("FLAVOR_MILITARY");
+
+    // Garrison quota: one, the capital and threatened cities more.
+    let mut needed = 1 + i32::from(ctx.capital && ctx.n_cities > 2) + i32::from(ctx.threat > 0);
+    if ctx.at_war {
+        needed += 1;
+    }
     if let Some(l) = leader {
-        if l.ai_value_defense > 100 && n_cities > 2 {
+        if l.ai_value_defense > 100 && ctx.n_cities > 3 {
             needed += 1;
         }
     }
 
-    // 1. Emergency or missing garrison.
-    if defenders == 0 || (threat > 0 && defense < threat && defenders < needed + 2) {
+    // 1. Missing or overwhelmed garrison.
+    // Fortified defenders in a city fight at about 1.5x their strength.
+    if ctx.defenders == 0 || (ctx.threat > 0 && ctx.defense * 3 / 2 < ctx.threat && ctx.defenders < needed + 2) {
         if let Some(u) = best_unit(g, c, Role::Defense) {
-            return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
-        }
-        if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
         }
     }
@@ -122,70 +248,78 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         return best_unit(g, c, Role::Attack).map(|u| Choice::Train(u, UnitAIType::UNITAI_ATTACK));
     }
 
-    // 2. Workers.
     let workers = count_ai(g, p, UnitAIType::UNITAI_WORKER);
-    let worker_target = if n_cities <= 1 { 1 } else { n_cities * 3 / 2 };
-    if workers < worker_target && city.population >= 2 && threat == 0 {
+    let can_improve = has_worker_builds(g, p);
+
+    // 2. The first worker, once workers have something to do.
+    if workers == 0 && can_improve && ctx.threat == 0 && (ctx.pop >= 2 || ctx.food_surplus <= 1) {
         if let Some(u) = best_unit(g, c, Role::Worker) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
         }
     }
 
-    // 3. Settlers while there is room.
-    let settlers = count_ai(g, p, UnitAIType::UNITAI_SETTLE);
-    let max_cities = if pl.max_cities > 0 { pl.max_cities } else { i32::MAX };
-    if threat == 0 && n_cities + settlers < max_cities && city.population >= 2 {
-        let num_sites = sites::num_sites(ai, g, p);
-        if settlers < num_sites.min(2) && settlers < (n_cities + 1) / 2 + 1 {
-            if let Some(u) = best_unit(g, c, Role::Settler) {
-                return Some(Choice::Train(u, UnitAIType::UNITAI_SETTLE));
-            }
-        }
+    // 3. Settlers while good sites remain in reach.
+    if let Some(choice) = settler_choice(ai, g, c, &ctx) {
+        return Some(choice);
     }
 
-    // 4. Extra defenders.
-    if defenders < needed {
+    // 4. Extra defenders up to the quota.
+    if ctx.defenders < needed {
         if let Some(u) = best_unit(g, c, Role::Defense) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
         }
     }
 
-    // 5. Heroes are unique and strong: always take them.
-    if let Some(u) = best_unit(g, c, Role::Hero) {
-        return Some(Choice::Train(u, UnitAIType::UNITAI_HERO));
-    }
-
-    // 6. Army.
-    let attackers = count_ai(g, p, UnitAIType::UNITAI_ATTACK) + count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY);
-    let mil_flavor = match (leader, d.ty::<FlavorType>("FLAVOR_MILITARY")) {
-        (Some(l), Some(f)) => l.flavor_value[f],
-        _ => 0,
-    };
-    let at_war = g.teams.keys().any(|t| t != pl.team && t != g.barbarian_team() && g.teams[t].alive_count > 0 && g.at_war(pl.team, t));
-    let mut army_target = n_cities * (2 + mil_flavor / 5) / 2;
-    if at_war {
-        army_target = army_target * 2 + 2;
-    }
-    let army_short = attackers < army_target;
-    // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
-    if army_short && (at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
+    // 5. A small mobile force to clear barbarians and animals near our lands.
+    let attackers = count_ai(g, p, UnitAIType::UNITAI_ATTACK) + count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
+    let min_army = 1 + ctx.n_cities / 2;
+    if attackers < min_army && ctx.production >= 3 {
         if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
         }
     }
 
-    // 7. Buildings by marginal value per turn of production.
+    // 6. More workers, as the land we work needs improving.
+    if can_improve && ctx.threat == 0 {
+        let unimproved = unimproved_worked_plots(g, p);
+        let target = (ctx.n_cities.min(3) + (unimproved + 1) / 3).min(ctx.n_cities * 2).max(1);
+        if workers < target && ctx.pop >= 2 {
+            if let Some(u) = best_unit(g, c, Role::Worker) {
+                return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
+            }
+        }
+    }
+
+    // 7. Heroes are unique and strong.
+    if let Some(u) = best_unit(g, c, Role::Hero) {
+        return Some(Choice::Train(u, UnitAIType::UNITAI_HERO));
+    }
+
+    // 8. Army target (larger at war).
+    let mut army_target = ctx.n_cities * (2 + mil_flavor / 5) / 2 + 1;
+    if ctx.at_war {
+        army_target = army_target * 2 + 2;
+    }
+    let army_short = attackers < army_target;
+    // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
+    if army_short && (ctx.at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
+        if let Some(u) = best_unit(g, c, Role::Attack) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
+        }
+    }
+
+    // 9. Buildings by marginal value per turn of production.
     let mut best_building: Option<(BuildingType, i32)> = None;
     for b in d.buildings.keys() {
-        if !g.city_can_construct(c, b, false, false, false) {
+        if !building_allowed(g, c, b) || !g.city_can_construct(c, b, false, false, false) {
             continue;
         }
-        let value = building_value(g, c, b, threat);
+        let value = building_value(g, c, b, ctx.threat);
         if value <= 0 {
             continue;
         }
         let turns = g.city_production_turns_left_building(c, b, 0).max(1);
-        let score = value * 100 / turns;
+        let score = value * 100 / (turns + 3);
         if best_building.map_or(true, |(_, s)| score > s) {
             best_building = Some((b, score));
         }
@@ -196,9 +330,9 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
     }
 
-    // 8. Casters and missionaries.
+    // 10. Casters and missionaries.
     let mages = count_ai(g, p, UnitAIType::UNITAI_MAGE) + count_ai(g, p, UnitAIType::UNITAI_WARWIZARD);
-    let mage_target = (n_cities + 2) / 4 + leader.map_or(0, |l| i32::from(l.ai_value_mage > 100));
+    let mage_target = (ctx.n_cities + 2) / 4 + leader.map_or(0, |l| i32::from(l.ai_value_mage > 100));
     if mages < mage_target {
         if let Some(u) = best_unit(g, c, Role::Mage) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_MAGE));
@@ -221,12 +355,10 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if let Some((b, _)) = best_building {
         return Some(Choice::Construct(b));
     }
-    for pr in d.projects.keys() {
-        if g.city_can_create(c, pr, false, false) && d.projects[pr].ai_weight > 0 {
-            return Some(Choice::Create(pr));
-        }
+    if let Some(pr) = best_project(g, c) {
+        return Some(Choice::Create(pr));
     }
-    // 9. Convert production to research (else gold).
+    // 11. Convert production to research (else gold).
     let mut best_process: Option<(ProcessType, i32)> = None;
     for pr in d.processes.keys() {
         if !g.city_can_maintain(c, pr, false) {
@@ -238,10 +370,73 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
             best_process = Some((pr, v));
         }
     }
-    if let Some((pr, _)) = best_process {
-        return Some(Choice::Maintain(pr));
+    best_process.map(|(pr, _)| Choice::Maintain(pr))
+}
+
+/// Settlers: while sites remain in this city's area, a bounded number at a time, from cities
+/// big enough to pay for them (food goes into settler production, so growth stops).
+fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx) -> Option<Choice> {
+    let p = ctx.p;
+    let pl = &g.players[p];
+    if ctx.threat > 0 || g.city_is_occupation(c) {
+        return None;
     }
-    best_unit(g, c, Role::Defense).map(|u| Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE))
+    let settlers = count_ai(g, p, UnitAIType::UNITAI_SETTLE);
+    let max_cities = if pl.max_cities > 0 { pl.max_cities } else { i32::MAX };
+    if ctx.n_cities + settlers >= max_cities {
+        return None;
+    }
+    let area = g.map.plots[g.city_plot(c)].area;
+    let sites = sites::sites(ai, g, p);
+    let area_sites = sites.iter().filter(|(q, _)| g.map.plots[*q].area == area).count() as i32;
+    if area_sites == 0 {
+        return None;
+    }
+    let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
+    if ctx.at_war {
+        max_settlers = (max_settlers + 1) / 2;
+    }
+    if settlers >= max_settlers {
+        return None;
+    }
+    // Size: grow first while growth is cheap and happy; a city at its happy cap gains nothing
+    // from growing, so it builds settlers at once.
+    let min_pop = if ctx.happy_room <= 0 { 1 } else if ctx.food_surplus >= 4 && ctx.pop < 3 { 3 } else { 2 };
+    if ctx.pop < min_pop {
+        return None;
+    }
+    // A city with almost no output would take forever; let better cities build them.
+    if ctx.n_cities > 1 && ctx.food_surplus.max(0) + ctx.production < 4 {
+        return None;
+    }
+    best_unit(g, c, Role::Settler).map(|u| Choice::Train(u, UnitAIType::UNITAI_SETTLE))
+}
+
+/// Projects worth building by default (positive AI weight, not a world-ending or self-harming
+/// ritual the generic logic cannot judge).
+fn best_project(g: &Game, c: CityId) -> Option<ProjectType> {
+    let d = g.d;
+    let mut best: Option<(ProjectType, i32)> = None;
+    for pr in d.projects.keys() {
+        let info = &d.projects[pr];
+        if info.ai_weight <= 0 || !g.city_can_create(c, pr, false, false) {
+            continue;
+        }
+        let name = info.base.type_.as_str();
+        // Rituals with large side effects: left to dedicated logic.
+        if matches!(name, "PROJECT_SAMHAIN" | "PROJECT_THE_DRAW" | "PROJECT_STIR_FROM_SLUMBER" | "PROJECT_BANE_DIVINE" | "PROJECT_GLORY_EVERLASTING" | "PROJECT_PURGE_THE_UNFAITHFUL") {
+            continue;
+        }
+        let turns = g.city_production_turns_left_project(c, pr, 0);
+        if turns > 40 {
+            continue;
+        }
+        let v = info.ai_weight * 100 / (turns + 5);
+        if best.map_or(true, |(_, b)| v > b) {
+            best = Some((pr, v));
+        }
+    }
+    best.map(|(pr, _)| pr)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -255,17 +450,34 @@ pub enum Role {
     Explore,
 }
 
+fn is_hero(info: &UnitInfo) -> bool {
+    info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO)
+}
+
 fn role_ok(info: &UnitInfo, role: Role) -> bool {
     let has = |a: UnitAIType| info.unit_ai_type[a];
+    let fighter = info.combat > 0 && !info.found && !is_hero(info) && info.default_unit_ai_type != Some(UnitAIType::UNITAI_MAGE);
     match role {
-        Role::Defense => has(UnitAIType::UNITAI_CITY_DEFENSE) && info.combat_defense > 0,
-        Role::Attack => (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)) && info.combat > 0,
-        Role::Worker => has(UnitAIType::UNITAI_WORKER),
+        Role::Defense => {
+            fighter && (has(UnitAIType::UNITAI_CITY_DEFENSE) || has(UnitAIType::UNITAI_CITY_COUNTER) || has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_COUNTER))
+                && info.default_unit_ai_type != Some(UnitAIType::UNITAI_EXPLORE)
+        }
+        Role::Attack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)),
+        Role::Worker => has(UnitAIType::UNITAI_WORKER) && info.combat == 0,
         Role::Settler => has(UnitAIType::UNITAI_SETTLE) && info.found,
-        Role::Hero => has(UnitAIType::UNITAI_HERO),
-        Role::Mage => has(UnitAIType::UNITAI_MAGE) || has(UnitAIType::UNITAI_WARWIZARD),
+        Role::Hero => is_hero(info) && info.combat > 0,
+        Role::Mage => info.default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) || has(UnitAIType::UNITAI_WARWIZARD),
         Role::Explore => has(UnitAIType::UNITAI_EXPLORE),
     }
+}
+
+/// Defense strength of a unit type in a city (FfH units have a separate defense value).
+fn type_city_defense(info: &UnitInfo) -> i64 {
+    let dmg: i32 = info.damage_type_combat.iter().sum();
+    let base = if info.combat_defense > 0 { info.combat_defense } else { info.combat };
+    let mut v = ((base + dmg) * 100) as i64 * (100 + info.city_defense_modifier.max(-50)) as i64 / 100;
+    v += v * (info.first_strikes * 2 + info.chance_first_strikes) as i64 / 20;
+    v
 }
 
 /// Best unit this city can train for `role`, by power per production turn.
@@ -282,11 +494,12 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         }
         let turns = g.city_production_turns_left_unit(c, u, 0).max(1) as i64;
         let power = match role {
-            Role::Defense => type_defense_power(d, u) as i64 * (100 + info.city_defense_modifier.max(0)) as i64 / 100,
+            Role::Defense => type_city_defense(info),
             Role::Attack | Role::Hero => {
                 let mut v = type_attack_power(d, u) as i64;
                 v += v * (info.moves.max(1) as i64 - 1) / 4;
                 v += v * (info.first_strikes * 2 + info.chance_first_strikes) as i64 / 20;
+                v += v * info.withdrawal_probability as i64 / 200;
                 v += info.collateral_damage as i64;
                 v
             }
@@ -298,7 +511,10 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
             continue;
         }
         // Strength matters more than cost: weaker but cheaper units only win by a margin.
-        let score = power * 1000 / (turns + 4);
+        let score = match role {
+            Role::Worker | Role::Settler => power * 1000 / turns,
+            _ => power * power / 100 * 1000 / (turns + 4),
+        };
         if best.map_or(true, |(_, s)| score > s) {
             best = Some((u, score));
         }
@@ -313,41 +529,80 @@ fn best_missionary(g: &Game, c: CityId, r: ReligionType) -> Option<UnitType> {
     }).find(|&u| g.city_can_train(c, u, false, false, false, false))
 }
 
-/// Marginal value of building `b` in city `c` (roughly: yield points per turn x 10).
+/// Marginal value of building `b` in city `c` (roughly: value points per turn, a hammer being
+/// worth 15 as in the governor).
 pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
     let d = g.d;
     let info = &d.buildings[b];
     let city = &g.cities[c];
     let p = city.owner;
+    let n_cities = g.players[p].cities.len() as i32;
+    let pop = city.population;
     let food = g.city_yield_rate(c, YieldType::YIELD_FOOD).max(0);
     let prod = g.city_yield_rate(c, YieldType::YIELD_PRODUCTION).max(0);
     let comm = g.city_yield_rate(c, YieldType::YIELD_COMMERCE).max(0);
-    let yw = [8, 7, 4];
+    // Value of one point per turn of each yield / commerce type.
+    let yw = [20, 15, 7];
     let rates = [food, prod, comm];
     let mut v = 0;
     for i in 0..YieldType::NUM {
         v += info.yield_change[i] * yw[i] * 10;
         v += info.yield_modifier[i] * rates[i] * yw[i] / 10;
+        v += info.global_yield_modifier[i] * rates[i] * yw[i] * n_cities.min(8) / 20;
     }
-    let cw = [4, 5, 2, 1];
+    let cw = [8, 9, 4, 1];
     for i in 0..CommerceType::NUM {
-        v += info.commerce_change[i] * cw[i] * 10;
-        v += info.commerce_modifier[i] * city.commerce_rate[i].max(0) * cw[i] / 10;
+        let rate = g.city_commerce_rate(c, CommerceType::from_usize(i)).max(0);
+        v += (info.commerce_change[i] + info.obsolete_safe_commerce_change[i]) * cw[i] * 10;
+        v += info.commerce_modifier[i] * rate * cw[i] / 10;
+        v += info.global_commerce_modifier[i] * rate * cw[i] * n_cities.min(8) / 20;
     }
-    let unhappy = g.city_unhappy_level(c, 0) - g.city_happy_level(c);
-    if info.happiness > 0 {
-        v += info.happiness * if unhappy >= 0 { 120 } else { 30 };
+    // Culture: border growth matters in a new city.
+    let culture = info.commerce_change[CommerceType::COMMERCE_CULTURE.idx()];
+    if culture > 0 && city.culture_level.map_or(true, |l| l.i() <= 1) {
+        v += culture * 150;
     }
-    let unhealthy = g.city_bad_health(c, false, 0) - g.city_good_health(c);
-    if info.health > 0 {
-        v += info.health * if unhealthy >= 0 { 80 } else { 20 };
+
+    // Happiness and health, worth a citizen when the city is at its cap.
+    let happy_room = g.city_happy_level(c) - g.city_unhappy_level(c, 0);
+    let mut happy = info.happiness + info.area_happiness + info.global_happiness + info.state_religion_happiness * i32::from(info.state_religion.is_some());
+    for bonus in d.bonuses.keys() {
+        if info.bonus_happiness_changes[bonus] != 0 && g.city_has_bonus(c, bonus) {
+            happy += info.bonus_happiness_changes[bonus];
+        }
     }
-    v += info.area_happiness * 40 + info.global_happiness * 60 * g.players[p].cities.len() as i32;
-    v += info.defense_modifier * if threat > 0 { 4 } else { 1 } / 2;
-    v += info.free_experience * 20;
+    if happy != 0 {
+        let per = if happy_room <= 0 { 180 } else if happy_room <= 1 { 100 } else { 35 };
+        v += happy * per;
+    }
+    v += (info.area_happiness * 30 + info.global_happiness * 50) * (n_cities - 1).max(0);
+    let health_room = g.city_good_health(c) - g.city_bad_health(c, false, 0);
+    let mut health = info.health + info.area_health + info.global_health;
+    for bonus in d.bonuses.keys() {
+        if info.bonus_health_changes[bonus] != 0 && g.city_has_bonus(c, bonus) {
+            health += info.bonus_health_changes[bonus];
+        }
+    }
+    if health != 0 {
+        let per = if health_room <= 0 { 120 } else if health_room <= 2 { 60 } else { 20 };
+        v += health * per;
+    }
+    // Specialists slots in a big city.
+    let slots: i32 = info.specialist_count.iter().sum();
+    v += slots * 15 * (pop - 4).clamp(0, 8);
+    v += info.great_people_rate_change * 40 + info.great_people_rate_modifier * pop / 4;
+    v += info.free_specialist * 120;
+    v += info.defense_modifier * if threat > 0 { 6 } else { 1 } / 2;
+    // Experience matters in cities that train units.
+    let xp: i32 = info.free_experience + info.unit_combat_free_experience.iter().sum::<i32>().min(4) + info.domain_free_experience[DomainType::DOMAIN_LAND];
+    v += xp * prod.min(15) * 4;
+    v += info.military_production_modifier * prod / 4;
     v += info.trade_routes * 60;
-    v += info.great_people_rate_change * 40;
-    v += info.food_kept;
+    // Granary-like food storage: worth more while the city grows.
+    v += info.food_kept * food.min(12) / 4;
+    v += info.worker_speed_modifier / 2;
+    v += info.maintenance_modifier.min(0) * -g.city_maintenance(c).max(0) / 100 * 8;
+    v += info.heal_rate_change * 2;
     v += info.ai_weight;
     if let Some(l) = g.players[p].personality_type.map(|l| &d.leader_heads[l]) {
         if info.building_class_type.is_some() && (l.favorite_early_wonder == info.building_class_type || l.favorite_late_wonder == info.building_class_type) {
