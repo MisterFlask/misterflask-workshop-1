@@ -148,6 +148,22 @@ fn fallback(g: &Game, c: CityId) -> Option<Choice> {
     d.processes.keys().find(|&pr| g.city_can_maintain(c, pr, false)).map(Choice::Maintain)
 }
 
+/// Are some of our field units standing next to a hostile city (a siege under way)?
+fn besieging(g: &Game, p: PlayerId) -> bool {
+    let team = g.players[p].team;
+    g.players[p].units.iter().any(|&u| {
+        let unit = &g.units[u];
+        if !matches!(unit.ai_type, Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_ATTACK_CITY)) {
+            return false;
+        }
+        (0..DirectionType::NUM).any(|dir| {
+            g.plot_direction(unit.x, unit.y, DirectionType::from_usize(dir))
+                .and_then(|q| g.map.plots[q].plot_city)
+                .is_some_and(|c| g.at_war(team, g.players[g.cities[c].owner].team))
+        })
+    })
+}
+
 /// Our units on the city plot able to defend it, and their summed defense power.
 pub fn garrison(g: &Game, p: PlayerId, plot: PlotIdx) -> (i32, i32) {
     let mut n = 0;
@@ -455,13 +471,12 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         army_target = min_army;
     }
     let army_short = attackers < army_target;
-    // At war (or preparing): a third of the army in siege engines.
-    if ctx.at_war && army_short {
-        let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
-        if siege * 3 < attackers + 1 {
-            if let Some(u) = best_unit(g, c, Role::Siege) {
-                return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
-            }
+    // At war (or preparing): a third of the army in siege engines. A stack camped next to a
+    // city it cannot take (a barbarian town, say) asks for a couple as well.
+    let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
+    if (ctx.at_war && army_short && siege * 3 < attackers + 1) || (siege < 2 && besieging(g, p)) {
+        if let Some(u) = best_unit(g, c, Role::Siege) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
         }
     }
     // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).

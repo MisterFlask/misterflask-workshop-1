@@ -225,6 +225,14 @@ pub fn war_target_from(g: &Game, v: &View, from: Option<PlotIdx>) -> Option<City
     best.map(|(c, _)| c)
 }
 
+/// Do some of our army units already stand next to city `c`? (Single reinforcements join them.)
+fn siege_camp(g: &Game, p: PlayerId, c: CityId) -> bool {
+    let (cx, cy) = (g.cities[c].x, g.cities[c].y);
+    (0..DirectionType::NUM).any(|dir| {
+        g.plot_direction(cx, cy, DirectionType::from_usize(dir)).is_some_and(|q| g.map.plots[q].units.iter().any(|&u| g.units[u].owner == p && is_army_unit(g, u)))
+    })
+}
+
 /// A barbarian city for an otherwise idle army: the nearest one we know of on the stack's
 /// landmass, not too far.
 fn barbarian_city_target(g: &Game, v: &View, from: PlotIdx) -> Option<CityId> {
@@ -347,8 +355,8 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     }
 
     // Peacetime campaign: clear a barbarian city (stacks of several attackers gather first).
-    if v.civ_enemies.is_empty() && attackers(g, grp).len() >= 2 {
-        if let Some(target) = barbarian_city_target(g, v, here) {
+    if v.civ_enemies.is_empty() && !attackers(g, grp).is_empty() {
+        if let Some(target) = barbarian_city_target(g, v, here).filter(|&t| attackers(g, grp).len() >= 2 || siege_camp(g, p, t)) {
             crate::trace!(g, p, "stack {:?} ({} units) campaigns against {}", grp, g.groups[grp].units.len(), g.cities[target].name);
             if war_move(g, v, grp, u, target) {
                 return;
@@ -555,7 +563,7 @@ fn war_move(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, target: CityId)
         hold(g, grp);
         return true;
     }
-    if size < needed && dist > 3 {
+    if size < needed && dist > 3 && !siege_camp(g, p, target) {
         // Gather on the rally city.
         let Some(rally) = rally_city(g, p, tp) else { return false };
         let rp = g.city_plot(rally);
