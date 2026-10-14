@@ -100,18 +100,54 @@ fn assess(g: &Game, grp: GroupId, q: PlotIdx) -> Option<Assessment> {
 
 /// Is an assault worth it?
 pub fn attack_ok(a: &Assessment, city: bool) -> bool {
+    attack_ok_grind(a, city, false)
+}
+
+/// [`attack_ok`]; with `grind` (a city we mean to take), a stack with three attackers per
+/// defender attacks even at poor odds: a lost fight still takes about a third of the
+/// defender's health, and the defenders do not heal between the fights of one turn.
+pub fn attack_ok_grind(a: &Assessment, city: bool, grind: bool) -> bool {
     if a.best >= 650 {
+        return true;
+    }
+    let need = a.n_def * 1000 + if city { 300 } else { 0 };
+    if grind && city && a.n_att >= 3 * a.n_def + 1 && a.effective >= need {
         return true;
     }
     if a.best < 100 {
         return false;
     }
-    let need = a.n_def * 1000 + if city { 300 } else { 0 };
     a.effective >= need && (a.best >= 300 || a.n_att >= a.n_def + 2)
+}
+
+/// Our army units next to `q`, outside group `grp`, still able to attack this turn.
+fn supporting_attackers(g: &Game, grp: GroupId, q: PlotIdx) -> i32 {
+    let owner = g.groups[grp].owner;
+    let (x, y) = g.map.xy(q);
+    let mut n = 0;
+    for dir in 0..DirectionType::NUM {
+        let Some(r) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
+        for &u in &g.map.plots[r].units {
+            let unit = &g.units[u];
+            if unit.owner == owner && unit.group != Some(grp) && is_army_unit(g, u) && attack_power(g, u) > 0 && g.unit_can_attack(u) && g.unit_moves_left(u) > 0 {
+                n += 1;
+            }
+        }
+    }
+    n
 }
 
 /// Attack plot `q` with the group until it falls or the odds turn bad. True if we fought.
 pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
+    assault_impl(g, grp, q, false)
+}
+
+/// [`assault`] on a city we mean to take (see [`attack_ok_grind`]).
+pub fn assault_city(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
+    assault_impl(g, grp, q, true)
+}
+
+fn assault_impl(g: &mut Game, grp: GroupId, q: PlotIdx, grind: bool) -> bool {
     let mut fought = false;
     let city = g.map.plots[q].plot_city.is_some();
     for _ in 0..12 {
@@ -122,12 +158,18 @@ pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
         if !g.plot_is_visible_enemy_unit_for_unit(q, head) {
             break;
         }
-        let Some(a) = assess(g, grp, q) else { break };
+        let Some(mut a) = assess(g, grp, q) else { break };
         let (n_def, n_att) = (a.n_def, a.n_att);
         if n_def == 0 {
             break;
         }
-        if !attack_ok(&a, city) {
+        if grind {
+            // Our other stacks around the target fight this turn too.
+            let support = supporting_attackers(g, grp, q);
+            a.n_att += support;
+            a.effective += support * 333;
+        }
+        if !attack_ok_grind(&a, city, grind) {
             break;
         }
         g.groups[grp].ai_group_attack = false;
@@ -534,7 +576,9 @@ fn war_move(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, target: CityId)
     if dist <= 1 {
         if crate::trace_on(p) {
             let a = assess(g, grp, tp);
-            crate::trace!(g, p, "stack {:?} ({} units) next to {}: {:?}", grp, size, g.cities[target].name, a);
+            let ours: Vec<String> = g.groups[grp].units.iter().map(|&o| g.d.units[g.units[o].unit_type].base.type_.trim_start_matches("UNIT_").to_string()).collect();
+            let theirs: Vec<String> = g.map.plots[tp].units.iter().map(|&o| format!("{}({}%)", g.d.units[g.units[o].unit_type].base.type_.trim_start_matches("UNIT_"), 100 - g.units[o].damage)).collect();
+            crate::trace!(g, p, "stack {:?} ({} units) next to {} (defense {}%): {:?} ours {:?} theirs {:?}", grp, size, g.cities[target].name, g.city_defense_modifier(target, false), a, ours, theirs);
         }
         // Siege engines knock the walls down first.
         if g.cities[target].defense_damage < 100 && crate::units::can_start(g, grp, MissionType::MISSION_BOMBARD, -1, -1) {
@@ -543,7 +587,7 @@ fn war_move(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, target: CityId)
                 return true;
             }
         }
-        if assault(g, grp, tp) {
+        if assault_city(g, grp, tp) {
             finish(g, grp);
             return true;
         }

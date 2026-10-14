@@ -35,6 +35,10 @@ struct Ctx {
     /// Some city cannot grow because of unhappiness.
     unhappy_cities: i32,
     rate: i32,
+    /// Our landmass is full (see `naval::home_is_full`).
+    home_full: bool,
+    /// We can already build a ship that carries land units.
+    has_transport: bool,
 }
 
 /// Unit types `p` could train with its techs plus `extra` (ignores resources and buildings).
@@ -133,7 +137,15 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
         pressure,
         unhappy_cities,
         rate: g.player_calculate_research_rate(p, None).max(1),
+        home_full: crate::naval::home_is_full(g, p) || crate::naval::settler_waiting(g, p).is_some(),
+        has_transport: false,
     };
+    ctx.has_transport = g.d.units.keys().any(|u| {
+        let info = &g.d.units[u];
+        crate::naval::is_transport_type(info)
+            && info.unit_class_type.and_then(|cl| ctx.civ.and_then(|c| g.d.civ_unit(c, cl))) == Some(u)
+            && info.prereq_and_tech.map_or(true, |t| g.team_is_has_tech(team, Some(t)))
+    });
     let (def, att) = best_military(g, p, &ctx, &[]);
     ctx.best_defense = def;
     ctx.best_attack = att;
@@ -343,6 +355,20 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
         let Some(opt) = d.civics[civic].civic_option_type else { continue };
         let current = pl.civics[opt].map_or(0, |c| crate::empire::civic_value(g, p, c));
         value += ((crate::empire::civic_value(g, p, civic) - current) / 4).clamp(0, 2000);
+    }
+
+    // Ships: when our landmass is full, the first transport (and the tech before it).
+    if ctx.home_full && !ctx.has_transport {
+        let transport_tech = |t: TechType| {
+            vals.tech_unlocks[t].units.iter().any(|&u| {
+                crate::naval::is_transport_type(&d.units[u]) && d.units[u].unit_class_type.and_then(|cl| ctx.civ.and_then(|c| d.civ_unit(c, cl))) == Some(u)
+            })
+        };
+        if transport_tech(t) {
+            value += 1500 + 200 * ctx.num_cities.min(8);
+        } else if vals.tech_children[t].iter().any(|&ch| transport_tech(ch)) {
+            value += 600;
+        }
     }
 
     // Military: a better defender / attacker, as pressure demands.

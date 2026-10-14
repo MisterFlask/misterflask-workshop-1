@@ -65,6 +65,8 @@ enum Role {
     Missionary,
     Caster,
     Animal,
+    Transport,
+    SeaExplore,
     Naval,
     Other,
 }
@@ -73,7 +75,15 @@ fn role_of(g: &Game, u: UnitId) -> Role {
     let unit = &g.units[u];
     let info = &g.d.units[unit.unit_type];
     if g.unit_get_domain_type(u) == DomainType::DOMAIN_SEA {
-        return if matches!(unit.ai_type, Some(UnitAIType::UNITAI_WORKER_SEA)) || info.unit_ai_type[UnitAIType::UNITAI_WORKER_SEA] { Role::SeaWorker } else { Role::Naval };
+        return if matches!(unit.ai_type, Some(UnitAIType::UNITAI_WORKER_SEA)) || info.unit_ai_type[UnitAIType::UNITAI_WORKER_SEA] && info.combat == 0 {
+            Role::SeaWorker
+        } else if unit.ai_type == Some(UnitAIType::UNITAI_EXPLORE_SEA) {
+            Role::SeaExplore
+        } else if crate::naval::is_transport_type(info) {
+            Role::Transport
+        } else {
+            Role::Naval
+        };
     }
     let ai = unit.ai_type.or(info.default_unit_ai_type).unwrap_or(UnitAIType::UNITAI_UNKNOWN);
     match ai {
@@ -148,7 +158,16 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
                 Role::Worker => g.group_get_head_unit(grp).is_some_and(|h| crate::workers::worker_in_danger(g, v, g.unit_plot(h))),
                 _ => false,
             };
-        if g.groups[grp].force_update || replan {
+        // A settler never sleeps through a turn (a site may have opened up); cargo excepted.
+        let sleeping_settler = role == Role::Settler
+            && g.groups[grp].activity_type == ActivityType::ACTIVITY_SLEEP
+            && g.group_get_head_unit(grp).is_some_and(|h| !g.unit_is_cargo(h));
+        // Units aboard a ship go where the ship takes them (the transport lands them).
+        if g.group_get_head_unit(grp).is_some_and(|h| g.unit_is_cargo(h) && g.unit_get_domain_type(h) == DomainType::DOMAIN_LAND) {
+            g.groups[grp].force_update = false;
+            continue;
+        }
+        if g.groups[grp].force_update || replan || sleeping_settler {
             // Settlers re-plan every turn (danger and sites change).
             g.groups[grp].force_update = false;
             g.group_clear_mission_queue(grp);
@@ -173,6 +192,9 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
             Role::Missionary => missionary(g, v, grp, head),
             Role::Caster => caster(g, v, grp, head),
             Role::Animal => barbarian(g, v, grp, head),
+            Role::Transport if !v.barbarian => crate::naval::transport(ai, g, v, grp, head),
+            Role::SeaExplore if !v.barbarian => crate::naval::sea_explore(ai, g, v, grp, head),
+            Role::Transport | Role::SeaExplore => hold(g, grp),
             Role::Naval | Role::Other => hold(g, grp),
         }
     }
@@ -312,6 +334,9 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             best = Some((here, 0));
         }
     }
+    if best.is_none() && !first_city && crate::naval::settler_overseas(ai, g, v, grp, u) {
+        return;
+    }
     let Some((site, _)) = best.or_else(|| {
         // No scored site: the first settler founds where it stands if it can.
         if first_city && g.unit_can_found(u, here, false) { Some((here, 0)) } else { None }
@@ -343,6 +368,10 @@ fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         return;
     }
     move_to(g, grp, site, MOVE_SAFE_TERRITORY);
+    if alive(g, grp) && g.group_ready_to_move(grp, false) && g.unit_moves_left(u) > 0 && (escorted(g, grp) || v.danger_at(site) == 0) {
+        // No safe path (it crosses a neighbour's or unrevealed land): the direct way.
+        move_to(g, grp, site, 0);
+    }
     if alive(g, grp) && g.group_ready_to_move(grp, false) {
         // Path failed (or no moves left): try again next turn.
         skip(g, grp);

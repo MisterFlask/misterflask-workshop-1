@@ -86,6 +86,18 @@ pub fn push(g: &mut Game, c: CityId, choice: Choice) {
 /// threat that is not building a defender switches to one (the progress on the old item is
 /// kept by the rules).
 pub fn emergency(ai: &Ai, g: &mut Game, p: PlayerId) {
+    // A settler waiting in port for a ship that nobody builds: the port builds one now.
+    if let Some(q) = crate::naval::settler_waiting(g, p) {
+        if let Some(c) = g.map.plots[q].plot_city.filter(|&c| g.cities[c].owner == p) {
+            let building_ship = g.city_production_unit(c).is_some_and(|u| crate::naval::is_transport_type(&g.d.units[u]));
+            if !building_ship && crate::naval::num_transports(g, p) == 0 && local_threat(g, p, q, 2) == 0 {
+                if let Some(u) = best_unit(g, c, Role::Transport) {
+                    crate::trace!(g, p, "{}: a ship for the waiting settler", g.cities[c].name);
+                    g.city_push_order(c, OrderType::ORDER_TRAIN, u.i(), UnitAIType::UNITAI_SETTLER_SEA.i(), false, false, false, false);
+                }
+            }
+        }
+    }
     for c in g.players[p].cities.clone() {
         if !g.cities.contains(c) || g.cities[c].order_queue.is_empty() {
             continue;
@@ -445,6 +457,28 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if let SettlerPlan::Now(choice) = settler {
         return Some(choice);
     }
+    // A ship for a settler waiting in port; a sea explorer while our land is full and
+    // nothing is known across the water.
+    if safe && crate::naval::is_coastal_city(g, c) {
+        if crate::naval::settler_waiting(g, p).is_some() && crate::naval::num_transports(g, p) == 0 {
+            if let Some(u) = best_unit(g, c, Role::Transport) {
+                return Some(Choice::Train(u, UnitAIType::UNITAI_SETTLER_SEA));
+            }
+        }
+        if count_ai(g, p, UnitAIType::UNITAI_EXPLORE_SEA) == 0
+            && crate::naval::home_is_full(g, p)
+            && sites::overseas_sites(ai, g, p).is_empty()
+            && g.game_turn() % 20 < 10
+            && ctx.afford
+        {
+            let unknown = g.map.num_plots() as i32 - g.map.areas.iter().map(|(_, a)| a.num_revealed_tiles[pl.team]).sum::<i32>();
+            if unknown * 5 > g.map.num_plots() as i32 {
+                if let Some(u) = best_unit(g, c, Role::SeaExplore) {
+                    return Some(Choice::Train(u, UnitAIType::UNITAI_EXPLORE_SEA));
+                }
+            }
+        }
+    }
     // Work boats for sea resources nobody improves yet.
     if safe && sea_resources_unimproved(g, c) > 0 {
         let need: i32 = pl.cities.iter().map(|&o| sea_resources_unimproved(g, o)).sum();
@@ -526,7 +560,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     }
     // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
     if army_short && (ctx.at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
-        if let Some(u) = best_unit(g, c, Role::Attack) {
+        if let Some(u) = best_unit(g, c, if ctx.at_war { Role::CityAttack } else { Role::Attack }) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
         }
     }
@@ -633,7 +667,21 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> Settle
     let sites = sites::sites(ai, g, p);
     let area_sites = sites.iter().filter(|(q, _)| g.map.plots[*q].area == area).count() as i32;
     if area_sites == 0 {
-        return No;
+        // Overseas: one settler at a time, from a coastal city that has (or can build) a ship.
+        let overseas = sites::overseas_sites(ai, g, p);
+        if overseas.is_empty() || settlers > 0 || !crate::naval::is_coastal_city(g, c) || ctx.pop < 3 {
+            return No;
+        }
+        if crate::naval::num_transports(g, p) == 0 && best_unit(g, c, Role::Transport).is_none() {
+            return No;
+        }
+        if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
+            return No;
+        }
+        return match best_unit(g, c, Role::Settler) {
+            Some(u) => SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE)),
+            None => No,
+        };
     }
     let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
     // C++ AI_chooseProduction: no settlers while in financial trouble.
@@ -646,9 +694,10 @@ fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> Settle
     if settlers >= max_settlers {
         return No;
     }
-    // Size: grow first while growth is cheap and happy; a city at its happy cap gains nothing
-    // from growing, so it builds settlers at once.
-    let min_pop = if ctx.happy_room <= 0 { 1 } else if ctx.food_surplus >= 4 && ctx.pop < 3 { 3 } else { 2 };
+    // Size: grow first while growth is cheap and happy (a settler eats the food surplus as
+    // production, so a size-2 city takes 30+ turns for one, a size-4 city half that); a city at
+    // its happy cap gains nothing from growing, so it builds settlers at once.
+    let min_pop = if ctx.happy_room <= 0 { 1 } else if ctx.food_surplus >= 3 { 4 } else { 3 };
     if ctx.pop < min_pop {
         return if settlers == 0 && ctx.n_cities <= 3 { SettlerPlan::Soon } else { No };
     }
@@ -710,6 +759,9 @@ pub enum Role {
     Mage,
     Explore,
     Siege,
+    /// Attackers for a war: strength against cities (city attack bonus, first strikes), not
+    /// mobility.
+    CityAttack,
     /// Work boats (sea resources).
     SeaWorker,
     /// Ships that carry land units.
@@ -736,7 +788,7 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
             fighter && (has(UnitAIType::UNITAI_CITY_DEFENSE) || has(UnitAIType::UNITAI_CITY_COUNTER) || has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_COUNTER))
                 && info.default_unit_ai_type != Some(UnitAIType::UNITAI_EXPLORE)
         }
-        Role::Attack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)),
+        Role::Attack | Role::CityAttack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)),
         Role::Worker => has(UnitAIType::UNITAI_WORKER) && info.combat == 0,
         Role::Settler => has(UnitAIType::UNITAI_SETTLE) && info.found,
         Role::Hero => is_hero(info) && info.combat > 0,
@@ -834,6 +886,12 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
                 if role == Role::Siege {
                     v += (info.bombard_rate * 20) as i64 + info.collateral_damage as i64 * 2;
                 }
+                v
+            }
+            Role::CityAttack => {
+                let mut v = type_attack_power(d, u) as i64 * (100 + info.city_attack_modifier.max(-50)) as i64 / 100;
+                v += v * (info.first_strikes * 2 + info.chance_first_strikes) as i64 / 20;
+                v += info.collateral_damage as i64 * 2;
                 v
             }
             Role::Worker => 100 + info.work_rate as i64,

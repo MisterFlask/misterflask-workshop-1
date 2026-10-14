@@ -23,6 +23,7 @@ pub mod diplomacy;
 pub mod economy;
 pub mod empire;
 pub mod military;
+pub mod naval;
 pub mod production;
 pub mod reach;
 pub mod research;
@@ -58,7 +59,8 @@ macro_rules! trace {
 pub struct Ai {
     pub(crate) sites: Mutex<sites::SiteCaches>,
     /// Game turn of each player's last full `play_turn` (C++ calls `AI_unitUpdate` on every
-    /// `update` until the turn ends; empire-level decisions are made once per turn).
+    /// `update` until the turn ends; empire-level decisions are made once per turn). Only a
+    /// shortcut: `play_turn` also derives "already played" from the game state.
     played: Mutex<std::collections::BTreeMap<PlayerId, i32>>,
 }
 
@@ -86,7 +88,12 @@ impl Controller for Ai {
             advanced_start::run(g, p);
         }
         let turn = g.game_turn();
-        let first_call = self.played.lock().unwrap().insert(p, turn) != Some(turn);
+        // The empire decisions are made on the first call of the player's turn. A controller
+        // that did not see the earlier calls (a game saved mid-turn, resumed with a fresh AI)
+        // recognises them from the game state: the rules call again within a turn only while
+        // some unit is still moving, i.e. has spent moves this turn.
+        let seen = self.played.lock().unwrap().insert(p, turn) == Some(turn);
+        let first_call = !seen && !g.players[p].units.iter().any(|&u| g.units.contains(u) && g.unit_has_moved(u));
         let mut v = view::View::new(g, p);
         if !first_call {
             // Called again in the same turn: only groups that still need orders.
