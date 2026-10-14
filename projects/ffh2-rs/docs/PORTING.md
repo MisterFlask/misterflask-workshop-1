@@ -13,7 +13,7 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
 | infos/unit.rs | Unit, UnitClass, Promotion, Spell, Build, SpecialUnit, Automate, Command, Mission | in progress |
 | infos/building.rs, civ.rs | Building, BuildingClass, SpecialBuilding, Trait, Civilization, LeaderHead | in progress |
 | infos/terrain.rs, basic.rs | Yield, Terrain, Feature, BonusClass, Bonus, Improvement, Route + 12 basic | in progress |
-| infos/event.rs | Event, EventTrigger | in progress |
+| infos/event.rs | Event, EventTrigger | done |
 
 ## Rules engine (ffh-core)
 
