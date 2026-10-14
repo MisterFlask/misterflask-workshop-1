@@ -808,6 +808,11 @@ impl Game {
     /// the remaining free techs; a research pick replaces the queue (`pushResearch(eTech, true)`).
     /// `szText` (popup header) and `bFront` (popup order) are UI only.
     pub fn player_choose_tech(&mut self, p: PlayerId, discover: i32) {
+        // `CvPlayer::addPopup` deletes popups for non-human players, so for an AI player this
+        // does nothing (e.g. Python `chooseTech(1, ..)` in the Iron Orb event grants no tech).
+        if !self.players[p].human {
+            return;
+        }
         // Python skipResearchPopup(ePlayer): FFH2's CvGameUtils returns False.
         let team = self.players[p].team;
 
