@@ -152,7 +152,11 @@ fn food_step_value(w: &Weights, f: &FoodContext, s: i32) -> i32 {
         g -= 6;
     }
     g = g * w.food / 100;
-    if s < f.growth_target {
+    // A city that can grow should: the first two points of surplus (a city at +0 never grows)
+    // count double.
+    if s < 2 {
+        g * 2
+    } else if s < f.growth_target {
         g
     } else {
         g / 3
