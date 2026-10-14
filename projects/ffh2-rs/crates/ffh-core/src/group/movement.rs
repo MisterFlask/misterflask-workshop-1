@@ -1227,9 +1227,8 @@ mod tests {
     }
 
     /// pushMission -> startMission -> continueMission (groupAttack, groupPathTo, groupMove) and
-    /// autoMission on the following turns. (Passes with `updateGroupCycle` stubbed as a no-op.)
+    /// autoMission on the following turns.
     #[test]
-    #[ignore = "CvUnit::setXY needs CvPlayer::updateGroupCycle (not ported yet)"]
     fn move_to_mission_moves_one_step_per_turn() {
         let mut g = test_game(&["......", "......", "......"]);
         let p = PlayerId(0);
