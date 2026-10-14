@@ -111,7 +111,8 @@ pub struct Game {
     pub no_nukes_count: i32,
     /// C++ `m_iNukesExploded`.
     pub nukes_exploded: i32,
-    /// C++ `m_iMaxPopulation` (score normalization, `initScoreCalculation`).
+    /// C++ `m_iMaxPopulation` (score normalization, `initScoreCalculation`). The `max_*` and
+    /// `init_*` counters only feed the legacy FFH2 score (`player_legacy_score`) and tools.
     pub max_population: i32,
     /// C++ `m_iMaxLand`.
     pub max_land: i32,
@@ -195,13 +196,15 @@ pub struct Game {
     pub rank_player: Vec<PlayerId>,
     /// C++ `m_aiPlayerRank`.
     pub player_rank: IdxVec<PlayerId, i32>,
-    /// C++ `m_aiPlayerScore`.
+    /// C++ `m_aiPlayerScore`: score v2 in basis points (share of the world, docs/SCORE.md),
+    /// cached by `update_score` from `world_scores()`.
     pub player_score: IdxVec<PlayerId, i32>,
     /// C++ `m_aiRankTeam`: team by rank.
     pub rank_team: Vec<TeamId>,
     /// C++ `m_aiTeamRank`.
     pub team_rank: IdxVec<TeamId, i32>,
-    /// C++ `m_aiTeamScore`.
+    /// C++ `m_aiTeamScore`: sum of the members' `player_score` (basis points; alive teams sum
+    /// to 10000).
     pub team_score: IdxVec<TeamId, i32>,
     /// C++ `m_paiUnitCreatedCount`.
     pub unit_created_count: IdxVec<UnitType, i32>,
@@ -523,7 +526,8 @@ impl Game {
         self.setup.num_advanced_start_points
     }
 
-    /// C++ `getTargetScore()`.
+    /// C++ `getTargetScore()`: in basis points of the world (score v2, docs/SCORE.md; 5000 = half
+    /// the world, 0 = no score victory).
     #[inline]
     pub fn target_score(&self) -> i32 {
         self.setup.target_score

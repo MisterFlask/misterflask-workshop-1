@@ -23,6 +23,10 @@ pub const RANDPLOT_NOT_CITY: i32 = 0x0000_0040;
 /// constant is only the upper bound for game setup.
 pub const MAX_CIV_PLAYERS: usize = 35;
 
+/// Score v2 (docs/SCORE.md): the scores of the alive civ players always sum to this many basis
+/// points (10000 = the whole world; shown as a percentage with one decimal).
+pub const SCORE_TOTAL_BP: i32 = 10_000;
+
 /// C++ `INVALID_PLOT_COORD` (`-MAX_INT`).
 pub const INVALID_PLOT_COORD: i32 = -i32::MAX;
 

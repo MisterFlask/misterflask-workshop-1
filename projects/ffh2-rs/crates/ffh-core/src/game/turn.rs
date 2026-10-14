@@ -11,7 +11,7 @@
 use std::collections::BTreeSet;
 
 use crate::deal::Deal;
-use crate::defs::{MAX_CIV_PLAYERS, MIN_INT, RANDPLOT_LAND, RANDPLOT_NOT_CITY};
+use crate::defs::{MAX_CIV_PLAYERS, MIN_INT, RANDPLOT_LAND, RANDPLOT_NOT_CITY, SCORE_TOTAL_BP};
 use crate::game::Game;
 use crate::ids::*;
 use crate::player::set_turn_history;
@@ -901,8 +901,107 @@ impl Game {
     // Score and victory
     // ---------------------------------------------------------------------------------------
 
+    /// The master team a vassal team's score is shared with: C++ `isAVassal` names the first
+    /// alive civ team `m != t` with `vassal[m]` (a team has at most one master).
+    fn score_master_team(&self, t: TeamId) -> Option<TeamId> {
+        self.civ_team_ids().find(|&m| m != t && self.team_is_alive(m) && self.teams[t].vassal[m])
+    }
+
+    /// The three shares behind the game score (score v2, see docs/SCORE.md), in parts per
+    /// million, indexed by civ player id: `[people, land, knowledge]`. Dead players get
+    /// `[0, 0, 0]`; over the scored players (alive civs) each column sums to about 1_000_000
+    /// (floor division). [`Game::world_scores`] apportions their sums to basis points.
+    ///
+    /// Deliberate deviation (docs/PORTING.md): FFH2's `calculateScore` is replaced by "your share
+    /// of the world": the average of the player's share of all people (city sizes), all owned
+    /// land plots and all knowledge (team tech score, split among the team by population).
+    /// A vassal keeps half (floored) of its people and land; the rest goes to its master's
+    /// leader. Integer only, players in id order: deterministic.
+    pub fn world_score_shares(&self) -> Vec<[i64; 3]> {
+        const PPM: i64 = 1_000_000;
+        let num_civ_players = self.num_civ_players();
+        let num_teams = self.num_teams();
+        let mut shares = vec![[0i64; 3]; num_civ_players];
+
+        // S: alive civ players, in id order.
+        let scored: Vec<PlayerId> = self.civ_player_ids().filter(|&p| self.players[p].alive).collect();
+        let n = scored.len() as i64;
+        if n == 0 {
+            return shares;
+        }
+
+        let mut pop = vec![0i64; num_civ_players];
+        let mut land = vec![0i64; num_civ_players];
+        for &p in &scored {
+            pop[p.idx()] = (self.players[p].total_population as i64).max(0);
+            land[p.idx()] = (self.players[p].total_land as i64).max(0);
+        }
+
+        // Vassals: keep floor(x / 2), the rest goes to the master team's leader (total-conserving
+        // half credit; C++ getPopScore/getLandScore give the half to every master member).
+        for &p in &scored {
+            let Some(master) = self.score_master_team(self.players[p].team) else { continue };
+            let Some(lead) = self.team_get_leader_id(master).filter(|&l| l.idx() < num_civ_players && self.players[l].alive) else {
+                continue;
+            };
+            for v in [&mut pop, &mut land] {
+                let give = v[p.idx()] - v[p.idx()] / 2;
+                v[p.idx()] -= give;
+                v[lead.idx()] += give;
+            }
+        }
+
+        // Knowledge: team tech score (equal for every member), counted once per team.
+        let mut know_team: Vec<Option<i64>> = vec![None; num_teams];
+        let mut members = vec![0i64; num_teams];
+        let mut team_pop = vec![0i64; num_teams];
+        for &p in &scored {
+            let t = self.players[p].team.idx();
+            let know = (self.players[p].tech_score as i64).max(0);
+            match know_team[t] {
+                None => know_team[t] = Some(know),
+                Some(k) => debug_assert_eq!(k, know, "team {t}: members disagree on the tech score"),
+            }
+            members[t] += 1;
+            team_pop[t] += pop[p.idx()];
+        }
+
+        let total_pop: i64 = pop.iter().sum();
+        let total_land: i64 = land.iter().sum();
+        let total_know: i64 = know_team.iter().flatten().sum();
+
+        for &p in &scored {
+            let i = p.idx();
+            let t = self.players[p].team.idx();
+            let know = know_team[t].unwrap_or(0);
+            let a = if total_pop > 0 { PPM * pop[i] / total_pop } else { PPM / n };
+            let b = if total_land > 0 { PPM * land[i] / total_land } else { PPM / n };
+            let c = if total_know == 0 {
+                PPM / n
+            } else if team_pop[t] > 0 {
+                PPM * know * pop[i] / (team_pop[t] * total_know)
+            } else {
+                PPM * know / (members[t] * total_know)
+            };
+            shares[i] = [a, b, c];
+        }
+        shares
+    }
+
+    /// The game score (score v2, see docs/SCORE.md): each civ player's share of the world in
+    /// basis points, indexed by civ player id. Alive civs sum to exactly [`SCORE_TOTAL_BP`]
+    /// (10000 = the whole world) and score at least 1; dead players score 0. Pure (reads the
+    /// game only); `update_score` caches it in `player_score` and the team sums in `team_score`.
+    pub fn world_scores(&self) -> Vec<i32> {
+        let shares = self.world_score_shares();
+        let alive: Vec<bool> = self.civ_player_ids().map(|p| self.players[p].alive).collect();
+        let u: Vec<i64> = shares.iter().map(|s| s[0] + s[1] + s[2]).collect();
+        apportion_score(&u, &alive, SCORE_TOTAL_BP)
+    }
+
     /// C++ `CvGame::updateScore(bForce)`: when dirty (or forced) ranks civ players and teams by
-    /// score (ties go to the higher index: `>=`) and records score history.
+    /// score (ties go to the higher index: `>=`) and records score history. The scores are
+    /// [`Game::world_scores`] (score v2, a deliberate deviation from FFH2's `calculateScore`).
     ///
     /// C++ ranks all `MAX_CIV_PLAYERS` (35) civ slots; this game has `num_civ_players()` of
     /// them, the rest would be empty slots with score 0. Ranking only this game's slots gives
@@ -920,9 +1019,9 @@ impl Game {
         let turn = self.game_turn();
         let num_civ_players = self.num_civ_players();
 
-        // calculateScore(false) only reads game state, so each player's score is computed
-        // once (C++ recomputes it in every pass of the selection sort, with the same result).
-        let scores: Vec<i32> = self.civ_player_ids().map(|p| self.player_calculate_score(p, false, false)).collect();
+        // The scores only read game state, so they are computed once (C++ recomputes
+        // calculateScore in every pass of the selection sort, with the same result).
+        let scores: Vec<i32> = self.world_scores();
         let mut player_scored = vec![false; num_civ_players];
 
         for rank in 0..num_civ_players {
@@ -995,6 +1094,12 @@ impl Game {
             return None;
         }
         let rank = rank as usize;
+        // Score v2 gives every alive civ at least 1 basis point, so "score > 0" still means
+        // "a real player" here.
+        debug_assert!(
+            self.civ_player_ids().all(|p| !self.players[p].alive || self.player_score[p] > 0 || self.score_dirty),
+            "an alive civ player with score 0"
+        );
         let num_scored = self.civ_player_ids().filter(|&p| self.player_score[p] > 0).count();
         let num_missing = MAX_CIV_PLAYERS.saturating_sub(self.num_civ_players());
 
@@ -1426,9 +1531,65 @@ fn checksum_term(multiplier: i32, value: i32, factor: i32) -> i32 {
     multiplier.wrapping_add(value.wrapping_mul(factor))
 }
 
+/// Score v2 apportionment (docs/SCORE.md): splits `total` points among the entries with
+/// `scored[i]` in proportion to `u[i]` -- `floor(total * u / U)`, then the leftover points one
+/// each to the largest remainders `total * u mod U` (ties to the lower index) -- and then raises
+/// every scored entry to at least 1, taking each missing point from the current largest entry
+/// (ties to the lower index). With `U = 0` the points are split equally, the leftover going to
+/// the lowest indices. Unscored entries get 0. Scored entries sum to exactly `total`.
+pub(crate) fn apportion_score(u: &[i64], scored: &[bool], total: i32) -> Vec<i32> {
+    let total = total as i64;
+    let ids: Vec<usize> = (0..u.len()).filter(|&i| scored[i]).collect();
+    let mut q = vec![0i64; u.len()];
+    if ids.is_empty() {
+        return vec![0; u.len()];
+    }
+    let n = ids.len() as i64;
+    let sum: i64 = ids.iter().map(|&i| u[i].max(0)).sum();
+    if sum == 0 {
+        for &i in &ids {
+            q[i] = total / n;
+        }
+        let leftover = total - (total / n) * n;
+        for &i in ids.iter().take(leftover as usize) {
+            q[i] += 1;
+        }
+    } else {
+        let mut rem = vec![0i64; u.len()];
+        for &i in &ids {
+            q[i] = total * u[i].max(0) / sum;
+            rem[i] = total * u[i].max(0) % sum;
+        }
+        let leftover = total - ids.iter().map(|&i| q[i]).sum::<i64>();
+        let mut order = ids.clone();
+        order.sort_by(|&a, &b| rem[b].cmp(&rem[a]).then(a.cmp(&b)));
+        for &i in order.iter().take(leftover as usize) {
+            q[i] += 1;
+        }
+    }
+    for &i in &ids {
+        while q[i] < 1 {
+            // The current largest entry, ties to the lower index.
+            let mut j = ids[0];
+            for &k in &ids {
+                if q[k] > q[j] {
+                    j = k;
+                }
+            }
+            if q[j] <= 1 {
+                break; // more entries than points: cannot happen with at most 255 players
+            }
+            q[j] -= 1;
+            q[i] += 1;
+        }
+    }
+    q.into_iter().map(|v| v as i32).collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::checksum_term;
+    use super::{apportion_score, checksum_term};
+    use crate::defs::SCORE_TOTAL_BP;
     use crate::defs::MAX_CIV_PLAYERS;
     use crate::game::Game;
     use crate::ids::*;
@@ -1649,11 +1810,10 @@ mod tests {
     fn score_ranks_ties_to_the_higher_index() {
         let mut g = game(3);
         let n_civ = g.num_civ_players();
-        g.estimate_end_turn = 100;
-        g.max_population = 100;
-        g.players[PlayerId(0)].population_score = 50;
-        g.players[PlayerId(1)].population_score = 10;
-        g.players[PlayerId(2)].population_score = 50;
+        // People only (no land, no knowledge yet): 3, 1, 3 -> 3651, 2698, 3651 basis points.
+        g.players[PlayerId(0)].total_population = 3;
+        g.players[PlayerId(1)].total_population = 1;
+        g.players[PlayerId(2)].total_population = 3;
 
         g.update_score(false);
         assert_eq!(g.player_score[PlayerId(0)], 0, "not dirty: nothing ranked");
@@ -1663,8 +1823,7 @@ mod tests {
         assert!(!g.score_dirty);
         let s0 = g.player_score[PlayerId(0)];
         let s1 = g.player_score[PlayerId(1)];
-        assert!(s0 > s1 && s1 > 0);
-        assert_eq!(g.player_score[PlayerId(2)], s0);
+        assert_eq!((s0, s1, g.player_score[PlayerId(2)]), (3651, 2698, 3651));
         // ties go to the higher index; the open (dead) slots score 0, highest index first
         let mut expected = vec![PlayerId(2), PlayerId(0), PlayerId(1)];
         expected.extend((3..n_civ).rev().map(|i| PlayerId(i as u8)));
@@ -1676,6 +1835,7 @@ mod tests {
         // one player per team: the team ranking follows
         assert_eq!(&g.rank_team[..3], &[TeamId(2), TeamId(0), TeamId(1)]);
         assert_eq!(g.team_score[TeamId(1)], s1);
+        assert_eq!(g.civ_team_ids().map(|t| g.team_score[t]).sum::<i32>(), SCORE_TOTAL_BP);
 
         // C++ ranks 35 civ slots: its empty slots come right after the positive scores
         let missing = MAX_CIV_PLAYERS - n_civ;
@@ -1684,6 +1844,426 @@ mod tests {
         assert_eq!(g.cpp_rank_player(3), None);
         assert_eq!(g.cpp_rank_player((3 + missing - 1) as i32), None);
         assert_eq!(g.cpp_rank_player((3 + missing) as i32), Some(PlayerId((n_civ - 1) as u8)));
+    }
+
+    /// A score state on `game(n)`: player i on team `team[i]` (teams 0..n), alive per `alive`,
+    /// with `pop[i]` people and `land[i]` land plots; every member of team t knows `know[t]`;
+    /// `(vassal, master)` team pairs.
+    fn score_state(team: &[usize], alive: &[bool], pop: &[i32], land: &[i32], know: &[i32], vassal_of: &[(usize, usize)]) -> Game {
+        let n = team.len();
+        let mut g = game(n);
+        for t in 0..n {
+            let t = TeamId(t as u8);
+            g.teams[t].num_members = 0;
+            g.teams[t].alive_count = 0;
+        }
+        for i in 0..n {
+            let (p, t) = (PlayerId(i as u8), TeamId(team[i] as u8));
+            g.players[p].team = t;
+            g.players[p].alive = alive[i];
+            g.players[p].total_population = pop[i];
+            g.players[p].total_land = land[i];
+            g.players[p].tech_score = know[team[i]];
+            g.teams[t].num_members += 1;
+            g.teams[t].alive_count += alive[i] as i32;
+        }
+        for &(v, m) in vassal_of {
+            g.teams[TeamId(v as u8)].vassal[TeamId(m as u8)] = true;
+        }
+        g
+    }
+
+    /// Alive civs sum to exactly 10000 basis points and score at least 1; the rest score 0.
+    fn assert_score_invariants(g: &Game, scores: &[i32]) {
+        assert_eq!(scores.len(), g.num_civ_players());
+        let mut sum = 0;
+        for p in g.civ_player_ids() {
+            if g.players[p].alive {
+                assert!(scores[p.idx()] >= 1, "alive player {p:?} scores {}", scores[p.idx()]);
+                sum += scores[p.idx()];
+            } else {
+                assert_eq!(scores[p.idx()], 0, "dead player {p:?}");
+            }
+        }
+        assert_eq!(sum, SCORE_TOTAL_BP, "{scores:?}");
+    }
+
+    #[test]
+    fn world_scores_fixed_vectors() {
+        // (player, team, pop, land, know): (0,0,20,100,50) (1,1,11,41,30) (2,2,9,59,30) (3,0,0,0,50)
+        let team = [0, 1, 2, 0];
+        let alive = [true; 4];
+        let (pop, land, know) = ([20, 11, 9, 0], [100, 41, 59, 0], [50, 30, 30, 0]);
+        let g = score_state(&team, &alive, &pop, &land, &know, &[]);
+        let s = g.world_scores();
+        assert_eq!(&s[..4], &[4848, 2509, 2642, 1]);
+        // the 0-city member of team 0 holds nothing: the 1 basis point floor
+        assert_eq!(s[3], 1);
+        assert_score_invariants(&g, &s);
+        assert_eq!(g.player_calculate_score(PlayerId(0), false, false), 4848);
+
+        // team 1 a vassal of team 0: half of its people and land go to team 0's leader
+        let g = score_state(&team, &alive, &pop, &land, &know, &[(1, 0)]);
+        let s = g.world_scores();
+        assert_eq!(&s[..4], &[5698, 1659, 2642, 1]);
+        assert_score_invariants(&g, &s);
+    }
+
+    /// One reference case: `world_scores()` of judge/final_score.py on the same rows.
+    struct Case {
+        team: &'static [usize],
+        alive: &'static [bool],
+        pop: &'static [i32],
+        land: &'static [i32],
+        know: &'static [i32],
+        vassal_of: &'static [(usize, usize)],
+        expected: &'static [i32],
+    }
+
+    // Generated from the Python reference (`world_scores` in judge/final_score.py of the score
+    // design) on random states: dead players, shared teams, 0-city members, no people/land at
+    // all, no knowledge at all, vassals (some of dead masters).
+    const RANDOM_CASES: &[Case] = &[
+        Case {
+            team: &[0, 2, 2, 2, 1, 2, 0, 1, 1],
+            alive: &[true, true, true, true, true, true, true, true, true],
+            pop: &[0, 0, 0, 0, 0, 0, 0, 0, 0],
+            land: &[0, 0, 0, 0, 0, 0, 0, 0, 0],
+            know: &[269, 432, 582],
+            vassal_of: &[],
+            expected: &[1090, 1119, 1119, 1119, 1115, 1118, 1090, 1115, 1115],
+        },
+        Case {
+            team: &[0, 0, 0, 0],
+            alive: &[true, false, true, true],
+            pop: &[25, 0, 10, 54],
+            land: &[374, 140, 186, 30],
+            know: &[0],
+            vassal_of: &[],
+            expected: &[4160, 0, 2537, 3303],
+        },
+        Case {
+            team: &[2, 3, 4, 5, 0, 1],
+            alive: &[true, false, true, true, false, true],
+            pop: &[32, 52, 17, 0, 31, 2],
+            land: &[110, 6, 382, 0, 284, 162],
+            know: &[232, 382, 289, 0, 218, 151],
+            vassal_of: &[],
+            expected: &[3578, 0, 3757, 484, 0, 2181],
+        },
+        Case {
+            team: &[0, 0],
+            alive: &[true, true],
+            pop: &[17, 51],
+            land: &[309, 112],
+            know: &[144],
+            vassal_of: &[],
+            expected: &[4113, 5887],
+        },
+        Case {
+            team: &[0],
+            alive: &[true],
+            pop: &[0],
+            land: &[0],
+            know: &[530],
+            vassal_of: &[],
+            expected: &[10000],
+        },
+        Case {
+            team: &[4, 1, 2, 3, 0, 6, 5, 7],
+            alive: &[true, true, true, true, false, true, true, true],
+            pop: &[28, 19, 26, 25, 20, 55, 0, 38],
+            land: &[343, 326, 89, 395, 107, 199, 0, 79],
+            know: &[0, 0, 0, 0, 0, 0, 0, 0],
+            vassal_of: &[],
+            expected: &[1764, 1567, 1137, 1833, 0, 1900, 476, 1323],
+        },
+        Case {
+            team: &[2, 1, 0, 1, 1, 0],
+            alive: &[true, true, false, true, true, true],
+            pop: &[20, 44, 55, 19, 30, 5],
+            land: &[321, 299, 287, 102, 191, 58],
+            know: &[539, 596, 29],
+            vassal_of: &[],
+            expected: &[1750, 3077, 0, 1235, 2054, 1884],
+        },
+        Case {
+            team: &[3, 0, 2, 1],
+            alive: &[true, true, true, true],
+            pop: &[0, 53, 8, 0],
+            land: &[0, 278, 370, 0],
+            know: &[307, 49, 97, 169],
+            vassal_of: &[(0, 1), (2, 1), (3, 1)],
+            expected: &[906, 3781, 1690, 3623],
+        },
+        Case {
+            team: &[0, 1],
+            alive: &[true, true],
+            pop: &[0, 0],
+            land: &[0, 0],
+            know: &[176, 175],
+            vassal_of: &[],
+            expected: &[5005, 4995],
+        },
+        Case {
+            team: &[0, 0, 0, 0],
+            alive: &[true, true, true, true],
+            pop: &[38, 0, 14, 0],
+            land: &[368, 0, 173, 0],
+            know: &[0],
+            vassal_of: &[],
+            expected: &[5537, 833, 2797, 833],
+        },
+        Case {
+            team: &[3, 2, 5, 6, 1, 0, 4],
+            alive: &[true, true, true, true, true, true, true],
+            pop: &[25, 0, 8, 16, 0, 0, 5],
+            land: &[29, 380, 96, 381, 81, 298, 254],
+            know: &[90, 568, 60, 585, 376, 453, 283],
+            vassal_of: &[],
+            expected: &[2414, 917, 1330, 2214, 962, 778, 1385],
+        },
+        Case {
+            team: &[2, 0, 1, 2, 0],
+            alive: &[true, true, true, true, false],
+            pop: &[19, 0, 55, 9, 50],
+            land: &[43, 0, 321, 203, 210],
+            know: &[570, 133, 313],
+            vassal_of: &[(0, 1), (2, 1)],
+            expected: &[1196, 1870, 5864, 1070, 0],
+        },
+        Case {
+            team: &[0],
+            alive: &[true],
+            pop: &[0],
+            land: &[0],
+            know: &[333],
+            vassal_of: &[],
+            expected: &[10000],
+        },
+        Case {
+            team: &[0, 1, 0, 2, 1, 1, 0],
+            alive: &[true, false, true, true, true, true, true],
+            pop: &[48, 5, 0, 44, 47, 21, 0],
+            land: &[266, 135, 3, 28, 359, 159, 0],
+            know: &[0, 0, 0],
+            vassal_of: &[],
+            expected: &[2643, 0, 568, 1587, 3003, 1643, 556],
+        },
+        Case {
+            team: &[2, 3, 0, 1],
+            alive: &[true, true, true, true],
+            pop: &[27, 7, 8, 44],
+            land: &[243, 272, 319, 386],
+            know: &[599, 193, 172, 493],
+            vassal_of: &[],
+            expected: &[2104, 2142, 2552, 3202],
+        },
+        Case {
+            team: &[0, 1, 0],
+            alive: &[true, true, true],
+            pop: &[18, 50, 2],
+            land: &[17, 396, 327],
+            know: &[205, 473],
+            vassal_of: &[(0, 1)],
+            expected: &[1372, 7746, 882],
+        },
+        Case {
+            team: &[0, 0],
+            alive: &[true, false],
+            pop: &[0, 0],
+            land: &[0, 0],
+            know: &[552],
+            vassal_of: &[],
+            expected: &[10000, 0],
+        },
+        Case {
+            team: &[1, 2, 3, 0],
+            alive: &[true, true, true, true],
+            pop: &[34, 43, 46, 22],
+            land: &[195, 278, 133, 374],
+            know: &[0, 0, 0, 0],
+            vassal_of: &[],
+            expected: &[2278, 2768, 2343, 2611],
+        },
+        Case {
+            team: &[0, 0],
+            alive: &[true, true],
+            pop: &[0, 53],
+            land: &[366, 334],
+            know: &[109],
+            vassal_of: &[],
+            expected: &[1743, 8257],
+        },
+        Case {
+            team: &[1, 1, 0],
+            alive: &[true, true, true],
+            pop: &[0, 23, 34],
+            land: &[0, 57, 58],
+            know: &[122, 81],
+            vassal_of: &[],
+            expected: &[1, 4327, 5672],
+        },
+        Case {
+            team: &[1, 0],
+            alive: &[true, true],
+            pop: &[0, 0],
+            land: &[0, 0],
+            know: &[209, 237],
+            vassal_of: &[],
+            expected: &[5105, 4895],
+        },
+        Case {
+            team: &[4, 3, 4, 0, 2, 1, 4, 3],
+            alive: &[false, false, true, true, true, true, false, true],
+            pop: &[56, 23, 56, 17, 13, 53, 33, 34],
+            land: &[342, 31, 302, 24, 356, 73, 348, 255],
+            know: &[0, 0, 0, 0, 0],
+            vassal_of: &[],
+            expected: &[0, 0, 2742, 1074, 2092, 1929, 0, 2163],
+        },
+        Case {
+            team: &[0, 0, 0, 0],
+            alive: &[true, true, true, true],
+            pop: &[21, 23, 55, 44],
+            land: &[52, 193, 152, 194],
+            know: &[297],
+            vassal_of: &[],
+            expected: &[1272, 2161, 3421, 3146],
+        },
+        Case {
+            team: &[0, 4, 3, 5, 2, 0, 1],
+            alive: &[true, true, true, true, false, true, true],
+            pop: &[1, 13, 16, 13, 46, 16, 60],
+            land: &[325, 327, 274, 349, 167, 185, 238],
+            know: &[248, 521, 460, 193, 53, 44],
+            vassal_of: &[(3, 5)],
+            expected: &[712, 1173, 1100, 1681, 0, 1546, 3788],
+        },
+    ];
+
+    #[test]
+    fn world_scores_match_the_reference() {
+        for (k, c) in RANDOM_CASES.iter().enumerate() {
+            let g = score_state(c.team, c.alive, c.pop, c.land, c.know, c.vassal_of);
+            let s = g.world_scores();
+            assert_eq!(&s[..c.team.len()], c.expected, "case {k}");
+            assert_score_invariants(&g, &s);
+        }
+    }
+
+    #[test]
+    fn world_scores_sum_to_the_world_with_a_floor_of_one() {
+        // Deterministic pseudo-random states (LCG).
+        let mut seed: u64 = 0x2545_f491_4f6c_dd1d;
+        let mut rand = |n: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) % n
+        };
+        for _ in 0..400 {
+            let n = 1 + rand(12) as usize;
+            let num_teams = 1 + rand(n as u64) as usize;
+            let team: Vec<usize> = (0..n).map(|i| if i < num_teams { i } else { rand(num_teams as u64) as usize }).collect();
+            let mut alive: Vec<bool> = (0..n).map(|_| rand(8) != 0).collect();
+            alive[rand(n as u64) as usize] = true;
+            let pop: Vec<i32> = (0..n).map(|_| if rand(4) == 0 { 0 } else { rand(80) as i32 }).collect();
+            let land: Vec<i32> = (0..n).map(|i| if pop[i] == 0 && rand(2) == 0 { 0 } else { rand(500) as i32 }).collect();
+            let know: Vec<i32> = (0..n).map(|_| if rand(6) == 0 { 0 } else { rand(900) as i32 }).collect();
+            let vassal_of: Vec<(usize, usize)> = if num_teams >= 2 && rand(3) == 0 { vec![(1, 0)] } else { Vec::new() };
+            let g = score_state(&team, &alive, &pop, &land, &know, &vassal_of);
+            let s = g.world_scores();
+            assert_score_invariants(&g, &s);
+            // pure: same state, same scores
+            assert_eq!(g.world_scores(), s);
+            // the shares behind the scores: each column sums to one million, less the floor
+            // division's remainders
+            let shares = g.world_score_shares();
+            for k in 0..3 {
+                let col: i64 = shares.iter().map(|x| x[k]).sum();
+                assert!(col <= 1_000_000 && col > 1_000_000 - 12, "column {k}: {col}");
+            }
+        }
+    }
+
+    #[test]
+    fn apportionment_rounding() {
+        // no weight at all: equal split, the leftover to the lowest ids
+        assert_eq!(apportion_score(&[0, 0, 0], &[true; 3], 10_000), vec![3334, 3333, 3333]);
+        // unscored entries get nothing
+        assert_eq!(apportion_score(&[5, 7, 5], &[true, false, true], 10_000), vec![5000, 0, 5000]);
+        // equal remainders: the lower id gets the leftover point
+        assert_eq!(apportion_score(&[1, 1, 1], &[true; 3], 10_000), vec![3334, 3333, 3333]);
+        // the 1 point floor is taken from the largest (ties: the lower id)
+        assert_eq!(apportion_score(&[1_000_000, 0, 1_000_000, 0], &[true; 4], 10_000), vec![4999, 1, 4999, 1]);
+        assert_eq!(apportion_score(&[3_000_000, 0], &[true; 2], 10_000), vec![9999, 1]);
+        assert_eq!(apportion_score(&[], &[], 10_000), Vec::<i32>::new());
+    }
+
+    #[test]
+    fn a_team_split_conserves_the_team_total() {
+        // Team 0 as one player (player 3 dead) vs the same people and land split between two
+        // members: the team's sum and every other team's score move only by rounding.
+        let team = [0, 1, 2, 0];
+        let know = [120, 80, 95, 0];
+        let one = score_state(&team, &[true, true, true, false], &[24, 11, 9, 0], &[150, 41, 59, 0], &know, &[]);
+        let split = score_state(&team, &[true; 4], &[17, 11, 9, 7], &[90, 41, 59, 60], &know, &[]);
+        let (a, b) = (one.world_scores(), split.world_scores());
+        assert_score_invariants(&one, &a);
+        assert_score_invariants(&split, &b);
+        assert!((a[0] - (b[0] + b[3])).abs() <= 2, "team 0: {} vs {} + {}", a[0], b[0], b[3]);
+        for p in [1, 2] {
+            assert!((a[p] - b[p]).abs() <= 2, "player {p}: {} vs {}", a[p], b[p]);
+        }
+        // a member joining with nothing (a 0-city Mercurian) takes 1 point, nothing more
+        let join = score_state(&team, &[true; 4], &[24, 11, 9, 0], &[150, 41, 59, 0], &know, &[]);
+        let c = join.world_scores();
+        assert_eq!(c[3], 1);
+        assert!((a[0] - (c[0] + c[3])).abs() <= 2);
+    }
+
+    #[test]
+    fn the_vassal_transfer_conserves_totals() {
+        let team = [0, 1, 2, 0];
+        let (pop, land, know) = ([20, 11, 9, 4], [100, 41, 59, 30], [50, 30, 30, 0]);
+        let free = score_state(&team, &[true; 4], &pop, &land, &know, &[]);
+        let vassal = score_state(&team, &[true; 4], &pop, &land, &know, &[(1, 0)]);
+        let (f, v) = (free.world_score_shares(), vassal.world_score_shares());
+        // people and land move from the vassal to the master's leader (player 0), nothing else
+        for k in 0..2 {
+            assert_eq!(v[2][k], f[2][k], "a third party keeps its share");
+            assert_eq!(v[3][k], f[3][k], "the master's other member keeps its share");
+            assert!(v[1][k] < f[1][k] && v[0][k] > f[0][k]);
+            assert!(((v[0][k] + v[1][k]) - (f[0][k] + f[1][k])).abs() <= 1, "column {k}: total conserved");
+        }
+        // knowledge is not transferred: a third party's knowledge share is unchanged
+        assert_eq!(v[2][2], f[2][2]);
+        assert_score_invariants(&vassal, &vassal.world_scores());
+        // the vassal keeps floor(x / 2): 11 people -> 5 of 44, 41 plots -> 20 of 230
+        assert_eq!(v[1][0], 1_000_000 * 5 / 44);
+        assert_eq!(v[1][1], 1_000_000 * 20 / 230);
+        // a dead master shares nothing
+        let orphan = score_state(&team, &[false, true, true, false], &pop, &land, &know, &[(1, 0)]);
+        let free_orphan = score_state(&team, &[false, true, true, false], &pop, &land, &know, &[]);
+        assert_eq!(orphan.world_scores(), free_orphan.world_scores());
+        assert_score_invariants(&orphan, &orphan.world_scores());
+    }
+
+    #[test]
+    fn update_score_caches_the_world_scores() {
+        let team = [0, 1, 2, 0];
+        let mut g = score_state(&team, &[true; 4], &[20, 11, 9, 0], &[100, 41, 59, 0], &[50, 30, 30, 0], &[]);
+        g.update_score(true);
+        let s = g.world_scores();
+        for p in g.civ_player_ids() {
+            assert_eq!(g.player_score[p], s[p.idx()]);
+        }
+        // team score = the members' sum: team 0 = 4848 + 1
+        assert_eq!(g.team_score[TeamId(0)], 4849);
+        assert_eq!(g.rank_team[0], TeamId(0));
+        assert_eq!(g.rank_player[0], PlayerId(0));
+        // the 0-city member ranks last among the alive players, ahead of the dead
+        assert_eq!(g.player_rank[PlayerId(3)], 3);
+        assert_eq!(g.cpp_rank_player(3), Some(PlayerId(3)));
     }
 
     #[test]

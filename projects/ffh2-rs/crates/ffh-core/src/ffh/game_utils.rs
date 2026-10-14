@@ -263,51 +263,32 @@ impl Game {
         false
     }
 
-    /// `calculateScore(ePlayer, bFinal, bVictory)` (always called by `CvPlayer::calculateScore`).
-    pub fn py_calculate_score(&self, p: PlayerId, final_: bool, victory: bool) -> i32 {
+    /// `calculateScore(ePlayer, False, False)`: FFH2's score, now only the legacy score
+    /// (`player_legacy_score`); the game score is score v2 (`Game::world_scores`). The final and
+    /// victory variants (`bFinal`/`bVictory`) only fed the Hall of Fame and replays, which are
+    /// not ported, and are dropped.
+    pub fn py_calculate_score(&self, p: PlayerId) -> i32 {
         let df = &self.d.defines;
-        let pop = self.score_component(self.player_get_pop_score(p, true), self.init_population, self.max_population, df.score_population_factor, true, final_, victory);
-        let land = self.score_component(self.player_get_land_score(p, true), self.init_land, self.max_land, df.score_land_factor, true, final_, victory);
-        let tech = self.score_component(self.players[p].tech_score, self.init_tech, self.max_tech, df.score_tech_factor, true, final_, victory);
-        let wonders = self.score_component(self.players[p].wonders_score, self.init_wonders, self.max_wonders, df.score_wonder_factor, false, final_, victory);
+        let pop = self.score_component(self.player_get_pop_score(p, true), self.max_population, df.score_population_factor);
+        let land = self.score_component(self.player_get_land_score(p, true), self.max_land, df.score_land_factor);
+        let tech = self.score_component(self.players[p].tech_score, self.max_tech, df.score_tech_factor);
+        let wonders = self.score_component(self.players[p].wonders_score, self.max_wonders, df.score_wonder_factor);
         pop + land + wonders + tech
     }
 
-    /// `CvUtil.getScoreComponent(iRawScore, iInitial, iMax, iFactor, bExponential, bFinal, bVictory)`.
-    fn score_component(&self, raw: i32, initial: i32, max: i32, factor: i32, exponential: bool, final_: bool, victory: bool) -> i32 {
+    /// `CvUtil.getScoreComponent(iRawScore, iInitial, iMax, iFactor, bExponential, False, False)`
+    /// (`iInitial` and `bExponential` only matter for a final victory score).
+    fn score_component(&self, raw: i32, max: i32, factor: i32) -> i32 {
         if self.estimate_end_turn == 0 {
             return 0;
         }
         let df = &self.d.defines;
-        // Python mixes ints and floats here; follow its arithmetic.
-        let mut max_f = max as f64;
-        if final_ && victory {
-            let turn_ratio = self.game_turn() as f64 / self.estimate_end_turn as f64;
-            if exponential && initial != 0 {
-                let ratio = py_div(max, initial) as f64; // Python 2: int / int
-                max_f = initial as f64 * ratio.powf(turn_ratio);
-            } else {
-                max_f = initial as f64 + turn_ratio * (max - initial) as f64;
-            }
-        }
-        let is_float = final_ && victory;
-        let mut score: f64;
-        if is_float {
-            let free = (df.score_free_percent as f64 * max_f) / 100.0;
-            score = if free + max_f != 0.0 { (factor as f64 * (raw as f64 + free)) / (free + max_f) } else { factor as f64 };
-            score = ((100 + df.score_victory_percent) as f64 * score) / 100.0;
-            score = ((100 + df.score_handicap_percent_offset + self.handicap.i() * df.score_handicap_percent_per) as f64 * score) / 100.0;
-            return score as i32;
-        }
         let free = py_div(df.score_free_percent * max, 100);
-        let mut s = if free + max != 0 { py_div(factor * (raw + free), free + max) } else { factor };
-        if victory {
-            s = py_div((100 + df.score_victory_percent) * s, 100);
+        if free + max != 0 {
+            py_div(factor * (raw + free), free + max)
+        } else {
+            factor
         }
-        if final_ {
-            s = py_div((100 + df.score_handicap_percent_offset + self.handicap.i() * df.score_handicap_percent_per) * s, 100);
-        }
-        s
     }
 
     /// `isVictoryTest()` (always called by `CvGame::testVictory`).
