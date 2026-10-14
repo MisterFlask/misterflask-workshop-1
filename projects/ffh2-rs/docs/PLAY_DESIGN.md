@@ -7,7 +7,8 @@ This is the design of `crates/ffh-play`, implemented phase by phase (§7); the s
 | Phase | Status | Notes |
 |---|---|---|
 | P0 skeleton | done | `json.rs`, `names.rs`, `ffh-play kinds / names / lookup`; see "As built" under P0 in §7. |
-| P1–P7 | not started | |
+| P1 session core | done | `session.rs`, `human.rs`, `decision.rs`, `command.rs` (+ `selection.rs`), `guard.rs`, `setup.rs`, `journal.rs`, `save.rs`, `bot.rs`; `ffh-play bot / replay / journal print`; T1–T6, T9. See "As built" under P1 in §7. |
+| P2–P7 | not started | |
 
 **Starting point.** The design starts from the **web** design, which had the highest total score: 8.5 + 7.5 + 7 = 23, against 21.5 for tui and 21.5 for engine-first. It grafts on the ideas the judges recommended (§11 lists every disagreement and how it was resolved).
 
@@ -711,7 +712,7 @@ Size is about 1–1.5 MB, cached by ETag.
 ```
 Cargo.toml                 lib + [[bin]] ffh-play; deps ffh-data, ffh-core, ffh-ai (path)        ~20
 src/lib.rs                 modules, re-exports                                                    ~60
-src/main.rs                serve | agent | bot | soak | replay | journal print | bench; kinds | names | lookup (P0) ~220
+src/main.rs                serve | agent | bot | soak | replay | journal print | bench; kinds | names | lookup (P0); bot, replay, journal print (P1) ~220
 src/json.rs                Json enum, escaping writer, recursive-descent parser, typed getters    ~400
 src/names.rs               type name <-> index for every table and hard-coded enum (NAMES arrays), text lookup ~220
 src/setup.rs               NewGame -> Game, controllers, active_player, options, take_over, setup lists ~250
@@ -720,6 +721,8 @@ src/decision.rs            Decision builders, Pending derivation, event effect s
 src/session.rs             Session, phase, advance, settle, execute, auto moves, drain, autosave, watchdog ~600
 src/command.rs             Command decode/validate/apply: CvNet ports, selectionList*, cityPushOrder,
                            handleAction confirms, deals                                           ~800
+src/selection.rs           (P1) the exe's selection-list checks (canHandleAction): canStartMission,
+                           canDoCommand over the selected units                                   ~170
 src/guard.rs               QueryGuard                                                              ~130
 src/journal.rs             JSONL writer/reader, stamps, checkpoints, JournalDriver, pretty printer ~250
 src/save.rs                save bundle + sidecar, autosave ring, name sanitizing                  ~150
@@ -784,6 +787,22 @@ Each phase is independently testable and committable. `cargo build --release && 
   * `guard.rs`, `journal.rs`, `save.rs` (sidecar);
   * a minimal bot that reads `&Game` through `Session::read`.
 * Tests: T1–T6 and T9 (§8). This phase decides every semantic question; the rest is presentation.
+* **As built (done).** The API is §3 minus what belongs to P3 (`Session::query`, `UiState`, the report). No ffh-core, ffh-ai, ffh-cli or `controller.rs` edit; no engine hook was needed (the P7 list stands). Semantics pinned down, with the C++ each follows (all re-read in `/home/user/ref/ffh2`):
+  * **Loop** (§2.2) as designed: `phase` is the pure predicate; `advance` drains the log at every control point and turn boundary, journals a checkpoint and autosaves at every turn boundary (`auto/T####`) and at a new game's first control point (`auto/start`: `game_init` leaves the first player's turn active, so a game starts without a boundary), and runs the 200k-slice watchdog; `execute` validates under a `QueryGuard`, journals, applies, settles (≥ 1 `update()`, then while a human group is busy, ≤ `settle_limit`). `on_slice` gets a plain `&Game` (transports must read plain fields or take a guard). The AutoMoves rule (`updateTestEndTurn`) fires once per control episode when no group is ready and some has queued orders. `updateTestEndTurn`'s *automatic end of turn* (`sendTurnComplete` when nothing is ready and a unit moved) is **not** ported: the human always ends the turn, as with `PLAYEROPTION_WAIT_END_TURN`.
+  * **Ready groups** (`decision::ready_groups`, used by the AutoMoves rule, the end-turn gate and `pending.ready_groups`) are `readyToMove(bAny = true)` groups **without** automated and FfH AI-controlled groups: C++ moves those in `AI_unitUpdate`, here they idle until the P7 automation hook (F15), and would otherwise block the gate and AutoMoves forever. They are listed as `pending.ai_groups_idle`.
+  * **Research-site rule** (F5): the mark is `ResearchMark {turn, slice, player, team tech count, overflow research}`, not only `(turn, slice, p)`: nothing changes between `doResearch`'s two calls, so a later call in the same slice after a tech was acquired (research-next during AI turns) is not taken for the `AI_chooseResearch` call. Verified by T6 both ways.
+  * **Selection checks** (`selection.rs`): the exe checks an action on the *interface selection list*, a `CvSelectionGroup` of the selected units, before sending it (`canHandleAction`). `selection.rs` ports `canStartMission`, `canDoCommand`, `canEverDoCommand`, `isBusy` and `getBestBuildRoute` over the selected units, so a selection that is not a whole group is checked like the exe does, before any join. With shift (append) and a mirrored group, the mission plot is the group's last mission plot when visible (`canHandleAction`). Selections must be on one plot, distinct, the human's.
+  * **`move`**: `declare_war` is tri-state: absent asks (`Confirm::DeclareWar {team, move_anyway}`), `true` declares (`CvNetChangeWar` → `declareWar(rival, false, NO_WARPLAN)`, unchecked as in C++) and moves, `false` is the popup's "no", which still moves when the target plot is not that team's (DECLAREWARMOVE `getOption2`) and otherwise changes nothing (`Plan::Noop`, not journaled).
+  * **`do_command`**: COMMAND_LOAD is never sent to units: as `handleAction` → LOADUNIT, it loads into the only possible transport (`COMMAND_LOAD_UNIT` owner/id) or answers `Confirm::LoadUnit {transports}`. Confirmations: `bConfirmCommand` (delete), global spells, war spells (Sephi's area rule from `handleAction`); COMMAND_AUTOMATE (F15), AUTOMATE_SPELL (F16) and HOTKEY are refused. `alt` applies only with `bAll`, per selected unit, as `CvNetDoCommand` (UNOFFICIAL_PATCH type read).
+  * **Cities**: `push_order` applies the `cityPushOrder` flag rewrite (the CHOOSEPRODUCTION popup's `pushOrder(.., bPop = true)` gives the same result on the empty queue it is shown for). `pop_order` is refused on a queue of one order (the exe sends POP_ORDER only for longer queues). `do_task` also allows CLEAR_WORKING_OVERRIDE, RALLY_PLOT and CLEAR_RALLY_PLOT (the exe sends them); RAZE / DISBAND / GIFT are popup-only and refused; working plots must be the city's and ours (`handleCityScreenPlotPicked`).
+  * **Other gates**: `update_civics` needs `canDoCivics` for each new civic and `canRevolution`; `percent_change` needs a flexible commerce; `convert` `canConvert`; `declare_war` `canDeclareWar`; `research` `canEverResearch` (C++ `CvNetResearch`); `autoplay` 1..=10000 turns.
+  * **Decisions**: an answer that is not an enabled option counts as "advisor" (its pick, else the first enabled option). The election offers the resolutions plus "none" (C++ TXT_KEY_NONE, which sends nothing: here the selection is deleted, the same in play). Advisor suggestions are computed under a guard (C++ never computes them for humans). Free tech and religion options are what the C++ popups list; with no option the controller returns `None` without asking.
+  * **Events**: the deferred list is re-filtered at every control point (`launchEventPopup`: data gone or no doable event → dropped); a forced end turn drops the human's open event popups; `event` checks membership in the list, the trigger's events and `canDoEvent`.
+  * **Saves**: `SessionOptions::saves_dir` is the game's directory: `auto/T####.ffhsave` + `.ffhsess` (the last `autosave_keep`), `journal.jsonl` (`journal-N.jsonl` if taken), manual `<name>.ffhsave` + `.ffhsess` (names `[A-Za-z0-9_.-]{1,64}`, no leading dot). Without it the journal is kept in memory. Saving is refused while a decision is open and except at a control point, a turn boundary or game over.
+  * **Journal and replay**: lines as §2.6 (cmd lines are the canonical request form, with indices; answer lines the resolved option). `session::replay` re-applies each command at its stamp and answers from the journal (`JournalAnswerer`); it runs with `auto_moves_when_idle` off, as the journaled AutoMoves are re-applied as commands, and ends at the control point after the last input. From a save it starts after the checkpoint the sidecar's `journal_line` names (else the one with the save's turn and checksum).
+  * **Bot** (`bot.rs`): the T1 policy without the peace proposal (`propose_deal` is P3). It is weak (1–4 cities in 150 turns) but exercises every P1 command path.
+  * **Tests**: unit tests in every module (guard save-bytes test, setup, command decoding round trip, journal, save); `tests/bot_game.rs` (T1: seeds 1–3, 150 turns, small, 3 AIs; the blocking-decision assertion is over the three games, as only seed 3 captures a city; T2), `resume.rs` (T3: reloads before acting, mid-turn after commands, with an event pending, after a decision, and from an autosave), `replay.rs` (T4: from the header, the `start` save and an autosave; a changed stamp is reported at its line), `soak.rs` (T5), `decisions.rs` (T6, plus take-over and command gates), `drift.rs` (T9: also checks that `HumanController` implements every trait method itself), `cli.rs` (the new subcommands).
+  * **Found for other owners** (not edited here): city names are stored as text keys (`TXT_KEY_CITY_MALAKIM_1`) and several log messages keep unfilled placeholders (`%s1_civ_adjective`); the AI playing the human slot (T5) reaches only 2 cities in 150 turns where the AI players get 1–6 (for P2's soak to look at).
 
 **P2 — flush the human branches (about 0.6k).**
 * Scope:
