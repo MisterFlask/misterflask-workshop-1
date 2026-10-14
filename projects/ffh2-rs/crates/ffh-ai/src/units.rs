@@ -341,6 +341,8 @@ fn find_escort(g: &Game, v: &View, plot: PlotIdx, grp: GroupId) -> Option<UnitId
     let p = v.p;
     let city = g.map.plots[plot].plot_city.filter(|&c| g.cities[c].owner == p);
     let garrison_n = city.map_or(0, |_| garrison(g, p, plot).0);
+    // The capital keeps two defenders, other cities one.
+    let keep = if city.is_some_and(|c| g.city_is_capital(c)) { 2 } else { 1 };
     let mut best: Option<(UnitId, i32)> = None;
     for &o in &g.map.plots[plot].units {
         let unit = &g.units[o];
@@ -354,12 +356,13 @@ fn find_escort(g: &Game, v: &View, plot: PlotIdx, grp: GroupId) -> Option<UnitId
         let is_garrison = matches!(unit.ai_type, Some(UnitAIType::UNITAI_CITY_DEFENSE) | Some(UnitAIType::UNITAI_CITY_COUNTER) | Some(UnitAIType::UNITAI_CITY_SPECIAL));
         let ok = match unit.ai_type {
             Some(UnitAIType::UNITAI_ATTACK) | Some(UnitAIType::UNITAI_COUNTER) | Some(UnitAIType::UNITAI_RESERVE) | Some(UnitAIType::UNITAI_ATTACK_CITY) => true,
-            _ => is_garrison && garrison_n > 1,
+            _ => is_garrison && garrison_n > keep,
         };
         if !ok {
             continue;
         }
-        let d = crate::view::defense_power(g, o);
+        // Field units before garrison units.
+        let d = crate::view::defense_power(g, o) + if is_garrison { 0 } else { 100_000 };
         if best.map_or(true, |(_, b)| d > b) {
             best = Some((o, d));
         }

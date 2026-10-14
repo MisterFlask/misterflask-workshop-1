@@ -38,7 +38,7 @@ struct Ctx {
 }
 
 /// Unit types `p` could train with its techs plus `extra` (ignores resources and buildings).
-fn unit_available(g: &Game, p: PlayerId, ctx: &Ctx, u: UnitType, extra: Option<TechType>) -> bool {
+fn unit_available(g: &Game, p: PlayerId, ctx: &Ctx, u: UnitType, extra: &[TechType]) -> bool {
     let d = g.d;
     let info = &d.units[u];
     let Some(class) = info.unit_class_type else { return false };
@@ -54,7 +54,7 @@ fn unit_available(g: &Game, p: PlayerId, ctx: &Ctx, u: UnitType, extra: Option<T
     if info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO) || d.unit_classes[class].max_player_instances > 0 || d.unit_classes[class].max_global_instances > 0 {
         return false;
     }
-    let has = |t: TechType| Some(t) == extra || g.team_is_has_tech(ctx.team, Some(t));
+    let has = |t: TechType| extra.contains(&t) || g.team_is_has_tech(ctx.team, Some(t));
     if let Some(t) = info.prereq_and_tech {
         if !has(t) {
             return false;
@@ -79,7 +79,7 @@ fn unit_attack(info: &UnitInfo) -> i64 {
     (base * 100 + base * 100 * (info.moves.max(1) - 1) / 4) as i64
 }
 
-fn best_military(g: &Game, p: PlayerId, ctx: &Ctx, extra: Option<TechType>) -> (i64, i64) {
+fn best_military(g: &Game, p: PlayerId, ctx: &Ctx, extra: &[TechType]) -> (i64, i64) {
     let mut def = 0;
     let mut att = 0;
     for u in g.d.units.keys() {
@@ -134,7 +134,7 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
         unhappy_cities,
         rate: g.player_calculate_research_rate(p, None).max(1),
     };
-    let (def, att) = best_military(g, p, &ctx, None);
+    let (def, att) = best_military(g, p, &ctx, &[]);
     ctx.best_defense = def;
     ctx.best_attack = att;
     ctx
@@ -162,6 +162,14 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         for &child in &values(g.d).tech_children[t] {
             if !g.team_is_has_tech(team, Some(child)) {
                 value += tech_value_static(g, p, child) as i64 / 4;
+                // A better unit one step further (Mining -> Bronze Working) counts in part.
+                let or_ok = g.d.techs[child].prereq_or_techs.is_empty() || g.d.techs[child].prereq_or_techs.iter().any(|&o| o == t || g.team_is_has_tech(team, Some(o)));
+                if or_ok {
+                    let others_known = g.d.techs[child].prereq_and_techs.iter().all(|&a| a == t || g.team_is_has_tech(team, Some(a)));
+                    if others_known {
+                        value += military_value(g, p, &ctx, &[t, child]) as i64 / 2 - military_value(g, p, &ctx, &[t]) as i64 / 2;
+                    }
+                }
             }
         }
         let left = g.team_get_research_left(team, t).max(1) as i64;
@@ -193,6 +201,16 @@ fn builds_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
             continue;
         }
         let Some(imp) = binfo.improvement else { continue };
+        // Improvements that grow (cottages) count their grown form for two thirds.
+        let mut last = imp;
+        for _ in 0..4 {
+            match d.improvements[last].improvement_upgrade {
+                Some(next) if next != imp => last = next,
+                _ => break,
+            }
+        }
+        let research = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+        let yw = [20, 15, if research < 50 { 9 * (200 - 2 * research) / 100 } else { 9 }];
         let mut gains: Vec<i32> = Vec::new();
         for &q in &ctx.plots {
             let plot = &g.map.plots[q];
@@ -210,12 +228,12 @@ fn builds_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
                 continue;
             }
             let mut v = 0;
-            // Improvements that grow (cottages) are worth their grown yield, discounted.
-            let grows = d.improvements[imp].improvement_upgrade.is_some();
-            let yw = [20, 15, if grows { 22 } else { 9 }];
             for y in 0..YieldType::NUM {
                 let yt = YieldType::from_usize(y);
-                let new = g.plot_calculate_improvement_yield_change(q, imp, yt, Some(p), false, false);
+                let mut new = g.plot_calculate_improvement_yield_change(q, imp, yt, Some(p), false, false);
+                if last != imp {
+                    new = (new + 2 * g.plot_calculate_improvement_yield_change(q, last, yt, Some(p), false, false)) / 3;
+                }
                 let old = plot.improvement_type.map_or(0, |o| g.plot_calculate_improvement_yield_change(q, o, yt, Some(p), false, false));
                 v += (new - old) * yw[y];
             }
@@ -278,6 +296,24 @@ fn tech_value_static(g: &Game, p: PlayerId, t: TechType) -> i32 {
     value
 }
 
+/// A better defender / attacker from `techs`, weighted by the pressure we are under.
+fn military_value(g: &Game, p: PlayerId, ctx: &Ctx, techs: &[TechType]) -> i32 {
+    let (def, att) = best_military(g, p, ctx, techs);
+    let mut value = 0;
+    if def > ctx.best_defense {
+        value += ((def - ctx.best_defense) * (150 + 100 * ctx.pressure) / 100) as i32;
+    }
+    if att > ctx.best_attack {
+        value += ((att - ctx.best_attack) * (80 + 60 * ctx.pressure) / 100) as i32;
+    }
+    // FfH AI_chooseTech "early military beeline": past the first turns, get beyond warriors.
+    let tier1 = ctx.best_attack <= 400 && ctx.best_defense <= 400;
+    if tier1 && g.game_turn() >= 25 && (def > ctx.best_defense || att > ctx.best_attack) {
+        value += 500 + 100 * ctx.pressure as i32;
+    }
+    value.max(0)
+}
+
 /// What tech `t` is worth to player `p` now, before cost.
 fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
     let d = g.d;
@@ -291,22 +327,11 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
     value += builds_value(g, p, t, ctx);
 
     // Military: a better defender / attacker, as pressure demands.
-    let (def, att) = best_military(g, p, ctx, Some(t));
-    if def > ctx.best_defense {
-        value += ((def - ctx.best_defense) * (150 + 100 * ctx.pressure) / 100) as i32;
-    }
-    if att > ctx.best_attack {
-        value += ((att - ctx.best_attack) * (80 + 60 * ctx.pressure) / 100) as i32;
-    }
-    // FfH AI_chooseTech "early military beeline": past the first turns, get beyond warriors.
-    let tier1 = ctx.best_attack <= 400 && ctx.best_defense <= 400;
-    if tier1 && g.game_turn() >= 25 && (def > ctx.best_defense || att > ctx.best_attack) {
-        value += 500;
-    }
+    value += military_value(g, p, ctx, &[t]);
     // Casters: the first arcane unit.
     if let Some(l) = leader {
         let civ = ctx.civ;
-        let has_mage_now = d.units.keys().any(|u| d.units[u].default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) && unit_available(g, p, ctx, u, None));
+        let has_mage_now = d.units.keys().any(|u| d.units[u].default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) && unit_available(g, p, ctx, u, &[]));
         if !has_mage_now
             && unlocks.units.iter().any(|&u| d.units[u].default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) && d.units[u].unit_class_type.and_then(|cl| civ.and_then(|c| d.civ_unit(c, cl))) == Some(u))
         {

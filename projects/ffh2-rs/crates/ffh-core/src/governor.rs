@@ -516,7 +516,7 @@ impl Game {
         // An owner short of gold (research slider pushed down to pay the bills) needs commerce.
         let research_pct = pct[CommerceType::COMMERCE_RESEARCH.idx()];
         if research_pct < 50 && self.player_is_commerce_flexible(owner, CommerceType::COMMERCE_RESEARCH) {
-            w.commerce = w.commerce * (150 - research_pct) / 100;
+            w.commerce = w.commerce * (200 - 2 * research_pct) / 100;
         }
         if self.city_ai_is_emphasize_yield(c, YieldType::YIELD_FOOD) {
             w.food = w.food * 160 / 100;

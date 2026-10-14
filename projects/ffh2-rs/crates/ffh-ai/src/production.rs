@@ -13,7 +13,7 @@ use crate::sites;
 use crate::view::type_attack_power;
 use crate::Ai;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Choice {
     Train(UnitType, UnitAIType),
     Construct(BuildingType),
@@ -91,11 +91,19 @@ pub fn emergency(ai: &Ai, g: &mut Game, p: PlayerId) {
         }
         let plot = g.city_plot(c);
         let threat = local_threat(g, p, plot, 2);
-        if threat == 0 {
-            continue;
-        }
         let (defenders, defense) = garrison(g, p, plot);
         let building_fighter = g.city_production_unit(c).is_some_and(|u| g.d.units[u].combat > 0);
+        if threat == 0 {
+            // A long build in a city that should have a second defender by now (decide puts
+            // the defender first).
+            let exposed = g.game_turn() > 30 && defenders < 2 && (g.city_is_capital(c) || barbarians_near(g, p, plot, 4));
+            if exposed && !building_fighter && g.city_production_turns_left(c) > 3 && !g.player_is_barbarian(p) && best_unit(g, c, Role::Defense).is_some() {
+                crate::trace!(g, p, "{}: second defender first", g.cities[c].name);
+                g.city_clear_order_queue(c);
+                choose(ai, g, c);
+            }
+            continue;
+        }
         if building_fighter || defense * 3 / 2 >= threat && defenders > 0 {
             continue;
         }
@@ -344,16 +352,37 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     let workers = count_ai(g, p, UnitAIType::UNITAI_WORKER);
     let can_improve = has_worker_builds(g, p);
 
+    // Threats the garrison can hold (lair guards next door, say) do not stop expansion.
+    let safe = ctx.threat * 2 <= ctx.defense;
+
     // 2. The first worker, once workers have something to do.
-    if workers == 0 && can_improve && ctx.threat == 0 && (ctx.pop >= 2 || ctx.food_surplus <= 1) {
+    if workers == 0 && can_improve && safe && (ctx.pop >= 2 || ctx.food_surplus <= 1) {
         if let Some(u) = best_unit(g, c, Role::Worker) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
         }
     }
 
+    // A second defender before more settlers once the barbarians are about.
+    if g.game_turn() > 30 && ctx.defenders < 2 && (ctx.capital || barbarians_near(g, p, plot, 4)) {
+        if let Some(u) = best_unit(g, c, Role::Defense) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
+        }
+    }
+
     // 3. Settlers while good sites remain in reach.
-    if let Some(choice) = settler_choice(ai, g, c, &ctx) {
+    let settler = settler_choice(ai, g, c, &ctx, ctx.threat == 0);
+    if let SettlerPlan::Now(choice) = settler {
         return Some(choice);
+    }
+    // Growing toward a settler: nothing that ties the city up for long.
+    let max_turns = if settler == SettlerPlan::Soon { 12 } else { 50 };
+
+    // FfH tier-2 units need a building in the training city (Archery Range for archers,
+    // Training Yard for axemen, ...): build it when it opens a clearly better unit.
+    if safe && ctx.pop >= 2 {
+        if let Some(b) = enabler_building(g, c, ctx.threat) {
+            return Some(Choice::Construct(b));
+        }
     }
 
     // 4. Extra defenders up to the quota (a broke empire keeps one per city unless threatened).
@@ -369,14 +398,14 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     // 5. A small mobile force to clear barbarians and animals near our lands.
     let attackers = count_ai(g, p, UnitAIType::UNITAI_ATTACK) + count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
     let min_army = if ctx.broke { 1 + ctx.n_cities / 4 } else { 1 + ctx.n_cities / 2 };
-    if attackers < min_army && ctx.production >= 3 {
+    if attackers < min_army && (ctx.production >= 3 || settler == SettlerPlan::Soon) {
         if let Some(u) = best_unit(g, c, Role::Attack) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
         }
     }
 
     // 6. More workers, as the land we work needs improving.
-    if can_improve && ctx.threat == 0 {
+    if can_improve && safe {
         let unimproved = unimproved_worked_plots(g, p);
         let target = (ctx.n_cities.min(3) + (unimproved + 1) / 3).min(ctx.n_cities * 2).max(1);
         if workers < target && ctx.pop >= 2 {
@@ -386,9 +415,11 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
     }
 
-    // 7. Heroes are unique and strong.
+    // 7. Heroes are unique and strong (but not at the cost of the first expansion).
     if let Some(u) = best_unit(g, c, Role::Hero) {
-        return Some(Choice::Train(u, UnitAIType::UNITAI_HERO));
+        if g.city_production_turns_left_unit(c, u, 0) <= max_turns.min(25) || ctx.n_cities >= 3 {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_HERO));
+        }
     }
 
     // 8. Army target (larger at war).
@@ -427,7 +458,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
         let turns = g.city_production_turns_left_building(c, b, 0).max(1);
         // Nothing that ties a city up for ages (wonders belong in productive cities).
-        if turns > 50 {
+        if turns > max_turns {
             continue;
         }
         let score = value * 100 / (turns + 3);
@@ -438,6 +469,12 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if let Some((b, score)) = best_building {
         if score >= 40 || !army_short {
             return Some(Choice::Construct(b));
+        }
+    }
+    if settler == SettlerPlan::Soon {
+        // Cheap units while the city grows: they explore, escort and hunt.
+        if let Some(u) = best_unit(g, c, Role::Attack) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
         }
     }
 
@@ -484,47 +521,60 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     best_process.map(|(pr, _)| Choice::Maintain(pr))
 }
 
+#[derive(PartialEq, Eq)]
+enum SettlerPlan {
+    No,
+    /// Build one now.
+    Now(Choice),
+    /// Once the city has grown.
+    Soon,
+}
+
 /// Settlers: while sites remain in this city's area, a bounded number at a time, from cities
 /// big enough to pay for them (food goes into settler production, so growth stops).
-fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx) -> Option<Choice> {
+fn settler_choice(ai: &Ai, g: &Game, c: CityId, ctx: &Ctx, safe: bool) -> SettlerPlan {
+    use SettlerPlan::No;
     let p = ctx.p;
     let pl = &g.players[p];
-    if ctx.threat > 0 || g.city_is_occupation(c) {
-        return None;
+    if !safe || g.city_is_occupation(c) {
+        return No;
     }
     let settlers = count_ai(g, p, UnitAIType::UNITAI_SETTLE);
     let max_cities = if pl.max_cities > 0 { pl.max_cities } else { i32::MAX };
     if ctx.n_cities + settlers >= max_cities {
-        return None;
+        return No;
     }
     let area = g.map.plots[g.city_plot(c)].area;
     let sites = sites::sites(ai, g, p);
     let area_sites = sites.iter().filter(|(q, _)| g.map.plots[*q].area == area).count() as i32;
     if area_sites == 0 {
-        return None;
+        return No;
     }
     let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
     // C++ AI_chooseProduction: no settlers while in financial trouble.
     if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
-        return None;
+        return No;
     }
     if ctx.at_war {
         max_settlers = (max_settlers + 1) / 2;
     }
     if settlers >= max_settlers {
-        return None;
+        return No;
     }
     // Size: grow first while growth is cheap and happy; a city at its happy cap gains nothing
     // from growing, so it builds settlers at once.
     let min_pop = if ctx.happy_room <= 0 { 1 } else if ctx.food_surplus >= 4 && ctx.pop < 3 { 3 } else { 2 };
     if ctx.pop < min_pop {
-        return None;
+        return if settlers == 0 && ctx.n_cities <= 3 { SettlerPlan::Soon } else { No };
     }
     // A city with almost no output would take forever; let better cities build them.
     if ctx.n_cities > 1 && ctx.food_surplus.max(0) + ctx.production < 4 {
-        return None;
+        return No;
     }
-    best_unit(g, c, Role::Settler).map(|u| Choice::Train(u, UnitAIType::UNITAI_SETTLE))
+    match best_unit(g, c, Role::Settler) {
+        Some(u) => SettlerPlan::Now(Choice::Train(u, UnitAIType::UNITAI_SETTLE)),
+        None => No,
+    }
 }
 
 /// Projects worth building by default (positive AI weight, not a world-ending or self-harming
@@ -586,6 +636,57 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
         Role::Explore => has(UnitAIType::UNITAI_EXPLORE),
         Role::Siege => fighter && (has(UnitAIType::UNITAI_ATTACK_CITY) || has(UnitAIType::UNITAI_COLLATERAL)) && (info.bombard_rate > 0 || info.collateral_damage > 0),
     }
+}
+
+/// A building that would let this city train a defender or attacker at least a third stronger
+/// than its best now (FfH `PrereqBuildingClass`), cheap enough to build soon.
+fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
+    let d = g.d;
+    let p = g.cities[c].owner;
+    let civ = g.player_get_civilization_type(p)?;
+    let cur_def = best_unit(g, c, Role::Defense).map_or(0, |u| type_city_defense(&d.units[u]));
+    let cur_att = best_unit(g, c, Role::Attack).map_or(0, |u| type_attack_power(d, u) as i64);
+    let mut best: Option<(BuildingType, i64)> = None;
+    for u in d.units.keys() {
+        let info = &d.units[u];
+        let Some(bc) = info.prereq_building_class else { continue };
+        if info.domain_type != Some(DomainType::DOMAIN_LAND) || g.city_is_has_building_class(c, bc) {
+            continue;
+        }
+        let Some(class) = info.unit_class_type else { continue };
+        if d.civ_unit(civ, class) != Some(u) || !g.player_can_train(p, u, false, false, false) {
+            continue;
+        }
+        if info.prereq_and_bonus.is_some_and(|bn| !g.city_has_bonus(c, bn)) {
+            continue;
+        }
+        if !info.prereq_or_bonuses.is_empty() && !info.prereq_or_bonuses.iter().any(|&bn| g.city_has_bonus(c, bn)) {
+            continue;
+        }
+        let Some(b) = d.civ_building(civ, bc) else { continue };
+        if !g.city_can_construct(c, b, false, false, false) {
+            continue;
+        }
+        // About half the cities get one (the others train what they can).
+        let have = g.players[p].cities.iter().filter(|&&o| g.city_is_has_building_class(o, bc)).count();
+        if have > g.players[p].cities.len() / 2 {
+            continue;
+        }
+        let gain = if role_ok(info, Role::Defense) && cur_def > 0 { type_city_defense(info) * 100 / cur_def } else { 0 }
+            .max(if role_ok(info, Role::Attack) && cur_att > 0 { type_attack_power(d, u) as i64 * 100 / cur_att } else { 0 });
+        if gain < 133 {
+            continue;
+        }
+        // Under some threat, only a quick build.
+        let turns = g.city_production_turns_left_building(c, b, 0);
+        if turns > if threat > 0 { 6 } else { 20 } {
+            continue;
+        }
+        if best.map_or(true, |(_, s)| gain > s) {
+            best = Some((b, gain));
+        }
+    }
+    best.map(|(b, _)| b)
 }
 
 /// Defense strength of a unit type in a city (FfH units have a separate defense value).

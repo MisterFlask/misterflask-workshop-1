@@ -140,10 +140,19 @@ impl View {
                 if power == 0 {
                     continue;
                 }
+                // City garrisons stay home.
+                if g.map.plots[plot].plot_city.is_some() && unit.ai_type == Some(UnitAIType::UNITAI_CITY_DEFENSE) {
+                    continue;
+                }
+                // Animals cannot enter owned land.
+                let animal = g.d.units[unit.unit_type].animal;
                 let range = (g.d.units[unit.unit_type].moves.max(1) + 1).min(4);
                 for dx in -range..=range {
                     for dy in -range..=range {
                         if let Some(q) = g.plot_xy(unit.x, unit.y, dx, dy) {
+                            if animal && g.map.plots[q].owner.is_some() {
+                                continue;
+                            }
                             self.danger[q.idx()] += power;
                         }
                     }

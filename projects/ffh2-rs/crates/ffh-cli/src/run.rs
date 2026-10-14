@@ -254,6 +254,31 @@ pub fn report(g: &Game) -> String {
             out += &format!(" {r}={n}");
         }
         out += "\n";
+        // Improvements on owned plots (worked ones counted separately) and civics.
+        let mut imps: std::collections::BTreeMap<String, (usize, usize)> = std::collections::BTreeMap::new();
+        for (q, plot) in g.map.plots.iter().enumerate() {
+            if plot.owner != Some(p) {
+                continue;
+            }
+            if let Some(i) = plot.improvement_type {
+                let e = imps.entry(d.improvements[i].base.type_.trim_start_matches("IMPROVEMENT_").to_string()).or_default();
+                e.0 += 1;
+                if g.plot_is_being_worked(ffh_core::ids::PlotIdx::from_usize(q)) {
+                    e.1 += 1;
+                }
+            }
+        }
+        out += "     improvements (worked):";
+        for (name, (n, w)) in &imps {
+            out += &format!(" {name}={n}({w})");
+        }
+        out += "\n     civics:";
+        for o in d.civic_options.keys() {
+            if let Some(c) = pl.civics[o] {
+                out += &format!(" {}", d.civics[c].base.type_.trim_start_matches("CIVIC_"));
+            }
+        }
+        out += "\n";
         for &c in &pl.cities {
             let city = &g.cities[c];
             let prod = if let Some(u) = g.city_production_unit(c) {
@@ -266,7 +291,7 @@ pub fn report(g: &Game) -> String {
             let happy = g.city_happy_level(c) - g.city_unhappy_level(c, 0);
             let health = g.city_good_health(c) - g.city_bad_health(c, false, 0);
             out += &format!(
-                "     city {} size={} food={:+} ({}/{}) yields={:?} commerce={:?} happy={:+} health={:+} prod={} ({}/{})\n",
+                "     city {} size={} food={:+} ({}/{}) yields={:?} commerce={:?} trade={}x{} happy={:+} health={:+} prod={} ({}/{})\n",
                 city.name,
                 city.population,
                 g.city_food_difference(c, true),
@@ -274,6 +299,8 @@ pub fn report(g: &Game) -> String {
                 g.city_growth_threshold(c),
                 [0, 1, 2].map(|y| g.city_yield_rate(c, YieldType::from_usize(y))),
                 [0, 1, 2, 3].map(|k| g.city_commerce_rate(c, CommerceType::from_usize(k))),
+                city.trade_cities.iter().filter(|t| t.is_some()).count(),
+                city.trade_yield[2],
                 happy,
                 health,
                 prod,

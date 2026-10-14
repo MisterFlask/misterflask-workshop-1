@@ -156,13 +156,27 @@ fn build_value(g: &Game, v: &View, p: PlayerId, plot: PlotIdx, build: BuildType)
             }
             None => (20, 18),
         };
-        let grows = d.improvements[imp].improvement_upgrade.is_some();
-        let weights = [food_w, prod_w, if grows { 26 } else { 11 }];
+        // Improvements that grow (cottages) count their grown form for two thirds.
+        let mut last = imp;
+        for _ in 0..4 {
+            match d.improvements[last].improvement_upgrade {
+                Some(next) if next != imp => last = next,
+                _ => break,
+            }
+        }
+        // Commerce matters more to an empire that cannot afford its research.
+        let research = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+        let commerce_w = if research < 50 { 11 * (200 - 2 * research) / 100 } else { 11 };
+        let weights = [food_w, prod_w, commerce_w];
         let mut value = 0;
         let mut new_total = 0;
         for y in 0..YieldType::NUM {
             let yt = YieldType::from_usize(y);
-            let new = g.plot_calculate_improvement_yield_change(plot, imp, yt, Some(p), false, false);
+            let mut new = g.plot_calculate_improvement_yield_change(plot, imp, yt, Some(p), false, false);
+            if last != imp {
+                let grown = g.plot_calculate_improvement_yield_change(plot, last, yt, Some(p), false, false);
+                new = (new + 2 * grown) / 3;
+            }
             let old = pl.improvement_type.map_or(0, |o| g.plot_calculate_improvement_yield_change(plot, o, yt, Some(p), false, false));
             value += (new - old) * weights[y];
             new_total += pl.yields[y] - old + new;
@@ -212,6 +226,7 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
     let here = g.unit_plot(u);
     // Flee danger first.
     if !sea && worker_in_danger(g, v, here) {
+        crate::trace!(g, p, "worker {:?} at {:?} flees", u, g.map.xy(here));
         if let Some(c) = nearest_city(g, p, here) {
             move_to(g, grp, g.city_plot(c), 0);
             if alive(g, grp) && g.group_ready_to_move(grp, true) {
@@ -255,6 +270,7 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
         }
     }
     let Some((plot, build, _)) = best else {
+        crate::trace!(g, p, "worker {:?} at {:?}: nothing to build ({} plots in reach)", u, g.map.xy(here), reach.len());
         // Nothing to do: wait in a city.
         if g.map.plots[here].plot_city.is_none() {
             if let Some(c) = nearest_city(g, p, here) {
@@ -267,6 +283,7 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
         return;
     };
     v.claimed.push(plot);
+    crate::trace!(g, p, "worker {:?} at {:?}: {} at {:?}", u, g.map.xy(here), g.d.builds[build].base.type_, g.map.xy(plot));
     if plot != here {
         move_to(g, grp, plot, MOVE_SAFE_TERRITORY);
         if !alive(g, grp) {
