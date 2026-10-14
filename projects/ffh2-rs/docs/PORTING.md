@@ -71,6 +71,11 @@ bodies `todo!()`; **todo** = not started. Per-class function maps live in
   differ only after cities/techs change between two resets.
 - **Barbarian slot**: the exe (not the DLL) gives it `BARBARIAN_CIVILIZATION` /
   `BARBARIAN_LEADER` and an AI slot status; `GameSetup::standard` does the same.
+- **Barbarian city founding unit**: C++ asks `CvCityAI::AI_bestUnitAI(UNITAI_CITY_DEFENSE)`
+  (then ATTACK) for the free unit of a new barbarian city; the port uses the city's conscript
+  unit, the same stand-in FfH itself uses in `CvPlot::setOwner`.
+- **Team attitude value** (`CvTeamAI::AI_getAttitudeVal`, used to pick the worst enemy) averages
+  the controller's `AttitudeType` (0-4) instead of the C++ raw attitude score.
 - **Path finding** replaces the exe's closed-source `FAStar` with an A* over the same DLL
   callbacks; tie-breaking between equal-cost paths cannot match the original exactly.
 - **Python `getUnitPlayerID`** (CustomFunctions) finds any unit by id; the original only found
