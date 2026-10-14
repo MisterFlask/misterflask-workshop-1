@@ -210,10 +210,10 @@ pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     v -= info.war_weariness_modifier / 4;
     let broke = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 50;
     let gold_w = if broke { 40 } else { 15 };
+    let gold_w = gold_w.max(crate::finance::gold_value(&crate::finance::state(g, p))); // bankruptcy-guard
     v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * gold_w;
-    // City maintenance (roughly half distance, half number of cities).
-    let maintenance = g.player_get_total_maintenance(p);
-    v -= (info.distance_maintenance_modifier + info.num_cities_maintenance_modifier) * maintenance * gold_w / 200;
+    // City maintenance (the cities' distance and number-of-cities parts) and FfH's AI-only build bans.
+    v -= crate::finance::civic_maintenance_x100(g, p, civic) * gold_w / 100 + crate::finance::civic_penalty(g, p, civic); // bankruptcy-guard
     // Happiness from garrisons (FfH God King / BtS Hereditary Rule), worth most to capped cities.
     let capped = pl.cities.iter().filter(|&&c| g.city_happy_level(c) - g.city_unhappy_level(c, 0) <= 0).count() as i32;
     if info.happy_per_military_unit != 0 {
@@ -246,7 +246,7 @@ fn civics(g: &mut Game, p: PlayerId) {
         return;
     }
     // Re-evaluate at most every 10 turns per player (staggered), as revolutions cost anarchy.
-    if (g.game_turn() + p.0 as i32) % 10 != 0 {
+    if (g.game_turn() + p.0 as i32) % 10 != 0 && !crate::finance::civics_due(g, p) { // bankruptcy-guard
         return;
     }
     let d = g.d;

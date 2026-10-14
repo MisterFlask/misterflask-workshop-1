@@ -22,6 +22,7 @@ pub mod casting;
 pub mod diplomacy;
 pub mod economy;
 pub mod empire;
+pub mod finance;
 pub mod military;
 pub mod naval;
 pub mod production;
