@@ -35,11 +35,11 @@ pub type TriggerUnitFn = fn(&Game, EventTriggerType, PlayerId, UnitId) -> bool;
 /// Trigger `PythonCallback(triggerData, ePlayer)`.
 pub type TriggerCallbackFn = fn(&mut Game, &EventTriggeredData, PlayerId);
 /// Event `PythonCanDo(eEvent, triggerData)`.
-pub type EventCanDoFn = fn(&mut Game, EventType, &EventTriggeredData) -> bool;
+pub type EventCanDoFn = fn(&Game, EventType, &EventTriggeredData) -> bool;
 /// Event `PythonCallback(eEvent, triggerData)`.
 pub type EventCallbackFn = fn(&mut Game, EventType, &EventTriggeredData);
 /// Event `PythonExpireCheck(eEvent, triggerData)`.
-pub type EventExpireFn = fn(&mut Game, EventType, &EventTriggeredData) -> bool;
+pub type EventExpireFn = fn(&Game, EventType, &EventTriggeredData) -> bool;
 
 /// A resolved callback: function + its parsed call (for literal arguments).
 pub struct Bound<F> {

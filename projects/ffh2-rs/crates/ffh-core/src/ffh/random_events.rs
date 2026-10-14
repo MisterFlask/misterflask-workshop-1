@@ -39,7 +39,7 @@ impl Game {
         }
     }
     /// Event `PythonCanDo(eEvent, triggerData)`.
-    pub fn py_event_can_do(&mut self, event: EventType, data: &EventTriggeredData) -> bool {
+    pub fn py_event_can_do(&self, event: EventType, data: &EventTriggeredData) -> bool {
         match &tables(self.d).event_can_do[event] {
             Some(b) => (b.f)(self, event, data),
             None => true,
@@ -52,7 +52,7 @@ impl Game {
         }
     }
     /// Event `PythonExpireCheck(eEvent, triggerData)`: true = expire.
-    pub fn py_event_expire_check(&mut self, event: EventType, data: &EventTriggeredData) -> bool {
+    pub fn py_event_expire_check(&self, event: EventType, data: &EventTriggeredData) -> bool {
         match &tables(self.d).event_expire_check[event] {
             Some(b) => (b.f)(self, event, data),
             None => false,
