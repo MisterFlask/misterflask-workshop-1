@@ -19,14 +19,10 @@
 //! every DLL caller holds a `CvPlayerAI` (`GET_PLAYER` is `CvPlayerAI::getPlayer`;
 //! `AI_foundValue` calls it on `this`), so the effective default is 1.
 //!
-//! C++ caches `AI_baseBonusVal` per player (`m_aiBonusValue`, -1 = not computed): filled on first
-//! use and reset only by `AI_updateBonusValue` (in `AI_doTurnPre`, `CvTeam::addTeam` and
-//! `CvPlayer::splitEmpire`), so C++ keeps returning the value of the first use after the last
-//! reset even when the player's cities, techs, capital, ... have changed since. Here it is
-//! computed fresh on each call (deliberate deviation: the cache would need a `Player` field):
-//! the values only differ from C++ after such a change between two resets. Within one
-//! [`Game::player_ai_found_value`] call the game state cannot change, so that call memoizes the
-//! values per bonus (exactly equivalent, and it keeps the many `AI_bonusVal` calls cheap).
+//! `AI_baseBonusVal` is cached per player as in C++ (`Player::ai_bonus_value`, C++
+//! `m_aiBonusValue`): filled on first use and reset by `player_ai_update_bonus_value` (each
+//! turn in `AI_doTurnPre`'s place, on team merge and empire split), so a value can lag behind
+//! changes to the player's cities or techs exactly as in C++.
 //!
 //! Integer arithmetic is the C++ `int` arithmetic: truncating division, and wrapping on
 //! overflow like the MSVC build (the starting-location distance scaling multiplies the value
@@ -62,8 +58,6 @@ impl Game {
         let pl = &self.players[p];
         let team = pl.team;
         let food_per_pop = d.defines.food_consumption_per_population;
-        // C++ `m_aiBonusValue` stand-in for this call (see the module docs).
-        let mut memo = BaseBonusValMemo::default();
 
         let mut resource_value: i32 = 0;
         let mut special_food = 0;
@@ -253,7 +247,7 @@ impl Game {
                         {
                             if let Some(bonus) = self.plot_get_bonus_type(loop_plot, Some(team)) {
                                 if self.player_get_num_tradeable_bonuses(p, bonus) == 0
-                                    || ai_bonus_val(self, p, bonus, 1, &mut memo) > 10
+                                    || ai_bonus_val(self, p, bonus, 1) > 10
                                     || d.bonuses[bonus].yield_change[FOOD] > 0
                                 {
                                     has_good_bonus = true;
@@ -472,7 +466,7 @@ impl Game {
                         debug_assert!(bonus_count[b] > 0);
 
                         let first_of_kind = !starting_loc && self.player_get_num_tradeable_bonuses(p, b) == 0 && bonus_count[b] == 1;
-                        temp_value = ai_bonus_val(self, p, b, 1, &mut memo).wrapping_mul(if first_of_kind { 80 } else { 20 });
+                        temp_value = ai_bonus_val(self, p, b, 1).wrapping_mul(if first_of_kind { 80 } else { 20 });
                         temp_value = temp_value.wrapping_mul(if starting_loc { 100 } else { greed });
                         temp_value /= 100;
 
@@ -890,12 +884,35 @@ impl Game {
     /// less (`-1`) or any (`0`) instance of `bonus` for `p` (FfH: plus the leader's bad-attitude
     /// term and +100 for mana). C++ default `iChange = 1` (see the module docs).
     pub fn player_ai_bonus_val(&self, p: PlayerId, bonus: BonusType, change: i32) -> i32 {
-        ai_bonus_val(self, p, bonus, change, &mut BaseBonusValMemo::default())
+        ai_bonus_val(self, p, bonus, change)
+    }
+
+    /// C++ `CvPlayerAI::AI_baseBonusVal(eBonus)`: the value of a bonus without corporations,
+    /// cached per player in `ai_bonus_value` (C++ `m_aiBonusValue`) until the next
+    /// `player_ai_update_bonus_value`.
+    pub fn player_ai_base_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
+        match self.players[p].ai_bonus_value.get(bonus.idx()) {
+            Some(cached) if cached.get() != -1 => cached.get(),
+            Some(cached) => {
+                let value = self.player_ai_base_bonus_val_uncached(p, bonus);
+                cached.set(value);
+                value
+            }
+            None => self.player_ai_base_bonus_val_uncached(p, bonus),
+        }
+    }
+
+    /// C++ `CvPlayerAI::AI_updateBonusValue()`: forget the cached base bonus values (C++ calls it
+    /// in `AI_doTurnPre` for every player each turn, in `CvTeam::addTeam` and `splitEmpire`).
+    pub fn player_ai_update_bonus_value(&self, p: PlayerId) {
+        for cached in &self.players[p].ai_bonus_value {
+            cached.set(-1);
+        }
     }
 
     /// C++ `CvPlayerAI::AI_baseBonusVal` (value of a bonus without corporations), computed fresh
     /// (C++ caches it in `m_aiBonusValue`, see the module docs).
-    pub fn player_ai_base_bonus_val(&self, p: PlayerId, bonus: BonusType) -> i32 {
+    fn player_ai_base_bonus_val_uncached(&self, p: PlayerId, bonus: BonusType) -> i32 {
         let d = self.d;
         let pl = &self.players[p];
         let team = pl.team;
@@ -1237,31 +1254,12 @@ fn area_of(g: &Game, plot: PlotIdx) -> AreaId {
     g.plot_area(plot).expect("AI_foundValue: CvPlot::area() is NULL (areas not calculated)")
 }
 
-/// `AI_baseBonusVal` results already computed during one evaluation (stands in for the C++
-/// `m_aiBonusValue` cache; see the module docs). A few entries at most, so a short list.
-#[derive(Default)]
-struct BaseBonusValMemo {
-    values: Vec<(BonusType, i32)>,
-}
-
-impl BaseBonusValMemo {
-    /// The memoized value for `bonus`, computed by `compute` on first use.
-    fn get_or_compute(&mut self, bonus: BonusType, compute: impl FnOnce() -> i32) -> i32 {
-        if let Some(&(_, value)) = self.values.iter().find(|&&(b, _)| b == bonus) {
-            return value;
-        }
-        let value = compute();
-        self.values.push((bonus, value));
-        value
-    }
-}
-
-/// C++ `CvPlayerAI::AI_bonusVal(eBonus, iChange)` with `AI_baseBonusVal` read through `memo`.
-fn ai_bonus_val(g: &Game, p: PlayerId, bonus: BonusType, change: i32, memo: &mut BaseBonusValMemo) -> i32 {
+/// C++ `CvPlayerAI::AI_bonusVal(eBonus, iChange)`.
+fn ai_bonus_val(g: &Game, p: PlayerId, bonus: BonusType, change: i32) -> i32 {
     let d = g.d;
     let mut value = 0;
     let bonus_count = g.player_get_num_available_bonuses(p, bonus);
-    let mut base_bonus_val = || memo.get_or_compute(bonus, || g.player_ai_base_bonus_val(p, bonus));
+    let base_bonus_val = || g.player_ai_base_bonus_val(p, bonus);
     if change == 0 || (change == 1 && bonus_count == 0) || (change == -1 && bonus_count == 1) {
         //This is assuming the none-to-one or one-to-none case.
         value += base_bonus_val();
@@ -1370,23 +1368,6 @@ mod tests {
         assert!(!is_plot_city_site(&[], PlotIdx(4)));
     }
 
-    #[test]
-    fn base_bonus_val_memo_computes_once_per_bonus() {
-        let mut memo = BaseBonusValMemo::default();
-        let mut calls = 0;
-        let mut get = |memo: &mut BaseBonusValMemo, b: u16, v: i32| {
-            memo.get_or_compute(BonusType(b), || {
-                calls += 1;
-                v
-            })
-        };
-        assert_eq!(get(&mut memo, 3, 70), 70);
-        assert_eq!(get(&mut memo, 3, 999), 70);
-        assert_eq!(get(&mut memo, 5, 0), 0);
-        assert_eq!(get(&mut memo, 5, 12), 0);
-        assert_eq!(get(&mut memo, 3, 1), 70);
-        assert_eq!(calls, 2);
-    }
 
     #[test]
     fn corporation_bonus_val_is_zero_without_corporations() {

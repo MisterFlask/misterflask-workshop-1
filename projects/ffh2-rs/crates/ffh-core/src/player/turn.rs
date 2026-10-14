@@ -180,9 +180,12 @@ impl Game {
         // BETTER AI: END
 
         self.verify_deals();
-        // AI: AI_doTurnPre() -- AI_doCounter (contact timers, memory decay; game RNG), bonus
-        // values, enemy unit data, and for AI players research/commerce/military/civics/
-        // religion choices: the controller does this while the player's turn is active.
+        // C++ AI_doTurnPre(): of its steps only AI_updateBonusValue feeds rules (through
+        // AI_foundValue), so it is kept for every player as in C++.
+        self.player_ai_update_bonus_value(p);
+        // AI: rest of AI_doTurnPre() -- AI_doCounter (contact timers, memory decay; game RNG),
+        // enemy unit data, and for AI players research/commerce/military/civics/religion
+        // choices: the controller does this while the player's turn is active.
 
         if self.players[p].revolution_timer > 0 {
             self.players[p].revolution_timer -= 1;
@@ -1050,7 +1053,8 @@ impl Game {
 
             self.team_assign_vassal(team, new_team, false);
 
-            // AI: AI_updateBonusValue() (AI cache).
+            // CvPlayerAI::AI_updateBonusValue() (cache read by AI_foundValue).
+            self.player_ai_update_bonus_value(p);
         }
 
         let team = self.players[p].team;

@@ -360,6 +360,11 @@ pub struct Player {
     pub ai_first_contact: IdxVec<PlayerId, bool>,
     /// C++ `CvPlayerAI::m_aaiMemoryCount` (`AI_get/changeMemoryCount`): `[other][memory]`.
     pub ai_memory_count: IdxVec<PlayerId, IdxVec<MemoryType, i32>>,
+    /// C++ `CvPlayerAI::m_aiBonusValue`: the `AI_baseBonusVal` cache by bonus (-1 = not
+    /// computed). Filled from const code in C++, hence `Cell`; reset by
+    /// `player_ai_update_bonus_value` (each turn, team merge, empire split). Rules read it
+    /// through `AI_foundValue` (start plots, barbarian cities).
+    pub ai_bonus_value: Vec<std::cell::Cell<i32>>,
 }
 
 impl Player {
@@ -610,6 +615,7 @@ impl Player {
             ai_attitude_extra: IdxVec::from_elem(0, num_players),
             ai_first_contact: IdxVec::from_elem(false, num_players),
             ai_memory_count: IdxVec::from_fn(num_players, |_| IdxVec::from_elem(0, MemoryType::NUM)),
+            ai_bonus_value: (0..d.bonuses.len()).map(|_| std::cell::Cell::new(-1)).collect(),
         }
     }
 
