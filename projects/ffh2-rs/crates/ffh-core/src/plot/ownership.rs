@@ -659,8 +659,12 @@ impl Game {
             for i in 0..NUM_CITY_PLOTS {
                 if let Some(loop_plot) = self.plot_city(x, y, i) {
                     self.map.plots[loop_plot].city_radius_count -= 1;
+                    // C++ quirk: the count can go negative (C++ `FAssert` in
+                    // `changePlayerCityRadiusCount`): a city added its radius over the 22 plots
+                    // `plotCity` allowed when `CvCity::init` called `setPlotCity` (radius 2), but
+                    // `setPlotRadius(3)` (Kuriotates cities, Wonder radius buildings) does not
+                    // update the counts, so removing it now subtracts over all 37 plots.
                     self.map.plots[loop_plot].player_city_radius_count[city_owner] -= 1;
-                    debug_assert!(self.map.plots[loop_plot].player_city_radius_count[city_owner] >= 0);
                 }
             }
         }
