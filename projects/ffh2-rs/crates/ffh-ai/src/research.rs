@@ -169,6 +169,8 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         }
     }
     let ctx = make_ctx(g, p);
+    let trace_tech = crate::trace_on(p) && std::env::var("FFH_AI_TRACE_TECH").is_ok();
+    let bonus = goal_bonus(g, p, &ctx, trace_tech);
     let mut best: Option<TechType> = None;
     let mut best_score = i64::MIN;
     for t in g.d.techs.keys() {
@@ -176,8 +178,8 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
             continue;
         }
         let mut value = tech_value(g, p, t, &ctx) as i64;
-        // Lookahead: a share of what the techs this one leads to are worth (with the
-        // improvements they bring: cottages behind Education).
+        value += bonus.iter().filter(|b| b.0 == t).map(|b| b.1).sum::<i64>();
+        // Lookahead: a share of what the techs this one leads to are worth.
         for &child in &values(g.d).tech_children[t] {
             if !g.team_is_has_tech(team, Some(child)) {
                 value += (tech_value_static(g, p, child) + builds_value(g, p, child, &ctx)) as i64 / 4;
@@ -194,7 +196,7 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         let left = g.team_get_research_left(team, t).max(1) as i64;
         let turns = left / ctx.rate as i64;
         let score = value * 1000 / (turns + 4);
-        if crate::trace_on(p) && std::env::var("FFH_AI_TRACE_TECH").is_ok() {
+        if trace_tech {
             crate::trace!(g, p, "  tech {} value {} turns {} score {}", g.d.techs[t].base.type_, value, turns, score);
         }
         if score > best_score {
@@ -206,6 +208,64 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         crate::trace!(g, p, "research {} (score {})", g.d.techs[t].base.type_, best_score);
     }
     best
+}
+
+/// Goal-directed research: the plan's value, shared along the path to a goal.
+const PLAN_VALUE: i64 = 6000;
+/// The least the plan adds per turn of a path step (scores are value * 1000 / (turns + 4)), so
+/// that long early paths (a 500-beaker religion at 12 beakers a turn) still lead.
+const PLAN_FLOOR_PER_TURN: i64 = 150;
+/// Goals that get a bonus at a time, and the second one's weight (percent).
+const PLAN_GOALS: usize = 2;
+const SECOND_GOAL_PCT: i64 = 50;
+
+/// Goal-directed research (`tech_plan`): the researchable techs on the path to the first two
+/// unmet goals share the goal's value (its own value plus [`PLAN_VALUE`]) by their share of the
+/// path's research time (turns + 4, as in the score), so each step scores as researching the
+/// whole path would; a cheap gateway (Ancient Chants before Education) inherits the goal's value
+/// per turn. The plan's part is at least [`PLAN_FLOOR_PER_TURN`] per turn of the step. The
+/// situational terms of `tech_value` (military pressure, transports, processes) are not scaled
+/// down: they still win when they are large.
+fn goal_bonus(g: &Game, p: PlayerId, ctx: &Ctx, trace: bool) -> Vec<(TechType, i64)> {
+    let team = ctx.team;
+    let rate = ctx.rate as i64;
+    let mut out: Vec<(TechType, i64)> = Vec::new();
+    let mut n = 0;
+    for goal in crate::tech_plan::goals(g, p) {
+        if n >= PLAN_GOALS {
+            break;
+        }
+        let Some(path) = crate::tech_plan::path(g, p, goal.tech) else { continue };
+        let weight = if n == 0 { 100 } else { SECOND_GOAL_PCT };
+        let own = tech_value(g, p, goal.tech, ctx) as i64;
+        let turns: Vec<i64> = path.techs.iter().map(|&t| g.team_get_research_left(team, t).max(1) as i64 / rate).collect();
+        let path_turns: i64 = turns.iter().sum();
+        for (i, &t) in path.techs.iter().enumerate() {
+            if !g.player_can_research(p, t, false) {
+                continue;
+            }
+            // The goal itself already counts its own value.
+            let own_share = if t == goal.tech { 0 } else { own * (turns[i] + 4) / (path_turns + 4) };
+            let plan_share = (PLAN_VALUE * (turns[i] + 4) / (path_turns + 4)).max(PLAN_FLOOR_PER_TURN * (turns[i] + 4));
+            out.push((t, (own_share + plan_share) * weight / 100));
+        }
+        if trace {
+            crate::trace!(
+                g,
+                p,
+                "  goal {} ({}) value {} path {} beakers {} turns {} (pressure {})",
+                g.d.techs[goal.tech].base.type_,
+                goal.stage,
+                own,
+                path.techs.iter().map(|&t| g.d.techs[t].base.type_.trim_start_matches("TECH_")).collect::<Vec<_>>().join(","),
+                path.left,
+                path_turns,
+                ctx.pressure
+            );
+        }
+        n += 1;
+    }
+    out
 }
 
 /// Improvements unlocked by `t`: value of building them on our land.
