@@ -770,18 +770,44 @@ is ragged like worn ink.
 
 ### 9.1 Size tiers
 
-| tier | population | footprint (px) | content |
-|---|---|---|---|
-| I | 1-3 | 16 wide, 12 tall | 2 or 3 buildings, 1 lit window |
-| II | 4-7 | 20 wide, 16 tall | 4 or 5 buildings, a chapel spire, 2 or 3 windows |
-| III | 8-12 | 24 wide, 20 tall, overhang 4 | a dense cluster, 2 spires, 4 or 5 windows |
-| IV | 13-19 | 28 wide, 24 tall, overhang 8 | a great hall or cathedral, 6 or 7 windows |
-| V | 20+ | 32 wide, 28 tall, overhang 12 | the whole tile, the tallest spire, 8 windows |
+Cities are the brightest focal points of the map: each tier is a clearly bigger and better-lit mass
+than the one below, and a tier III town already fills its tile. Footprints include the outline;
+"top" is the tile row of the sprite's top (negative: it rises into the tile to the north).
 
-Buildings are dark masses: lit faces `5`/`6`, shadow `3`/`2`, void outline. The facade nearest a
-window takes the `FIRE` remap for 1 px around it, so stone looks lit from within. The city's ground
-pool follows section 4.4. Windows are 1x1 or 1x2 in the style's light colour (section 7.3), with at
-most one `L` core pixel per building.
+| tier | population | footprint (px) | top | content |
+|---|---|---|---|---|
+| I | 1-3 | about 20 wide, 17 tall | 11 | 2 or 3 buildings and a bell-cote; about 2 lit windows (one a 1x2 lancet with the `L` core) and a lit door |
+| II | 4-7 | about 25 wide, 23 tall | 5 | 4 buildings, a spire; about 4 windows |
+| III | 8-12 | about 30 wide, 30 tall: the whole tile | -2 | the main hall (the Cloister's abbey front with its rose window) and a tower; 6 or 7 windows |
+| IV | 13-19 | about 33 wide, 33 tall | -5 | a great front, the tall tower, a chapter house; about 9 windows |
+| V | 20+ | 34 wide, 34 tall | -6 | a cathedral: twin towers about the front, the crossing spire; about 12 windows |
+
+- **Base clear of the plaque.** A city's ground line (its bottom outline row) is tile row 27: the
+  sprite's anchor sits 3 rows below it, on tile row 30. The plaque (9.4, tile rows 29 to 35) never
+  covers a door or the lowest windows, and tile row 28 shows the lit ground in front of the city.
+- **Height.** The validator caps a city sprite at 34x34, so tier V rises 6 px into the tile to the
+  north, not the 12 px that section 3.1 allows; with the cap raised to 40x44, tiers IV and V can
+  grow without other changes (the tallest masses keep to the middle columns: the tile's top-left
+  belongs to the city banner, its top-right to a garrison's standard).
+- **Masses and the moon rim.** Buildings are dark masses: walls lit `5`, body `4`, shade `3`;
+  roofs darker (`2`/`1`) with a **moon rim** of stone `6` on their west edges and tips, a step
+  above any ground, so the silhouette separates from dark land at 1x.
+- **Windows.** 1x1 or 1x2, in the style's light colour (section 7.3), with one `L` core on the
+  main hall. The stone beside and under a window takes the style's halo for 1 px (firelight: dark
+  stone to ember `e`, mid stone to rust `x`, lit stone to flame `E`), so a window reads as a small
+  hearth in the wall and the stone looks lit from within.
+- **Ground light.** A lit city sits in warm light, never in mud: an inner ring of ember and rust
+  round its walls (HEARTH: dark ground to `e`, mid ground to `x`, light marks to `E`; radius
+  9 + 2 x tier) and an outer `FIRE` ring falling off to umber and dun (radius 16 + 3 x tier), both
+  elliptical with Bayer falloff, each pixel remapped once from its own ground colour (open water,
+  `d` and `n`, keeps its night). Then a wall glow (HEARTH once more on the ground within 4 px of
+  the sprite's lower walls): the sprite covers the pool's middle, so this is the light that shows.
+  `BLOOD` cities (Infernal, Sheaim) take GORE inside (blood `c`, crimson `C`), `ARC` cities
+  (Amurites, Svartalfar) AURA (dusk `p`, lilac `P`), with the outer ring at three quarters of the
+  radius, as they turn the ground's hue outright; frost, celestial and the faded Sidar cast no
+  pool. A sprite's own `: light` (the tribal and barbarian bonfire, `FIRE` radius 8) is drawn
+  under it. `cities/citylight.js` implements this (`installCityLight(art)`; its tables are written
+  as new columns for 2.4) and replaces the two `FIRE` passes of 4.4 for cities.
 
 ### 9.2 City styles
 

@@ -3,10 +3,12 @@
 //
 // Pieces are drawn back to front, each with its own 1 px void outline (4.2), so a building in front
 // is inked against the one behind. Moonlight from the upper left: the left column of a wall and the
-// left slope of a roof carry a lit rim, the right side is in shade. Walls are lighter than roofs, so
-// a roof reads at 1x as a dark cap with a lit edge. Windows are amber `l` (the renderer recolours
-// them to the style's light, 7.3); the stone beside and under a window is pre-lit through the
-// style's pool table (9.1).
+// left slope of a roof carry the moon rim (stone `6`, a step above any ground, so the silhouette
+// separates from dark land at 1x), the right side is in shade. Walls are lighter than roofs, so a
+// roof reads at 1x as a dark cap with a lit edge. Windows are amber `l` (the renderer recolours
+// them to the style's light, 7.3), 1x1 or 1x2, with one glow `L` core on the main hall; the stone
+// beside and under a window is pre-lit through the style's halo table (ember `e`/rust `x` for
+// firelight), so a window reads as a small hearth, not a single pixel.
 
 // ------------------------------------------------------------------------------------- grid
 
@@ -54,21 +56,21 @@ const P = (text) => G.of(text);
 
 // ------------------------------------------------------------------------------- materials
 // Walls: e (lit edge), b (body), s (shade side); roofs: r (rim on the lit slope), l (lit half),
-// d (dark half), t (tip); door: an unlit doorway.
+// d (dark half), t (tip); door: an unlit doorway. The roof rim r is the moon rim (ART.md 4.2).
 
 const M = {
-  stone: { e: '5', b: '4', s: '3', r: '5', l: '2', d: '1', t: '6', door: '1' },
-  dark: { e: '4', b: '3', s: '2', r: '4', l: '1', d: '1', t: '5', door: '0' },
-  faded: { e: '6', b: '5', s: '4', r: '6', l: '4', d: '3', t: '7', door: '3' },
+  stone: { e: '5', b: '4', s: '3', r: '6', l: '2', d: '1', t: '6', door: '1' },
+  dark: { e: '4', b: '3', s: '2', r: '6', l: '1', d: '1', t: '6', door: '0' },
+  faded: { e: '6', b: '5', s: '4', r: '7', l: '4', d: '3', t: '7', door: '3' },
   rime: { e: '5', b: '4', s: '3', r: 'F', l: 'f', d: 'g', t: 'F', door: '1' },
   sand: { e: '6', b: 'Q', s: 'u', r: 'Y', l: '6', d: 'Q', t: 'Y', door: '2' },
-  wood: { e: 'Q', b: 'u', s: '2', r: '5', l: '3', d: '2', t: '6', door: '1' },
-  hide: { e: 'y', b: 'Q', s: 'u', r: 'y', l: 'Q', d: 'u', t: 'u', door: '1' },
-  pelt: { e: '5', b: '3', s: '2', r: '5', l: '3', d: '2', t: 'u', door: '1' },
+  wood: { e: 'Q', b: 'u', s: '2', r: '6', l: '3', d: '2', t: '6', door: '1' },
+  hide: { e: 'Y', b: 'u', s: '2', r: 'Y', l: 'y', d: 'u', t: 'u', door: '2' },
+  pelt: { e: '6', b: '3', s: '2', r: '6', l: '4', d: '2', t: 'u', door: '2' },
   thatch: { e: 'Q', b: 'u', s: '2', r: 'y', l: 'Q', d: 'u', t: 'y', door: '1' },
   pale: { e: '7', b: '6', s: '5', r: '8', l: '7', d: '5', t: '8', door: '4' },
   thorn: { e: '3', b: '1', s: '1', r: '4', l: '2', d: '1', t: '4', door: '0' },
-  rock: { e: '5', b: '3', s: '2', r: '5', l: '4', d: '2', t: '6', door: '0' },
+  rock: { e: '5', b: '3', s: '2', r: '6', l: '4', d: '2', t: '6', door: '0' },
 };
 
 // ------------------------------------------------------------------------------ primitives
@@ -215,8 +217,15 @@ function stack(...parts) {
   return g;
 }
 
-/** Put marks on a part: [[x, y, key], ...] (windows, doors, details), in the part's coordinates. */
-function mark(g, list) { const o = g.clone(); for (const [x, y, k] of list) o.set(x, y, k || 'l'); return o; }
+/**
+ * Put marks on a part: [[x, y, key, tall], ...] (windows, doors, details), in the part's coordinates.
+ * tall 2 makes a 1x2 window (key on top, amber under it).
+ */
+function mark(g, list) {
+  const o = g.clone();
+  for (const [x, y, k, tall = 1] of list) for (let j = 0; j < tall; j++) o.set(x, y + j, j ? 'l' : k || 'l');
+  return o;
+}
 
 /** Paint parts side by side on a common ground line: [[part, x], ...] (no outlines: one mass). */
 function side(items) {
@@ -268,28 +277,51 @@ function compose(items, W = 40, H = 48) {
   return c;
 }
 
+// Halo tables: what the stone beside and under a lit window becomes (the window's 1 px ring, 4.4).
+// FIRE warms toward the ember ramp (dark stone to ember e, mid stone to rust x, lit stone to flame
+// E), so a lit window reads as a small hearth in the wall; BLOOD and ARC do the same in crimson and
+// lilac; COLD (Illians) frosts the stone instead.
 const TABLES = {
-  FIRE: { 1: 'u', 2: 'u', 3: 'u', 4: 'Q', 5: '6', 6: '7', u: 'Q', Q: 'y', k: 'u', t: 'Q', T: 'y', v: 'u', p: 'Q', y: 'Y', x: 'E', '#': '#', '%': '%' },
-  BLOOD: { 1: 'c', 2: 'c', 3: 'c', 4: 'c', 5: 'C', u: 'c' },
+  FIRE: { 1: 'e', 2: 'e', 3: 'e', 4: 'x', 5: 'x', 6: 'E', u: 'e', Q: 'x', y: 'E', Y: 'E', k: 'e', t: 'x', T: 'x', v: 'e', p: 'x', x: 'E', '#': '#', '%': '%' },
+  BLOOD: { 1: 'c', 2: 'c', 3: 'c', 4: 'c', 5: 'C', 6: 'C', u: 'c' },
   ARC: { 1: 'v', 2: 'v', 3: 'p', 4: 'p', 5: 'p', 6: 'P', k: 'v', t: 'p', T: 'P', v: 'p', p: 'P', u: 'v', Q: 'p' },
   COLD: { 2: 'g', 3: 'g', 4: 'f', 5: 'f' },
+  // the barbarians' rough camp: every dark material to ember, the bone and stone tops to flame
+  EMBER: { 2: 'e', 3: 'e', 4: 'e', 5: 'e', u: 'e', Q: 'e', 6: 'E', 7: 'E' },
 };
 
-/** Pre-light the stone beside a window through `table`, and twice under it (the sill). */
+/** Pre-light the stone beside and under a window through `table` (its 1 px ring). */
 function halo(g, table, keys = 'lL') {
   if (!table) return g;
   const out = g.clone();
   const T = (c) => (table[c] && !'0.'.includes(c) ? table[c] : c);
   for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
     if (!keys.includes(g.d[y][x])) continue;
-    for (const [dx, dy, n] of [[1, 0, 1], [-1, 0, 1], [0, 1, 2]]) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1]]) {
       const c = g.get(x + dx, y + dy);
       if (c === '.' || c === '0' || keys.includes(c)) continue;
-      const once = T(c);
-      out.set(x + dx, y + dy, n === 2 && once === 'u' ? T(once) : once);
+      out.set(x + dx, y + dy, T(c));
     }
   }
   return out;
+}
+
+/** Count the lit windows of a grid: 4-connected groups of l and L pixels. */
+function windows(g) {
+  const seen = new Set();
+  let n = 0;
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (!'lL'.includes(g.d[y][x]) || seen.has(y * g.w + x)) continue;
+    n++;
+    const todo = [[x, y]];
+    while (todo.length) {
+      const [i, j] = todo.pop();
+      if (seen.has(j * g.w + i) || !'lL'.includes(g.get(i, j))) continue;
+      seen.add(j * g.w + i);
+      todo.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
+    }
+  }
+  return n;
 }
 
 /** Trim to the opaque bounding box, keeping `room` empty rows above for the capital finial. */
@@ -310,4 +342,4 @@ function finialOf(g) {
 }
 
 
-export { G, P, M, wall, taper, peak, hip, dome, blobs, mound, crag, stack, mark, side, house, compose, TABLES, halo, trim, finialOf };
+export { G, P, M, wall, taper, peak, hip, dome, blobs, mound, crag, stack, mark, side, house, compose, TABLES, halo, windows, trim, finialOf };
