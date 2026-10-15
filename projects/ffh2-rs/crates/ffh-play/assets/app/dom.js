@@ -1,9 +1,27 @@
 // DOM helpers shared by the screens: an element builder, toasts, and the busy indicator.
 
+/** How the short texts of buttons and headings are drawn: `null` (plain text), or a function
+ *  `(tagName, text, el) => Node | string` that look.js sets once the art has loaded (the bitmap
+ *  fonts of docs/ART.md 11.6; the text stays the element's `textContent`). */
+let textHook = null;
+
+export function setTextHook(f) {
+  textHook = f;
+}
+
+/** The elements whose text children go through the text hook. */
+const HOOKED = new Set(["BUTTON", "H2", "H3", "H4", "KBD"]);
+
+/** Replaces an element's content with `text`, through the text hook as `h` would. */
+export function setText(el, text) {
+  el.replaceChildren(textHook && HOOKED.has(el.tagName) ? textHook(el.tagName, String(text), el) : String(text));
+}
+
 /** `h("button.primary#end", {onclick, title}, "End turn", child...)`: an element with classes
  *  and id from the tag string, properties or attributes from `props` (`on*` are listeners,
  *  `data-*` and `aria-*` attributes, `style` an object), and text or node children (null and
- *  false are skipped, arrays flattened). */
+ *  false are skipped, arrays flattened). The text children of buttons and headings go through
+ *  the text hook (`setTextHook`). */
 export function h(tag, props = {}, ...children) {
   const m = /^([a-z0-9]+)?((?:[.#][\w-]+)*)$/i.exec(tag);
   const el = document.createElement(m?.[1] || "div");
@@ -28,10 +46,15 @@ export function h(tag, props = {}, ...children) {
 }
 
 function append(el, children) {
+  const hook = textHook && HOOKED.has(el.tagName) ? textHook : null;
   for (const c of children) {
     if (c === null || c === undefined || c === false) continue;
     if (Array.isArray(c)) append(el, c);
-    else el.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+    else if (c instanceof Node) el.appendChild(c);
+    else if (hook) {
+      const n = hook(el.tagName, String(c), el);
+      el.appendChild(n instanceof Node ? n : document.createTextNode(String(n)));
+    } else el.appendChild(document.createTextNode(String(c)));
   }
 }
 

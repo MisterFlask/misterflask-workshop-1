@@ -39,7 +39,9 @@ export function fromApiMap(api, width, height, wrapX = false) {
       const opt = (k) => (g(k) === -1 || g(k) === null ? null : g(k));
       tiles.push({
         vis: g('vis'), plotType: g('plot_type'), terrain: opt('terrain'), feature: opt('feature'), bonus: opt('bonus'),
-        improvement: opt('improvement'), route: opt('route'), owner: opt('owner'), river: Math.max(0, g('river')), city: opt('city'),
+        improvement: opt('improvement'), route: opt('route'), owner: opt('owner'), river: Math.max(0, g('river')),
+        // a revealed city as '#<id>': the art only asks whether a city stands there, and city 0 is one
+        city: opt('city') === null ? null : `#${g('city')}`,
       });
     }
   }

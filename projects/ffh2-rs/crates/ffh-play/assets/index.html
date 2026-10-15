@@ -13,8 +13,8 @@
      server (`ffh-play serve`): /api/status (long-poll), /api/view, /api/map (tile deltas),
      /api/data and the POST /api envelope. -->
 <header id="top">
-  <div id="phase" aria-live="polite">connecting…</div>
-  <div id="empire"></div>
+  <div id="phase" class="group" aria-live="polite">connecting…</div>
+  <div id="empire" class="group"></div>
   <nav id="menu">
     <button id="btn-research" title="Choose research">Research</button>
     <button id="btn-techs" title="The tech tree [F6]">Techs</button>
@@ -28,8 +28,8 @@
     <button id="btn-new" title="Start a new game">New</button>
     <button id="btn-keys" title="Keys [?]">?</button>
     <button id="btn-raw" title="Send a raw protocol request (testing)">⌘</button>
-    <button id="end-turn" class="primary" title="End the turn [Enter when no unit waits]; Shift: without the checks" disabled>End turn</button>
   </nav>
+  <button id="end-turn" class="primary" title="End the turn [Enter when no unit waits]; Shift: without the checks" disabled>End turn</button>
 </header>
 <main id="main">
   <div id="mapwrap">

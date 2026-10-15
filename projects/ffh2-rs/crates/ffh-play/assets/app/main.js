@@ -6,7 +6,10 @@
 // screens (city, techs, civics, religion, diplomacy, finances, tools).
 //
 // The server computes everything (legal actions, odds, turns, fog); the client renders it and
-// sends commands (commands.js). `window.ffh` exposes the state for the headless smoke test.
+// sends commands (commands.js). The look (look.js) is the original pixel art the server embeds
+// (docs/ART.md): the map's art renderer and the interface's bitmap type, frames and icons, loaded
+// beside the game data; until it has loaded (or when it cannot, or with `?renderer=flat` for the
+// map) the client draws as before. `window.ffh` exposes the state for the headless smoke test.
 
 import * as api from "./api.js";
 import { S, setData, setView, setMap, on, emit, resetDismissed, clearDismissed, popupQueue, endTurnMessage, cycleCity } from "./state.js";
@@ -24,6 +27,7 @@ import { renderTop, renderBottom, setTab, currentTab } from "./hud.js";
 import { endTurn, sending } from "./commands.js";
 import { h, $, toast } from "./dom.js";
 import { dname, turns, me } from "./state.js";
+import { look, loadLook, setLookData, rendererChoice } from "./look.js";
 
 let mapView = null;
 let syncing = false;
@@ -145,6 +149,7 @@ function clearGame() {
   lastTurn = null;
   clearDismissed();
   units.clearWaypoints();
+  mapView.art?.setMap(mapView.map, null, "all");
   mapView.map = null;
   mapView.chunks.clear();
   mapView.request();
@@ -553,6 +558,7 @@ function wire() {
     renderTop();
   });
   on("mode", () => units.renderPanel());
+  on("renderer", (r) => setRenderer(r));
 }
 
 async function boot() {
@@ -569,17 +575,38 @@ async function boot() {
   units.initUnits(mapView, $("#unit-panel"));
   renderTop();
   renderBottom();
+  // The art loads beside the data; the page works meanwhile (and without it).
+  const art = loadLook().then((a) => {
+    if (a) lookLoaded();
+    return a;
+  });
   try {
     const [data, setup] = await Promise.all([api.get("/api/data"), api.get("/api/setup")]);
     setData(data);
+    setLookData(data);
     S.setup = setup;
   } catch (e) {
     toast(`Cannot load the game data: ${e.message ?? e}`, "error", 60000);
     return;
   }
   api.watch(onStatus, onDisconnect);
+  await art;
   window.ffh.ready = true;
 }
 
-window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen };
+/** The art has loaded: the map draws with it unless the flat renderer was asked for, and the
+ *  interface redraws with its type and icons. */
+function lookLoaded() {
+  if (rendererChoice() === "art") mapView.useArt(true);
+  renderTop();
+  renderBottom();
+  units.renderPanel();
+}
+
+/** Switches the map's renderer ("art" or "flat"; Tools → Options). */
+function setRenderer(r) {
+  mapView.useArt(r === "art" && !!look.art);
+}
+
+window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen, look, setRenderer };
 boot();

@@ -90,6 +90,14 @@ function tagToken(name, arg) {
   }
 }
 
+/** How [ICON_X] is drawn in the DOM: `null` (a glyph from ICONS), or a function `(name) => Node
+ *  | null` that look.js sets once the art has loaded (the ui set's 8 px icons). */
+let iconHook = null;
+
+export function setIconHook(f) {
+  iconHook = f;
+}
+
 function iconText(name) {
   return ICONS[name] ?? `[${name.slice(5).toLowerCase().replace(/_/g, " ")}]`;
 }
@@ -118,14 +126,18 @@ export function plain(text) {
     .trim();
 }
 
-/** The CSS colour of a COLOR_ tag (approximations of Civ4's). */
+/** The CSS colour of a COLOR_ tag: the palette colours docs/ART.md 11.2 gives Civ4's text
+ *  colours (highlight vellum, positive lichen, negative scarlet, warning amber, links sand,
+ *  Somnium frost, the rest bone). */
 export function colorOf(name) {
-  if (/WARNING|NEGATIVE|RED/.test(name)) return "#ff8a7a";
-  if (/POSITIVE|GREEN/.test(name)) return "#8fd88f";
-  if (/HIGHLIGHT|YELLOW|BUILDING/.test(name)) return "#f2d675";
-  if (/UNIT/.test(name)) return "#9cc8ff";
-  if (/ALT|GREY|GRAY/.test(name)) return "#b9b2a5";
-  return "#e9dcbf";
+  if (/WARNING|YELLOW/.test(name)) return "#e2913c";
+  if (/NEGATIVE|RED/.test(name)) return "#b33a3a";
+  if (/POSITIVE|GREEN/.test(name)) return "#6c724a";
+  if (/HIGHLIGHT/.test(name)) return "#ddcfb4";
+  if (/UNIT|BUILDING|LINK/.test(name)) return "#8c8068";
+  if (/SOMNIUM/.test(name)) return "#717f86";
+  if (/ALT|GREY|GRAY/.test(name)) return "#7d7366";
+  return "#b3a28c";
 }
 
 /** The text as DOM nodes (a DocumentFragment of `doc`). */
@@ -161,6 +173,11 @@ export function render(text, doc = globalThis.document) {
         top().appendChild(doc.createTextNode("    "));
         break;
       case "icon": {
+        const art = iconHook?.(t.name);
+        if (art) {
+          top().appendChild(art);
+          break;
+        }
         const el = doc.createElement("span");
         el.className = "icon";
         el.title = t.name;

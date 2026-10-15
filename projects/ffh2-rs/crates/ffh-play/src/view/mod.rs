@@ -210,6 +210,9 @@ pub fn production(g: &Game, c: CityId) -> Json {
 pub fn cities(v: &Viewer) -> Json {
     let g = v.g;
     let mut out = Vec::new();
+    // Walls and the palisade (the buildings of those classes).
+    let wall_classes = ["BUILDINGCLASS_WALLS", "BUILDINGCLASS_PALISADE"].map(|n| g.d.ty::<BuildingClassType>(n));
+    let walls: Vec<BuildingType> = g.d.buildings.keys().filter(|&b| g.d.buildings[b].building_class_type.is_some_and(|k| wall_classes.contains(&Some(k)))).collect();
     for (c, city) in g.cities.iter() {
         if !v.city_revealed(c) {
             continue;
@@ -226,6 +229,8 @@ pub fn cities(v: &Viewer) -> Json {
             "visible" => visible,
             "size" => visible.then_some(city.population),
             "defense" => visible.then(|| g.city_defense_modifier(c, false)),
+            // The city art's curtain wall (docs/ART.md 9.3), seen like its size.
+            "walls" => visible.then(|| walls.iter().any(|&b| g.city_num_building(c, b) > 0)),
         };
         if own {
             j.set("production", production(g, c));

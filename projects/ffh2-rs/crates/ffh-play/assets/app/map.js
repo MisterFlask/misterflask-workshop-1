@@ -1,6 +1,11 @@
 // The map (design §5.1 "Map"): a canvas, square tiles, north up, the map's wrap honoured.
 //
-// The terrain (everything the `map` arrays hold: terrain, hills, peaks, features, rivers,
+// Two renderers draw it. The art renderer (`artmap.js`, the original pixel art of docs/ART.md)
+// is used once the art has loaded; the flat renderer below (the P5 one: flat colours, glyphs and
+// labels) before that, when the art cannot load, and when asked for (`?renderer=flat` or Tools →
+// Options), for debugging.
+//
+// Flat: the terrain (everything the `map` arrays hold: terrain, hills, peaks, features, rivers,
 // roads, improvements, bonuses, borders, fog) is drawn into offscreen chunks of CHUNK x CHUNK
 // plots per zoom level, redrawn only where the map changed; cities, units, the selection, the
 // path preview and the interface-mode targets are drawn over them each frame. A minimap shows
@@ -8,6 +13,8 @@
 
 import { S, tname, dname, info, me, isBarbarian, ORDER_KINDS } from "./state.js";
 import * as T from "./tiles.js";
+import { ArtMap } from "./artmap.js";
+import { artZooms, defaultArtZoom } from "./stacks.js";
 
 const ZOOMS = [12, 16, 24, 32, 48, 64];
 /** The terrain cache's budget in device pixels (least recently used chunks go first). */
@@ -57,7 +64,8 @@ export class MapView {
     this.canvas = wrap.querySelector("canvas.map");
     this.mini = wrap.querySelector("canvas.minimap");
     this.tip = wrap.querySelector(".tooltip");
-    this.ctx = this.canvas.getContext("2d");
+    // The art renderer reads parts of the frame back (the vignette, light pools, range marks).
+    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     this.h = handlers;
     this.cam = { cx: 0, cy: 0, ts: 32 };
     this.vw = 1;
@@ -75,6 +83,8 @@ export class MapView {
     /** The map's layer (design §5.1 "Layers"): "terrain", "political" (owners' colours) or
      *  "yield" (the visible plots' food, production and commerce). */
     this.layer = "terrain";
+    /** The art renderer (`ArtMap`) when it draws the map, else null (the flat renderer). */
+    this.art = null;
     this.queued = false;
     this.listen();
     new ResizeObserver(() => this.resize()).observe(wrap);
@@ -181,7 +191,13 @@ export class MapView {
 
   resize() {
     const r = this.wrap.getBoundingClientRect();
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (this.art && dpr !== this.dpr) {
+      // Another device-pixel ratio: the art's zoom steps change with it.
+      this.dpr = dpr;
+      this.snapZoom();
+    }
+    this.dpr = dpr;
     this.vw = Math.max(1, Math.round(r.width));
     this.vh = Math.max(1, Math.round(r.height));
     this.canvas.width = Math.round(this.vw * this.dpr);
@@ -194,9 +210,16 @@ export class MapView {
     this.request();
   }
 
+  /** The zoom steps (tile sizes in CSS px) of the renderer in use: the art's are whole numbers
+   *  of device pixels per art pixel (docs/ART.md 3.2). */
+  zooms() {
+    return this.art ? artZooms(this.dpr) : ZOOMS;
+  }
+
   zoom(step, sx = this.vw / 2, sy = this.vh / 2) {
-    const i = ZOOMS.indexOf(this.cam.ts);
-    const next = ZOOMS[Math.min(ZOOMS.length - 1, Math.max(0, (i < 0 ? 3 : i) + step))];
+    const zs = this.zooms();
+    const i = zs.findIndex((z) => Math.abs(z - this.cam.ts) < 0.01);
+    const next = zs[Math.min(zs.length - 1, Math.max(0, (i < 0 ? 3 : i) + step))];
     if (next === this.cam.ts) return;
     this.cam = T.clampCamera(T.zoomAt(this.cam, this.vw, this.vh, next, sx, sy), this.map ?? { w: 1, h: 1 });
     this.hideTip();
@@ -238,9 +261,40 @@ export class MapView {
   // ------------------------------------------------------------------------------------------
   // Data
 
+  /** Switches to the art renderer (`on`, once the art has loaded) or back to the flat one; the
+   *  zoom moves to the nearest step of the renderer. */
+  useArt(on) {
+    if (on && !this.art) {
+      this.art = new ArtMap(this);
+      if (this.map) this.art.setMap(null, this.map, "all");
+    } else if (!on && this.art) {
+      this.art = null;
+    }
+    this.snapZoom(on ? defaultArtZoom(this.dpr) : null);
+    this.chunks.clear();
+    this.pixels = 0;
+    this.miniImage = null;
+    this.request();
+  }
+
+  /** The zoom moved to the renderer's nearest step (or `ts` when given). */
+  snapZoom(ts = null) {
+    const zs = this.zooms();
+    const want = ts ?? this.cam.ts;
+    const next = zs.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a), zs[0]);
+    this.cam = { ...this.cam, ts: next };
+  }
+
+  /** The renderer drawing the map: "art" or "flat". */
+  renderer() {
+    return this.art ? "art" : "flat";
+  }
+
   /** A new map (the `map` reply, or the map a delta brought up to date): redraws the chunks
    *  that changed (`changed`: the tile indices a delta listed; else found by comparing). */
   setMap(map, changed = null) {
+    const prev = this.map;
+    this.art?.setMap(prev, map, changed);
     const first = !this.map || this.map.w !== map.w || this.map.h !== map.h;
     const dirty = Array.isArray(changed) && !first ? T.chunksOfTiles(map, changed) : T.dirtyChunks(this.map, map);
     this.map = map;
@@ -293,6 +347,15 @@ export class MapView {
   }
 
   draw() {
+    if (this.art) {
+      try {
+        this.art.draw();
+      } catch (e) {
+        console.error("art map:", e);
+      }
+      this.drawMini();
+      return;
+    }
     const g = this.ctx;
     g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     g.fillStyle = "#07080a";
@@ -762,6 +825,7 @@ export class MapView {
     g.fillRect(0, 0, c.width, c.height);
     const map = this.map;
     if (!map) return;
+    if (this.art) this.miniImage = this.art.minimap();
     if (!this.miniImage) {
       const img = new ImageData(map.w, map.h);
       const rgb = (css) => {
@@ -805,7 +869,7 @@ export class MapView {
     const hh = (this.vh / ts) * sy;
     const x = (this.cam.cx - this.vw / 2 / ts) * sx;
     const y = (map.h - this.cam.cy - this.vh / 2 / ts) * sy;
-    g.strokeStyle = "#fff";
+    g.strokeStyle = this.art ? this.art.art.css("8") : "#fff";
     g.lineWidth = Math.max(1, this.dpr);
     for (const off of map.wrap_x ? [-c.width, 0, c.width] : [0]) g.strokeRect(x + off, y, w, hh);
   }

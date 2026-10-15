@@ -10,6 +10,13 @@ import { openModal } from "./modals.js";
 import { run, actionCommand, sending } from "./commands.js";
 import { plotDistance, plotIndex, humanize } from "./tiles.js";
 import { render as markup } from "./markup.js";
+import { look, iconEl, unitIcon, barEl, pix } from "./look.js";
+
+/** An 8 px icon of the ui set, or the glyph before the art loaded. */
+const icon8 = (name, glyph, title) => iconEl(`icon8/${name}`, { title }) ?? glyph;
+
+/** A unit's owner as the art draws it (the map's heraldry), or null. */
+const ownerLook = (p) => mapView?.art?.owners?.get(p) ?? null;
 
 let mapView = null;
 let panel = null;
@@ -349,7 +356,8 @@ export function currentActions() {
 export function setMode(m) {
   mode = m;
   const targets = m?.kind === "target" ? (m.action.any ? null : m.action.targets) : null;
-  mapView?.setOverlay({ targets: targets ?? (m ? [] : null) });
+  // The route-to mode's path preview is drawn in ochre (docs/ART.md 11.7).
+  mapView?.setOverlay({ targets: targets ?? (m ? [] : null), routeTo: m?.kind === "target" && m.action.mode === "INTERFACEMODE_ROUTE_TO" });
   document.body.classList.toggle("picking", !!m);
   emit("mode", m);
 }
@@ -422,7 +430,7 @@ export async function splitAll() {
 
 function clearPreview() {
   preview = { path: null, combat: null, plot: null };
-  mapView?.setOverlay({ path: null });
+  mapView?.setOverlay({ path: null, odds: null });
 }
 
 /** The mouse is over (x, y) (null: left the map). */
@@ -430,7 +438,7 @@ export function hoverAt(x, y) {
   hover = x === null ? null : { x, y };
   clearTimeout(hoverTimer);
   preview = { path: null, combat: null, plot: null };
-  mapView.setOverlay({ path: null });
+  mapView.setOverlay({ path: null, odds: null });
   if (!hover) return;
   showTip();
   hoverTimer = setTimeout(() => loadPreview(x, y), 90);
@@ -456,7 +464,14 @@ async function loadPreview(x, y) {
     );
     const foreign = unitsAt(x, y).some((u) => u.owner !== me()?.player);
     if (foreign) {
-      jobs.push(api.query("combat", { units: sel.units, x, y }).then((r) => still() && (preview.combat = r)).catch(() => {}));
+      jobs.push(
+        api.query("combat", { units: sel.units, x, y }).then((r) => {
+          if (!still()) return;
+          preview.combat = r;
+          // The odds chip at the end of an attack path (permille; air strikes have none).
+          mapView.setOverlay({ odds: r?.valid && r.odds !== null && r.odds !== undefined ? r.odds : null });
+        }).catch(() => {}),
+      );
     }
   }
   await Promise.all(jobs);
@@ -561,7 +576,7 @@ export function combatLines(c) {
   const str = (v) => (v / 100).toFixed(2);
   const att = S.units.get(c.attacker);
   const box = h("div.tip-combat");
-  box.append(h("div.odds", c.odds === null ? "Air strike" : `Odds ${pct(c.odds)}`, c.withdraw ? h("span.dim", ` · retreat ${pct(c.withdraw)}`) : null));
+  box.append(h(`div.odds${c.odds !== null && c.odds < 500 ? ".bad" : ""}`, c.odds === null ? "Air strike" : `Odds ${pct(c.odds)}`, c.withdraw ? h("span.dim", ` · retreat ${pct(c.withdraw)}`) : null));
   box.append(h("div", `${att ? dname("UnitType", att.type) : "Attacker"} ${str(c.attacker_strength)} vs ${dname("UnitType", c.defender_type)} ${str(c.defender_strength)}`, h("span.dim", ` (${playerName(c.defender_owner)})`)));
   const a = modifierList(c.attacker_details);
   const d = modifierList(c.defender_details);
@@ -721,14 +736,23 @@ function unitRow(u, selected) {
       u.summon_turns ? h("span.badge", { title: "A summoned unit: turns left" }, `${u.summon_turns}t`) : null,
       u.cargo?.length ? h("span.badge", { title: "Units on board" }, `${u.cargo.length} aboard`) : null,
     ),
-    h(
-      "span.unit-stats",
-      `${u.strength ?? ""}${u.strength !== undefined ? "⚔ " : ""}`,
-      `${Math.round((100 * u.hp) / u.max_hp)}% `,
-      u.moves !== undefined ? `${moves(u.moves)}/${moves(u.max_moves)}➜ ` : "",
-      u.level !== undefined ? `L${u.level}` : "",
-      busy ? h("span.dim", ` ${humanize(tname("ActivityType", u.activity))}`) : null,
-    ),
+    look.art
+      ? h(
+          "span.unit-stats",
+          u.strength !== undefined ? h("span.stat-n", pix(String(u.strength)), icon8("strength", "⚔", "Strength")) : null,
+          barEl(u.hp / Math.max(1, u.max_hp), u.hp * 4 < u.max_hp ? "hp_low" : "hp", { w: 14, title: `${Math.round((100 * u.hp) / u.max_hp)}% health` }),
+          u.moves !== undefined ? h("span.stat-n", pix(`${moves(u.moves)}/${moves(u.max_moves)}`), icon8("moves", "➜", "Moves")) : null,
+          u.level !== undefined ? h("span.stat-n", { title: `Level ${u.level}` }, pix(`L${u.level}`)) : null,
+          busy ? h("span.dim", ` ${humanize(tname("ActivityType", u.activity))}`) : null,
+        )
+      : h(
+          "span.unit-stats",
+          `${u.strength ?? ""}${u.strength !== undefined ? "⚔ " : ""}`,
+          `${Math.round((100 * u.hp) / u.max_hp)}% `,
+          u.moves !== undefined ? `${moves(u.moves)}/${moves(u.max_moves)}➜ ` : "",
+          u.level !== undefined ? `L${u.level}` : "",
+          busy ? h("span.dim", ` ${humanize(tname("ActivityType", u.activity))}`) : null,
+        ),
   );
   return row;
 }
@@ -750,8 +774,10 @@ export function renderPanel() {
   const foreign = unitsAt(x, y).filter((u) => u.owner !== me()?.player);
   const g = currentGroup();
   const grp = g !== null ? S.groups.get(g) : null;
+  const lead = S.units.get(S.sel.units[0]) ?? own[0];
   const head = h(
     "div.panel-head",
+    lead ? unitIcon(lead.type, ownerLook(lead.owner), { title: dname("UnitType", lead.type) }) : null,
     h("h3", own.length === 1 ? dname("UnitType", own[0].type) : `${S.sel.units.length} of ${own.length} units`),
     h("span.dim", ` (${x}, ${y})`),
   );

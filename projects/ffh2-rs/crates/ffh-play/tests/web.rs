@@ -13,12 +13,17 @@ use std::sync::Arc;
 
 use common::TempDir;
 use ffh_play::json::Json;
-use ffh_play::transport::http::{route, HttpCtx, HttpRequest, ASSETS};
+use ffh_play::transport::art_files::{art_bundle, art_modules};
+use ffh_play::transport::http::{route, HttpCtx, HttpRequest, ART_BUNDLE, ART_BUNDLE_PATH, ART_MODULES, ASSETS};
 use ffh_play::transport::shared::Shared;
 use ffh_play::{Session, SessionOptions};
 
 fn assets_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("assets")
+}
+
+fn art_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("web").join("art")
 }
 
 /// The files a client may load: `index.html` and everything under `app/`.
@@ -52,6 +57,30 @@ fn every_client_file_is_embedded_as_it_is_on_disk() {
     }
 }
 
+/// The art (`web/art`, docs/ART.md 15-16) is embedded as it is on disk: every module of the
+/// toolkit and its sets (`build.rs`), and the sprite bundle, which is what
+/// `web/art/tools/bundle.mjs` writes (palette, set list, types.json, manifests, sources).
+#[test]
+fn the_art_is_embedded_as_it_is_on_disk() {
+    let want: Vec<String> = art_modules(&art_dir()).unwrap().into_iter().map(|m| format!("art/{m}")).collect();
+    let embedded: Vec<String> = ART_MODULES.iter().map(|(p, _)| p.to_string()).collect();
+    assert_eq!(embedded, want, "build.rs embeds the art's modules");
+    for need in ["art/art.js", "art/compose.js", "art/library.js", "art/mapping.js", "art/spritefmt.js", "art/ui/ui.js", "art/terrain/ground.js", "art/units/stack.js", "art/cities/citylight.js"] {
+        assert!(want.iter().any(|m| m == need), "{need} is not among the art's modules: {want:?}");
+    }
+    for (path, body) in ART_MODULES {
+        let on_disk = std::fs::read_to_string(art_dir().join(path.strip_prefix("art/").unwrap())).unwrap();
+        assert_eq!(*body, on_disk, "{path}");
+    }
+    assert_eq!(ART_BUNDLE, art_bundle(&art_dir()).unwrap());
+    let files: Vec<&str> = ART_BUNDLE.lines().filter_map(|l| l.strip_prefix("@@file ")).collect();
+    assert_eq!(&files[..3], ["palette.txt", "sets.txt", "types.json"]);
+    for set in ["terrain", "units", "cities", "ui"] {
+        assert!(files.contains(&format!("{set}/manifest.txt").as_str()), "{files:?}");
+    }
+    assert!(files.iter().filter(|f| f.ends_with(".spr")).count() >= 20, "{files:?}");
+}
+
 /// The module specifiers a module imports: `import ... from "x"`, `export ... from "x"`, the
 /// last line of a multi-line import (`} from "x"`) and `import "x"`.
 fn imports(src: &str) -> Vec<String> {
@@ -76,9 +105,36 @@ fn imports(src: &str) -> Vec<String> {
     out
 }
 
+/// A module specifier resolved against the importing module's path (`app/main.js` +
+/// `../art/art.js` = `art/art.js`), or None when it leaves the server's root or is not relative.
+fn resolve(from: &str, spec: &str) -> Option<String> {
+    if !(spec.starts_with("./") || spec.starts_with("../")) {
+        return None;
+    }
+    let mut parts: Vec<&str> = from.split('/').collect();
+    parts.pop();
+    for p in spec.split('/') {
+        match p {
+            "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            p => parts.push(p),
+        }
+    }
+    Some(parts.join("/"))
+}
+
+/// The set passes art.js imports by name (`PASSES`: `['./terrain/ground.js', 'installTerrain']`).
+fn passes(art_js: &str) -> Vec<String> {
+    let start = art_js.find("export const PASSES = [").expect("art.js PASSES");
+    let end = start + art_js[start..].find("];").unwrap();
+    art_js[start..end].lines().filter_map(|l| l.trim().strip_prefix("['").and_then(|r| r.split('\'').next())).map(str::to_string).collect()
+}
+
 #[test]
 fn the_page_and_its_modules_reference_only_embedded_files() {
-    let get = |p: &str| ASSETS.iter().find(|(q, _, _)| *q == p).map(|(_, _, b)| *b);
+    let get = |p: &str| ASSETS.iter().find(|(q, _, _)| *q == p).map(|(_, _, b)| *b).or_else(|| ART_MODULES.iter().find(|(q, _)| *q == p).map(|(_, b)| *b));
     let index = get("index.html").unwrap();
     // The page loads the stylesheet and the main module, and nothing from another site.
     let mut refs = Vec::new();
@@ -99,22 +155,33 @@ fn the_page_and_its_modules_reference_only_embedded_files() {
         let path = r.strip_prefix('/').unwrap_or_else(|| panic!("page reference {r} is not a server path"));
         assert!(get(path).is_some(), "the page references {r}, which is not embedded");
     }
-    // Every module reached from main.js is embedded; every embedded module is reached.
+    // Every module reached from main.js (and the art's set passes, which art.js imports by
+    // name) is embedded; every embedded module is reached.
+    let art_js = get("art/art.js").unwrap();
+    let pass_modules: Vec<String> = passes(art_js).iter().map(|p| resolve("art/art.js", p).unwrap()).collect();
+    assert_eq!(pass_modules, ["art/terrain/ground.js", "art/units/stack.js", "art/cities/citylight.js"]);
     let mut seen = vec!["app/main.js".to_string()];
     let mut queue = vec!["app/main.js".to_string()];
     while let Some(m) = queue.pop() {
         let src = get(&m).unwrap_or_else(|| panic!("{m} is imported but not embedded"));
+        let mut next: Vec<String> = Vec::new();
         for spec in imports(src) {
-            let file = spec.strip_prefix("./").unwrap_or_else(|| panic!("{m} imports {spec:?}: only ./ modules (no CDN, no bare names)"));
-            let path = format!("app/{file}");
-            assert!(get(&path).is_some(), "{m} imports {spec}, which is not embedded");
+            let path = resolve(&m, &spec).unwrap_or_else(|| panic!("{m} imports {spec:?}: only relative modules of this server (no CDN, no bare names)"));
+            assert!(path.starts_with("app/") || path.starts_with("art/"), "{m} imports {spec}, outside app/ and art/");
+            next.push(path);
+        }
+        if m == "art/art.js" {
+            next.extend(pass_modules.iter().cloned());
+        }
+        for path in next {
+            assert!(get(&path).is_some(), "{m} imports {path}, which is not embedded");
             if !seen.contains(&path) {
                 seen.push(path.clone());
                 queue.push(path);
             }
         }
     }
-    for (p, _, _) in ASSETS {
+    for p in ASSETS.iter().map(|(p, _, _)| *p).chain(ART_MODULES.iter().map(|(p, _)| *p)) {
         if p.ends_with(".js") {
             assert!(seen.iter().any(|s| s == p), "{p} is embedded but no module imports it");
         }
@@ -123,6 +190,10 @@ fn the_page_and_its_modules_reference_only_embedded_files() {
         imports("import { a } from \"./x.js\";\nimport * as b from './y.js';\nimport {\n  c,\n} from \"./z.js\";\nimport \"./w.js\";\nconst s = \"a from b\";"),
         ["./x.js", "./y.js", "./z.js", "./w.js"]
     );
+    assert_eq!(resolve("app/main.js", "../art/ui/ui.js").as_deref(), Some("art/ui/ui.js"));
+    assert_eq!(resolve("art/terrain/ground.js", "../art.js").as_deref(), Some("art/art.js"));
+    assert_eq!(resolve("app/main.js", "../../x.js"), None);
+    assert_eq!(resolve("app/main.js", "x.js"), None);
 }
 
 #[test]
@@ -141,11 +212,27 @@ fn client_files_are_served_with_their_types() {
     assert_eq!((root.status, root.content_type), (200, "text/html; charset=utf-8"));
     assert_eq!(get("/app/missing.js").status, 404);
     assert_eq!(get("/app/../index.html").status, 404);
+    // The art: its modules and the sprite bundle; not its tools, previews or sources one by one.
+    for (path, _) in ART_MODULES {
+        let r = get(&format!("/{path}"));
+        assert_eq!((r.status, r.content_type), (200, "text/javascript; charset=utf-8"), "{path}");
+    }
+    let r = get(&format!("/{ART_BUNDLE_PATH}"));
+    assert_eq!((r.status, r.content_type), (200, "text/plain; charset=utf-8"));
+    for missing in ["/art/tools/bundle.mjs", "/art/terrain/preview.js", "/art/palette.txt", "/art/preview/scene.js", "/art/../Cargo.toml"] {
+        assert_eq!(get(missing).status, 404, "{missing}");
+    }
     // `--assets DIR` serves the same layout from disk.
     let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx: mpsc::channel().0, assets: Some(assets_dir()), loopback: None };
     let req = HttpRequest { method: "GET".into(), path: "/app/main.js".into(), query: String::new(), headers: Vec::new(), body: Vec::new() };
     let r = route(&req, &ctx);
     assert_eq!((r.status, r.content_type), (200, "text/javascript; charset=utf-8"));
+    // ... and the art from `DIR/../web/art`.
+    let req = |path: &str| HttpRequest { method: "GET".into(), path: path.into(), query: String::new(), headers: Vec::new(), body: Vec::new() };
+    let r = route(&req("/art/compose.js"), &ctx);
+    assert_eq!((r.status, r.content_type), (200, "text/javascript; charset=utf-8"));
+    assert_eq!(route(&req("/art/art.bundle.txt"), &ctx).status, 200);
+    assert_eq!(route(&req("/art/tools/validate.mjs"), &ctx).status, 404);
 }
 
 /// `ffh-play stage attack`: the warrior can attack the barbarian next to it, and the `combat`
