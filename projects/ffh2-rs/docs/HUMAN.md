@@ -24,9 +24,11 @@ cargo build --release
 ./target/release/ffh-play replay DIR/journal.jsonl [--from DIR/auto/T0110.ffhsave]
 ./target/release/ffh-play journal print DIR/journal.jsonl
 ./target/release/ffh-play soak run --seed 2 --size tiny --civ kuriotates [--options raging] [--turns 300]
-                              [--saves DIR] [--resume DIR/auto/T0123.ffhsave]
+                              [--speed quick] [--handicap deity] [--saves DIR] [--resume DIR/auto/T0123.ffhsave]
+                              [--check-every 5] [--save-check-every 25]
 ./target/release/ffh-play soak [--seeds 1..2] [--sizes tiny,small,standard] [--civs ..] [--options default,raging,occ,challenges]
-                              [--turns 300] [--jobs N] [--timeout SECS] [--saves DIR] [--out results.tsv] [--list]
+                              [--speeds normal,quick] [--turns 300] [--jobs N] [--timeout SECS] [--saves DIR]
+                              [--keep-saves] [--out results.tsv] [--filter TEXT] [--list] [--check-every N] [--save-check-every N]
 ```
 
 * `lookup` prints one JSON line per reference (`kind`, `index`, `name`, `display`, `text_key`, or
@@ -43,29 +45,38 @@ cargo build --release
 * `journal print` shows a journal with type names.
 * `soak run` lets the AI play the human slot through the session for one game (design §7 P2):
   production, research, event popups and votes are answered with the AI's choice through the
-  commands (one turn in seven they are left open and the turn is ended with `force`), blocking
-  decisions take the advisor's pick, the AI moves the units, and ffh-stress's invariant checks
-  run every 5 turns, a save round trip every 25. It prints `PROGRESS`, `END`, `CITIES`,
+  commands (one turn in seven they are left open and the turn is ended with `force`; the
+  research the AI's own turn sets meanwhile is cleared again with `research {tech: null}`, so
+  Civ4's automatic research pick runs), blocking decisions take the advisor's pick, the AI moves
+  the units, and ffh-stress's invariant checks run every 5 turns (`--check-every`), a save round
+  trip every 25 (`--save-check-every`; 0 = never). It prints `PROGRESS`, `END`, `CITIES`,
   `STATS` lines, or `PANIC` (with the workspace frames of the backtrace, exit code 101),
   `STUCK` (exit 4) or `ERROR` (a command the session offered was refused, a check failed;
-  exit 5), each with a `REPRO` line: the game's own command, plus `--resume <autosave>` when
-  `--saves` kept autosaves (every game is deterministic, and resuming an autosave ends exactly
-  as the uninterrupted game). Sizes, civilizations and options may be shortened (`tiny`,
-  `mercurian`, `raging`); `occ` (one-city challenge, no healing for humans) and `challenges`
-  (cut losers, high to low, increasing and flexible difficulty) are option sets that act only
-  on human players. `--civ infernal` or `mercurians` (not playable at the start) plays an
-  AI-only game whose player 0 founds them at turn 30 (`--spawn-turn`) and takes the new player
-  over.
+  exit 5), each with a `REPRO` line: the game's own command with its check settings when they
+  are not the defaults, plus `--resume <autosave>` when `--saves` kept autosaves (every game is
+  deterministic, and resuming an autosave ends exactly as the uninterrupted game). Sizes,
+  civilizations, options, speeds and handicaps may be shortened (`tiny`, `mercurian`, `raging`,
+  `quick`); numbers out of range are refused. `occ` (one-city challenge, no healing for humans)
+  and `challenges` (cut losers, high to low, increasing and flexible difficulty) are option sets
+  that act only on human players. `--civ infernal` or `mercurians` (not playable at the start)
+  plays an AI-only game whose player 0 founds them at turn 30 (`--spawn-turn`) and takes the new
+  player over, with your `--handicap`.
 * `soak` runs the matrix (default: 2 seeds × tiny, small, standard × Kuriotates, Infernal,
   Sheaim, Mercurians, Bannor, Calabim × default, raging barbarians, `occ`, `challenges`, 300
-  turns), each game in a child `soak run` with a timeout, `--jobs` at a time; it prints a
-  summary (per civilization, size and option set; the human's cities against the AI civs';
-  every distinct failure with its repro commands) and exits with code 1 if a game failed.
-  With `--saves DIR` each game keeps its last 3 autosaves in `DIR/<game>/` while it runs (and
-  after a failure, for the repro). For a checked build (debug assertions and overflow checks):
-  `CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS=true
+  turns, normal speed; `--speeds` adds speeds, a game given twice runs once), each game in a
+  child `soak run` with a timeout, `--jobs` at a time; it prints a summary (per civilization,
+  size and option set; the human's cities against the AI civs'; every distinct failure with its
+  repro commands, which include `--check-every` / `--save-check-every` when given) and exits
+  with code 1 if a game failed. Its arguments are checked before any game runs (`--out` is
+  created first; a bad setting is a usage error, exit 2). With `--saves DIR` each game keeps
+  its last 3 autosaves in `DIR/<game>/` (the description and a hash of the settings) while it
+  runs (and after a failure, for the repro). For a checked build (debug assertions and overflow
+  checks): `CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS=true
   cargo build --release --target-dir target/checked -p ffh-play`, then run
-  `target/checked/release/ffh-play soak ...`.
+  `target/checked/release/ffh-play soak ...`. A checked build stops long games on an ffh-core
+  debug assertion when the Syliven's Perfect Lyre is taken out of a city and dropped again
+  (reported; design §7 P2): `soak run --seed 9 --size tiny --civ bannor --speed quick --turns 400`
+  at turn 276. Release builds play on.
 
 ## The session (library API)
 
@@ -98,7 +109,10 @@ loop {
 * FfH can move the human to another slot (`reassignPlayerAdvanced`: the Impersonate Leader
   spell for its 5-14 turns, the "switch civilizations" event, the High to Low challenge). The
   session follows: `Session::human` is the slot you play now, and the active player moves with
-  you as in Civ4.
+  you as in Civ4. Messages follow you too: when the move happens during the turn processing
+  (High to Low at turn 50, the end of the Impersonate Leader timer), the log of that game update
+  is read as the new slot's, so the old slot's messages from its turn as an AI reach nobody, as
+  in Civ4; its messages from just before the move in that update are lost (design §7 P2).
 
 ### Commands
 
@@ -174,7 +188,13 @@ These hold for every request and reply of the protocol (design §4.1):
 * Civ4 ends your turn by itself when nothing is left to move; here you always end it.
 * Messages Civ4 sends only to some players (wars between others, captured or razed cities) are
   recognized by their text and shown under Civ4's condition (you met both teams, you revealed
-  the city); event world news are not shown yet, as their sender is not recorded.
+  the city); event world news are not shown yet, as their sender is not recorded. When FfH moves
+  you to another slot during the turn processing, the old slot's messages from just before the
+  move are lost (the log has no marker at the move yet, design P7).
+* A checked build (debug assertions) panics in ffh-core when the Syliven's Perfect Lyre is taken
+  out of a city (a human-only spell) and dropped again: the wonder is counted as built once more
+  each time (as in C++, which only asserts). Reported to ffh-core's owners; release builds play
+  on.
 * Human-only popups without a rules hook (Kuriotates settlements, the raze popup's gift button,
   telling disband from raze, taking control of the Infernals or Mercurians you summoned): see
   design §5.2 and P7. To play the Infernals or Mercurians, take over their slot from an AI save.
