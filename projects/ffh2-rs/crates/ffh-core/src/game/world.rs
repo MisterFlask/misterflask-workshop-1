@@ -485,10 +485,13 @@ impl Game {
             return false;
         }
 
-        debug_assert!(
-            self.building_class_created_count[building_class] <= self.d.building_classes[building_class].max_global_instances,
-            "Index is expected to be within maximum bounds (invalid Index)"
-        );
+        // C++ quirk: FAssertMsg(getBuildingClassCreatedCount(e) <= getMaxGlobalInstances()) is
+        // reachable, so it is not ported as an assertion. FfH equipment wonders (Syliven's Perfect
+        // Lyre) leave a city through a take spell (Python `setNumRealBuilding(i, 0)`, which does
+        // not lower the count) and come back through a `CreateBuildingType` drop spell
+        // (`setNumRealBuilding(e, true)`, CvUnit.cpp:14589), and every drop counts the wonder as
+        // created again (CvCity.cpp:10619). A debug DLL only shows an assert dialog; the class
+        // stays maxed out.
 
         (self.building_class_created_count[building_class] + extra) >= self.d.building_classes[building_class].max_global_instances
     }

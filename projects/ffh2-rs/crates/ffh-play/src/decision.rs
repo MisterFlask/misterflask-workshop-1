@@ -480,7 +480,7 @@ pub fn vote_choices(g: &Game, p: PlayerId, data: &VoteTriggeredData) -> Vec<Play
         }
         for t in g.civ_team_ids() {
             if g.team_is_alive(t) && g.is_team_vote_eligible(t, source) && (vassal_of.is_none() || vassal_of == Some(t) || t == team) {
-                out.push(PlayerVote(t.0 as i32));
+                out.push(PlayerVote::for_team(t));
                 eligible = true;
             }
         }

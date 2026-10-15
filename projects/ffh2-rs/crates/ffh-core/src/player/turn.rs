@@ -1192,12 +1192,13 @@ fn city_ai_assign_working_plots(g: &mut Game, c: CityId) {
 /// C++ `CvInitCore::reassignPlayerAdvanced(eOldID, eNewID, iTimer)` (FfH; `doTurn` uses it when
 /// a temporary player's timer runs out, Python `spellImpersonateLeader` to start one): moves
 /// the controlling slot data of `old` to `new` and back (handicap, slot status, human flag),
-/// gives `new` the options of `old` (`old`'s are cleared), refreshes both players' team and
-/// human flags, and with a timer makes `new` a temporary player of `old`.
+/// gives `new` the options of `old` (`old`'s are cleared), moves the active player with the
+/// slot (CvInitCore.cpp:474-482), refreshes both players' team and human flags, and with a timer
+/// makes `new` a temporary player of `old`.
 ///
 /// Network/UI slot data (e-mail, SMTP host, slot claim, playable/minor flags, net id, ready,
-/// checksums) and the active player are not ported. `PlayerSetup::human` is swapped with the
-/// slot status because C++ derives `getHuman` from the slot status.
+/// checksums) is not ported. `PlayerSetup::human` is swapped with the slot status because C++
+/// derives `getHuman` from the slot status.
 pub(crate) fn reassign_player_advanced(g: &mut Game, old: PlayerId, new: PlayerId, timer: i32) {
     // checkBounds(eOldID, 0, MAX_CIV_PLAYERS) && checkBounds(eNewID, 0, MAX_CIV_PLAYERS)
     let num_civ_players = g.num_civ_players();
@@ -1229,7 +1230,16 @@ pub(crate) fn reassign_player_advanced(g: &mut Game, old: PlayerId, new: PlayerI
         g.players[old].options[o] = false;
     }
 
-    // Active player switch: UI.
+    // We may have a new active player id... The active player gates rules here (QUICK_MOVES
+    // mission timers, the research popup call, `getDeclareWarMove` visibility), so it moves with
+    // the slot. `CvGame::setActivePlayer`'s other work is UI (fog and symbol updates, selection)
+    // or hot seat / PBEM only (passwords, net ids, `sendPlayerOptions`); `CvInitCore`'s slot
+    // claim is not ported.
+    if g.active_player == Some(old) {
+        g.active_player = Some(new);
+    } else if g.active_player == Some(new) {
+        g.active_player = Some(old);
+    }
 
     g.player_update_team_type(old);
     g.player_update_team_type(new);
@@ -1605,10 +1615,13 @@ mod tests {
         g.player_update_human(old);
         let option = PlayerOptionType(2);
         g.players[old].options[option] = true;
+        g.active_player = Some(old);
         assert!(g.players[old].human && !g.players[new].human);
 
         reassign_player_advanced(&mut g, old, new, 6);
         assert!(!g.players[old].human && g.players[new].human);
+        // The active player moves with the slot (CvInitCore.cpp:474-482).
+        assert_eq!(g.active_player, Some(new));
         assert_eq!(g.setup.players[1].slot_status, SlotStatus::Taken);
         assert_eq!(g.setup.players[0].slot_status, SlotStatus::Computer);
         assert_eq!(g.player_get_handicap_type(new), Some(HandicapType(1)));
@@ -1619,9 +1632,20 @@ mod tests {
         // timer -1: no temporary player; the barbarian slot is out of bounds (no-op)
         reassign_player_advanced(&mut g, new, old, -1);
         assert!(g.players[old].human && !g.players[new].human);
+        assert_eq!(g.active_player, Some(old));
         assert_eq!(g.players[old].temp_player_timer, 0);
         let barbarian = g.barbarian_player();
         reassign_player_advanced(&mut g, old, barbarian, -1);
         assert!(g.players[old].human);
+        assert_eq!(g.active_player, Some(old));
+
+        // The active player is the target slot: it moves to the old one (the `else if`).
+        reassign_player_advanced(&mut g, new, old, -1);
+        assert!(!g.players[old].human && g.players[new].human);
+        assert_eq!(g.active_player, Some(new));
+        // Neither slot is active (headless: no active player): nothing moves.
+        g.active_player = None;
+        reassign_player_advanced(&mut g, new, old, -1);
+        assert_eq!(g.active_player, None);
     }
 }

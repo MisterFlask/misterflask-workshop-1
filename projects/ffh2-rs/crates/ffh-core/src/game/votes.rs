@@ -71,11 +71,6 @@ fn flta_insert_pos(ids: impl Iterator<Item = VoteId>, id: VoteId) -> usize {
     ids.take_while(|&other| flta_slot(other) < flta_slot(id)).count()
 }
 
-/// C++ `(PlayerVoteTypes)eTeam`: a vote for a team (team votes).
-fn team_vote(team: TeamId) -> PlayerVote {
-    PlayerVote(team.0 as i32)
-}
-
 /// C++ `GET_PLAYER(p).getCity(iID)`: the city if it still exists and belongs to `p`.
 fn player_city(g: &Game, p: PlayerId, city: Option<CityId>) -> Option<CityId> {
     city.filter(|&c| g.cities.get(c).is_some_and(|ct| ct.owner == p))
@@ -179,7 +174,7 @@ impl Game {
         if self.is_team_vote(data.vote_option.vote) {
             for t in self.civ_team_ids() {
                 if self.team_is_alive(t) {
-                    let count = self.count_vote(data, team_vote(t));
+                    let count = self.count_vote(data, PlayerVote::for_team(t));
 
                     if count > best_count {
                         best_count = count;
@@ -225,7 +220,7 @@ impl Game {
                 if d.votes[vote].vote_source_type[vote_source] {
                     if d.votes[vote].secretary_general {
                         if self.is_vote_passed(vote) {
-                            return Some(TeamId(self.vote_outcome[vote].0 as u8));
+                            return self.vote_outcome[vote].team();
                         }
                     }
                 }
@@ -553,7 +548,8 @@ impl Game {
         let player_vote = self.vote_outcome[vote];
 
         if self.is_team_vote(vote) {
-            player_vote.0 >= 0 && (player_vote.0 as usize) < self.num_civ_teams()
+            // C++ `ePlayerVote >= 0 && ePlayerVote < MAX_CIV_TEAMS`
+            player_vote.team().is_some_and(|t| t.idx() < self.num_civ_teams())
         } else {
             player_vote == PlayerVote::PLAYER_VOTE_YES
         }
@@ -621,11 +617,11 @@ impl Game {
                 }
             }
         } else if self.is_team_vote(vote_option.vote) {
-            if team_vote(owner_team) != player_vote {
+            if PlayerVote::for_team(owner_team) != player_vote {
                 for p in self.civ_player_ids() {
                     if self.players[p].alive {
                         let team = self.players[p].team;
-                        if team != owner_team && team_vote(team) == player_vote {
+                        if team != owner_team && PlayerVote::for_team(team) == player_vote {
                             self.players[p].ai_memory_count[owner][MemoryType::MEMORY_VOTED_FOR_US] += 1;
                         }
                     }
@@ -1010,14 +1006,14 @@ impl Game {
                     let team = self.find_highest_vote_team(&data);
 
                     if let Some(team) = team {
-                        passed = self.count_vote(&data, team_vote(team)) >= self.vote_required(vote, vote_source);
+                        passed = self.count_vote(&data, PlayerVote::for_team(team)) >= self.vote_required(vote, vote_source);
                     }
 
                     // C++ builds the result text (TXT_KEY_POPUP_DIPLOMATIC_VOTING_VICTORY, the
                     // members' votes and abstentions) for the human members' popups: UI.
 
                     match team {
-                        Some(team) if passed => self.set_vote_outcome(&data, team_vote(team)),
+                        Some(team) if passed => self.set_vote_outcome(&data, PlayerVote::for_team(team)),
                         _ => self.set_vote_outcome(&data, PlayerVote::PLAYER_VOTE_ABSTAIN),
                     }
                 } else {
@@ -1271,11 +1267,11 @@ mod tests {
 
         let data = triggered(8192, over, sg);
         g.votes_triggered.push(data.clone());
-        g.set_player_vote(PlayerId(0), data.id, PlayerVote(1));
+        g.set_player_vote(PlayerId(0), data.id, PlayerVote::for_team(TeamId(1)));
         assert_eq!(g.secretary_general(over), None);
 
         // team 1 elected: a team vote passes with a civ team as outcome; votes are cleared
-        g.set_vote_outcome(&data, PlayerVote(1));
+        g.set_vote_outcome(&data, PlayerVote::for_team(TeamId(1)));
         assert!(g.is_vote_passed(sg));
         assert_eq!(g.secretary_general(over), Some(TeamId(1)));
         assert_eq!(g.secretary_general(under), None);
@@ -1291,7 +1287,7 @@ mod tests {
         // abstention or the barbarian team elect nobody
         g.set_vote_outcome(&data, PlayerVote::PLAYER_VOTE_ABSTAIN);
         assert!(!g.is_vote_passed(sg));
-        g.set_vote_outcome(&data, PlayerVote(g.barbarian_team().0 as i32));
+        g.set_vote_outcome(&data, PlayerVote::for_team(g.barbarian_team()));
         assert!(!g.is_vote_passed(sg));
     }
 
@@ -1334,11 +1330,11 @@ mod tests {
         // team vote: voting for another team is remembered by that team's players
         let sg = triggered(8192, over, d.t::<VoteType>("VOTE_SECRETARY_GENERAL"));
         g.votes_triggered.push(sg.clone());
-        g.cast_vote(p0, sg.id, PlayerVote(1));
-        assert_eq!(g.player_vote(p0, sg.id), PlayerVote(1));
+        g.cast_vote(p0, sg.id, PlayerVote::for_team(TeamId(1)));
+        assert_eq!(g.player_vote(p0, sg.id), PlayerVote::for_team(TeamId(1)));
         assert_eq!(g.players[p1].ai_memory_count[p0][MemoryType::MEMORY_VOTED_FOR_US], 1);
         assert_eq!(g.players[p2].ai_memory_count[p0][MemoryType::MEMORY_VOTED_FOR_US], 0);
-        g.cast_vote(p1, sg.id, PlayerVote(1));
+        g.cast_vote(p1, sg.id, PlayerVote::for_team(TeamId(1)));
         assert_eq!(g.players[p1].ai_memory_count[p1][MemoryType::MEMORY_VOTED_FOR_US], 0);
 
         // assign city: the city's owner remembers yes (against us) and no (for us) votes
@@ -1361,5 +1357,39 @@ mod tests {
         g.votes_triggered.clear();
         g.do_vote_results();
         assert!(g.votes_triggered.is_empty());
+    }
+
+    /// A non-negative `PlayerVoteTypes` is a team (C++ `(TeamTypes)ePlayerVote`), not a player:
+    /// with player and team ids apart, a team vote reaches the players of that team.
+    #[test]
+    fn team_votes_name_teams_not_players() {
+        let mut g = game_with_players();
+        let d = g.d;
+        let over = d.t::<VoteSourceType>("DIPLOVOTE_OVERCOUNCIL");
+        let (p0, p1, p2) = (PlayerId(0), PlayerId(1), PlayerId(2));
+        // Player 1 plays for team 2 and player 2 for team 1.
+        g.players[p1].team = TeamId(2);
+        g.players[p2].team = TeamId(1);
+
+        assert_eq!(PlayerVote::for_team(TeamId(1)).team(), Some(TeamId(1)));
+        for sentinel in [PlayerVote::NO_PLAYER_VOTE, PlayerVote::PLAYER_VOTE_YES, PlayerVote::PLAYER_VOTE_NO, PlayerVote::PLAYER_VOTE_ABSTAIN, PlayerVote::PLAYER_VOTE_NEVER, PlayerVote::NO_PLAYER_VOTE_CHECKED] {
+            assert_eq!(sentinel.team(), None);
+        }
+
+        let sg = triggered(8192, over, d.t::<VoteType>("VOTE_SECRETARY_GENERAL"));
+        g.votes_triggered.push(sg.clone());
+        g.cast_vote(p0, sg.id, PlayerVote::for_team(TeamId(1)));
+        // Team 1's player (2) remembers the vote, player 1 does not.
+        assert_eq!(g.players[p2].ai_memory_count[p0][MemoryType::MEMORY_VOTED_FOR_US], 1);
+        assert_eq!(g.players[p1].ai_memory_count[p0][MemoryType::MEMORY_VOTED_FOR_US], 0);
+        // A vote for one's own team is not remembered.
+        g.cast_vote(p2, sg.id, PlayerVote::for_team(TeamId(1)));
+        assert_eq!(g.players[p2].ai_memory_count[p2][MemoryType::MEMORY_VOTED_FOR_US], 0);
+
+        // The elected secretary general is the team of the outcome.
+        g.set_vote_outcome(&sg, PlayerVote::for_team(TeamId(2)));
+        assert!(g.is_vote_passed(sg.vote_option.vote));
+        assert_eq!(g.secretary_general(over), Some(TeamId(2)));
+        assert_eq!(g.players[p1].team, TeamId(2));
     }
 }

@@ -456,9 +456,8 @@ impl Session {
     /// Follows the human to another slot. FfH moves the human player with
     /// `CvInitCore::reassignPlayerAdvanced` (the Impersonate Leader spell and the end of its
     /// timer, the "switch civilizations" event, the High to Low challenge): the slot's human flag,
-    /// options and controller move (ffh-core `reassign_player_advanced`), and C++ also moves the
-    /// active player (CvInitCore.cpp:474-482), which ffh-core does not: the session does it here,
-    /// after the rules call that moved the human (a P7 note).
+    /// options, controller and the active player move (ffh-core `reassign_player_advanced`,
+    /// CvInitCore.cpp:474-482); the session moves its own `human`, fog and report snapshot.
     ///
     /// The log entries since the last drain are split at the move in C++: those before go to
     /// the old slot's player, those after to the new one, and the old slot's later messages
@@ -479,10 +478,8 @@ impl Session {
                 self.g.log.entries = update;
             }
         }
-        let old = std::mem::replace(&mut self.human, new);
-        if self.g.active_player == Some(old) {
-            self.g.active_player = Some(new);
-        }
+        self.human = new;
+        debug_assert_eq!(self.g.active_player, Some(new), "ffh-core moves the active player with the human");
         self.fog = LogFog::new(&self.g, new);
         // The report's snapshot was of the old slot.
         self.snapshot = None;

@@ -2750,6 +2750,76 @@ mod tests {
         assert!(checked > 0);
     }
 
+    /// A human takes Syliven's Perfect Lyre out of its city and drops it again, twice: each drop
+    /// (`CreateBuildingType`) counts the world wonder as created again, past its
+    /// `iMaxGlobalInstances` of 1, as in C++ (the take spell's Python does not lower the count).
+    /// Production checks of the class then must not trip the C++ "created <= max" assertion,
+    /// which the checked build did (ffh-play soak; docs/PLAY_DESIGN.md P2).
+    #[test]
+    fn equipment_wonder_drop_counts_it_created_again() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, crate::setup::GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 5));
+        g.autorun = true;
+        g.game_init();
+        let (p, other) = (PlayerId(0), PlayerId(1));
+        g.setup.players[0].slot_status = crate::setup::SlotStatus::Taken;
+        g.setup.players[0].human = true;
+        g.player_update_human(p);
+
+        let start = |g: &Game, p: PlayerId| {
+            let u = g.players[p].units[0];
+            (g.units[u].x, g.units[u].y)
+        };
+        let (x, y) = start(&g, p);
+        let city = g.player_init_city(p, x, y, true, true);
+        let (ox, oy) = start(&g, other);
+        let other_city = g.player_init_city(other, ox, oy, true, true);
+        let caster = g.player_init_unit(p, d.t::<UnitType>("UNIT_WARRIOR"), x, y, None, SOUTH);
+
+        let lyre = d.t::<BuildingType>("BUILDING_SYLIVENS_PERFECT_LYRE");
+        let class = d.buildings[lyre].building_class_type.unwrap();
+        assert_eq!(d.building_classes[class].max_global_instances, 1);
+        let take = d.t::<SpellType>("SPELL_TAKE_SYLIVENS_PERFECT_LYRE_BUILDING");
+        let drop = d.t::<SpellType>("SPELL_DROP_SYLIVENS_PERFECT_LYRE");
+        let carried = d.t::<PromotionType>("PROMOTION_SYLIVENS_PERFECT_LYRE");
+
+        // The city completes the wonder.
+        g.city_set_num_real_building(city, lyre, 1);
+        assert_eq!(g.building_class_created_count[class], 1);
+        assert!(g.is_building_class_maxed_out(class, 0));
+
+        for created in 2..=3 {
+            g.units[caster].has_casted = false;
+            assert!(g.unit_can_cast(caster, take, false));
+            g.unit_cast(caster, take);
+            assert!(g.units[caster].has_promotion[carried]);
+            assert_eq!(g.cities[city].num_real_building[lyre], 0);
+            // Taking it does not free the class.
+            assert_eq!(g.building_class_created_count[class], created - 1);
+            assert!(!g.city_can_construct(other_city, lyre, false, false, false));
+
+            g.units[caster].has_casted = false;
+            assert!(g.unit_can_cast(caster, drop, false));
+            g.unit_cast(caster, drop);
+            assert!(!g.units[caster].has_promotion[carried]);
+            assert_eq!(g.cities[city].num_real_building[lyre], 1);
+            assert_eq!(g.building_class_created_count[class], created);
+        }
+
+        // C++ quirk: created 3 times against a maximum of 1. The class stays maxed out, and
+        // the production checks run without the C++ assertion.
+        assert!(g.is_building_class_maxed_out(class, 0));
+        assert!(!g.city_can_construct(city, lyre, false, false, false));
+        assert!(!g.city_can_construct(other_city, lyre, false, false, false));
+
+        // The take spell has no bAllowAI: an AI player cannot cast it.
+        g.units[caster].has_casted = false;
+        g.setup.players[0].slot_status = crate::setup::SlotStatus::Computer;
+        g.setup.players[0].human = false;
+        g.player_update_human(p);
+        assert!(!g.unit_can_cast(caster, take, false));
+    }
+
     #[test]
     fn python_negative_list_index() {
         assert_eq!(py_list_index(-1, 3), 2);
