@@ -234,9 +234,9 @@ function centerOnStart() {
   const m = me();
   const cap = [...S.cities.values()].find((c) => c.owner === m?.player && c.capital);
   const u = S.view?.units.find((x) => x.owner === m?.player);
-  if (cap) mapView.centerOn(cap.x, cap.y);
-  else if (u) mapView.centerOn(u.x, u.y);
-  else if (S.map) mapView.centerOn(S.map.w / 2, S.map.h / 2);
+  if (cap) mapView.centerOn(cap.x, cap.y, { animate: false });
+  else if (u) mapView.centerOn(u.x, u.y, { animate: false });
+  else if (S.map) mapView.centerOn(S.map.w / 2, S.map.h / 2, { animate: false });
 }
 
 /** The player has control: at a new turn, the turn report and the first ready group; then the

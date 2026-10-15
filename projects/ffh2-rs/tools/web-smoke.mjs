@@ -261,9 +261,12 @@ async function click(sel, button = "left") {
   await b.mouse(r.x, r.y, button);
 }
 
-/** The page position of plot (x, y)'s centre. */
+/** The page position of plot (x, y)'s centre. `reveal` may glide the camera there (map.js
+ *  `glideTo`), so wait for it to settle before reading the screen position, as a player would. */
 async function plotPos(x, y) {
-  return b.eval(`(() => { const m = window.ffh.mapView; m.reveal(${x}, ${y}); const p = m.screenOf(${x}, ${y}); const r = document.querySelector("canvas.map").getBoundingClientRect(); return { x: p.x + r.left, y: p.y + r.top }; })()`);
+  await b.eval(`window.ffh.mapView.reveal(${x}, ${y})`);
+  await until2(`!window.ffh.mapView.anim`, "the camera to settle");
+  return b.eval(`(() => { const m = window.ffh.mapView; const p = m.screenOf(${x}, ${y}); const r = document.querySelector("canvas.map").getBoundingClientRect(); return { x: p.x + r.left, y: p.y + r.top }; })()`);
 }
 
 async function waitHuman(what = "the player's turn", ms = 60000) {

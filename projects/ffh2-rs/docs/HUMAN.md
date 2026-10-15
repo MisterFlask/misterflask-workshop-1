@@ -88,6 +88,14 @@ improvements, units and cities) is kept for debugging: open the page as
 `http://127.0.0.1:8642/?renderer=flat`, or untick Tools → Options → "Draw the map with the pixel
 art" (this browser remembers it).
 
+**Motion.** When the view jumps to a plot it is not already near — centring on the selection
+(`C`), the next waiting group (`W`, `Enter`), a city (`Home` / `End`, `F10`, the cities list), a
+message's "Show on the map" — the camera glides there across the page the short way round a
+wrapping map, rather than cutting. Dragging, zooming and the minimap stay immediate (you are
+moving the view yourself), and a new game opens on its start with no glide. Dialogs and toasts
+ease in. All of this is off under the system's "reduce motion" setting (`prefers-reduced-motion`),
+which jumps and shows the dialogs at once.
+
 **Mouse and keys** (also under `?`). The keys are Civ4's: the orders' keys come from the game's
 XML (each button shows its key), and the global keys are Civ4's controls
 (`CIV4ControlInfos.xml`, what `CvGame::doControl` does with them), except the few marked
