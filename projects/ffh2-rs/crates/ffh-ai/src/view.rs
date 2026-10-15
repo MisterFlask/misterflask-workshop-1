@@ -37,6 +37,8 @@ pub struct View {
     pub garrison: BTreeMap<CityId, i32>,
     /// Reusable flood buffers.
     pub flood: Flood,
+    /// Secure-zone map for workers (barbarian-security; empty for the barbarians).
+    pub security: crate::security::Security,
 }
 
 /// Rough attack power of a unit: strength x health x experience. 0 for non-combatants.
@@ -105,9 +107,11 @@ impl View {
             campaign: Default::default(),
             garrison: BTreeMap::new(),
             flood: Flood::default(),
+            security: Default::default(),
         };
         v.build_danger(g);
         if !v.barbarian {
+            v.security = crate::security::Security::new(g, &v); // barbarian-security
             v.targets = crate::military::find_targets(g, &v);
             v.roads = crate::workers::road_plan(g, p);
             for &c in &g.players[p].cities {

@@ -216,9 +216,10 @@ fn build_value(g: &Game, v: &View, p: PlayerId, plot: PlotIdx, build: BuildType)
     }
 }
 
-/// Is a worker on this plot in danger (enemy units can reach it next turn)?
+/// Is a worker on this plot in danger (enemy units can reach it next turn and no fighter of
+/// ours there holds it)?
 pub fn worker_in_danger(g: &Game, v: &View, plot: PlotIdx) -> bool {
-    v.danger_at(plot) > 0 && g.map.plots[plot].plot_city.is_none()
+    crate::security::worker_threatened(g, v, plot) // barbarian-security
 }
 
 pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
@@ -244,10 +245,14 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
     let reach = v.flood.run(g, u, 8, false);
     let builds: Vec<BuildType> = g.d.builds.keys().filter(|&b| g.d.units[ut].builds[b]).collect();
     let mut best: Option<(PlotIdx, BuildType, i64)> = None;
+    let tonight = if sea { None } else { crate::security::tonight(g, v, u) }; // barbarian-security
     for r in &reach {
         let q = r.plot;
         let pl = &g.map.plots[q];
         if pl.owner != Some(p) || v.danger_at(q) > 0 || v.is_claimed(q) {
+            continue;
+        }
+        if !sea && !crate::security::job_ok(g, v, q, tonight.as_deref()) { // barbarian-security
             continue;
         }
         if sea != g.plot_is_water(q) {

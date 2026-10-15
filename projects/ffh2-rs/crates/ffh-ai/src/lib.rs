@@ -31,6 +31,7 @@ pub mod naval;
 pub mod production;
 pub mod reach;
 pub mod research;
+pub mod security;
 pub mod sites;
 pub mod units;
 pub mod values;
