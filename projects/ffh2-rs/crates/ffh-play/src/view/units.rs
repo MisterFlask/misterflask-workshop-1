@@ -281,10 +281,13 @@ pub fn group(v: &Viewer, units: &[UnitId]) -> Result<Json, QueryErr> {
     let g = v.g;
     let plot = selection::plot(g, units);
     let (x, y) = g.map.xy(plot);
+    let mirrored = selection::mirrors_group(g, units);
     Ok(crate::jobj! {
         "units" => Json::Arr(units.iter().map(|&u| unit_details(v, u)).collect()),
         "plot" => crate::jarr![x, y],
-        "group" => selection::mirrors_group(g, units),
+        "group" => mirrored,
+        // The group waits for orders (`pending.ready_groups`).
+        "ready" => mirrored.is_some_and(|grp| g.group_ready_to_move(grp, true) && !crate::decision::is_ai_group(g, grp)),
         "busy" => selection::is_busy(g, units),
         "actions" => Json::Arr(actions(v, units)),
     })

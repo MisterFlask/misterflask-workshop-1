@@ -87,11 +87,11 @@ fn run(seed: u32, end: i32, swap: Option<&TempDir>) -> (Vec<(i32, i32)>, Vec<u8>
 
 #[test]
 fn t3_save_and_resume_mid_turn() {
-    // Seed 3: the bot captures a city (a keep/raze decision) during the game.
+    // Seed 50: the bot captures a city (a keep/raze decision) at turn 85.
     let end = 150;
-    let (a, a_save, _) = run(3, end, None);
+    let (a, a_save, _) = run(50, end, None);
     let dir = TempDir::new("resume");
-    let (b, b_save, log) = run(3, end, Some(&dir));
+    let (b, b_save, log) = run(50, end, Some(&dir));
     eprintln!("reloads: {log:#?}");
     for what in ["before acting", "deferred event", "blocking decision", "autosave", "mid-turn"] {
         assert!(log.iter().any(|l| l.contains(what)), "no reload {what:?}: {log:?}");

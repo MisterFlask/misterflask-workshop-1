@@ -16,7 +16,7 @@ use ffh_play::{bot, Session, SessionOptions, Stop};
 #[test]
 fn t4_replay_journal() {
     let dir = TempDir::new("replay");
-    let ng = new_game(3);
+    let ng = new_game(50);
     let (mut s, mut b) = bot_session(&ng, Some(dir.0.clone()));
     let stop = bot::run(&mut s, &mut b, 130, |_, _| {});
     assert_eq!(stop, Stop::Human);

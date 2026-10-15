@@ -109,26 +109,11 @@ fn cmd_bot(args: &[String]) {
                 s.messages().len()
             );
             if verbose {
-                s.read(|g| {
-                    for &c in &pl.cities {
-                        let city = &g.cities[c];
-                        let head = city.order_queue.first().map_or("-".to_string(), |o| format!("{:?} {}", o.order_type, o.data1));
-                        let (prod, need) = if city.order_queue.is_empty() { (0, 0) } else { (g.city_production(c), g.city_production_needed(c)) };
-                        println!("    city {} size {} {head} {prod}/{need} (+{})", city.name, city.population, g.city_current_production_difference(c, false, true));
+                // What an agent reads: the `text` query.
+                if let Ok(t) = s.query(&ffh_play::Query::Text) {
+                    for line in t.get("text").and_then(Json::as_str).unwrap_or_default().lines() {
+                        println!("    {line}");
                     }
-                    for &u in &pl.units {
-                        let unit = &g.units[u];
-                        println!("    unit {} {} at ({}, {}) group {:?}", u.0, g.d.type_name(unit.unit_type), unit.x, unit.y, unit.group);
-                    }
-                });
-                for e in s.pending().events {
-                    println!("    event {}: {}", e.triggered.0, e.text);
-                    for o in &e.options {
-                        println!("      {} {}: {}", if o.enabled { "+" } else { "-" }, names::name(s.g.d, o.event), o.effects.join(", "));
-                    }
-                }
-                for m in s.messages().iter().rev().take(3) {
-                    println!("    msg t{}: {}", m.turn, m.text);
                 }
             }
         }

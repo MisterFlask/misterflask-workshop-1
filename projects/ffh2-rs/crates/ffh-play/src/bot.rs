@@ -1,13 +1,22 @@
-//! A scripted human (design §8 T1): plays the human slot only through `Session` commands,
-//! reading the game through `Session::read` (under a `QueryGuard`), with a private seeded RNG.
-//! It is a test driver, not an AI: it exercises the command paths and the decisions.
+//! A scripted human (design §8 T1): plays the human slot through the protocol only, as a client
+//! would: it reads the game with [`Query`]s (the JSON replies of `view`, `map`, `pending`,
+//! `group`, `combat`, `city`, `techs`, `civics`, `players`, `trade`) and acts with
+//! [`Command`]s, taking the commands of the `group` query's actions as they are. Static data
+//! (unit classes, terrain flags) comes from the data tables, as a client reads `data`. It has a
+//! private seeded RNG. It is a test driver, not an AI: it exercises the command paths, the
+//! decisions and the views.
 //!
-//! Policy: research the cheapest tech; production rotation worker, warrior, settler, building;
-//! settlers found cities (or walk to a site); workers take the first build; military units
-//! attack adjacent enemies at odds of 60% or more, fortify in cities or explore; sometimes cast
-//! a spell; take promotions; revolt when a civic unlocks; declare war on a met AI around turn
-//! 80; answer popups and decisions with a seeded mix (first option, advisor, random); end the
-//! turn, sometimes with `force`.
+//! Policy: research the cheapest tech; production rotation warrior, settler, worker, building
+//! (a city with fewer than two defenders first trains its strongest land unit); settlers found
+//! cities (or walk to a site); workers take the first build; military units attack adjacent
+//! enemies at odds of 60% or more, fortify in cities or explore; sometimes cast a spell; take
+//! promotions; revolt when a civic unlocks; declare war on a met AI around turn 80 and propose
+//! peace from turn 120; answer popups and decisions with a seeded mix (first option, advisor,
+//! random); end the turn, sometimes with `force`.
+//!
+//! With [`Bot::noisy`] it is the noisy client of T10: after every command, at every control
+//! point and inside every blocking decision ([`NoisyAnswerer`]) it issues every allow-listed
+//! query ([`noise`]); the game must not notice.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
@@ -15,11 +24,14 @@ use std::sync::{Arc, Mutex};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_core::rng::Rng;
+use ffh_core::structs::TradeData;
 use ffh_data::*;
 
 use crate::command::{CmdOk, Command, Confirm};
-use crate::decision::{Decision, Pending};
-use crate::human::{Answer, Answerer, FnAnswerer};
+use crate::decision::Decision;
+use crate::human::{Answer, Answerer, DecisionReader, FnAnswerer};
+use crate::json::Json;
+use crate::query::{Layer, Query, QueryErr};
 use crate::session::{Phase, Session, Stop};
 
 /// What the bot did (test assertions).
@@ -38,8 +50,211 @@ pub struct BotStats {
     pub promotions: usize,
     pub revolutions: usize,
     pub wars: usize,
+    pub peace_proposals: usize,
+    pub peace_made: usize,
     pub end_turns: usize,
     pub forced_end_turns: usize,
+    /// Queries issued (the noisy client).
+    pub queries: usize,
+}
+
+// ---- JSON access ------------------------------------------------------------------------------
+
+fn int(j: &Json, k: &str) -> i64 {
+    j.get(k).and_then(Json::as_i64).unwrap_or(-1)
+}
+
+fn arr<'a>(j: &'a Json, k: &str) -> &'a [Json] {
+    j.get(k).and_then(Json::as_arr).unwrap_or(&[])
+}
+
+fn flag(j: &Json, k: &str) -> bool {
+    j.get(k).and_then(Json::as_bool).unwrap_or(false)
+}
+
+fn ints(j: &Json, k: &str) -> Vec<i64> {
+    arr(j, k).iter().filter_map(Json::as_i64).collect()
+}
+
+fn unit_ids(j: &Json, k: &str) -> Vec<UnitId> {
+    ints(j, k).into_iter().map(|u| UnitId(u as u32)).collect()
+}
+
+/// A unit the bot sees (`view.units`).
+struct SeenUnit {
+    id: UnitId,
+    owner: i64,
+    unit_type: UnitType,
+    x: i32,
+    y: i32,
+    group: i64,
+}
+
+/// What the bot knows at a moment: the `view` and the `map` of the human.
+struct Seen {
+    me: i64,
+    w: i32,
+    h: i32,
+    wrap_x: bool,
+    wrap_y: bool,
+    vis: Vec<i64>,
+    plot_type: Vec<i64>,
+    terrain: Vec<i64>,
+    feature: Vec<i64>,
+    bonus: Vec<i64>,
+    improvement: Vec<i64>,
+    owner: Vec<i64>,
+    city: Vec<i64>,
+    /// Our cities: (id, x, y).
+    cities: Vec<(CityId, i32, i32)>,
+    /// Revealed cities of players we are at war with: (x, y).
+    enemy_cities: Vec<(i32, i32)>,
+    units: Vec<SeenUnit>,
+    /// Players at war with us.
+    war: BTreeSet<i64>,
+    /// Our capital.
+    capital: Option<(i32, i32)>,
+    /// The groups waiting for orders (`pending.ready_groups`).
+    ready: BTreeSet<i64>,
+}
+
+impl Seen {
+    fn read(s: &Session) -> Seen {
+        let view = s.query(&Query::View).expect("view");
+        let map = s.query(&Query::Map { since: None }).expect("map");
+        let me = int(view.get("me").unwrap(), "player");
+        let war: BTreeSet<i64> = arr(&view, "players").iter().filter(|p| flag(p, "war")).map(|p| int(p, "id")).collect();
+        let mut cities = Vec::new();
+        let mut capital = None;
+        let mut enemy_cities = Vec::new();
+        for c in arr(&view, "cities") {
+            let (x, y) = (int(c, "x") as i32, int(c, "y") as i32);
+            if int(c, "owner") == me {
+                cities.push((CityId(int(c, "id") as u32), x, y));
+                if flag(c, "capital") {
+                    capital = Some((x, y));
+                }
+            } else if war.contains(&int(c, "owner")) {
+                enemy_cities.push((x, y));
+            }
+        }
+        let units = arr(&view, "units")
+            .iter()
+            .map(|u| SeenUnit {
+                id: UnitId(int(u, "id") as u32),
+                owner: int(u, "owner"),
+                unit_type: UnitType::from_usize(int(u, "type") as usize),
+                x: int(u, "x") as i32,
+                y: int(u, "y") as i32,
+                group: int(u, "group"),
+            })
+            .collect();
+        Seen {
+            me,
+            w: int(&map, "w") as i32,
+            h: int(&map, "h") as i32,
+            wrap_x: flag(&map, "wrap_x"),
+            wrap_y: flag(&map, "wrap_y"),
+            vis: ints(&map, "vis"),
+            plot_type: ints(&map, "plot_type"),
+            terrain: ints(&map, "terrain"),
+            feature: ints(&map, "feature"),
+            bonus: ints(&map, "bonus"),
+            improvement: ints(&map, "improvement"),
+            owner: ints(&map, "owner"),
+            city: ints(&map, "city"),
+            cities,
+            enemy_cities,
+            units,
+            war,
+            capital,
+            ready: BTreeSet::new(),
+        }
+    }
+
+    /// The plot index of `(x, y)`, wrapping as the map does.
+    fn at(&self, x: i32, y: i32) -> Option<usize> {
+        let x = if self.wrap_x { x.rem_euclid(self.w) } else { x };
+        let y = if self.wrap_y { y.rem_euclid(self.h) } else { y };
+        ((0..self.w).contains(&x) && (0..self.h).contains(&y)).then(|| (y * self.w + x) as usize)
+    }
+
+    fn xy(&self, i: usize) -> (i32, i32) {
+        (i as i32 % self.w, i as i32 / self.w)
+    }
+
+    /// The plots within `r` of `(x, y)` (a square, without the centre), rows first.
+    fn near(&self, x: i32, y: i32, r: i32) -> Vec<usize> {
+        let mut v = Vec::new();
+        let centre = self.at(x, y);
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if let Some(i) = self.at(x + dx, y + dy) {
+                    if Some(i) != centre && !v.contains(&i) {
+                        v.push(i);
+                    }
+                }
+            }
+        }
+        v
+    }
+
+    /// C++ `plotDistance` (wrap-aware).
+    fn distance(&self, x1: i32, y1: i32, x2: i32, y2: i32) -> i32 {
+        let d = |a: i32, b: i32, n: i32, wrap: bool| {
+            let d = (a - b).abs();
+            if wrap {
+                d.min(n - d)
+            } else {
+                d
+            }
+        };
+        let (dx, dy) = (d(x1, x2, self.w, self.wrap_x), d(y1, y2, self.h, self.wrap_y));
+        dx.max(dy) + dx.min(dy) / 2
+    }
+
+    fn land(&self, i: usize) -> bool {
+        self.vis[i] > 0 && self.plot_type[i] != PlotType::PLOT_OCEAN.idx() as i64 && self.plot_type[i] != PlotType::PLOT_PEAK.idx() as i64
+    }
+
+    /// A plot that looks like a city site (C++ `canFound` as far as the map shows it): revealed
+    /// land of a foundable terrain, no city-blocking feature, not someone else's, no city within
+    /// `MIN_CITY_RANGE`, no permanent improvement, no mana.
+    fn site(&self, d: &GameData, i: usize) -> bool {
+        if !self.land(i) || (self.owner[i] >= 0 && self.owner[i] != self.me) {
+            return false;
+        }
+        let t = &d.terrains[TerrainType::from_usize(self.terrain[i] as usize)];
+        if !(t.found || t.found_coast || t.found_fresh_water) || t.impassable {
+            return false;
+        }
+        if self.feature[i] >= 0 && d.features[FeatureType::from_usize(self.feature[i] as usize)].no_city {
+            return false;
+        }
+        if self.improvement[i] >= 0 && d.improvements[ImprovementType::from_usize(self.improvement[i] as usize)].permanent {
+            return false;
+        }
+        if self.bonus[i] >= 0 {
+            let class = d.bonuses[BonusType::from_usize(self.bonus[i] as usize)].bonus_class_type.map_or(-1, |c| c.idx() as i32);
+            if class >= 0 && (class == d.defines.bonusclass_mana || class == d.defines.bonusclass_mana_raw) {
+                return false;
+            }
+        }
+        let (x, y) = self.xy(i);
+        let r = d.defines.min_city_range;
+        !(-r..=r).any(|dy| (-r..=r).any(|dx| self.at(x + dx, y + dy).is_some_and(|j| self.city[j] >= 0)))
+    }
+
+    /// Our combat units on plot `(x, y)` outside group `group`.
+    fn guards(&self, d: &GameData, x: i32, y: i32, group: i64) -> usize {
+        self.units.iter().filter(|u| u.owner == self.me && u.x == x && u.y == y && u.group != group && d.units[u.unit_type].combat > 0).count()
+    }
+
+    /// A unit of a player at war with us on plot `i`.
+    fn enemy_on(&self, i: usize) -> bool {
+        let (x, y) = self.xy(i);
+        self.units.iter().any(|u| u.x == x && u.y == y && self.war.contains(&u.owner))
+    }
 }
 
 /// The scripted human.
@@ -50,8 +265,13 @@ pub struct Bot {
     rotation: BTreeMap<CityId, usize>,
     /// Game turn from which the bot declares war on a met AI (once).
     pub war_turn: i32,
+    /// Game turn from which the bot proposes peace to the civilizations at war with it.
+    pub peace_turn: i32,
     /// Civics seen available (a new one triggers a revolution).
-    civics_seen: BTreeSet<CivicType>,
+    civics_seen: BTreeSet<i64>,
+    /// The noisy client (T10): every allow-listed query after each command and at each control
+    /// point.
+    pub noisy: bool,
 }
 
 impl Bot {
@@ -61,7 +281,9 @@ impl Bot {
             stats: BotStats::default(),
             rotation: BTreeMap::new(),
             war_turn: 80,
+            peace_turn: 120,
             civics_seen: BTreeSet::new(),
+            noisy: false,
         }
     }
 
@@ -87,42 +309,57 @@ impl Bot {
         }))
     }
 
-    /// Executes `cmd`; confirmations are accepted for the commands the bot means
-    /// (a war move is declined). Returns whether it was applied.
-    fn exec(&mut self, s: &mut Session, cmd: Command) -> bool {
+    /// [`Bot::answerer`] that first issues every query through the decision's reader.
+    pub fn noisy_answerer(&self) -> (Arc<NoisyAnswerer>, Arc<dyn Answerer>) {
+        let noisy = Arc::new(NoisyAnswerer { inner: self.answerer(), queries: Mutex::new(0), decisions: Mutex::new(0) });
+        (noisy.clone(), noisy)
+    }
+
+    /// Executes `cmd`; confirmations are accepted for the commands the bot means (a war move
+    /// is declined). Returns the reply when applied.
+    fn exec(&mut self, s: &mut Session, cmd: Command) -> Option<Option<bool>> {
         if !matches!(s.phase(), Phase::Human(_)) {
-            return false;
+            return None;
         }
         self.stats.commands += 1;
-        match s.execute(&cmd) {
-            Ok(CmdOk::Applied { .. }) => true,
+        let r = match s.execute(&cmd) {
+            Ok(CmdOk::Applied { accepted, .. }) => Some(accepted),
             Ok(CmdOk::NeedsConfirm(c)) => {
                 self.stats.confirms += 1;
                 let again = match (c, cmd) {
-                    (Confirm::DeclareWar { .. }, Command::Move { units, x, y, append, .. }) => {
-                        Command::Move { units, x, y, append, declare_war: Some(false) }
-                    }
-                    (Confirm::LoadUnit { .. }, _) => return false,
-                    (Confirm::EndTurn { .. }, _) => Command::EndTurn { force: true },
-                    (_, Command::DoCommand { units, command, data1, data2, alt, .. }) => {
-                        Command::DoCommand { units, command, data1, data2, alt, confirmed: true }
-                    }
-                    _ => return false,
+                    (Confirm::DeclareWar { .. }, Command::Move { units, x, y, append, .. }) => Some(Command::Move { units, x, y, append, declare_war: Some(false) }),
+                    (Confirm::LoadUnit { .. }, _) => None,
+                    (Confirm::EndTurn { .. }, _) => Some(Command::EndTurn { force: true }),
+                    (_, Command::DoCommand { units, command, data1, data2, alt, .. }) => Some(Command::DoCommand { units, command, data1, data2, alt, confirmed: true }),
+                    _ => None,
                 };
-                self.stats.commands += 1;
-                match s.execute(&again) {
-                    Ok(CmdOk::Applied { .. }) => true,
-                    _ => {
-                        self.stats.refused += 1;
-                        false
+                match again {
+                    None => None,
+                    Some(again) => {
+                        self.stats.commands += 1;
+                        match s.execute(&again) {
+                            Ok(CmdOk::Applied { accepted, .. }) => Some(accepted),
+                            _ => {
+                                self.stats.refused += 1;
+                                None
+                            }
+                        }
                     }
                 }
             }
             Err(_) => {
                 self.stats.refused += 1;
-                false
+                None
             }
+        };
+        if self.noisy {
+            self.stats.queries += noise(s);
         }
+        r
+    }
+
+    fn ok(&mut self, s: &mut Session, cmd: Command) -> bool {
+        self.exec(s, cmd).is_some()
     }
 
     /// Plays the human's turn from a control point through `end_turn`.
@@ -133,49 +370,60 @@ impl Bot {
     /// [`Bot::play`], calling `mid` halfway (after the popups, production and empire commands,
     /// before the units move): tests save and reload the session there.
     pub fn play_with(&mut self, s: &mut Session, mid: &mut dyn FnMut(&mut Session)) {
-        let h = s.human;
-        let pending = s.pending();
+        if self.noisy {
+            self.stats.queries += noise(s);
+        }
+        let d = s.g.d;
+        let pending = s.query(&Query::Pending).expect("pending");
         self.popups(s, &pending);
         self.cities(s, &pending);
         self.empire(s);
         mid(s);
         // Units: a few passes over the ready groups (an order can leave a group ready).
         for _ in 0..3 {
-            let ready = s.pending().ready_groups;
+            let pending = s.query(&Query::Pending).expect("pending");
+            let ready = ints(&pending, "ready_groups");
             if ready.is_empty() {
                 break;
             }
+            let mut seen = Seen::read(s);
+            seen.ready = ready.iter().copied().collect();
+            // Units a stack order of this pass took along.
+            let mut handled: BTreeSet<UnitId> = BTreeSet::new();
             for grp in ready {
-                let still = s.read(|g| g.groups.contains(grp) && g.group_ready_to_move(grp, true));
-                if !still {
+                // The group's units, if it still waits for orders.
+                let units: Vec<UnitId> = seen.units.iter().filter(|u| u.group == grp).map(|u| u.id).collect();
+                if units.is_empty() || units.iter().any(|u| handled.contains(u)) {
                     continue;
                 }
-                let units = s.read(|g| g.groups[grp].units.clone());
-                let order = self.order(s, &units);
-                if !self.exec(s, order) {
-                    self.exec(s, Command::Mission { units: units.clone(), mission: MissionType::MISSION_SKIP, data1: -1, data2: -1, flags: 0, append: false });
+                let Ok(gq) = s.query(&Query::Group { units: units.clone() }) else { continue };
+                if !flag(&gq, "ready") {
+                    continue;
+                }
+                let order = self.order(s, &seen, grp, &units, &gq, &handled);
+                if let Command::Move { units: stack, .. } = &order {
+                    handled.extend(stack.iter().copied());
+                }
+                if !self.ok(s, order) {
+                    self.ok(s, Command::Mission { units: units.clone(), mission: MissionType::MISSION_SKIP, data1: -1, data2: -1, flags: 0, append: false });
                 }
             }
         }
-        // Promotions.
-        let ready: Vec<(UnitId, Option<PromotionType>)> = s.read(|g| {
-            g.players[h]
-                .units
-                .iter()
-                .filter(|&&u| g.units[u].promotion_ready)
-                .map(|&u| (u, g.d.promotions.keys().find(|&p| g.unit_can_promote(u, Some(p), None))))
-                .collect()
-        });
-        for (u, p) in ready {
-            if let Some(p) = p {
-                if self.exec(s, Command::DoCommand { units: vec![u], command: CommandType::COMMAND_PROMOTION, data1: p.idx() as i32, data2: -1, alt: false, confirmed: false }) {
+        // Promotions: the first promotion the unit can take.
+        let view = s.query(&Query::View).expect("view");
+        let ready: Vec<UnitId> = arr(&view, "units").iter().filter(|u| flag(u, "promo_ready") && int(u, "owner") == int(view.get("me").unwrap(), "player")).map(|u| UnitId(int(u, "id") as u32)).collect();
+        for u in ready {
+            let Ok(gq) = s.query(&Query::Group { units: vec![u] }) else { continue };
+            let cmd = arr(&gq, "actions").iter().find(|a| a.get("kind") == Some(&Json::from("promotion")) && flag(a, "enabled")).and_then(|a| a.get("cmd")).and_then(|c| Command::from_json(d, c).ok());
+            if let Some(cmd) = cmd {
+                if self.ok(s, cmd) {
                     self.stats.promotions += 1;
                 }
             }
         }
         // End the turn.
         let force = self.rand(5) == 0;
-        if self.exec(s, Command::EndTurn { force }) {
+        if self.ok(s, Command::EndTurn { force }) {
             self.stats.end_turns += 1;
             if force {
                 self.stats.forced_end_turns += 1;
@@ -184,31 +432,29 @@ impl Bot {
     }
 
     /// Events, votes, research.
-    fn popups(&mut self, s: &mut Session, p: &Pending) {
-        for e in &p.events {
-            let options: Vec<EventType> = e.options.iter().filter(|o| o.enabled).map(|o| o.event).collect();
+    fn popups(&mut self, s: &mut Session, p: &Json) {
+        for e in arr(p, "events") {
+            let options: Vec<i64> = arr(e, "options").iter().filter(|o| flag(o, "enabled")).map(|o| int(o, "event")).collect();
             if options.is_empty() {
                 continue;
             }
-            let event = options[self.rand(options.len())];
-            if self.exec(s, Command::Event { triggered: e.triggered, event }) {
+            let event = EventType::from_usize(options[self.rand(options.len())] as usize);
+            if self.ok(s, Command::Event { triggered: TriggeredId(int(e, "triggered") as u32), event }) {
                 self.stats.events_answered += 1;
             }
         }
-        for v in &p.votes {
-            let choice = v.choices[self.rand(v.choices.len())];
-            if self.exec(s, Command::Vote { vote: v.vote, choice }) {
+        for v in arr(p, "votes") {
+            let choices = ints(v, "choices");
+            let choice = ffh_core::structs::PlayerVote(choices[self.rand(choices.len())] as i32);
+            if self.ok(s, Command::Vote { vote: VoteId(int(v, "vote") as u32), choice }) {
                 self.stats.votes_answered += 1;
             }
         }
-        if p.research_needed {
-            let h = s.human;
-            let tech = s.read(|g| {
-                let team = g.players[h].team;
-                g.d.techs.keys().filter(|&t| g.player_can_research(h, t, false)).min_by_key(|&t| (g.team_get_research_cost(team, t), t))
-            });
-            if let Some(tech) = tech {
-                if self.exec(s, Command::Research { tech: Some(tech), shift: false }) {
+        if flag(p, "research_needed") {
+            let techs = s.query(&Query::Techs).expect("techs");
+            let tech = arr(&techs, "techs").iter().filter(|t| flag(t, "can_research")).min_by_key(|t| (int(t, "cost"), int(t, "tech"))).map(|t| int(t, "tech"));
+            if let Some(t) = tech {
+                if self.ok(s, Command::Research { tech: Some(TechType::from_usize(t as usize)), shift: false }) {
                     self.stats.research_chosen += 1;
                 }
             }
@@ -216,48 +462,58 @@ impl Bot {
     }
 
     /// Production for idle cities: the rotation warrior, settler, worker, building.
-    fn cities(&mut self, s: &mut Session, p: &Pending) {
-        let h = s.human;
-        for &c in &p.idle_cities {
+    fn cities(&mut self, s: &mut Session, p: &Json) {
+        let d = s.g.d;
+        let class_of = |t: i64| d.units[UnitType::from_usize(t as usize)].unit_class_type;
+        for c in ints(p, "idle_cities") {
+            let c = CityId(c as u32);
+            let Ok(cq) = s.query(&Query::City { city: c }) else { continue };
+            let me = int(&cq, "owner");
             let start = *self.rotation.get(&c).unwrap_or(&0);
-            let choice = s.read(|g| {
-                let d = g.d;
-                let civ = g.player_get_civilization_type(h)?;
-                let unit = |class: &str| d.ty::<UnitClassType>(class).and_then(|uc| d.civ_unit(civ, uc));
-                // A city with fewer than two combat units first trains the strongest it can.
-                let plot = g.city_plot(c);
-                let guards = g.map.plots[plot].units.iter().filter(|&&u| g.units[u].owner == h && d.units[g.units[u].unit_type].combat > 0).count();
-                if guards < 2 {
-                    let best = d
-                        .units
-                        .keys()
-                        .filter(|&u| d.units[u].combat > 0 && d.units[u].domain_type == Some(DomainType::DOMAIN_LAND))
-                        .filter(|&u| g.city_can_train(c, u, false, false, false, false))
-                        .max_by_key(|&u| (d.units[u].combat, std::cmp::Reverse(u)));
-                    if let Some(u) = best {
-                        return Some((start.wrapping_sub(1), OrderType::ORDER_TRAIN, u.idx() as i32));
-                    }
+            let enabled: Vec<(i64, i64)> = arr(&cq, "buildable").iter().filter(|b| flag(b, "enabled")).map(|b| (int(b, "order"), int(b, "type"))).collect();
+            let train = OrderType::ORDER_TRAIN.idx() as i64;
+            let trains = |pred: &dyn Fn(i64) -> bool| enabled.iter().filter(|(o, t)| *o == train && pred(*t)).map(|&(_, t)| t).collect::<Vec<_>>();
+            let guards = arr(&cq, "garrison").iter().filter(|u| int(u, "owner") == me && d.units[UnitType::from_usize(int(u, "type") as usize)].combat > 0).count();
+            let mut choice = None;
+            // A city with fewer than two combat units (the capital three, from turn 30: the
+            // barbarians come) first trains the strongest it can.
+            let wanted = if flag(&cq, "capital") && s.g.game_turn() >= 30 { 3 } else { 2 };
+            if guards < wanted {
+                let best = trains(&|t| {
+                    let u = &d.units[UnitType::from_usize(t as usize)];
+                    u.combat > 0 && u.domain_type == Some(DomainType::DOMAIN_LAND)
+                })
+                .into_iter()
+                .max_by_key(|&t| (d.units[UnitType::from_usize(t as usize)].combat, std::cmp::Reverse(t)));
+                if let Some(t) = best {
+                    choice = Some((start.wrapping_sub(1), OrderType::ORDER_TRAIN, t));
                 }
-                let rotation = [unit("UNITCLASS_WARRIOR"), unit("UNITCLASS_SETTLER"), unit("UNITCLASS_WORKER")];
+            }
+            if choice.is_none() {
+                let rotation = ["UNITCLASS_WARRIOR", "UNITCLASS_SETTLER", "UNITCLASS_WORKER"].map(|n| d.ty::<UnitClassType>(n));
                 for k in 0..4 {
                     let slot = (start + k) % 4;
                     if slot < 3 {
-                        if let Some(u) = rotation[slot] {
-                            if g.city_can_train(c, u, false, false, false, false) {
-                                return Some((slot, OrderType::ORDER_TRAIN, u.idx() as i32));
+                        if let Some(class) = rotation[slot] {
+                            if let Some(&t) = trains(&|t| class_of(t) == Some(class)).first() {
+                                choice = Some((slot, OrderType::ORDER_TRAIN, t));
+                                break;
                             }
                         }
-                    } else if let Some(b) = d.buildings.keys().find(|&b| g.city_can_construct(c, b, false, false, false)) {
-                        return Some((slot, OrderType::ORDER_CONSTRUCT, b.idx() as i32));
+                    } else if let Some(&(_, b)) = enabled.iter().find(|(o, _)| *o == OrderType::ORDER_CONSTRUCT.idx() as i64) {
+                        choice = Some((slot, OrderType::ORDER_CONSTRUCT, b));
+                        break;
                     }
                 }
-                if let Some(u) = d.units.keys().find(|&u| g.city_can_train(c, u, false, false, false, false)) {
-                    return Some((start, OrderType::ORDER_TRAIN, u.idx() as i32));
-                }
-                d.processes.keys().find(|&pr| g.city_can_maintain(c, pr, false)).map(|pr| (start, OrderType::ORDER_MAINTAIN, pr.idx() as i32))
-            });
+            }
+            if choice.is_none() {
+                choice = trains(&|_| true).first().map(|&t| (start, OrderType::ORDER_TRAIN, t));
+            }
+            if choice.is_none() {
+                choice = enabled.iter().find(|(o, _)| *o == OrderType::ORDER_MAINTAIN.idx() as i64).map(|&(_, t)| (start, OrderType::ORDER_MAINTAIN, t));
+            }
             if let Some((slot, order, data)) = choice {
-                if self.exec(s, Command::PushOrder { city: c, order, data, alt: false, shift: false, ctrl: false }) {
+                if self.ok(s, Command::PushOrder { city: c, order, data: data as i32, alt: false, shift: false, ctrl: false }) {
                     self.stats.productions += 1;
                     self.rotation.insert(c, slot.wrapping_add(1));
                 }
@@ -265,87 +521,101 @@ impl Bot {
         }
     }
 
-    /// Civics, war.
+    /// Civics, war, peace.
     fn empire(&mut self, s: &mut Session) {
-        let h = s.human;
         // Revolt when a civic unlocks (once per civic; the first ones are what we start with).
-        let available: Vec<CivicType> = s.read(|g| g.d.civics.keys().filter(|&c| g.player_can_do_civics(h, Some(c))).collect());
+        let civics = s.query(&Query::Civics).expect("civics");
+        let mut available: Vec<(i64, bool)> = Vec::new();
+        for o in arr(&civics, "options") {
+            for c in arr(o, "civics") {
+                if flag(c, "available") {
+                    available.push((int(c, "civic"), flag(c, "current")));
+                }
+            }
+        }
+        available.sort_unstable();
         let first = self.civics_seen.is_empty();
-        let new: Vec<CivicType> = available.iter().copied().filter(|c| !self.civics_seen.contains(c)).collect();
-        self.civics_seen.extend(new.iter().copied());
+        let new: Vec<(i64, bool)> = available.iter().copied().filter(|(c, _)| !self.civics_seen.contains(c)).collect();
+        self.civics_seen.extend(new.iter().map(|&(c, _)| c));
         if !first {
-            if let Some(&c) = new.first() {
-                let current = s.read(|g| g.d.civics[c].civic_option_type.is_some_and(|o| g.players[h].civics[o] == Some(c)));
-                if !current && self.exec(s, Command::UpdateCivics { civics: vec![c] }) {
+            if let Some(&(c, current)) = new.first() {
+                if !current && self.ok(s, Command::UpdateCivics { civics: vec![CivicType::from_usize(c as usize)] }) {
                     self.stats.revolutions += 1;
                 }
             }
         }
-        if self.stats.wars == 0 && s.g.game_turn() >= self.war_turn {
-            let target = s.read(|g| {
-                let team = g.players[h].team;
-                g.civ_team_ids().find(|&t| t != team && g.team_can_declare_war(team, t))
-            });
+        let turn = s.g.game_turn();
+        if self.stats.wars == 0 && turn >= self.war_turn {
+            let players = s.query(&Query::Players).expect("players");
+            let target = arr(&players, "players").iter().find(|p| flag(p, "can_declare_war") && !flag(p, "barbarian")).map(|p| int(p, "team"));
             if let Some(t) = target {
-                if self.exec(s, Command::DeclareWar { team: t }) {
+                if self.ok(s, Command::DeclareWar { team: TeamId(t as u8) }) {
                     self.stats.wars += 1;
+                }
+            }
+        }
+        // Peace with the civilizations at war with us (every 5 turns, until one accepts).
+        if turn >= self.peace_turn && self.stats.peace_made == 0 && (turn - self.peace_turn) % 5 == 0 {
+            let players = s.query(&Query::Players).expect("players");
+            let at_war: Vec<i64> = arr(&players, "players").iter().filter(|p| flag(p, "war") && flag(p, "contact") && !flag(p, "barbarian") && flag(p, "alive")).map(|p| int(p, "id")).collect();
+            for p in at_war {
+                let to = PlayerId(p as u8);
+                let Ok(t) = s.query(&Query::Trade { with: to }) else { continue };
+                let peace = Json::idx(TradeableItem::TRADE_PEACE_TREATY);
+                if !arr(&t, "we_give").iter().any(|i| i.get("item") == Some(&peace)) {
+                    continue;
+                }
+                let item = || vec![TradeData { item_type: TradeableItem::TRADE_PEACE_TREATY, data: 0, offering: false, hidden: false }];
+                self.stats.peace_proposals += 1;
+                if self.exec(s, Command::ProposeDeal { to, give: item(), get: item() }) == Some(Some(true)) {
+                    self.stats.peace_made += 1;
+                    break;
                 }
             }
         }
     }
 
-    /// An order for a ready group (its head decides).
-    fn order(&mut self, s: &Session, units: &[UnitId]) -> Command {
-        let h = s.human;
+    /// An order for a ready group (its head decides), from the `group` query's actions.
+    fn order(&mut self, s: &Session, seen: &Seen, grp: i64, units: &[UnitId], gq: &Json, handled: &BTreeSet<UnitId>) -> Command {
+        let d = s.g.d;
         let roll = self.rand(100);
         let pick = self.rand(1 << 16);
-        let mission = |m: MissionType, d1: i32, d2: i32| Command::Mission { units: units.to_vec(), mission: m, data1: d1, data2: d2, flags: 0, append: false };
-        let head = units[0];
-        let decided = s.read(|g| -> Option<Command> {
-            let d = g.d;
-            let info = &d.units[g.units[head].unit_type];
-            let plot = g.unit_plot(head);
-            let (x, y) = (g.units[head].x, g.units[head].y);
-            let near = |r: i32| -> Vec<PlotIdx> {
-                let mut v = Vec::new();
-                for dy in -r..=r {
-                    for dx in -r..=r {
-                        if let Some(p) = g.plot_xy(x, y, dx, dy) {
-                            if p != plot {
-                                v.push(p);
-                            }
-                        }
-                    }
-                }
-                v
-            };
-            let xy = |p: PlotIdx| (g.map.plots[p].x, g.map.plots[p].y);
+        let actions = arr(gq, "actions");
+        let action = |kind: &str, pred: &dyn Fn(&Json) -> bool| -> Option<Command> {
+            actions
+                .iter()
+                .find(|a| a.get("kind") == Some(&Json::from(kind)) && flag(a, "enabled") && pred(a))
+                .and_then(|a| a.get("cmd"))
+                .and_then(|c| Command::from_json(d, c).ok())
+        };
+        let mission = |m: MissionType| action("mission", &|a| int(a, "mission") == m.idx() as i64);
+        let head = &arr(gq, "units")[0];
+        let info = &d.units[UnitType::from_usize(int(head, "type") as usize)];
+        let (x, y) = (int(head, "x") as i32, int(head, "y") as i32);
+        let move_to = |i: usize, declare_war: Option<bool>| {
+            let (px, py) = seen.xy(i);
+            Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war }
+        };
+        let decided = (|| -> Option<Command> {
             // Settlers.
             if info.found {
-                if g.unit_can_found(head, plot, false) {
-                    return Some(mission(MissionType::MISSION_FOUND, -1, -1));
+                if let Some(c) = mission(MissionType::MISSION_FOUND) {
+                    return Some(c);
                 }
-                let sites: Vec<PlotIdx> = near(4).into_iter().filter(|&p| {
-                    let (px, py) = xy(p);
-                    g.player_can_found(h, px, py, false)
-                }).collect();
+                let sites: Vec<usize> = seen.near(x, y, 4).into_iter().filter(|&i| seen.site(d, i)).collect();
                 if !sites.is_empty() {
-                    let (px, py) = xy(sites[pick % sites.len()]);
-                    return Some(Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war: None });
+                    return Some(move_to(sites[pick % sites.len()], None));
                 }
             }
-            // Workers: the first build here, else go where one is possible.
-            if let Some(b) = d.builds.keys().find(|&b| g.unit_can_build(head, plot, b, false)) {
-                return Some(mission(MissionType::MISSION_BUILD, b.idx() as i32, -1));
+            // Workers: the first build here, else go to a plot of ours without improvement.
+            if let Some(c) = mission(MissionType::MISSION_BUILD) {
+                return Some(c);
             }
             if info.builds.iter().any(|&b| b) {
-                let spots: Vec<PlotIdx> = near(3)
-                    .into_iter()
-                    .filter(|&p| g.map.plots[p].owner == Some(h) && d.builds.keys().any(|b| g.unit_can_build(head, p, b, false)))
-                    .collect();
+                let spots: Vec<usize> =
+                    seen.near(x, y, 3).into_iter().filter(|&i| seen.land(i) && seen.owner[i] == seen.me && seen.improvement[i] < 0 && seen.city[i] < 0).collect();
                 if !spots.is_empty() {
-                    let (px, py) = xy(spots[pick % spots.len()]);
-                    return Some(Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war: None });
+                    return Some(move_to(spots[pick % spots.len()], None));
                 }
                 return None;
             }
@@ -353,62 +623,76 @@ impl Bot {
                 return None;
             }
             // Attack an adjacent enemy at good odds.
-            if g.unit_can_attack(head) && g.unit_moves_left(head) > 0 {
-                for p in near(1) {
-                    if let Some(def) = g.plot_get_best_defender(p, None, Some(h), Some(head), true, false, false) {
-                        if g.get_combat_odds(head, def) >= 600 && g.unit_can_move_or_attack_into(head, p, false) {
-                            let (px, py) = xy(p);
-                            return Some(Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war: Some(false) });
+            if int(head, "moves") > 0 {
+                for i in seen.near(x, y, 1) {
+                    if !seen.enemy_on(i) {
+                        continue;
+                    }
+                    let (px, py) = seen.xy(i);
+                    if let Ok(c) = s.query(&Query::Combat { units: units.to_vec(), x: px, y: py }) {
+                        if flag(&c, "valid") && int(&c, "odds") >= 600 {
+                            return Some(move_to(i, Some(false)));
                         }
                     }
                 }
             }
             // A spell now and then.
             if roll < 5 {
-                if let Some(sp) = d.spells.keys().find(|&sp| g.unit_can_cast(head, sp, false)) {
-                    return Some(Command::DoCommand { units: units.to_vec(), command: CommandType::COMMAND_CAST, data1: sp.idx() as i32, data2: -1, alt: false, confirmed: true });
+                if let Some(Command::DoCommand { units, command, data1, data2, alt, .. }) = action("spell", &|_| true) {
+                    return Some(Command::DoCommand { units, command, data1, data2, alt, confirmed: true });
                 }
             }
             // Defend cities (two combat units each), else explore.
-            let grp = g.units[head].group;
-            let guards = |p: PlotIdx| {
-                g.map.plots[p].units.iter().filter(|&&u| g.units[u].owner == h && g.units[u].group != grp && d.units[g.units[u].unit_type].combat > 0).count()
-            };
-            if g.map.plots[plot].plot_city.is_some() && guards(plot) < 2 && g.unit_can_fortify(head, plot) {
-                return Some(mission(MissionType::MISSION_FORTIFY, -1, -1));
+            let in_city = seen.cities.iter().any(|&(_, cx, cy)| (cx, cy) == (x, y));
+            if in_city && seen.guards(d, x, y, grp) < 2 {
+                if let Some(c) = mission(MissionType::MISSION_FORTIFY) {
+                    return Some(c);
+                }
             }
-            let weak = g.players[h].cities.iter().map(|&c| g.city_plot(c)).filter(|&p| p != plot && guards(p) < 2).min_by_key(|&p| {
-                let (px, py) = xy(p);
-                (g.plot_distance(x, y, px, py), p)
-            });
-            if let Some(p) = weak {
-                let (px, py) = xy(p);
-                return Some(Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war: None });
+            let weak = seen.cities.iter().filter(|&&(_, cx, cy)| (cx, cy) != (x, y) && seen.guards(d, cx, cy, grp) < 2).min_by_key(|&&(c, cx, cy)| (seen.distance(x, y, cx, cy), c));
+            if let Some(&(_, cx, cy)) = weak {
+                return Some(Command::Move { units: units.to_vec(), x: cx, y: cy, append: false, declare_war: None });
             }
-            // Spare units go for the nearest known enemy city (we are at war with its owner).
-            let team = g.players[h].team;
-            let target = g
-                .cities
-                .iter()
-                .filter(|(_, city)| g.teams[team].at_war[g.players[city.owner].team] && g.map.plots[g.city_plot(city.id)].revealed[team])
-                .map(|(_, city)| (g.plot_distance(x, y, city.x, city.y), city.x, city.y))
-                .filter(|&(dist, _, _)| dist <= 8)
-                .min();
+            // Spare units rally in the capital; three or more ready there march together on the
+            // nearest known enemy city (the selection becomes one group: `move` joins it).
+            if let Some((cx, cy)) = seen.capital {
+                let target = seen.enemy_cities.iter().map(|&(tx, ty)| (seen.distance(x, y, tx, ty), tx, ty)).filter(|&(dist, _, _)| dist <= 16).min();
+                if (x, y) == (cx, cy) {
+                    let stack: Vec<UnitId> = seen
+                        .units
+                        .iter()
+                        .filter(|u| {
+                            let info = &d.units[u.unit_type];
+                            u.owner == seen.me
+                                && (u.x, u.y) == (x, y)
+                                && seen.ready.contains(&u.group)
+                                && !handled.contains(&u.id)
+                                && info.combat > 0
+                                && info.domain_type == Some(DomainType::DOMAIN_LAND)
+                        })
+                        .map(|u| u.id)
+                        .collect();
+                    if let (true, Some((_, tx, ty))) = (stack.len() >= 3 && stack.iter().any(|u| units.contains(u)), target) {
+                        return Some(Command::Move { units: stack, x: tx, y: ty, append: false, declare_war: Some(false) });
+                    }
+                } else if roll < 40 && target.is_none_or(|(dist, _, _)| dist > 4) {
+                    return Some(Command::Move { units: units.to_vec(), x: cx, y: cy, append: false, declare_war: None });
+                }
+            }
+            // Spare units go for the nearest known enemy city (barbarian cities included).
+            let target = seen.enemy_cities.iter().map(|&(cx, cy)| (seen.distance(x, y, cx, cy), cx, cy)).filter(|&(dist, _, _)| dist <= 12).min();
             if let (Some((_, cx, cy)), true) = (target, roll < 60) {
                 return Some(Command::Move { units: units.to_vec(), x: cx, y: cy, append: false, declare_war: Some(false) });
             }
             if roll < 70 {
-                let around: Vec<PlotIdx> = near(2).into_iter().filter(|&p| !g.plot_is_water(p) && g.map.plots[p].revealed[g.players[h].team]).collect();
+                let around: Vec<usize> = seen.near(x, y, 2).into_iter().filter(|&i| seen.land(i)).collect();
                 if !around.is_empty() {
-                    let (px, py) = xy(around[pick % around.len()]);
-                    return Some(Command::Move { units: units.to_vec(), x: px, y: py, append: false, declare_war: None });
+                    return Some(move_to(around[pick % around.len()], None));
                 }
             }
-            if g.unit_can_fortify(head, plot) {
-                return Some(mission(MissionType::MISSION_FORTIFY, -1, -1));
-            }
+            // Otherwise wait (skip): a spare unit is ordered again next turn.
             None
-        });
+        })();
         match decided {
             Some(c) => {
                 match &c {
@@ -419,8 +703,90 @@ impl Bot {
                 }
                 c
             }
-            None => mission(MissionType::MISSION_SKIP, -1, -1),
+            None => Command::Mission { units: units.to_vec(), mission: MissionType::MISSION_SKIP, data1: -1, data2: -1, flags: 0, append: false },
         }
+    }
+}
+
+/// Every allow-listed query of the noisy client (design §8 T10), through `query`: view, map,
+/// every group's details and actions, 5 path and 5 combat previews, every city screen, techs,
+/// civics, religions, players, trade with every met civilization, inspect, text and the ASCII
+/// layers. Returns the number of queries; an error other than `busy` fails.
+pub fn noise_with(mut query: impl FnMut(&Query) -> Result<Json, QueryErr>) -> usize {
+    let mut n = 0;
+    // `edge`: a preview whose target is off the map (at an edge) is `invalid`: skipped.
+    let mut ask = |q: Query, edge: bool| -> Option<Json> {
+        n += 1;
+        match query(&q) {
+            Ok(j) => Some(j),
+            Err(QueryErr::Busy(_)) => None,
+            Err(QueryErr::Invalid(_)) if edge => None,
+            Err(e) => panic!("noisy client: {q:?} refused: {e}"),
+        }
+    };
+    let Some(view) = ask(Query::View, false) else { return 1 };
+    ask(Query::Map { since: None }, false);
+    let me = int(view.get("me").unwrap(), "player");
+    let mut previews = 0;
+    for grp in arr(&view, "groups") {
+        let units = unit_ids(grp, "units");
+        if units.is_empty() {
+            continue;
+        }
+        let Some(gq) = ask(Query::Group { units: units.clone() }, false) else { continue };
+        if previews < 5 {
+            previews += 1;
+            let plot = arr(&gq, "plot");
+            let (x, y) = (plot.first().and_then(Json::as_i64).unwrap_or(0) as i32, plot.get(1).and_then(Json::as_i64).unwrap_or(0) as i32);
+            ask(Query::Path { units: units.clone(), x: x + 3, y, flags: 0 }, true);
+            ask(Query::Combat { units: units.clone(), x: x + 1, y }, true);
+        }
+    }
+    for c in arr(&view, "cities").iter().filter(|c| int(c, "owner") == me) {
+        ask(Query::City { city: CityId(int(c, "id") as u32) }, false);
+    }
+    for q in [Query::Techs, Query::Civics, Query::Religions, Query::Text] {
+        ask(q, false);
+    }
+    if let Some(players) = ask(Query::Players, false) {
+        for p in arr(&players, "players").iter().filter(|p| !flag(p, "barbarian") && flag(p, "alive")) {
+            ask(Query::Trade { with: PlayerId(int(p, "id") as u8) }, false);
+        }
+    }
+    if let Some(u) = arr(&view, "units").iter().find(|u| int(u, "owner") == me) {
+        ask(Query::Inspect { kind: "unit".into(), id: int(u, "id") }, false);
+    }
+    for layer in Layer::ALL {
+        ask(Query::Ascii { x: 0, y: 0, w: 0, h: 0, layer }, false);
+    }
+    n
+}
+
+/// [`noise_with`] on a session.
+pub fn noise(s: &Session) -> usize {
+    noise_with(|q| s.query(q))
+}
+
+/// The noisy client's answerer: issues every query through the decision's reader, then answers
+/// as `inner`.
+pub struct NoisyAnswerer {
+    inner: Arc<dyn Answerer>,
+    /// Queries issued inside decisions.
+    pub queries: Mutex<usize>,
+    /// Decisions seen.
+    pub decisions: Mutex<usize>,
+}
+
+impl Answerer for NoisyAnswerer {
+    fn ask(&self, g: &Game, d: &Decision) -> Answer {
+        self.inner.ask(g, d)
+    }
+
+    fn ask_with(&self, r: &DecisionReader, d: &Decision) -> Answer {
+        let n = noise_with(|q| r.query(q));
+        *self.queries.lock().unwrap() += n;
+        *self.decisions.lock().unwrap() += 1;
+        self.inner.ask(r.game(), d)
     }
 }
 
