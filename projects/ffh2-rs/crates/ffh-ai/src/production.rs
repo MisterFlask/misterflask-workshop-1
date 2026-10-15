@@ -462,6 +462,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if let SettlerPlan::Now(choice) = settler {
         return Some(choice);
     }
+    if let Some(choice) = crate::civs::production(ai, g, c, ctx.threat) { return Some(choice); } // civ-mechanics
     // A ship for a settler waiting in port; a sea explorer while our land is full and
     // nothing is known across the water.
     if safe && crate::naval::is_coastal_city(g, c) {
