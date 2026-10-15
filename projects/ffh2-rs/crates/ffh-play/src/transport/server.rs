@@ -280,18 +280,34 @@ impl Server {
                 return Err("the game thread stopped while starting (see the panic message)".into());
             }
         }
-        let ctx = Arc::new(HttpCtx { shared: shared.clone(), tx, assets: opts.assets.clone(), loopback: addr.ip().is_loopback() });
+        let loopback = addr.ip().is_loopback().then(|| addr.ip());
+        let ctx = Arc::new(HttpCtx { shared: shared.clone(), tx, assets: opts.assets.clone(), loopback });
         let acceptor = std::thread::Builder::new()
             .name("ffh-http".into())
             .spawn(move || {
                 let open = Arc::new(AtomicUsize::new(0));
+                let refusing = Arc::new(AtomicUsize::new(0));
                 for stream in listener.incoming() {
                     if ctx.shared.quitting() {
                         break;
                     }
-                    let Ok(mut stream) = stream else { continue };
+                    let Ok(stream) = stream else { continue };
                     if open.load(Ordering::Relaxed) >= MAX_CONNECTIONS {
-                        let _ = http::Response::error(503, "busy", "too many open connections").write_to(&mut stream);
+                        // 503, then drained on a short-lived thread (so the acceptor never
+                        // waits): closed with its request unread, the connection would be reset
+                        // before the client read the answer. Past as many refusals at once, the
+                        // connection is just closed.
+                        if refusing.load(Ordering::Relaxed) < MAX_CONNECTIONS {
+                            refusing.fetch_add(1, Ordering::Relaxed);
+                            let mine = refusing.clone();
+                            let spawned = std::thread::Builder::new().name("ffh-busy".into()).spawn(move || {
+                                http::refuse(stream);
+                                mine.fetch_sub(1, Ordering::Relaxed);
+                            });
+                            if spawned.is_err() {
+                                refusing.fetch_sub(1, Ordering::Relaxed);
+                            }
+                        }
                         continue;
                     }
                     open.fetch_add(1, Ordering::Relaxed);

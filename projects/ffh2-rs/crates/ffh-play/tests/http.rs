@@ -333,6 +333,46 @@ fn t12_auto_moves_run_when_the_last_ready_unit_is_skipped() {
     server.shutdown();
 }
 
+/// Connection limits and hosts (P4 review): bound to another loopback address, requests naming
+/// that address are served; past `MAX_CONNECTIONS` open connections a new one gets a 503 that it
+/// can read (not a reset), and once they close the server answers again.
+#[test]
+fn t12_a_full_server_answers_503_and_its_own_address_is_a_host() {
+    let opts = ServeOptions {
+        bind: SocketAddr::from(([127, 0, 0, 2], 0)),
+        host: HostOptions { saves: None, autosave_keep: 5, panic_at: None },
+        start: Start::None,
+        assets: None,
+    };
+    let server = Server::start(opts).expect("server on 127.0.0.2");
+    let c = Client { addr: server.addr() };
+    let port = c.addr.port();
+    let get = |host: &str| c.raw(format!("GET /api/status HTTP/1.1\r\nHost: {host}\r\n\r\n").as_bytes()).status;
+    assert_eq!(get(&format!("127.0.0.2:{port}")), 200);
+    assert_eq!(get(&format!("localhost:{port}")), 200);
+    assert_eq!(get(&format!("127.0.0.3:{port}")), 403);
+    // Idle connections fill the server (each holds a connection thread until its request arrives).
+    let idle: Vec<TcpStream> = (0..ffh_play::transport::server::MAX_CONNECTIONS).map(|_| TcpStream::connect(c.addr).unwrap()).collect();
+    let busy = c.raw(format!("GET /api/status HTTP/1.1\r\nHost: 127.0.0.2:{port}\r\n\r\n").as_bytes());
+    assert_eq!(busy.status, 503);
+    assert_eq!(busy.json().req_str("error"), Ok("busy"));
+    // A client that reads late: the server's close must not reset the connection (a close with
+    // the request unread would, and the reset discards the answer): the request is drained.
+    let mut slow = TcpStream::connect(c.addr).unwrap();
+    slow.write_all(format!("GET /api/status HTTP/1.1\r\nHost: 127.0.0.2:{port}\r\n\r\n").as_bytes()).unwrap();
+    std::thread::sleep(Duration::from_millis(150));
+    let mut answer = Vec::new();
+    slow.read_to_end(&mut answer).expect("the 503, not a reset");
+    assert!(answer.starts_with(b"HTTP/1.1 503 "), "{}", String::from_utf8_lossy(&answer));
+    drop(idle);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while get(&format!("127.0.0.2:{port}")) != 200 {
+        assert!(Instant::now() < deadline, "the server answers again once the idle connections close");
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    server.shutdown();
+}
+
 /// A rules panic on the game thread: the status says `crashed` with the report, commands get
 /// `no_game`, and loading the autosave plays on.
 #[test]

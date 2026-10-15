@@ -13,15 +13,17 @@
 //!
 //! Safety for a local server: the custom header stops cross-site form posts (a browser sends it
 //! only after a CORS preflight, which this server never grants); on a loopback address every
-//! request must name a loopback host (`Host: 127.0.0.1:8642`, `localhost`, `[::1]`), which stops
-//! DNS rebinding; asset paths and save names cannot leave their directories.
+//! request must name a loopback host (`Host: 127.0.0.1:8642`, `localhost`, `[::1]`, or the bound
+//! address itself), which stops DNS rebinding; asset paths and save names cannot leave their
+//! directories; a request must arrive whole within [`REQUEST_TIME`] (408), so a slow sender
+//! cannot keep a connection thread.
 
 use std::io::{Read, Write};
-use std::net::{Shutdown, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use super::server::Envelope;
 use super::shared::Shared;
@@ -31,6 +33,11 @@ use crate::json::Json;
 pub const MAX_HEAD: usize = 16 * 1024;
 /// Largest request body.
 pub const MAX_BODY: usize = 1 << 20;
+/// The time a client has to send its whole request (head and body), from the connection's
+/// start: a deadline, not a per-read timeout (a client trickling bytes is cut off too).
+pub const REQUEST_TIME: Duration = Duration::from_secs(15);
+/// How long a connection is drained after an answer sent before its request was read.
+const DRAIN_TIME: Duration = Duration::from_millis(250);
 
 /// The client files compiled into the binary: `(path, content type, content)`.
 pub const ASSETS: &[(&str, &str, &str)] = &[("index.html", "text/html; charset=utf-8", include_str!("../../assets/index.html"))];
@@ -80,8 +87,57 @@ fn head_end(buf: &[u8]) -> Option<usize> {
     }
 }
 
+/// A stream read against a deadline: each read waits at most the time left, and fails with
+/// `TimedOut` once it has passed.
+pub struct Deadline<'a> {
+    pub stream: &'a TcpStream,
+    pub deadline: Instant,
+}
+
+impl Read for Deadline<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let left = self.deadline.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "deadline passed"));
+        }
+        self.stream.set_read_timeout(Some(left))?;
+        let mut stream = self.stream;
+        stream.read(buf)
+    }
+}
+
+/// A read error: 408 when the time ran out, else 400.
+fn read_err(what: &str, e: std::io::Error) -> HttpError {
+    match e.kind() {
+        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock => {
+            http_err(408, format!("the request did not arrive within {} s", REQUEST_TIME.as_secs()))
+        }
+        _ => http_err(400, format!("reading {what}: {e}")),
+    }
+}
+
+/// [`read_request`] from a connection, which must send its whole request within `within`.
+pub fn read_request_within(stream: &TcpStream, within: Duration) -> Result<HttpRequest, HttpError> {
+    read_request(&mut Deadline { stream, deadline: Instant::now() + within })
+}
+
+/// Reads and drops what the client still sends, for at most `within`: a close with input unread
+/// makes the kernel reset the connection, and the client could lose the answer.
+pub fn drain(stream: &TcpStream, within: Duration) {
+    let mut r = Deadline { stream, deadline: Instant::now() + within };
+    let mut sink = [0u8; 8192];
+    let mut total = 0;
+    while let Ok(n) = r.read(&mut sink) {
+        total += n;
+        if n == 0 || total > 2 * MAX_BODY {
+            break;
+        }
+    }
+}
+
 /// Reads one request: the head (at most [`MAX_HEAD`]), then a `Content-Length` body (at most
-/// [`MAX_BODY`]). A chunked body is refused (400), a POST without a length too (411).
+/// [`MAX_BODY`]). A chunked body is refused (400), a POST without a length too (411); a read
+/// that times out is 408.
 pub fn read_request(r: &mut impl Read) -> Result<HttpRequest, HttpError> {
     let mut buf = Vec::with_capacity(1024);
     let mut chunk = [0u8; 4096];
@@ -92,7 +148,7 @@ pub fn read_request(r: &mut impl Read) -> Result<HttpRequest, HttpError> {
         if buf.len() > MAX_HEAD {
             return Err(http_err(431, "the request head is too large"));
         }
-        let n = r.read(&mut chunk).map_err(|e| http_err(400, format!("reading the request: {e}")))?;
+        let n = r.read(&mut chunk).map_err(|e| read_err("the request", e))?;
         if n == 0 {
             return Err(http_err(400, "the connection closed before the end of the request head"));
         }
@@ -153,7 +209,7 @@ pub fn read_request(r: &mut impl Read) -> Result<HttpRequest, HttpError> {
     if body.len() < length {
         let have = body.len();
         body.resize(length, 0);
-        r.read_exact(&mut body[have..]).map_err(|e| http_err(400, format!("reading the body: {e}")))?;
+        r.read_exact(&mut body[have..]).map_err(|e| read_err("the body", e))?;
     }
     req.body = body;
     Ok(req)
@@ -233,6 +289,7 @@ fn reason(status: u16) -> &'static str {
         403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
+        408 => "Request Timeout",
         409 => "Conflict",
         411 => "Length Required",
         413 => "Content Too Large",
@@ -251,41 +308,49 @@ pub struct HttpCtx {
     pub tx: Sender<Envelope>,
     /// `--assets DIR`: the client files from disk instead of the embedded ones.
     pub assets: Option<PathBuf>,
-    /// Bound to a loopback address: requests must name a loopback host.
-    pub loopback: bool,
+    /// Bound to this loopback address: requests must name a loopback host (or this address).
+    pub loopback: Option<IpAddr>,
 }
 
-/// Serves one connection: one request, one response, then close.
+/// Serves one connection: one request (which must arrive within [`REQUEST_TIME`]), one response,
+/// then close.
 pub fn handle_connection(mut stream: TcpStream, ctx: &HttpCtx) {
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(15)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
-    let (resp, drain) = match read_request(&mut stream) {
+    let (resp, unread) = match read_request_within(&stream, REQUEST_TIME) {
         Ok(req) => (route(&req, ctx), false),
         Err(e) => (Response::error(e.status, "http", e.msg), true),
     };
     let _ = resp.write_to(&mut stream);
     let _ = stream.shutdown(Shutdown::Write);
-    if drain {
-        // Unread input would make the close a reset, and the client could lose the answer.
-        let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
-        let mut sink = [0u8; 8192];
-        let mut total = 0;
-        while let Ok(n) = stream.read(&mut sink) {
-            total += n;
-            if n == 0 || total > 2 * MAX_BODY {
-                break;
-            }
-        }
+    if unread {
+        drain(&stream, DRAIN_TIME);
     }
 }
 
-/// `Host:` names a loopback host (a port may follow).
-pub fn loopback_host(host: &str) -> bool {
+/// Answers a connection the server has no room for with 503, without reading its request (then
+/// drains it, so that the client gets the answer rather than a reset).
+pub fn refuse(mut stream: TcpStream) {
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(1)));
+    let _ = Response::error(503, "busy", "too many open connections").write_to(&mut stream);
+    let _ = stream.shutdown(Shutdown::Write);
+    drain(&stream, DRAIN_TIME);
+}
+
+/// `Host:` names a loopback host (a port may follow): `localhost`, `127.0.0.1`, `[::1]`, or
+/// `bound`, the address the server is bound to (another loopback address such as 127.0.0.2).
+pub fn loopback_host(host: &str, bound: Option<IpAddr>) -> bool {
     let name = match host.rsplit_once(':') {
         Some((h, port)) if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) && (!h.contains(':') || h.ends_with(']')) => h,
         _ => host,
     };
-    name.eq_ignore_ascii_case("localhost") || name == "127.0.0.1" || name == "[::1]"
+    if name.eq_ignore_ascii_case("localhost") {
+        return true;
+    }
+    let ip = match name.strip_prefix('[').and_then(|n| n.strip_suffix(']')) {
+        Some(v6) => v6.parse::<Ipv6Addr>().ok().map(IpAddr::V6),
+        None => name.parse::<Ipv4Addr>().ok().map(IpAddr::V4),
+    };
+    ip.is_some_and(|ip| ip == IpAddr::V4(Ipv4Addr::LOCALHOST) || ip == IpAddr::V6(Ipv6Addr::LOCALHOST) || Some(ip) == bound)
 }
 
 fn data_json() -> &'static (Arc<String>, String) {
@@ -316,8 +381,10 @@ const ROUTES: &[(&str, &str)] = &[
 
 /// Answers a request (the game thread only for `POST /api`).
 pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
-    if ctx.loopback && !req.header("host").is_some_and(loopback_host) {
-        return Response::error(403, "forbidden", "the Host header must name this computer (127.0.0.1, localhost or [::1])");
+    if let Some(bound) = ctx.loopback {
+        if !req.header("host").is_some_and(|h| loopback_host(h, Some(bound))) {
+            return Response::error(403, "forbidden", format!("the Host header must name this computer (127.0.0.1, localhost, [::1] or {bound})"));
+        }
     }
     let path = req.path.as_str();
     let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| path.starts_with("/app/").then_some("GET"));
@@ -450,16 +517,56 @@ mod tests {
         assert_eq!(parse(&big).map_err(|e| e.status), Err(431));
     }
 
+    /// The request time is a deadline for the whole request: a client that sends a byte every
+    /// 50 ms is cut off when it passes (P4 review: it was a per-read timeout).
+    #[test]
+    fn a_slow_sender_gets_408() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let sender = std::thread::spawn(move || {
+            let mut c = TcpStream::connect(addr).unwrap();
+            for b in b"GET /api/status HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n" {
+                if c.write_all(&[*b]).is_err() {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        });
+        let (stream, _) = listener.accept().unwrap();
+        let t0 = Instant::now();
+        let e = read_request_within(&stream, Duration::from_millis(400)).unwrap_err();
+        assert_eq!(e.status, 408, "{e:?}");
+        assert!(t0.elapsed() < Duration::from_millis(1500), "{:?}", t0.elapsed());
+        drop(stream);
+        sender.join().unwrap();
+        // A request sent at once is read.
+        let sender = std::thread::spawn(move || {
+            let mut c = TcpStream::connect(addr).unwrap();
+            c.write_all(b"POST /api HTTP/1.1\r\nContent-Length: 2\r\n\r\n{}").unwrap();
+            c
+        });
+        let (stream, _) = listener.accept().unwrap();
+        assert_eq!(read_request_within(&stream, Duration::from_millis(400)).map(|r| r.body), Ok(b"{}".to_vec()));
+        drop(sender.join().unwrap());
+    }
+
     #[test]
     fn hosts_and_assets() {
-        for ok in ["127.0.0.1", "127.0.0.1:8642", "localhost", "LOCALHOST:1", "[::1]", "[::1]:8642"] {
-            assert!(loopback_host(ok), "{ok}");
+        let home = Some(IpAddr::V4(Ipv4Addr::LOCALHOST));
+        for ok in ["127.0.0.1", "127.0.0.1:8642", "localhost", "LOCALHOST:1", "[::1]", "[::1]:8642", "[0:0:0:0:0:0:0:1]:80"] {
+            assert!(loopback_host(ok, home), "{ok}");
         }
-        for bad in ["", "evil.example", "evil.example:8642", "127.0.0.1.evil.example", "localhost.evil", "[::2]:80", "127.0.0.2", "::1"] {
-            assert!(!loopback_host(bad), "{bad}");
+        for bad in ["", "evil.example", "evil.example:8642", "127.0.0.1.evil.example", "localhost.evil", "[::2]:80", "127.0.0.2", "::1", "127.0.0.01", "[127.0.0.1]"] {
+            assert!(!loopback_host(bad, home), "{bad}");
         }
+        // Bound to another loopback address: that one too (P4 review).
+        let other = Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2)));
+        for ok in ["127.0.0.2", "127.0.0.2:8642", "127.0.0.1:8642", "localhost"] {
+            assert!(loopback_host(ok, other), "{ok}");
+        }
+        assert!(!loopback_host("127.0.0.3:8642", other));
         let (tx, _rx) = mpsc::channel();
-        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: true };
+        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: home };
         let get = |path: &str, host: &str| {
             let req = HttpRequest { method: "GET".into(), path: path.into(), query: String::new(), headers: vec![("Host".into(), host.into())], body: Vec::new() };
             route(&req, &ctx)
@@ -488,7 +595,7 @@ mod tests {
         // The game thread is gone (the receiver dropped): 503.
         let (tx, rx) = mpsc::channel();
         drop(rx);
-        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: false };
+        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: None };
         let req = HttpRequest {
             method: "POST".into(),
             path: "/api".into(),
