@@ -72,7 +72,7 @@ fn disband(g: &mut Game, p: PlayerId) {
         return;
     }
     if crate::finance::disband(g, p) { return; } // bankruptcy-guard
-    let pct = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+    let pct = crate::economy::spend_pct(g, p);
     // Field units go first, as soon as research has dropped to a fifth.
     if pct > 10 && pct <= 20 {
         disband_field_units(g, p, 1);
@@ -210,7 +210,7 @@ pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     v += info.trade_routes * 25 * n;
     v += info.worker_speed_modifier / 2 + info.military_production_modifier / 2;
     v -= info.war_weariness_modifier / 4;
-    let broke = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 50;
+    let broke = crate::economy::spend_pct(g, p) < 50;
     let gold_w = if broke { 40 } else { 15 };
     let gold_w = gold_w.max(crate::finance::gold_value(&crate::finance::state(g, p))); // bankruptcy-guard
     v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * gold_w;
@@ -313,22 +313,36 @@ fn religion(g: &mut Game, p: PlayerId) {
     }
 }
 
-/// Highest research rate that keeps the treasury from running dry.
+/// Highest research rate that keeps the treasury from running dry. A cultural victory first
+/// sets the culture slider (`victory::culture_slider`), lowered in steps when even no research
+/// leaves the treasury short.
 fn sliders(g: &mut Game, p: PlayerId) {
     if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) {
         return;
     }
     let gold = g.players[p].gold;
     let reserve = 20 + 5 * g.players[p].cities.len() as i32;
-    let mut pct = 100;
-    while pct >= 0 {
-        if g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] != pct {
-            g.player_set_commerce_percent(p, CommerceType::COMMERCE_RESEARCH, pct);
+    let mut culture = crate::victory::culture_slider(g, p); // victory-pursuit
+    loop {
+        if g.players[p].commerce_percent[CommerceType::COMMERCE_CULTURE.idx()] != culture {
+            g.player_set_commerce_percent(p, CommerceType::COMMERCE_CULTURE, culture);
         }
-        let rate = g.player_calculate_gold_rate(p);
-        if rate >= 0 || gold + rate * 10 > reserve {
+        let mut pct = 100 - culture;
+        let mut paid = false;
+        while pct >= 0 {
+            if g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] != pct {
+                g.player_set_commerce_percent(p, CommerceType::COMMERCE_RESEARCH, pct);
+            }
+            let rate = g.player_calculate_gold_rate(p);
+            if rate >= 0 || gold + rate * 10 > reserve {
+                paid = true;
+                break;
+            }
+            pct -= 10;
+        }
+        if paid || culture == 0 {
             break;
         }
-        pct -= 10;
+        culture = (culture - 20).max(0);
     }
 }

@@ -329,7 +329,7 @@ fn civ_enemies_at_war(g: &Game, p: PlayerId) -> bool {
 
 /// The owner cannot pay for more: research slider pushed down to cover costs.
 pub fn financial_trouble(g: &Game, p: PlayerId) -> bool {
-    g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 40 && g.players[p].cities.len() > 1
+    g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) && crate::economy::spend_pct(g, p) < 40 && g.players[p].cities.len() > 1
 }
 
 /// City state used by the decision.
@@ -441,6 +441,11 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         }
     }
 
+    // A victory a few turns away comes before expansion (victory.rs).
+    if safe {
+        if let Some(choice) = crate::victory::production(g, c, true) { return Some(choice); } // victory-pursuit
+    }
+
     // An explorer while much of our landmass is unknown (sites, goody huts, contact with
     // the neighbours).
     if ctx.capital && ctx.threat == 0 && (5..150).contains(&g.game_turn()) && count_ai(g, p, UnitAIType::UNITAI_EXPLORE) == 0 {
@@ -512,6 +517,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if !ctx.afford && ctx.threat == 0 {
         needed = needed.min(1 + i32::from(ctx.capital));
     }
+    needed += crate::victory::guard(g, c); // victory-pursuit
     if ctx.defenders < needed {
         if let Some(u) = best_unit(g, c, Role::Defense) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));
@@ -536,6 +542,12 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
                 return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
             }
         }
+    }
+
+    // Victory pursuit (victory.rs): the towers in our best cities, culture in the cities
+    // nearest legendary -- after the garrison, the first army and the workers.
+    if safe {
+        if let Some(choice) = crate::victory::production(g, c, false) { return Some(choice); } // victory-pursuit
     }
 
     // 7. Heroes are unique and strong (but not at the cost of the first expansion).

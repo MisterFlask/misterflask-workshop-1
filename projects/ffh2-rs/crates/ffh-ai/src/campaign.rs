@@ -312,10 +312,11 @@ fn rough_need(n_def: i32) -> i32 {
 }
 
 /// What taking city `c` is worth to us (`dist`: from our nearest city).
-fn city_value(g: &Game, p: PlayerId, c: CityId, dist: i32) -> i32 {
+fn city_value(g: &Game, p: PlayerId, c: CityId, dist: i32, plan: &crate::victory::Plan) -> i32 {
     let city = &g.cities[c];
     let team = g.players[p].team;
     let mut v = 400 + city.population * 100 + city.num_world_wonders * 300;
+    v += crate::victory::rival_city_bonus(g, plan, c); // victory-pursuit
     if g.d.religions.keys().any(|r| g.get_holy_city(r) == Some(c)) {
         v += 400;
     }
@@ -347,6 +348,7 @@ fn candidates(g: &Game, p: PlayerId) -> (Vec<Cand>, bool) {
     let war: Vec<TeamId> = g.teams.keys().filter(|&t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t)).collect();
     let preparing = if war.is_empty() { crate::diplomacy::preparing_target(g, team) } else { None };
     let civ = !war.is_empty() || preparing.is_some();
+    let plan = if civ { crate::victory::plan(g, p) } else { crate::victory::Plan::default() }; // victory-pursuit
     let ours: Vec<(i32, i32, Option<AreaId>)> = g.players[p].cities.iter().map(|&c| (g.cities[c].x, g.cities[c].y, g.map.plots[g.city_plot(c)].area)).collect();
     let mut out = Vec::new();
     for pl in g.players.iter() {
@@ -379,7 +381,7 @@ fn candidates(g: &Game, p: PlayerId) -> (Vec<Cand>, bool) {
             } else {
                 (1 + (g.game_turn() - g.cities[c].game_turn_acquired) / 25).clamp(1, 6)
             };
-            out.push(Cand { city: c, plot: cp, civ, n_def, visible, value: city_value(g, p, c, dist), dist });
+            out.push(Cand { city: c, plot: cp, civ, n_def, visible, value: city_value(g, p, c, dist, &plan), dist });
         }
     }
     (out, civ)

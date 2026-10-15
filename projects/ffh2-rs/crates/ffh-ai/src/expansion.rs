@@ -91,7 +91,7 @@ pub fn settler_choice(ai: &Ai, g: &Game, c: CityId, p: PlayerId, threat: i32, de
         if crate::naval::num_transports(g, p) == 0 && best_unit(g, c, Role::Transport).is_none() {
             return No;
         }
-        if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
+        if ctx.broke && crate::economy::spend_pct(g, p) < 20 {
             return No;
         }
         return match best_unit(g, c, Role::Settler) {
@@ -101,7 +101,7 @@ pub fn settler_choice(ai: &Ai, g: &Game, c: CityId, p: PlayerId, threat: i32, de
     }
     let mut max_settlers = ((ctx.n_cities + 1) / 2).max(1).min(area_sites);
     // C++ AI_chooseProduction: no settlers while in financial trouble.
-    if ctx.broke && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 20 {
+    if ctx.broke && crate::economy::spend_pct(g, p) < 20 {
         return No;
     }
     if ctx.at_war {

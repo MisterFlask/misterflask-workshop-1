@@ -31,13 +31,23 @@ pub fn marginal_unit_cost_x100(g: &Game, p: PlayerId, military: bool) -> i32 {
     scaled * (100 + g.player_calculate_inflation_rate(p).max(0)) / 100
 }
 
-/// Estimated net gold per turn with the research slider at `research_pct` (gold takes the
-/// rest; culture and espionage sliders are left at what they are).
+/// The share of the commerce the sliders spend on research and culture: what the AI reads as
+/// "research" when it judges its finances. A culture slider the victory planner sets (see
+/// `victory::culture_slider`) is a choice, not a cost: counting only research, the empire took
+/// itself for bankrupt and disbanded its army.
+pub fn spend_pct(g: &Game, p: PlayerId) -> i32 {
+    let pct = &g.players[p].commerce_percent;
+    pct[CommerceType::COMMERCE_RESEARCH.idx()] + pct[CommerceType::COMMERCE_CULTURE.idx()]
+}
+
+/// Estimated net gold per turn with research and culture together at `research_pct` (see
+/// [`spend_pct`]; the culture slider stays where it is, gold takes the rest).
 pub fn gold_at_research(g: &Game, p: PlayerId, research_pct: i32) -> i32 {
     let pl = &g.players[p];
     if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) {
         return g.player_calculate_gold_rate(p);
     }
+    let research_pct = (research_pct - pl.commerce_percent[CommerceType::COMMERCE_CULTURE.idx()]).max(0);
     let gold = g.player_get_commerce_rate(p, CommerceType::COMMERCE_GOLD);
     let research = g.player_get_commerce_rate(p, CommerceType::COMMERCE_RESEARCH);
     let cur_gold_pct = pl.commerce_percent[CommerceType::COMMERCE_GOLD.idx()];

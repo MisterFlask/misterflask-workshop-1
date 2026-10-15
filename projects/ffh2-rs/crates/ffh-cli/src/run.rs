@@ -541,6 +541,29 @@ mod tests {
         }
     }
 
+    /// Victory pursuit over full games (several minutes per game: `cargo test --release -p
+    /// ffh-cli -- --ignored`; `scripts/victory_check.py` runs the same check over many seeds):
+    /// games the victory planner decides end in a rules victory other than time, before the time
+    /// limit. Seeds where the AI without the planner played to the time limit.
+    #[test]
+    #[ignore]
+    fn full_games_end_in_victories() {
+        let time = ffh_data::global().t::<VictoryType>("VICTORY_TIME");
+        let mut decided = Vec::new();
+        for seed in [4, 19] {
+            let cfg = RunConfig { seed, civs: 6, world: "WORLDSIZE_STANDARD".into(), turns: 700, ..RunConfig::default() };
+            let (mut g, _) = new_game(&cfg);
+            let played = play(&mut g, &cfg, |_, _| {});
+            eprintln!("seed {seed}: {}", describe_outcome(&g, &played.outcome));
+            if let Outcome::Victory { turn, victory: Some(v), .. } = played.outcome {
+                if v != time && turn < g.max_turns() {
+                    decided.push((seed, g.d.victories[v].base.type_.clone(), turn));
+                }
+            }
+        }
+        assert_eq!(decided.len(), 2, "games decided before the time limit: {decided:?}");
+    }
+
     /// Alive civs' scores sum to the whole world (10000) with at least 1 each, every turn.
     fn assert_world_shares(g: &Game) {
         let s = g.world_scores();

@@ -37,6 +37,7 @@ pub mod sites;
 pub mod tech_plan;
 pub mod units;
 pub mod values;
+pub mod victory;
 pub mod view;
 pub mod workers;
 
@@ -108,6 +109,9 @@ impl Controller for Ai {
             return;
         }
         if !v.barbarian {
+            if trace_on(p) {
+                trace!(g, p, "{}", victory::describe(g, p, &victory::plan(g, p)));
+            }
             empire::manage(g, p);
             production::emergency(self, g, p);
             expansion::prepare_escorts(g, p); // early-expansion
