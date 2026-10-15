@@ -57,7 +57,10 @@ def parse_seeds(s):
     return out
 
 
-def run_one(args, seed):
+def stats_cmd(args, seed):
+    """The exact `ffh stats` argv for one seed. Shared with the fan-out orchestrator
+    (tools/agents/fanout.py), so a game a sibling session ran is re-keyed into the local run
+    cache under the same key the local binary would produce. Keep deterministic and ordered."""
     cmd = [args.bin, 'stats', '--seed', str(seed), '--civs', str(args.civs), '--size', args.size,
            '--turns', str(args.turns), '--at', args.at]
     for opt in args.option:
@@ -66,6 +69,11 @@ def run_one(args, seed):
         cmd += ['--until-supremacy']
     if args.every:
         cmd += ['--every', str(args.every)]
+    return cmd
+
+
+def run_one(args, seed):
+    cmd = stats_cmd(args, seed)
     if ffh_agents and (args.cache or args.slots):
         rc, out, err, hit = ffh_agents.run_cached(cmd, cache=args.cache, slots=args.slots)
         out, err = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
@@ -200,7 +208,7 @@ def print_report(results, at, label='', cached=()):
         print('  seed %d (%s, %.1f ms/turn): %s' % (r['seed'], r['checksum'], r['ms_per_turn'], civs))
 
 
-def main():
+def build_parser():
     ap = argparse.ArgumentParser()
     ap.add_argument('--bin', default='target/release/ffh')
     ap.add_argument('--seeds', default='1-6')
@@ -223,6 +231,11 @@ def main():
     ap.add_argument('--no-cache', dest='cache', action='store_false')
     ap.add_argument('--no-slots', dest='slots', action='store_false', default=None,
                     help='do not take machine-wide CPU slots (tools/agents/slot.sh) per game')
+    return ap
+
+
+def main():
+    ap = build_parser()
     args = ap.parse_args()
     if ffh_agents is None:
         args.cache = args.slots = False

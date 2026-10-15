@@ -1022,6 +1022,29 @@ def run_cached(argv, cache=None, slots=None, stream=False, verbose=False):
     return 0, out, err, True
 
 
+def import_run(argv, out, err=b'', secs=0.0, overwrite=False):
+    """Store the output of a deterministic run played elsewhere (e.g. a fan-out worker) into the
+    local run cache, keyed by the LOCAL binary argv[0] -- so a later identical run here is a hit.
+    Correct whenever the game is deterministic: the stored stdout equals what the local binary
+    would print (bit-for-bit but for the timing fields, as with any cached game). Returns
+    (key, None) on success, (None, reason) if the argv is not cacheable. Does nothing if an entry
+    for the key already exists unless overwrite."""
+    if not cache_enabled():
+        return None, 'run cache disabled'
+    key, why = run_key(list(argv))
+    if key is None:
+        return None, why
+    if not overwrite and cache_get(key) is not None:
+        return key, None
+    if isinstance(out, str):
+        out = out.encode()
+    if isinstance(err, str):
+        err = err.encode()
+    cache_put(key, list(argv), out, err, secs)
+    stats_log('import', key, secs)
+    return key, None
+
+
 # ---------------------------------------------------------------------------------------------
 # garbage collection
 
