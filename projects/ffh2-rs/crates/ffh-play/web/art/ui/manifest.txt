@@ -3,6 +3,8 @@ set ui
 source heraldry.spr
 source fonts.spr
 source icons.spr
+source chrome.spr
+source marks.spr
 
 ; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
 ; Celeste Sable Cendree). Sigils without a bespoke sprite yet use the lozenge.
@@ -30,14 +32,8 @@ map civ CIVILIZATION_SVARTALFAR -> sigil/_lozenge tincture=Purpure
 map civ CIVILIZATION_BARBARIAN -> sigil/skull tincture=Sable
 map civ * -> sigil/_lozenge tincture=Argent
 
-; ---- religions (11.5): glyph colour per faith (also the @ accent of their disciples)
-map religion RELIGION_FELLOWSHIP_OF_LEAVES -> icon16/_religion remap=7O
-map religion RELIGION_THE_ORDER -> icon16/_religion remap=78
-map religion RELIGION_OCTOPUS_OVERLORDS -> icon16/_religion remap=7T
-map religion RELIGION_RUNES_OF_KILMORPH -> icon16/_religion remap=7y
-map religion RELIGION_THE_ASHEN_VEIL -> icon16/_religion remap=7C
-map religion RELIGION_THE_EMPYREAN -> icon16/_religion remap=7L
-map religion RELIGION_COUNCIL_OF_ESUS -> icon16/_religion remap=7p
+; ---- religions (11.5): bespoke glyphs by name (icon16/religion_<x>, icon8/religion_<x>); the haloed
+; roundel is the fallback for a religion without one
 map religion * -> icon16/_religion
 
 ; ---- promotions (11.5): a seal whose rim gives the family
