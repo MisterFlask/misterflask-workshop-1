@@ -421,45 +421,62 @@ fn committed_units(g: &Game, p: PlayerId, tp: PlotIdx) -> i32 {
     g.players[p].groups.iter().filter(|&&grp| tagged(g, grp) == Some(tp)).map(|&grp| g.groups[grp].units.len() as i32).sum()
 }
 
-/// The target of our operation and the number of units it needs: the best value for its cost
-/// among the cities we can reach (exact estimates for the few best, rough ones otherwise).
-/// Returns (candidate, units needed, feasible with the force we have).
+/// Units the city of candidate `cand` needs against what we see of it, given our `force` on
+/// its landmass (strongest first): the strike played out with the whole force when the city is
+/// seen (what is missing, roughly, when it falls short), else a rough guess.
+fn need_for(g: &Game, team: TeamId, cand: &Cand, force: &[UnitId]) -> i32 {
+    if cand.visible && !force.is_empty() {
+        let defs = visible_defenders(g, team, cand.plot);
+        let all: Vec<UnitId> = force.iter().copied().take(24).collect();
+        let s = simulate(g, cand.plot, &defs, &all, wall_cut(g, cand.city, &all));
+        match s.used {
+            Some(n) => n as i32 + 1,
+            // Short of the whole force: a defender's health per two more attackers.
+            None => all.len() as i32 + 1 + s.hp_left * 2 / g.d.defines.max_hit_points.max(1),
+        }
+    } else if cand.visible {
+        rough_need(cand.n_def)
+    } else {
+        // Enough to go and look.
+        cand.n_def + 2
+    }
+}
+
+/// The target of our operation and the number of units it needs. The city our stacks are
+/// committed to (the most units whose last orders aim at it) keeps its place while it is within
+/// reach of what we have or can build; otherwise the best value for its cost among the cities
+/// we can reach (exact estimates for the few best, rough ones otherwise). Without that
+/// stickiness the target changed whenever a stack came close enough to see a garrison, and the
+/// stacks walked back and forth between two cities. Returns (candidate, units needed, feasible
+/// with the force we have).
 fn choose_target(g: &Game, p: PlayerId) -> Option<(Cand, i32, bool)> {
     let (cands, civ) = candidates(g, p);
     if cands.is_empty() {
         return None;
     }
-    // Units already committed to each candidate (their groups' last orders aim at it): the
-    // operation keeps its target unless another one is clearly better.
-    let invested: Vec<i32> = cands.iter().map(|c| committed_units(g, p, c.plot)).collect();
-    let mut order: Vec<usize> = (0..cands.len()).collect();
-    order.sort_by_key(|&i| (std::cmp::Reverse(invested[i] > 0), std::cmp::Reverse(rough_score(&cands[i])), cands[i].city));
     let team = g.players[p].team;
+    let invested: Vec<i32> = cands.iter().map(|c| committed_units(g, p, c.plot)).collect();
+    let kept = (0..cands.len()).filter(|&i| invested[i] > 0).max_by_key(|&i| (invested[i], std::cmp::Reverse(cands[i].city)));
+    if let Some(i) = kept {
+        let c = cands[i];
+        let force = force_on(g, p, g.map.plots[c.plot].area);
+        let need = need_for(g, team, &c, &force);
+        // Within reach: twice the force we have at war; four more units than we have against
+        // barbarians (production builds toward the target, but not without end).
+        let reach = if civ { force.len() as i32 * 2 + 2 } else { force.len() as i32 + 4 };
+        if need <= reach {
+            return Some((c, need, need <= force.len() as i32));
+        }
+    }
+    let mut order: Vec<usize> = (0..cands.len()).filter(|&i| Some(i) != kept).collect();
+    order.sort_by_key(|&i| (std::cmp::Reverse(rough_score(&cands[i])), cands[i].city));
     let mut best: Option<(Cand, i32, bool, i64)> = None;
     for i in order.into_iter().take(4) {
         let c = cands[i];
         let force = force_on(g, p, g.map.plots[c.plot].area);
-        let need = if c.visible && !force.is_empty() {
-            let defs = visible_defenders(g, team, c.plot);
-            let all: Vec<UnitId> = force.iter().copied().take(24).collect();
-            let s = simulate(g, c.plot, &defs, &all, wall_cut(g, c.city, &all));
-            match s.used {
-                Some(n) => n as i32 + 1,
-                // Short of the whole force: what is missing, roughly (a defender's health per
-                // two more attackers).
-                None => all.len() as i32 + 1 + s.hp_left * 2 / g.d.defines.max_hit_points.max(1),
-            }
-        } else if c.visible {
-            rough_need(c.n_def)
-        } else {
-            // Enough to go and look.
-            c.n_def + 2
-        };
+        let need = need_for(g, team, &c, &force);
         let feasible = need <= force.len() as i32;
         let mut score = c.value as i64 * 1000 / (need as i64 * 100 + c.dist as i64 * 25 + 200);
-        if invested[i] > 0 {
-            score *= 3;
-        }
         if feasible {
             score += 1_000_000;
         }
