@@ -18,3 +18,8 @@ All game art is original (no Civ4/FFH2 assets); see `docs/ART.md` for the style 
 `style-reference.png` is a prototype study rendered while writing `docs/ART.md`: the 40-colour
 palette, the terrain and feature key, unit silhouettes on three grounds with the ten owner
 tinctures, and a sample map at 2x. It validates the guide's rules. It is not final art.
+
+`toolkit-scene.png` and `toolkit-units.png` are screenshots of the art toolkit's preview pages
+(`crates/ffh-play/web/art/preview/`, see `docs/ART.md` section 15): the 20x14 sample scene at 2x
+rendered from the seed sprites, and the generic unit silhouettes on three grounds. They show the
+toolkit's state when it was built; regenerate them with `node tools/screenshot.mjs`.

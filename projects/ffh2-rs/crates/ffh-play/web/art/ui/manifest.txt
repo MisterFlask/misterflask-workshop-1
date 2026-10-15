@@ -1,0 +1,75 @@
+; ui set: heraldry, fonts, icons (docs/ART.md 7, 11).
+set ui
+source heraldry.spr
+source fonts.spr
+source icons.spr
+
+; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
+; Celeste Sable Cendree). Sigils without a bespoke sprite yet use the lozenge.
+map civ CIVILIZATION_AMURITES -> sigil/_lozenge tincture=Purpure
+map civ CIVILIZATION_BALSERAPHS -> sigil/_lozenge tincture=Or
+map civ CIVILIZATION_BANNOR -> sigil/sword tincture=Argent
+map civ CIVILIZATION_CALABIM -> sigil/_lozenge tincture=Gules
+map civ CIVILIZATION_CLAN_OF_EMBERS -> sigil/_lozenge tincture=Tenne
+map civ CIVILIZATION_DOVIELLO -> sigil/wolf tincture=Sable
+map civ CIVILIZATION_ELOHIM -> sigil/_lozenge tincture=Argent
+map civ CIVILIZATION_GRIGORI -> sigil/_lozenge tincture=Azure
+map civ CIVILIZATION_HIPPUS -> sigil/_lozenge tincture=Tenne
+map civ CIVILIZATION_ILLIANS -> sigil/_lozenge tincture=Celeste
+map civ CIVILIZATION_INFERNAL -> sigil/_lozenge tincture=Gules
+map civ CIVILIZATION_KHAZAD -> sigil/_lozenge tincture=Or
+map civ CIVILIZATION_KURIOTATES -> sigil/_lozenge tincture=Vert
+map civ CIVILIZATION_LANUN -> sigil/_lozenge tincture=Azure
+map civ CIVILIZATION_LJOSALFAR -> sigil/leaf tincture=Vert
+map civ CIVILIZATION_LUCHUIRP -> sigil/_lozenge tincture=Cendree
+map civ CIVILIZATION_MALAKIM -> sigil/_lozenge tincture=Or
+map civ CIVILIZATION_MERCURIANS -> sigil/_lozenge tincture=Argent
+map civ CIVILIZATION_SHEAIM -> sigil/ring tincture=Gules
+map civ CIVILIZATION_SIDAR -> sigil/_lozenge tincture=Cendree
+map civ CIVILIZATION_SVARTALFAR -> sigil/_lozenge tincture=Purpure
+map civ CIVILIZATION_BARBARIAN -> sigil/skull tincture=Sable
+map civ * -> sigil/_lozenge tincture=Argent
+
+; ---- religions (11.5): glyph colour per faith (also the @ accent of their disciples)
+map religion RELIGION_FELLOWSHIP_OF_LEAVES -> icon16/_religion remap=7O
+map religion RELIGION_THE_ORDER -> icon16/_religion remap=78
+map religion RELIGION_OCTOPUS_OVERLORDS -> icon16/_religion remap=7T
+map religion RELIGION_RUNES_OF_KILMORPH -> icon16/_religion remap=7y
+map religion RELIGION_THE_ASHEN_VEIL -> icon16/_religion remap=7C
+map religion RELIGION_THE_EMPYREAN -> icon16/_religion remap=7L
+map religion RELIGION_COUNCIL_OF_ESUS -> icon16/_religion remap=7p
+map religion * -> icon16/_religion
+
+; ---- promotions (11.5): a seal whose rim gives the family
+map promotion race=1 -> icon16/_seal remap=#7
+map promotion equipment=1 -> icon16/_seal remap=#y
+map promotion sphere=AIR -> icon16/_seal remap=#F
+map promotion sphere=BODY -> icon16/_seal remap=#Y
+map promotion sphere=CHAOS -> icon16/_seal remap=#R
+map promotion sphere=DEATH -> icon16/_seal remap=#7
+map promotion sphere=EARTH -> icon16/_seal remap=#y
+map promotion sphere=ENCHANTMENT -> icon16/_seal remap=#P
+map promotion sphere=ENTROPY -> icon16/_seal remap=#p
+map promotion sphere=FIRE -> icon16/_seal remap=#l
+map promotion sphere=ICE -> icon16/_seal remap=#f
+map promotion sphere=LAW -> icon16/_seal remap=#8
+map promotion sphere=LIFE -> icon16/_seal remap=#W
+map promotion sphere=METAMAGIC -> icon16/_seal remap=#P
+map promotion sphere=MIND -> icon16/_seal remap=#T
+map promotion sphere=NATURE -> icon16/_seal remap=#O
+map promotion sphere=SHADOW -> icon16/_seal remap=#4
+map promotion sphere=SPIRIT -> icon16/_seal remap=#g
+map promotion sphere=SUN -> icon16/_seal remap=#L
+map promotion sphere=WATER -> icon16/_seal remap=#N
+map promotion PROMOTION_POISONED|PROMOTION_PLAGUED|PROMOTION_DISEASED|PROMOTION_WITHERED|PROMOTION_RUSTED|PROMOTION_ENRAGED|PROMOTION_CRAZED|PROMOTION_FATIGUED|PROMOTION_WEAK|PROMOTION_SLOW|PROMOTION_HELD|PROMOTION_CHARMED|PROMOTION_BURNING_BLOOD|PROMOTION_VULNERABLE_TO_FIRE|PROMOTION_UNHOLY_TAINT|PROMOTION_MUTATED -> icon16/_seal remap=#C
+map promotion PROMOTION_HERO|PROMOTION_DIVINE|PROMOTION_AVATAR|PROMOTION_HEROIC_DEFENSE|PROMOTION_HEROIC_DEFENSE2|PROMOTION_HEROIC_STRENGTH|PROMOTION_HEROIC_STRENGTH2|PROMOTION_BLESSED|PROMOTION_GREAT_COMMANDER -> icon16/_seal remap=#l
+map promotion * -> icon16/_seal remap=#6
+
+; ---- buildings: no art in the MVP (11.5); category icons so lists can show something
+map building wonder=WORLD -> icon16/_wonder
+map building * -> icon16/_building
+
+; ---- unit combat classes and specialists
+map unitcombat * -> icon8/_combat
+map specialist great=1 -> icon16/_specialist remap=68
+map specialist * -> icon16/_specialist

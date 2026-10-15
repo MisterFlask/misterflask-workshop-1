@@ -1,0 +1,76 @@
+; resource medallions (docs/ART.md 6.1): an 11x11 soot disc whose rim (# slot) gives the class,
+; with a 7x7 glyph inside. Both are centred on tile (25, 25).
+
+= res/_disc 11x11 5,5
+: note the seal; # is the class rim (food o, strategic 6, luxury y, mana P), set by the mapping `rim`
+...#####...
+..#11111#..
+.#1111111#.
+#111111111#
+#111111111#
+#111111111#
+#111111111#
+#111111111#
+.#1111111#.
+..#11111#..
+...#####...
+
+= res/_food 7x7 3,3
+: note food fallback: a bound sheaf
+.Y.Y.Y.
+..yyy..
+...y...
+..6y6..
+...y...
+..yyy..
+.y.y.y.
+
+= res/_strategic 7x7 3,3
+: note strategic fallback: an ingot
+.......
+..666..
+.65556.
+6555554
+4444443
+.333333
+.......
+
+= res/_luxury 7x7 3,3
+: note luxury fallback: a cut stone
+..yyy..
+.yYLYy.
+yYYYYYy
+.yYYYy.
+..yYy..
+...y...
+.......
+
+= res/_mana 7x7 3,3
+: note mana: a lilac crystal (sphere glyphs to come); one L core pixel
+...P...
+..PP8..
+..PPp..
+.PPLp..
+..PPp..
+..Pp...
+...p...
+
+= res/fish 7x7 3,3
+: types BONUS_FISH
+.......
+.g...gg
+gFg.gFg
+gFFgFFg
+gFg.gFg
+.g...gg
+.......
+
+= res/iron 7x7 3,3
+: types BONUS_IRON
+.......
+..555..
+.54445.
+5444443
+3333332
+.222222
+.......

@@ -1,0 +1,48 @@
+; cities set: cities, improvements and resources (docs/ART.md 5.7-5.8, 6, 9).
+set cities
+source cities.spr
+source improvements.spr
+source resources.spr
+
+; ---- city style per civilization (9.2, 7.3): the target is a style (city/<style>_<tier>);
+; light = window colour key, pool = FIRE | BLOOD | none. Missing styles fall back to cloister.
+map citystyle CIVILIZATION_AMURITES -> cloister light=P
+map citystyle CIVILIZATION_BALSERAPHS -> carnival
+map citystyle CIVILIZATION_BANNOR -> cloister
+map citystyle CIVILIZATION_CALABIM -> cloister
+map citystyle CIVILIZATION_CLAN_OF_EMBERS -> tribal
+map citystyle CIVILIZATION_DOVIELLO -> tribal
+map citystyle CIVILIZATION_ELOHIM -> cloister
+map citystyle CIVILIZATION_GRIGORI -> cloister
+map citystyle CIVILIZATION_HIPPUS -> tribal
+map citystyle CIVILIZATION_ILLIANS -> frost light=F pool=none
+map citystyle CIVILIZATION_INFERNAL -> infernal light=R pool=BLOOD
+map citystyle CIVILIZATION_KHAZAD -> dwarven
+map citystyle CIVILIZATION_KURIOTATES -> cloister
+map citystyle CIVILIZATION_LANUN -> harbour
+map citystyle CIVILIZATION_LJOSALFAR -> elven
+map citystyle CIVILIZATION_LUCHUIRP -> dwarven
+map citystyle CIVILIZATION_MALAKIM -> sundomes
+map citystyle CIVILIZATION_MERCURIANS -> celestial light=8 pool=none
+map citystyle CIVILIZATION_SHEAIM -> infernal light=R pool=BLOOD
+map citystyle CIVILIZATION_SIDAR -> cloister light=6
+map citystyle CIVILIZATION_SVARTALFAR -> elven light=P
+map citystyle CIVILIZATION_BARBARIAN -> tribal
+map citystyle * -> cloister
+
+; ---- improvements: bespoke sprites claim their types with `: types`; the rest by category
+map improvement graphical=1 -> none
+map improvement mana=1 -> improvement/_node
+map improvement unique=1 -> improvement/_landmark
+map improvement goody=1 -> improvement/_cairn
+map improvement permanent=1 -> improvement/_lair
+map improvement water=1 -> improvement/_boat
+map improvement IMPROVEMENT_VILLAGE|IMPROVEMENT_TOWN -> improvement/hamlet
+map improvement * -> improvement/_mark
+
+; ---- resources (6.1): the medallion rim gives the class; WHALE is food in the guide
+map bonus cat=food -> res/_food rim=o
+map bonus cat=strategic -> res/_strategic rim=6
+map bonus cat=luxury -> res/_luxury rim=y
+map bonus cat=mana -> res/_mana rim=P
+map bonus BONUS_WHALE -> res/_food rim=o

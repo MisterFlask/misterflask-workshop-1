@@ -1,0 +1,36 @@
+; units set (docs/ART.md 10). Bespoke sprites are named unit/<type without UNIT_> (EQUIPMENT_X:
+; unit/equipment_x) and need no rule. Until one exists, a unit resolves to the default unit of
+; its class (unique units), then to the category rules below (most conditions wins; prio adds).
+set units
+source generic.spr
+
+; ---- natures that override the class silhouette (10.4)
+map unit equipment=1 -> unit/_item
+map unit race=UNDEAD -> unit/_undead prio=15
+map unit race=DEMON -> unit/_demon prio=15
+map unit race=GOLEM|ELEMENTAL -> unit/_beast prio=5
+map unit race=ANGEL -> unit/_melee prio=5 remap=37,48,46,57,u6,Q7
+map unit special=SPELL -> unit/_item
+map unit domain=AIR -> unit/_bird
+map unit domain=SEA combat=ANIMAL|BEAST -> unit/_animal remap=4g,3N,5F,2n
+
+; ---- one silhouette per combat class (10.2)
+map unit combat=MELEE -> unit/_melee
+map unit combat=ARCHER -> unit/_archer
+map unit combat=MOUNTED -> unit/_mounted
+map unit combat=RECON -> unit/_recon
+map unit combat=SIEGE -> unit/_siege
+map unit combat=ADEPT -> unit/_adept
+map unit combat=DISCIPLE -> unit/_disciple
+map unit combat=NAVAL -> unit/_ship
+map unit combat=ANIMAL -> unit/_animal
+map unit combat=BEAST -> unit/_beast
+map unit domain=SEA -> unit/_ship
+map unit * -> unit/_civilian
+
+; ---- tier is ornament, not size (10.3): tier 1 in leather, tier 3-4 with lit metal edges
+map unit combat=MELEE tier=1 -> unit/_melee remap=4u,3u,5Q,yu
+map unit combat=MELEE tier=3 -> unit/_melee remap=45,56
+map unit combat=MELEE tier=4 -> unit/_melee remap=34,45,56,u3
+map unit combat=MOUNTED tier=4 -> unit/_mounted remap=34,45,56
+map unit combat=ARCHER tier=1 -> unit/_archer remap=4u,3Q

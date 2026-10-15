@@ -1,0 +1,85 @@
+; heraldry (docs/ART.md 7): pennant, city banner, sigils. # field, % shade, * charge; the
+; division (per pale, fess, bend, quarterly) is applied inside the `: flag` rectangle.
+
+= ui/pennant 10x13 1,11
+: flag 2,1,6,7
+: note the stack pennant: a 6x8 swallow-tail on a pole, field and division only (no sigil)
+.0000000..
+06######0.
+06######0.
+06#####0..
+06####0...
+06#####0..
+06######0.
+06%%%%%%0.
+06000000..
+060.......
+060.......
+060.......
+.0........
+
+= ui/banner 9x14 1,1
+: flag 1,2,7,8
+: note the city banner, 7x12, with the civilization's sigil drawn on it in the charge colour
+.0000000.
+066666660
+0#######0
+0######%0
+0######%0
+0######%0
+0######%0
+0######%0
+0######%0
+0######%0
+0######%0
+.0#####0.
+..0###0..
+...0#0...
+
+= sigil/sword 5x5 0,0
+: note Bannor: a sword, point down
+..*..
+.***.
+..*..
+..*..
+..*..
+
+= sigil/skull 5x5 0,0
+: note barbarians: a skull
+.***.
+*.*.*
+*****
+.***.
+.*.*.
+
+= sigil/ring 5x5 0,0
+: note Sheaim: a ring about a point (an inverted star at 7x7)
+.***.
+*...*
+*.*.*
+*...*
+.***.
+
+= sigil/leaf 5x5 0,0
+: note Ljosalfar: a leaf
+...**
+..***
+.***.
+***..
+*....
+
+= sigil/wolf 5x5 0,0
+: note Doviello: a wolf's head
+*...*
+**.**
+*****
+.***.
+..*..
+
+= sigil/_lozenge 5x5 0,0
+: note fallback charge for civilizations without a bespoke sigil
+..*..
+.***.
+*****
+.***.
+..*..

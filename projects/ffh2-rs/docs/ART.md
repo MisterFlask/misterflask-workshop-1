@@ -1186,7 +1186,8 @@ Rejected:
 
 ## 13. Sprite sources as text
 
-All sprites live in text files next to the client (location chosen by the client). One file holds
+All sprites live in text files next to the client, in `crates/ffh-play/web/art/` (section 15
+describes the toolkit that loads them, with a few extensions to this format). One file holds
 many sprites:
 
 ```text
@@ -1228,3 +1229,243 @@ many sprites:
 7. Terrain marks are sparse; at 2x a screen of the terrain still reads as quiet ground with a few
    strong shapes.
 8. Nothing copies Civ4, FfH2 or the mood board's specific symbols.
+
+---
+
+## 15. Toolkit
+
+The art toolkit turns the text sprites into canvas drawing for the client. It lives in
+`crates/ffh-play/web/art/`, a directory owned by the art track; the client imports from it. Vanilla
+ES modules, no dependencies; the node tools use only node's standard library.
+
+```text
+web/art/
+  art.js           the public module: loadArt(), drawing functions, atlases, remaps
+  compose.js       renderMap(): a whole view in the order of section 3.1; fromApiMap()
+  mapping.js       game type -> sprite resolution with category fallbacks
+  library.js       loads and merges palette, set list, manifests, sources, types.json
+  spritefmt.js     parsers for every text format (shared by the browser and node)
+  palette.txt      the 40 colours, the remap tables (2.4) and the tinctures (7.1)
+  sets.txt         the sprite sets, in load order
+  types.json       generated from data/xml: every type with the facts the mapping keys on
+  terrain/ units/ cities/ ui/     one directory per set: manifest.txt + *.spr sources
+  preview/         contact sheets and the sample scene (open with tools/serve.mjs)
+  tools/           validate, check.sh, screenshot, serve, gen-types, bundle, sprtool, bake-terrain
+```
+
+### 15.1 Sprite files (`*.spr`)
+
+Section 13's format, extended with metadata lines between the header and the rows:
+
+```text
+; comment
+= unit/_disciple 24x24 11,21
+: note disciple: the hooded acolyte with a lantern
+: accent T
+: light 15,18 FIRE 5
+........................
+...                       (exactly 24 rows of exactly 24 characters)
+```
+
+- Header `= <name> <W>x<H> <ax>,<ay>`: the anchor is the point placed on the map (feet, base,
+  trunk bottom, glyph baseline).
+- Characters: a palette key, `.` transparent, `#` `%` `*` owner field, shade and charge, `@` accent.
+- Metadata (all optional):
+
+  | key | meaning |
+  |---|---|
+  | `types A B` | game types this sprite represents exactly (`UNIT_WARRIOR`, `TERRAIN_GRASS`...) |
+  | `light x,y TABLE r` | a light pool (FIRE, BLOOD, RITE, ARC) of radius r at sprite pixel x,y, drawn on visible tiles |
+  | `place x,y` | tile pixel where the anchor lands (features, improvements); default 16,28 / 16,29 |
+  | `flat` | an improvement drawn in the ground pass, under uprights (farms) |
+  | `flag x,y,w,h` | the rectangle in which an owner's division (per pale, fess...) is applied |
+  | `finial x,y` | where a capital's finial goes on a city sprite |
+  | `accent K` | the default colour of `@` |
+  | `tags ...`, `note ...` | free text |
+
+- Names are paths; the namespace fixes the size, checked by the validator:
+
+  | namespace | size and anchor |
+  |---|---|
+  | `terrain/` | 64x64 seamless texture |
+  | `hill/`, `peak/`, `feature/` | upright sprites (humps, masses, trees, single features) |
+  | `route/` | the dot a road is stamped with |
+  | `unit/` | 24x24 feet 11,21, or 32x32 feet 15,29 (huge) |
+  | `city/<style>_<tier>` | base on the bottom row; tiers 1-5 (section 9.1) |
+  | `improvement/` | at most 34x34 |
+  | `res/` | 7x7 glyph centred at 3,3; `res/_disc` the 11x11 seal |
+  | `icon16/`, `icon8/`, `ui/mark_*` | 16x16, 8x8, 8x8 |
+  | `sigil/` | 5x5 (or 7x7) charges in `*` |
+  | `font/vigil/`, `font/tally/` | glyphs in `8`, anchor at the baseline; `x_sc` are small capitals |
+  | `ui/` | pennant, banner and other chrome |
+
+- Groups: `name_a`, `name_b`... are variants of `name` (picked per tile by hash); `name_f1`,
+  `name_f2`... are animation frames (picked by `art.time`, 400 ms each). A rule targets the group.
+- Names starting with `_` (`unit/_melee`) are generic: category fallbacks, not a game type.
+- Outlines are part of the sprite. Moon rims, contact shadows, pools, pennants, HP strips and plaques
+  are added by the renderer.
+
+### 15.2 Sets, manifests and the mapping
+
+`sets.txt` lists the set directories. Each set has a `manifest.txt`, so four people can add sprites
+in parallel without touching a shared file (only a new set edits `sets.txt`):
+
+```text
+set units
+source generic.spr
+map unit race=UNDEAD -> unit/_undead prio=15
+map unit combat=MELEE -> unit/_melee
+map unit combat=MELEE tier=4 -> unit/_melee remap=34,45,56,u3
+map unit * -> unit/_civilian
+```
+
+A rule is `map <kind> <conditions> -> <sprite|none> [options]`. A condition is a type name
+(`UNIT_WARRIOR`, alternatives with `|`), `attr=value` (`|` alternatives, `attr!=value` negates) or
+`*`. `none` means deliberately not drawn (LAND_WORKED). Kinds and the attributes they key on
+(see `types.json`):
+
+| kind | attributes |
+|---|---|
+| `terrain` | water, impassable, graphical, hell, twin, up, down |
+| `hill`, `peak` | the plot's terrain (same attributes) |
+| `feature` | impassable, graphical |
+| `bonus` | cls (BONUSCLASS), cat (food, strategic, luxury, mana: a heuristic), health, happy |
+| `improvement` | permanent, unique, goody, graphical, water, actsAsCity, spawn, civ, mana |
+| `route` | (type only) |
+| `unit` | cls, combat, domain, tier, special, race (list), hero, equipment, invisible, base |
+| `civ`, `citystyle` | playable (citystyle targets a style name: `-> cloister light=P`) |
+| `religion`, `unitcombat` | (type only) |
+| `building` | cls, wonder (WORLD, NATIONAL, NONE), religion, defense |
+| `promotion` | race, equipment, sphere, line, level, dispellable, expires, mutation |
+| `specialist` | great |
+
+Options: `remap=ab,cd` (recolour key a to b...; slots allowed), `accent=K`, `scatter=A-B`
+(features: A to B sprites per tile), `rim=K` (resource class), `tincture=Name` (civ), `light=K`
+and `pool=TABLE|none` (city style), `deep` (ocean texture), `double` (railroad), `ghost`
+(translucent unit), `pool=TABLE:r` (improvement), `prio=N`.
+
+Resolution for `(kind, TYPE)` (mapping.js): (1) a rule naming the type; (2) a sprite whose
+`: types` lists it; (3) the naming convention (`unit/<type without UNIT_>`, `terrain/`, `feature/`,
+`res/`, `improvement/`, `route/`, `sigil/<civ>`, `icon16/religion_<x>`, `icon16/promotion_<x>`,
+`icon16/building_<x>`, `icon8/combat_<x>`, `icon16/specialist_<x>`); (4) for units, the same steps
+for the default unit of the unit's class, so unique units borrow their base's sprite; (5) the
+matching category rule with the most conditions (`prio` adds; ties go to the rule loaded first).
+An exact match inherits the type-describing options (`rim`, `tincture`, `light`, `pool`, `scatter`,
+`deep`) of the best category rule, so a new `res/wheat` keeps its food rim. So a bespoke sprite needs
+no rule at all: drop `unit/warrior` into a units file and UNIT_WARRIOR (and its unique units) use it.
+
+`types.json` is generated by `node tools/gen-types.mjs` from `data/xml` and committed (the browser
+cannot read the XML). Regenerate it when the XML changes; the validator fails while it is stale.
+
+### 15.3 art.js
+
+```js
+import { loadArt, TILE } from './art/art.js';
+import { renderMap, makePlots, fromApiMap } from './art/compose.js';
+const art = await loadArt();                 // or loadArt({ base: url }) or loadArt({ bundle: text })
+art.scale = 2;                               // canvas pixels per art pixel, an integer (3.2)
+art.setWorld({ width, height, wrapX });      // the warp noise wraps with the map
+art.setIndexNames('terrain', names);         // let plots carry engine indices (from /api/data)
+```
+
+A `plot` is `{ x, y, terrain, plotType, feature, bonus, improvement, route, river, owner, vis,
+city, at(dx, dy) }` in screen orientation (row 0 north): types as names or indices, `plotType`
+PEAK, HILLS, LAND, OCEAN (or 0-3), `river` bit 0 = south edge, bit 1 = east edge (the API's
+n_of_river and w_of_river), `vis` 0 unrevealed, 1 fogged, 2 visible, `at` the neighbour or null.
+`fromApiMap(api, w, h, wrapX)` builds these from `/api/map` (flipping Civ4's y-up rows) and
+`makePlots(map)` adds coordinates and `at`.
+
+Drawing functions take the canvas position of the tile's top-left corner:
+
+| function | draws |
+|---|---|
+| `drawTerrain(ctx, x, y, plot)` | ground through the domain warp, shoreline ink, foam, depth contour; void if unrevealed |
+| `drawRelief(ctx, x, y, plot)` | hill humps or peaks, recoloured per terrain |
+| `drawFeature(ctx, x, y, plot[, type])` | scattered or single feature sprites, their pools |
+| `drawRiver(ctx, x, y, plot[, {s, e}])` | river ink on the south and east edges (meanders up to 8 px out of the tile) |
+| `drawRoad(ctx, x, y, plot[, dirs8])` | dotted road to connected neighbours (N, NE, E ... NW) |
+| `drawBorder(ctx, x, y, plot \| {n,e,s,w}, ownerStyle)` | stitched ribbons on the owner's side |
+| `drawResource(ctx, x, y, bonusType)` | the seal at tile 25,25 |
+| `drawImprovement(ctx, x, y, type, plot)` | improvement with its pools (dark windows when not visible) |
+| `drawCity(ctx, x, y, city, ownerStyle)` | style and tier sprite, pool, window light, finial, banner, plaque |
+| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | contact shadow, echoes, rim, pennant, HP strip, moves pip, stack chip or mark |
+| `drawFog(ctx, x, y, plot)` | the fog pass: FOG remap with hatching, void for unrevealed, ragged edges |
+| `drawLight(ctx, cx, cy, table, r, {inner})`, `drawVignette(ctx, x, y, w, h)` | index-remap pools and the vignette |
+| `drawText(ctx, x, y, text, {font, color, shadow, smallCaps})`, `measureText` | Vigil and Tally |
+| `icon(name)`, `iconFor(kind, type)`, `drawIcon` | icons as small cached canvases |
+| `drawSprite(ctx, x, y, name, variant)`, `drawTileCursor` | any sprite by name; the tile cursor |
+
+`city` is `{ size, name, capital, own, turns, disorder, visible, style, plaque, layer }`; `state` is
+`{ facing, selected, hp, moves, count, mark, hero, translucent, accent, noPennant, layer }`;
+`layer: 'sprite' | 'overlay'` splits a unit or city into the map part and the overlays drawn
+above every unit. `ownerStyle(civ, {division, tincture, ...})` builds an owner style and
+`assignOwners([{id, civ}])` applies the assignment of section 7.2.
+
+Draw order matters because rivers and uprights spill into neighbouring tiles, and fog and pools
+read the canvas back: ground for every tile, then rivers, roads, flat improvements, city pools,
+uprights row by row from north to south, seals, borders, fog, vignette, units, overlays.
+`renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, tx0, ty0, cols, rows })`
+does exactly that, clipped to the view, and reports per-phase times in `timings`.
+
+Internals worth knowing: sprites are rasterised per variant (remap, owner tincture and division,
+accent, FOG, silhouette, rim, translucency) and scale into shared atlas pages; remaps and fog read
+the canvas back and map each colour to its palette index, so they work at any integer scale and
+through a translate or integer-scale transform. Ground tiles are cached (index buffers keyed by the
+3x3 neighbourhood). A 20x14 view at 2x renders in about one second in headless Chromium, most of
+it terrain: the client should keep the terrain layer in an offscreen canvas per zoom level and
+redraw only changed tiles (3.1).
+
+### 15.4 Previews, screenshots and checks
+
+- `node tools/serve.mjs [port]` serves the directory; open `/preview/`: a contact sheet per set
+  (`sheet.html?set=terrain|units|cities|ui`), everything (`?set=all`, with the coverage table),
+  every game type through the mapping (`?set=coverage`, fallbacks greyed), and the sample scene
+  (`scene.html`, `?scale=1|2|3`): a 20x14 map with coast, a river, forests, hills, peaks, hell
+  terrain, roads, three owners' borders, three cities, stacks, fog and the unrevealed edge.
+- `node tools/screenshot.mjs <outdir> [page...]` screenshots every page with headless Chromium
+  (the playwright package if it resolves, else the chrome binary under `PLAYWRIGHT_BROWSERS_PATH`)
+  and fails on console errors. Screenshots are scratch: keep them out of the repo, except the small
+  reference sheets in `docs/art/`.
+- `tools/check.sh` (or `node tools/validate.mjs [-v]`) is the test: every module passes
+  `node --check`; palette.txt equals the blocks of section 2; every sprite parses, uses only palette
+  keys and slots and has its namespace's size; every rule's target exists and its options parse;
+  types.json matches data/xml; the bundle loads the same library; and every type of every kind
+  (terrains, hills, peaks, features, bonuses, improvements, routes, all units, civilizations, city
+  styles, religions, buildings, promotions, unit combats, specialists) resolves to a sprite or to
+  `none`. Colour counts over the limits of 4.3 are warnings. The script exits 0 when node is
+  missing. The client crate can run it from `cargo test` with a test like:
+
+  ```rust
+  #[test]
+  fn art_sources_validate() {
+      let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/web/art");
+      match std::process::Command::new("sh").arg("tools/check.sh").current_dir(dir).status() {
+          Ok(s) => assert!(s.success(), "web/art/tools/check.sh failed"),
+          Err(e) => eprintln!("art check skipped: {e}"),
+      }
+  }
+  ```
+
+- `node tools/bundle.mjs > art.bundle.txt` concatenates every source into one file
+  (`loadArt({ bundle })`), for a server that embeds its assets.
+
+### 15.5 Adding art
+
+1. Draw in the set you own: add or edit a `.spr` file and list new files in the set's manifest.
+   Name a bespoke sprite by the convention (`unit/swordsman`) or claim types with `: types`.
+2. Drafts may be sketched without outlines and with short rows: `node tools/sprtool.mjs outline
+   draft.spr` pads rows and adds the void outline to sprites whose header ends in `+outline`;
+   `sprtool.mjs stats` counts colours, `sprtool.mjs mirror` flips.
+3. New terrain textures can start from `node tools/bake-terrain.mjs <name>` (the recipes of 5.2);
+   the baked text is then the source and is edited by hand.
+4. Run `tools/check.sh`, then look: `node tools/screenshot.mjs /tmp/art` and read the set's sheet,
+   `coverage.png` and `scene.png` at 1x and 2x. Review against section 14.
+
+The seed art is deliberately small: 8 terrain textures (hell terrains are recoloured twins), hill
+humps, rock and snow peaks, three conifers (also ancient, burnt, new forest and jungle through
+remaps), flames, routes; 15 generic unit silhouettes that every unit falls back to by combat class,
+race, domain and tier; Cloister tiers 1-3, Infernal 2 and Tribal 2 cities; farm, cottage, hamlet,
+mine and category fallbacks for improvements and lairs; resource seals; pennant, banner and six
+sigils; the Vigil and Tally fonts; yield and category icons. Not drawn yet: bespoke units, most
+sigils and city styles, the 18 sphere runes, landmarks, walls, disorder smoke, holy-city glyphs,
+cursors and path previews.

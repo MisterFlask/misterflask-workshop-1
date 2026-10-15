@@ -1,0 +1,104 @@
+; palette.txt: the closed 40-colour palette of docs/ART.md section 2.
+; Keep in sync with the guide: tools/validate.mjs compares this file with its `palette` and `remap` blocks.
+;
+; palette: index key name hex family. Keys are the characters used in sprite grids.
+palette
+ 0 0 void    #05080b neutral
+ 1 1 soot    #0c1115 neutral
+ 2 2 coal    #161c21 neutral
+ 3 3 iron    #252b2f neutral
+ 4 4 slate   #373a3b neutral
+ 5 5 ash     #56524c neutral
+ 6 6 stone   #7d7366 neutral
+ 7 7 bone    #b3a28c neutral
+ 8 8 vellum  #ddcfb4 neutral
+ 9 d deep    #071219 navy
+10 n navy    #0d1d2b navy
+11 N tide    #193249 navy
+12 g glint   #3d5868 frost
+13 f frost   #717f86 frost
+14 F rime    #aab5b6 frost
+15 k teal-dk #0f2224 teal
+16 t teal    #1c383d teal
+17 T patina  #3d6364 teal
+18 q moss-dk #1f251c moss
+19 m moss    #363d31 moss
+20 o olive   #4d5537 moss
+21 O lichen  #6c724a moss
+22 u umber   #2e2620 earth
+23 Q dun     #4f483e earth
+24 x rust    #5f3a2a earth
+25 y ochre   #76663f earth
+26 Y sand    #8c8068 earth
+27 v bruise  #1b1622 purple
+28 p dusk    #382d45 purple
+29 P lilac   #6e5b80 purple
+30 e ember   #5a2412 fire
+31 E flame   #ad501d fire
+32 l amber   #e2913c fire
+33 L glow    #f7d47e fire
+34 c blood   #3a1216 crimson
+35 C crimson #77252b crimson
+36 R scarlet #b33a3a crimson
+37 s barrow  #22463a ritual
+38 S ritual  #6aab88 ritual
+39 W wisp    #c4efc4 ritual
+
+; remap: index remaps (section 2.4). FOG darkens about two steps and puts every light out; FIRE,
+; BLOOD, RITE and ARC pull the ground toward firelight, corruption, ritual and the arcane (pools).
+remap
+key  FOG FIRE BLOOD RITE ARC
+0    0   u    c     s    v
+1    0   u    c     s    v
+2    1   u    c     s    v
+3    2   u    c     s    p
+4    2   Q    c     s    p
+5    3   6    C     S    p
+6    4   7    C     S    P
+7    5   8    C     S    P
+8    6   8    R     W    8
+d    0   n    c     s    v
+n    d   N    c     s    v
+N    n   g    c     s    p
+g    N   f    C     S    p
+f    g   7    C     S    P
+F    f   8    C     S    P
+k    1   u    c     s    v
+t    k   Q    c     s    p
+T    t   y    C     S    P
+q    1   u    c     s    v
+m    q   Q    c     s    p
+o    m   y    C     S    p
+O    o   Y    C     S    P
+u    1   Q    c     s    v
+Q    u   y    c     s    p
+x    u   E    C     s    p
+y    Q   Y    C     S    P
+Y    5   7    C     S    P
+v    1   u    c     s    p
+p    v   Q    c     s    P
+P    p   6    C     S    8
+e    u   E    C     s    p
+E    u   l    R     S    P
+l    x   L    R     W    P
+L    y   L    R     W    8
+c    v   x    C     s    v
+C    c   E    R     S    p
+R    C   l    R     W    P
+s    k   Q    c     S    p
+S    s   y    C     W    P
+W    T   8    R     W    8
+
+; tinctures (section 7.1): name field shade charge stitch stitch-under [tick]
+; A border stitches with `stitch` over `under`; Sable adds a bone tick on every dash.
+tinctures
+Argent  7 6 1 7 6
+Or      y u 1 y u
+Gules   C c 8 C c
+Azure   g n 8 g n
+Vert    O o 1 O o
+Purpure P p 8 P p
+Tenne   x u 7 x u
+Celeste f g 1 f g
+Sable   2 1 7 2 1 7
+Cendree T t 8 T t

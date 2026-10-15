@@ -1,0 +1,51 @@
+; terrain set: ground textures, hills, peaks, features, routes (docs/ART.md 5).
+; Rule syntax: map <kind> <conditions> -> <sprite|none> [options]   (see docs/ART.md, "Toolkit")
+set terrain
+source textures.spr
+source relief.spr
+source features.spr
+source routes.spr
+
+; ---- ground textures: textures claim their TERRAIN_* with `: types`. Hell terrains are their
+; twin's texture recoloured (5.2), so a player can tell what the land used to be.
+map terrain TERRAIN_BROKEN_LANDS -> terrain/grass remap=mu,q3,oc,O5
+map terrain TERRAIN_FIELDS_OF_PERDITION -> terrain/plains remap=Qp,uv,yc,5P
+map terrain TERRAIN_BURNING_SANDS -> terrain/desert remap=Yx,6u,7E,ye
+map terrain TERRAIN_SHALLOWS -> terrain/marsh remap=qv,k1,nc,NC,o4,O5
+map terrain TERRAIN_OCEAN -> terrain/ocean deep
+; graphics-only types in the XML (peaks and hills are plot types drawn over the real terrain)
+map terrain TERRAIN_PEAK -> terrain/tundra
+map terrain TERRAIN_HILL -> terrain/grass
+map terrain water=1 -> terrain/coast
+map terrain * -> terrain/tundra
+
+; ---- hills (5.3): humps keyed in grass colours (body q, shadow checker 1, crest O)
+map hill water=1 -> none
+map hill TERRAIN_PLAINS -> hill/hump remap=qu,O6
+map hill TERRAIN_DESERT -> hill/hump remap=q6,1y,O8
+map hill TERRAIN_TUNDRA -> hill/hump remap=q3,12,O5
+map hill TERRAIN_SNOW -> hill/hump remap=qg,1N,OF
+map hill TERRAIN_MARSH -> hill/hump remap=qk,Oo
+map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=q2,O5
+map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=qv,OP
+map hill TERRAIN_BURNING_SANDS -> hill/hump remap=qe,1u,OE
+map hill TERRAIN_SHALLOWS -> hill/hump remap=q1,10,O4
+map hill * -> hill/hump
+
+; ---- peaks (5.3): snow and tundra wear the tall cap
+map peak water=1 -> none
+map peak TERRAIN_SNOW|TERRAIN_TUNDRA -> peak/snow
+map peak * -> peak/rock
+
+; ---- features (5.5). `scatter=a-b` scatters a-b sprites per tile; otherwise one sprite at `: place`.
+map feature FEATURE_FOREST -> feature/conifer scatter=9-12
+map feature FEATURE_FOREST_NEW -> feature/conifer scatter=3-4
+map feature FEATURE_FOREST_ANCIENT -> feature/conifer scatter=7-9 remap=mT,tk,kv,oT,qv
+map feature FEATURE_FOREST_BURNT -> feature/conifer scatter=3-4 remap=m3,t2,k1,o3,q1,u2
+map feature FEATURE_JUNGLE -> feature/conifer scatter=8-9 remap=mo,tm,kq
+map feature FEATURE_FLAMES -> feature/flames
+map feature * -> feature/_mark
+
+; ---- routes (5.6)
+map route ROUTE_RAILROAD -> route/railroad double
+map route * -> route/road
