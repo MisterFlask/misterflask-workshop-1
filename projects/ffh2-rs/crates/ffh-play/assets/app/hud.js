@@ -4,6 +4,7 @@
 
 import { S, dname, tname, turns, playerName, me, emit, endTurnMessage } from "./state.js";
 import { h, fill } from "./dom.js";
+import { render as markup } from "./markup.js";
 import { look, pix, pixable, iconEl, uiIcon, barEl } from "./look.js";
 import { openCount } from "./commands.js";
 import { spectatorBar, autoplayBar } from "./tools.js";
@@ -164,7 +165,7 @@ function reportView() {
     "div.report",
     h("h4", r.from_turn === r.turn ? `Turn ${r.turn}` : `Turns ${r.from_turn}-${r.turn}`),
     lines.length ? h("ul", lines.map((l) => h("li", l))) : h("p.dim", "Nothing to report."),
-    msgs.length ? h("div.section", h("h4", "Messages"), h("ul.messages", msgs.map((m) => h("li", m.text)))) : null,
+    msgs.length ? h("div.section", h("h4", "Messages"), h("ul.messages", msgs.map((m) => h("li", markup(m.text))))) : null,
   );
 }
 
@@ -178,7 +179,7 @@ function messagesView() {
   const turnsDesc = [...byTurn.keys()].sort((a, b) => b - a);
   return h(
     "div.messages",
-    turnsDesc.map((t) => h("div.turn-group", h("h4", `Turn ${t}`), h("ul", byTurn.get(t).map((m) => h("li", m.text))))),
+    turnsDesc.map((t) => h("div.turn-group", h("h4", `Turn ${t}`), h("ul", byTurn.get(t).map((m) => h("li", markup(m.text)))))),
   );
 }
 

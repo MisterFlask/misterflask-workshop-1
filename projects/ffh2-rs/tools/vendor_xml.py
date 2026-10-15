@@ -101,16 +101,47 @@ def reconstruct_global_defines(dst):
     return changed
 
 
-def extract_english(src, dst):
+_TEXT_RE = re.compile(r"<TEXT>\s*<Tag>([^<]+)</Tag>\s*<English>(.*?)</English>", re.S)
+
+
+def read_english(src, into):
+    """Merge the TXT_KEY -> English strings of one CIV4GameText file into `into` (later files and
+    layers override earlier ones, as Civ4 loads them). The <English> value is kept raw: a
+    `<Text>...</Text>` grammatical-forms child is parsed by ffh-data's Text (CvGameText::read)."""
     s = open(src, encoding="latin-1").read()
-    n = 0
+    for m in _TEXT_RE.finditer(s):
+        tag, txt = m.group(1).strip(), m.group(2)
+        into[tag] = txt.replace("\r", "").replace("\n", "\\n").replace("\t", " ")
+
+
+def text_files(text_dir):
+    """The gameplay CIV4GameText files of a Text dir, sorted; the civilopedia files are left out
+    (the client has no civilopedia screen, and they are ~0.5 MB of unused prose)."""
+    import glob
+    return [f for f in sorted(glob.glob(os.path.join(text_dir, "CIV4GameText*.xml")))
+            if "Civilopedia" not in os.path.basename(f)]
+
+
+def extract_english(dst):
+    """Vendor the English text the mod loads into en.tsv (TAG<TAB>text, sorted). FfH2 inherits the
+    stock BtS text for the keys it does not override (e.g. TXT_KEY_UNIT_WARRIOR), so merge the stock
+    layers in load order and let FfH2's own file override them, matching Civ4's base -> Warlords ->
+    BtS -> mod precedence."""
+    layers = [
+        os.path.join(BTS_ROOT, "Text"),                               # base (vanilla) text
+        os.path.join(BTS, "Warlords", "Assets", "XML", "Text"),       # Warlords
+        os.path.join(BTS_EXP, "Text"),                                # Beyond the Sword
+    ]
+    strings = {}
+    for text_dir in layers:
+        for f in text_files(text_dir):
+            read_english(f, strings)
+    stock = len(strings)
+    read_english(os.path.join(FFH, "Text", "CIV4GameText_FFH2.xml"), strings)  # FfH2 overrides
     with open(dst, "w", encoding="utf-8") as f:
-        for m in re.finditer(r"<TEXT>\s*<Tag>([^<]+)</Tag>\s*<English>(.*?)</English>", s, re.S):
-            tag, txt = m.group(1).strip(), m.group(2)
-            txt = txt.replace("\r", "").replace("\n", "\\n").replace("\t", " ")
-            f.write(f"{tag}\t{txt}\n")
-            n += 1
-    return n
+        for tag in sorted(strings):
+            f.write(f"{tag}\t{strings[tag]}\n")
+    return len(strings), stock
 
 
 def main():
@@ -130,9 +161,8 @@ def main():
     for k, old, new in changed:
         print(f"  {k}: {old} -> {new}")
     os.makedirs(os.path.join(OUT, "text"), exist_ok=True)
-    n = extract_english(os.path.join(FFH, "Text", "CIV4GameText_FFH2.xml"),
-                        os.path.join(OUT, "text", "en.tsv"))
-    print(f"text: {n} English strings")
+    n, stock = extract_english(os.path.join(OUT, "text", "en.tsv"))
+    print(f"text: {n} English strings ({stock} stock BtS/Civ4 keys FfH2 inherits + its own, FfH2 wins)")
 
 
 if __name__ == "__main__":
