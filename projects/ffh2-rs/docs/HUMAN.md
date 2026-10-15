@@ -82,7 +82,7 @@ cargo build --release
 * GAME flags: each game gets a directory in `--saves DIR` (default `./saves`), `game-<seed>`
   (`-2`, ... when taken), with its autosaves (`auto/`, `--autosaves N` kept, default 20), journal
   and manual saves; `--no-saves` writes nothing. `--panic-at T` panics once when the game reaches
-  turn T, a self-test of the crash report.
+  turn T (or as a loaded save of turn T or later starts), a self-test of the crash report.
 * `soak` runs the matrix (default: 2 seeds × tiny, small, standard × Kuriotates, Infernal,
   Sheaim, Mercurians, Bannor, Calabim × default, raging barbarians, `occ`, `challenges`, 300
   turns, normal speed; `--speeds` adds speeds, a game given twice runs once), each game in a
@@ -119,6 +119,8 @@ loop {
 * `advance` runs `update()` until the human's next **control point** (its turn is active and no
   group of it is busy) or the end of the game. When nothing is ready but units have queued
   orders it sends `auto_moves` once (C++ `updateTestEndTurn`), so multi-turn moves continue.
+  Civ4 checks this every frame: after a command that leaves nothing ready while orders are
+  queued, `auto_moves_due()` is true and a client calls `advance` again (the transports do).
 * `execute` applies one `Command` at a control point. It validates first (ids yours, types in
   range, the rules' own `can*` gates, as the Civ4 interface only offers legal actions); refusals
   (`not_your_turn`, `decision_pending`, `invalid`, `not_owner`, `gone`, `cannot`) change nothing.
@@ -182,7 +184,7 @@ Errors: `invalid`, `not_owner`, `gone`, `busy`.
 
 | `q` | Reply |
 |---|---|
-| `status` | phase (`human`, `running`, `decision`, `over`), turn, year, you, the active players, the open decision, the winner |
+| `status` | phase (`human`, `running`, `decision`, `over`; over the transports also `stuck`, `no_game`, `crashed` with the report), turn, year, you, the active players, the open decision, the winner, `view_version` (changes whenever the view does: a command, a decision opening or closing, debug reveal), and over the transports `game {dir, journal, autosave}` |
 | `pending` | open events (with each option's effects), votes, research needed, idle cities, promotions, ready groups, idle AI-controlled groups |
 | `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis), the players you met, the cities you revealed, the units you see, your groups, `pending`, `log_next` |
 | `map` | flat arrays `y * w + x`: `vis` (0 unrevealed, 1 fogged, 2 visible), `plot_type`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `owner`, `river` (bit 0 river on the south edge, bit 1 on the east edge, bits 2-4 north/south flow + 1, bits 5-7 west/east flow + 1), `city`, `yield` (`food \| production << 8 \| commerce << 16`, visible plots only), and `map_rev` |
@@ -197,7 +199,7 @@ Errors: `invalid`, `not_owner`, `gone`, `busy`.
 | `report` | the turn report: what changed between your end of turn and now, or the end of the game (units lost and gained, cities founded, lost, grown, starving, buildings, techs, civilizations met, wars and peace between those you had met, enemies near your cities, the Armageddon counter, borders), with the messages |
 | `text` | a plain-text summary for agents |
 | `ascii {x,y,w,h,layer}` | an ASCII map, 2 characters per plot, north up, `::` unrevealed; layers `terrain`, `political`, `yield`, `units`; a legend |
-| `inspect {kind,id}` | `{:#?}` of your unit, group, city, player, team, deal, or of an info entry (`UnitType`, `units`, ...); any object, and plots, under debug reveal (a plot holds every team's data: use `plot`) |
+| `inspect {kind,oid}` | `{:#?}` of your unit, group, city, player, team, deal, or of an info entry (`UnitType`, `units`, ...) with id or index `oid`; any object, and plots, under debug reveal (a plot holds every team's data: use `plot`) |
 | `data` | the static tables (every kind: type, name, texts, the main gameplay fields) |
 | `setup`, `saves` | the new-game lists; the saves of the game's directory |
 
@@ -257,7 +259,7 @@ Session operations (`op`):
 
 | `op` | |
 |---|---|
-| `new {setup, name?}` | a new game (`setup` as `--setup`; `name`: its directory, default `game-<seed>`) |
+| `new {setup, name?}` | a new game (`setup` as `--setup`; `name`: its directory, default `game-<seed>`; not `auto`, which names autosaves) |
 | `load {name}` | a save by name: `NAME` or `auto/NAME` in the current game's directory, `GAME/NAME` or `GAME/auto/NAME` in another game's (as the `saves` query and operation list them); nothing outside the saves directory |
 | `take_over {player, name}` | take over slot `player` of an AI-only save (debugging) |
 | `save {name}` | save the game in its directory (`[A-Za-z0-9_.-]`, 1-64, not starting with a dot) |
@@ -282,8 +284,11 @@ operations get `decision_pending`, and `answer` with the decision's id and an en
   decision to the advisor), `error` (the start failed, exit code 2), `crashed` (a panic, with the
   message, the last autosave, the journal and the `ffh-play replay` command; exit code 3).
 
-A reply that hands control back (`end_turn`, `auto_moves`, `autoplay`, `new`, `load`) comes
-first, then the AI turns run, then the event. At the end of your input an open decision takes the
+A reply that hands control back (`end_turn`, `auto_moves`, `autoplay`, `new`, `load`, or any
+command after which nothing is ready while some group has orders to continue: the last ready
+unit skipped, fortified or sent on a long move) says `running` and comes first, then the game
+runs (the AI turns, or your groups' orders, as Civ4 continues them as soon as nothing is left to
+move), then the event. At the end of your input an open decision takes the
 advisor's pick, then the agent quits, or with `--on-eof end-turn` ends the turn and prints the
 next `control` first.
 
@@ -299,11 +304,13 @@ next `control` first.
 | `POST /api` | the envelope; needs the header `X-FFH: 1` |
 
 The server listens on 127.0.0.1 only (unless `--bind`), refuses requests whose `Host` is not
-`127.0.0.1`, `localhost` or `[::1]`, and refuses a `POST` without `X-FFH: 1`, so other web pages
-cannot drive it. A command's request waits while a decision it raised is open: answer the
+`127.0.0.1`, `localhost`, `[::1]` or the loopback address it is bound to, and refuses a `POST`
+without `X-FFH: 1`, so other web pages cannot drive it. A request must arrive whole within 15 s
+(408); at most 64 connections are served at once (more get 503). A command's request waits while a decision it raised is open: answer the
 decision on another connection (the status shows `phase: decision`). If the rules crash, the
 status becomes `crashed` with the report and the server stays up: load the autosave. Report the
-bug with the journal and that autosave (`ffh-play replay JOURNAL --from AUTOSAVE`).
+bug with the journal and that autosave (`ffh-play replay JOURNAL --from AUTOSAVE`; before a loaded
+game's first autosave, the report names the save it was loaded from).
 
 ## Protocol conventions
 
@@ -327,6 +334,9 @@ These hold for every request and reply of the protocol (design §4.1):
   and teams are 0-255. JSON integers are 64-bit signed; a 64-bit hash is sent as a hex string.
 * **JSON** is strict: no comments or trailing commas, no duplicate keys, nesting at most 128.
   Errors name the field: ``field `units`: expected an array of (a unit id (...)), got "x"``.
+  A member that a command, a `setup`, a session operation or an answer does not have is refused
+  (``field `oponents`: unknown field (known: ...)``), so a typo cannot start a default game or drop
+  a flag; queries ignore members they do not use.
 * **Display names** are the whole description text, with Civ4 markup such as `[ICON_TRADE]` kept
   (`VOTE_LIBERTY` -> "Global Civic: Liberty"). Text FfH2 inherits from BtS is not vendored, so
   those names are derived from the type name (`UNIT_WARRIOR` -> "Warrior"), as are descriptions

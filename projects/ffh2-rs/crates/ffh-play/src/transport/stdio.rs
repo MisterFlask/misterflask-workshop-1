@@ -2,7 +2,8 @@
 //! thread (no other thread). Each input line is one request of the envelope; each output line is
 //! a reply (`{"id", "ok", ..}`) or an event (`{"ev", ..}`):
 //!
-//! * `control` when the human gets control (at the start, after the end of a turn, a load):
+//! * `control` when the human gets control (at the start, after the end of a turn, a load, or a
+//!   command after which the AutoMoves rule continued the queued orders):
 //!   `{"ev":"control","turn","year","human","pending","log_next"}`;
 //! * `decision` when a blocking decision is raised inside a rules call: the next lines are read
 //!   by the decision ([`StdioAnswerer`]): queries are answered, an `answer` closes it, commands
