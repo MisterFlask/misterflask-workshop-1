@@ -422,6 +422,46 @@ before (same checksums).
   the empire's whole commerce and the extra citizens repay it in 25+ turns more: by turn 300
   the hoarded gold is research the empire has not got back.
 
+## Measured together
+
+Finance, settlers and escorts, siege operations and the civilization-specific code were
+developed separately and merged without changes: their hooks sit in different steps
+(`empire::manage`, `production::decide` items 5 and 9, the settler role, `military::army`).
+6 civs, standard map, 300 turns, `ffh stats` and the game log (`FFH_LOG`); before = the AI
+without the four, after = with them; t is the paired t-statistic over seeds.
+
+| at turn 300 | seeds 1-12, 41-52 | fresh seeds 331-426 |
+|---|---|---|
+| score (alive civs) | 782 -> 891 (t 3.4) | 818 -> 894 (t 6.2) |
+| score (dead civs as 0) | 752 -> 841 (t 2.4) | 789 -> 856 (t 4.9) |
+| techs | 18.7 -> 22.2 | 19.4 -> 22.0 (t 7.6) |
+| cities / population | 6.14 -> 7.13 / 38.9 -> 41.9 | 6.41 -> 7.07 / 41.1 -> 42.7 |
+| research / commerce | 58 -> 87 / 92 -> 120 | 67 -> 88 / 101 -> 122 |
+| research slider | 46% -> 63% | 49% -> 62% |
+| civs at 20% research or less (at 0%) | 46 -> 7 (28 -> 5) | 166 -> 46 (95 -> 29) |
+| unit support, % of commerce | 12.5 -> 9.3 | 12.1 -> 9.3 |
+| cities taken civ <- civ / civ <- barbarian / barbarian <- civ | 16 / 29 / 34 -> 26 / 54 / 70 | 65 / 123 / 175 -> 110 / 232 / 240 |
+| civs eliminated | 6 -> 8 | 21 -> 26 |
+| settlers killed (log) | 33 -> 14 | 106 -> 64 |
+| civ-founded cities lost to barbarians (log, first loss) | 45 -> 78 | 220 -> 243 (5.8% -> 6.0% of those founded) |
+| CPU ms per turn | 46.5 -> 47.6 | 47.4 -> 47.6 |
+
+Each part alone against the whole (fresh seeds 331-378; score alive / dead as 0 / techs, against
+the AI without the four): finance +61 / +67 / +2.2, settlers and escorts -27 / -15 / -0.9,
+siege operations -4 / -18 / -0.5, civilization-specific -2 / -2 / 0.0 (only Kuriotates and
+Lanun games change), all four +72 / +66 / +2.8. Leaving one out (same seeds, against all four):
+without settlers and escorts -6 / 0 / -0.2 and settlers killed 36 -> 82 (alone it costs
+research; with the finance module it no longer does); without siege operations +7 / +19 (t 1.3)
+/ 0.0, with civ cities conquered 26 -> 10, barbarian towns taken 50 -> 29, civ cities lost to
+barbarians 118 -> 88 and civs eliminated 11 -> 7. The siege operations cost about as many cities
+to the barbarians as they take from them, as they did alone (towns taken and lost again: civ <->
+barbarian recaptures 56 -> 141 over seeds 331-426).
+
+Tried and not kept: stacks committed to a barbarian town turn back for our cities in peril
+unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-378 and 1-12,
+41-52: score (dead as 0) +15 (t 2.0), 16% fewer civ cities lost to barbarians; seeds 379-426:
+-7, 4% more lost; all 120 seeds: +6 (t 1.2), techs +0.2 (t 1.7), eliminations unchanged.
+
 ## Cost control
 
 - **Reachability**: `reach.rs` floods once from a unit (Dijkstra on movement points, bounded
