@@ -104,6 +104,11 @@ test("deferred popups in C++ order, and set aside per turn", () => {
   assert.ok(St.S.dismissed.has("x"));
   St.resetDismissed(4);
   assert.equal(St.S.dismissed.size, 0);
+  // Another game at the same turn asks again (P5 review).
+  St.S.dismissed.add("research:4");
+  St.clearDismissed();
+  St.resetDismissed(4);
+  assert.equal(St.S.dismissed.size, 0);
 });
 
 test("vote choices, the end-turn gate, moves and turns", () => {

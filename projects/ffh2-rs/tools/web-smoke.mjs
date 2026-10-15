@@ -357,16 +357,30 @@ async function saveAndLoad() {
 }
 
 /** Loads a staged save (`ffh-play stage KIND`) through the load screen. */
-async function loadStaged(bin, saves, kind) {
+async function loadStaged(bin, saves, kind, { answer = true } = {}) {
   const st = await stage(bin, kind, path.join(saves, `staged-${kind}`));
-  await click("#btn-load");
-  const sel = `#modals button.save[data-save="staged-${kind}/${kind}"]`;
-  await until2(`!!document.querySelector(${JSON.stringify(sel)})`, `the staged ${kind} save in the load screen`);
-  await click(sel);
-  await until2(`(() => { const S = window.ffh.S; return S.status && S.status.phase === "human" && S.status.turn === ${st.turn} && S.units.has(${st.unit}) && S.view.turn === ${st.turn}; })()`, `the staged ${kind} game`);
-  await new Promise((r) => setTimeout(r, 300));
-  await answerPopups(false);
+  await loadSave(`staged-${kind}/${kind}`, st.turn);
+  if (answer) await answerPopups(false);
   return st;
+}
+
+/** Loads save `name` (`GAME/SAVE`) through the load screen and waits for its first turn `turn`
+ *  (a new journal: also when the page already shows a game at that turn). */
+async function loadSave(name, turn) {
+  const journal = await S("S.status && S.status.game && S.status.game.journal");
+  await click("#btn-load");
+  const sel = `#modals button.save[data-save="${name}"]`;
+  await until2(`!!document.querySelector(${JSON.stringify(sel)})`, `the save ${name} in the load screen`);
+  await click(sel);
+  await until2(`(() => { const S = window.ffh.S; return S.status && S.status.phase === "human" && S.status.game && S.status.game.journal !== ${JSON.stringify(journal)} && S.status.turn === ${turn} && S.view && S.view.turn === ${turn}; })()`, `the game ${name}`);
+  await new Promise((r) => setTimeout(r, 300));
+}
+
+/** Presses "Later" on the popup whose title matches `re` (waiting for it). */
+async function later(re) {
+  await until(async () => (await modalTitles()).some((t) => re.test(t)), `a popup ${re}`);
+  await click('#modals .backdrop:not(.under) .modal-buttons button[data-value="later"]');
+  await until(async () => !(await modalTitles()).some((t) => re.test(t)), `the popup ${re} set aside`);
 }
 
 /** A staged attack: the odds and modifiers in the tooltip over the enemy, then the attack. */
@@ -412,7 +426,15 @@ async function stagedCapture(bin, saves) {
 /** A staged load: the warrior's Load action asks which of two triremes (the LOADUNIT picker);
  *  the second one picked, the warrior is in it. */
 async function stagedLoad(bin, saves) {
-  const st = await loadStaged(bin, saves, "load");
+  const st = await loadStaged(bin, saves, "load", { answer: false });
+  // Popups set aside ("Later") in one game come back in the next one at the same turn (P5
+  // review: C++ saves the popup queue with the player): load the same save again.
+  await later(/^Choose research$/);
+  await later(/^What should .* build\?$/);
+  await loadSave("staged-load/load", st.turn);
+  await until(async () => (await modalTitles()).includes("Choose research"), "the research popup again in the game loaded at the same turn", 10000);
+  steps.push("popups set aside come back after loading a game at the same turn");
+  await answerPopups(false);
   const p = await plotPos(st.x, st.y);
   await b.mouse(p.x, p.y);
   await until2(`!!document.querySelector('#unit-panel .unit-row[data-unit="${st.unit}"]')`, "the warrior in the stack list");
@@ -426,6 +448,31 @@ async function stagedLoad(bin, saves) {
   await click(`#modals .modal-buttons button[data-value="${pick}"]`);
   await until2(`(() => { const u = window.ffh.S.units.get(${st.unit}); return u && u.transport === ${pick}; })()`, "the warrior in the picked trireme");
   steps.push(`loaded the warrior into trireme ${pick} through the transport picker`);
+}
+
+/** A game started by another client while the page shows the no-game New game dialog (which
+ *  cannot be closed): the dialog goes (P5 review). */
+async function newGameElsewhere(bin) {
+  const saves = tempDir("smoke-elsewhere");
+  const server = await startServer({ bin, saves, extra: ASSETS });
+  try {
+    await b.goto(server.url);
+    await until2("window.ffh && window.ffh.ready", "the client to boot");
+    await until(async () => (await modalTitles()).includes("New game"), "the no-game New game dialog");
+    const r = await fetch(`${server.url}/api`, {
+      method: "POST",
+      headers: { "X-FFH": "1", "Content-Type": "application/json" },
+      body: JSON.stringify({ id: 1, k: "session", op: "new", setup: { seed: 9, world: "WORLDSIZE_DUEL", opponents: 1 } }),
+    });
+    if (!(await r.json()).ok) throw new Error("another client could not start a game");
+    await waitHuman("the game another client started");
+    await until(async () => !(await modalTitles()).includes("New game"), "the New game dialog to close", 10000);
+    steps.push("the no-game dialog closed when another client started a game");
+  } finally {
+    await b.goto("about:blank");
+    await server.stop();
+    fs.rmSync(saves, { recursive: true, force: true });
+  }
 }
 
 async function crashScreen(bin) {
@@ -476,6 +523,7 @@ async function main() {
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);
     await stagedLoad(bin, saves);
+    await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   } catch (e) {

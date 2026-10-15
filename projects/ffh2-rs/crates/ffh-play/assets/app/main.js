@@ -7,7 +7,7 @@
 // sends commands (commands.js). `window.ffh` exposes the state for the headless smoke test.
 
 import * as api from "./api.js";
-import { S, setData, setView, setMap, on, emit, resetDismissed, popupQueue } from "./state.js";
+import { S, setData, setView, setMap, on, emit, resetDismissed, clearDismissed, popupQueue } from "./state.js";
 import { MapView } from "./map.js";
 import * as units from "./units.js";
 import { openCity } from "./city.js";
@@ -88,12 +88,17 @@ async function syncOnce() {
   if (phase !== "crashed") closeTag("crash");
   if (phase !== "stuck") closeTag("stuck");
   if (phase !== "decision") showDecision(null);
+  // The New game dialog the no-game screen forced (it cannot be closed) goes once there is a
+  // game, also one started by another client or a restarted server (P5 review); so does the
+  // game-over screen once the game is no longer over.
+  if (phase !== "no_game") closeTag(screens.NEWGAME_REQUIRED);
+  if (phase !== "over") closeTag("over");
   if (phase === "no_game" || phase === "crashed") {
     clearGame();
     if (phase === "crashed") {
       closeAll(["crash", "load", "newgame"]);
       if (!openTags().includes("crash")) screens.crashScreen(st);
-    } else if (!openTags().some((t) => t === "newgame" || t === "load")) {
+    } else if (!openTags().some((t) => t === "newgame" || t === screens.NEWGAME_REQUIRED || t === "load")) {
       screens.newGame({ dismissible: false });
     }
     return;
@@ -131,6 +136,7 @@ function clearGame() {
   gameKey = null;
   viewKey = null;
   lastTurn = null;
+  clearDismissed();
   mapView.map = null;
   mapView.chunks.clear();
   mapView.request();
@@ -153,6 +159,9 @@ async function refreshView(st) {
     S.report = null;
     S.sel = null;
     lastTurn = null;
+    // Another game (new, loaded, started elsewhere): its deferred popups are asked again,
+    // also at the turn the last game's were set aside (P5 review).
+    clearDismissed();
   }
   setView(view);
   if (newGame || !S.map || st.map_rev !== S.map.map_rev) {
@@ -387,6 +396,7 @@ function wire() {
     closeAll();
     S.sel = null;
     viewKey = null;
+    clearDismissed();
     refreshStatus();
   });
   on("reopen-popups", () => {

@@ -243,6 +243,13 @@ export function resetDismissed(turn) {
   }
 }
 
+/** Forgets every dismissal: another game (new, loaded, or started elsewhere) shows its deferred
+ *  popups again, also at the same turn (C++ saves the popup queue with the player). */
+export function clearDismissed() {
+  S.dismissed = new Set();
+  S.dismissedTurn = null;
+}
+
 /** The label of a vote choice (`PlayerVoteTypes`: YES -2, NO -3, ABSTAIN -4, NEVER -5, or a
  *  team id in a team vote). */
 export function voteChoiceLabel(choice, team = teamName) {

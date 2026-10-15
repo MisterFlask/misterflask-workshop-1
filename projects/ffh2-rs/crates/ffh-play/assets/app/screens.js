@@ -151,6 +151,10 @@ function select(name, list, value, { none = null } = {}) {
   );
 }
 
+/** The tag of the New game dialog the no-game screen forces (not dismissible); main.js closes
+ *  it once a game exists. A New game dialog opened by the player is tagged "newgame". */
+export const NEWGAME_REQUIRED = "newgame-required";
+
 /** The new-game screen (design §5.1): civilization and leader (or random), opponents, world
  *  size, speed, difficulty, era, climate, sea level, seed, game options and victories. */
 export function newGame({ dismissible = true } = {}) {
@@ -232,7 +236,7 @@ export function newGame({ dismissible = true } = {}) {
   return openModal({
     title: "New game",
     body: [form],
-    tag: "newgame",
+    tag: dismissible ? "newgame" : NEWGAME_REQUIRED,
     wide: true,
     dismissible,
     buttons: [
