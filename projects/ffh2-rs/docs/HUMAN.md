@@ -629,10 +629,12 @@ node tools/web-smoke.mjs                 # headless Chromium plays through the p
   shared with other work; `window.ffh.mapView.art.stats`): on a standard map at 2x a frame with
   everything drawn takes 3-5 ms (the vignette 2-4 ms of it, the units about 1 ms) and a frame of a
   slow pan 4-9 ms; on a huge map (128x80) with debug reveal, so that every plot is drawn, a frame
-  takes 2.6 ms still, 7.7 ms panning (19.6 at most), and a sweep at two plots a frame 2.9 ms (15.7
-  at most: the worker draws the chunks, the page shows their chart meanwhile); a jump to an
-  undrawn part of the map is drawn in full within about half a second. A chunk of 4x4 plots takes
-  the worker 15-100 ms (up to 250 ms for the first ones, which fill the sprite atlas).
+  takes 2.6-4 ms still, 3-8 ms panning (14-20 at most), and a sweep at two plots a frame 3-4 ms
+  (16-36 at most: the worker draws the chunks, the page shows their chart meanwhile); the chart
+  steps take under 1 ms a frame. A jump to an undrawn part of the map is drawn in full within
+  about half a second on a quiet host, 1-2 s with the host's 4 cores loaded 11 deep (single frames
+  of 40-100 ms then show up in any phase). A chunk of 4x4 plots takes the worker 15-100 ms (up to
+  250 ms for the first ones, which fill the sprite atlas).
 
 **Manual checklist** (a human tester, `ffh-play serve` and a real browser; also try a narrow
 window):
