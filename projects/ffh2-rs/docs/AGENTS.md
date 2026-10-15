@@ -136,6 +136,64 @@ Limits (defaults; override in `/home/user/.cache/ffh2-rs/config.json`, e.g.
 Locks are `flock`s, released when their process dies; a workspace left mid-build by a killed
 build is put back by the next one. Deleting the whole directory is always safe when nothing runs.
 
-## Measured (4 cores, other agents running, load 11-18)
+## Fan-out to sibling cloud sessions
 
-MEASUREMENTS
+For a large or long batch (many seeds, or `--until-supremacy` full games), split the games across
+up to 4 sibling cloud sessions, each a fresh 4-core container. `tools/agents/fanout.sh` does the
+deterministic git and run-cache work; the agent drives the sessions (the `create_session` /
+`archive_session` tools are the agent's, not callable from a script). The run cache is the join
+point: every game a worker plays is re-keyed into the orchestrator's **local** run cache, so once
+the batch is collected a normal `ai_metrics.py --seeds ...` (or `ab.sh`) with the same binary and
+arguments is all cache hits.
+
+This relies only on the simulation being deterministic (same seed + same rules → same game,
+verified below), not on builds being byte-identical across containers: `collect` stores each
+worker's stdout under the key the local binary produces.
+
+```
+# 1. push the commit under test and slice the seeds (prints one command per worker)
+tools/agents/fanout.sh prepare --rev HEAD --seeds 601-648 --workers 4 \
+    --game-args --civs 6 --size WORLDSIZE_STANDARD --turns 300 --at 100,200,300
+# 2. start one sibling session per worker (create_session, source_revision=fanout/<job>),
+#    each running the printed fanout-worker.sh command (build its slice, push its results)
+# 3. watch them, then import every game into the local run cache:
+tools/agents/fanout.sh status  --job <job>
+B=$(tools/agents/build-rev.sh <rev> --bins ffh)
+tools/agents/fanout.sh collect --job <job> --bin $B/ffh      # missing seeds are reported; run live
+# 4. the metrics are now instant (all hits), and clean up
+python3 crates/ffh-cli/scripts/ai_metrics.py --bin $B/ffh --seeds 601-648 --civs 6 --turns 300 --compare base.json
+tools/agents/fanout.sh cleanup --job <job>                   # deletes the branches; archive the sessions
+```
+
+(In this cloud environment the git proxy forbids branch deletion over https: `cleanup` reports
+that it could not delete the `fanout/<job>` and `fanout/res/<job>/*` branches and clears only the
+local job file. They are small and harmless under `fanout/`; remove them later from the GitHub UI
+or with a token that has delete rights.)
+
+A worker (`fanout-worker.sh`, run by each session) builds the checked-out commit with the shared
+build service, plays its slice holding this container's CPU slots, and pushes each game's raw
+stdout plus a manifest to `fanout/res/<job>/w<k>`. It is idempotent (rerun to fill in seeds that
+failed). The orchestrator fetches those branches, re-keys each game locally, and reports which
+seeds are still missing (run those live). Worth it when the games dominate: a worker costs a fresh
+container (~1 min cold build) before it plays, so for a handful of short games, run them locally.
+
+## Measured (this container: 4 cores, 15 GB RAM, single agent)
+
+- **Build.** Cold full build of all three binaries (~100% of the Rust recompiled): ~56 s. The
+  common AI-iteration case -- an `ffh-ai` change, `--bins ffh`, against a warm workspace holding
+  the integration tip (rebuilds `ffh-ai` + `ffh-cli`, ~23% of the source): ~8.5 s. A change to
+  only non-compiled files (docs, `tools/`, scripts): an incremental relink, ~0.1 s; identical
+  content asked for again: instant (`up to date`). `ffh-play` is the slowest crate to rebuild, so
+  `--bins ffh` is the default for AI work.
+- **Byte-identical builds.** `master` and this branch differ only in non-compiled files, and the
+  build service produced the same `ffh` (same exe-sha256), so the run cache treated their games as
+  one: an A/B over the two replayed every game from the cache (`N of N games from the run cache`).
+- **Run cache.** A 40-turn game stores in ~0.5 s and replays in ~0.06 s. A full 300-turn 6-civ
+  standard game plays in ~8 s (~26 ms/turn) and replays in well under 0.1 s. So the base side of
+  an A/B, already played by any agent, is effectively free.
+- **CPU slots.** With `nproc` = 4, launching 8 games at once (each under `slot.sh`) runs 4 at a
+  time; the rest queue, so the machine is not oversubscribed.
+- **Determinism across containers.** Same seed → same game checksum in a sibling container: seeds
+  201-208 (200 turns, 6 civs) played by two fan-out workers matched this container's checksums
+  exactly (see `docs/AI.md` / commit log). This is what makes fan-out and the shared run cache
+  sound.

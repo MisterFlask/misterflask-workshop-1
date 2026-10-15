@@ -46,7 +46,10 @@ echo "[worker $worker] job $job: ${#SEEDS[@]} seeds (${SEEDS[0]}..${SEEDS[-1]}),
 B=$(tools/agents/build-rev.sh HEAD --bins ffh)
 echo "[worker $worker] binary dir: $B" >&2
 
-res="fanout-res/$job/w$worker"
+root=$(git rev-parse --show-toplevel)           # repo root; results live at the top, not in-project
+commit=$(git rev-parse HEAD)                     # the job commit this worker built and plays
+rel="fanout-res/$job/w$worker"                   # repo-root-relative (what the orchestrator reads)
+res="$root/$rel"
 rm -rf "$res"; mkdir -p "$res"
 
 play_one() {                                    # $1 = seed; writes $res/<seed>.out on success
@@ -71,16 +74,19 @@ wait
 
 ok=(); for s in "${SEEDS[@]}"; do [ -f "$res/$s.out" ] && ok+=("$s"); done
 printf '{"job":"%s","worker":%s,"commit":"%s","seeds_requested":%d,"seeds_ok":%d,"ok":[%s]}\n' \
-    "$job" "$worker" "$(git rev-parse HEAD)" "${#SEEDS[@]}" "${#ok[@]}" \
+    "$job" "$worker" "$commit" "${#SEEDS[@]}" "${#ok[@]}" \
     "$(IFS=,; echo "${ok[*]}")" > "$res/manifest.json"
 echo "[worker $worker] ${#ok[@]}/${#SEEDS[@]} games ok" >&2
 
-# Commit the results and push them to the result branch (a fresh commit, this worker's files only).
-git add -f "$res"
-git -c user.email=agent@ffh2-rs -c user.name="fanout worker $worker" \
-    commit -q -m "fan-out $job worker $worker: ${#ok[@]}/${#SEEDS[@]} games" >&2
+# Build a results commit on top of the job commit and push it to the result branch, WITHOUT moving
+# this worktree's HEAD (so a rerun rebuilds a clean tree = job commit + this worker's files only).
+git read-tree "$commit"                          # index := job commit's tree
+git -C "$root" add -f "$rel"                      # pathspec is cwd-relative; cwd is the project dir
+tree=$(git write-tree)
+rc=$(git -c user.email=agent@ffh2-rs -c user.name="fanout worker $worker" \
+     commit-tree "$tree" -p "$commit" -m "fan-out $job worker $worker: ${#ok[@]}/${#SEEDS[@]} games")
 for attempt in 1 2 3 4; do
-    if git push -f origin "HEAD:refs/heads/$branch" >&2; then
+    if git push -f origin "$rc:refs/heads/$branch" >&2; then
         echo "[worker $worker] pushed $branch" >&2
         exit 0
     fi

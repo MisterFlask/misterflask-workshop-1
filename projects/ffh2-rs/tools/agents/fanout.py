@@ -108,10 +108,14 @@ def cmd_prepare(a):
     ffh_agents.atomic_write(job_path(job), json.dumps(spec, indent=1).encode())
     print('\njob %s: %d seeds over %d workers, commit %s on %s' % (
         job, len(seeds), len(workers), commit[:12], branch))
-    print('start one sibling cloud session per worker (source_revision=%s), each running:' % branch)
+    print('start one sibling cloud session per worker: create_session(source_url=<this repo>,')
+    print('source_revision=%s), and send it a prompt like this (it MUST run in the foreground):' % branch)
     for w in workers:
-        print('\n  # worker %d: seeds %s (%d)' % (w['worker'], w['seeds'], w['count']))
-        print('  %s' % w['command'])
+        print('\n  # worker %d: seeds %s (%d) -- result branch %s' % (
+            w['worker'], w['seeds'], w['count'], w['result_branch']))
+        print('  Run this one command in the FOREGROUND and wait for it to finish in this turn (do')
+        print('  not background it); then report its final stderr line. Do not edit files or open a PR:')
+        print('      %s' % w['command'])
     print('\nthen: tools/agents/fanout.sh collect --job %s --bin <local-build-dir>/ffh' % job)
     print('(MACHINE %s)' % json.dumps({'job': job, 'branch': branch, 'commit': commit,
                                        'workers': workers}))
@@ -184,25 +188,31 @@ def cmd_collect(a):
 def cmd_cleanup(a):
     root = repo_root()
     spec = ffh_agents.read_json(job_path(a.job))
-    refs = []
+    branches = []
     if spec:
-        refs.append(':refs/heads/%s' % spec['branch'])
+        branches.append(spec['branch'])
     for rb in existing_result_branches(root, a.job):
-        refs.append(':refs/heads/%s' % rb)
-    if spec:
-        for w in spec['workers']:
-            if (':refs/heads/%s' % w['result_branch']) not in refs:
-                refs.append(':refs/heads/%s' % w['result_branch'])
-    if refs:
-        print('[fanout] deleting on origin: %s' % ', '.join(r[len(':refs/heads/'):] for r in refs))
-        sh('git', '-C', root, 'push', 'origin', *refs, check=False)
+        branches.append(rb)
+    for w in (spec['workers'] if spec else []):
+        if w['result_branch'] not in branches:
+            branches.append(w['result_branch'])
+    if branches:
+        print('[fanout] deleting on origin: %s' % ', '.join(branches))
+        r = subprocess.run(['git', '-C', root, 'push', 'origin',
+                            *[':refs/heads/%s' % b for b in branches]], capture_output=True, text=True)
+        if r.returncode != 0:
+            print('  could not delete the remote branches (%s). This environment forbids branch '
+                  'deletion over the git proxy (HTTP 403); they are harmless under fanout/ and can '
+                  'be removed later by someone with delete rights.' % (
+                      '403' if '403' in r.stderr else r.stderr.strip().splitlines()[-1:] or 'error'),
+                  file=sys.stderr)
     for w in (spec['workers'] if spec else []):
         sh('git', '-C', root, 'update-ref', '-d', 'refs/remotes/origin/%s' % w['result_branch'], check=False)
     try:
         os.unlink(job_path(a.job))
     except OSError:
         pass
-    print('job %s cleaned up (archive the worker sessions with archive_session)' % a.job)
+    print('job %s cleaned up locally (archive the worker sessions with archive_session)' % a.job)
 
 
 def main():
