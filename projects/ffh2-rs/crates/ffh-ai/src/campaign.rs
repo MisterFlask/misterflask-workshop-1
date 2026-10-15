@@ -583,8 +583,12 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
             !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, false, false),
         )
     } else {
-        // Unseen: enough to go and look (two more than the defenders we assume).
-        let n = (cand.n_def + 2) as usize;
+        // Unseen: a scouting-sized force goes to look. Capped (not the assumed defender count,
+        // which grows as a barb town arms with age -- that made the needed force climb out of
+        // reach so the army mustered forever and never marched to reveal the town). Once the
+        // stack reaches the assembly ring and the real defenders show, the visible branch above
+        // decides: strike at acceptable odds, or step back if it turns out too strong.
+        let n = ((cand.n_def + 2) as usize).min(4);
         (all.len() >= n, near.len() >= n, false)
     };
     let phase = if !at_war {

@@ -405,7 +405,12 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   expects to clear the defenders without keeping that reserve -- rather than retreating to muster
   an overwhelming force against a target that only hardens while it waits (a lone unit still never
   qualifies: it cannot clear a city). Unseen cities: 2 + population/5 defenders for a civ,
-  1 + age/25 for a barbarian town.
+  1 + age/25 for a barbarian town -- but the force needed to *approach and reveal* an unseen
+  target is capped at a scouting-sized stack (not that growing assumption, which otherwise made
+  a hardening barb town need an ever-larger force so the army mustered forever and never marched
+  to look). Once the stack reaches the assembly ring and the real defenders show, the strike /
+  step-back decision above applies. Measured (seeds 1-8, turn 300): barb towns taken 5 -> 8 with
+  losses to barbarians flat (8 -> 9) and the economy unchanged.
 - *Commitment*: at war every stack on the landmass within 24 plots; against barbarians the
   nearest stacks until they hold twice the force needed (plus those already on their way).
 - *Phases*: **Gather** (the force falls short, or the war is not declared yet): at war the
