@@ -485,8 +485,9 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
   player, barbarians included; all computed from game state at the end of that turn):
   - identity: `p` player id, `team`, `civ`, `leader`, `alignment`, `barb`, `alive`, `elim_turn`
     (turns played when found dead), `era`, `religion` (state religion), `vassal`;
-  - size: `cities`, `pop`, `land` (plots owned), `land_scored`, `area_tiles`, `area_civs`
-    (other civs on the capital's landmass), `overseas` cities;
+  - size: `cities`, `settlements` (Kuriotates cities past their limit, counted in `cities`),
+    `pop`, `land` (plots owned), `land_scored`, `area_tiles`, `area_civs` (other civs on the
+    capital's landmass), `overseas` cities;
   - score (top-level `score_version: 2`; docs/SCORE.md): `score` (share of the world in basis
     points, 10000 = all of it) and its shares `score_pop_share`, `score_land_share`,
     `score_know_share` (parts per million); `legacy_score` (FFH2 `calculateScore`, which was

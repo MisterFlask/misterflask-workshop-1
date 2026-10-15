@@ -333,6 +333,7 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
             .boolean("barb", barbarian)
             .boolean("alive", pl.alive)
             .int("cities", pl.cities.len() as i64)
+            .int("settlements", pl.cities.iter().filter(|&&c| g.cities[c].settlement).count() as i64)
             .int("pop", pl.total_population)
             .int("techs", techs as i64)
             .int("units", pl.units.len() as i64)
