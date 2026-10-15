@@ -14,9 +14,22 @@ crates/ffh-ai    AI players (new design)
 crates/ffh-cli   `ffh` binary: autoplay, benchmarks, inspection
 crates/ffh-stress `ffh-stress` binary: AI games over a settings matrix, crashes caught per game
 crates/ffh-play  `ffh-play`: human play (docs/PLAY_DESIGN.md, docs/HUMAN.md)
-tools/           fetch-reference.sh, vendor_xml.py, gen_enums.py, gen_defines.py
-docs/            ARCHITECTURE.md, DATA.md, PORTING.md (status)
+tools/           fetch-reference.sh, vendor_xml.py, gen_enums.py, gen_defines.py,
+                 agents/ (shared builds, run cache, CPU slots: docs/AGENTS.md)
+docs/            ARCHITECTURE.md, DATA.md, PORTING.md (status), AGENTS.md (parallel agents)
 ```
+
+## Parallel agents
+
+Other agents share this machine (4 cores) and repository. Follow docs/AGENTS.md:
+- Build with `B=$(tools/agents/build-rev.sh <rev>)` / `W=$(tools/agents/build-tree.sh)` (your
+  worktree's current files; `--bins ffh` for AI work), not `cargo build` in your worktree: builds
+  are shared, incremental and serialized. `tools/agents/build-tree.sh --test` is the
+  `cargo build --release && cargo test --release` check below, run on your worktree's files.
+- A/B against a base: `tools/agents/ab.sh <ai_metrics.py args>` (the base side's games come
+  from the shared run cache). `ai_metrics.py` takes machine-wide CPU slots per game; wrap other
+  game runs in `tools/agents/slot.sh` (`--exclusive` for `ffh bench`).
+- If you did build in your worktree, `rm -rf target` before finishing.
 
 ## Reference source (read-only, NOT in this repo)
 

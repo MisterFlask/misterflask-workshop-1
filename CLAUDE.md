@@ -29,3 +29,9 @@ Always update the relevant design document section to match the code changes. Th
 - `projects/ffh-simplified/src/data/terrainFeatures.ts` - Terrain feature definitions
 - `projects/ffh-simplified/src/game/Game.ts` - Core game logic
 - `projects/ffh-simplified/src/game/Combat.ts` - Combat system
+
+### Agent worktrees are sparse
+
+New worktrees under `.claude/worktrees/` check out only the root files, `.claude/` and
+`projects/ffh2-rs/` (a hook from `projects/ffh2-rs/tools/agents/install-hooks.sh`). To work on
+another project there (e.g. `projects/ffh-simplified`), run `git sparse-checkout disable` first.
