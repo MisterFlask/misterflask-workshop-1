@@ -394,11 +394,11 @@ before (same checksums).
   (`CvCity::init`): radius 2, -75% yields, nothing to build, but no maintenance or civic
   upkeep, and its borders claim land and resources. The settler step stops at the limit;
   `civs::production`, asked right after it, builds one settler at a time for a settlement
-  site on the city's landmass (from a city of size 5+ or at its happy cap, at peace, not
-  broke). The sites are `sites.rs`'s: the ported `AI_foundValue` already scores
-  settlement-sized sites (9 plots) for a sprawling player at its limit and favours sites more
-  than 4 plots from its cities. 15 games (52 seeds): cities and settlements at turn 300
-  3.2 -> 8.9 (14/14 changed games better), score +16% (+137 +- 49), pop and techs a little up.
+  site on the city's landmass: from a city of size 3+ at its happy cap, up to one settlement
+  per full city, at peace, not broke. The sites are `sites.rs`'s: the ported `AI_foundValue`
+  already scores settlement-sized sites (9 plots) for a sprawling player at its limit and
+  favours sites more than 4 plots from its cities. See "Kuriotates settlements" below for
+  the measurements (the first version, from size 5 with no cap, cost a fifth of the research).
 - **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
   (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
   on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
@@ -423,6 +423,29 @@ before (same checksums).
   (other limits, 0 or 20 points, gave the same picture). 100 gold per city costs 5-15 turns of
   the empire's whole commerce and the extra citizens repay it in 25+ turns more: by turn 300
   the hoarded gold is research the empire has not got back.
+
+### Kuriotates settlements
+
+A settlement stays at size 1 and yields almost nothing (-75%: 1 food, 0-1 hammers); it is
+worth its land (the legacy score's land share, resources, room the barbarians do not get), and
+it costs a settler (220 hammers on normal speed) plus the escort that stays as its garrison.
+The first version built settlers from any city of size 5+ with no cap: the capital, usually
+the best commerce city, went on building them at size 7-9 from turn 90 to the end (food goes
+into the settler, so it stopped growing), and 5-6 settlements with their garrisons raised
+unit support. Now a settler comes only from a city at its happy cap (it would not grow anyway)
+and only while the empire has fewer settlements than full cities.
+
+Measured on the 40 Kuriotates games among seeds 1-179 (6 civs, standard, 300 turns; the
+Kuriotates' original player at turn 300; t against "first version"):
+
+| Kuriotates at turn 300 | no settlements | first version | now |
+|---|---|---|---|
+| legacy score | 881 | 930 | 963 (t 1.3) |
+| techs | 26.5 | 26.1 | 27.3 (t 2.7) |
+| research (beakers/turn) | 103 | 84 | 109 (t 3.5) |
+| commerce | 109 | 96 | 117 |
+| cities (settlements) | 3.8 (1.1) | 7.9 | 5.4 (3.0) |
+| unit support (gold) | 8.4 | 13.6 | 12.9 |
 
 ## Measured together
 

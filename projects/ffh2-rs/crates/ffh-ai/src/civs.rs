@@ -4,10 +4,10 @@
 //!
 //! - **Kuriotates** (`CvCity::init`, FfH): past the city limit (3 on a standard map) a new city
 //!   is a settlement (radius 2, -75% yields, nothing to build, but no maintenance or civic
-//!   upkeep, and it claims land and resources). [`production`] builds one settler at a time
-//!   for the sites `sites.rs` already scores for them (C++ `AI_foundValue` switches a
-//!   sprawling player at its limit to settlement-sized sites and favours sites away from our
-//!   cities).
+//!   upkeep, and it claims land and resources). [`production`] builds one settler at a time,
+//!   from a city at its happy cap and up to one settlement per full city, for the sites
+//!   `sites.rs` already scores for them (C++ `AI_foundValue` switches a sprawling player at its
+//!   limit to settlement-sized sites and favours sites away from our cities).
 //! - **Lanun** (`SPELL_PIRATE_COVE`, C++ `CvUnitAI::AI_buildPirateCove`): a work boat turns an
 //!   empty coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and
 //!   a Pirate Port, 3/2/6 on coast). [`production`] trains a work boat for a city with a valid
@@ -57,16 +57,24 @@ pub fn production(ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
     }
 }
 
+/// Settlements a Kuriotates empire founds per full city.
+const SETTLEMENTS_PER_CITY: i32 = 1;
+
 /// Kuriotates at their city limit: one settler at a time for a settlement site on this
-/// city's landmass, from a city of size 5+ (or at its happy cap) at peace.
+/// city's landmass, from a city of size 3+ at its happy cap (it would not grow anyway; a
+/// settler eats the food surplus as production), at peace, up to [`SETTLEMENTS_PER_CITY`]
+/// per full city. A settlement yields almost nothing (size 1, -75%), so every settler is
+/// about 200 hammers of buildings the core cities do not get: the first version (from size 5,
+/// no cap) kept the capital building settlers at size 7-9 for 200 turns.
 fn settlement_settler(ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
     let p = g.cities[c].owner;
     let pl = &g.players[p];
     if pl.max_cities <= 0 || threat > 0 || g.cities[c].settlement || g.city_is_occupation(c) {
         return None;
     }
-    let full = pl.cities.len() as i32 - g.player_get_num_settlements(p);
-    if full < pl.max_cities || count_ai(g, p, UnitAIType::UNITAI_SETTLE) > 0 {
+    let settlements = g.player_get_num_settlements(p);
+    let full = pl.cities.len() as i32 - settlements;
+    if full < pl.max_cities || settlements >= full * SETTLEMENTS_PER_CITY || count_ai(g, p, UnitAIType::UNITAI_SETTLE) > 0 {
         return None;
     }
     if crate::production::financial_trouble(g, p) {
@@ -78,7 +86,7 @@ fn settlement_settler(ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choic
         return None;
     }
     let happy_room = g.city_happy_level(c) - g.city_unhappy_level(c, 0);
-    if g.cities[c].population < 5 && happy_room > 0 {
+    if g.cities[c].population < 3 || happy_room > 0 {
         return None;
     }
     let area = g.map.plots[g.city_plot(c)].area;
