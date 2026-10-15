@@ -564,9 +564,10 @@ merged:
 - **Together** (601-624, full games): cultural victories **13/24**, decided earliest (avg 509 vs
   master 562, victory-pursuit 531), and the research victory-pursuit spent on the culture slider
   is restored by beelines (research at t500 251 vs victory-pursuit's 204, master's 245; legacy at
-  t690 3073 vs 2907). Leave-one-out: dropping beelines gives back victory-pursuit alone (13 -> 10
-  victories, research 251 -> 204), dropping the victory planner gives beelines alone (no planner,
-  ~master's 1 victory) -- each contributes. The goal-directed economy reaches the (achievable)
+  t690 3073 vs 2907). Leave-one-out (cultural victories per 24 full games): master 1, beelines
+  alone 8 (its stronger economy reaches the culture threshold by itself), victory-pursuit alone
+  10, together 13 -- so beelines adds +3 over victory-pursuit alone and the planner adds +5 over
+  beelines alone; each contributes. The goal-directed economy reaches the (achievable)
   cultural victory faster, so the two reinforce rather than fight. The combined research now
   weighs the plan's goal_bonus against the victory goal-tech bonus, so the AI no longer always
   beelines a single expensive victory tech (e.g. a rare Tower run); that is judged by the win rate
