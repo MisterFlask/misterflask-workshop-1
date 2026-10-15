@@ -274,11 +274,7 @@ impl Session {
                     // CvNetAutoMoves. At most once per control episode (until the human's next
                     // applied command), so a mission that leaves its group ready to auto again
                     // cannot spin.
-                    if self.opts.auto_moves_when_idle
-                        && !self.auto_moves_tried
-                        && decision::ready_groups(&self.g, h).is_empty()
-                        && self.g.player_has_auto_unit(h)
-                    {
+                    if self.auto_moves_rule(h) {
                         self.auto_moves_tried = true;
                         self.apply_journaled(h, &Command::AutoMoves, &Action::AutoMoves);
                         continue;
@@ -302,6 +298,25 @@ impl Session {
                     }
                 }
             }
+        }
+    }
+
+    /// The AutoMoves rule of `updateTestEndTurn` for human `h` at a control point: nothing is
+    /// ready (and nothing busy, which the control point implies) but some group has orders to
+    /// continue, and the rule has not fired in this control episode.
+    fn auto_moves_rule(&self, h: PlayerId) -> bool {
+        self.opts.auto_moves_when_idle && !self.auto_moves_tried && decision::ready_groups(&self.g, h).is_empty() && self.g.player_has_auto_unit(h)
+    }
+
+    /// At a control point, the AutoMoves rule would fire now: the exe checks it every frame, so
+    /// after a command that leaves nothing ready while orders are queued (the last ready unit
+    /// skipped, fortified or given a multi-turn order) its next frame sends AutoMoves. A client
+    /// that sends commands without calling `advance` after each one (the transports) calls
+    /// `advance` when this holds; `advance` applies the rule.
+    pub fn auto_moves_due(&self) -> bool {
+        match self.phase() {
+            Phase::Human(h) => !self.shared.decision_open() && self.auto_moves_rule(h),
+            _ => false,
         }
     }
 

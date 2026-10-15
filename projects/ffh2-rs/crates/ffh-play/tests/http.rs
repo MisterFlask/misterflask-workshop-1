@@ -292,6 +292,30 @@ fn t12_a_decision_inside_a_command_is_answered_on_another_connection() {
     server.shutdown();
 }
 
+/// The AutoMoves rule between commands (C++ `updateTestEndTurn`): skipping the last ready unit
+/// while another group has queued orders replies `running`, and the orders move their group
+/// before the human gets control again in the same turn.
+#[test]
+fn t12_auto_moves_run_when_the_last_ready_unit_is_skipped() {
+    let tmp = TempDir::new("t12-automoves");
+    let root = tmp.0.join("saves");
+    let staged = common::staged_auto_moves(&root.join("staged"));
+    let (server, c) = start(&root, None);
+    c.ok(ffh_play::jobj! { "k" => "session", "op" => "load", "name" => "staged/automoves" });
+    c.wait_for("the loaded game", |st| phase(st) == "human");
+    let at = |view: &Json| {
+        let u = view.req_arr("units").unwrap().iter().find(|u| u.req::<u32>("id") == Ok(staged.mover.0)).cloned().unwrap();
+        (u.req::<i32>("x").unwrap(), u.req::<i32>("y").unwrap())
+    };
+    assert_eq!(at(&c.get("/api/view").json()), staged.from);
+    let skip = c.post(&cmd("mission").with("units", vec![staged.ready]).with("mission", "MISSION_SKIP"));
+    assert_eq!(skip.get("status").unwrap().req_str("phase"), Ok("running"), "{skip}");
+    let st = c.wait_for("control again", |st| phase(st) == "human");
+    assert_eq!(st.req::<i32>("turn"), Ok(staged.turn));
+    assert_ne!(at(&c.get("/api/view").json()), staged.from, "the queued order moved its group");
+    server.shutdown();
+}
+
 /// A rules panic on the game thread: the status says `crashed` with the report, commands get
 /// `no_game`, and loading the autosave plays on.
 #[test]

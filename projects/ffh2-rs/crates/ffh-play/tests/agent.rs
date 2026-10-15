@@ -11,7 +11,7 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
-use common::{staged_capture, TempDir};
+use common::{staged_auto_moves, staged_capture, TempDir};
 use ffh_play::json::Json;
 
 const EXE: &str = env!("CARGO_BIN_EXE_ffh-play");
@@ -168,6 +168,54 @@ fn t11_agent_transcript_with_a_decision_inside_a_command() {
             "ok:12", "ok:13", "ev:control"
         ]
     );
+}
+
+/// Where unit `u` stands in a `view` reply.
+fn unit_xy(view: &Json, u: ffh_core::ids::UnitId) -> (i32, i32) {
+    let units = view.get("r").unwrap().req_arr("units").unwrap();
+    let unit = units.iter().find(|j| j.req::<u32>("id") == Ok(u.0)).unwrap_or_else(|| panic!("unit {} in the view", u.0));
+    (unit.req("x").unwrap(), unit.req("y").unwrap())
+}
+
+/// The AutoMoves rule between commands (C++ `updateTestEndTurn`, every frame): skipping the last
+/// ready unit while another group has queued orders hands control to the game, which continues
+/// the orders (`auto_moves`, journaled) before the end of the turn; then `control` again.
+#[test]
+fn t11_auto_moves_run_when_the_last_ready_unit_is_skipped() {
+    let tmp = TempDir::new("t11-automoves");
+    let root = tmp.0.join("saves");
+    let staged = staged_auto_moves(&root.join("staged"));
+    let mut a = Agent::spawn(&["--saves", root.to_str().unwrap(), "--load", staged.save.to_str().unwrap()]);
+    let control = a.next();
+    assert_eq!((control.req_str("ev"), control.req::<i32>("turn")), (Ok("control"), Ok(staged.turn)), "{control}");
+    assert_eq!(control.get("pending").unwrap().req_arr("ready_groups").unwrap().len(), 1, "{control}");
+    let view = a.ask(ffh_play::jobj! { "id" => 1, "k" => "q", "q" => "view" });
+    assert_eq!(unit_xy(&view, staged.mover), staged.from);
+
+    let skip = a.ask(ffh_play::jobj! { "id" => 2, "k" => "cmd", "c" => "mission", "units" => vec![staged.ready], "mission" => "MISSION_SKIP" });
+    assert_eq!(skip.get("r").unwrap().req::<bool>("applied"), Ok(true), "{skip}");
+    assert_eq!(skip.get("status").unwrap().req_str("phase"), Ok("running"), "nothing is ready, orders are queued: the game runs them: {skip}");
+    let control = a.next();
+    assert_eq!((control.req_str("ev"), control.req::<i32>("turn")), (Ok("control"), Ok(staged.turn)), "{control}");
+    let view = a.ask(ffh_play::jobj! { "id" => 3, "k" => "q", "q" => "view" });
+    assert_ne!(unit_xy(&view, staged.mover), staged.from, "the queued order moved its group before the end of the turn");
+    let journal = skip.get("status").unwrap().get("game").unwrap().req_str("journal").unwrap().to_string();
+    let lines = std::fs::read_to_string(&journal).unwrap();
+    let cmds: Vec<&str> = lines.lines().filter(|l| l.contains("\"k\":\"cmd\"")).collect();
+    assert!(cmds.len() == 2 && cmds[0].contains("\"c\":\"mission\"") && cmds[1].contains("\"c\":\"auto_moves\""), "{lines}");
+    // The mover spent its moves (the order takes two turns or more): the next command leaves
+    // nothing to continue, so the human keeps control.
+    let again = a.ask(ffh_play::jobj! { "id" => 4, "k" => "cmd", "c" => "set_option", "option" => "PLAYEROPTION_QUICK_MOVES", "value" => true });
+    assert_eq!(again.get("r").unwrap().req::<bool>("applied"), Ok(true), "{again}");
+    assert_eq!(again.get("status").unwrap().req_str("phase"), Ok("human"), "{again}");
+
+    let (code, transcript) = a.finish();
+    assert_eq!(code, 0);
+    let order: Vec<String> = transcript.iter().map(tag).collect();
+    assert_eq!(order, ["ev:control", "ok:1", "ok:2", "ev:control", "ok:3", "ok:4"]);
+    // The journal replays from the save its header names.
+    let out = Command::new(EXE).args(["replay", &journal, "--from", staged.save.to_str().unwrap()]).output().unwrap();
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
 }
 
 /// A scripted input that ends inside the decision: the advisor answers it, then the
