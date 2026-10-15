@@ -325,10 +325,15 @@ fn t12_a_crash_leaves_the_server_up() {
     let (server, c) = start(&root, Some(1));
     c.ok(ffh_play::jobj! { "k" => "session", "op" => "new", "setup" => ffh_play::jobj! { "seed" => 6, "world" => "WORLDSIZE_DUEL", "opponents" => 1 } });
     c.wait_for("the first control point", |st| phase(st) == "human");
+    // The `status` query is the published status's (P4 review): with the game directory.
+    let q = c.ok(ffh_play::jobj! { "k" => "q", "q" => "status" });
+    assert_eq!(q.get("game"), c.status().get("game"), "{q}");
     c.ok(cmd("end_turn").with("force", true));
     let st = c.wait_for("the crash", |st| phase(st) == "crashed");
     let crash = st.get("crash").unwrap();
     assert!(crash.req_str("message").unwrap().contains("--panic-at 1"));
+    let q = c.ok(ffh_play::jobj! { "k" => "q", "q" => "status" });
+    assert_eq!((q.req_str("phase"), q.get("crash")), (Ok("crashed"), Some(crash)), "{q}");
     let autosave = crash.req_str("autosave").unwrap();
     assert!(std::path::Path::new(autosave).is_file());
     assert!(crash.req_str("repro").unwrap().starts_with("ffh-play replay "));

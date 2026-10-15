@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 
 use ffh_core::game::Game;
 
-use super::{crash_report, decision_event, decision_reply, err_reply, install_panic_hook, take_panic, After, Host, HostOptions, ProtoErr, Request, Start};
+use super::{decision_event, decision_reply, err_reply, install_panic_hook, take_panic, After, Host, HostOptions, ProtoErr, Request, Start};
 use crate::decision::Decision;
 use crate::human::{Answer, Answerer, DecisionReader};
 use crate::json::Json;
@@ -152,7 +152,7 @@ pub fn run(input: Box<dyn BufRead + Send>, output: Box<dyn Write + Send>, opts: 
     match r {
         Ok(code) => code,
         Err(_) => {
-            let report = crash_report(&take_panic(), host.session());
+            let report = host.crashed(&take_panic());
             let mut ev = crate::jobj! { "ev" => "crashed" };
             for (k, v) in report.as_obj().unwrap_or_default() {
                 ev.set(k, v.clone());

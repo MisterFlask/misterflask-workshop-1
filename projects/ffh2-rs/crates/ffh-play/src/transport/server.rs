@@ -16,7 +16,7 @@
 //! the server stays up so that the tester can load the autosave.
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -27,7 +27,7 @@ use ffh_core::game::Game;
 
 use super::http::{self, HttpCtx};
 use super::shared::Shared;
-use super::{crash_report, decision_reply, err_reply, install_panic_hook, running_reply, take_panic, After, Host, HostOptions, Request, Start};
+use super::{decision_reply, err_reply, install_panic_hook, running_reply, running_status, take_panic, After, Host, HostOptions, Request, Start};
 use crate::decision::Decision;
 use crate::human::{Answer, Answerer, DecisionReader};
 use crate::json::Json;
@@ -124,8 +124,6 @@ struct GameThread {
     host: Host,
     rx: Arc<Mutex<Receiver<Envelope>>>,
     shared: Arc<Shared>,
-    /// The last session crashed (status `crashed` until a game is started or loaded).
-    crashed: bool,
 }
 
 impl GameThread {
@@ -134,14 +132,12 @@ impl GameThread {
         match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self))) {
             Ok(quit) => quit,
             Err(_) => {
-                let report = crash_report(&take_panic(), self.host.session());
+                // The session may be half-way through a rules call: the host drops it.
+                let report = self.host.crashed(&take_panic());
                 eprintln!("ffh-play: the game crashed: {report}");
-                // The session may be half-way through a rules call: drop it.
-                drop(self.host.drop_session());
-                self.crashed = true;
                 self.shared.set_crash(Some(report));
                 self.shared.clear_caches();
-                self.shared.publish(crate::jobj! { "phase" => "crashed" });
+                self.shared.publish(self.host.status());
                 false
             }
         }
@@ -158,12 +154,12 @@ impl GameThread {
                 self.shared.set_caches(view, map);
                 self.shared.set_game(self.host.game_info());
                 self.shared.set_crash(None);
-                self.crashed = false;
                 self.shared.publish(self.host.status_after(after));
             }
             None => {
                 self.shared.clear_caches();
-                self.shared.publish(if self.crashed { crate::jobj! { "phase" => "crashed" } } else { self.host.status() });
+                self.shared.set_crash(self.host.crash().cloned());
+                self.shared.publish(self.host.status());
             }
         }
     }
@@ -173,21 +169,23 @@ impl GameThread {
     fn advance(&mut self) {
         let shared = self.shared.clone();
         let rx = self.rx.clone();
+        let dir = self.host.game_dir().map(Path::to_path_buf);
         let mut last: Option<Instant> = None;
         self.host.advance(&mut |s| {
             if last.is_none_or(|t| t.elapsed() >= PUBLISH_EVERY) {
                 last = Some(Instant::now());
                 // Until `advance` returns the human has no control, whatever the predicate says
                 // in this slice (the AutoMoves rule may still run the human's missions).
-                if let Ok(st) = s.query(&Query::Status) {
-                    shared.publish(st.with("phase", "running"));
+                if let Ok(st) = running_status(s, dir.as_deref()) {
+                    shared.set_game(st.get("game").cloned().unwrap_or_default());
+                    shared.publish(st);
                 }
             }
             loop {
                 let next = rx.lock().unwrap_or_else(|e| e.into_inner()).try_recv();
                 let Ok(env) = next else { break };
                 let (id, req) = Request::from_json(&env.req);
-                let _ = env.reply.send(running_reply(s, id, req));
+                let _ = env.reply.send(running_reply(s, dir.as_deref(), id, req));
             }
         });
         self.refresh(After::Nothing);
@@ -220,7 +218,7 @@ impl GameThread {
 fn game_thread(host: HostOptions, start: Start, rx: Arc<Mutex<Receiver<Envelope>>>, shared: Arc<Shared>, started: Sender<Result<(), String>>) {
     install_panic_hook();
     let answerer = Arc::new(ChannelAnswerer { rx: rx.clone(), shared: shared.clone() });
-    let mut gt = GameThread { host: Host::new(host, answerer), rx, shared, crashed: false };
+    let mut gt = GameThread { host: Host::new(host, answerer), rx, shared };
     let mut ok = false;
     gt.guarded(|gt| {
         match gt.host.start(&start) {

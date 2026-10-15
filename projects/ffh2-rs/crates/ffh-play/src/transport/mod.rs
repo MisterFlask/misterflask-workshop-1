@@ -218,14 +218,37 @@ pub fn decision_reply(r: &DecisionReader, d: &Decision, id: Json, req: Result<Re
 
 /// The reply to a request while the game runs (the AI turns; the HTTP game thread answers the
 /// queued requests between turn slices): queries are answered, commands get `not_your_turn`,
-/// session operations `busy`.
-pub fn running_reply(s: &Session, id: Json, req: Result<Request, ProtoErr>) -> Json {
+/// session operations `busy`. The status says `running` (with the game directory `dir`):
+/// until `advance` returns the human has no control, whatever the predicate says in the slice
+/// that activates its turn (the AutoMoves rule may still run its missions).
+pub fn running_reply(s: &Session, dir: Option<&Path>, id: Json, req: Result<Request, ProtoErr>) -> Json {
     match req {
         Err(e) => err_reply(id, &e),
-        Ok(Request::Query(j)) => reply_of(id, Query::from_json(&j).and_then(|q| s.query(&q)).map_err(ProtoErr::from)),
+        Ok(Request::Query(j)) => {
+            let r = Query::from_json(&j).and_then(|q| match q {
+                Query::Status => running_status(s, dir),
+                q => s.query(&q),
+            });
+            reply_of(id, r.map_err(ProtoErr::from))
+        }
         Ok(Request::Cmd(_)) => err_reply(id, &ProtoErr::from(crate::command::CmdErr::NotYourTurn)),
         Ok(Request::Answer { decision, .. }) => err_reply(id, &ProtoErr::new("gone", format!("decision {decision} is not open"))),
         Ok(Request::Session(_)) => err_reply(id, &ProtoErr::new("busy", "the game is running: session operations wait for the next control point")),
+    }
+}
+
+/// The status while the game runs (`running_reply`, the HTTP game thread's publishes between turn
+/// slices): the game's, phase `running`, with `game`.
+pub fn running_status(s: &Session, dir: Option<&Path>) -> Result<Json, QueryErr> {
+    Ok(s.query(&Query::Status)?.with("phase", "running").with("game", game_info(dir, s)))
+}
+
+/// `{dir, journal, autosave}` of a session whose game directory is `dir`.
+pub fn game_info(dir: Option<&Path>, s: &Session) -> Json {
+    crate::jobj! {
+        "dir" => dir.map(|d| d.display().to_string()),
+        "journal" => s.journal_path().map(|p| p.display().to_string()),
+        "autosave" => s.last_autosave().map(|a| a.save.display().to_string()),
     }
 }
 
@@ -287,12 +310,15 @@ pub fn take_panic() -> PanicInfo {
 }
 
 /// The crash report of a panic on the game thread (design §2.8): the message, the last
-/// autosave and the journal of the session that crashed, and the replay command.
-pub fn crash_report(p: &PanicInfo, s: Option<&Session>) -> Json {
+/// autosave and the journal of the session that crashed, and the replay command. Before a
+/// session's first autosave, the save it was loaded or taken over from stands for the autosave:
+/// its journal starts with a `load` / `take_over` header naming that save, which `replay` takes
+/// as `--from`.
+pub fn crash_report(p: &PanicInfo, host: &Host) -> Json {
     // The session may be half-way through a rules call: read it without trusting its locks.
-    let (autosave, journal) = match s {
+    let (autosave, journal) = match host.session() {
         Some(s) => {
-            let autosave = s.last_autosave().map(|a| a.save.display().to_string());
+            let autosave = s.last_autosave().map(|a| a.save.clone()).or_else(|| host.origin.clone()).map(|p| p.display().to_string());
             let journal = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.journal_path())).ok().flatten().map(|p| p.display().to_string());
             (autosave, journal)
         }
@@ -363,12 +389,18 @@ pub struct Host {
     game_dir: Option<PathBuf>,
     /// The watchdog's diagnosis when the last `advance` stopped a turn that did not finish.
     stuck: Option<String>,
+    /// The save the session was loaded or taken over from (none for a new game): the crash
+    /// report's autosave until the session writes one.
+    origin: Option<PathBuf>,
+    /// The crash report after a panic dropped the session: the status is `crashed` until a game
+    /// is started or loaded.
+    crash: Option<Json>,
 }
 
 impl Host {
     /// A host whose sessions answer blocking decisions with `answerer` (the transport's).
     pub fn new(opts: HostOptions, answerer: Arc<dyn Answerer>) -> Host {
-        Host { session: None, opts, answerer, game_dir: None, stuck: None }
+        Host { session: None, opts, answerer, game_dir: None, stuck: None, origin: None, crash: None }
     }
 
     pub fn session(&self) -> Option<&Session> {
@@ -383,17 +415,35 @@ impl Host {
     pub fn drop_session(&mut self) -> Option<Session> {
         self.game_dir = None;
         self.stuck = None;
+        self.origin = None;
         self.session.take()
+    }
+
+    /// A panic on the game thread (the last one recorded, `p`): the crash report, then the
+    /// session is dropped (it may be half-way through a rules call) and the status says
+    /// `crashed` with the report until a game is started or loaded.
+    pub fn crashed(&mut self, p: &PanicInfo) -> Json {
+        let report = crash_report(p, self);
+        drop(self.drop_session());
+        self.crash = Some(report.clone());
+        report
+    }
+
+    /// The crash report while the status is `crashed`.
+    pub fn crash(&self) -> Option<&Json> {
+        self.crash.as_ref()
     }
 
     fn session_options(&self, dir: Option<PathBuf>) -> SessionOptions {
         SessionOptions { saves_dir: dir, autosave_keep: self.opts.autosave_keep, ..SessionOptions::default() }
     }
 
-    fn install(&mut self, s: Session, dir: Option<PathBuf>) {
+    fn install(&mut self, s: Session, dir: Option<PathBuf>, origin: Option<PathBuf>) {
         self.session = Some(s);
         self.game_dir = dir;
         self.stuck = None;
+        self.origin = origin;
+        self.crash = None;
     }
 
     /// Starts as `start` says. `Ok(true)` when a game was started (then call `advance`).
@@ -405,14 +455,14 @@ impl Host {
                 let (bytes, sidecar) = save::read_bundle(path).map_err(|e| ProtoErr::new("gone", e))?;
                 let dir = self.opts.saves.as_ref().map(|_| game_dir_of(path));
                 let s = Session::load(&bytes, sidecar.as_ref(), self.answerer.clone(), self.session_options(dir.clone())).map_err(play_err)?;
-                self.install(s, dir);
+                self.install(s, dir, Some(path.clone()));
                 Ok(true)
             }
             Start::TakeOver(path, p) => {
                 let (bytes, _) = save::read_bundle(path).map_err(|e| ProtoErr::new("gone", e))?;
                 let dir = self.opts.saves.as_ref().map(|_| game_dir_of(path));
                 let s = Session::take_over(&bytes, *p, self.answerer.clone(), self.session_options(dir.clone())).map_err(play_err)?;
-                self.install(s, dir);
+                self.install(s, dir, Some(path.clone()));
                 Ok(true)
             }
         }
@@ -435,11 +485,12 @@ impl Host {
     fn query(&self, j: &Json) -> Result<Json, ProtoErr> {
         let q = Query::from_json(j)?;
         match (&self.session, &q) {
+            // The transport's status: `stuck`, `crashed`, `no_game` and the game directory.
+            (_, Query::Status) => Ok(self.status()),
             (Some(s), _) => Ok(s.query(&q)?),
             // The static tables and the new-game lists need no game.
             (None, Query::Data) => Ok(crate::view::data::data(ffh_data::global()).clone()),
             (None, Query::Setup) => Ok(crate::setup::setup_lists(ffh_data::global())),
-            (None, Query::Status) => Ok(self.status()),
             (None, _) => Err(ProtoErr::no_game()),
         }
     }
@@ -471,10 +522,18 @@ impl Host {
     pub fn advance(&mut self, on_slice: &mut dyn FnMut(&Session)) -> Json {
         let Some(s) = &mut self.session else { return crate::jobj! { "ev" => "no_game" } };
         // Fires once: taken here, put back unless it fired (the panic unwinds past the put-back).
+        // At the start of `advance` when the game is already at turn T (a save of turn T loaded:
+        // before the session's first autosave), else in the first slice that reaches it.
         let panic_at = self.opts.panic_at.take();
+        fn deliberate(t: i32, turn: i32) -> ! {
+            panic!("--panic-at {t}: a deliberate panic at turn {turn} (a self-test of the crash report)")
+        }
+        if let Some(t) = panic_at.filter(|&t| s.g.game_turn() >= t) {
+            deliberate(t, s.g.game_turn());
+        }
         let stop = s.advance(&mut |s| {
             if let Some(t) = panic_at.filter(|&t| s.g.game_turn() >= t) {
-                panic!("--panic-at {t}: a deliberate panic at turn {} (a self-test of the crash report)", s.g.game_turn());
+                deliberate(t, s.g.game_turn());
             }
             on_slice(s)
         });
@@ -509,11 +568,18 @@ impl Host {
         ev
     }
 
-    /// The status (design §4.3) without the transport's members: the game's (`status` query)
-    /// plus the game directory, journal and last autosave; `phase` is `no_game` without a game
-    /// and `stuck` when the watchdog stopped the last turn.
+    /// The status (design §4.3; the `status` query of every transport, and what the HTTP server
+    /// publishes, which adds its own members): the game's plus the game directory, journal and
+    /// last autosave; `phase` is `no_game` without a game, `crashed` (with the report, `crash`)
+    /// after a panic dropped the session, and `stuck` (with the diagnosis) when the watchdog
+    /// stopped the last turn.
     pub fn status(&self) -> Json {
-        let Some(s) = &self.session else { return crate::jobj! { "phase" => "no_game" } };
+        let Some(s) = &self.session else {
+            return match &self.crash {
+                Some(report) => crate::jobj! { "phase" => "crashed", "crash" => report.clone() },
+                None => crate::jobj! { "phase" => "no_game" },
+            };
+        };
         let mut j = s.query(&Query::Status).unwrap_or_else(|e| crate::jobj! { "phase" => "running", "error" => e.to_string() });
         if let Some(diag) = &self.stuck {
             j.set("phase", "stuck");
@@ -537,11 +603,9 @@ impl Host {
 
     /// `{dir, journal, autosave}` of the current game.
     pub fn game_info(&self) -> Json {
-        let Some(s) = &self.session else { return Json::Null };
-        crate::jobj! {
-            "dir" => self.game_dir.as_ref().map(|d| d.display().to_string()),
-            "journal" => s.journal_path().map(|p| p.display().to_string()),
-            "autosave" => s.last_autosave().map(|a| a.save.display().to_string()),
+        match &self.session {
+            Some(s) => game_info(self.game_dir.as_deref(), s),
+            None => Json::Null,
         }
     }
 
@@ -560,7 +624,7 @@ impl Host {
                 let (bytes, sidecar) = read_save(&path)?;
                 let s = Session::load(&bytes, sidecar.as_ref(), self.answerer.clone(), self.session_options(Some(dir.clone()))).map_err(play_err)?;
                 self.session = None;
-                self.install(s, Some(dir));
+                self.install(s, Some(dir), Some(path.clone()));
                 Ok((crate::jobj! { "loaded" => path.display().to_string() }, After::Advance))
             }
             SessionOp::TakeOver { player, name } => {
@@ -568,7 +632,7 @@ impl Host {
                 let (bytes, _) = read_save(&path)?;
                 let s = Session::take_over(&bytes, player, self.answerer.clone(), self.session_options(Some(dir.clone()))).map_err(play_err)?;
                 self.session = None;
-                self.install(s, Some(dir));
+                self.install(s, Some(dir), Some(path.clone()));
                 Ok((crate::jobj! { "taken_over" => path.display().to_string(), "player" => player }, After::Advance))
             }
             SessionOp::Save { name } => {
@@ -605,7 +669,7 @@ impl Host {
         // The old session goes first (its journal is closed).
         self.session = None;
         let s = Session::new_game(&ng, self.answerer.clone(), self.session_options(dir.clone())).map_err(play_err)?;
-        self.install(s, dir.clone());
+        self.install(s, dir.clone(), None);
         Ok(dir)
     }
 
@@ -762,13 +826,62 @@ mod tests {
                     r#"{"id":5,"k":"q","q":"nothing"}"#,
                 ] {
                     let (id, req) = Request::parse(line);
-                    seen.push(running_reply(s, id, req));
+                    seen.push(running_reply(s, Some(Path::new("saves/g")), id, req));
                 }
             }
         });
         let codes: Vec<&str> = seen.iter().map(|r| r.get("error").and_then(Json::as_str).unwrap_or("ok")).collect();
         assert_eq!(codes, ["ok", "not_your_turn", "gone", "busy", "invalid"]);
-        assert!(seen[0].get("r").unwrap().get("turn").is_some());
+        let st = seen[0].get("r").unwrap();
+        assert!(st.get("turn").is_some());
+        // Until `advance` returns, whatever the predicate says (P4 review).
+        assert_eq!(st.req_str("phase"), Ok("running"));
+        assert_eq!(st.get("game").unwrap().req_str("dir"), Ok("saves/g"));
+    }
+
+    /// The `status` query is the transport's status: the game directory, `stuck` after the
+    /// watchdog, `crashed` with the report after a panic (P4 review); the report of a session
+    /// loaded from a save names that save until it writes an autosave.
+    #[test]
+    fn the_status_query_is_the_transports() {
+        let root = std::env::temp_dir().join(format!("ffh-play-host-status-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let mut host = Host::new(HostOptions { saves: Some(root.clone()), autosave_keep: 2, panic_at: None }, Arc::new(AdvisorAnswerer));
+        let status = |host: &mut Host| {
+            let (reply, _) = host.handle(Json::Int(1), Request::Query(crate::jobj! { "q" => "status" }));
+            reply.get("r").cloned().unwrap()
+        };
+        assert_eq!(status(&mut host).req_str("phase"), Ok("no_game"));
+        let setup = crate::jobj! { "seed" => 3, "world" => "WORLDSIZE_DUEL", "opponents" => 1 };
+        let (_, after) = host.handle(Json::Null, Request::Session(SessionOp::New { setup: setup.clone(), name: Some("g".into()) }));
+        assert_eq!(after, After::Advance);
+        assert_eq!(host.advance(&mut |_| {}).req_str("ev"), Ok("control"));
+        let st = status(&mut host);
+        assert_eq!(st.req_str("phase"), Ok("human"));
+        assert_eq!(st.get("game").unwrap().req_str("dir"), Ok(root.join("g").to_str().unwrap()));
+        host.stuck = Some("turn 0 did not finish".into());
+        let st = status(&mut host);
+        assert_eq!((st.req_str("phase"), st.req_str("stuck")), (Ok("stuck"), Ok("turn 0 did not finish")));
+        host.stuck = None;
+        // A save loaded by name: before its first autosave, the crash report names it.
+        let (r, _) = host.handle(Json::Null, Request::Session(SessionOp::Save { name: "s1".into() }));
+        assert_eq!(r.req::<bool>("ok"), Ok(true), "{r}");
+        let (r, after) = host.handle(Json::Null, Request::Session(SessionOp::Load { name: "s1".into() }));
+        assert_eq!((r.req::<bool>("ok"), after), (Ok(true), After::Advance), "{r}");
+        let report = host.crashed(&PanicInfo { message: "boom".into(), location: "here".into() });
+        let save = root.join("g/s1.ffhsave").display().to_string();
+        assert_eq!(report.req_str("autosave"), Ok(save.as_str()));
+        let journal = report.req_str("journal").unwrap().to_string();
+        assert_eq!(report.req_str("repro"), Ok(format!("ffh-play replay {journal} --from {save}").as_str()));
+        let st = status(&mut host);
+        assert_eq!(st.req_str("phase"), Ok("crashed"));
+        assert_eq!(st.get("crash").unwrap().req_str("message"), Ok("boom"));
+        // A new game ends the crashed state.
+        let (_, after) = host.handle(Json::Null, Request::Session(SessionOp::New { setup, name: None }));
+        assert_eq!(after, After::Advance);
+        assert!(host.crash().is_none());
+        drop(host);
+        std::fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]

@@ -304,3 +304,25 @@ fn t11_a_panic_is_reported_with_its_repro() {
     let out = Command::new(EXE).args(["replay", &journal, "--from", &autosave]).output().unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
 }
+
+/// A panic before a loaded game's first autosave: the report names the loaded save as the
+/// autosave (the journal's `load` header names it) and its replay command runs (P4 review).
+/// `--panic-at` the save's turn fires as the loaded game starts.
+#[test]
+fn t11_a_panic_after_a_load_is_reported_with_the_loaded_save() {
+    let tmp = TempDir::new("t11-crash-load");
+    let root = tmp.0.join("saves");
+    let staged = staged_capture(&root.join("staged"));
+    let turn = staged.turn.to_string();
+    let mut a = Agent::spawn(&["--saves", root.to_str().unwrap(), "--load", staged.save.to_str().unwrap(), "--panic-at", &turn]);
+    let crashed = a.next();
+    assert_eq!(crashed.req_str("ev"), Ok("crashed"), "{crashed}");
+    let save = staged.save.to_str().unwrap();
+    assert_eq!(crashed.req_str("autosave"), Ok(save), "no autosave yet: the loaded save");
+    let journal = crashed.req_str("journal").unwrap().to_string();
+    assert_eq!(crashed.req_str("repro"), Ok(format!("ffh-play replay {journal} --from {save}").as_str()));
+    let (code, _) = a.finish();
+    assert_eq!(code, 3);
+    let out = Command::new(EXE).args(["replay", &journal, "--from", save]).output().unwrap();
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+}
