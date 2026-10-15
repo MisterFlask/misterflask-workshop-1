@@ -335,6 +335,10 @@ pub fn financial_trouble(g: &Game, p: PlayerId) -> bool {
 /// City state used by the decision.
 struct Ctx {
     p: PlayerId,
+    /// Cities that count for the unit targets (garrison quota, mobile force, army, workers,
+    /// casters): Kuriotates settlements do not (they build nothing, work one plot and keep
+    /// the escort that founded them as their garrison; counted, they raised the empire's
+    /// unit support by about 40%).
     n_cities: i32,
     capital: bool,
     pop: i32,
@@ -361,7 +365,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     let (defenders, defense) = garrison(g, p, plot);
     let ctx = Ctx {
         p,
-        n_cities: pl.cities.len() as i32,
+        n_cities: pl.cities.len() as i32 - g.player_get_num_settlements(p),
         capital: g.city_is_capital(c),
         pop: city.population,
         threat: local_threat(g, p, plot, 3),

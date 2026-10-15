@@ -131,7 +131,9 @@ Nothing left to build: workers, then field units (never garrisons a broke treasu
 scrap); when no more units are affordable, the strongest one whatever it costs (support is
 the same for any unit and the weakest are disbanded first, so idle hammers buy quality).
 Units are chosen by power squared per production turn, so stronger units win unless much
-dearer.
+dearer. The unit targets that grow with the empire (garrison quota, mobile force, army,
+workers, casters) count full cities only: Kuriotates settlements build nothing, work one plot
+and keep the escort that founded them as their garrison.
 
 **Unit support** (`economy.rs`): FfH units beyond the free ones (handicap, civics,
 population) cost gold every turn. Every optional unit (extra defenders beyond one per city
