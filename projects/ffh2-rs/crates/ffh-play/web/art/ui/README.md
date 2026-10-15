@@ -12,15 +12,16 @@ node tools/serve.mjs            # from web/art; then open:
 #   /ui/preview.html?modal      the same with an event modal (illuminated initial, option buttons)
 #   /ui/preview.html?kit        every piece of the kit; ?kit=frames,buttons,fonts,buildings,... for some sections
 #   ?u=1|2|3 UI scale, ?zoom=1..4 map zoom, ?doom=N the Armageddon counter,
-#   ?ground the terrain set's ground pass, ?citylight the cities set's hearth pools
+#   ?ground the terrain set's ground pass, ?citylight the cities set's light pass
 #   /preview/sheet.html?set=ui  the toolkit's contact sheet of this set
 ```
 
 The preview installs the units set's `units/stack.js` (`installStackOverlay`: the stack standard);
 `?ground` adds the terrain set's `terrain/ground.js` (`installTerrain`) and `?citylight` the cities
-set's `cities/citylight.js` (`installCityLight`), both from their second round. `ref/screen.png`
+set's `cities/citylight.js` (`installCityLight`, the light pass). `ref/screen.png`
 (`?ground&citylight`) and `ref/kit.png` are small reference shots of the preview (u = 2), taken on
-the combined sets (art-review with the second rounds of units, terrain and cities).
+the combined sets (art-review with the second rounds of units, terrain and cities; `screen.png`
+retaken after the light and ground pass: moonlit clearings, pale paths, three-ring pools).
 
 ## Files
 

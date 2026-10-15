@@ -200,17 +200,34 @@ The same palette in machine-readable form (`index key name hex family`):
 
 ### 2.3 Value and colour budget
 
-Measured on the prototype map. Treat these as targets for any full-screen view of a typical game.
+Treat these as targets for any full-screen view of a typical game, measured over the visible
+(lit, not fogged) map pixels, one sample per art pixel, each pixel taken as its nearest palette
+colour.
 
-- At least **70%** of lit-map pixels have L* at or below 25 (the darkest 17 colours of section
-  2.1). The prototype map measured 75%, with 8% above L* 40, 1% above L* 60 and 0.7% in the
-  reserved families.
-- At most **10%** are above L* 40. At most **2%** are above L* 60 (bone, vellum, rime, glow, ritual,
+- At least **60%** of lit-map pixels have L* at or below 25 (the darkest 17 colours of section
+  2.1).
+- At most **12%** are above L* 40. At most **2%** are above L* 60 (bone, vellum, rime, glow, ritual,
   wisp, amber).
-- The three reserved families together (fire, crimson, pale green) cover at most **2%** of the
-  screen. Their light cores (`l L R W`) cover at most **0.3%**.
+- The three reserved families together (fire, crimson, pale green) cover at most **3%** of the
+  screen. Their light cores (`l L R W`) cover at most **0.6%**.
 - A saturated colour never fills more than about 6 px in a row except in glows, rituals or hell
   features. If it does, it is decoration.
+
+*Second round (the art director's light and ground review).* The first budget (70% dark, 10% above
+L* 40, 2% reserved, 0.3% cores) was measured on the prototype map, and the assembled sets kept well
+inside it: the sample scene measured 69% dark but only 3.5% above L* 40, firelight (`e E l L`) 0.14%
+and cores 0.09%, against the board's gameplay mock-up (same measure) at 66% dark, 11.8% above L* 40,
+2.6% above L* 60, firelight 0.5% and cores 1.3%. The map read under-lit and flat next to the board.
+The budget was revised deliberately, toward the board but short of it: the dark floor drops to 60%
+(the board is at 66%), the mid-light ceiling rises to 12% (the board's 11.8%) so moonlit clearings,
+pale paths and lit cities fit, and the reserved and core caps double so a town of several lit
+cities or a ritual site stays within them; the 2% ceiling above L* 60 stays (the board's 2.6% is
+painterly highlights that pixel art draws as edges). After the second round the sample scene
+(`preview/scene.html` at 2x, visible tiles; three cities, one of them Sheaim) measures 64% dark,
+8.1% above L* 40, 1.5% above L* 60, firelight 0.22%, cores 0.12% and 1.0% reserved; the cities
+plate's town map (`cities/preview.html?part=towns`, seven cities) firelight 0.43% and cores
+0.17%. Pixel-art light cores stay far below the board's 1.3% (its cores are soft painted glows);
+the light reads from the rings of section 4.4 instead.
 
 ### 2.4 Remap tables: fog and light pools
 
@@ -221,6 +238,12 @@ where a falloff is needed (section 4.4).
 `FOG` darkens about two steps within the family and puts every light out. The four pool tables pull
 the ground toward one reserved family: firelight (`FIRE`), corruption (`BLOOD`), ritual (`RITE`) and
 the arcane (`ARC`).
+
+The sets' passes (section 16.3) add tables of their own, written in the same form in their modules
+and candidates for new columns here (palette.txt would change with them): the light pass's ring
+tables WARM, HEARTH, EMBER, SMOULDER, GORE, AURA, HALLOW and HAZE (`cities/citylight.js`, section
+4.4), and the ground pass's REMEMBER (`FOG` with frost `f` to slate `4`, rime `F` to ash `5`, glint
+`g` to iron `3`, section 8.2), MOON, GRAIN and SHADE (the moonlit clearings, section 16.4).
 
 ```remap
 key  FOG FIRE BLOOD RITE ARC
@@ -378,9 +401,26 @@ W    T   8    R     W    8
   | window | none (a window is just the lit pixel) |
   | lantern or torch | 5 to 6 px |
   | campfire or forge | 8 px |
-  | city | 12 + 3 x size tier (two passes: the outer pass at full radius, the inner at half radius) |
+  | city | outer 24 + 4 x size tier, inner 12 + 4 x tier, core 6 + 2 x tier (section 9.1) |
 
   The pool is elliptical (vertical radius divided by 1.4) and centred on the source's ground point.
+- **A pool is light, not a stain** (second round). A single remap toward a family table turns moss
+  into dun or barrow green at the same value, and the ground reads as mud. Every pool is drawn by
+  the light pass (`cities/citylight.js`) as three nested rings, each remapping a pixel once from
+  its own ground colour with Bayer falloff, so the value rises toward the source:
+
+  | family | outer ring (r) | inner ring (0.55 r) | core (0.25 r, r >= 6) |
+  |---|---|---|---|
+  | `FIRE` | WARM: one step lighter and warmer (moss to ochre, dark moss to rust, ash to sand) | HEARTH: to flame `E`, dark ground to ember and rust, pale marks to amber | EMBER: to amber `l`, pale to glow `L` |
+  | `BLOOD` | SMOULDER: dark to blood, mid to rust, pale to crimson | GORE: to crimson, pale to scarlet | GORE |
+  | `ARC` | `ARC` (2.4) | AURA: to dusk and lilac | AURA |
+  | `RITE` | HAZE: to teal and patina, pale to ritual | HALLOW (0.5 r, sparse): to ritual `S`, pale to wisp | HALLOW (0.22 r) |
+
+  The outer ring covers at most 70% of its pixels at the centre and falls off as (1 - d)^0.6; the
+  inner ring 78% falling as (1 - d)^0.9; the core 75%, linearly (a ritual light: 80%, 60% and
+  85%). Open water (`d`, `n`) keeps its night under every ring; ripples and glints catch the
+  light. The tables are written as columns like 2.4's (`LIGHT_TABLES` in `cities/citylight.js`),
+  ready to move into palette.txt.
 - **Corruption** (volcano crater, Hellfire, Infernal cities, Broken Sepulcher...) uses `BLOOD`.
   **Ritual** sites use `RITE`. **Mana** nodes and spell effects use `ARC`.
 - **Pools never cross fog.** Lights are drawn only on visible tiles: what you saw last turn is
@@ -441,7 +481,7 @@ what the land used to be.
 | PLAINS | dun `Q` | umber `u` | horizontal stubble dashes, 2 to 4 px, alternating `y 5`, with a `u` pixel under | warm grey-brown |
 | DESERT | sand `Y` | stone `6` | dune arcs, 5 to 8 px, crest `7`, underside `y` | pale sand: the lightest land |
 | TUNDRA | slate `4` | iron `3` | lichen dots `O`/`o`, short crack lines `2` with a `5` lip | cool grey with specks |
-| SNOW | frost `f` | glint `g` | drift lines `g`, 4 to 8 px, with `F` crest pixels | pale blue-grey |
+| SNOW | frost `f` | slate `4` and glint `g` | wind streaks of slate and glint (about a third and a sixth), `F` crest pixels | cold grey, below the light of cities (second round: half glint read as a vivid steel-blue field) |
 | MARSH | moss-dk `q` | teal-dk `k` | water slits `n` with one `N` glint, reed ticks `o`/`O` | dark wet green |
 | BROKEN_LANDS (hell grass) | umber `u` | iron `3` | jagged cracks `1` with `c` lips, ash pebbles `5` | cracked dark earth |
 | FIELDS_OF_PERDITION (hell plains) | dusk `p` | bruise `v` | furrow dashes `c` with `P` flecks, bone-dust `6` | purple ash fields |
@@ -511,9 +551,13 @@ are **plot types** drawn over the plot's real terrain (section 5.3).
   is a **2 px ink line** of navy `n`, with a `g` glint pixel every 6 px and a 1 px soot `1`
   border. The line follows the terrain warp (it is displaced by −0.8 × the warp vector), so it
   meanders with the land. It joins water bodies; where river edges meet at corners, it rounds them.
-- **ROUTE_ROAD**: a dotted ink line from the tile anchor (16, 18) to each neighbour that has a road
-  (8 directions). One bone `7` dot every 3 px, with a coal `2` shadow pixel below-right. This is the
-  board's path motif.
+- **ROUTE_ROAD**: a pale path from the tile anchor (16, 18) to each neighbour that has a road
+  (8 directions). Dashes of bone `7` (2 px on, 2 px off along the line), each pixel with a coal `2`
+  shadow below-right, over a worn verge: the ground one step lighter, a 50% checker within 1.6 px of
+  the line and 25% out to 2.2 px. The line sways with a slow warp (0.55 x the 46/22/7 px warp of
+  the ground pass at its own seed), a function of the map position, so the halves two tiles draw
+  meet and a road wanders like the board's paths instead of ruling straight lines between tile
+  centres. This is the board's path motif.
 - **ROUTE_RAILROAD** (in the data, rarely seen): two parallel dotted lines 2 px apart, in stone `6`.
 - Roads enter cities to the city's gate point.
 
@@ -596,11 +640,13 @@ GOLD and the mana glyphs.
 
 Unique improvements are the **extraordinary** made visible. They are the only map objects, apart
 from lit windows, flames, volcanoes and mana nodes, allowed a full accent glow. Each is drawn once,
-32 px wide, with up to 8 to 12 px of overhang.
+32 px wide, with up to 8 to 12 px of overhang. Second round: the sacred sites glow wider (`RITE`
+pools of 14 to 24 px: a teal haze with a ritual heart, section 4.4), the pyre and the corrupted
+sites a little wider too (`FIRE` 14, `BLOOD` 12 to 17).
 
 | landmark | accent | pool |
 |---|---|---|
-| STANDING_STONES | 5 slate menhirs around a pale-green ring (the board's ritual circle) | `RITE` |
+| STANDING_STONES | 5 slate menhirs round a glowing pale-green ellipse 31 px wide (the board's ritual circle) with wisp sparks, an inner ring of barrow dots | `RITE` 24 |
 | POOL_OF_TEARS | a still pool with `S` ripples | `RITE` |
 | SEVEN_PINES | 7 tall conifers, each with a `W` mote | `RITE` |
 | YGGDRASIL | a giant tree, rising 12 px, with `S` glints in its crown | `RITE` |
@@ -736,13 +782,16 @@ grid of the owner's shade.
 Fogged tiles (revealed, not visible) are:
 
 - passed through `FOG` (section 2.4), so terrain keeps its family but drops two steps and every
-  light goes out;
+  light goes out; the ground pass uses REMEMBER, which is `FOG` with the frost family sent to the
+  neutrals (frost `f` to slate, rime `F` to ash, glint `g` to iron), so remembered snow and ice are
+  grey rather than the steel-blue `FOG` makes of them (second round; the vignette uses it too);
 - crossed by **ink hatching**: every pixel with `(x + y) mod 4 = 0` passes through `FOG` twice;
 - remembered: last-seen improvements, routes and cities (with their windows dark), but no foreign
   units.
 
 The fog edge follows the terrain warp at 0.6 × amplitude, so the line between seen and remembered
-is ragged like worn ink.
+is ragged like worn ink. (The ground pass classifies it like the terrain, full warp, and draws it as
+a 4 px Bayer band on each side; the unrevealed edge is a 3 px band: section 16.4.)
 
 ### 8.3 Unrevealed tiles and the vignette
 
@@ -778,8 +827,8 @@ than the one below, and a tier III town already fills its tile. Footprints inclu
 
 | tier | population | footprint (px) | top | content |
 |---|---|---|---|---|
-| I | 1-3 | about 20 wide, 17 tall | 11 | 2 or 3 buildings and a bell-cote; about 2 lit windows (one a 1x2 lancet with the `L` core) and a lit door |
-| II | 4-7 | about 25 wide, 23 tall | 5 | 4 buildings, a spire; about 4 windows |
+| I | 1-3 | about 26-28 wide, 17 tall | 11 | 2 or 3 buildings and a bell-cote, with a low outskirt house behind each end; about 4 lit windows (1x2 lancets, one with the `L` core) and a lit door |
+| II | 4-7 | about 30-31 wide, 23 tall | 5 | 4 buildings, a spire, outskirts at both ends; about 6 windows |
 | III | 8-12 | about 30 wide, 30 tall: the whole tile | -2 | the main hall (the Cloister's abbey front with its rose window) and a tower; 6 or 7 windows |
 | IV | 13-19 | about 33 wide, 33 tall | -5 | a great front, the tall tower, a chapter house; about 9 windows |
 | V | 20+ | 34 wide, 34 tall | -6 | a cathedral: twin towers about the front, the crossing spire; about 12 windows |
@@ -794,22 +843,29 @@ than the one below, and a tier III town already fills its tile. Footprints inclu
 - **Masses and the moon rim.** Buildings are dark masses: walls lit `5`, body `4`, shade `3`;
   roofs darker (`2`/`1`) with a **moon rim** of stone `6` on their west edges and tips, a step
   above any ground, so the silhouette separates from dark land at 1x.
-- **Windows.** 1x1 or 1x2, in the style's light colour (section 7.3), with one `L` core on the
-  main hall. The stone beside and under a window takes the style's halo for 1 px (firelight: dark
+- **Windows.** Mostly 1x2 lancets (a plain window is 1x2 since the second round; 1x1 only where
+  a style says so), in the style's light colour (section 7.3), with one `L` core on the main hall;
+  a lit house's door is a 1x2 amber doorway. The stone beside and under a window takes the
+  style's halo for 1 px (firelight: dark
   stone to ember `e`, mid stone to rust `x`, lit stone to flame `E`), so a window reads as a small
   hearth in the wall and the stone looks lit from within.
-- **Ground light.** A lit city sits in warm light, never in mud: an inner ring of ember and rust
-  round its walls (HEARTH: dark ground to `e`, mid ground to `x`, light marks to `E`; radius
-  9 + 2 x tier) and an outer `FIRE` ring falling off to umber and dun (radius 16 + 3 x tier), both
-  elliptical with Bayer falloff, each pixel remapped once from its own ground colour (open water,
-  `d` and `n`, keeps its night). Then a wall glow (HEARTH once more on the ground within 4 px of
-  the sprite's lower walls): the sprite covers the pool's middle, so this is the light that shows.
-  `BLOOD` cities (Infernal, Sheaim) take GORE inside (blood `c`, crimson `C`), `ARC` cities
-  (Amurites, Svartalfar) AURA (dusk `p`, lilac `P`), with the outer ring at three quarters of the
-  radius, as they turn the ground's hue outright; frost, celestial and the faded Sidar cast no
-  pool. A sprite's own `: light` (the tribal and barbarian bonfire, `FIRE` radius 8) is drawn
-  under it. `cities/citylight.js` implements this (`installCityLight(art)`; its tables are written
-  as new columns for 2.4) and replaces the two `FIRE` passes of 4.4 for cities.
+- **Ground light.** A lit city sits in warm light, never in mud. Second round (the light review:
+  the pool read as a brown stain and the city as a dark speck): the pool is the three rings of
+  section 4.4 at city radii, an outer WARM glow (ochre and sand over moss and dun, radius
+  24 + 4 x tier), an inner HEARTH ring (flame, ember and rust, radius 12 + 4 x tier) and an EMBER
+  core (amber, radius 6 + 2 x tier), elliptical with Bayer falloff, each pixel remapped once from
+  its own ground colour (open water, `d` and `n`, keeps its night). Then a wall glow on the ground
+  within 4 px of the sprite's lower walls (EMBER where it is strong, HEARTH elsewhere): the sprite
+  covers the pool's middle, so this is the light that shows. Then the **facade light**: after the
+  sprite is drawn, its lowest 5 + tier rows catch the pool (HEARTH from the sprite's own dark and
+  mid colours, 80% on the ground line falling to none; outline, windows, pale stone and hide are
+  left alone), so the town stands in its light instead of on it. `BLOOD` cities (Infernal, Sheaim)
+  take SMOULDER and GORE (blood, rust, crimson), `ARC` cities (Amurites, Svartalfar) `ARC` and AURA
+  (dusk, lilac), with the outer ring at three quarters of the radius, as they turn the ground's hue
+  outright; frost, celestial and the faded Sidar cast no pool. A sprite's own `: light` (the tribal
+  and barbarian bonfire, `FIRE` radius 8) is drawn under it. `cities/citylight.js` implements this
+  (`installCityLight(art)`, the light pass) and replaces the two `FIRE` passes of 4.4 for cities and
+  every other pool.
 
 ### 9.2 City styles
 
@@ -1570,10 +1626,12 @@ landmarks: the 17 unique improvements, drawn by the terrain set.
 ### 16.3 How the client calls the toolkit
 
 `loadArt()` loads the sprites and the mapping, then installs the sets' **passes** (`PASSES` in
-art.js): `terrain/ground.js` (the ground pass: blob terrain classes, wider warp, feathered edges,
-organic fog, river and road verges, wooded crests, moonlit wood rims), `units/stack.js` (the stack
-standard, count chip, health bar, marks and lantern reflections) and `cities/citylight.js` (the
-hearth pool, wall glow and bonfires). Each wraps or replaces some `Art` methods, so the drawing
+art.js): `terrain/ground.js` (the ground pass: blob terrain classes, a wider warp, Bayer transition
+bands, moonlit clearings, organic fog through REMEMBER, pale paths, river verges, wooded crests,
+moonlit wood rims), `units/stack.js` (the stack standard, count chip, health bar, marks and lantern
+reflections) and `cities/citylight.js` (the light pass: three-ring pools for cities and every other
+light, the wall glow, the facade light and the bonfires). Each wraps or replaces some `Art`
+methods, so the drawing
 functions of 15.3 and `renderMap` produce the final look without further calls.
 `loadArt({ passes: false })` gives the seed drawing (the set previews use it to install their own
 module with their toggles). The pass modules are imported next to art.js, so serve the whole
@@ -1626,13 +1684,28 @@ sections above:
   (top centre in a city). The 6x8 pennant is retired. The city banner `ui/banner` is the same
   field without the pole.
 - **5.1-5.6: the ground pass** (`terrain/ground.js`) replaces the per-tile warp of 5.1 with
-  class blobs (Gaussian weights of the 3x3 tile centres, sigma 13 px, a three-octave warp up to
-  10 px), dithered feathers between land textures, organic fog and unrevealed edges, pale road and
-  river verges, unmirrored hills with wooded crests and a moonlit rim on woods
-  (`terrain/manifest.txt` lists the texture choices: flecked mottling, ash desert, wind-streaked
-  snow, umber burning sands).
-- **9.1: city light** as written there (the hearth pool, `cities/citylight.js`); its HEARTH,
-  GORE and AURA tables are candidates for new columns of 2.4.
+  class blobs (Gaussian weights of the 3x3 tile centres, sigma 13 px, each tile's weight scaled by
+  a hash of its position, e^(+-0.5)), sampled through a three-octave warp (cells 46, 22 and 7 px;
+  the 46 px octave, amplitude 10, shaped toward its extremes; |w| <= 14 px); organic fog and
+  unrevealed edges; pale road and river verges, unmirrored hills with wooded crests and a moonlit
+  rim on woods (`terrain/manifest.txt` lists the texture choices: flecked mottling, ash desert,
+  wind-streaked snow, umber burning sands). Second round (the light and ground review: a patchwork
+  of flat mid-value fields with visible tile squares where contrasting terrains meet):
+  - **transition bands**: where two land textures meet, the winner's share rises from 50% on the
+    edge to 100% 4 px inside it, thresholded by the 4x4 Bayer matrix in map space (25/50/75%
+    ordered bands, not a line); seen and remembered meet in the same 4 px band, the unrevealed
+    edge in a 3 px band. Shorelines keep their ink;
+  - **moonlit clearings and cloud shade**: a low-frequency field (value noise, cells 88 and 30 px)
+    lifts the land one step (MOON: moss to olive, dun to ash, ash to stone) by a Bayer share up to
+    60% where it is high, adds a cold grain at its brightest (GRAIN: up to 30% to stone `6`, tufts
+    to lichen), and lowers it one step (SHADE) by up to 25% where it is low. Water, ink and lights
+    are left alone. This is the board's lighter open ground between dark woods;
+  - **pale paths** (5.6), **REMEMBER** (8.2), and snow as cold grey streaks (5.2).
+- **9.1, 4.4: the light pass** as written there (`cities/citylight.js`): three-ring pools for
+  cities and every other light, the wall glow and the facade light; its tables are candidates for
+  new columns of 2.4. Tiers I and II have outskirts (9.1) and windows are mostly 1x2.
+- **2.3: the budget** was revised in the second round (60% dark, 12% above L* 40, 3% reserved,
+  0.6% cores), with the measurements that led to it.
 - **10.5: lanterns.** Ships and settlers carry a lantern (glow over amber, FIRE radius 6); on water
   it casts the broken reflection of 5.4 under the hull.
 - **11.5: icons.** Buildings have class icons; heroic and divine promotion seals have a double
@@ -1649,3 +1722,20 @@ the units sheet) show the assembled art; each set keeps its own small reference 
 (`terrain/ref/`, `units/reference*.png`, `cities/ref-styles.png`, `ui/ref/`). Regenerate with
 `node tools/screenshot.mjs /tmp/art` and read `scene.png`, `scene-1x.png`, the four set sheets and
 `coverage.png`.
+
+The second art pass retook `terrain/ref/scene-2x.png`, `terrain/ref/relief-3x.png`,
+`cities/ref-styles.png` and `ui/ref/screen.png`; `docs/art/toolkit-scene.png` predates it.
+
+### 16.6 Open points after the second pass
+
+Changes the second pass needs outside the sets (the toolkit's and the client's files):
+
+- **palette.txt and 2.4**: the light pass's ring tables and the ground pass's REMEMBER, MOON, GRAIN
+  and SHADE live in their modules; moving them into palette.txt as columns would let the client
+  and the minimap use them (`preview/scene.js` passes fogged minimap tiles through `FOG`, so its
+  remembered snow is still steel-blue).
+- **The plaque** (`art.js` `_plaque`, tile rows 29-35) covers the front of a city's pool, the
+  brightest ground; drawing it 2 or 3 rows lower, or narrower, would show the doorway light.
+- **The validator's city cap** (34x34, `tools/validate.mjs`): tiers III-V are at it; with 40x44
+  (3.1's 12 px of overhang) they could grow as tiers I and II did.
+- **`docs/art/toolkit-scene.png`** should be retaken (`node tools/screenshot.mjs`, `scene.png`).
