@@ -575,11 +575,11 @@ async function boot() {
   units.initUnits(mapView, $("#unit-panel"));
   renderTop();
   renderBottom();
-  // The art loads beside the data; the page works meanwhile (and without it).
-  const art = loadLook().then((a) => {
-    if (a) lookLoaded();
-    return a;
-  });
+  // The art loads beside the data; the page works meanwhile (and without it). lookLoaded() builds
+  // the art worker, which bakes in the engine's type ordering (from /api/data) once, so it must run
+  // after setLookData(): otherwise, if the static art bundle wins the race against the server-
+  // computed data, the worker draws terrain/units with the art's own ordering for the whole session.
+  const art = loadLook();
   try {
     const [data, setup] = await Promise.all([api.get("/api/data"), api.get("/api/setup")]);
     setData(data);
@@ -590,7 +590,7 @@ async function boot() {
     return;
   }
   api.watch(onStatus, onDisconnect);
-  await art;
+  if (await art) lookLoaded();
   window.ffh.ready = true;
 }
 

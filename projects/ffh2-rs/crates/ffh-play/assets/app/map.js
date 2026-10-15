@@ -269,8 +269,7 @@ export class MapView {
       this.art = new ArtMap(this);
       if (this.map) this.art.setMap(null, this.map, "all");
     } else {
-      this.art.stopWorker();
-      this.art.clear();
+      this.art.dispose();
       this.art = null;
     }
     this.snapZoom(on ? defaultArtZoom(this.dpr) : null);

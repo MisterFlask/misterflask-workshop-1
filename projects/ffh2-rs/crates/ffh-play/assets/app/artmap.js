@@ -114,6 +114,15 @@ export class ArtMap {
     this.v.request();
   }
 
+  /** The renderer is turned off (useArt(false)): stop the worker and cancel the idle prefetch and
+   *  path-march timers so their callbacks don't fire against this detached ArtMap. */
+  dispose() {
+    if (this.idleTimer != null) { cancelSchedule(this.idleTimer); this.idleTimer = null; }
+    if (this.marching != null) { clearTimeout(this.marching); this.marching = null; }
+    this.stopWorker();
+    this.clear();
+  }
+
   fromWorker(m) {
     if (m.t === "ready") {
       this.workerReady = true;
@@ -123,7 +132,19 @@ export class ArtMap {
     }
     if (m.t === "error") {
       console.error("art worker:", m.error);
-      if (m.key) this.inflight.delete(m.key);
+      if (m.key) {
+        this.inflight.delete(m.key);
+        // Fall back to drawing this chunk on the page so the view can still settle (and the
+        // tile is shown) when the worker fails on one chunk; a page failure is just logged.
+        const i = m.key.indexOf("|");
+        const [cx, cr] = m.key.slice(i + 1).split(",").map(Number);
+        try {
+          this.renderChunk(cx, cr, m.key.slice(0, i));
+        } catch (e) {
+          console.error("art page fallback:", e);
+        }
+        this.v.request();
+      }
       return;
     }
     if (m.t !== "chunk") return;
@@ -878,4 +899,9 @@ export function vignetteMask(Wa, Ha) {
 
 function schedule(fn) {
   return typeof requestIdleCallback === "function" ? requestIdleCallback(fn, { timeout: 200 }) : setTimeout(fn, 30);
+}
+
+function cancelSchedule(id) {
+  if (typeof cancelIdleCallback === "function") cancelIdleCallback(id);
+  else clearTimeout(id);
 }
