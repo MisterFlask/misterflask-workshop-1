@@ -1,0 +1,319 @@
+
+
+; ui chrome (docs/ART.md 11.3, 11.4): frames, buttons, bars and controls. Frames are nine-slice
+; sprites: `: tags nine=L,T,R,B` gives the corner insets (art px); the edges between the corners
+; repeat (`edge=round`) or stretch (the default; every edge here is uniform along its length).
+; ui/ui.js draws them on a canvas (drawNine) and turns them into CSS border-images (nineCSS).
+
+= ui/frame_panel 9x9 0,0
+: note panel: a double rule, ash outside and iron inside with soot between; gilt nails at the corners
+: tags nine=4,4,4,4
+.7.....7.
+7y75557y7
+.7111117.
+.5133315.
+.5131315.
+.5133315.
+.7111117.
+7y75557y7
+.7.....7.
+
+= ui/frame_page 13x13 0,0
+: note map page: the panel's double rule around the map viewport (the centre is left open)
+: tags nine=6,6,6,6
+.7.........7.
+7y755555557y7
+.71111111117.
+.51333333315.
+.513.....315.
+.513.....315.
+.513.....315.
+.513.....315.
+.513.....315.
+.51333333315.
+.71111111117.
+7y755555557y7
+.7.........7.
+
+= ui/frame_modal 21x21 0,0
+: note modal page: three rules (ash, iron, ash) with a gilt lozenge at each corner and nails on the inner rule
+: tags nine=10,10,10,10
+...0.............0...
+..070...........070..
+.07y70.........07y70.
+07yLy70555555507yLy70
+.07y7011111111107y70.
+..07033333333333070..
+...013111111111310...
+...5131y55555y1315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...5131y55555y1315...
+...013111111111310...
+..07033333333333070..
+.07y7011111111107y70.
+07yLy70555555507yLy70
+.07y70.........07y70.
+..070...........070..
+...0.............0...
+
+= ui/frame_title 5x5 0,0
+: note panel title band: coal, with a 1 px ash rule beneath
+: tags nine=2,1,2,2
+22222
+22222
+22222
+55555
+.....
+
+= ui/frame_raised 7x7 0,0
+: note raised panel or card: coal with an iron rim, lit along the top
+: tags nine=2,2,2,2
+.33333.
+3444443
+3422223
+3422223
+3422223
+3222223
+.33333.
+
+= ui/frame_card_selected 7x7 0,0
+: note the selected card (a unit in the stack list): bone rim, vellum along the top
+: tags nine=2,2,2,2
+.77777.
+7888887
+7822227
+7822227
+7822227
+7222227
+.66666.
+
+= ui/frame_tooltip 7x7 0,0
+: note hover tooltip: soot, 1 px stone border (ash at the corners), void outline for the map
+: tags nine=3,3,3,3
+.00000.
+0566650
+0611160
+0611160
+0611160
+0566650
+.00000.
+
+= ui/frame_inset 5x5 0,0
+: note a sunken well (lists, the city's tile grid): void above and left, iron below and right
+: tags nine=2,2,2,2
+00002
+01113
+01113
+01113
+23333
+
+= ui/frame_plate 7x7 0,0
+: note a small plate for values (like the city plaque): soot with an ash rule
+: tags nine=2,2,2,2
+.00000.
+0555550
+0511150
+0511150
+0511150
+0555550
+.00000.
+
+= ui/button 7x7 0,0
+: note button, normal: coal, ash border, iron light along the top and left; text in bone
+: tags nine=3,3,3,3
+.00000.
+0555550
+0533350
+0532150
+0532150
+0511150
+.00000.
+
+= ui/button_hover 7x7 0,0
+: note button, hover: stone border; text in vellum
+: tags nine=3,3,3,3
+.00000.
+0666660
+0644460
+0643260
+0643260
+0622260
+.00000.
+
+= ui/button_pressed 7x7 0,0
+: note button, pressed: soot with a void inset at the top and left, stone border; text in vellum
+: tags nine=3,3,3,3
+.00000.
+0666660
+0600060
+0601160
+0601160
+0611160
+.00000.
+
+= ui/button_disabled 7x7 0,0
+: note button, disabled: soot, iron border, no light; text in ash
+: tags nine=3,3,3,3
+.00000.
+0333330
+0311130
+0311130
+0311130
+0311130
+.00000.
+
+= ui/button_primary 9x9 0,0
+: note primary button (End Turn, Confirm): bone border with gilt nails inside the corners; vellum text
+: tags nine=4,4,4,4
+.0000000.
+077777770
+07y333y70
+073222170
+073222170
+073222170
+07y111y70
+077777770
+.0000000.
+
+= ui/button_primary_hover 9x9 0,0
+: note primary button, hover: vellum border, lit nails
+: tags nine=4,4,4,4
+.0000000.
+088888880
+08L444L80
+084222180
+084222180
+084222180
+08L111L80
+088888880
+.0000000.
+
+= ui/button_danger 7x7 0,0
+: note danger button (declare war, delete, raze): crimson border; text in bone
+: tags nine=3,3,3,3
+.00000.
+0CCCCC0
+0C333C0
+0C321C0
+0C321C0
+0C111C0
+.00000.
+
+= ui/button_danger_hover 9x9 0,0
+: note danger button, hover: an inner blood rule
+: tags nine=4,4,4,4
+.0000000.
+0CCCCCCC0
+0CcccccC0
+0Cc333cC0
+0Cc322cC0
+0Cc322cC0
+0CcccccC0
+0CCCCCCC0
+.0000000.
+
+= ui/focus 6x6 0,0
+: note keyboard focus: a dotted vellum ring drawn 2 px outside the control
+: tags nine=2,2,2,2
+8.8.8.
+.....8
+8.....
+.....8
+8.....
+.8.8.8
+
+= ui/bar 5x5 0,0
+: note progress bar track: void outline, soot well
+: tags nine=2,2,2,2
+.000.
+01110
+01110
+01110
+.000.
+
+= ui/slider_handle 7x9 3,4
+: note commerce slider handle: bone, void outline
+.00000.
+0788860
+0788760
+0787760
+0787760
+0777760
+.07760.
+..060..
+...0...
+
+= ui/frame_initial 7x7 0,0
+: note the illuminated initial's square: dusk, bone border, gilt corners (ui.js drawInitial)
+: tags nine=3,3,3,3
+.00000.
+0y777y0
+07ppp70
+07ppp70
+07ppp70
+0y777y0
+.00000.
+
+= ui/orn 7x3 3,1
+: note the centre ornament of a rule (the board's '-o-'): a bone lozenge with a gilt centre
+...7...
+.37y73.
+...7...
+
+= ui/bar_food 1x3 0,0
+: note progress bar fill (top to bottom: lit, body, shade): food
+O
+o
+q
+
+= ui/bar_production 1x3 0,0
+: note bar fill: production
+7
+6
+5
+
+= ui/bar_research 1x3 0,0
+: note bar fill: research
+F
+f
+g
+
+= ui/bar_culture 1x3 0,0
+: note bar fill: culture
+P
+p
+v
+
+= ui/bar_gp 1x3 0,0
+: note bar fill: great-person points
+8
+7
+6
+
+= ui/bar_xp 1x3 0,0
+: note bar fill: experience
+Y
+y
+u
+
+= ui/bar_hp 1x3 0,0
+: note bar fill: hit points above 50%
+8
+7
+6
+
+= ui/bar_hp_low 1x3 0,0
+: note bar fill: hit points under 25%
+R
+C
+c
+
+= ui/bar_doom 1x3 0,0
+: note bar fill: the Armageddon counter
+R
+C
+c

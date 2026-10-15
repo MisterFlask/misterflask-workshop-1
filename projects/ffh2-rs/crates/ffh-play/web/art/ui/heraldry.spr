@@ -1,40 +1,46 @@
-; heraldry (docs/ART.md 7): pennant, city banner, sigils. # field, % shade, * charge; the
-; division (per pale, fess, bend, quarterly) is applied inside the `: flag` rectangle.
+; heraldry (docs/ART.md 7): one owner mark in two forms, and the sigils. # field, % shade, * charge;
+; the division (per pale, fess, bend, quarterly) is applied inside the `: flag` rectangle.
+;
+;   ui/stack_banner  the stack standard (the gonfalon): a slate pole and crossbar carrying a 5x8 field
+;                    with the civilization's sigil and swallow tails. The only owner mark on a stack;
+;                    units/stack.js draws it (quiet, active and spent looks, the finial pip, the count).
+;   ui/banner        its pole-less sibling for cities: the same field and tails hung from a rod with
+;                    finials; art.js draws it at the city tile's top-left, the sigil centred on it.
+;
+; The 6x8 stack pennant (ui/pennant) is retired: a stack flies the gonfalon only.
 
-= ui/pennant 10x13 1,11
-: flag 2,1,6,7
-: note the stack pennant: a 6x8 swallow-tail on a pole, field and division only (no sigil)
-.0000000..
-06######0.
-06######0.
-06#####0..
-06####0...
-06#####0..
-06######0.
-06%%%%%%0.
-06000000..
-060.......
-060.......
-060.......
-.0........
+= ui/stack_banner 7x12 0,0
+: flag 1,2,5,8
+: finial 0,0
+: note the stack standard: a slate pole and crossbar with a 5x8 gonfalon (the owner's field and division, the civ sigil centred on it, swallow tails in the shade); the finial pip at 0,0 shows moves and heroes; stack.js draws it in the shade (quiet) except for your own movable or selected stack
+4......
+4444440
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4%#0#%0
+4%0.0%0
+40...0.
 
-= ui/banner 9x14 1,1
-: flag 1,2,7,8
-: note the city banner, 7x12, with the civilization's sigil drawn on it in the charge colour
-.0000000.
-066666660
-0#######0
-0######%0
-0######%0
-0######%0
-0######%0
-0######%0
-0######%0
-0######%0
-0######%0
-.0#####0.
-..0###0..
-...0#0...
+= ui/banner 7x12 0,1
+: flag 1,2,5,8
+: note the city banner: the stack standard without its pole, hung from a slate rod with ash finials (the cities set's study); anchor 0,1, so at the city tile's (1, 1) the field covers tile rows 2-8 and the sigil art.js puts at tile (2, 3) sits centred as on the standard
+5.....5
+4444444
+0#####0
+0#####0
+0#####0
+0#####0
+0#####0
+0#####0
+0#####0
+0%#0#%0
+0%0.0%0
+.0...0.
 
 = sigil/sword 5x5 0,0
 : note Bannor: a sword, point down
@@ -83,3 +89,139 @@
 *****
 .***.
 ..*..
+
+= sigil/amurites 5x5 0,0
+: note Amurites: an eye in a triangle
+..*..
+.*.*.
+.*.*.
+*.*.*
+*****
+
+= sigil/balseraphs 5x5 0,0
+: note Balseraphs: a two-horned jester's mask
+*...*
+**.**
+.***.
+.*.*.
+..*..
+
+= sigil/calabim 5x5 0,0
+: note Calabim: a goblet
+*****
+*****
+.***.
+..*..
+.***.
+
+= sigil/clan_of_embers 5x5 0,0
+: note Clan of Embers: two crossed tusks
+*...*
+*...*
+.*.*.
+..*..
+.*.*.
+
+= sigil/elohim 5x5 0,0
+: note Elohim: an open hand
+*.*.*
+*.*.*
+*****
+.****
+.***.
+
+= sigil/grigori 5x5 0,0
+: note Grigori: a broken chain link
+.*.*.
+*...*
+*...*
+*...*
+.***.
+
+= sigil/hippus 5x5 0,0
+: note Hippus: a horse's head
+..**.
+.***.
+****.
+*.**.
+..**.
+
+= sigil/illians 5x5 0,0
+: note Illians: a six-rayed frost star
+..*..
+*.*.*
+.***.
+*.*.*
+..*..
+
+= sigil/infernal 5x5 0,0
+: note Infernal: a horned skull
+*...*
+.***.
+*.*.*
+.***.
+.*.*.
+
+= sigil/khazad 5x5 0,0
+: note Khazad: an anvil
+.....
+*****
+.***.
+..*..
+.***.
+
+= sigil/kuriotates 5x5 0,0
+: note Kuriotates: a strung bow
+*.*..
+*..*.
+*...*
+*..*.
+*.*..
+
+= sigil/lanun 5x5 0,0
+: note Lanun: an anchor
+..*..
+.***.
+..*..
+*.*.*
+.***.
+
+= sigil/luchuirp 5x5 0,0
+: note Luchuirp: a cogwheel
+.*.*.
+*****
+**.**
+*****
+.*.*.
+
+= sigil/malakim 5x5 0,0
+: note Malakim: a rayed sun disc
+*.*.*
+.***.
+*****
+.***.
+*.*.*
+
+= sigil/mercurians 5x5 0,0
+: note Mercurians: a pair of wings
+*...*
+**.**
+*****
+**.**
+*...*
+
+= sigil/sidar 5x5 0,0
+: note Sidar: a veiled face
+.***.
+*****
+*.*.*
+*****
+*****
+
+= sigil/svartalfar 5x5 0,0
+: note Svartalfar: a spider
+*...*
+.***.
+*.*.*
+.***.
+*...*
