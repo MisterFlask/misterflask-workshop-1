@@ -28,6 +28,7 @@ pub mod expansion;
 pub mod finance;
 pub mod military;
 pub mod naval;
+pub mod odds;
 pub mod production;
 pub mod reach;
 pub mod research;

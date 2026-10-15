@@ -114,6 +114,8 @@ pub fn attack_ok(a: &Assessment, city: bool) -> bool {
 pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
     let mut fought = false;
     let city = g.map.plots[q].plot_city.is_some();
+    let pool = if city && crate::trace_on(g.groups[grp].owner) { g.groups[grp].units.clone() } else { Vec::new() };
+    let mut fights = 0;
     for _ in 0..12 {
         if !alive(g, grp) {
             break;
@@ -134,6 +136,7 @@ pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
         let before = g.groups[grp].units.len();
         move_to(g, grp, q, MOVE_DIRECT_ATTACK);
         fought = true;
+        fights += 1;
         if !alive(g, grp) {
             break;
         }
@@ -150,6 +153,12 @@ pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
                 move_to(g, grp, q, 0);
             }
         }
+    }
+    if city && fights > 0 {
+        let p = g.groups[grp].owner;
+        let taken = g.map.plots[q].plot_city.map_or(true, |c| g.cities[c].owner == p);
+        let lost = pool.iter().filter(|&&u| !g.units.contains(u) || g.units[u].death_delay).count();
+        crate::trace!(g, p, "assault on city at {:?}: {} attacks, lost {}, {}", g.map.xy(q), fights, lost, if taken { "taken" } else { "holds" });
     }
     fought
 }

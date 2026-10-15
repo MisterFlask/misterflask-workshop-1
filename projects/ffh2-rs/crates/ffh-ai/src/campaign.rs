@@ -13,12 +13,12 @@
 //!   walked back and forth between two targets.
 //! - **Commitment**: at war every stack on the landmass within 24 plots; against barbarians the
 //!   nearest stacks until they hold twice the force the city needs.
-//! - **Force** ([`simulate`]): the strike played out in expected values with the rules' combat
-//!   odds (fortification, city defense, first strikes): collateral attackers first, then the
-//!   strongest; every fight takes the defender's expected health down (a lost fight still
-//!   wounds), collateral damage hits the other defenders. The force covers the city when the
-//!   defenders fall with an attacker to spare; siege engines that can bring the walls down
-//!   within a few turns count as having done so.
+//! - **Force** ([`take_odds`], [`crate::odds`]): the probability that the strike takes the
+//!   city, over the distribution of fight outcomes with the rules' combat odds (fortification,
+//!   city defense, first strikes, collateral damage, a lost fight still wounds), the attackers in
+//!   the order the strike sends them. The force covers the city when that probability reaches
+//!   [`P_STRIKE`]; siege engines that can bring the walls down within a few turns count as
+//!   having done so.
 //! - **Phases** ([`Phase`]): while the committed force falls short, stacks gather in the rally
 //!   city (our city nearest the target; against barbarians they stay where they are) and
 //!   production builds what is missing ([`army_choice`]); once it covers the city, stacks march
@@ -26,8 +26,8 @@
 //!   next to the city together from there when the force there covers it, and strike when the
 //!   force next to it does: every committed stack there attacks
 //!   in the same turn (`strike`), siege engines bombarding first, then collateral attackers,
-//!   then the best odds (or the cheapest unit to lose), while the remaining force still covers
-//!   the remaining defenders. The victor does not stay alone in the city: up to three more
+//!   then the best odds (or the cheapest unit to lose), while the units left still take the
+//!   city with probability [`P_GO_ON`]. The victor does not stay alone in the city: up to three more
 //!   units follow it in. Stacks past gathering neither turn back for our cities in peril (the
 //!   threat usually comes from their target) nor stop to heal just before the strike.
 //! - **No hopeless camping**: a stack next to the target whose operation cannot strike steps
@@ -39,8 +39,6 @@
 use ffh_core::defs::*;
 use ffh_core::game::Game;
 use ffh_core::ids::*;
-use ffh_core::unit::CombatDetails;
-use ffh_core::utils::{combat_odds, CombatOddsInput};
 use ffh_data::*;
 
 use crate::military::is_army_unit;
@@ -126,139 +124,16 @@ fn visible_defenders(g: &Game, team: TeamId, tp: PlotIdx) -> Vec<UnitId> {
         .collect()
 }
 
-/// `apply_combat_modifier` of the rules, inverted and reapplied: a strength computed with
-/// modifier `from` recomputed with modifier `to`.
-fn remodify(strength: i32, from: i32, to: i32) -> i32 {
-    let base = if from > 0 { strength as i64 * 100 / (from as i64 + 100) } else { strength as i64 * (100 - from as i64) / 100 };
-    let s = if to > 0 { base * (to as i64 + 100) / 100 } else { base * 100 / (100 - to as i64) };
-    (s as i32).max(1)
-}
+/// Probability of taking the city that a force must reach: to march on it, to step next to it
+/// and to strike (see [`crate::odds`]).
+pub const P_STRIKE: f64 = 0.65;
+/// Once the strike has begun it goes on while the units left take the city with this
+/// probability (the defenders heal if we stop).
+pub const P_GO_ON: f64 = 0.40;
 
-/// One fight of the simulation: attacker `a` against defender `d` (on `dp`) at `hp` hit points
-/// with `wall_cut` points of city defense bombarded away. Returns (odds per mille, expected
-/// damage `a` deals when it loses). The odds are the rules' `getCombatOdds` with those two
-/// changes.
-fn fight(g: &Game, a: UnitId, d: UnitId, dp: PlotIdx, hp: i32, wall_cut: i32) -> (i32, i32) {
-    let mut det = CombatDetails::default();
-    let mut d_max = g.unit_max_combat_str(d, Some(dp), Some(a), Some(&mut det));
-    if wall_cut > 0 {
-        d_max = remodify(d_max, det.modifier_total, det.modifier_total - wall_cut);
-    }
-    let max_hp = g.unit_max_hit_points(d).max(1);
-    let hp = hp.clamp(1, max_hp);
-    let d_str = (d_max * hp / max_hp).max(1);
-    let d_fp = (d_max + d_str + 1) / 2;
-    let a_str = g.unit_curr_combat_str(a, None, Some(d), None);
-    if a_str <= 0 {
-        return (0, 0);
-    }
-    let a_fp = g.unit_curr_firepower(a, None, Some(d));
-    let a_hp = g.unit_curr_hit_points(a);
-    let k = CombatOddsInput {
-        attacker_strength: a_str,
-        attacker_firepower: a_fp,
-        defender_strength: d_str,
-        defender_firepower: d_fp,
-        attacker_hit_points: a_hp,
-        defender_hit_points: hp,
-        defender_max_hit_points: max_hp,
-        attacker_combat_limit: g.units[a].combat_limit,
-        attacker_first_strikes: g.unit_first_strikes(a),
-        attacker_chance_first_strikes: g.unit_chance_first_strikes(a),
-        attacker_immune_to_first_strikes: g.unit_immune_to_first_strikes(a),
-        defender_first_strikes: g.unit_first_strikes(d),
-        defender_chance_first_strikes: g.unit_chance_first_strikes(d),
-        defender_immune_to_first_strikes: g.unit_immune_to_first_strikes(d),
-    };
-    let defs = &g.d.defines;
-    let odds = combat_odds(&k, defs.combat_die_sides, defs.combat_damage);
-    // A lost fight: the rounds the attacker wins before it has lost all its hit points.
-    let sf = (a_fp + d_fp + 1) / 2;
-    let to_att = (defs.combat_damage * (d_fp + sf) / (a_fp + sf)).max(1);
-    let to_def = (defs.combat_damage * (a_fp + sf) / (d_fp + sf)).max(1);
-    let losses = (a_hp + to_att - 1) / to_att;
-    let q = a_str as i64 * 1000 / (a_str + d_str) as i64; // per mille a round goes our way
-    let won = losses as i64 * q / (1000 - q).max(50);
-    let mut wound = (won * to_def as i64).min(hp as i64) as i32;
-    // Combat limit (siege engines stop at a share of the defender's health).
-    let limit = g.units[a].combat_limit;
-    if limit < max_hp {
-        wound = wound.min((hp - (max_hp - limit)).max(0));
-    }
-    (odds, wound)
-}
-
-/// Expected outcome of a strike.
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Sim {
-    /// Attackers used until the defenders fell (`None`: they hold).
-    pub used: Option<usize>,
-    /// Defenders at the start.
-    pub n_def: usize,
-    /// Expected defender hit points left after all attacks.
-    pub hp_left: i32,
-    /// Best odds of one of the fights.
-    pub best: i32,
-}
-
-/// Play the strike of `atts` against the defenders `defs` of plot `tp` in expected values
-/// (see the module doc). `wall_cut`: city defense points bombarded away first.
-pub fn simulate(g: &Game, tp: PlotIdx, defs: &[UnitId], atts: &[UnitId], wall_cut: i32) -> Sim {
-    let mut ds: Vec<(UnitId, i32, i32)> = defs.iter().map(|&d| (d, g.unit_curr_hit_points(d), g.unit_max_combat_str(d, Some(tp), None, None))).collect();
-    let n_def = ds.len();
-    if ds.is_empty() {
-        return Sim { used: Some(0), n_def, hp_left: 0, best: 1000 };
-    }
-    let max_hp = g.d.defines.max_hit_points.max(1);
-    let dead = max_hp / 8;
-    let collateral = |u: UnitId| g.unit_collateral_damage(u) > 0;
-    let mut order: Vec<UnitId> = atts.iter().copied().filter(|&u| attack_power(g, u) > 0 && g.unit_can_attack(u)).collect();
-    order.sort_by_key(|&u| (std::cmp::Reverse(collateral(u) && n_def >= 2), std::cmp::Reverse(attack_power(g, u)), u));
-    let mut best = 0;
-    for (i, &a) in order.iter().enumerate() {
-        ds.retain(|d| d.1 > dead);
-        if ds.is_empty() {
-            return Sim { used: Some(i), n_def, hp_left: 0, best };
-        }
-        // The defender the rules put up: the strongest (by its plot strength and health).
-        let j = (0..ds.len()).max_by_key(|&j| (ds[j].2 as i64 * ds[j].1 as i64, std::cmp::Reverse(ds[j].0))).unwrap();
-        let (odds, wound) = fight(g, a, ds[j].0, tp, ds[j].1, wall_cut);
-        best = best.max(odds);
-        let hp = ds[j].1;
-        ds[j].1 = ((1000 - odds) as i64 * (hp - wound).max(0) as i64 / 1000) as i32;
-        // Collateral damage on the others (CvUnit::collateralCombat).
-        if collateral(a) && ds.len() > 1 {
-            let cs = g.unit_base_combat_str(a) * g.unit_collateral_damage(a) / 100;
-            let limit = g.unit_collateral_damage_limit(a);
-            let mut n = (ds.len() as i32 - 1).min(g.unit_collateral_damage_max_units(a));
-            let mut others: Vec<usize> = (0..ds.len()).filter(|&o| o != j).collect();
-            others.sort_by_key(|&o| (std::cmp::Reverse(ds[o].1), o));
-            for o in others {
-                if n <= 0 {
-                    break;
-                }
-                n -= 1;
-                let ts = g.unit_base_combat_str(ds[o].0);
-                let sf = (cs + ts + 1) / 2;
-                if ts + sf <= 0 {
-                    continue;
-                }
-                let dmg = g.d.defines.collateral_combat_damage * (cs + sf) / (ts + sf);
-                let cap = limit.min(limit * (cs + sf) / (ts + sf));
-                let damage = max_hp - ds[o].1;
-                let new_damage = damage.max((damage + dmg).min(cap));
-                ds[o].1 = max_hp - new_damage;
-            }
-        }
-    }
-    ds.retain(|d| d.1 > dead);
-    let hp_left = ds.iter().map(|d| d.1).sum();
-    Sim { used: if ds.is_empty() { Some(order.len()) } else { None }, n_def, hp_left, best }
-}
-
-/// City defense our siege engines in `units` can bombard away within three turns (0 without
+/// City defense our siege engines in `units` can bombard away within `turns` turns (0 without
 /// siege engines).
-fn wall_cut(g: &Game, c: CityId, units: &[UnitId]) -> i32 {
+fn wall_cut(g: &Game, c: CityId, units: &[UnitId], turns: i32) -> i32 {
     let rate: i32 = units.iter().map(|&u| g.unit_bombard_rate(u)).sum();
     if rate <= 0 {
         return 0;
@@ -266,26 +141,22 @@ fn wall_cut(g: &Game, c: CityId, units: &[UnitId]) -> i32 {
     let ignore = units.iter().any(|&u| g.unit_bombard_rate(u) > 0 && g.unit_ignore_building_defense(u));
     let def = g.city_defense_modifier(c, ignore);
     let per_turn = if ignore { rate } else { rate * (100 - g.cities[c].building_bombard_defense).max(0) / 100 };
-    def.min(per_turn * 3).max(0)
+    def.min(per_turn * turns).max(0)
 }
 
-/// Attackers to spare before a force counts as covering a city: a fifth of the force, at
-/// least one (an expected-value estimate: fights go worse about half the time).
-fn margin(n: usize) -> usize {
-    (n / 5).max(1)
+/// The odds that `units` take city `c` (plot `tp`, defenders `defs`), the walls brought down by
+/// the siege engines among them in `siege_turns` turns of bombardment (siege engines facing
+/// walls still standing do not attack, see [`strike`]).
+fn take_odds(g: &Game, c: CityId, tp: PlotIdx, defs: &[UnitId], units: &[UnitId], siege_turns: i32) -> crate::odds::Odds {
+    let cut = if siege_turns > 0 { wall_cut(g, c, units, siege_turns) } else { 0 };
+    let walls = g.city_defense_modifier(c, false) - cut > 0;
+    let atts: Vec<UnitId> = units.iter().copied().filter(|&u| !(walls && g.unit_bombard_rate(u) > 0)).collect();
+    crate::odds::strike_odds(g, tp, defs, &atts, cut)
 }
 
-/// Does `units` take city `c` (plot `tp`, defenders `defs`) with `spare` attackers to spare?
-/// With `spare`, a [`margin`] of attackers must be left over (only units able to attack count).
-fn covers(g: &Game, c: CityId, tp: PlotIdx, defs: &[UnitId], units: &[UnitId], spare: bool, siege: bool) -> bool {
-    let n_att = units.iter().filter(|&&u| attack_power(g, u) > 0 && g.unit_can_attack(u)).count();
-    if n_att == 0 {
-        return false;
-    }
-    let spare = if spare { margin(n_att) } else { 0 };
-    let cut = if siege { wall_cut(g, c, units) } else { 0 };
-    let s = simulate(g, tp, defs, units, cut);
-    s.used.is_some_and(|n| n + spare <= n_att) || s.best >= 850 && defs.len() == 1
+/// Do `units` take city `c` with probability `p` (see [`take_odds`])?
+fn covers(g: &Game, c: CityId, tp: PlotIdx, defs: &[UnitId], units: &[UnitId], p: f64, siege_turns: i32) -> bool {
+    !units.is_empty() && take_odds(g, c, tp, defs, units, siege_turns).p_take >= p
 }
 
 // ----------------------------------------------------------------------------
@@ -423,17 +294,22 @@ fn committed_units(g: &Game, p: PlayerId, tp: PlotIdx) -> i32 {
 }
 
 /// Units the city of candidate `cand` needs against what we see of it, given our `force` on
-/// its landmass (strongest first): the strike played out with the whole force when the city is
-/// seen (what is missing, roughly, when it falls short), else a rough guess.
+/// its landmass (strongest first): the attackers (in strike order) that take it with
+/// probability [`P_STRIKE`] when the city is seen (what is missing, roughly, when the whole
+/// force falls short), else a rough guess.
 fn need_for(g: &Game, team: TeamId, cand: &Cand, force: &[UnitId]) -> i32 {
     if cand.visible && !force.is_empty() {
         let defs = visible_defenders(g, team, cand.plot);
         let all: Vec<UnitId> = force.iter().copied().take(24).collect();
-        let s = simulate(g, cand.plot, &defs, &all, wall_cut(g, cand.city, &all));
-        match s.used {
-            Some(n) => n as i32 + 1,
-            // Short of the whole force: a defender's health per two more attackers.
-            None => all.len() as i32 + 1 + s.hp_left * 2 / g.d.defines.max_hit_points.max(1),
+        let o = take_odds(g, cand.city, cand.plot, &defs, &all, 3);
+        match o.needed(P_STRIKE) {
+            Some(n) => n as i32,
+            // Short of the whole force: a defender's health (where the city holds) per two more
+            // attackers.
+            None => {
+                let left = o.exp_hp_left / (1.0 - o.p_take).max(1e-6);
+                all.len() as i32 + 1 + (left * 2.0 / g.d.defines.max_hit_points.max(1) as f64) as i32
+            }
         }
     } else if cand.visible {
         rough_need(cand.n_def)
@@ -570,9 +446,10 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
     let defs = visible_defenders(g, team, tp);
     let (ok_all, ok_near, ok_adj) = if cand.visible {
         (
-            covers(g, cand.city, tp, &defs, &all, true, true),
-            covers(g, cand.city, tp, &defs, &near, true, true),
-            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, true, false),
+            covers(g, cand.city, tp, &defs, &all, P_STRIKE, 3),
+            covers(g, cand.city, tp, &defs, &near, P_STRIKE, 3),
+            // (The siege engines next to the city bombard before the strike.)
+            covers(g, cand.city, tp, &defs, &adj, P_STRIKE, 1),
         )
     } else {
         // Unseen: enough to go and look (two more than the defenders we assume).
@@ -939,6 +816,7 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
     let name = g.cities[op.city].name.clone();
     let mut done: Vec<UnitId> = Vec::new();
     let mut fights = 0;
+    let mut p_start = 0.0;
     for _ in 0..48 {
         if !g.cities.contains(op.city) || g.cities[op.city].owner == p {
             break;
@@ -955,20 +833,16 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
             .filter(|&u| next_to(g, u) && !done.contains(&u) && g.unit_moves_left(u) > 0 && !g.units[u].made_attack && attack_power(g, u) > 0 && g.unit_can_attack(u))
             .filter(|&u| !(walls && g.unit_bombard_rate(u) > 0))
             .collect();
-        // Start with a margin; once started, go on while the rest still takes the city, or
-        // while the defenders are worn down to half their health and we outnumber them (they
-        // heal if we stop).
-        let go = if fights == 0 {
-            covers(g, op.city, tp, &defs, &units, true, false)
-        } else {
-            let hp: i32 = defs.iter().map(|&d| g.unit_curr_hit_points(d)).sum();
-            let max: i32 = defs.iter().map(|&d| g.unit_max_hit_points(d)).sum();
-            covers(g, op.city, tp, &defs, &units, false, false) || hp * 2 <= max && units.len() >= defs.len()
-        };
+        // Start when the units take the city with probability P_STRIKE; once started, go on
+        // while the units left take it with P_GO_ON (the defenders heal if we stop).
+        let o = take_odds(g, op.city, tp, &defs, &units, 0);
+        let go = !units.is_empty() && o.p_take >= if fights == 0 { P_STRIKE } else { P_GO_ON };
+        if fights == 0 {
+            p_start = o.p_take;
+        }
         if crate::trace_on(p) {
-            let s = simulate(g, tp, &defs, &units, 0);
             let hp: Vec<i32> = defs.iter().map(|&d| g.unit_curr_hit_points(d)).collect();
-            crate::trace!(g, p, "  strike step {}: {} units, defenders hp {:?}, sim {:?}, go {}", fights, units.len(), hp, s, go);
+            crate::trace!(g, p, "  strike step {}: {} units, defenders hp {:?}, p_take {:.3}, lost {:.2}, best {}, go {}", fights, units.len(), hp, o.p_take, o.exp_lost, o.best, go);
         }
         if !go {
             break;
@@ -978,10 +852,7 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
         let with_odds: Vec<(UnitId, i32)> = units.iter().map(|&u| (u, odds(g, u))).collect();
         let best_odds = with_odds.iter().map(|&(_, o)| o).max().unwrap_or(0);
         let collateral = defs.len() >= 2 && with_odds.iter().any(|&(u, _)| g.unit_collateral_damage(u) > 0);
-        let sacrifice = |u: UnitId| {
-            let cost = g.d.units[g.units[u].unit_type].production_cost.max(1) as i64;
-            attack_power(g, u) as i64 * (100 + g.unit_withdrawal_probability(u) as i64) * 100 / (cost * (10 + g.units[u].experience.max(0) as i64))
-        };
+        let sacrifice = |u: UnitId| crate::odds::sacrifice_value(g, u);
         let pick = if collateral {
             with_odds.iter().filter(|&&(u, _)| g.unit_collateral_damage(u) > 0).max_by_key(|&&(u, o)| (o, std::cmp::Reverse(u))).map(|&(u, _)| u)
         } else if best_odds >= 680 {
@@ -1040,7 +911,8 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
             }
         }
     }
-    crate::trace!(g, p, "strike on {}: {} stacks, {} attacks, {}", name, groups.len(), fights, if taken(g) { "taken" } else { "holds" });
+    let lost = pool.iter().filter(|&&u| !g.units.contains(u) || g.units[u].death_delay).count();
+    crate::trace!(g, p, "strike on {}: {} stacks, {} attacks, lost {}, {} (p_take {:.3})", name, groups.len(), fights, lost, if taken(g) { "taken" } else { "holds" }, p_start);
     // End the turn of every stack involved (including the units taken out of them).
     for u in pool {
         if let Some(grp) = g.units.contains(u).then(|| g.units[u].group).flatten() {
