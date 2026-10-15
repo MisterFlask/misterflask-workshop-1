@@ -2,9 +2,10 @@
 //! (`CvGameUtils.AI_chooseTech`), as goals for the research scorer (`research::choose`).
 //!
 //! [`goals`] lists the techs this player should be heading for, most urgent first ([`ORDER`]):
-//! 1. an early tier-2 military tech (the leader's favorite early military tech, else Bronze
-//!    Working; Hunting for the elves, Construction for the Luchuirp) until one of Bronze
-//!    Working, Archery, Hunting or Horseback Riding is known;
+//! 1. an early tier-2 military tech until one of Bronze Working, Archery, Hunting or Horseback
+//!    Riding is known: the first we do not know and can ever research of the leader's favorite
+//!    early military tech, the civ's (Hunting for the elves, Construction for the Luchuirp)
+//!    and Bronze Working;
 //! 2. the early economy: Exploration, Mining, Calendar, Ancient Chants, Education;
 //! 3. an early religion (Way of the Earthmother / of the Forests / Message from the Deep by
 //!    alignment, favorite religion and favorite early religion; only one nobody has founded),
@@ -143,12 +144,21 @@ pub fn goals(g: &Game, p: PlayerId) -> Vec<Goal> {
         match step {
             Step::Military => {
                 if !tier2 {
-                    let fav = leader.and_then(|l| l.favorite_early_mil_tech).filter(|&t| !g.team_is_has_tech(team, Some(t)));
-                    match fav {
-                        Some(t) => push(&d.techs[t].base.type_, "tier2-military"),
-                        None if is_civ("CIVILIZATION_LJOSALFAR") || is_civ("CIVILIZATION_SVARTALFAR") => push("TECH_HUNTING", "tier2-military"),
-                        None if is_civ("CIVILIZATION_LUCHUIRP") => push("TECH_CONSTRUCTION", "tier2-military"),
-                        None => push("TECH_BRONZE_WORKING", "tier2-military"),
+                    // The leader's favorite (some are no military tech: Festivals, Sailing, Way
+                    // of the Earthmother), else the civ's, else Bronze Working: the first we do
+                    // not know and can ever research (the Earthmother is closed to agnostics and
+                    // with its religion off).
+                    let fav = leader.and_then(|l| l.favorite_early_mil_tech).map(|t| d.techs[t].base.type_.as_str());
+                    let civ_default = if is_civ("CIVILIZATION_LJOSALFAR") || is_civ("CIVILIZATION_SVARTALFAR") {
+                        Some("TECH_HUNTING")
+                    } else if is_civ("CIVILIZATION_LUCHUIRP") {
+                        Some("TECH_CONSTRUCTION")
+                    } else {
+                        None
+                    };
+                    let open = |name: &str| n.tech(name).is_some_and(|t| !g.team_is_has_tech(team, Some(t)) && g.player_can_ever_research(p, t));
+                    if let Some(name) = [fav, civ_default, Some("TECH_BRONZE_WORKING")].into_iter().flatten().find(|&name| open(name)) {
+                        push(name, "tier2-military");
                     }
                 }
             }
@@ -488,5 +498,37 @@ mod tests {
         assert_eq!(pick(&g), Some(forests));
         g.religion_game_turn_founded[religion_of(forests)] = 1;
         assert_eq!(pick(&g), None);
+    }
+
+    #[test]
+    fn military_goal_falls_back_to_bronze_working() {
+        let d = ffh_data::global();
+        // Runes of Kilmorph off: Way of the Earthmother can never be researched.
+        let mut opts = ffh_core::setup::SetupOptions::new(d, 6, "WORLDSIZE_SMALL", 5);
+        opts.options.push(d.t::<GameOptionType>("GAMEOPTION_NO_RELIGION_3"));
+        let mut g = Game::new(d, GameSetup::from_options(d, &opts));
+        g.map_script = std::sync::Arc::new(ffh_core::mapscript::FractalMapScript::default());
+        g.game_init();
+        let t = |name: &str| d.t::<TechType>(name);
+        let earth = t("TECH_WAY_OF_THE_EARTHMOTHER");
+        let p = g
+            .player_ids()
+            .filter(|&p| g.players[p].alive && !g.player_is_barbarian(p))
+            .find(|&p| {
+                let civ = g.player_get_civilization_type(p);
+                !["CIVILIZATION_LJOSALFAR", "CIVILIZATION_SVARTALFAR", "CIVILIZATION_LUCHUIRP"].iter().any(|c| civ == d.ty::<CivilizationType>(c))
+                    && !["TECH_BRONZE_WORKING", "TECH_ARCHERY", "TECH_HUNTING", "TECH_HORSEBACK_RIDING"].iter().any(|&x| g.team_is_has_tech(g.players[p].team, Some(t(x))))
+            })
+            .expect("a civ without the elves' or the Luchuirp's military default, before tier 2");
+        assert!(!g.player_can_ever_research(p, earth));
+        let first = |g: &Game| goals(g, p).into_iter().find(|gl| gl.stage == "tier2-military").map(|gl| gl.tech);
+        // A leader whose favorite early military tech is Way of the Earthmother.
+        let l = d.leader_heads.keys().find(|&l| d.leader_heads[l].favorite_early_mil_tech == Some(earth)).expect("a leader favoring Way of the Earthmother");
+        g.players[p].personality_type = Some(l);
+        assert_eq!(first(&g), Some(t("TECH_BRONZE_WORKING")));
+        // A favorite that can be researched stays the goal.
+        let archery = d.leader_heads.keys().find(|&l| d.leader_heads[l].favorite_early_mil_tech == Some(t("TECH_ARCHERY"))).expect("a leader favoring Archery");
+        g.players[p].personality_type = Some(archery);
+        assert_eq!(first(&g), Some(t("TECH_ARCHERY")));
     }
 }
