@@ -18,7 +18,7 @@ use crate::json::{FieldError, Json};
 pub const SIDECAR_VERSION: i64 = 1;
 
 /// The session part of a save.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Sidecar {
     pub human: PlayerId,
     /// Deferred event popups, in order (`[player, triggered id, launched]`; a version 1 pair
@@ -32,6 +32,11 @@ pub struct Sidecar {
     pub messages_tail: Vec<LogEntry>,
     /// The session's AutoMoves rule already fired at this control point (absent: false).
     pub auto_moves_tried: bool,
+    /// The turn report's snapshot, taken at the human's end of turn and not yet diffed (a save
+    /// at a turn boundary; absent: none). Presentation only.
+    pub report_snapshot: Option<Json>,
+    /// The last turn report (absent: none). Presentation only.
+    pub report: Option<Json>,
 }
 
 pub fn log_entry_json(e: &LogEntry) -> Json {
@@ -52,6 +57,8 @@ impl Sidecar {
             "journal_line" => self.journal_line,
             "messages_tail" => Json::Arr(self.messages_tail.iter().map(log_entry_json).collect()),
             "auto_moves_tried" => self.auto_moves_tried,
+            "report_snapshot" => self.report_snapshot.clone(),
+            "report" => self.report.clone(),
         }
     }
 
@@ -83,6 +90,8 @@ impl Sidecar {
             journal_line: j.req("journal_line").map_err(e)?,
             messages_tail,
             auto_moves_tried: j.get_or("auto_moves_tried", false).map_err(e)?,
+            report_snapshot: j.opt_value("report_snapshot").map_err(e)?.filter(|v| !v.is_null()).cloned(),
+            report: j.opt_value("report").map_err(e)?.filter(|v| !v.is_null()).cloned(),
         })
     }
 }
@@ -161,6 +170,28 @@ pub fn autosave(dir: &Path, turn: i32, save: &[u8], sidecar: &Sidecar, keep: usi
     Ok(paths)
 }
 
+/// The `saves` query: the manual saves of the game's directory and its autosaves, by name
+/// (`{dir, saves: [{name, path, auto, sidecar}]}`; no directory: an empty list).
+pub fn list_json(dir: Option<&Path>) -> Json {
+    let Some(dir) = dir else { return crate::jobj! { "dir" => Json::Null, "saves" => Json::arr() } };
+    let mut saves = Vec::new();
+    for (sub, auto) in [(dir.to_path_buf(), false), (dir.join("auto"), true)] {
+        let Ok(entries) = fs::read_dir(&sub) else { continue };
+        let mut found: Vec<PathBuf> = entries.filter_map(|e| e.ok().map(|e| e.path())).filter(|p| p.extension().is_some_and(|e| e == "ffhsave")).collect();
+        found.sort();
+        for p in found {
+            let name = p.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            saves.push(crate::jobj! {
+                "name" => if auto { format!("auto/{name}") } else { name },
+                "path" => p.display().to_string(),
+                "auto" => auto,
+                "sidecar" => p.with_extension("ffhsess").exists(),
+            });
+        }
+    }
+    crate::jobj! { "dir" => dir.display().to_string(), "saves" => Json::Arr(saves) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,12 +213,15 @@ mod tests {
             journal_line: 12,
             messages_tail: vec![LogEntry { turn: 3, player: Some(0), text: "hi \"there\"".into() }],
             auto_moves_tried: true,
+            report_snapshot: Some(crate::jobj! { "turn" => 3 }),
+            report: None,
         };
         assert_eq!(Sidecar::from_json(&Json::parse(&s.to_json().to_string()).unwrap()).unwrap(), s);
         // Optional members of version 1 read as their defaults.
         let old = Json::parse(r#"{"v":1,"human":0,"pending_events":[[0,4]],"journal":null,"journal_line":3,"messages_tail":[]}"#).unwrap();
         let old = Sidecar::from_json(&old).unwrap();
         assert!(!old.auto_moves_tried);
+        assert!(old.report_snapshot.is_none() && old.report.is_none());
         assert_eq!(old.pending_events, [DeferredEvent { player: PlayerId(0), triggered: TriggeredId(4), launched: false }]);
 
         let dir = std::env::temp_dir().join(format!("ffh-play-save-test-{}", std::process::id()));

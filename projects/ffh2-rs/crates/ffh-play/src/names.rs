@@ -61,6 +61,10 @@ pub struct Kind {
     pub text_key: fn(&GameData, usize) -> Option<&str>,
     /// [`decode`] for this kind, returning the index.
     pub decode: fn(&GameData, &Json) -> Result<usize, String>,
+    /// The info entry's common fields (info tables only; `None` out of range).
+    pub base: fn(&GameData, usize) -> Option<&InfoBase>,
+    /// `{:#?}` of the info entry (info tables only; `inspect`).
+    pub debug: fn(&GameData, usize) -> Option<String>,
 }
 
 impl Kind {
@@ -121,6 +125,28 @@ fn dyn_decode<T: Named>(d: &GameData, j: &Json) -> Result<usize, String> {
     decode::<T>(d, j).map(Idx::idx)
 }
 
+/// The info table of an info-table kind.
+trait Table: Named {
+    fn info_base(d: &GameData, v: Self) -> &InfoBase;
+    fn info_debug(d: &GameData, v: Self) -> String;
+}
+
+fn dyn_base<T: Table>(d: &GameData, i: usize) -> Option<&InfoBase> {
+    (i < T::count(d)).then(|| T::info_base(d, T::from_usize(i)))
+}
+
+fn dyn_debug<T: Table>(d: &GameData, i: usize) -> Option<String> {
+    (i < T::count(d)).then(|| T::info_debug(d, T::from_usize(i)))
+}
+
+fn no_base(_d: &GameData, _i: usize) -> Option<&InfoBase> {
+    None
+}
+
+fn no_debug(_d: &GameData, _i: usize) -> Option<String> {
+    None
+}
+
 macro_rules! kinds {
     (
         tables { $($tt:ident => $field:ident),* $(,)? }
@@ -141,6 +167,14 @@ macro_rules! kinds {
                 }
                 fn text_key(d: &GameData, v: Self) -> Option<&str> {
                     d.$field.get(v).map(|i| i.base.description.as_str()).filter(|k| !k.is_empty())
+                }
+            }
+            impl Table for $tt {
+                fn info_base(d: &GameData, v: Self) -> &InfoBase {
+                    &d.$field[v].base
+                }
+                fn info_debug(d: &GameData, v: Self) -> String {
+                    format!("{:#?}", d.$field[v])
                 }
             }
         )*
@@ -184,6 +218,8 @@ macro_rules! kinds {
                 lookup: dyn_lookup::<$tt>,
                 text_key: dyn_text_key::<$tt>,
                 decode: dyn_decode::<$tt>,
+                base: dyn_base::<$tt>,
+                debug: dyn_debug::<$tt>,
             },)*
             $(Kind {
                 kind: stringify!($gt),
@@ -193,6 +229,8 @@ macro_rules! kinds {
                 lookup: dyn_lookup::<$gt>,
                 text_key: dyn_text_key::<$gt>,
                 decode: dyn_decode::<$gt>,
+                base: no_base,
+                debug: no_debug,
             },)*
             $(Kind {
                 kind: stringify!($et),
@@ -202,6 +240,8 @@ macro_rules! kinds {
                 lookup: dyn_lookup::<$et>,
                 text_key: dyn_text_key::<$et>,
                 decode: dyn_decode::<$et>,
+                base: no_base,
+                debug: no_debug,
             },)*
         ];
     };
@@ -330,6 +370,67 @@ pub fn lookup<T: Named>(d: &GameData, s: &str) -> Option<T> {
 /// Text of a `TXT_KEY_*` with Civ4 markup kept (the key itself if missing).
 pub fn text<'d>(d: &'d GameData, key: &'d str) -> &'d str {
     d.text.get(key)
+}
+
+/// The display names of the types whose description key has no usable text, by key (built
+/// once): `TXT_KEY_UNIT_WARRIOR` -> "Warrior".
+fn key_names(d: &GameData) -> &'static std::collections::HashMap<String, String> {
+    static NAMES: std::sync::OnceLock<std::collections::HashMap<String, String>> = std::sync::OnceLock::new();
+    NAMES.get_or_init(|| {
+        let mut m = std::collections::HashMap::new();
+        for k in KINDS {
+            for i in 0..(k.count)(d) {
+                if let Some(key) = (k.text_key)(d, i) {
+                    m.entry(key.to_string()).or_insert_with(|| k.display(d, i).into_owned());
+                }
+            }
+        }
+        m
+    })
+}
+
+/// `text` with every `TXT_KEY_*` token replaced by its text (ffh-core logs some names as text
+/// keys: city names, civilization descriptions, unit names). A key without usable text becomes
+/// the display name of the type it describes (`TXT_KEY_UNIT_WARRIOR` -> "Warrior"), else its
+/// words (`TXT_KEY_NOT_A_KEY` -> "Not A Key"). Display only.
+pub fn resolve_keys<'t>(d: &GameData, text: &'t str) -> Cow<'t, str> {
+    const PREFIX: &str = "TXT_KEY_";
+    if !text.contains(PREFIX) {
+        return Cow::Borrowed(text);
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(PREFIX) {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let len = tail.find(|c: char| !(c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')).unwrap_or(tail.len());
+        let key = tail[..len].trim_end_matches('_');
+        if key.len() <= PREFIX.len() {
+            out.push_str(&tail[..len]);
+            rest = &tail[len..];
+            continue;
+        }
+        let t = d.text.get(key).trim();
+        if t != key && !t.is_empty() && !has_placeholder(t) {
+            out.push_str(t);
+        } else if let Some(n) = key_names(d).get(key) {
+            out.push_str(n);
+        } else {
+            let words: Vec<String> = key[PREFIX.len()..]
+                .split('_')
+                .filter(|w| !w.is_empty())
+                .map(|w| {
+                    let w = w.to_ascii_lowercase();
+                    let mut c = w.chars();
+                    c.next().map_or(String::new(), |f| f.to_ascii_uppercase().to_string() + c.as_str())
+                })
+                .collect();
+            out.push_str(&words.join(" "));
+        }
+        rest = &tail[key.len()..];
+    }
+    out.push_str(rest);
+    Cow::Owned(out)
 }
 
 /// Display name of a value: its full description text, with Civ4 markup such as `[ICON_TRADE]`
@@ -598,6 +699,21 @@ mod tests {
         assert_eq!(humanize("PLAIN"), "Plain");
         assert_eq!(humanize("X_"), "X");
         assert_eq!(humanize(""), "");
+    }
+
+    #[test]
+    fn text_keys_in_messages_resolve() {
+        let d = ffh_data::global();
+        assert_eq!(resolve_keys(d, "The borders of TXT_KEY_CITY_SHEAIM_1 have expanded"), "The borders of Galveholm have expanded");
+        // No text (a BtS key): the type it describes, else its words.
+        assert_eq!(resolve_keys(d, "TXT_KEY_UNIT_WARRIOR died attacking TXT_KEY_UNIT_ARCHER."), "Warrior died attacking Archer.");
+        assert_eq!(resolve_keys(d, "TXT_KEY_GOODY_MAP"), "Map");
+        assert_eq!(resolve_keys(d, "(TXT_KEY_NOT_A_REAL_KEY)"), "(Not A Real Key)");
+        // Not keys.
+        for s in ["", "plain", "TXT_KEY_", "TXT_KEY_ x", "a TXT_KEY", "TXT_KEY__"] {
+            assert_eq!(resolve_keys(d, s), s, "{s:?}");
+        }
+        assert!(matches!(resolve_keys(d, "no keys here"), Cow::Borrowed(_)));
     }
 
     #[test]

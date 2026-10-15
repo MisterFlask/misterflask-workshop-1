@@ -26,6 +26,8 @@ use ffh_data::*;
 use crate::decision::{self, Decision};
 use crate::guard::QueryGuard;
 use crate::journal::{Journal, Line, Stamp};
+use crate::json::Json;
+use crate::query::{Ctx, Query, QueryErr, UiState};
 
 /// How the human answers one `Controller` method.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -73,6 +75,52 @@ pub trait Answerer: Send + Sync {
     /// On the game thread, inside a rules call, with the `&Game` the rules handed the
     /// controller (under a `QueryGuard`: reads are free).
     fn ask(&self, g: &Game, d: &Decision) -> Answer;
+
+    /// [`Answerer::ask`] with a reader that also answers the protocol's queries, as a client
+    /// issues them while the decision's modal is open (the transports' answerers and the noisy
+    /// client test use it). The default asks with the game alone.
+    fn ask_with(&self, r: &DecisionReader, d: &Decision) -> Answer {
+        self.ask(r.game(), d)
+    }
+}
+
+/// What an [`Answerer`] can read while a blocking decision is open: the game (under the
+/// decision's `QueryGuard`) and the queries of the protocol, from the deciding player's side.
+/// The message log, the turn report and the saves list are not available inside a rules call
+/// (`busy`); a query that panics is caught (design §2.4) and answered `busy`.
+pub struct DecisionReader<'a> {
+    g: &'a Game,
+    shared: &'a SessionShared,
+    ui: &'a Mutex<UiState>,
+    decision: &'a Decision,
+}
+
+impl DecisionReader<'_> {
+    /// The game, as the rules handed it to the controller (guarded).
+    pub fn game(&self) -> &Game {
+        self.g
+    }
+
+    pub fn decision(&self) -> &Decision {
+        self.decision
+    }
+
+    /// Answers a protocol query from the deciding player's side.
+    pub fn query(&self, q: &Query) -> Result<Json, QueryErr> {
+        let events = self.shared.open_events_of(self.decision.player);
+        let ctx = Ctx {
+            h: self.decision.player,
+            events: &events,
+            decision: Some(self.decision),
+            messages: None,
+            report: None,
+            in_decision: true,
+            saves_dir: None,
+            ui: self.ui,
+        };
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| crate::query::run(self.g, &ctx, q)))
+            .unwrap_or_else(|_| Err(QueryErr::Busy(format!("the {} query failed during the decision (see the panic message)", q.name()))))
+    }
 }
 
 /// Always the advisor's pick (soak tests, EOF of an agent).
@@ -201,11 +249,19 @@ pub struct HumanController {
     advisor: Arc<Ai>,
     answerer: Arc<dyn Answerer>,
     shared: Arc<SessionShared>,
+    /// The session's client state (the interface path finder, debug reveal) for the queries
+    /// answered during a decision.
+    ui: Arc<Mutex<UiState>>,
 }
 
 impl HumanController {
     pub fn new(advisor: Arc<Ai>, answerer: Arc<dyn Answerer>, shared: Arc<SessionShared>) -> HumanController {
-        HumanController { advisor, answerer, shared }
+        HumanController::with_ui(advisor, answerer, shared, Arc::default())
+    }
+
+    /// A controller whose decisions answer queries with the session's [`UiState`].
+    pub fn with_ui(advisor: Arc<Ai>, answerer: Arc<dyn Answerer>, shared: Arc<SessionShared>, ui: Arc<Mutex<UiState>>) -> HumanController {
+        HumanController { advisor, answerer, shared, ui }
     }
 
     /// Asks the human `d` (a blocking decision) and returns the chosen option, journaled.
@@ -214,7 +270,8 @@ impl HumanController {
         *self.shared.open_decision.lock().unwrap() = Some(d.clone());
         let answer = {
             let guard = QueryGuard::new(g);
-            self.answerer.ask(&guard, &d)
+            let reader = DecisionReader { g: &guard, shared: &self.shared, ui: &self.ui, decision: &d };
+            self.answerer.ask_with(&reader, &d)
         };
         *self.shared.open_decision.lock().unwrap() = None;
         let option = match answer {

@@ -42,6 +42,9 @@ pub enum Command {
     PercentChange { commerce: CommerceType, change: i32 },
     Convert { religion: Option<ReligionType> },
     DeclareWar { team: TeamId },
+    /// A deal offered to an AI from the diplomacy screen: `give` is what the human gives,
+    /// `get` what it asks (items of the two trade tables, `view::diplo`).
+    ProposeDeal { to: PlayerId, give: Vec<TradeData>, get: Vec<TradeData> },
     Event { triggered: TriggeredId, event: EventType },
     Vote { vote: VoteId, choice: PlayerVote },
     SetOption { option: PlayerOptionType, value: bool },
@@ -252,6 +255,7 @@ impl Command {
             Command::PercentChange { .. } => "percent_change",
             Command::Convert { .. } => "convert",
             Command::DeclareWar { .. } => "declare_war",
+            Command::ProposeDeal { .. } => "propose_deal",
             Command::Event { .. } => "event",
             Command::Vote { .. } => "vote",
             Command::SetOption { .. } => "set_option",
@@ -330,7 +334,16 @@ impl Command {
             "auto_moves" => Command::AutoMoves,
             "end_turn" => Command::EndTurn { force: flag("force")? },
             "autoplay" => Command::AutoPlay { turns: j.req("turns")? },
-            "propose_deal" => return Err(invalid("propose_deal is not available yet (phase P3)")),
+            "propose_deal" => {
+                let items = |key: &str| -> Result<Vec<TradeData>, FieldError> {
+                    j.opt_value(key)?
+                        .map_or(Ok(Vec::new()), |v| {
+                            let list = v.as_arr().ok_or_else(|| FieldError::wrong(key, "an array of trade items", v))?;
+                            list.iter().map(|t| crate::view::diplo::trade_item_from_json(d, t).map_err(|e| FieldError::new(key, e.to_string()))).collect()
+                        })
+                };
+                Command::ProposeDeal { to: j.req("to")?, give: items("give")?, get: items("get")? }
+            }
             other => return Err(invalid(format!("unknown command {other:?}"))),
         })
     }
@@ -378,6 +391,10 @@ impl Command {
             Command::PercentChange { commerce, change } => j.with("commerce", Json::idx(*commerce)).with("change", *change),
             Command::Convert { religion } => j.with("religion", Json::opt_idx(*religion)),
             Command::DeclareWar { team } => j.with("team", *team),
+            Command::ProposeDeal { to, give, get } => {
+                let items = |v: &[TradeData]| Json::Arr(v.iter().map(crate::view::diplo::trade_item_json).collect());
+                j.with("to", *to).with("give", items(give)).with("get", items(get))
+            }
             Command::Event { triggered, event } => j.with("triggered", *triggered).with("event", Json::idx(*event)),
             Command::Vote { vote, choice } => j.with("vote", *vote).with("choice", choice.0),
             Command::SetOption { option, value } => j.with("option", Json::idx(*option)).with("value", *value),
@@ -412,6 +429,10 @@ impl Command {
             Command::SetOption { option, value } => format!("{} = {value}", names::name(d, *option)),
             Command::Convert { religion } => format!("convert to {}", religion.map_or("no religion".to_string(), |r| names::name(d, r).to_string())),
             Command::PercentChange { commerce, change } => format!("{} {change:+}%", names::name(d, *commerce)),
+            Command::ProposeDeal { to, give, get } => {
+                let items = |v: &[TradeData]| v.iter().map(|t| format!("{} {}", names::name(d, t.item_type), t.data)).collect::<Vec<_>>().join(", ");
+                format!("offer player {}: give [{}] for [{}]", to.0, items(give), items(get))
+            }
             other => other.to_json().to_string(),
         }
     }
@@ -449,6 +470,9 @@ pub enum Plan {
     /// Change nothing and report success (the DECLAREWARMOVE popup's "no" when the units would
     /// not move anyway).
     Noop,
+    /// A deal the AI declines (`propose_deal`): nothing changes, the reply says `accepted:
+    /// false` (C++ sends no message).
+    Declined,
     Confirm(Confirm),
     Apply(Action),
 }
@@ -472,6 +496,8 @@ pub enum Action {
     PercentChange { commerce: CommerceType, change: i32 },
     Convert { religion: Option<ReligionType> },
     DeclareWar { team: TeamId },
+    /// The AI accepted: `implementDeal(h, to, give, get)`.
+    ImplementDeal { to: PlayerId, give: Vec<TradeData>, get: Vec<TradeData> },
     Event { triggered: TriggeredId, event: EventType },
     Vote { vote: VoteId, choice: PlayerVote },
     SetOption { option: PlayerOptionType, value: bool },
@@ -872,6 +898,17 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             Plan::Apply(Action::DeclareWar { team: *t })
         }
 
+        Command::ProposeDeal { to, give, get } => {
+            // The diplomacy screen offers only the trade tables' items (`view::diplo`); the AI
+            // answers with `AI_considerOffer(eHuman, pTheirList = give, pOurList = get)`, which
+            // the exe asks before it sends the implementDeal message.
+            crate::view::diplo::check_deal(g, h, *to, give, get)?;
+            if !g.controller(*to).consider_offer(g, *to, h, give, get) {
+                return Ok(Plan::Declined);
+            }
+            Plan::Apply(Action::ImplementDeal { to: *to, give: give.clone(), get: get.clone() })
+        }
+
         Command::Event { triggered, event } => {
             if !ctx.events.contains(triggered) {
                 return Err(CmdErr::Gone);
@@ -1063,6 +1100,9 @@ pub fn apply(g: &mut Game, h: PlayerId, action: &Action) {
             let my = g.players[h].team;
             g.team_declare_war(my, *team, false, None);
         }
+        // gDLL->sendImplementDealMessage -> CvGame::implementDeal(eWho, eOtherWho, .., bForce
+        // = false).
+        Action::ImplementDeal { to, give, get } => g.implement_deal(h, *to, give, get, false),
         Action::Event { triggered, event } => g.player_apply_event(h, *event, *triggered, true),
         Action::Vote { vote, choice } => g.cast_vote(h, *vote, *choice),
         Action::SetOption { option, value } => g.players[h].options[*option] = *value,
@@ -1095,6 +1135,14 @@ mod tests {
             Command::PercentChange { commerce: CommerceType::COMMERCE_GOLD, change: -10 },
             Command::Convert { religion: Some(ReligionType(2)) },
             Command::DeclareWar { team: TeamId(2) },
+            Command::ProposeDeal {
+                to: PlayerId(1),
+                give: vec![TradeData { item_type: TradeableItem::TRADE_PEACE_TREATY, data: 0, offering: false, hidden: false }],
+                get: vec![
+                    TradeData { item_type: TradeableItem::TRADE_PEACE_TREATY, data: 0, offering: false, hidden: false },
+                    TradeData { item_type: TradeableItem::TRADE_GOLD, data: 30, offering: false, hidden: false },
+                ],
+            },
             Command::Event { triggered: TriggeredId(4), event: EventType(10) },
             Command::Vote { vote: VoteId(1), choice: PlayerVote::PLAYER_VOTE_NEVER },
             Command::Vote { vote: VoteId(1), choice: PlayerVote(3) },
@@ -1114,8 +1162,8 @@ mod tests {
                 seen.push(c.name());
             }
         }
-        // Every command name but propose_deal (P3) is covered.
-        assert_eq!(seen.len(), COMMAND_NAMES.len() - 1);
+        // Every command name is covered.
+        assert_eq!(seen, COMMAND_NAMES);
     }
 
     #[test]
@@ -1136,6 +1184,13 @@ mod tests {
         let j = Json::parse(r#"{"c":"fly"}"#).unwrap();
         assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("unknown command")));
         let j = Json::parse(r#"{"c":"propose_deal"}"#).unwrap();
-        assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("P3")));
+        assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `to`")));
+        let j = Json::parse(r#"{"c":"propose_deal","to":1,"give":[{"item":"TRADE_GOLD","data":5}]}"#).unwrap();
+        let Command::ProposeDeal { give, get, .. } = Command::from_json(d, &j).unwrap() else { panic!() };
+        assert_eq!((give[0].item_type, give[0].data, get.len()), (TradeableItem::TRADE_GOLD, 5, 0));
+        let j = Json::parse(r#"{"c":"propose_deal","to":1,"give":[{"item":"TRADE_NOTHING"}]}"#).unwrap();
+        assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `give`")));
+        let j = Json::parse(r#"{"c":"propose_deal","to":1,"get":{"item":0}}"#).unwrap();
+        assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `get`")));
     }
 }

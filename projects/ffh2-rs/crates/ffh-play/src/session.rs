@@ -13,14 +13,18 @@ use ffh_core::ids::*;
 use ffh_core::log::LogEntry;
 use ffh_data::*;
 
-use crate::command::{self, Action, CmdErr, CmdOk, Command, Ctx, Plan};
+use crate::command::{self, Action, CmdErr, CmdOk, Command, Plan};
 use crate::decision::{self, Pending};
 use crate::guard::{self, QueryGuard};
 use crate::human::{Answerer, HumanController, SessionShared, Stats};
 use crate::journal::{self, Cursor, Journal, JournalAnswerer, Line, Stamp};
+use crate::json::Json;
+use crate::query::{self, Query, QueryErr, UiState};
+use crate::report::{self, MessageStore, Report, Snapshot};
 use crate::save::{self, SavePaths, Sidecar};
 use crate::setup::{self, NewGame, HUMAN_SLOT};
 use crate::view::fog::LogFog;
+use crate::view::Viewer;
 
 /// Who has control.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -92,20 +96,22 @@ impl std::error::Error for PlayError {}
 /// Turn slices `advance` runs in one game turn before it gives up (as ffh-cli's run loop).
 pub const WATCHDOG_SLICES: u64 = 200_000;
 
-/// Messages kept for the human.
-const MESSAGES_KEPT: usize = 10_000;
-
 /// A game played by one human (design §3).
 pub struct Session {
     pub g: Game,
     pub human: PlayerId,
     pub shared: Arc<SessionShared>,
+    /// The client state queries use (debug reveal, the interface path finder), shared with the
+    /// human's controller for the queries answered during decisions (and with transports).
+    pub ui: Arc<Mutex<UiState>>,
     advisor: Arc<Ai>,
-    messages: Vec<LogEntry>,
-    /// Messages ever added to `messages` (the store drops the oldest beyond its size).
-    messages_total: usize,
+    messages: MessageStore,
     /// Which log entries the human receives (design §4.4).
     fog: LogFog,
+    /// The turn report's snapshot, taken when the human ends its turn.
+    snapshot: Option<Snapshot>,
+    /// The last turn report (built at the control point after the snapshot).
+    report: Option<Report>,
     opts: SessionOptions,
     /// The AutoMoves rule fired in this control episode (since the human's last applied
     /// command); saved in the sidecar, so a resumed session does not send it again.
@@ -120,7 +126,8 @@ impl Session {
     fn assemble(mut g: Game, human: PlayerId, answerer: Arc<dyn Answerer>, opts: SessionOptions, journal: Journal) -> Session {
         let advisor = Arc::new(Ai::new());
         let shared = Arc::new(SessionShared::new(journal));
-        let controller: ControllerRef = Arc::new(HumanController::new(advisor.clone(), answerer, shared.clone()));
+        let ui: Arc<Mutex<UiState>> = Arc::default();
+        let controller: ControllerRef = Arc::new(HumanController::with_ui(advisor.clone(), answerer, shared.clone(), ui.clone()));
         setup::attach_controllers(&mut g, human, ffh_ai::ai_controller(), controller);
         setup::configure_human(&mut g, human);
         let fog = LogFog::new(&g, human);
@@ -128,10 +135,12 @@ impl Session {
             g,
             human,
             shared,
+            ui,
             advisor,
-            messages: Vec::new(),
-            messages_total: 0,
+            messages: MessageStore::default(),
             fog,
+            snapshot: None,
+            report: None,
             opts,
             auto_moves_tried: false,
             last_autosave: None,
@@ -186,9 +195,15 @@ impl Session {
         s.journal(&Line::Load { fnv: journal::fnv_hex(save), human });
         if let Some(sc) = sidecar {
             *s.shared.pending_events.lock().unwrap() = sc.pending_events.clone();
-            s.messages = sc.messages_tail.clone();
-            s.messages_total = s.messages.len();
+            s.messages = MessageStore::from_tail(sc.messages_tail.clone());
             s.auto_moves_tried = sc.auto_moves_tried;
+            // The report is presentation only: one that does not read (another data version)
+            // is dropped. The snapshot's log mark counts the messages of the saving session.
+            s.snapshot = sc.report_snapshot.as_ref().and_then(|j| Snapshot::from_json(s.g.d, j).ok()).map(|mut snap| {
+                snap.log_mark = snap.log_mark.min(s.messages.total());
+                snap
+            });
+            s.report = sc.report.as_ref().and_then(Report::from_json);
         }
         Ok(s)
     }
@@ -263,6 +278,8 @@ impl Session {
                         self.apply_journaled(h, &Command::AutoMoves, &Action::AutoMoves);
                         continue;
                     }
+                    self.build_report(h);
+                    self.ui.lock().unwrap().view_version += 1;
                     return Stop::Human;
                 }
                 Phase::Running => {
@@ -293,17 +310,23 @@ impl Session {
         let events = self.shared.open_events_of(h);
         let plan = {
             let g = QueryGuard::new(&self.g);
-            command::validate(&g, h, cmd, &Ctx { events: &events })?
+            command::validate(&g, h, cmd, &command::Ctx { events: &events })?
         };
         match plan {
             Plan::Noop => Ok(CmdOk::Applied { log: Vec::new(), accepted: None }),
+            // An offer the AI declines: nothing changes (C++ sends no message).
+            Plan::Declined => Ok(CmdOk::Applied { log: Vec::new(), accepted: Some(false) }),
             Plan::Confirm(c) => Ok(CmdOk::NeedsConfirm(c)),
             Plan::Apply(action) => {
                 // The human acted: a new control episode, in which the AutoMoves rule may fire
                 // again. Reset before applying, so a turn boundary autosaved during the settle
                 // records the episode's state as the uninterrupted run has it.
                 self.auto_moves_tried = false;
-                Ok(self.apply_journaled(h, cmd, &action))
+                let mut ok = self.apply_journaled(h, cmd, &action);
+                if let (Action::ImplementDeal { .. }, CmdOk::Applied { accepted, .. }) = (&action, &mut ok) {
+                    *accepted = Some(true);
+                }
+                Ok(ok)
             }
         }
     }
@@ -311,12 +334,16 @@ impl Session {
     fn apply_journaled(&mut self, h: PlayerId, cmd: &Command, action: &Action) -> CmdOk {
         self.journal(&Line::Cmd { stamp: Stamp::of(&self.g), cmd: cmd.to_json() });
         self.drain_log();
-        let mark = self.messages_total;
+        let mark = self.messages.total();
         match action {
             Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|e| (e.player, e.triggered) != (h, *triggered)),
             // C++: closing an event popup without a choice does nothing; the popup is gone.
             Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
             _ => {}
+        }
+        if let Action::EndTurn { .. } = action {
+            // The turn report diffs what the human knows now against its next control point.
+            self.snapshot = Some(report::snapshot(&self.g, h, mark));
         }
         command::apply(&mut self.g, h, action);
         self.follow_human(MovedIn::Command);
@@ -329,9 +356,17 @@ impl Session {
         // The human's messages since the command started (turn boundaries during the settle
         // drained some of them already).
         self.drain_log();
-        let new = (self.messages_total - mark).min(self.messages.len());
-        let log = self.messages[self.messages.len() - new..].to_vec();
+        let log = self.messages.since(mark).to_vec();
+        self.ui.lock().unwrap().view_version += 1;
         CmdOk::Applied { log, accepted: None }
+    }
+
+    /// At a control point after the human ended its turn: the turn report (under a guard).
+    fn build_report(&mut self, h: PlayerId) {
+        if let Some(snap) = self.snapshot.take() {
+            let messages = self.messages.since(snap.log_mark).to_vec();
+            self.report = Some(guard::read(&self.g, |g| Report::build(&snap, &Viewer::new(g, h, false), messages)));
+        }
     }
 
     /// The exe's next frames after a command: at least one `update()` (the governor, war and
@@ -383,6 +418,8 @@ impl Session {
             self.g.active_player = Some(new);
         }
         self.fog = LogFog::new(&self.g, new);
+        // The report's snapshot was of the old slot.
+        self.snapshot = None;
         self.shared.stats.lock().unwrap().reassigned += 1;
     }
 
@@ -414,21 +451,27 @@ impl Session {
     /// ([`LogFog`]).
     fn drain_log(&mut self) {
         let h = self.human;
+        let d = self.g.d;
         let entries = std::mem::take(&mut self.g.log.entries);
-        let before = self.messages.len();
-        // Only untagged entries read the game (under a guard).
+        // Only untagged entries read the game (under a guard). The text keys ffh-core logs
+        // (city names, civilization descriptions, unit names) are resolved for the human.
+        let resolve = |mut e: LogEntry| {
+            if let std::borrow::Cow::Owned(t) = crate::names::resolve_keys(d, &e.text) {
+                e.text = t;
+            }
+            e
+        };
         if entries.iter().any(|e| e.player.is_none()) {
             let g = QueryGuard::new(&self.g);
-            self.messages.extend(entries.into_iter().filter_map(|e| self.fog.filter(&g, h, e)));
+            for e in entries.into_iter().filter_map(|e| self.fog.filter(&g, h, e)) {
+                self.messages.push(resolve(e));
+            }
         } else {
-            self.messages.extend(entries.into_iter().filter_map(|e| self.fog.filter(&self.g, h, e)));
+            for e in entries.into_iter().filter_map(|e| self.fog.filter(&self.g, h, e)) {
+                self.messages.push(resolve(e));
+            }
         }
         self.fog.update(&self.g, h);
-        self.messages_total += self.messages.len() - before;
-        if self.messages.len() > MESSAGES_KEPT {
-            let cut = self.messages.len() - MESSAGES_KEPT;
-            self.messages.drain(..cut);
-        }
     }
 
     /// Shows the queued event popups of `h` at a control point: `launchEventPopup` checks once,
@@ -463,9 +506,46 @@ impl Session {
         self.read(|g| decision::pending(g, self.human, &events))
     }
 
-    /// The human's messages (oldest first).
+    /// The human's messages (oldest first; the last `report::MESSAGES_KEPT`).
     pub fn messages(&self) -> &[LogEntry] {
+        self.messages.entries()
+    }
+
+    /// The message store (indices for the `log` query).
+    pub fn message_store(&self) -> &MessageStore {
         &self.messages
+    }
+
+    /// The last turn report.
+    pub fn report(&self) -> Option<&Report> {
+        self.report.as_ref()
+    }
+
+    /// Debug reveal: queries answer with the true state (marked `"reveal": true`).
+    pub fn set_reveal(&self, on: bool) {
+        self.ui.lock().unwrap().reveal = on;
+    }
+
+    /// Answers a protocol query (design §4.6) from the human's side, under a `QueryGuard`.
+    pub fn query(&self, q: &Query) -> Result<Json, QueryErr> {
+        let events = self.shared.open_events_of(self.human);
+        let decision = self.shared.open_decision.lock().unwrap().clone();
+        let ctx = query::Ctx {
+            h: self.human,
+            events: &events,
+            decision: decision.as_ref(),
+            messages: Some(&self.messages),
+            report: self.report.as_ref(),
+            in_decision: false,
+            saves_dir: self.opts.saves_dir.as_deref(),
+            ui: &self.ui,
+        };
+        query::run(&self.g, &ctx, q)
+    }
+
+    /// [`Session::query`] of a request object (`{"q": ..}`).
+    pub fn query_json(&self, j: &Json) -> Result<Json, QueryErr> {
+        self.query(&Query::from_json(j)?)
     }
 
     pub fn stats(&self) -> Stats {
@@ -494,13 +574,23 @@ impl Session {
 
     fn sidecar(&self) -> Sidecar {
         let journal = self.shared.journal.lock().unwrap();
+        let tail = self.messages.tail(50);
+        // The snapshot's log mark in the loaded store's numbering (the tail is 0..len).
+        let report_snapshot = self.snapshot.as_ref().map(|s| {
+            let mut s = s.clone();
+            let since = self.messages.total() - s.log_mark;
+            s.log_mark = tail.len().saturating_sub(since);
+            s.to_json()
+        });
         Sidecar {
             human: self.human,
             pending_events: self.shared.pending_events.lock().unwrap().clone(),
             journal: journal.path().map(|p| p.display().to_string()),
             journal_line: journal.count(),
-            messages_tail: self.messages.iter().rev().take(50).rev().cloned().collect(),
+            messages_tail: tail,
             auto_moves_tried: self.auto_moves_tried,
+            report_snapshot,
+            report: self.report.as_ref().map(Report::to_json),
         }
     }
 

@@ -195,7 +195,7 @@ pub fn offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeData], we_
         id: 0,
         player: p,
         kind: DecisionKind::Offer { from },
-        title: format!("Offer from {}", g.player_get_name(from)),
+        title: format!("Offer from {}", crate::view::player_name(g, from)),
         text: format!("They give: {}. You give: {}.", items(they_give), items(we_give)),
         options: vec![DecisionOption::new("accept", "Accept"), DecisionOption::new("refuse", "Refuse")],
         advisor: Some(if advisor_accepts { 0 } else { 1 }),
