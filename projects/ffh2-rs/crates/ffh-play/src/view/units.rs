@@ -15,7 +15,7 @@ use ffh_data::*;
 use crate::command::Command;
 use crate::json::Json;
 use crate::query::{invalid, QueryErr};
-use crate::selection;
+use crate::selection::{self, InterfaceMode};
 use crate::view::map::plot_at;
 use crate::view::{unit_json, Viewer};
 
@@ -42,7 +42,8 @@ pub fn check_selection(v: &Viewer, units: &[UnitId]) -> Result<(), QueryErr> {
     Ok(())
 }
 
-/// The missions whose data is a plot the client picks (the exe's interface modes).
+/// The missions whose data is a plot the client picks: the exe sends them from an interface mode
+/// ([`selection::InterfaceMode`]), never from a plain mission button.
 pub const TARGET_MISSIONS: [MissionType; 8] = [
     MissionType::MISSION_MOVE_TO,
     MissionType::MISSION_ROUTE_TO,
@@ -64,9 +65,15 @@ fn command_cmd(units: &[UnitId], c: CommandType, data1: i32, data2: i32) -> Json
 
 /// The actions of a selection: every action the exe would show (`canHandleAction` with
 /// `bTestVisible`), `enabled` when it can be done now. Kinds: `mission` (no data or a typed
-/// one: build, spread, join, construct, lead), `target` (a mission needing a plot: `targets`
-/// lists the valid plots in range, or `any` for move and route), `command`, `spell`,
-/// `promotion`, `upgrade` (with `price`), `load` (with the `transports`).
+/// one: build, spread, join, construct, lead), `target` (an interface mode, `mode`, whose
+/// mission needs a plot: `targets` lists the valid plots in range, or `any` for go-to and
+/// route-to), `command`, `spell`, `promotion`, `upgrade` (with `price`), `load` (with the
+/// `transports`).
+///
+/// A `target` action's `cmd` carries its first listed target, or the selection's own plot as a
+/// placeholder (with `any`, or when no target is in range): the client puts the picked plot in
+/// (`x`, `y` of a `move`, `data1`, `data2` of a `mission`). GO_TO's command is `move`, as the exe
+/// moves through `selectionListMove` (the declare-war question).
 pub fn actions(v: &Viewer, units: &[UnitId]) -> Vec<Json> {
     let g = v.g;
     let d = g.d;
@@ -100,49 +107,7 @@ pub fn actions(v: &Viewer, units: &[UnitId]) -> Vec<Json> {
             _ => None,
         };
         if TARGET_MISSIONS.contains(&m) {
-            let any = matches!(m, MissionType::MISSION_MOVE_TO | MissionType::MISSION_ROUTE_TO);
-            if any {
-                // The GO_TO / ROUTE_TO interface modes: any plot (the mission is checked when
-                // sent, against its target).
-                let enabled = units.iter().any(|&u| g.unit_can_move(u)) && can(m, -1, -1, false);
-                if m == MissionType::MISSION_ROUTE_TO && !units.iter().any(|&u| d.units[g.units[u].unit_type].builds.iter().any(|&b| b)) {
-                    continue;
-                }
-                push("target", enabled, mission_cmd(units, m, px, py), crate::jobj! { "mission" => Json::idx(m), "any" => true });
-                continue;
-            }
-            // Range attack, air missions: the plots in range that pass the mission check.
-            let range = match m {
-                MissionType::MISSION_AIRLIFT => -1,
-                MissionType::MISSION_NUKE => units.iter().map(|&u| g.unit_nuke_range(u).max(g.unit_air_range(u))).max().unwrap_or(0),
-                _ => units.iter().map(|&u| g.unit_air_range(u)).max().unwrap_or(0),
-            };
-            let mut targets = Vec::new();
-            if range < 0 {
-                for &c in &g.players[v.h].cities {
-                    let (cx, cy) = (g.cities[c].x, g.cities[c].y);
-                    if can(m, cx, cy, false) {
-                        targets.push(crate::jarr![cx, cy]);
-                    }
-                }
-            } else {
-                for dy in -range..=range {
-                    for dx in -range..=range {
-                        if let Some(t) = g.plot_xy(px, py, dx, dy) {
-                            let (tx, ty) = g.map.xy(t);
-                            if v.plot_revealed(t) && can(m, tx, ty, false) {
-                                targets.push(crate::jarr![tx, ty]);
-                            }
-                        }
-                    }
-                }
-            }
-            if !targets.is_empty() {
-                let first = targets[0].clone();
-                let (tx, ty) = (first.at(0).and_then(Json::as_i64).unwrap_or(0) as i32, first.at(1).and_then(Json::as_i64).unwrap_or(0) as i32);
-                push("target", true, mission_cmd(units, m, tx, ty), crate::jobj! { "mission" => Json::idx(m), "targets" => Json::Arr(targets) });
-            }
-            continue;
+            continue; // the interface modes, below
         }
         match (m, typed) {
             (MissionType::MISSION_LEAD, _) => {
@@ -182,6 +147,54 @@ pub fn actions(v: &Viewer, units: &[UnitId]) -> Vec<Json> {
                 }
             }
         }
+    }
+
+    // Interface modes (the exe's go-to, route-to, range attack, air ... buttons): shown, and so
+    // enabled, when `canDoInterfaceMode`; the plot is the client's pick, among those that pass
+    // `canDoInterfaceModeAt` and the mission check (any plot for go-to and route-to).
+    for mode in InterfaceMode::ALL {
+        if !selection::can_do_interface_mode(g, units, mode) {
+            continue;
+        }
+        let m = mode.mission();
+        let ok = |t: PlotIdx| {
+            let (tx, ty) = g.map.xy(t);
+            selection::can_do_interface_mode_at(g, units, mode, t) && can(m, tx, ty, false)
+        };
+        let targets: Option<Vec<(i32, i32)>> = match mode {
+            InterfaceMode::GoTo | InterfaceMode::RouteTo => None,
+            InterfaceMode::Airlift => Some(g.players[v.h].cities.iter().map(|&c| g.city_plot(c)).filter(|&t| ok(t)).map(|t| g.map.xy(t)).collect()),
+            _ => {
+                let range = units.iter().map(|&u| g.unit_air_range(u).max(g.unit_nuke_range(u)).max(g.unit_get_drop_range(u))).max().unwrap_or(0).max(0);
+                let mut out = Vec::new();
+                for dy in -range..=range {
+                    for dx in -range..=range {
+                        if let Some(t) = g.plot_xy(px, py, dx, dy) {
+                            if v.plot_revealed(t) && ok(t) && !out.contains(&g.map.xy(t)) {
+                                out.push(g.map.xy(t));
+                            }
+                        }
+                    }
+                }
+                Some(out)
+            }
+        };
+        let (tx, ty) = targets.as_ref().and_then(|t| t.first().copied()).unwrap_or((px, py));
+        let cmd = if mode == InterfaceMode::GoTo {
+            Command::Move { units: units.to_vec(), x: tx, y: ty, append: false, declare_war: None }.to_json()
+        } else {
+            mission_cmd(units, m, tx, ty)
+        };
+        let mut extra = crate::jobj! { "mode" => mode.name(), "mission" => Json::idx(m) };
+        match targets {
+            None => {
+                extra.set("any", true);
+            }
+            Some(t) => {
+                extra.set("targets", Json::Arr(t.into_iter().map(|(x, y)| crate::jarr![x, y]).collect()));
+            }
+        }
+        push("target", true, cmd, extra);
     }
 
     // Commands without data.

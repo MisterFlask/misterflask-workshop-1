@@ -305,10 +305,12 @@ pub fn ascii(v: &Viewer, x: i32, y: i32, w: i32, h: i32, layer: Layer) -> Result
     Ok(crate::jobj! { "x" => x, "y" => y, "w" => w, "h" => h, "layer" => layer.name(), "map" => map, "legend" => Json::Arr(legend.into_iter().map(Json::from).collect()) })
 }
 
-/// `inspect {kind,id}`: `{:#?}` of a game object of the human's (`unit`, `group`, `city`, a
-/// `plot` it owns, `player`, `team`, a `deal` it is part of; any object under debug reveal), or
+/// `inspect {kind,id}`: `{:#?}` of a game object of the human's (`unit`, `group`, `city`,
+/// `player`, `team`, a `deal` it is part of; any object, and any `plot`, under debug reveal), or
 /// of info entry `id` of an info table (a kind name such as `UnitType` or a table name such as
-/// `units`).
+/// `units`). The dumps of the human's own city, player and team keep their per-team
+/// bookkeeping (which teams revealed the city, espionage and contact counters): this is the
+/// rules tester's raw inspector.
 pub fn inspect(v: &Viewer, kind: &str, id: i64) -> Result<Json, QueryErr> {
     let g = v.g;
     let d = g.d;
@@ -337,8 +339,12 @@ pub fn inspect(v: &Viewer, kind: &str, id: i64) -> Result<Json, QueryErr> {
             format!("{city:#?}")
         }
         "plot" => {
+            // Under debug reveal only: a plot holds every team's data (its true bonus before the
+            // tech that reveals it, all its units, each team's visibility and revealed values),
+            // so even a plot the human owns is not its own object (P3 review). The `plot` query
+            // is the fog-filtered plot.
             let plot = g.map.plots.get(id32 as usize).ok_or(QueryErr::Gone)?;
-            if !(v.reveal || plot.owner == Some(v.h)) {
+            if !v.reveal {
                 return Err(QueryErr::NotOwner);
             }
             format!("{plot:#?}")

@@ -5,9 +5,10 @@
 //! fog-filtered [`Snapshot`] of what the human knows when it ends its turn, and at the next
 //! control point diffs it against the game ([`Report::build`]): units lost, gained or ready to
 //! promote; cities founded, acquired, lost, grown, shrunk, starving or in disorder; buildings
-//! completed; techs gained; wars and peace among the teams it has met; enemies sighted near its
-//! cities; Armageddon counter thresholds crossed; borders lost. The messages drained since the
-//! snapshot are merged in.
+//! completed; techs gained; wars and peace among the teams it had met when it ended its turn
+//! (a war of a team it meets during the AI turns is not new: it is reported as a contact);
+//! enemies sighted near its cities; Armageddon counter thresholds crossed; borders lost. The
+//! messages drained since the snapshot are merged in.
 //!
 //! The snapshot holds only what the human may know (its own units and cities, foreign cities it
 //! has revealed, met teams, visible units), so the diff cannot leak through the fog.
@@ -133,7 +134,9 @@ pub struct Snapshot {
     pub cities: Vec<SnapCity>,
     pub foreign: Vec<SnapForeign>,
     pub techs: Vec<TechType>,
-    /// Pairs of teams at war (`a < b`), among the teams the human's team has met (or is).
+    /// The teams the human's team has met (its own included).
+    pub met: Vec<TeamId>,
+    /// Pairs of teams at war (`a < b`), among `met`.
     pub wars: Vec<(TeamId, TeamId)>,
     pub armageddon: i32,
     /// Plots the human owns.
@@ -225,6 +228,7 @@ impl Snapshot {
                 .map(|(c, city)| SnapForeign { id: c, owner: city.owner, name: crate::view::city_name(g, c), x: city.x, y: city.y })
                 .collect(),
             techs: d.techs.keys().filter(|&t| g.teams[v.team].has_tech[t]).collect(),
+            met: met_teams(v),
             wars: wars(v),
             armageddon: g.get_global_counter(),
             plots: g.map.plot_ids().filter(|&p| g.map.plots[p].owner == Some(v.h)).collect(),
@@ -242,6 +246,7 @@ impl Snapshot {
             ]).collect()),
             "foreign" => Json::Arr(self.foreign.iter().map(|c| crate::jarr![c.id, c.owner, c.name.as_str(), c.x, c.y]).collect()),
             "techs" => Json::Arr(self.techs.iter().map(|&t| Json::idx(t)).collect()),
+            "met" => self.met.clone(),
             "wars" => Json::Arr(self.wars.iter().map(|&(a, b)| crate::jarr![a, b]).collect()),
             "armageddon" => self.armageddon,
             "plots" => Json::Arr(self.plots.iter().map(|p| Json::from(p.0)).collect()),
@@ -249,7 +254,19 @@ impl Snapshot {
         }
     }
 
-    /// Reads [`Snapshot::to_json`] (a sidecar's), checking every type index against `d`.
+    /// Whether the snapshot's player, team and plot ids exist in `g` (a sidecar's snapshot is
+    /// checked against its save before it is used: a mismatched or corrupted one is dropped).
+    /// Unit and city ids need no check: the report looks them up.
+    pub fn fits(&self, g: &Game) -> bool {
+        let team = |t: &TeamId| t.idx() < g.num_teams();
+        self.foreign.iter().all(|c| c.owner.idx() < g.num_players())
+            && self.met.iter().all(team)
+            && self.wars.iter().all(|(a, b)| team(a) && team(b))
+            && self.plots.iter().all(|p| (p.0 as usize) < g.map.plots.len())
+    }
+
+    /// Reads [`Snapshot::to_json`] (a sidecar's), checking every type index against `d` (the ids
+    /// are checked against the game by [`Snapshot::fits`]).
     pub fn from_json(d: &GameData, j: &Json) -> Result<Snapshot, FieldError> {
         fn tuple<'a>(key: &str, v: &'a Json, n: usize) -> Result<&'a [Json], FieldError> {
             match v.as_arr() {
@@ -303,6 +320,7 @@ impl Snapshot {
                 })
                 .collect::<Result<_, FieldError>>()?,
             techs: list("techs")?.iter().map(|t| ty(d, "techs", t)).collect::<Result<_, _>>()?,
+            met: j.req("met")?,
             wars: list("wars")?
                 .iter()
                 .map(|w| {
@@ -464,13 +482,20 @@ impl Report {
             lines.push(format!("learned {}", crate::names::display(d, t)));
         }
 
-        // Wars and peace.
+        // Contacts, wars and peace. A war or peace is news only between teams the human had met
+        // at the snapshot: a team met since brings its wars along, which are not new.
+        let contacts: Vec<TeamId> = met_teams(v).into_iter().filter(|t| !before.met.contains(t)).collect();
         let now_wars = wars(v);
-        let new_wars: Vec<(TeamId, TeamId)> = now_wars.iter().copied().filter(|w| !before.wars.contains(w)).collect();
+        let new_wars: Vec<(TeamId, TeamId)> =
+            now_wars.iter().copied().filter(|w| !before.wars.contains(w) && before.met.contains(&w.0) && before.met.contains(&w.1)).collect();
         // Peace between teams still met and alive (a team destroyed is not a peace).
         let peace: Vec<(TeamId, TeamId)> =
             before.wars.iter().copied().filter(|w| !now_wars.contains(w) && g.team_is_alive(w.0) && g.team_is_alive(w.1)).collect();
         let team_name = |t: TeamId| if t == v.team { "we".to_string() } else { format!("team {}", t.0) };
+        for &t in &contacts {
+            let players: Vec<String> = g.player_ids().filter(|&p| g.players[p].team == t && g.players[p].alive).map(|p| crate::view::player_name(g, p)).collect();
+            lines.push(format!("met {} ({})", team_name(t), players.join(", ")));
+        }
         for &(a, b) in &new_wars {
             lines.push(format!("war: {} and {}", team_name(a), team_name(b)));
         }
@@ -527,6 +552,7 @@ impl Report {
             "buildings_completed" => Json::Arr(built),
             "foreign_cities_gone" => Json::Arr(foreign_changed),
             "techs_gained" => Json::Arr(techs.iter().map(|&t| Json::idx(t)).collect()),
+            "contacts" => contacts,
             "wars" => Json::Arr(new_wars.iter().map(|&(a, b)| crate::jarr![a, b]).collect()),
             "peace" => Json::Arr(peace.iter().map(|&(a, b)| crate::jarr![a, b]).collect()),
             "enemies_near" => Json::Arr(enemies),

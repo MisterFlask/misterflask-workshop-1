@@ -314,7 +314,9 @@ impl Fuzz {
 fn t7_fuzzed_commands_are_refused_cleanly() {
     let ng = new_game(7);
     let (mut s, mut b) = bot_session(&ng, None);
-    let mut f = Fuzz { rng: Rng::new(7007), t: Tally::default() };
+    // The fuzz kills the human in about half of its games (deleted units, random wars); 7011
+    // plays all 100 turns (7007 did before the P3 review changed the action lists).
+    let mut f = Fuzz { rng: Rng::new(7011), t: Tally::default() };
     let until = s.g.game_turn() + 100;
     let mut last_checked = -1;
     let stop = bot::run(&mut s, &mut b, until, |s, _| {
@@ -338,7 +340,7 @@ fn t7_fuzzed_commands_are_refused_cleanly() {
         }
     });
     assert!(matches!(stop, Stop::Human | Stop::Over), "{stop:?}");
-    eprintln!("fuzz: {:?}", f.t);
+    eprintln!("fuzz: {:?}, {stop:?} at turn {}", f.t, s.g.game_turn());
     let t = &f.t;
     assert!(t.applied > 50 && t.from_actions > 200, "{t:?}");
     assert!(t.refused.iter().all(|&n| n > 10) && t.decode_errors > 50, "every refusal kind should occur: {t:?}");

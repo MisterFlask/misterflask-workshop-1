@@ -10,7 +10,7 @@
 //! one inside a blocking decision.
 
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -248,6 +248,15 @@ impl Default for UiState {
     }
 }
 
+impl UiState {
+    /// Locks the shared state, also after a panic while it was held (a query that failed inside
+    /// a decision is answered `busy`, design §2.4): its fields are valid at any time (the finder
+    /// is a cache), so a poisoned lock must not take the session down later.
+    pub fn lock(ui: &Mutex<UiState>) -> MutexGuard<'_, UiState> {
+        ui.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
 /// What a query needs besides the game.
 pub struct Ctx<'a> {
     /// The human player (the view's side).
@@ -270,7 +279,7 @@ pub struct Ctx<'a> {
 /// Answers `q` from `g` for `ctx.h` (under a `QueryGuard`).
 pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
     let guard = QueryGuard::new(g);
-    let reveal = ctx.ui.lock().unwrap().reveal;
+    let reveal = UiState::lock(ctx.ui).reveal;
     let v = Viewer::new(&guard, ctx.h, reveal);
     let busy = |what: &str| QueryErr::Busy(format!("{what} is not available during a decision"));
     let finders = || if guard.finders_busy() { Err(QueryErr::Busy("a rules call holds the path finders".into())) } else { Ok(()) };
@@ -286,8 +295,12 @@ pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
         }
         Query::Path { units, x, y, flags } => {
             finders()?;
-            let mut ui = ctx.ui.lock().unwrap();
-            view::units::path(&v, &mut ui.finder, units, *x, *y, *flags)?
+            // The search runs without the lock: the finder is taken out and put back (a fresh
+            // one stays if the search panics, which is harmless for a cache).
+            let mut finder = std::mem::replace(&mut UiState::lock(ctx.ui).finder, PathFinder::new(FinderKind::Path));
+            let r = view::units::path(&v, &mut finder, units, *x, *y, *flags);
+            UiState::lock(ctx.ui).finder = finder;
+            r?
         }
         Query::Combat { units, x, y } => {
             finders()?;

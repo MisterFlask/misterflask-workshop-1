@@ -635,6 +635,17 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
                 return Err(invalid(format!("field `flags`: must be 0 (the exe sends no movement flags), got {flags}")));
             }
             check_mission_data(g, *mission, *data1, *data2)?;
+            if *mission == MissionType::MISSION_MOVE_TO {
+                // Every exe path that sends MOVE_TO for a selection that may need a war goes
+                // through selectionListMove (the GO_TO mode, the move flyout, a right click),
+                // which asks first (DECLAREWARMOVE; air units never need one). The answer is
+                // the `move` command with `declare_war` (P3 review: the mission moved without
+                // asking).
+                let plot = on_map(g, *data1, *data2)?;
+                if let Some(rival) = units.iter().find_map(|&u| g.unit_get_declare_war_move(u, plot)) {
+                    return Ok(Plan::Confirm(Confirm::DeclareWar { team: rival, move_anyway: g.plot_get_team(plot) != Some(rival) }));
+                }
+            }
             // canHandleAction's mission plot: with shift (append) the group's last mission plot
             // if visible, else where the selection stands.
             let mut plot = selection::plot(g, units);

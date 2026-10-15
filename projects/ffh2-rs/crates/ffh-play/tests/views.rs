@@ -10,7 +10,7 @@ use common::{bot_session, new_game};
 use ffh_core::ids::*;
 use ffh_core::structs::TradeData;
 use ffh_data::*;
-use ffh_play::command::{CmdErr, CmdOk, Command};
+use ffh_play::command::{CmdErr, CmdOk, Command, Confirm};
 use ffh_play::human::AdvisorAnswerer;
 use ffh_play::query::{Layer, Query};
 use ffh_play::{bot, Json, NewGame, Session, SessionOptions, Stop};
@@ -286,6 +286,189 @@ fn the_turn_report_lists_what_changed() {
     let r = s.query(&Query::Report).unwrap();
     let loaded = Session::load(&bytes, Some(&sidecar), Arc::new(AdvisorAnswerer), SessionOptions { journal: false, ..Default::default() }).unwrap();
     assert_eq!(loaded.query(&Query::Report).unwrap(), r);
+}
+
+/// A team the human meets during the AI turns brings its wars along: they are not new wars
+/// (P3 review). The report lists the contact, and no war of the new team.
+#[test]
+fn a_team_met_during_the_ai_turns_is_a_contact_not_a_war() {
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, 21);
+    ng.opponents = 2;
+    ng.world = d.t("WORLDSIZE_DUEL");
+    let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), SessionOptions::default()).unwrap();
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    let h = s.human;
+    let my = s.g.players[h].team;
+    let others: Vec<TeamId> = s.g.civ_team_ids().filter(|&t| t != my).collect();
+    let (a, c) = (others[0], others[1]);
+    s.g.team_meet(my, a, false);
+    if !s.g.at_war(a, c) {
+        s.g.team_declare_war(a, c, false, None);
+    }
+    assert!(s.g.at_war(a, c) && !s.g.teams[my].has_met[c]);
+    // The human ends its turn (the snapshot: teams met, wars among them), then meets the other
+    // team before its next control point, as during the AI turns.
+    applied(&mut s, Command::EndTurn { force: true });
+    s.g.team_meet(my, c, false);
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    let r = s.query(&Query::Report).unwrap();
+    let wars = r.get("wars").unwrap().as_arr().unwrap();
+    assert!(wars.iter().all(|w| !w.as_arr().unwrap().contains(&Json::from(c))), "{r}");
+    assert_eq!(r.get("contacts"), Some(&Json::from(vec![c])), "{r}");
+    assert!(s.g.at_war(a, c), "the war is still on");
+}
+
+/// A sidecar's report snapshot whose ids do not fit its save (a corrupted or mismatched
+/// sidecar) is dropped when loaded, not used at the next control point (P3 review: a foreign
+/// owner, plot or team out of range panicked there).
+#[test]
+fn a_sidecar_snapshot_that_does_not_fit_is_dropped() {
+    let mut s = duel(21);
+    next_turn(&mut s);
+    let (bytes, sidecar) = s.save_bytes().unwrap();
+    assert!(sidecar.report_snapshot.is_none(), "a control point has no pending snapshot");
+    let saved_report = s.query(&Query::Report).unwrap();
+    let good = ffh_play::report::snapshot(&s.g, s.human, 0);
+    let load = |snapshot: Json| {
+        let mut sc = sidecar.clone();
+        sc.report_snapshot = Some(snapshot);
+        let mut l = Session::load(&bytes, Some(&sc), Arc::new(AdvisorAnswerer), SessionOptions { journal: false, ..Default::default() }).unwrap();
+        assert_eq!(l.advance(&mut |_| {}), Stop::Human);
+        l.query(&Query::Report).unwrap()
+    };
+    // A snapshot that fits is diffed at the control point.
+    let fresh = load(good.to_json());
+    assert_ne!(fresh, saved_report);
+    assert_eq!(fresh.get("from_turn"), Some(&Json::from(good.turn)));
+    // Out of range: dropped, the saved report stays.
+    let bad = |key: &str, value: Json| {
+        let mut j = good.to_json();
+        j.set(key, value);
+        j
+    };
+    for j in [
+        bad("foreign", Json::parse(r#"[[999, 200, "Nowhere", 0, 0]]"#).unwrap()),
+        bad("plots", Json::parse("[4000000000]").unwrap()),
+        bad("wars", Json::parse("[[200, 201]]").unwrap()),
+        bad("met", Json::parse("[200]").unwrap()),
+    ] {
+        assert_eq!(load(j.clone()), saved_report, "{j}");
+    }
+}
+
+/// When the game ends during the AI turns after the human's end of turn, the report covers that
+/// last turn (P3 review: it kept the previous turn's, without what ended the game). Seed 2's
+/// human dies to barbarians at turn 54.
+#[test]
+fn the_report_covers_the_turn_that_ends_the_game() {
+    let (mut s, mut b) = bot_session(&new_game(2), None);
+    assert_eq!(bot::run(&mut s, &mut b, 80, |_, _| {}), Stop::Over);
+    let turn = s.g.game_turn();
+    let r = s.query(&Query::Report).unwrap();
+    // The human ended turn 54, and the game ended in the AI turns of the same game turn.
+    assert_eq!(r.get("turn"), Some(&Json::from(turn)), "{r}");
+    assert_eq!(r.get("from_turn"), Some(&Json::from(turn)), "{r}");
+    assert!(!r.get("cities_lost").unwrap().as_arr().unwrap().is_empty(), "{r}");
+    assert!(!r.get("messages").unwrap().as_arr().unwrap().is_empty(), "{r}");
+}
+
+/// A panic while the UI state is locked (a query that fails inside a decision is answered
+/// `busy`) poisons its mutex; queries and the game go on (P3 review: every later lock
+/// panicked, the game thread included).
+#[test]
+fn a_poisoned_ui_state_does_not_stop_the_session() {
+    let mut s = duel(21);
+    let ui = s.ui.clone();
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _held = ui.lock().unwrap();
+        panic!("a query failed while holding the UI state (expected by the test)");
+    }));
+    assert!(r.is_err() && s.ui.is_poisoned());
+    let h = s.human;
+    let unit = s.g.players[h].units[0];
+    let (x, y) = (s.g.units[unit].x, s.g.units[unit].y);
+    s.query(&Query::Status).unwrap();
+    s.query(&Query::View).unwrap();
+    let w = s.g.map.grid_width;
+    s.query(&Query::Path { units: vec![unit], x: (x + 1) % w, y, flags: 0 }).unwrap();
+    s.set_reveal(true);
+    s.set_reveal(false);
+    next_turn(&mut s);
+    s.query(&Query::View).unwrap();
+}
+
+/// The `target` actions are the exe's interface modes (`canDoInterfaceMode`): GO_TO is a `move`
+/// (the declare-war question), ROUTE_TO only for workers (`UNITAI_WORKER`) that can build a
+/// route. A `mission` MOVE_TO into a rival's territory asks too (P3 review: it moved without
+/// asking, and an adept was offered route-to).
+#[test]
+fn target_actions_follow_the_interface_modes() {
+    let (mut s, mut b) = bot_session(&new_game(50), None);
+    assert_eq!(bot::run(&mut s, &mut b, 40, |_, _| {}), Stop::Human);
+    let d = s.g.d;
+    let h = s.human;
+    let target_actions = |s: &Session, units: &[UnitId]| -> Vec<Json> {
+        let gq = s.query(&Query::Group { units: units.to_vec() }).unwrap();
+        gq.get("actions").unwrap().as_arr().unwrap().iter().filter(|a| a.get("kind") == Some(&Json::from("target"))).cloned().collect()
+    };
+    let mode = |a: &Json| a.get("mode").and_then(Json::as_str).unwrap().to_string();
+
+    // A move that needs a war: `move` asks, and so does the mission and the GO_TO action.
+    let found = s.read(|g| {
+        let mut found = None;
+        for &u in &g.players[h].units {
+            let (x, y) = (g.units[u].x, g.units[u].y);
+            for dy in -3..=3 {
+                for dx in -3..=3 {
+                    if let Some(p) = g.plot_xy(x, y, dx, dy) {
+                        if found.is_none() && g.unit_can_move(u) && g.unit_get_declare_war_move(u, p).is_some() {
+                            found = Some((u, g.map.xy(p)));
+                        }
+                    }
+                }
+            }
+        }
+        found
+    });
+    let (u, (tx, ty)) = found.expect("a unit next to a rival's borders");
+    let before = s.g.save();
+    let asks = |r: Result<CmdOk, CmdErr>| matches!(r, Ok(CmdOk::NeedsConfirm(Confirm::DeclareWar { .. })));
+    assert!(asks(s.execute(&Command::Move { units: vec![u], x: tx, y: ty, append: false, declare_war: None })));
+    let mission = Command::Mission { units: vec![u], mission: MissionType::MISSION_MOVE_TO, data1: tx, data2: ty, flags: 0, append: false };
+    assert!(asks(s.execute(&mission)), "the mission must ask like move");
+    let go_to = target_actions(&s, &[u]).into_iter().find(|a| mode(a) == "INTERFACEMODE_GO_TO").expect("GO_TO");
+    assert_eq!(go_to.get("any"), Some(&Json::Bool(true)));
+    let mut cmd = go_to.get("cmd").unwrap().clone();
+    assert_eq!(cmd.get("c"), Some(&Json::from("move")));
+    cmd.set("x", tx);
+    cmd.set("y", ty);
+    assert!(asks(s.execute(&Command::from_json(d, &cmd).unwrap())));
+    assert!(before == s.g.save(), "the questions changed the game");
+
+    // ROUTE_TO: a worker that can build a route, not an adept (its builds are not routes and
+    // its AI type is not a worker's), nor a warrior.
+    let (x, y) = s.read(|g| {
+        let c = g.players[h].cities[0];
+        (g.cities[c].x, g.cities[c].y)
+    });
+    let civ = s.g.player_get_civilization_type(h).unwrap();
+    let make = |s: &mut Session, class: &str| {
+        let t = s.g.d.civ_unit(civ, s.g.d.t(class)).unwrap_or_else(|| panic!("{class}"));
+        s.g.player_init_unit(h, t, x, y, None, None)
+    };
+    let worker = make(&mut s, "UNITCLASS_WORKER");
+    let adept = make(&mut s, "UNITCLASS_ADEPT");
+    let warrior = make(&mut s, "UNITCLASS_WARRIOR");
+    let modes = |s: &Session, u: UnitId| target_actions(s, &[u]).iter().map(mode).collect::<Vec<_>>();
+    assert_eq!(s.g.units[worker].ai_type, Some(UnitAIType::UNITAI_WORKER));
+    assert!(s.read(|g| g.unit_can_build_route(worker)), "the human can build roads at turn 40");
+    assert_eq!(modes(&s, worker), ["INTERFACEMODE_GO_TO", "INTERFACEMODE_ROUTE_TO"]);
+    assert!(s.g.d.units[s.g.units[adept].unit_type].builds.iter().any(|&b| b), "adepts have builds (mana nodes)");
+    assert_eq!(modes(&s, adept), ["INTERFACEMODE_GO_TO"]);
+    assert_eq!(modes(&s, warrior), ["INTERFACEMODE_GO_TO"]);
+    // A stack offers route-to when one of its units can.
+    assert_eq!(target_actions(&s, &[warrior, worker]).iter().map(mode).collect::<Vec<_>>(), ["INTERFACEMODE_GO_TO", "INTERFACEMODE_ROUTE_TO"]);
 }
 
 /// Prints every reply of a control point (`cargo test --release -p ffh-play --test views --

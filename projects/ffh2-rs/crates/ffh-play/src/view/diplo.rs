@@ -135,7 +135,7 @@ pub fn ai_willing_to_talk(g: &Game, ai: PlayerId, other: PlayerId) -> bool {
         let ours = 1 + g.teams[team].ai_war_success[their];
         let theirs = 1 + g.teams[their].ai_war_success[team];
         if theirs > ours * 2 {
-            refuse *= 20 + (80 * ours * 2) / theirs;
+            refuse *= 20 + (80 * ours * 2) / theirs.max(1);
             refuse /= 100;
         }
         if g.teams[team].ai_at_war_counter[their] < refuse {

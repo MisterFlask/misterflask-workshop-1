@@ -103,7 +103,7 @@ pub fn status(v: &Viewer, ctx: &Ctx) -> Json {
         "year" => g.game_turn_year(),
         "human" => v.h,
         "active_players" => g.player_ids().filter(|&p| g.players[p].turn_active).collect::<Vec<_>>(),
-        "view_version" => ctx.ui.lock().unwrap().view_version as i64,
+        "view_version" => crate::query::UiState::lock(ctx.ui).view_version as i64,
         "decision" => ctx.decision.map(|d| d.to_json()),
         "over" => over,
         "reveal" => v.reveal,
@@ -299,7 +299,7 @@ pub fn groups(v: &Viewer) -> Json {
 /// `view` (design §4.4).
 pub fn view(v: &Viewer, ctx: &Ctx) -> Json {
     let g = v.g;
-    let view_version = ctx.ui.lock().unwrap().view_version as i64;
+    let view_version = crate::query::UiState::lock(ctx.ui).view_version as i64;
     crate::jobj! {
         "view_version" => view_version,
         "turn" => g.game_turn(),

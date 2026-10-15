@@ -126,8 +126,13 @@ loop {
 `propose_deal`, `event`, `vote`, `set_option`, `auto_moves`, `end_turn`, `autoplay`. Each is
 the port of what Civ4 sends for that input; design §4.5 and the "As built" notes of P1 and P3 in
 §7 list the rules calls and checks. The `group` query lists the actions of a selection with the
-command that performs each, ready to send. Their JSON form is the protocol request (`{"c": "move",
-"units": [..], "x": .., "y": ..}`), with type names or indices. Parameters are accepted only in
+command that performs each, ready to send, except a `target` action's plot: its command carries
+the first of its `targets`, or your units' own plot as a placeholder (with `any`, or when no
+target is in range), and you put in the plot you pick (`x`, `y` of a `move`, `data1`, `data2` of
+a `mission`). Go-to is a `move`; a `mission` `MISSION_MOVE_TO` into a rival's borders asks the
+declare-war question too (answer it with `move` and `declare_war`). Their JSON form is the
+protocol request (`{"c": "move", "units": [..], "x": .., "y": ..}`), with type names or indices.
+Parameters are accepted only in
 the form the Civ4 interface sends them: missions without movement `flags` (0) and with the data
 their button carries (a plot, a build/religion/specialist/building, else -1), no
 `MISSION_MOVE_TO_UNIT`, specialist changes of +1/-1 where the city screen shows the button,
@@ -162,17 +167,17 @@ Errors: `invalid`, `not_owner`, `gone`, `busy`.
 | `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis), the players you met, the cities you revealed, the units you see, your groups, `pending`, `log_next` |
 | `map` | flat arrays `y * w + x`: `vis` (0 unrevealed, 1 fogged, 2 visible), `plot_type`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `owner`, `river` (bit 0 river on the south edge, bit 1 on the east edge, bits 2-4 north/south flow + 1, bits 5-7 west/east flow + 1), `city`, `yield` (`food \| production << 8 \| commerce << 16`, visible plots only), and `map_rev` |
 | `plot {x,y}` | a plot as you know it; while visible also yields, defence, culture and the units |
-| `group {units}` | the units in detail and the actions: `mission`, `target` (needs a plot), `command`, `load`, `spell`, `promotion`, `upgrade`, each `enabled` or not, each with its `cmd` |
+| `group {units}` | the units in detail and the actions: `mission`, `target` (an interface mode, `mode`: go-to, route-to for workers, range attack, the air modes; needs a plot), `command`, `load`, `spell`, `promotion`, `upgrade`, each `enabled` or not, each with its `cmd` |
 | `path {units,x,y}` | the path preview: nodes with the turn of arrival and moves left, total turns, a war it would declare, whether it ends in an attack |
 | `combat {units,x,y}` | the attack preview: attacker, defender, odds of winning and of retreating (per mille), strengths, the modifiers of both sides |
 | `city {city}` | the city screen of one of your cities: plots, specialists, yields, happiness, health, buildings, queue, the buildable list with cost and turns |
 | `techs`, `civics`, `religions`, `players` | the tech tree (prerequisites, depth, turns), civics (availability, upkeep, anarchy), religions, the players you met with your deals |
 | `trade {with}` | the trade tables both ways (see Deals) |
 | `log {since}` | your messages from index `since` (`view.log_next` is the next one) |
-| `report` | the turn report: what changed between your end of turn and now (units lost and gained, cities founded, lost, grown, starving, buildings, techs, wars and peace, enemies near your cities, the Armageddon counter, borders), with the messages |
+| `report` | the turn report: what changed between your end of turn and now, or the end of the game (units lost and gained, cities founded, lost, grown, starving, buildings, techs, civilizations met, wars and peace between those you had met, enemies near your cities, the Armageddon counter, borders), with the messages |
 | `text` | a plain-text summary for agents |
 | `ascii {x,y,w,h,layer}` | an ASCII map, 2 characters per plot, north up, `::` unrevealed; layers `terrain`, `political`, `yield`, `units`; a legend |
-| `inspect {kind,id}` | `{:#?}` of your unit, group, city, plot, player, team, deal, or of an info entry (`UnitType`, `units`, ...) |
+| `inspect {kind,id}` | `{:#?}` of your unit, group, city, player, team, deal, or of an info entry (`UnitType`, `units`, ...); any object, and plots, under debug reveal (a plot holds every team's data: use `plot`) |
 | `data` | the static tables (every kind: type, name, texts, the main gameplay fields) |
 | `setup`, `saves` | the new-game lists; the saves of the game's directory |
 

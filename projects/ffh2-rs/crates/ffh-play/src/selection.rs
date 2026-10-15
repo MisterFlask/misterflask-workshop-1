@@ -146,3 +146,123 @@ pub fn load_targets(g: &Game, units: &[UnitId]) -> Vec<UnitId> {
         .filter(|&t| can_do_command(g, units, CommandType::COMMAND_LOAD_UNIT, g.units[t].owner.i(), t.0 as i32, false))
         .collect()
 }
+
+/// The exe's interface modes that pick a plot (`CIV4InterfaceModeInfos.xml` with a mission):
+/// the action button sets the mode, and the plot the player clicks completes it. GO_TO_TYPE and
+/// GO_TO_ALL are GO_TO after selecting the plot's units of the type, or all of them: a client
+/// makes that selection itself.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InterfaceMode {
+    GoTo,
+    RouteTo,
+    Airlift,
+    Nuke,
+    Recon,
+    Paradrop,
+    AirBomb,
+    RangeAttack,
+    AirStrike,
+    Rebase,
+}
+
+impl InterfaceMode {
+    pub const ALL: [InterfaceMode; 10] = [
+        InterfaceMode::GoTo,
+        InterfaceMode::RouteTo,
+        InterfaceMode::Airlift,
+        InterfaceMode::Nuke,
+        InterfaceMode::Recon,
+        InterfaceMode::Paradrop,
+        InterfaceMode::AirBomb,
+        InterfaceMode::RangeAttack,
+        InterfaceMode::AirStrike,
+        InterfaceMode::Rebase,
+    ];
+
+    /// The XML type name.
+    pub fn name(self) -> &'static str {
+        match self {
+            InterfaceMode::GoTo => "INTERFACEMODE_GO_TO",
+            InterfaceMode::RouteTo => "INTERFACEMODE_ROUTE_TO",
+            InterfaceMode::Airlift => "INTERFACEMODE_AIRLIFT",
+            InterfaceMode::Nuke => "INTERFACEMODE_NUKE",
+            InterfaceMode::Recon => "INTERFACEMODE_RECON",
+            InterfaceMode::Paradrop => "INTERFACEMODE_PARADROP",
+            InterfaceMode::AirBomb => "INTERFACEMODE_AIRBOMB",
+            InterfaceMode::RangeAttack => "INTERFACEMODE_RANGE_ATTACK",
+            InterfaceMode::AirStrike => "INTERFACEMODE_AIRSTRIKE",
+            InterfaceMode::Rebase => "INTERFACEMODE_REBASE",
+        }
+    }
+
+    /// The mission the mode sends (its `<Mission>`; air strike and rebase move the air unit).
+    pub fn mission(self) -> MissionType {
+        match self {
+            InterfaceMode::GoTo | InterfaceMode::AirStrike | InterfaceMode::Rebase => MissionType::MISSION_MOVE_TO,
+            InterfaceMode::RouteTo => MissionType::MISSION_ROUTE_TO,
+            InterfaceMode::Airlift => MissionType::MISSION_AIRLIFT,
+            InterfaceMode::Nuke => MissionType::MISSION_NUKE,
+            InterfaceMode::Recon => MissionType::MISSION_RECON,
+            InterfaceMode::Paradrop => MissionType::MISSION_PARADROP,
+            InterfaceMode::AirBomb => MissionType::MISSION_AIRBOMB,
+            InterfaceMode::RangeAttack => MissionType::MISSION_RANGE_ATTACK,
+        }
+    }
+}
+
+/// `CvSelectionGroup::canDoInterfaceMode(eMode)` over the selection (CvSelectionGroup.cpp:1936):
+/// whether the mode's action button shows (`canHandleAction` checks an interface-mode action with
+/// this alone, so a shown button is enabled). GO_TO needs the selection's domain (its head's) to
+/// be neither air nor immobile; ROUTE_TO a unit whose AI type is `UNITAI_WORKER` and that can
+/// build a route; the others a unit that can do the mission at all, whatever the target.
+pub fn can_do_interface_mode(g: &Game, units: &[UnitId], mode: InterfaceMode) -> bool {
+    if is_busy(g, units) {
+        return false;
+    }
+    let Some(&head) = units.first() else { return false };
+    let domain = g.unit_get_domain_type(head);
+    for &u in units {
+        let plot = g.unit_plot(u);
+        let ok = match mode {
+            InterfaceMode::GoTo => domain != DomainType::DOMAIN_AIR && domain != DomainType::DOMAIN_IMMOBILE,
+            InterfaceMode::RouteTo => g.units[u].ai_type == Some(UnitAIType::UNITAI_WORKER) && g.unit_can_build_route(u),
+            InterfaceMode::Airlift => g.unit_can_airlift(u, plot),
+            InterfaceMode::Nuke => g.unit_can_nuke(u, plot),
+            InterfaceMode::Recon => g.unit_can_recon(u, Some(plot)),
+            InterfaceMode::Paradrop => g.unit_can_paradrop(u, plot),
+            InterfaceMode::AirBomb => g.unit_can_air_bomb(u, plot),
+            InterfaceMode::RangeAttack => g.unit_can_range_strike(u),
+            InterfaceMode::AirStrike => g.unit_get_domain_type(u) == DomainType::DOMAIN_AIR && g.unit_can_air_attack(u),
+            InterfaceMode::Rebase => g.unit_get_domain_type(u) == DomainType::DOMAIN_AIR,
+        };
+        if ok {
+            return true;
+        }
+    }
+    false
+}
+
+/// `CvSelectionGroup::canDoInterfaceModeAt(eMode, pPlot)` over the selection
+/// (CvSelectionGroup.cpp:2063): whether the mode can target `target` (the exe greys the other
+/// plots). GO_TO and ROUTE_TO take any plot.
+pub fn can_do_interface_mode_at(g: &Game, units: &[UnitId], mode: InterfaceMode, target: PlotIdx) -> bool {
+    let (x, y) = g.map.xy(target);
+    for &u in units {
+        let plot = g.unit_plot(u);
+        let ok = match mode {
+            InterfaceMode::GoTo | InterfaceMode::RouteTo => return true,
+            InterfaceMode::Airlift => g.unit_can_airlift_at(u, plot, x, y),
+            InterfaceMode::Nuke => g.unit_can_nuke_at(u, plot, x, y),
+            InterfaceMode::Recon => g.unit_can_recon_at(u, plot, x, y),
+            InterfaceMode::Paradrop => g.unit_can_paradrop_at(u, plot, x, y),
+            InterfaceMode::AirBomb => g.unit_can_air_bomb_at(u, plot, x, y),
+            InterfaceMode::RangeAttack => g.unit_can_range_strike_at(u, plot, x, y),
+            InterfaceMode::AirStrike => g.unit_can_move_into(u, target, true, false, false),
+            InterfaceMode::Rebase => g.unit_can_move_into(u, target, false, false, false),
+        };
+        if ok {
+            return true;
+        }
+    }
+    false
+}

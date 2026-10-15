@@ -197,9 +197,10 @@ impl Session {
             *s.shared.pending_events.lock().unwrap() = sc.pending_events.clone();
             s.messages = MessageStore::from_tail(sc.messages_tail.clone());
             s.auto_moves_tried = sc.auto_moves_tried;
-            // The report is presentation only: one that does not read (another data version)
-            // is dropped. The snapshot's log mark counts the messages of the saving session.
-            s.snapshot = sc.report_snapshot.as_ref().and_then(|j| Snapshot::from_json(s.g.d, j).ok()).map(|mut snap| {
+            // The report is presentation only: one that does not read (another data version),
+            // or whose ids do not fit this game (a mismatched or corrupted sidecar), is dropped.
+            // The snapshot's log mark counts the messages of the saving session.
+            s.snapshot = sc.report_snapshot.as_ref().and_then(|j| Snapshot::from_json(s.g.d, j).ok()).filter(|snap| snap.fits(&s.g)).map(|mut snap| {
                 snap.log_mark = snap.log_mark.min(s.messages.total());
                 snap
             });
@@ -254,6 +255,9 @@ impl Session {
             match self.phase() {
                 Phase::Over => {
                     self.drain_log();
+                    // The turn report of the turn that ended the game (the end-turn snapshot
+                    // against the final state), as at a control point.
+                    self.build_report(self.human);
                     return Stop::Over;
                 }
                 Phase::Human(h) => {
@@ -279,7 +283,7 @@ impl Session {
                         continue;
                     }
                     self.build_report(h);
-                    self.ui.lock().unwrap().view_version += 1;
+                    UiState::lock(&self.ui).view_version += 1;
                     return Stop::Human;
                 }
                 Phase::Running => {
@@ -357,7 +361,7 @@ impl Session {
         // drained some of them already).
         self.drain_log();
         let log = self.messages.since(mark).to_vec();
-        self.ui.lock().unwrap().view_version += 1;
+        UiState::lock(&self.ui).view_version += 1;
         CmdOk::Applied { log, accepted: None }
     }
 
@@ -523,7 +527,7 @@ impl Session {
 
     /// Debug reveal: queries answer with the true state (marked `"reveal": true`).
     pub fn set_reveal(&self, on: bool) {
-        self.ui.lock().unwrap().reveal = on;
+        UiState::lock(&self.ui).reveal = on;
     }
 
     /// Answers a protocol query (design §4.6) from the human's side, under a `QueryGuard`.

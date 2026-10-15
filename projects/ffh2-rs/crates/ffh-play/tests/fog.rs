@@ -235,8 +235,12 @@ fn hidden_units_stay_hidden() {
     assert_eq!(combat.get("valid"), Some(&Json::Bool(false)), "attack preview against an invisible unit: {combat}");
     let path = wire(&s, Query::Path { units: vec![ours], x: fx, y: fy, flags: 0 });
     assert_eq!(path.get("attack"), Some(&Json::Bool(false)));
-    // Their objects are not ours to inspect.
+    // Their objects are not ours to inspect. A plot holds every team's data (the true bonus,
+    // all its units, each team's visibility): inspected under debug reveal only, even ours.
     assert!(s.query(&Query::Inspect { kind: "unit".into(), id: hidden.0 as i64 }).is_err());
+    let own_plot = s.g.map.plot_ids().find(|&p| s.g.map.plots[p].owner == Some(h)).expect("a plot of ours");
+    let inspect_plot = Query::Inspect { kind: "plot".into(), id: own_plot.0 as i64 };
+    assert_eq!(s.query(&inspect_plot).map_err(|e| e.code()), Err("not_owner"));
     assert!(s.query(&Query::Group { units: vec![hidden] }).is_err());
     // The text summary does not name players we have not met.
     let text = wire(&s, Query::Text);
@@ -249,6 +253,7 @@ fn hidden_units_stay_hidden() {
 
     // Debug reveal shows everything, marked as such.
     s.set_reveal(true);
+    assert!(s.query(&inspect_plot).is_ok());
     let view = wire(&s, Query::View);
     assert_eq!(view.get("reveal"), Some(&Json::Bool(true)));
     let shown: Vec<i64> = arr(&view, "units").iter().map(|u| int(u, "id")).collect();
