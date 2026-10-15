@@ -93,7 +93,7 @@ export function renderTop() {
   const stasis = Object.entries(m.stasis ?? {}).filter(([, n]) => n > 0);
   if (stasis.length) items.push(h("span.stat.warn", `Stasis: ${stasis.map(([k, n]) => `${k} ${n}`).join(", ")}`));
   const idle = v.pending?.ai_groups_idle?.length ?? 0;
-  if (idle) items.push(h("span.stat.warn", { title: "Automated and AI-controlled units wait for the AI automation (not ported yet)" }, `${idle} AI-controlled group${idle > 1 ? "s" : ""} idle`));
+  if (idle) items.push(h("span.stat.dim", { title: "Automated and FfH AI-controlled units: the AI moves them during your turn" }, `${idle} automated group${idle > 1 ? "s" : ""} to move`));
   items.push(h("span.stat.dim", `Score ${m.score}`));
   fill(info, items);
 }

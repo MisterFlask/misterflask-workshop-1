@@ -203,7 +203,7 @@ pub fn transport(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     port(g, p, grp, here);
 }
 
-fn port(g: &mut Game, p: PlayerId, grp: GroupId, here: PlotIdx) {
+pub(crate) fn port(g: &mut Game, p: PlayerId, grp: GroupId, here: PlotIdx) {
     if g.map.plots[here].plot_city.is_some_and(|c| g.cities[c].owner == p) {
         hold(g, grp);
         return;
@@ -224,6 +224,26 @@ fn port(g: &mut Game, p: PlayerId, grp: GroupId, here: PlotIdx) {
 /// A sea explorer: the reachable water plot that reveals the most, else it becomes a
 /// transport (if it can carry) or waits in port.
 pub fn sea_explore(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+    if let Some(q) = sea_explore_target(g, v, u) {
+        v.claimed.push(q);
+        move_to(g, grp, q, 0);
+        if alive(g, grp) && g.group_ready_to_move(grp, false) {
+            skip(g, grp);
+        }
+        return;
+    }
+    if is_transport_type(&g.d.units[g.units[u].unit_type]) {
+        g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_SETTLER_SEA);
+        transport(ai, g, v, grp, u);
+        return;
+    }
+    let here = g.unit_plot(u);
+    port(g, v.p, grp, here);
+}
+
+/// The sea explorer's next goal: the reachable revealed water plot (10 turns) that reveals the
+/// most, per turn of travel, away from danger and other explorers' goals.
+pub(crate) fn sea_explore_target(g: &Game, v: &mut View, u: UnitId) -> Option<PlotIdx> {
     let team = v.team;
     let reach = v.flood.run(g, u, 10, false);
     let mut best: Option<(PlotIdx, i32)> = None;
@@ -250,19 +270,5 @@ pub fn sea_explore(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId)
             best = Some((r.plot, score));
         }
     }
-    if let Some((q, _)) = best {
-        v.claimed.push(q);
-        move_to(g, grp, q, 0);
-        if alive(g, grp) && g.group_ready_to_move(grp, false) {
-            skip(g, grp);
-        }
-        return;
-    }
-    if is_transport_type(&g.d.units[g.units[u].unit_type]) {
-        g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_SETTLER_SEA);
-        transport(ai, g, v, grp, u);
-        return;
-    }
-    let here = g.unit_plot(u);
-    port(g, v.p, grp, here);
+    best.map(|(q, _)| q)
 }

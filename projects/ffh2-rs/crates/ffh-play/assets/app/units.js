@@ -642,6 +642,8 @@ function actionLabel(a) {
       return dname("CommandType", a.command);
     case "load":
       return "Load";
+    case "automate":
+      return AUTOMATE_LABELS[tname("AutomateType", a.automate)] ?? dname("AutomateType", a.automate);
     case "spell":
       return dname("SpellType", a.spell);
     case "promotion":
@@ -662,6 +664,14 @@ const typeOf = (a) => (a.kind === "mission" ? tname("MissionType", a.mission) : 
 const GREAT_PERSON = ["MISSION_JOIN", "MISSION_CONSTRUCT", "MISSION_DISCOVER", "MISSION_HURRY", "MISSION_TRADE", "MISSION_GREAT_WORK", "MISSION_GOLDEN_AGE", "MISSION_LEAD", "MISSION_INFILTRATE"];
 const RELIGION = ["MISSION_SPREAD", "MISSION_SPREAD_CORPORATION"];
 const CARGO = ["COMMAND_LOAD", "COMMAND_LOAD_UNIT", "COMMAND_UNLOAD", "COMMAND_UNLOAD_ALL"];
+/** The automate buttons (Civ4's TXT_KEY_ACTION_AUTOMATE_*, not in FfH's text files). */
+const AUTOMATE_LABELS = {
+  AUTOMATE_BUILD: "Automate: improve the land",
+  AUTOMATE_NETWORK: "Automate: build the trade network",
+  AUTOMATE_CITY: "Automate: improve this city",
+  AUTOMATE_EXPLORE: "Explore (automated)",
+  AUTOMATE_RELIGION: "Automate: spread the religion",
+};
 
 /** The actions panel's sections; each lists its actions in the action list's order
  *  (`iOrderPriority`, C++ `SetGlobalActionInfo`). */
@@ -671,6 +681,7 @@ const SECTIONS = [
   ["Great person", (a) => GREAT_PERSON.includes(typeOf(a))],
   ["Religion", (a) => RELIGION.includes(typeOf(a))],
   ["Cargo", (a) => a.kind === "load" || CARGO.includes(typeOf(a))],
+  ["Automation", (a) => a.kind === "automate"],
   ["Spells", (a) => a.kind === "spell"],
   ["Promotions", (a) => a.kind === "promotion"],
   ["Upgrades", (a) => a.kind === "upgrade"],
@@ -685,7 +696,7 @@ function actionButton(a) {
     {
       disabled: !a.enabled,
       "data-kind": a.kind,
-      "data-type": a.kind === "mission" ? tname("MissionType", a.mission) : a.kind === "target" ? a.mode : a.kind === "command" || a.kind === "load" ? tname("CommandType", a.command) : a.kind === "spell" ? tname("SpellType", a.spell) : a.kind === "promotion" ? tname("PromotionType", a.promotion) : a.kind === "upgrade" ? tname("UnitType", a.unit) : "",
+      "data-type": a.kind === "mission" ? tname("MissionType", a.mission) : a.kind === "target" ? a.mode : a.kind === "command" || a.kind === "load" ? tname("CommandType", a.command) : a.kind === "automate" ? tname("AutomateType", a.automate) : a.kind === "spell" ? tname("SpellType", a.spell) : a.kind === "promotion" ? tname("PromotionType", a.promotion) : a.kind === "upgrade" ? tname("UnitType", a.unit) : "",
       title: [key ? `[${key}]` : "", help ? markup(help).textContent : ""].filter(Boolean).join(" "),
       onclick: () => doAction(a),
     },

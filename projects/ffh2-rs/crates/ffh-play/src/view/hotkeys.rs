@@ -75,7 +75,7 @@ pub fn parse(xml: &str, info: &str) -> Vec<(String, ActionKeys)> {
         let Some(j) = after.find(&close) else { break };
         let block = &after[..j];
         rest = &after[j + close.len()..];
-        let Some(ty) = element(block, "Type") else { continue };
+        let Some(ty) = element(block, "Type").or_else(|| element(block, "Automate")) else { continue };
         let mut keys = ActionKeys { bindings: Vec::new(), order: int(block, "iOrderPriority") };
         for alt in ["", "Alt"] {
             let key = element(block, &format!("HotKey{alt}")).unwrap_or("");
@@ -100,6 +100,8 @@ pub const FILES: &[(&str, &str, &str)] = &[
     ("MissionType", "Units/CIV4MissionInfos.xml", "MissionInfo"),
     ("CommandType", "Units/CIV4CommandInfos.xml", "CommandInfo"),
     ("BuildType", "Units/CIV4BuildInfos.xml", "BuildInfo"),
+    // Automate infos have no `<Type>`: they are named by their `<Automate>`.
+    ("AutomateType", "Units/CIV4AutomateInfos.xml", "AutomateInfo"),
 ];
 
 /// The interface modes with a button (`bVisible`), their bindings (key, alt, shift, ctrl) and
@@ -170,6 +172,10 @@ mod tests {
         let commands = read(&dir, "CommandType");
         assert_eq!(get(&commands, "COMMAND_DELETE").bindings[0].key, "KB_DELETE");
         assert!(get(&commands, "COMMAND_UNLOAD_ALL").bindings[0].shift);
+        let automates = read(&dir, "AutomateType");
+        assert_eq!(get(&automates, "AUTOMATE_BUILD").bindings[0].key, "KB_A");
+        assert_eq!(get(&automates, "AUTOMATE_EXPLORE").bindings[0].key, "KB_E");
+        assert_eq!(automates.len(), crate::names::kind("AutomateType").map(|k| (k.count)(d)).unwrap());
         let builds = read(&dir, "BuildType");
         assert_eq!(get(&builds, "BUILD_ROAD").bindings[0].key, "KB_R");
         assert!(get(&builds, "BUILD_REMOVE_FOREST").bindings[0].alt);

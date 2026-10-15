@@ -28,6 +28,10 @@ const data = {
       { type: "BUILD_ROAD", keys: [b("KB_R")], order: 2 },
       { type: "BUILD_WINDMILL", keys: [b("KB_W", { shift: true })], order: 1 },
     ],
+    AutomateType: [
+      { type: "AUTOMATE_BUILD", keys: [b("KB_A")] },
+      { type: "AUTOMATE_NETWORK", keys: [b("KB_N")] },
+    ],
   },
   interface_modes: [
     { type: "INTERFACEMODE_GO_TO", keys: [b("KB_G")], order: 0 },
@@ -96,6 +100,10 @@ test("the action list's order and the action a key runs", () => {
   // Sleep when fortify is not offered (both on F).
   const sleeper = [mission(1), mission(2)];
   assert.equal(K.actionForKey(sleeper, key("KeyF"), data).mission, 1);
+  // The automate buttons (CvAutomateInfo hotkeys).
+  const worker = [{ kind: "automate", automate: 0, enabled: true }, { kind: "automate", automate: 1, enabled: true }];
+  assert.equal(K.actionForKey(worker, key("KeyA"), data).automate, 0);
+  assert.equal(K.actionForKey(worker, key("KeyN"), data).automate, 1);
   // Without the founding, B is the range attack.
   assert.equal(K.actionForKey(actions.filter((a) => a.mission !== 5), key("KeyB"), data).mode, "INTERFACEMODE_RANGE_ATTACK");
 });

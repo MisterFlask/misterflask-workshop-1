@@ -59,7 +59,8 @@ export function label(b) {
 }
 
 /** The data entry an action's bindings and order come from: a build's BuildType, a mission's
- *  MissionType, a command's CommandType, an interface mode (`data.interface_modes`). */
+ *  MissionType, a command's CommandType, an automation's AutomateType, an interface mode
+ *  (`data.interface_modes`). */
 function entryOf(a, data) {
   const t = data?.tables;
   if (!t) return null;
@@ -68,6 +69,7 @@ function entryOf(a, data) {
   if (a.kind === "mission") return mission ?? null;
   if (a.kind === "target") return (data.interface_modes ?? []).find((m) => m.type === a.mode) ?? null;
   if (a.kind === "command" || a.kind === "load") return t.CommandType?.[a.command] ?? null;
+  if (a.kind === "automate") return t.AutomateType?.[a.automate] ?? null;
   return null;
 }
 

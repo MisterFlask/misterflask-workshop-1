@@ -226,6 +226,21 @@ pub fn actions(v: &Viewer, units: &[UnitId]) -> Vec<Json> {
         }
     }
 
+    // Automation (the exe's automate buttons, one per CvAutomateInfo with `bVisible`): shown when
+    // `canDoCommand(COMMAND_AUTOMATE, eAutomate, bTestVisible)`. FfH's automatic terraforming
+    // (Python `AI_MageTurn`) has no AI here, so it is not offered.
+    for a in d.automates.keys() {
+        if a == AutomateType::AUTOMATE_TERRAFORMING {
+            continue;
+        }
+        let k = a.idx() as i32;
+        if !selection::can_do_command(g, units, CommandType::COMMAND_AUTOMATE, k, -1, true) {
+            continue;
+        }
+        let enabled = selection::can_do_command(g, units, CommandType::COMMAND_AUTOMATE, k, -1, false);
+        push("automate", enabled, command_cmd(units, CommandType::COMMAND_AUTOMATE, k, -1), crate::jobj! { "command" => Json::idx(CommandType::COMMAND_AUTOMATE), "automate" => Json::idx(a) });
+    }
+
     // Spells.
     for s in d.spells.keys() {
         let k = s.idx() as i32;

@@ -712,7 +712,12 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
         Command::DoCommand { units, command, data1, data2, alt, confirmed } => {
             selection_of(g, h, units)?;
             match *command {
-                CommandType::COMMAND_AUTOMATE => return Err(cannot("automation is not available yet (ffh-ai has no automated-group AI)")),
+                CommandType::COMMAND_AUTOMATE => {
+                    in_range("automate type", *data1, d.automates.len())?;
+                    if AutomateType::from_usize(*data1 as usize) == AutomateType::AUTOMATE_TERRAFORMING {
+                        return Err(cannot("automatic terraforming is not available (FfH's Python terraformer AI is not ported)"));
+                    }
+                }
                 CommandType::COMMAND_AUTOMATE_SPELL => return Err(cannot("no FfH2 0.41 spell can be auto-cast")),
                 CommandType::COMMAND_HOTKEY => return Err(invalid("COMMAND_HOTKEY is interface-only")),
                 CommandType::COMMAND_PROMOTION => {

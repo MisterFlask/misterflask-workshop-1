@@ -222,6 +222,12 @@ pub fn worker_in_danger(g: &Game, v: &View, plot: PlotIdx) -> bool {
 }
 
 pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
+    worker_with(g, v, grp, u, sea, &|_, _, _| true);
+}
+
+/// [`worker`] considering only the builds `allow` accepts on a plot (automated workers of
+/// human players: network only, one city, safe automation).
+pub fn worker_with(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool, allow: &dyn Fn(&Game, PlotIdx, BuildType) -> bool) {
     let p = v.p;
     let here = g.unit_plot(u);
     // Flee danger first.
@@ -256,7 +262,7 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
             continue;
         }
         for &b in &builds {
-            if !ai_build_allowed(g, p, q, b) || !g.unit_can_build(u, q, b, false) {
+            if !ai_build_allowed(g, p, q, b) || !allow(g, q, b) || !g.unit_can_build(u, q, b, false) {
                 continue;
             }
             let value = build_value(g, v, p, q, b);

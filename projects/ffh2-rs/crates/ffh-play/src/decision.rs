@@ -477,8 +477,9 @@ pub struct Pending {
     pub idle_cities: Vec<CityId>,
     pub promotions_ready: Vec<UnitId>,
     pub ready_groups: Vec<GroupId>,
-    /// Groups the human cannot order that the AI moves (automated or FfH AI-controlled) and that
-    /// have moves left: the human's next `update()` moves them (`update_automated_group`).
+    /// Groups the human cannot order that the AI moves (automated or FfH AI-controlled) waiting
+    /// for orders ([`ai_groups_waiting`]). The session moves them before the human has control,
+    /// so this is empty at a control point (kept for clients and the soak's invariants).
     pub ai_groups_idle: Vec<GroupId>,
 }
 
@@ -661,6 +662,13 @@ pub fn is_ai_group(g: &Game, grp: GroupId) -> bool {
     g.group_is_automated(grp) || g.group_is_ai_control(grp)
 }
 
+/// The AI-moved groups of `p` waiting for their next orders (ready, with moves left): the exe's
+/// next frames would move them (`AI_unitUpdate` runs every frame of the human's turn), so the
+/// session runs `update()` until there are none (`session::phase`).
+pub fn ai_groups_waiting(g: &Game, p: PlayerId) -> Vec<GroupId> {
+    g.players[p].groups.iter().copied().filter(|&grp| g.group_ready_to_move(grp, true) && is_ai_group(g, grp)).collect()
+}
+
 /// Groups ready for orders: C++ `readyToMove(bAny = true)` (what `hasReadyUnit(true)` and the
 /// end-turn gate count), without the AI-moved groups (C++ moves those in `AI_unitUpdate`).
 pub fn ready_groups(g: &Game, p: PlayerId) -> Vec<GroupId> {
@@ -687,6 +695,6 @@ pub fn pending(g: &Game, p: PlayerId, events: &[TriggeredId]) -> Pending {
         idle_cities: pl.cities.iter().copied().filter(|&c| !g.city_is_production(c) && !g.cities[c].production_automated).collect(),
         promotions_ready: pl.units.iter().copied().filter(|&u| g.units[u].promotion_ready).collect(),
         ready_groups: ready_groups(g, p),
-        ai_groups_idle: pl.groups.iter().copied().filter(|&grp| g.group_ready_to_move(grp, true) && is_ai_group(g, grp)).collect(),
+        ai_groups_idle: ai_groups_waiting(g, p),
     }
 }

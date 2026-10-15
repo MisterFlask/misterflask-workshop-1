@@ -18,6 +18,7 @@ use ffh_core::structs::*;
 use ffh_data::*;
 
 pub mod advanced_start;
+pub mod automation;
 pub mod campaign;
 pub mod casting;
 pub mod civs;
@@ -137,6 +138,8 @@ impl Controller for Ai {
     fn attitude(&self, g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
         diplomacy::attitude(g, p, towards)
     }
+
+    fn update_automated_group(&self, g: &mut Game, grp: GroupId) -> bool { automation::update(self, g, grp) }
 
     fn choose_religion(&self, g: &Game, p: PlayerId) -> Option<ReligionType> {
         g.players[p].personality_type.and_then(|l| g.d.leader_heads[l].favorite_religion)
