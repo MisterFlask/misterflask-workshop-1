@@ -10,28 +10,32 @@
 ; Notes on the set (against docs/ART.md 5): ground mottling is drawn as sparse 1-3 px flecks in
 ; noise-shaped regions rather than 25%/50% lattices (the lattices read as perforation at 2x);
 ; desert is ash `5` with sand flecks and dune arcs so large deserts stay inside the value budget;
-; snow is wind streaks of frost `f` and glint `g`, about half each, with rime `F` on rare crests
-; only (lit snow stays under the light of cities; remembered snow is a dark tide/glint weave);
+; snow is wind streaks of frost `f` over slate `4` and glint `g` (about half, a third, a sixth),
+; with rime `F` on rare crests only: a cold grey that stays under the light of cities (round 3: half
+; glint read as a vivid steel-blue field); remembered (REMEMBER in ground.js) it is slate and coal;
 ; burning sands is umber `u` with rust `x` clumps under ember dune crests (the fire comes from
 ; FEATURE_FLAMES, not the ground); hills leave their lit body open and close their dark side with a
 ; checkered flank and a void contour; peaks are massifs of two or three peaks whose outline stops
 ; above the foot, which dissolves into the ground, so ranges merge instead of stacking in rows;
 ; jungle is drooping fronds and hanging vines over a void underside, not round clumps; the unique
-; features (landmarks) are drawn here and claim their IMPROVEMENT_* types; the RITE and BLOOD
-; landmarks that are the map's focal glows (standing stones, Carcer) carry a wide pool, an inner
-; pass and three small pools round the ring, so the ground itself glows.
+; features (landmarks) are drawn here and claim their IMPROVEMENT_* types; the sacred sites carry
+; RITE pools of 14 to 24 px (the light pass draws them as a teal haze with a ritual heart), and the
+; standing stones are five menhirs round a glowing pale-green ellipse, the board's ritual circle,
+; with one wide pool; Carcer keeps its wide BLOOD pool, an inner pass and three small pools.
 ;
 ; ground.js (installTerrain) is the set's ground pass over art.js's seed drawing: a pixel takes
-; the terrain class with the largest sum of Gaussian weights (sigma 13 px) of the 3x3 tile centres,
-; sampled through a three-octave warp (cells 44/22/7 px, |w| <= 10), so
-; single tiles become blobs, not rounded squares; a 3 px Bayer-dithered feather between land
-; textures; the fog and unrevealed edges classified the same way (full warp, feathered); river and
-; road verges (a 50% checker one step lighter); hills never mirrored; wooded hills with trees on the
-; crests and the mounds kept clear; a 1 px moonlit lichen rim on the north-west edge of every wood
-; mass. loadArt() installs it (art.js PASSES); loadArt({ passes: false }) gives the seed drawing.
-; terrain/preview.html: plates for the set (?map=sample|mosaic|north|relief|woods|landmarks, ?pass=0
-; for the seed ground); ref/: the shared scene through ground.js at 2x (with the review sets) and the
-; relief plate at 3x (hills, wooded hills, flat woods, peaks on every land terrain).
+; the terrain class with the largest sum of Gaussian weights (sigma 13 px, each tile's weight scaled
+; by a positional hash) of the 3x3 tile centres, sampled through a three-octave warp (cells 46/22/7
+; px, |w| <= 14), so single tiles become blobs and runs of edges wander; 4 px Bayer transition bands
+; between land textures; moonlit clearings, cold grain and cloud shade from a low-frequency field;
+; the fog and unrevealed edges classified the same way (full warp, 4 and 3 px bands) and remembered
+; through REMEMBER (grey snow); pale paths that sway, with a worn verge; river verges (a 50% checker
+; one step lighter); hills never mirrored; wooded hills with trees on the crests and the mounds kept
+; clear; a 1 px moonlit lichen rim on the north-west edge of every wood mass. loadArt() installs it
+; (art.js PASSES); loadArt({ passes: false }) gives the seed drawing. terrain/preview.html: plates for
+; the set (?map=sample|mosaic|north|relief|woods|landmarks, ?pass=0 for the seed ground, ?light=0
+; without the light pass); ref/: the shared scene through ground.js at 2x (with the review sets) and
+; the relief plate at 3x (hills, wooded hills, flat woods, peaks on every land terrain).
 set terrain
 source textures.spr
 source relief.spr

@@ -6,8 +6,10 @@
 //                                     counts and lit windows per sprite
 //
 // Edit the styles here, not the generated file. A style is make(tier) -> a composed grid; the layouts
-// follow the tiers of 9.1: footprints (outline included) I about 20x17, II 25x23, III 30x30,
-// IV 33x33, V 34x34, with about 2 / 4 / 7 / 9 / 12 lit windows. compose() takes [part, x, lift]
+// follow the tiers of 9.1: footprints (outline included) I about 26x17, II 30x23, III 30x30,
+// IV 33x33, V 34x34, with about 3 / 5 / 7 / 9 / 12 lit windows. Tiers I and II have outskirts: a
+// low house (hut, pod, tent, shack...) behind each end of the town, so a small town already spreads
+// across most of its tile (the art director's light review: bigger, better-lit cities). compose() takes [part, x, lift]
 // items, back to front; x is the part's left edge, lift its rows above the ground line.
 //
 // Placement: the anchor sits LIFT rows below the sprite, so the city's ground line (its bottom
@@ -47,18 +49,22 @@ function cloister(t, o = {}) {
   };
   if (t === 1) {
     return compose([
-      [o.mage ? tower(2) : spire(3, 6), 10],
-      [Hs({ w: 6, h: 5, roof: 'steep', win: [[1, 1, 'L', 2]], door: 4, lit: true }), 4],
-      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 0],
-      [Hs({ w: 3, h: 3, roof: 'gable' }), 13],
+      [Hs({ w: 3, h: 2, roof: 'gable', win: [[1, 0]] }), 0],
+      [Hs({ w: 3, h: 3, roof: 'steep' }), 21],
+      [o.mage ? tower(2) : spire(3, 6), 14],
+      [Hs({ w: 6, h: 5, roof: 'steep', win: [[1, 1, 'L', 2]], door: 4, lit: true }), 8],
+      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 4],
+      [Hs({ w: 3, h: 3, roof: 'gable', win: [[1, 1]] }), 17],
     ]);
   }
   if (t === 2) {
     return compose([
-      [o.mage ? tower(5, [[2, 4, 'l', 2]]) : spire(4, 12, [[1, 4, 'l', 2]]), 13],
-      [Hs({ w: 8, h: 6, roof: 'steep', win: [[2, 2, 'L', 2], [5, 2, 'l', 2]], door: 4, lit: true }), 4],
-      [Hs({ w: 4, h: 3, roof: 'gable' }), 0],
-      [Hs({ w: 4, h: 4, roof: 'steep', win: [[2, 1]] }), 17],
+      [Hs({ w: 3, h: 2, roof: 'gable', win: [[1, 0]] }), 0],
+      [Hs({ w: 3, h: 3, roof: 'gable', win: [[1, 1]] }), 24],
+      [o.mage ? tower(5, [[2, 4, 'l', 2]]) : spire(4, 12, [[1, 4, 'l', 2]]), 16],
+      [Hs({ w: 8, h: 6, roof: 'steep', win: [[2, 2, 'L', 2], [5, 2, 'l', 2]], door: 4, lit: true }), 7],
+      [Hs({ w: 4, h: 3, roof: 'gable' }), 3],
+      [Hs({ w: 4, h: 4, roof: 'steep', win: [[2, 1]] }), 20],
     ]);
   }
   if (t === 3) {
@@ -99,18 +105,22 @@ function sundomes(t) {
   const mn = (h, win = []) => stack(finial, peak(3, 2, m), wall(5, 1, { e: m.r, b: m.l, s: m.d }), mark(wall(3, h, m), win));
   if (t === 1) {
     return compose([
-      [mn(8, [[1, 2]]), 12],
-      [domed(6, 4, 8, 4, [[2, 1, 'L']]), 4],
-      [block(4, 3), 0],
-      [block(3, 2), 16],
+      [block(3, 2, [[1, 0]]), 0],
+      [block(4, 3, [[2, 1]]), 21],
+      [mn(8, [[1, 2]]), 15],
+      [domed(6, 4, 8, 4, [[2, 1, 'L']]), 7],
+      [block(4, 3), 3],
+      [block(3, 2), 19],
     ]);
   }
   if (t === 2) {
     return compose([
-      [mn(12, [[1, 3, 'l', 2]]), 14],
-      [domed(8, 5, 9, 5, [[2, 1, 'L', 2]], 5), 4],
-      [block(4, 3, [[1, 1]]), 0],
-      [block(5, 3, [[3, 1]]), 18],
+      [block(3, 2, [[1, 0]]), 0],
+      [block(3, 3, [[1, 1]]), 25],
+      [mn(12, [[1, 3, 'l', 2]]), 17],
+      [domed(8, 5, 9, 5, [[2, 1, 'L', 2]], 5), 7],
+      [block(4, 3, [[1, 1]]), 3],
+      [block(5, 3, [[3, 1]]), 21],
     ]);
   }
   if (t === 3) {
@@ -170,17 +180,21 @@ function elven(t, o = {}) {
   const pod = (w, win = true) => stack(dome(w, Math.ceil(w / 2), { r: C.rim, l: C.lit, d: C.body }), mark(wall(w, 2, trunkM), win ? [[w >> 1, 0]] : []));
   if (t === 1) {
     return compose([
-      [tree(13, 11, 3, 6, [[1, 1, 'L', 2]]), 3],
-      [pod(5), 0],
-      [pod(4, false), 14],
+      [pod(4), 0],
+      [pod(5), 19],
+      [tree(13, 11, 3, 6, [[1, 1, 'L', 2]]), 6],
+      [pod(5), 3],
+      [pod(4, false), 17],
     ]);
   }
   if (t === 2) {
     return compose([
-      [tree(15, 13, 3, 9, [[1, 1, 'L', 2], [1, 5]], [4]), 5],
-      [pod(5), 0],
-      [pod(5), 18],
-      [pod(4, false), 13],
+      [pod(4), 0],
+      [pod(4), 25],
+      [tree(15, 13, 3, 9, [[1, 1, 'L', 2], [1, 5]], [4]), 8],
+      [pod(5), 3],
+      [pod(5), 21],
+      [pod(4, false), 16],
     ]);
   }
   if (t === 3) {
@@ -263,10 +277,10 @@ function dwarven(t, o = {}) {
     const top = (x) => { for (let y = 0; y < g.h; y++) if (g.op(x, y)) return g.h - y; return 0; };
     return compose([[g, 0], ...chim.map(([x, ch]) => [chimney(ch), x, Math.max(0, Math.min(top(x), top(x + 1)) - 2)])]);
   };
-  if (t === 1) return hall(18, [[0, 4], [6, 13], [9, 14], [17, 4]], [[gate(false), 6, 0], [win, 12, 3]], [[13, 3]]);
+  if (t === 1) return hall(24, [[0, 3], [3, 6], [9, 13], [12, 14], [19, 6], [23, 3]], [[door, 1, 0], [gate(false), 9, 0], [win, 15, 3], [door, 19, 0]], [[16, 3]]);
   if (t === 2) {
-    return hall(23, [[0, 4], [6, 16], [10, 15], [14, 19], [22, 5]],
-      [[gate(false), 9, 0], [door, 2, 0], L ? [forge, 17, 0] : [door, 17, 0], L ? [gear, 6, 7] : [win, 15, 6], [tall, 12, 9]], [[4, 3]]);
+    return hall(29, [[0, 3], [3, 5], [9, 16], [13, 15], [17, 19], [25, 6], [28, 3]],
+      [[gate(false), 12, 0], [door, 5, 0], L ? [forge, 20, 0] : [door, 20, 0], L ? [gear, 9, 7] : [win, 18, 6], [tall, 15, 9], [door, 25, 0]], [[7, 3]]);
   }
   if (t === 3) {
     return hall(28, [[0, 4], [7, 11], [11, 22], [14, 25], [17, 22], [21, 14], [27, 5]],
@@ -334,8 +348,8 @@ function tribal(t, o = {}) {
     .u.u
     u..u`);
   const fireAt = (x) => [fire, x, 0, { bare: true }];
-  if (t === 1) return compose([[tent(11, true), 0], [tent(9, true), 11], fireAt(8)]);
-  if (t === 2) return compose([[palisade(5), 0], [palisade(5), 22], [tent(13, true), 6], [tent(9, true), 0], [tent(9, true), 17], fireAt(4)]);
+  if (t === 1) return compose([[tent(7, true), 0], [palisade(5), 21], [tent(11, true), 4], [tent(9, true), 14], fireAt(12)]);
+  if (t === 2) return compose([[tent(7, true), 0], [palisade(5), 3], [palisade(5), 25], [tent(13, true), 9], [tent(9, true), 3], [tent(9, true), 20], fireAt(7)]);
   if (t === 3) {
     return compose([[palisade(5), 0], [palisade(5), 26], [totem(9), 27], [tent(15, true), 3], [longhouse(9, 4, [[2, 2], [6, 2]]), 17], [tent(9, true), 0], fireAt(16)]);
   }
@@ -392,8 +406,8 @@ function harbour(t) {
     .652.
     .lLl.
     65551`), house({ m: LS, w: 3, h, roof: 'none', win: [[1, 3], [1, 8]] }), wall(5, 1, LS));
-  if (t === 1) return compose([[shack(5, 4, [[1, 1, 'L', 2]]), 0], [shack(3, 3, [[1, 1]]), 6], [ship, 9, 0]]);
-  if (t === 2) return compose([[shack(4, 3, [[1, 1]]), 0], [shack(5, 6, [[1, 1, 'L', 2], [3, 3]], 'steep'), 5], [pier(6), 12, 0, { bare: true }], [ship, 13, 0]]);
+  if (t === 1) return compose([[shack(3, 2, [[1, 0]]), 0], [shack(5, 4, [[1, 1, 'L', 2]]), 4], [shack(3, 3, [[1, 1]]), 10], [ship, 13, 0]]);
+  if (t === 2) return compose([[shack(3, 3, [[1, 1]]), 0], [shack(4, 3, [[1, 1]]), 3], [shack(5, 6, [[1, 1, 'L', 2], [3, 3]], 'steep'), 8], [pier(6), 15, 0, { bare: true }], [ship, 16, 0]]);
   if (t === 3) {
     return compose([[shack(4, 4, [[2, 1]]), 0], [shack(5, 9, [[1, 1, 'L', 2], [3, 4, 'l', 2]], 'steep'), 6], [shack(3, 3, [[1, 1]]), 12], [pier(6), 12, 0, { bare: true }], [bigship, 15, 0]]);
   }
@@ -439,8 +453,8 @@ function carnival(t) {
     }
     return g;
   };
-  if (t === 1) return compose([[pavilion(11, 4), 0], [pavilion(9, 3), 10]]);
-  if (t === 2) return compose([[pavilion(11, 5), 0], [pavilion(11, 4), 13], [pavilion(7, 3, false), 8], [string(11, 2), 6, 13, { bare: true }]]);
+  if (t === 1) return compose([[pavilion(7, 3), 0], [pavilion(7, 3, false), 19], [pavilion(11, 4), 4], [pavilion(9, 3), 14]]);
+  if (t === 2) return compose([[pavilion(7, 3), 0], [pavilion(11, 5), 3], [pavilion(11, 4), 16], [pavilion(7, 3, false), 11], [string(11, 2), 9, 13, { bare: true }]]);
   if (t === 3) {
     return compose([[bigtop(15, 5, [[3, 1], [9, 1, 'L', 2]]), 7], [pavilion(9, 3), 0], [pavilion(9, 4), 20], [string(11, 2), 2, 16, { bare: true }], [string(11, 2), 17, 16, { bare: true }]]);
   }
@@ -482,19 +496,23 @@ function infernal(t) {
   };
   if (t === 1) {
     return compose([
-      [thorn(15, 5, 2, [[2, 8, 'l', 2]]), 6],
-      [thorn(9, 3, -1), 2],
-      [thorn(8, 3, 1), 13],
-      [base(15, 3, [[4, 1]]), 2],
+      [thorn(6, 3, -1), 0],
+      [thorn(6, 3, 1), 21],
+      [thorn(15, 5, 2, [[2, 8, 'l', 2]]), 9],
+      [thorn(9, 3, -1), 5],
+      [thorn(8, 3, 1), 16],
+      [base(21, 3, [[4, 1], [16, 1]]), 2],
     ]);
   }
   if (t === 2) {
     return compose([
-      [thorn(21, 5, 2, [[2, 8, 'l', 2], [2, 14]]), 9],
-      [thorn(13, 3, -1, [[1, 8]]), 3],
-      [thorn(11, 3, 2), 16],
-      [thorn(7, 3, 1), 0],
-      [base(20, 3, [[5, 1], [14, 1]]), 2],
+      [thorn(7, 3, -1), 0],
+      [thorn(8, 3, 2), 24],
+      [thorn(21, 5, 2, [[2, 8, 'l', 2], [2, 14]]), 12],
+      [thorn(13, 3, -1, [[1, 8]]), 6],
+      [thorn(11, 3, 2), 19],
+      [thorn(7, 3, 1), 3],
+      [base(26, 3, [[5, 1], [14, 1], [21, 1]]), 2],
     ]);
   }
   if (t === 3) {
@@ -536,19 +554,23 @@ function celestial(t) {
   const arch = (w) => { const g = new G(w, 2); for (let x = 0; x < w; x++) { g.set(x, 0, x === 0 ? '8' : '7'); if (x === 0 || x === w - 1) g.set(x, 1, '6'); } return g; };
   if (t === 1) {
     return compose([
-      [needle(3, 9, [[1, 3, 'l', 2]]), 9],
-      [orb(3, 4, [[1, 1]]), 3],
-      [needle(2, 5, [[0, 2]]), 15],
-      [house({ m, w: 4, h: 2, roof: 'dome', eave: 1 }), 0],
+      [needle(2, 4, [[0, 1]]), 0],
+      [house({ m, w: 3, h: 2, roof: 'dome', eave: 1, win: [[1, 0]] }), 19],
+      [needle(3, 9, [[1, 3, 'l', 2]]), 12],
+      [orb(3, 4, [[1, 1]]), 6],
+      [needle(2, 5, [[0, 2]]), 18],
+      [house({ m, w: 4, h: 2, roof: 'dome', eave: 1 }), 3],
     ]);
   }
   if (t === 2) {
     return compose([
-      [needle(3, 14, [[1, 4, 'l', 2], [1, 10]]), 11],
-      [orb(3, 6, [[1, 2, 'l', 2]]), 3],
-      [needle(2, 8, [[0, 3]]), 18],
-      [arch(5), 6, 6, { bare: true }],
-      [house({ m, w: 4, h: 2, roof: 'dome', eave: 1 }), 0],
+      [needle(2, 6, [[0, 2]]), 0],
+      [house({ m, w: 4, h: 2, roof: 'dome', eave: 1, win: [[2, 0]] }), 22],
+      [needle(3, 14, [[1, 4, 'l', 2], [1, 10]]), 14],
+      [orb(3, 6, [[1, 2, 'l', 2]]), 6],
+      [needle(2, 8, [[0, 3]]), 21],
+      [arch(5), 9, 6, { bare: true }],
+      [house({ m, w: 4, h: 2, roof: 'dome', eave: 1 }), 3],
     ]);
   }
   if (t === 3) {
@@ -602,17 +624,21 @@ function frost(t) {
   const crystal = (h) => side([[shard(h - 4, 3), 0], [shard(h, 5), 2], [shard(h - 6, 3), 6]]);
   if (t === 1) {
     return compose([
-      [Hs({ w: 3, h: 6, roof: 'spire', eave: 1 }), 12],
-      [Hs({ w: 6, h: 5, win: [[1, 2, 'l', 2], [4, 2]] }), 5],
-      [Hs({ w: 4, h: 3, roof: 'gable' }), 0],
+      [Hs({ w: 3, h: 2, roof: 'gable', win: [[1, 0]] }), 0],
+      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 18],
+      [Hs({ w: 3, h: 6, roof: 'spire', eave: 1 }), 15],
+      [Hs({ w: 6, h: 5, win: [[1, 2, 'l', 2], [4, 2]] }), 8],
+      [Hs({ w: 4, h: 3, roof: 'gable' }), 3],
     ]);
   }
   if (t === 2) {
     return compose([
-      [Hs({ w: 3, h: 11, roof: 'spire', eave: 1, win: [[1, 3, 'l', 2]] }), 13],
-      [Hs({ w: 8, h: 6, win: [[2, 2, 'l', 2], [5, 2, 'l', 2]] }), 4],
-      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 0],
-      [Hs({ w: 4, h: 4, roof: 'gable' }), 18],
+      [Hs({ w: 3, h: 2, roof: 'gable', win: [[1, 0]] }), 0],
+      [Hs({ w: 3, h: 3, roof: 'gable', win: [[1, 1]] }), 24],
+      [Hs({ w: 3, h: 11, roof: 'spire', eave: 1, win: [[1, 3, 'l', 2]] }), 16],
+      [Hs({ w: 8, h: 6, win: [[2, 2, 'l', 2], [5, 2, 'l', 2]] }), 7],
+      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 3],
+      [Hs({ w: 4, h: 4, roof: 'gable' }), 21],
     ]);
   }
   if (t === 3) {

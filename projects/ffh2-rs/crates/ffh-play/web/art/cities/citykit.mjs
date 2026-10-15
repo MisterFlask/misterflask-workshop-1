@@ -6,7 +6,8 @@
 // left slope of a roof carry the moon rim (stone `6`, a step above any ground, so the silhouette
 // separates from dark land at 1x), the right side is in shade. Walls are lighter than roofs, so a
 // roof reads at 1x as a dark cap with a lit edge. Windows are amber `l` (the renderer recolours
-// them to the style's light, 7.3), 1x1 or 1x2, with one glow `L` core on the main hall; the stone
+// them to the style's light, 7.3), mostly 1x2, with one glow `L` core on the main hall, and a lit
+// house's door is a 1x2 amber doorway; the stone
 // beside and under a window is pre-lit through the style's halo table (ember `e`/rust `x` for
 // firelight), so a window reads as a small hearth, not a single pixel.
 
@@ -219,11 +220,12 @@ function stack(...parts) {
 
 /**
  * Put marks on a part: [[x, y, key, tall], ...] (windows, doors, details), in the part's coordinates.
- * tall 2 makes a 1x2 window (key on top, amber under it).
+ * tall 2 makes a 1x2 window (key on top, amber under it). A plain window (no key) is a 1x2 lancet by
+ * default (second round: a lit window must read at 1x as a light, not a speck); a keyed mark is 1 px.
  */
 function mark(g, list) {
   const o = g.clone();
-  for (const [x, y, k, tall = 1] of list) for (let j = 0; j < tall; j++) o.set(x, y + j, j ? 'l' : k || 'l');
+  for (const [x, y, k, tall = k ? 1 : 2] of list) for (let j = 0; j < tall; j++) o.set(x, y + j, j ? 'l' : k || 'l');
   return o;
 }
 
@@ -243,7 +245,7 @@ function house({ w, h, m = M.stone, roof = 'gable', eave = 1, win = [], door = n
   const R = rm || m;
   let body = wall(w, h, m, { eave: ['gable', 'steep', 'spire'].includes(roof) && w >= 4 });
   body = mark(body, win);
-  if (door !== null) body = mark(body, lit ? [[door, h - 2, m.door], [door, h - 1, 'l']] : [[door, h - 1, m.door], [door, h - 2, m.door]]);
+  if (door !== null) body = mark(body, lit ? [[door, h - 2, 'l'], [door, h - 1, 'l']] : [[door, h - 1, m.door], [door, h - 2, m.door]]);
   let top = null;
   const rw = w + 2 * eave;
   if (roof === 'gable') top = peak(rw, pitch || 1, R, { tip });
