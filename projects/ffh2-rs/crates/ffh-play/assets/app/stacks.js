@@ -225,3 +225,24 @@ export function updateFacing(prev, units, w, wrap) {
   }
   return out;
 }
+
+/** The units that changed tile since the last view, for the move slide (artmap.js): `prev` is
+ *  Map(id -> {x, y}) from the last view; returns `{ positions: Map(id -> {x, y}) for `units`,
+ *  moved: [{id, dx, dy}] }` where dx/dy are the wrap-aware net displacement (east, north) of each
+ *  unit the client already knew and that moved. A new or vanished unit is never "moved". */
+export function unitMoves(prev, units, w, wrap) {
+  const positions = new Map();
+  const moved = [];
+  for (const u of units) {
+    positions.set(u.id, { x: u.x, y: u.y });
+    const p = prev.get(u.id);
+    if (!p || (p.x === u.x && p.y === u.y)) continue;
+    let dx = u.x - p.x;
+    if (wrap && w > 0) {
+      if (dx > w / 2) dx -= w;
+      if (dx < -w / 2) dx += w;
+    }
+    moved.push({ id: u.id, dx, dy: u.y - p.y });
+  }
+  return { positions, moved };
+}

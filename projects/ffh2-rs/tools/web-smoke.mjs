@@ -853,10 +853,14 @@ async function stagedAttack(bin, saves) {
   const odds = await b.eval(`document.querySelector("#mapwrap .tooltip .tip-combat").textContent`);
   if (!/Odds \d+(\.\d)?%/.test(odds)) throw new Error(`the odds tooltip: ${odds}`);
   await shot("attack-odds");
+  // Watch for the combat flash (units.js flashCombat -> mapView.flashTile) across the resolution.
+  await b.eval(`(() => { window.__fmax = 0; window.__fi = setInterval(() => { const f = window.ffh.mapView.flashes; if (Array.isArray(f) && f.length > window.__fmax) window.__fmax = f.length; }, 16); })()`);
   await b.mouse(e.x, e.y, "right");
   await until2(`(() => { const S = window.ffh.S; const me = S.units.get(${st.unit}); return !S.units.has(${st.enemy}) || !me || me.hp < me.max_hp; })()`, "the combat");
+  const flashed = await b.eval(`(() => { clearInterval(window.__fi); const f = window.ffh.mapView.flashes; return Math.max(window.__fmax || 0, Array.isArray(f) ? f.length : 0); })()`);
+  if (!flashed) throw new Error("no combat flash was shown on the attack");
   const won = await S(`!S.units.has(${st.enemy})`);
-  steps.push(`attacked from the odds tooltip (${odds.replace(/\s+/g, " ").slice(0, 40)}…): ${won ? "won" : "lost or damaged"}`);
+  steps.push(`attacked from the odds tooltip (${odds.replace(/\s+/g, " ").slice(0, 40)}…): ${won ? "won" : "lost or damaged"}; combat flash shown`);
 }
 
 /** A staged capture: the move into the enemy city and its keep/raze decision modal. */

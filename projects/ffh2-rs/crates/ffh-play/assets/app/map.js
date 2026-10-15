@@ -90,6 +90,10 @@ export class MapView {
      *  manipulation (drag, zoom, pan) cancels it; `prefers-reduced-motion` skips it. */
     this.anim = null;
     this.animRaf = 0;
+    /** One-shot combat flashes (`flashTile`): `{ x, y, kind, t0, dur }`, drawn by both renderers
+     *  and self-expiring. */
+    this.flashes = [];
+    this.flashRaf = 0;
     this.listen();
     new ResizeObserver(() => this.resize()).observe(wrap);
     this.resize();
@@ -295,6 +299,50 @@ export class MapView {
     });
   }
 
+  /** A brief combat light on a tile (docs/ART.md 4.5: "the loser's rim flashes crimson"); `kind`
+   *  is "hit" (a struck defender) or "death" (a unit lost). It fades on its own; both renderers
+   *  draw it. prefers-reduced-motion shows nothing (stillness is kept). */
+  flashTile(x, y, kind) {
+    if (this.reduceMotion() || !this.map) return;
+    this.flashes.push({ x, y, kind, t0: performance.now(), dur: kind === "death" ? 620 : 460 });
+    if (this.flashes.length > 8) this.flashes.splice(0, this.flashes.length - 8);
+    if (!this.flashRaf) this.stepFlash();
+  }
+
+  stepFlash() {
+    this.flashRaf = requestAnimationFrame(() => {
+      this.flashRaf = 0;
+      const now = performance.now();
+      this.flashes = this.flashes.filter((fl) => now - fl.t0 < fl.dur);
+      this.draw();
+      if (this.flashes.length) this.stepFlash();
+    });
+  }
+
+  /** The combat flashes, in the flat renderer (CSS pixels). The art renderer draws them in
+   *  `ArtMap.drawFlashes`; both read this one list. */
+  drawFlashes(g) {
+    if (!this.flashes.length) return;
+    const ts = this.cam.ts;
+    const now = performance.now();
+    for (const fl of this.flashes) {
+      const t = Math.min(1, (now - fl.t0) / fl.dur);
+      const a = (1 - t) * (fl.kind === "death" ? 0.5 : 0.58);
+      this.eachCopy(fl.x, fl.y, (sx, sy) => {
+        const cx = sx + ts / 2;
+        const cy = sy + ts / 2 - (fl.kind === "death" ? t * ts * 0.25 : 0);
+        const r = ts * (fl.kind === "death" ? 0.3 + t * 0.22 : 0.46);
+        const grd = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grd.addColorStop(0, `rgba(119,37,43,${a})`); // crimson (#77252b), ART.md's war/damage hue
+        grd.addColorStop(1, "rgba(119,37,43,0)");
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.fill();
+      });
+    }
+  }
+
   /** Centres on plot (x, y). By default the camera glides there (`glideTo`); `animate: false`
    *  jumps (a new game's first look, where there is nothing to glide from). */
   centerOn(x, y, { animate = true } = {}) {
@@ -381,6 +429,7 @@ export class MapView {
     }
     this.miniImage = null;
     if (first) {
+      this.flashes = [];
       this.cam = T.clampCamera(this.cam, map);
       // The minimap keeps the map's proportions.
       const w = this.mini.getBoundingClientRect().width || 220;
@@ -437,6 +486,7 @@ export class MapView {
     this.drawCities(g);
     this.drawUnits(g);
     this.drawOverlays(g);
+    this.drawFlashes(g);
     this.drawMini();
   }
 

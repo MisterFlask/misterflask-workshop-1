@@ -117,12 +117,23 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 #top .group:empty { display: none; }
 #menu { flex: 1 1 auto; justify-content: flex-end; }
 #phase { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
-.phase-dot { width: 8px; height: 8px; background: var(--dim); flex: none; }
+/* The turn heartbeat: the crescent and the phase dot share a slow candle-breath while the AIs
+   move, and the crescent warms briefly when control returns. Driven by two inheriting custom
+   properties animated on the STABLE #phase element, so the dot/crescent — rebuilt by fill() each
+   render — just read the inherited, still-running value (no restart). Falls back to static on
+   engines without @property, and is turned off under prefers-reduced-motion (below). */
+@property --breath { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --flare { syntax: "<number>"; inherits: true; initial-value: 0; }
+@keyframes breathe { 0%, 100% { --breath: 1; } 50% { --breath: 0.5; } }
+@keyframes turn-arrive { 0% { --breath: 0.5; --flare: 1; } 100% { --breath: 1; --flare: 0; } }
+body[data-phase="running"] #phase { animation: breathe 2.8s ease-in-out infinite; }
+#phase.turn-arrived { animation: turn-arrive 720ms ease-out; }
+.turn-crescent { display: inline-flex; align-items: center; opacity: var(--breath, 1); filter: brightness(calc(1 + var(--flare, 0) * 0.45)); }
+.phase-dot { width: 8px; height: 8px; background: var(--dim); flex: none; opacity: var(--breath, 1); }
 .phase-dot[data-phase="human"] { background: var(--fire); }
-.phase-dot[data-phase="running"] { background: var(--c-stone); animation: pulse 1s infinite alternate; }
+.phase-dot[data-phase="running"] { background: var(--c-stone); }
 .phase-dot[data-phase="decision"] { background: var(--c-frost); }
 .phase-dot[data-phase="crashed"], .phase-dot[data-phase="stuck"] { background: var(--c-scarlet); }
-@keyframes pulse { from { opacity: 1; } to { opacity: 0.3; } }
 #empire { display: flex; gap: calc(var(--u) * 5); flex-wrap: wrap; align-items: center; flex: 0 1 auto; min-width: 0; font-variant-numeric: lining-nums tabular-nums; }
 .stat { white-space: nowrap; display: inline-flex; align-items: center; gap: calc(var(--u) * 2); }
 .stat > span:not(.num) + .num { margin-left: 3px; }
@@ -272,7 +283,11 @@ textarea.raw { width: 100%; font: 12px var(--mono); }
 @media (prefers-reduced-motion: reduce) {
   #toasts .toast, #modals .backdrop, .modal { animation: none; }
   .toast { transition: none; }
-  .phase-dot[data-phase="running"] { animation: none; opacity: 0.55; }
+  body[data-phase="running"] #phase, #phase.turn-arrived { animation: none; }
+  #phase { --breath: 1; --flare: 0; }
+  .turn-crescent { opacity: 1; filter: none; }
+  .phase-dot { opacity: 1; }
+  .phase-dot[data-phase="running"] { opacity: 0.55; }
 }
 
 /* Phase 6: the map layers, the spectator bar, the sliders button. */
