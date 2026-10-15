@@ -410,6 +410,15 @@ before (same checksums).
   every improvement they build on their own plots (FfH's check in `setImprovementType`), and
   workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
   logs are other civilizations').
+- **Khazad** (tried, not kept): the Dwarven Vault gives every city -2 to +3 happiness (and up
+  to +40% production) by the treasury's gold per city (`cf_do_turn_khazad`); the AI holds
+  11-16 gold per city, the Empty Vault (-2). A vault target (the level whose happiness and
+  production repay its gold within 30 turns, also the reserve for the sliders, hurrying and
+  upgrades) was saved for by lowering research. From the start (20-30 points, 6 games):
+  population +10%, techs -15% to -20%, lower score. Once commerce reached 8 per city (0, 10
+  or 20 points, 47 games each against the same code without it): by turn 300 population +2%
+  to +13% but techs -1% to -6%, score unchanged within noise. The hoarded gold is research
+  the empire does not get back by turn 300.
 
 ## Cost control
 
@@ -469,4 +478,5 @@ before (same checksums).
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
   terraforming, and no dedicated logic for most civ-specific mechanics (Sheaim planar gates,
-  Infernal and Mercurian projects, Armageddon rituals; see `civs.rs` for the ones handled).
+  Infernal and Mercurian projects, Khazad vaults, Armageddon rituals; see `civs.rs` for the
+  ones handled).

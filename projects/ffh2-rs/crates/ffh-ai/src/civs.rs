@@ -15,6 +15,9 @@
 //! - **Ljosalfar / Svartalfar**: nothing to do here. Their `MaintainFeatures` keeps the forest
 //!   under every improvement they build on their own land (`CvPlot::setImprovementType`
 //!   with FfH's check), and workers only build there, so they never clear forest.
+//! - **Khazad**: nothing either. Saving gold for their Dwarven Vaults (`cf_do_turn_khazad`)
+//!   was tried and measured: more population, fewer techs, the same score by turn 300 (see
+//!   docs/AI.md).
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
