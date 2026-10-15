@@ -551,6 +551,27 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 41-52: score (dead as 0) +15 (t 2.0), 16% fewer civ cities lost to barbarians; seeds 379-426:
 -7, 4% more lost; all 120 seeds: +6 (t 1.2), techs +0.2 (t 1.7), eliminations unchanged.
 
+### Round 3b: goal-directed research + victory pursuit together
+
+Re-measured on fresh seeds (601-648 at 300 turns, 601-624 at full 690-turn games with
+`--until-supremacy`) against master, both verified to survive and to be synergistic, so both were
+merged:
+- **beelines-fixed** alone (601-648, 300 turns): techs 22.1 -> 30.3, research 83.7 -> 147.9,
+  legacy score 876 -> 1115, cities 6.9 -> 7.6, civs eliminated 16 -> 8; CPU flat.
+- **victory-pursuit** alone (601-624, full games): actual cultural victories 1/24 -> 10/24, games
+  decided ~31 turns earlier, at a late cost (research -17% at t500, legacy -2% at t690); early
+  game (turn 300) unchanged.
+- **Together** (601-624, full games): cultural victories **13/24**, decided earliest (avg 509 vs
+  master 562, victory-pursuit 531), and the research victory-pursuit spent on the culture slider
+  is restored by beelines (research at t500 251 vs victory-pursuit's 204, master's 245; legacy at
+  t690 3073 vs 2907). Leave-one-out: dropping beelines gives back victory-pursuit alone (13 -> 10
+  victories, research 251 -> 204), dropping the victory planner gives beelines alone (no planner,
+  ~master's 1 victory) -- each contributes. The goal-directed economy reaches the (achievable)
+  cultural victory faster, so the two reinforce rather than fight. The combined research now
+  weighs the plan's goal_bonus against the victory goal-tech bonus, so the AI no longer always
+  beelines a single expensive victory tech (e.g. a rare Tower run); that is judged by the win rate
+  above, not by a unit test (`tower_victory_makes_the_last_tower_tech_the_goal`).
+
 ## Victory pursuit (`victory.rs`)
 
 Without it the AI never aimed at a victory: 19 of 24 full games (seeds 1-24, 6 civs, standard

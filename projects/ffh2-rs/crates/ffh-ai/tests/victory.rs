@@ -154,7 +154,7 @@ fn tower_of_mastery_near_is_pursued() {
 }
 
 #[test]
-fn research_beelines_the_last_tower_tech() {
+fn tower_victory_makes_the_last_tower_tech_the_goal() {
     let mut g = played(11, 80);
     let p = biggest(&g);
     late(&mut g, 400);
@@ -167,9 +167,14 @@ fn research_beelines_the_last_tower_tech() {
     g.teams[team].research_progress[sow] = (cost - rate * 60).max(0);
     let plan = victory::plan(&g, p);
     assert_eq!(plan.goal(), Some(Goal::Tower), "{}", victory::describe(&g, p, &plan));
+    // The last Tower tech is the victory goal, so research (research.rs) gives it the goal-tech
+    // bonus. The exact tech chosen now balances that against the goal-directed economic plan
+    // (ai3b-beelines' goal_bonus): with both merged the AI wins MORE full games than victory
+    // pursuit alone (13/24 vs 10/24 cultural on seeds 601-624; docs/AI.md), reaching the more
+    // achievable cultural victory rather than beelining the rare Tower, so the final pick is
+    // judged by that measurement, not asserted here.
     assert_eq!(victory::goal_techs(&g, p, &plan), vec![sow]);
-    // Strength of Will is expensive; the beeline still picks it over every cheaper tech.
-    assert_eq!(g.controller(p).choose_research(&g, p), Some(sow));
+    assert!(g.controller(p).choose_research(&g, p).is_some());
 }
 
 #[test]
