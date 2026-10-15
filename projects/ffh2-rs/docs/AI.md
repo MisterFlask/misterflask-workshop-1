@@ -300,13 +300,11 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   resources, a barbarian town near our cities) for its cost (the force it needs, the
   distance). Without that stickiness the target changed whenever a stack came close enough to
   see a garrison, and stacks walked back and forth between two or three cities.
-- *Force*: the strike is played out in expected values with the rules' odds (fortification,
-  city defense, first strikes, the attacker's health): collateral attackers first, then the
-  strongest; a lost fight still wounds (the rounds won before dying), collateral damage hits
-  the other defenders, siege engines that can bring the walls down in three turns count as
-  having done so. The force covers the city when the defenders fall with a fifth of the
-  attackers (at least one) to spare. Unseen cities: 2 + population/5 defenders for a civ,
-  1 + age/25 for a barbarian town.
+- *Force*: the probability that the strike takes the city (`odds.rs`, "Strike odds" below),
+  siege engines that can bring the walls down in three turns counting as having done so. The
+  force covers the city at 50% (`P_PLAN`, to march and step in), the units next to it at 65%
+  (`P_STRIKE`, to strike). Unseen cities: 2 + population/5 defenders for a civ, 1 + age/25 for
+  a barbarian town.
 - *Commitment*: at war every stack on the landmass within 24 plots; against barbarians the
   nearest stacks until they hold twice the force needed (plus those already on their way).
 - *Phases*: **Gather** (the force falls short, or the war is not declared yet): at war the
@@ -319,9 +317,8 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   first). **Strike**: the force next to it covers the city: every committed stack there
   attacks in the same turn -- siege engines bombard, collateral attackers first while several
   defenders stand, then the best odds when 68%+, else the unit cheapest to lose for its
-  strength (C++ `AI_getBestGroupSacrifice`) -- while the attackers left still cover the
-  defenders left (or the defenders are down to half their health and outnumbered). Up to three
-  units follow the victor into the city.
+  strength (C++ `AI_getBestGroupSacrifice`) -- while the units left still take the city with
+  probability 40% (`P_GO_ON`). Up to three units follow the victor into the city.
 - Campaign moves go one turn at a time (the rest of the path is dropped once the moves are
   spent): an AI group on a multi-turn mission gets no orders until it ends, and stacks walked on
   to plots chosen for an earlier phase.
@@ -342,6 +339,53 @@ them stand within 6 plots of a civ city with 6 units inside: out of reach of the
 civs field. `FFH_AI_TRACE` prints each turn's operation ("campaign vs ..."), every stack next
 to its target ("next to ...", with our army units around the city) and each strike ("strike
 on ...").
+
+**Strike odds** (`odds.rs`): the probability that the units of a strike take the city. They
+fight one after another in the order the strike sends them, each against the defender the
+rules would put up (rank by strength and first strikes, times health). Every fight is a kill
+with the rules' `getCombatOdds`, or a loss that leaves the defender wounded by the rounds the
+attacker won first: their distribution follows the rules' per-round odds, first strikes,
+combat limits (a siege engine's "win" leaves the defender at its limit) and withdrawal (the
+attacker survives); a unit test checks the rounds against `getCombatOdds` and the whole strike
+against sampling. The defenders' health is carried as a distribution over joint states (one
+hit-point value per defender; interchangeable defenders sorted, so their states merge), at most
+96 of them: beyond that the health values are rounded to steps of 2, 4, .. 32 hit points.
+Collateral damage hits the healthiest other defenders. The old estimate carried the expected
+health forward, so long shots added up: six Hunters at 2% each "took" a town and died (seed 44,
+round 3). Deterministic; a few hundred calls a game, the turns about 3% slower (paired runs,
+seeds 1-16, t 3.4). Planning (`P_PLAN`) needs 50% from the
+force on the landmass or within two plots; striking (`P_STRIKE`) 65% from the units next to the
+city with this turn's bombardment; the strike goes on while the units left take the city at 40%
+(`P_GO_ON`). The strike trace prints each step's probability ("p_take") and expected losses,
+and the units lost.
+
+Measured on seeds 1-96 (6 civs, standard, 300 turns; strikes from `FFH_AI_TRACE` "strike on"
+lines; before = the expected-value estimate):
+
+| | before | after |
+|---|---|---|
+| strikes (taken) | 253 (208) | 222 (196) |
+| strike success | 82.2% | 88.3% (towns founded by barbarians 76% -> 84%) |
+| units lost in strikes (in failed ones) | 441 (116) | 360 (51) |
+| units lost per city taken | 2.12 | 1.84 (towns founded by barbarians 2.52 -> 1.93) |
+| cities captured or razed by civs (`ffh stats`) | 354 | 348 (t -0.3) |
+| civs eliminated | 36 | 39 (t 1.1) |
+| legacy score / techs / cities / population | 875 / 21.70 / 7.07 / 41.3 | 876 / 21.69 / 7.12 / 41.4 |
+
+Calibrated: the strikes it made were rated 87.7% on average and took the city 88.3% of the time
+(65-75%: 67% taken, 75-85%: 84%, 95%+: 100%). Tried and not kept (same seeds): dropping the
+least probable states instead of rounding (it lost a quarter of the probability on average:
+replayed over the old strikes, those it rated under 20% had taken the city 60% of the time),
+with one threshold of 65%: success 89.2% but cities taken 322; rounding with one threshold of
+65%: success 91.0%, 1.84 lost per city, cities taken 340; 58% (going on at 35%): 88.6%, 1.86,
+343; 50% (going on at 35%): 83.7%, 1.91, 355; choosing the best of four attack orders (strike
+order, best odds, cheapest, worst odds first) and striking in it: no gain (at 65%: 88.2%, 335
+cities) for four times the cost; the same odds for the field armies' own attacks on cities
+outside the operation (`military::assault` from hunting or an adjacent target, which keep the
+assault estimate below): those assaults 41 -> 18 and their losses 8 -> 7, but cities taken
+348 -> 335 and strike success 87.6%. Bombarding first is what the estimate already counts (three
+turns while planning, this turn's at the strike); barbarian towns, most of the targets, have no
+walls.
 
 **Assault estimate**: for each attacker, the rules' combat odds against the defender it would
 face; the stack's expected "kills" are the sum of the odds plus a third of the rest (a lost

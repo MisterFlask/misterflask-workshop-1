@@ -9,9 +9,10 @@
 //! shots add up to a "capture": six Hunters at 2% each wear an Archer down on paper, but each of
 //! them dies having dealt a hit or two, and the Archer holds.
 //!
-//! Deterministic: no random draws (an exact dynamic program over states); states are merged by
-//! value and pruned to the most probable ones (the pruned mass counts as "the city holds", so
-//! the estimate errs low); ties are broken by index.
+//! Deterministic: no random draws (a dynamic program over states, exact up to rounding); equal
+//! states merge, and when more than [`MAX_STATES`] remain the defenders' health is rounded to
+//! coarser steps until they fit (only beyond steps of 32 hit points are the least probable states
+//! dropped, counted as "the city holds"); ties are broken by index.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -22,7 +23,7 @@ use crate::view::attack_power;
 
 /// Defenders modelled (more than that: the city is not taken).
 const MAX_DEF: usize = 16;
-/// States carried from one fight to the next (the most probable ones).
+/// States carried from one fight to the next.
 const MAX_STATES: usize = 96;
 /// States below this probability are dropped.
 const MIN_P: f64 = 1e-6;
@@ -43,6 +44,20 @@ pub struct Odds {
     pub n_def: usize,
     /// Attackers (units able to attack).
     pub n_att: usize,
+    /// Probability mass dropped with the least probable states (counted as holding).
+    pub dropped: f64,
+}
+
+/// Sort `next` by state and merge equal states into `states`.
+fn merge(next: &mut [([u8; MAX_DEF], f64)], states: &mut Vec<([u8; MAX_DEF], f64)>) {
+    next.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    states.clear();
+    for &(s, p) in next.iter() {
+        match states.last_mut() {
+            Some(last) if last.0 == s => last.1 += p,
+            _ => states.push((s, p)),
+        }
+    }
 }
 
 impl Odds {
@@ -459,6 +474,7 @@ impl Prep {
         let mut taken = 0.0f64;
         let mut taken_after = Vec::with_capacity(n_att);
         let mut exp_lost = 0.0f64;
+        let mut dropped = 0.0f64;
         let mut best = 0;
         for &i in order {
             best = best.max(self.first_odds(i));
@@ -502,24 +518,37 @@ impl Prep {
                     }
                 }
             }
-            // Merge equal states, keep the most probable.
-            next.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-            states.clear();
-            for &(s, p) in &next {
-                match states.last_mut() {
-                    Some(last) if last.0 == s => last.1 += p,
-                    _ => states.push((s, p)),
+            // Merge equal states; too many: round the defenders' health to coarser steps (2, 4,
+            // .. 32 hit points, to the nearest) and merge again; still too many: keep the most
+            // probable (the rest counts as holding). (Dropping the least probable states alone
+            // lost a quarter of the mass on average against a few defenders, and the estimate
+            // read 7% where the strikes took the city 60% of the time.)
+            merge(&mut next, &mut states);
+            let mut q = 2;
+            while states.len() > MAX_STATES && q <= 32 {
+                next.clear();
+                for &(mut s, p) in &states {
+                    for h in s[..n_def].iter_mut() {
+                        if *h > 0 {
+                            *h = ((*h as i32 + q / 2) / q * q).clamp(1, self.max_hp) as u8;
+                        }
+                    }
+                    self.canon(&mut s);
+                    next.push((s, p));
                 }
+                merge(&mut next, &mut states);
+                q *= 2;
             }
             states.retain(|s| s.1 >= MIN_P);
             if states.len() > MAX_STATES {
                 states.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then(a.0.cmp(&b.0)));
+                dropped += states[MAX_STATES..].iter().map(|s| s.1).sum::<f64>();
                 states.truncate(MAX_STATES);
             }
             taken_after.push(taken);
         }
         let exp_hp_left = states.iter().map(|(s, p)| p * s[..n_def].iter().map(|&h| h as f64).sum::<f64>()).sum();
-        Odds { p_take: taken, taken_after, exp_lost, exp_hp_left, best, n_def, n_att }
+        Odds { p_take: taken, taken_after, exp_lost, exp_hp_left, best, n_def, n_att, dropped }
     }
 }
 
@@ -530,13 +559,13 @@ pub fn strike_odds(g: &Game, tp: PlotIdx, defs: &[UnitId], atts: &[UnitId], wall
     let n_def = defs.len();
     if n_def == 0 {
         let n_att = atts.iter().filter(|&&u| attack_power(g, u) > 0 && g.unit_can_attack(u)).count();
-        return Odds { p_take: 1.0, taken_after: vec![1.0; n_att], exp_lost: 0.0, exp_hp_left: 0.0, best: 1000, n_def, n_att };
+        return Odds { p_take: 1.0, taken_after: vec![1.0; n_att], exp_lost: 0.0, exp_hp_left: 0.0, best: 1000, n_def, n_att, dropped: 0.0 };
     }
     let mut prep = Prep::new(g, tp, defs, atts, wall_cut);
     if prep.atts.is_empty() || n_def > MAX_DEF {
         let hp: i32 = defs.iter().map(|&d| g.unit_curr_hit_points(d)).sum();
         let n_att = prep.atts.len();
-        return Odds { p_take: 0.0, taken_after: vec![0.0; n_att], exp_lost: 0.0, exp_hp_left: hp as f64, best: 0, n_def, n_att };
+        return Odds { p_take: 0.0, taken_after: vec![0.0; n_att], exp_lost: 0.0, exp_hp_left: hp as f64, best: 0, n_def, n_att, dropped: 0.0 };
     }
     let order = prep.strike_order(g);
     prep.run(&order)
@@ -633,5 +662,70 @@ mod tests {
         assert!((450..=550).contains(&odds), "{odds}");
         let loss: f64 = out.iter().filter(|o| o.0 > 0).map(|o| o.1 + o.2).sum();
         assert!((loss - (1.0 - odds as f64 / 1000.0)).abs() < 1e-9);
+    }
+
+    /// A strike of `n_att` identical attackers on `n_def` identical defenders (no game needed).
+    fn synthetic(n_def: usize, n_att: usize, a_str: i32, d_max: i32) -> Prep {
+        let k = pair(a_str, d_max);
+        let mut init = [0u8; MAX_DEF];
+        for h in init.iter_mut().take(n_def) {
+            *h = 100;
+        }
+        Prep {
+            n_def,
+            atts: (0..n_att).map(|i| UnitId(i as u32)).collect(),
+            kinds: vec![vec![k; n_def]],
+            kind_of: vec![0; n_att],
+            ranks: vec![vec![d_max as i64; n_def]; n_att],
+            collat: vec![None; n_att],
+            groups: if n_def >= 2 { vec![(0..n_def).collect()] } else { Vec::new() },
+            init,
+            max_hp: 100,
+            die: 1000,
+            damage: 20,
+            memo: std::collections::BTreeMap::new(),
+            memo_out: Vec::new(),
+        }
+    }
+
+    /// The same strike sampled: each fight drawn from its outcome distribution.
+    fn monte_carlo(n_def: usize, n_att: usize, a_str: i32, d_max: i32, trials: u32) -> f64 {
+        let k = pair(a_str, d_max);
+        let mut seed: u64 = 12345;
+        let mut taken = 0;
+        for _ in 0..trials {
+            let mut hp = vec![100i32; n_def];
+            for _ in 0..n_att {
+                // The healthiest defender (all equal in rank).
+                let Some(j) = (0..n_def).filter(|&j| hp[j] > 0).max_by_key(|&j| (hp[j], std::cmp::Reverse(j))) else { break };
+                let (_, out) = outcomes(&k, hp[j], 1000, 20);
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                let mut x = (seed >> 11) as f64 / (1u64 << 53) as f64;
+                for o in &out {
+                    x -= o.1 + o.2;
+                    if x <= 0.0 {
+                        hp[j] = o.0 as i32;
+                        break;
+                    }
+                }
+            }
+            if hp.iter().all(|&h| h == 0) {
+                taken += 1;
+            }
+        }
+        taken as f64 / trials as f64
+    }
+
+    #[test]
+    fn strike_matches_sampling() {
+        for (n_def, n_att, a, d) in [(1, 3, 300, 450), (3, 7, 400, 450), (5, 12, 380, 420), (8, 16, 500, 450)] {
+            let mut prep = synthetic(n_def, n_att, a, d);
+            let order: Vec<usize> = (0..n_att).collect();
+            let o = prep.run(&order);
+            let mc = monte_carlo(n_def, n_att, a, d, 20000);
+            assert!((o.p_take - mc).abs() < 0.03, "{n_def} vs {n_att}: dp {} sampled {mc} (dropped {})", o.p_take, o.dropped);
+            assert!(o.dropped < 0.01, "{}", o.dropped);
+            assert!(o.taken_after.windows(2).all(|w| w[0] <= w[1] + 1e-12));
+        }
     }
 }

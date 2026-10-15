@@ -17,8 +17,8 @@
 //!   city, over the distribution of fight outcomes with the rules' combat odds (fortification,
 //!   city defense, first strikes, collateral damage, a lost fight still wounds), the attackers in
 //!   the order the strike sends them. The force covers the city when that probability reaches
-//!   [`P_STRIKE`]; siege engines that can bring the walls down within a few turns count as
-//!   having done so.
+//!   [`P_PLAN`] (to march and step in; siege engines that can bring the walls down within a
+//!   few turns count as having done so), [`P_STRIKE`] for the units next to it to strike.
 //! - **Phases** ([`Phase`]): while the committed force falls short, stacks gather in the rally
 //!   city (our city nearest the target; against barbarians they stay where they are) and
 //!   production builds what is missing ([`army_choice`]); once it covers the city, stacks march
@@ -27,9 +27,10 @@
 //!   force next to it does: every committed stack there attacks
 //!   in the same turn (`strike`), siege engines bombarding first, then collateral attackers,
 //!   then the best odds (or the cheapest unit to lose), while the units left still take the
-//!   city with probability [`P_GO_ON`]. The victor does not stay alone in the city: up to three more
-//!   units follow it in. Stacks past gathering neither turn back for our cities in peril (the
-//!   threat usually comes from their target) nor stop to heal just before the strike.
+//!   city with probability [`P_GO_ON`]. The victor does not stay alone in the city: up to
+//!   three more units follow it in. Stacks past gathering neither turn back for our cities in
+//!   peril (the threat usually comes from their target) nor stop to heal just before the
+//!   strike.
 //! - **No hopeless camping**: a stack next to the target whose operation cannot strike steps
 //!   back to the assembly plot (or the rally city while the force falls short); stacks not in
 //!   the operation never campaign on their own (`military.rs` hunts only cities it can take).
@@ -124,8 +125,11 @@ fn visible_defenders(g: &Game, team: TeamId, tp: PlotIdx) -> Vec<UnitId> {
         .collect()
 }
 
-/// Probability of taking the city that a force must reach: to march on it, to step next to it
-/// and to strike (see [`crate::odds`]).
+/// Probability of taking the city (see [`crate::odds`]) that the committed force must reach to
+/// march on it, and the force within two plots to step next to it: on their way the stacks
+/// still grow and the siege engines bring the walls down.
+pub const P_PLAN: f64 = 0.50;
+/// ... and the units next to the city to strike.
 pub const P_STRIKE: f64 = 0.65;
 /// Once the strike has begun it goes on while the units left take the city with this
 /// probability (the defenders heal if we stop).
@@ -295,14 +299,14 @@ fn committed_units(g: &Game, p: PlayerId, tp: PlotIdx) -> i32 {
 
 /// Units the city of candidate `cand` needs against what we see of it, given our `force` on
 /// its landmass (strongest first): the attackers (in strike order) that take it with
-/// probability [`P_STRIKE`] when the city is seen (what is missing, roughly, when the whole
+/// probability [`P_PLAN`] when the city is seen (what is missing, roughly, when the whole
 /// force falls short), else a rough guess.
 fn need_for(g: &Game, team: TeamId, cand: &Cand, force: &[UnitId]) -> i32 {
     if cand.visible && !force.is_empty() {
         let defs = visible_defenders(g, team, cand.plot);
         let all: Vec<UnitId> = force.iter().copied().take(24).collect();
         let o = take_odds(g, cand.city, cand.plot, &defs, &all, 3);
-        match o.needed(P_STRIKE) {
+        match o.needed(P_PLAN) {
             Some(n) => n as i32,
             // Short of the whole force: a defender's health (where the city holds) per two more
             // attackers.
@@ -446,8 +450,8 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
     let defs = visible_defenders(g, team, tp);
     let (ok_all, ok_near, ok_adj) = if cand.visible {
         (
-            covers(g, cand.city, tp, &defs, &all, P_STRIKE, 3),
-            covers(g, cand.city, tp, &defs, &near, P_STRIKE, 3),
+            covers(g, cand.city, tp, &defs, &all, P_PLAN, 3),
+            covers(g, cand.city, tp, &defs, &near, P_PLAN, 3),
             // (The siege engines next to the city bombard before the strike.)
             covers(g, cand.city, tp, &defs, &adj, P_STRIKE, 1),
         )
@@ -842,7 +846,7 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
         }
         if crate::trace_on(p) {
             let hp: Vec<i32> = defs.iter().map(|&d| g.unit_curr_hit_points(d)).collect();
-            crate::trace!(g, p, "  strike step {}: {} units, defenders hp {:?}, p_take {:.3}, lost {:.2}, best {}, go {}", fights, units.len(), hp, o.p_take, o.exp_lost, o.best, go);
+            crate::trace!(g, p, "  strike step {}: {} units, defenders hp {:?}, p_take {:.3}, lost {:.2}, best {}, dropped {:.3}, go {}", fights, units.len(), hp, o.p_take, o.exp_lost, o.best, o.dropped, go);
         }
         if !go {
             break;
