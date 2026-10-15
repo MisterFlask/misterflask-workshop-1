@@ -3,10 +3,14 @@
 ; from web/art after editing a style. improvements.spr and resources.spr are hand-edited sources.
 ; The unique landmarks (6.2) belong to the terrain set (improvement/landmark_*, mapped by rule);
 ; this set keeps only the improvement/_landmark fallback for unique types added later.
-; citylight.js is the cities set's proposal for the city's light (ART.md 9.1): the hearth pool
-; (ember ring by the walls, FIRE falling off to umber and dun; GORE and AURA for BLOOD and ARC), the
-; wall glow and the sprite's own lights (the tribal bonfire). loadArt() installs it (art.js
-; PASSES, installCityLight). preview.html shows every style and a town map with it;
+; citylight.js is the light pass (ART.md 4.4, 9.1): every pool, a city's and every other light's,
+; is three nested rings that raise the ground's value toward the source (WARM, HEARTH, EMBER for
+; firelight; SMOULDER and GORE for BLOOD; ARC and AURA; HAZE and HALLOW for RITE), the wall glow, the
+; facade light on a lit town's lower walls, and the sprite's own lights (the tribal bonfire).
+; loadArt() installs it (art.js PASSES, installCityLight). Tiers I and II have outskirts (a low house
+; behind each end of the town) and windows are mostly 1x2 (citystyles.mjs, citykit.mjs).
+; preview.html shows every style and a town map with it (through the terrain set's ground pass;
+; ?ground=0 for the seed ground);
 ; ref-styles.png is its reference sheet (?part=ref, rendered with every set merged: 704x768, indexed).
 set cities
 source cities.spr
