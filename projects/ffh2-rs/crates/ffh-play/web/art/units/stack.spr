@@ -1,0 +1,26 @@
+; units/stack.spr: the stack presentation drawn by units/stack.js: the standard (owner field, division
+; and sigil), with moves shown by its finial and brightness.
+; 24x24 box, feet at 11,21 (huge: 32x32, feet 15,29), facing east, moonlight from the upper left.
+; Owner slots # % * on cloth, @ the accent (faith or sphere colour). Outlines are part of the sprite;
+; the renderer adds the moon rim, contact shadow, pennant and overlays.
+
+= ui/stack_banner 10x17 0,0
+: flag 2,3,7,12
+: note the stack standard: a gonfalon on a crossbar and pole; field and division of the owner, the civ sigil at 3,4; the finial at 1,1 shows moves and heroes
+.0........
+070000000.
+0666666660
+06######%0
+06######%0
+06######%0
+06######%0
+06######%0
+06######%0
+06######%0
+06######%0
+06######%0
+06###0##%0
+06##0.0%%0
+06#0...0%0
+060.....0.
+.0........

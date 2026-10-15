@@ -13,6 +13,7 @@ source siege_naval.spr
 source animals.spr
 source natures.spr
 source heroes.spr
+source stack.spr
 
 ; ================================================================ exact rules
 ; ---- faith colour in the @ accent (docs/ART.md 11.5): disciples, priests, high priests
