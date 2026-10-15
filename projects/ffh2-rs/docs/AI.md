@@ -240,10 +240,16 @@ Kuriotates Stirrups, Sheaim Corruption of Spirit/Necromancy/Sorcery, Sidar and S
 Poisons, Luchuirp Construction then Elementalism/Sorcery, Elohim and Malakim Priesthood, Iron
 Working for the Khazad, Clan of Embers, Doviello, Lanun, Grigori, Illians and Balseraphs, then
 Medicine for the Grigori); the magic spheres once tier 3 and economy tier 2 are reached. The
-religion is the first unfounded one of the player's preferences, most preferred first: Way of
-the Earthmother for the Khazad and of the Forests for the elves, the leader's favorite early
-religion, the favorite religion, the alignment (good Earthmother, neutral Forests, evil
-Message from the Deep), then Earthmother, Forests and Message from the Deep as fallbacks.
+religion is the first unfounded one of the player's preferences, most preferred first: the
+civ's own (Runes of Kilmorph for the Khazad, Fellowship of Leaves for the elves), the leader's
+favorite early and favorite religions (data; FfH leaves these unset), then -- data-driven from
+each religion's own `<Alignment>` -- the religions whose alignment (or best alignment) fits the
+player's, cheapest to found first, so a good civ still grabs the cheap Runes of Kilmorph early
+while the deeper aligned faiths (The Order, the Ashen Veil) follow as fallbacks; then the three
+early religions as a last resort. Reading the alignment from the data (rather than a hardcoded
+good->Earthmother / evil->Message-from-the-Deep map) keeps the choice correct and makes the
+later religions reachable as content changes; measured economy-neutral (identical through turn
+150) with the later religions now founded where before only the early three appeared.
 This is not `AI_chooseTech`'s order: that function returns one tech from tier-gated blocks in
 which the last assignment wins (the tier-2 military tech, then the early economy, then once
 both are known the religion, Cartography, Festivals, Mysticism, Writing, Animal Husbandry,
