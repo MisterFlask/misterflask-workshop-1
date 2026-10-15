@@ -4,6 +4,14 @@
 ; Exact rules (naming a type) come first: they give faith accents, material remaps and ghosts, and
 ; stop a unique unit of another nature from borrowing its base unit's look (an undead axeman is
 ; not an axeman).
+;
+; Sources: generic.spr (category silhouettes, equipment glyphs), infantry.spr, mounted.spr,
+; robed.spr (arcane, divine, civilians, great people), siege_naval.spr, animals.spr (and beasts),
+; natures.spr (demons, undead, angels, golems, elementals), heroes.spr, stack.spr.
+; Stack presentation: units/stack.js (installStackOverlay(art) or drawStackOverlay) draws the
+; standard, count, health and moves; units/preview.html shows it and a muster of the set.
+; reference.png and reference-roster.png are small reference sheets of preview.html (regenerate
+; them from its screenshots when the set changes).
 set units
 source generic.spr
 source infantry.spr
@@ -107,7 +115,6 @@ map unit UNIT_FROSTLING_WOLF_RIDER -> unit/wolf_rider remap=of,Of,mg
 map unit UNIT_MOKKA -> unit/shaman remap=Qf,ug
 map unit UNIT_DWARVEN_DRUID -> unit/druid
 map unit UNIT_LIZARDMAN_DRUID -> unit/druid
-map unit UNIT_WAR_TORTOISE -> unit/giant_tortoise
 map unit UNIT_BISON_RIDER|UNIT_HORNGUARD -> unit/boar_rider
 map unit UNIT_DEATH_KNIGHT -> unit/death_knight
 map unit UNIT_BRIGIT|UNIT_BRIGIT_HELD -> unit/valkyrie
