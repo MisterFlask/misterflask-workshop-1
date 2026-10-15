@@ -36,8 +36,16 @@
 //!                                      and events out; starts a new game unless --no-game,
 //!                                      --load or --take-over; exit 3 after a crash
 //!   ffh-play serve [GAME] [--port N] [--bind ADDR] [--assets DIR]
-//!                                      the HTTP server (design §4.2) on 127.0.0.1:8642; no game
-//!                                      until the client starts one, or GAME says so
+//!                                      the HTTP server (design §4.2) on 127.0.0.1:8642 with the
+//!                                      browser client (P5); no game until the client starts
+//!                                      one, or GAME says so
+//!   ffh-play stage capture|attack|automoves DIR
+//!                                      write a save at a staged situation into DIR (testing the
+//!                                      clients): `capture` (a warrior next to an undefended
+//!                                      enemy city: moving in raises the keep/raze decision),
+//!                                      `attack` (a warrior next to a barbarian warrior: the
+//!                                      attack odds), `automoves` (skipping the one ready unit runs the
+//!                                      AutoMoves rule); prints the save and ids as JSON
 //!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
 //!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
 //!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
@@ -65,7 +73,7 @@ fn usage() -> ! {
          \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--speeds ..] [--turns N] [--jobs N] [--timeout SECS]\n\
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
-         \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR]\n\
+         \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves DIR\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -608,6 +616,25 @@ fn cmd_lookup(args: &[String]) {
     }
 }
 
+/// `ffh-play stage capture|attack|automoves DIR`: a save at a staged situation (testing the clients).
+fn cmd_stage(args: &[String]) {
+    let [kind, dir] = args else { usage() };
+    let dir = std::path::Path::new(dir);
+    let out = match kind.as_str() {
+        "capture" => ffh_play::stage::capture(dir).map(|s| s.to_json()),
+        "attack" => ffh_play::stage::attack(dir).map(|s| s.to_json()),
+        "automoves" => ffh_play::stage::auto_moves(dir).map(|s| s.to_json()),
+        _ => usage(),
+    };
+    match out {
+        Ok(j) => println!("{j}"),
+        Err(e) => {
+            eprintln!("ffh-play stage {kind}: {e}");
+            std::process::exit(1)
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { usage() };
@@ -621,6 +648,7 @@ fn main() {
         "soak" => cmd_soak(&args[1..]),
         "agent" => cmd_agent(&args[1..]),
         "serve" => cmd_serve(&args[1..]),
+        "stage" => cmd_stage(&args[1..]),
         _ => usage(),
     }
 }

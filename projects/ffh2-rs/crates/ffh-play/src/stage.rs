@@ -1,0 +1,240 @@
+//! Staged situations for testing the clients (`ffh-play stage capture|automoves DIR`, and the
+//! transports' tests): a saved game at a human control point arranged with rules calls, so
+//! that a client can be tried on a situation a fresh game reaches only by chance (a captured
+//! city's keep/raze decision, the AutoMoves rule between commands). Nothing here is used in
+//! play.
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use ffh_core::ids::UnitId;
+use ffh_core::path::{FinderKind, PathFinder};
+use ffh_core::structs::MissionData;
+use ffh_data::*;
+
+use crate::command::{CmdOk, Command};
+use crate::human::AdvisorAnswerer;
+use crate::json::Json;
+use crate::session::{Session, SessionOptions, Stop};
+use crate::setup::NewGame;
+
+/// A saved game at a human control point (turn 4 of a duel, seed 11) where the human's warrior
+/// `unit` stands next to an undefended size-3 AI city at (`x`, `y`) of a team at war with it: a
+/// `move` onto the city captures it and raises the keep/raze decision inside the command.
+pub struct StagedCapture {
+    /// `<dir>/capture.ffhsave` (with its sidecar).
+    pub save: PathBuf,
+    pub unit: UnitId,
+    pub x: i32,
+    pub y: i32,
+    /// Game turn of the save.
+    pub turn: i32,
+}
+
+/// A saved game at a human control point (turn 3 of a duel, seed 20) where one group (`ready`,
+/// a new warrior in the capital) is ready and another (`mover`, a land unit) has a MOVE_TO order
+/// two or more turns long queued with its moves left (an "auto unit"); every other group sleeps
+/// and no barbarian or animal is left (a human group in danger drops its orders). Skipping
+/// `ready` leaves nothing ready while `mover` has orders: the exe's next frame sends AutoMoves
+/// (`updateTestEndTurn`), which moves `mover` before the end of the turn.
+pub struct StagedAutoMoves {
+    pub save: PathBuf,
+    pub ready: UnitId,
+    pub mover: UnitId,
+    /// Where `mover` stands in the save.
+    pub from: (i32, i32),
+    pub turn: i32,
+}
+
+impl StagedCapture {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "capture", "save" => self.save.display().to_string(), "unit" => self.unit, "x" => self.x, "y" => self.y, "turn" => self.turn }
+    }
+}
+
+impl StagedAutoMoves {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! {
+            "stage" => "automoves", "save" => self.save.display().to_string(), "ready" => self.ready, "mover" => self.mover,
+            "from" => crate::jarr![self.from.0, self.from.1], "turn" => self.turn,
+        }
+    }
+}
+
+/// A duel with the human's settler settled, played (forced end turns) to `turn`.
+fn duel_at(dir: &Path, seed: u32, turn: i32) -> Result<Session, String> {
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, seed);
+    ng.opponents = 1;
+    ng.world = d.t("WORLDSIZE_DUEL");
+    let opts = SessionOptions { saves_dir: Some(dir.to_path_buf()), ..Default::default() };
+    let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), opts).map_err(|e| format!("new game: {e:?}"))?;
+    let advance = |s: &mut Session| match s.advance(&mut |_| {}) {
+        Stop::Human => Ok(()),
+        other => Err(format!("the game stopped: {other:?}")),
+    };
+    advance(&mut s)?;
+    let h = s.human;
+    let ok = |s: &mut Session, c: Command| match s.execute(&c) {
+        Ok(CmdOk::Applied { .. }) => Ok(()),
+        other => Err(format!("{c:?} -> {other:?}")),
+    };
+    let settler = s.g.players[h].units.iter().copied().find(|&u| d.units[s.g.units[u].unit_type].found).ok_or("no settler")?;
+    ok(&mut s, Command::Mission { units: vec![settler], mission: MissionType::MISSION_FOUND, data1: -1, data2: -1, flags: 0, append: false })?;
+    while s.g.game_turn() < turn {
+        ok(&mut s, Command::EndTurn { force: true })?;
+        advance(&mut s)?;
+    }
+    Ok(s)
+}
+
+/// Writes a [`StagedCapture`] into `dir` (a game directory).
+pub fn capture(dir: &Path) -> Result<StagedCapture, String> {
+    let d = ffh_data::global();
+    let mut s = duel_at(dir, 11, 4)?;
+    let h = s.human;
+    let (c, owner) = s.g.cities.iter().find(|(_, c)| c.owner != h).map(|(id, c)| (id, c.owner)).ok_or("no AI city")?;
+    let g = &mut s.g;
+    g.city_set_population(c, 3);
+    let city_plot = g.city_plot(c);
+    for u in g.map.plots[city_plot].units.clone() {
+        g.unit_kill(u, false, None);
+    }
+    let (my, their) = (g.players[h].team, g.players[owner].team);
+    g.team_meet(my, their, false);
+    g.team_declare_war(my, their, false, None);
+    let (cx, cy) = (g.cities[c].x, g.cities[c].y);
+    let warrior = d.t::<UnitType>("UNIT_WARRIOR");
+    let mut attacker = None;
+    for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)] {
+        let Some(p) = g.plot_xy(cx, cy, dx, dy) else { continue };
+        if g.plot_is_water(p) || g.plot_is_impassable(p) || !g.map.plots[p].units.is_empty() {
+            continue;
+        }
+        let (px, py) = (g.map.plots[p].x, g.map.plots[p].y);
+        let u = g.player_init_unit(h, warrior, px, py, None, None);
+        if g.unit_can_move_or_attack_into(u, city_plot, false) {
+            attacker = Some(u);
+            break;
+        }
+        g.unit_kill(u, false, None);
+    }
+    let unit = attacker.ok_or("no plot to attack from")?;
+    let paths = s.save("capture").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedCapture { save: paths.save, unit, x: cx, y: cy, turn: s.g.game_turn() })
+}
+
+/// A saved game at a human control point (turn 4 of a duel, seed 11) where the human's warrior
+/// `unit` stands next to a barbarian warrior at (`x`, `y`) in the open: hovering it shows the
+/// attack odds, a `move` there attacks it.
+pub struct StagedAttack {
+    pub save: PathBuf,
+    pub unit: UnitId,
+    pub enemy: UnitId,
+    pub x: i32,
+    pub y: i32,
+    pub turn: i32,
+}
+
+impl StagedAttack {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "attack", "save" => self.save.display().to_string(), "unit" => self.unit, "enemy" => self.enemy, "x" => self.x, "y" => self.y, "turn" => self.turn }
+    }
+}
+
+/// Writes a [`StagedAttack`] into `dir` (a game directory).
+pub fn attack(dir: &Path) -> Result<StagedAttack, String> {
+    let d = ffh_data::global();
+    let mut s = duel_at(dir, 11, 4)?;
+    let h = s.human;
+    let g = &mut s.g;
+    let barbarian = g.barbarian_player();
+    let warrior = d.t::<UnitType>("UNIT_WARRIOR");
+    let capital = *g.players[h].cities.first().ok_or("no city")?;
+    let (cx, cy) = (g.cities[capital].x, g.cities[capital].y);
+    // An empty land plot near the capital for our warrior, and one next to it for theirs.
+    let free = |g: &ffh_core::game::Game, p: ffh_core::ids::PlotIdx| {
+        !g.plot_is_water(p) && !g.plot_is_impassable(p) && g.map.plots[p].units.is_empty() && g.map.plots[p].plot_city.is_none()
+    };
+    for r in 1..4 {
+        for (dx, dy) in [(r, 0), (-r, 0), (0, r), (0, -r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+            let Some(p) = g.plot_xy(cx, cy, dx, dy) else { continue };
+            if !free(g, p) {
+                continue;
+            }
+            for (ex, ey) in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)] {
+                let (px, py) = (g.map.plots[p].x, g.map.plots[p].y);
+                let Some(q) = g.plot_xy(px, py, ex, ey) else { continue };
+                if !free(g, q) || g.map.plots[q].owner.is_some_and(|o| o != h) {
+                    continue;
+                }
+                let (qx, qy) = (g.map.plots[q].x, g.map.plots[q].y);
+                let unit = g.player_init_unit(h, warrior, px, py, None, None);
+                let enemy = g.player_init_unit(barbarian, warrior, qx, qy, None, None);
+                if g.unit_can_move_or_attack_into(unit, q, false) {
+                    let paths = s.save("attack").map_err(|e| format!("save: {e:?}"))?;
+                    return Ok(StagedAttack { save: paths.save, unit, enemy, x: qx, y: qy, turn: s.g.game_turn() });
+                }
+                g.unit_kill(enemy, false, None);
+                g.unit_kill(unit, false, None);
+            }
+        }
+    }
+    Err("no two free plots near the capital".into())
+}
+
+/// Writes a [`StagedAutoMoves`] into `dir` (a game directory).
+pub fn auto_moves(dir: &Path) -> Result<StagedAutoMoves, String> {
+    let d = ffh_data::global();
+    let mut s = duel_at(dir, 20, 3)?;
+    let h = s.human;
+    let g = &mut s.g;
+    let barbarian = g.barbarian_player();
+    for u in g.players[barbarian].units.clone() {
+        g.unit_kill(u, false, None);
+    }
+    // A land group of ours and a destination two or more turns away (found with a finder of
+    // our own, as the interface does).
+    let mut target = None;
+    'search: for &grp in &g.players[h].groups {
+        let head = g.groups[grp].units[0];
+        if g.unit_get_domain_type(head) != DomainType::DOMAIN_LAND || !g.group_ready_to_move(grp, true) {
+            continue;
+        }
+        let (x, y) = (g.units[head].x, g.units[head].y);
+        let mut finder = PathFinder::new(FinderKind::Path);
+        finder.set_group(Some(grp));
+        for r in 3..8 {
+            for (dx, dy) in [(r, 0), (-r, 0), (0, r), (0, -r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+                let Some(p) = g.plot_xy(x, y, dx, dy) else { continue };
+                let (tx, ty) = (g.map.plots[p].x, g.map.plots[p].y);
+                if finder.generate_path(g, x, y, tx, ty, false, 0, false) && finder.path_turns().is_some_and(|t| t >= 2) {
+                    target = Some((grp, tx, ty));
+                    break 'search;
+                }
+            }
+        }
+    }
+    let (grp, tx, ty) = target.ok_or("no land group with a destination two turns away")?;
+    let mover = g.groups[grp].units[0];
+    for other in g.players[h].groups.clone() {
+        if other != grp && g.group_ready_to_move(other, true) {
+            g.group_set_activity_type(other, ActivityType::ACTIVITY_SLEEP);
+        }
+    }
+    let capital = *g.players[h].cities.first().ok_or("no city")?;
+    let (cx, cy) = (g.cities[capital].x, g.cities[capital].y);
+    let ready = g.player_init_unit(h, d.t::<UnitType>("UNIT_WARRIOR"), cx, cy, None, None);
+    let turn = g.game_turn();
+    g.group_insert_at_end_mission_queue(grp, MissionData { mission_type: MissionType::MISSION_MOVE_TO, data1: tx, data2: ty, flags: 0, push_turn: turn }, false);
+    let ready_group = g.units[ready].group.ok_or("the new warrior has no group")?;
+    if crate::decision::ready_groups(g, h) != [ready_group] {
+        return Err("more than the new warrior is ready".into());
+    }
+    if !g.player_has_auto_unit(h) {
+        return Err("the mover has no orders to continue".into());
+    }
+    let from = (g.units[mover].x, g.units[mover].y);
+    let paths = s.save("automoves").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedAutoMoves { save: paths.save, ready, mover, from, turn })
+}
