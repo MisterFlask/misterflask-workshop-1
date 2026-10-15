@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use ffh_core::controller::{Controller, ControllerRef};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
+use ffh_core::log::LogEntry;
 use ffh_core::mapscript::FractalMapScript;
 
 use ffh_core::structs::*;
@@ -249,7 +250,15 @@ impl SupremacyTracker {
 
 /// Plays until `cfg.turns` turns, the end of the game, or (with `cfg.until_supremacy`) clear
 /// supremacy, calling `on_turn` after every completed game turn.
-pub fn play(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Game, &TurnStat)) -> Played {
+pub fn play(g: &mut Game, cfg: &RunConfig, on_turn: impl FnMut(&Game, &TurnStat)) -> Played {
+    play_logged(g, cfg, |_| {}, on_turn)
+}
+
+/// [`play`], also handing every game-log entry to `on_log` as it is written (only while
+/// `g.log.enabled`; the entries are printed to stderr only with `FFH_LOG`).
+pub fn play_logged(g: &mut Game, cfg: &RunConfig, mut on_log: impl FnMut(&LogEntry), mut on_turn: impl FnMut(&Game, &TurnStat)) -> Played {
+    let print_log = std::env::var("FFH_LOG").is_ok();
+    let log_filter: Option<u8> = std::env::var("FFH_LOG").ok().and_then(|v| v.parse().ok());
     let mut tracker = SupremacyTracker::new(SupremacyRule::default());
     let mut outcome = Outcome::TurnLimit;
     let mut stats = Vec::new();
@@ -262,9 +271,9 @@ pub fn play(g: &mut Game, cfg: &RunConfig, mut on_turn: impl FnMut(&Game, &TurnS
         g.update();
         updates_this_turn += 1;
         if g.log.enabled && !g.log.entries.is_empty() {
-            let filter: Option<u8> = std::env::var("FFH_LOG").ok().and_then(|v| v.parse().ok());
             for e in g.log.entries.drain(..) {
-                if filter.map_or(true, |f| e.player == Some(f)) {
+                on_log(&e);
+                if print_log && log_filter.map_or(true, |f| e.player == Some(f)) {
                     eprintln!("LOG t{} p{:?}: {}", e.turn, e.player, e.text);
                 }
             }

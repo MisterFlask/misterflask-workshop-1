@@ -480,9 +480,13 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 - `ffh stats --seed N --at T1,T2,.. [--every N]` plays one game and prints one JSON line:
   per-civ snapshots after the given numbers of turns played (and always at the end), game-wide
   values at the same turns, whole-game events (captures by and from barbarians, wars, peace,
-  eliminations), the outcome and the turn each civ died. Snapshots only read the game (the sync
-  checksum is the same with or without them). Fields of a snapshot row (one per ever-alive
-  player, barbarians included; all computed from game state at the end of that turn):
+  eliminations), the outcome and the turn each civ died. Barbarian losses: `captured_by_barb`
+  counts the cities they took and kept, `captured_or_razed_by_barb` also those they razed on
+  capture (which otherwise only show in `destroyed`), `workers_captured_by_barb` the workers
+  they captured (read from the game log, which `ffh stats` turns on; logging never changes the
+  game). Snapshots only read the game (the sync checksum is the same with or without them).
+  Fields of a snapshot row (one per ever-alive player, barbarians included; all computed from
+  game state at the end of that turn):
   - identity: `p` player id, `team`, `civ`, `leader`, `alignment`, `barb`, `alive`, `elim_turn`
     (turns played when found dead), `era`, `religion` (state religion), `vassal`;
   - size: `cities`, `pop`, `land` (plots owned), `land_scored`, `area_tiles`, `area_civs`

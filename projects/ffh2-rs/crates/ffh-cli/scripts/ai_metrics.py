@@ -5,6 +5,11 @@ Runs `ffh stats` for each seed (in parallel), saves the raw JSON lines and print
 per checkpoint turn the per-civ average/min/max of cities, population and techs, plus whole-game
 events (captures, razes, wars, eliminations), barbarian strength and timings.
 
+Barbarian losses: `barb<-civ` counts the cities the barbarians took and kept; `taken or razed`
+also counts those they razed on capture (`captured_or_razed_by_barb`), and `workers` the workers
+they captured (`workers_captured_by_barb`, from the game log). Results saved before these fields
+existed show '-'.
+
 Score: since `score_version` 2 a civ's `score` is its share of the world in basis points
 (docs/SCORE.md), so its mean is always 10000/N. The report shows instead, per checkpoint and
 averaged over games, the leading team's share, its ratio to the runner-up team, the fair share
@@ -126,6 +131,8 @@ def totals(results):
     ok = [r for r in results if 'error' not in r]
     keys = ['captured_civ', 'captured_from_barb', 'captured_by_barb', 'destroyed', 'founded', 'wars_declared', 'peace_made', 'eliminated']
     tot = {k: sum(r[k] for r in ok) for k in keys}
+    for k in ['captured_or_razed_by_barb', 'workers_captured_by_barb']:
+        tot[k] = '%d (%.1f/game)' % (sum(r[k] for r in ok), sum(r[k] for r in ok) / len(ok)) if ok and all(k in r for r in ok) else '-'
     tot['ms_per_turn'] = sum(r['ms_per_turn'] for r in ok) / max(1, len(ok))
     tot['slowest_ms'] = max([r['slowest_ms'] for r in ok] or [0])
     tot['games'] = len(ok)
@@ -149,6 +156,7 @@ def print_report(results, at, label=''):
     tot = totals(results)
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)
+    print('barbarians: civ cities taken or razed %(captured_or_razed_by_barb)s, workers captured %(workers_captured_by_barb)s' % tot)
     print('time: %.2f ms/turn avg, slowest turn %.1f ms' % (tot['ms_per_turn'], tot['slowest_ms']))
     outs = [r['outcome'] for r in results if 'error' not in r and 'outcome' in r]
     if outs:

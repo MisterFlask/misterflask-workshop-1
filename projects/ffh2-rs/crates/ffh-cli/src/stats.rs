@@ -28,8 +28,15 @@ struct Events {
     captured_civ: i32,
     /// Cities taken by a civ from the barbarians.
     captured_from_barb: i32,
-    /// Cities taken by the barbarians.
+    /// Cities taken by the barbarians and kept (a city they take and raze in the same move only
+    /// shows in `destroyed`; see `captured_or_razed_by_barb`).
     captured_by_barb: i32,
+    /// Civ cities the barbarians took or razed: taken (owner at the end of a turn), or vanished
+    /// with a barbarian unit standing on the ruins.
+    captured_or_razed_by_barb: i32,
+    /// Workers (units with a work rate) the barbarians captured (game log: the capturer's
+    /// "Captured <unit>" message).
+    workers_captured_by_barb: i32,
     /// Cities that disappeared (razed or destroyed).
     destroyed: i32,
     founded: i32,
@@ -475,8 +482,25 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
     let mut wars = civ_war_pairs(&g);
     let mut snaps: Vec<(i32, String, String)> = Vec::new();
     let barb = g.barbarian_player();
+    // Worker captures are only seen in the game log ("Captured <unit>" to the capturer); it is
+    // read here and printed only with FFH_LOG (`run::play_logged`). Logging never changes the
+    // game (same checksum).
+    g.log.enabled = true;
+    let worker_captured: Vec<String> = g
+        .d
+        .units
+        .keys()
+        .filter(|&ut| g.d.units[ut].work_rate > 0)
+        .map(|ut| format!("Captured {}", g.d.text.name(&g.d.units[ut].base.description)))
+        .collect();
+    let mut workers_captured_by_barb = 0;
+    let on_log = |e: &ffh_core::log::LogEntry| {
+        if e.player == Some(barb.0) && worker_captured.iter().any(|w| *w == e.text) {
+            workers_captured_by_barb += 1;
+        }
+    };
     let t = Instant::now();
-    let played = run::play(&mut g, cfg, |g, stat| {
+    let played = run::play_logged(&mut g, cfg, on_log, |g, stat| {
         // `stat.turn` is the turn just completed; snapshots are labelled with the number of
         // turns played (turn 99 completed -> "100").
         let played = stat.turn + 1;
@@ -493,6 +517,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
                             let e = civ_ev.entry(old).or_default();
                             if r == barb {
                                 e.lost_barb += 1;
+                                ev.captured_or_razed_by_barb += 1;
                             } else {
                                 e.lost_civ += 1;
                             }
@@ -503,6 +528,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
                 Some(&new) if new != old => {
                     if new == barb {
                         ev.captured_by_barb += 1;
+                        ev.captured_or_razed_by_barb += 1;
                         civ_ev.entry(old).or_default().lost_barb += 1;
                     } else if old == barb {
                         ev.captured_from_barb += 1;
@@ -540,6 +566,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
         }
     });
     let stats = played.stats;
+    ev.workers_captured_by_barb = workers_captured_by_barb;
     // Always snapshot the final state (a game decided between two `--at` turns, or the cap).
     let final_turn = stats.last().map_or(0, |s| s.turn + 1);
     if snaps.last().map_or(true, |s| s.0 != final_turn) {
@@ -565,7 +592,7 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
     let world_json: Vec<String> = snaps.iter().map(|(t, _, w)| format!("\"{t}\":{w}")).collect();
     let elim_json: Vec<String> = civ_ev.iter().filter_map(|(p, e)| e.elim_turn.map(|t| format!("\"{}\":{t}", p.0))).collect();
     println!(
-        "{{\"score_version\":2,\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"outcome\":{},\"final_turn\":{},\"eliminated_at\":{{{}}},\"snapshots\":{{{}}},\"world_at\":{{{}}}}}",
+        "{{\"score_version\":2,\"seed\":{},\"civs\":{},\"world\":\"{}\",\"turns\":{},\"setup_ms\":{:.1},\"ms_per_turn\":{:.2},\"slowest_ms\":{:.1},\"checksum\":\"{:08x}\",\"captured_civ\":{},\"captured_from_barb\":{},\"captured_by_barb\":{},\"captured_or_razed_by_barb\":{},\"workers_captured_by_barb\":{},\"destroyed\":{},\"founded\":{},\"wars_declared\":{},\"peace_made\":{},\"eliminated\":{},\"outcome\":{},\"final_turn\":{},\"eliminated_at\":{{{}}},\"snapshots\":{{{}}},\"world_at\":{{{}}}}}",
         cfg.seed,
         cfg.civs,
         cfg.world,
@@ -577,6 +604,8 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
         ev.captured_civ,
         ev.captured_from_barb,
         ev.captured_by_barb,
+        ev.captured_or_razed_by_barb,
+        ev.workers_captured_by_barb,
         ev.destroyed,
         ev.founded,
         ev.wars_declared,
