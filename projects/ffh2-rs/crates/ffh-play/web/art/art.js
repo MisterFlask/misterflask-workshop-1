@@ -487,15 +487,20 @@ export class Art {
     return src;
   }
 
-  _nbhd(plot) {
+  /** The 3x3 neighbourhood (row-major, centre at 4). Off-map neighbours, and unrevealed ones when
+   *  `revealedOnly` (their terrain is unknown), stand in as the centre plot. */
+  _nbhd(plot, revealedOnly = false) {
     const out = [];
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) out.push((dx || dy) ? (plot.at?.(dx, dy) || plot) : plot);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const n = (dx || dy) ? plot.at?.(dx, dy) : plot;
+      out.push(!n || (revealedOnly && n.vis === 0) ? plot : n);
+    }
     return out;
   }
 
   /** Ground indices of a tile (32x32): texture, shoreline ink, foam, depth contour. Cached. */
   groundIndices(plot) {
-    const nb = this._nbhd(plot);
+    const nb = this._nbhd(plot, true);
     const infos = nb.map((p) => this._terrain(p.terrain));
     const water = nb.map((p) => this._isWater(p));
     const key = `${plot.x},${plot.y}|` + nb.map((p, k) => infos[k].type + (water[k] ? 'w' : '')).join(',');
@@ -634,7 +639,7 @@ export class Art {
     const S = edges ? !!edges.s : !!(bits & 1), E = edges ? !!edges.e : !!(bits & 2);
     if (!S && !E) return;
     const PAD = 8, N = TILE + 2 * PAD;
-    const nb = this._nbhd(plot);
+    const nb = this._nbhd(plot, true);
     const water = nb.map((p) => this._isWater(p));
     const src = this._cells(plot, PAD);
     const out = new Uint8Array(N * N).fill(TRANSPARENT);
