@@ -34,8 +34,8 @@ struct Events {
     /// Civ cities the barbarians took or razed: taken (owner at the end of a turn), or vanished
     /// with a barbarian unit standing on the ruins.
     captured_or_razed_by_barb: i32,
-    /// Workers (units with a work rate) the barbarians captured (game log: the capturer's
-    /// "Captured <unit>" message).
+    /// Units the barbarians captured as workers (units with a work rate; FfH captures a settler
+    /// as a worker too), from the game log: the capturer's "Captured <unit>" message.
     workers_captured_by_barb: i32,
     /// Cities that disappeared (razed or destroyed).
     destroyed: i32,
