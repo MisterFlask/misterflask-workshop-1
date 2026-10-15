@@ -1,5 +1,8 @@
-; resource medallions (docs/ART.md 6.1): an 11x11 soot disc whose rim (# slot) gives the class,
-; with a 7x7 glyph inside. Both are centred on tile (25, 25).
+; resource medallions (docs/ART.md 6.1): an 11x11 soot disc whose rim (# slot) gives the class
+; (food o, strategic 6, luxury y, mana P), with a 7x7 glyph inside; both centred on tile (25, 25).
+; Glyphs are flat: at most 4 colours, no light except the one core pixel of GOLD, the Fruit of
+; Yggdrasil and the mana runes. Mana runes follow the sphere table of 11.5 (colour = family, shape =
+; sphere). The category glyphs (_food, _strategic, _luxury, _mana) are the fallbacks.
 
 = res/_disc 11x11 5,5
 : note the seal; # is the class rim (food o, strategic 6, luxury y, mana P), set by the mapping `rim`
@@ -15,18 +18,210 @@
 ..#11111#..
 ...#####...
 
+; ---------------------------------------------------------------- category fallbacks
+
 = res/_food 7x7 3,3
 : note food fallback: a bound sheaf
 .Y.Y.Y.
-..yyy..
+.y.Y.y.
+..yYy..
 ...y...
-..6y6..
-...y...
-..yyy..
+..666..
+..yYy..
 .y.y.y.
 
 = res/_strategic 7x7 3,3
-: note strategic fallback: an ingot
+: note strategic fallback: a lump of ore
+.......
+...65..
+..6554.
+.65554.
+6555443
+.44433.
+.......
+
+= res/_luxury 7x7 3,3
+: note luxury fallback: a cut stone
+.......
+..yYy..
+.yYYYy.
+yYYYYYy
+.yYYYy.
+..yYy..
+...y...
+
+= res/_mana 7x7 3,3
+: types BONUS_MANA
+: note raw mana: a lilac crystal with one vellum glint
+...P...
+..PP8..
+..PPp..
+.PPPpp.
+.PPPpp.
+..Ppp..
+...p...
+
+; ---------------------------------------------------------------- food (rim olive)
+
+= res/corn 7x7 3,3
+: types BONUS_CORN
+: note a cob in its husk
+...Y...
+..YyY..
+..yYy..
+..YyY..
+.oyYyo.
+..oyo..
+...o...
+
+= res/rice 7x7 3,3
+: types BONUS_RICE
+: note a heaped bowl of rice
+.......
+..787..
+.78787.
+6666666
+.65556.
+..555..
+.......
+
+= res/wheat 7x7 3,3
+: types BONUS_WHEAT
+: note a sheaf tied at the waist
+Y.Y.Y..
+yYyYy..
+.yYy...
+..6....
+.yYy...
+y.y.y..
+.......
+
+= res/cow 7x7 3,3
+: types BONUS_COW
+: note a horned head
+7.....7
+67...76
+.65556.
+.55555.
+..565..
+..777..
+...7...
+
+= res/pig 7x7 3,3
+: types BONUS_PIG
+: note a snout with two nostrils
+.Y...Y.
+.YYYYY.
+Y6YYY6Y
+Y72727Y
+.YY7YY.
+..YYY..
+.......
+
+= res/sheep 7x7 3,3
+: types BONUS_SHEEP
+: note a fleece with a dark face
+.......
+.7.7...
+777773.
+7777733
+.7777..
+.3..3..
+.......
+
+= res/toad 7x7 3,3
+: types BONUS_TOAD
+: note a squat frog, eyes on top
+.O...O.
+O2O.O2O
+OOOOOOO
+.OyyyO.
+O.ooo.O
+O.....O
+.......
+
+= res/banana 7x7 3,3
+: types BONUS_BANANA
+: note a curved banana on its stem
+.....u.
+....Yu.
+...YY..
+..YYy..
+.YYy...
+YYy....
+.y.....
+
+= res/deer 7x7 3,3
+: types BONUS_DEER
+: note branching antlers over a narrow head
+6.6.6.6
+.66.66.
+..6.6..
+..yYy..
+..YyY..
+...Y...
+...y...
+
+= res/fish 7x7 3,3
+: types BONUS_FISH
+: note a fish, swimming right
+.......
+..ggg..
+gFFFFg.
+.gFFF8g
+gFFFFg.
+..ggg..
+.......
+
+= res/clam 7x7 3,3
+: types BONUS_CLAM
+: note a ribbed shell
+.......
+..777..
+.76767.
+7676767
+.67676.
+..666..
+...6...
+
+= res/crab 7x7 3,3
+: types BONUS_CRAB
+: note a crab with raised claws
+x.....x
+xx...xx
+.xxxxx.
+xyxxxyx
+.xyyyx.
+x.x.x.x
+.......
+
+= res/whale 7x7 3,3
+: types BONUS_WHALE
+: note a whale's back with its spout
+..F.F..
+...F...
+..ggg..
+.ggggg.
+gFggggg
+NgggggN
+.N.N.N.
+
+; ---------------------------------------------------------------- strategic (rim stone)
+
+= res/copper 7x7 3,3
+: types BONUS_COPPER
+: note a copper ingot
+.......
+..yyy..
+.yxxxy.
+yxxxxxu
+uuuuuu2
+.222222
+.......
+
+= res/iron 7x7 3,3
+: types BONUS_IRON
+: note an iron ingot
 .......
 ..666..
 .65556.
@@ -35,42 +230,469 @@
 .333333
 .......
 
-= res/_luxury 7x7 3,3
-: note luxury fallback: a cut stone
-..yyy..
+= res/mithril 7x7 3,3
+: types BONUS_MITHRIL
+: note a mithril ingot, rime bright
+.......
+..888..
+.8FFF8.
+8FFFFFf
+ffffffg
+.gggggg
+.......
+
+= res/horse 7x7 3,3
+: types BONUS_HORSE
+: note a horse's head, the chess knight's profile, mane in shade
+...7.7.
+..7777.
+.777776
+7777.76
+77...76
+.....76
+....776
+
+= res/nightmare 7x7 3,3
+: types BONUS_NIGHTMARE
+: note a black horse's head with a scarlet eye
+...4.4.
+..4444.
+.44R443
+4444.43
+44...43
+.....43
+....443
+
+= res/gunpowder 7x7 3,3
+: types BONUS_GUNPOWDER
+: note a keg with a fuse
+...4..4
+..QQQ4.
+.uQyQu.
+.44444.
+.uQyQu.
+.44444.
+..uuu..
+
+= res/reagents 7x7 3,3
+: types BONUS_REAGENTS
+: note a stoppered vial of lilac liquid
+..777..
+...6...
+..6.6..
+.6PPP6.
+.6PPP6.
+..666..
+.......
+
+= res/sheut_stone 7x7 3,3
+: types BONUS_SHEUT_STONE
+: note a black stone with a crimson vein
+.......
+..553..
+.5332C.
+533C22.
+53C222.
+.2222..
+.......
+
+= res/marble 7x7 3,3
+: types BONUS_MARBLE
+: note a cut marble block
+.......
+..8888.
+.88887.
+.77776.
+.76776.
+.77666.
+.......
+
+; ---------------------------------------------------------------- luxury (rim ochre)
+
+= res/dye 7x7 3,3
+: types BONUS_DYE
+: note a drop of dye
+...P...
+...P...
+..PPp..
+.PPPPp.
+.P8PPp.
+..ppp..
+.......
+
+= res/fur 7x7 3,3
+: types BONUS_FUR
+: note a stretched pelt
+y.....y
+.yQQQy.
+.QYQQQ.
+.QQQQy.
+.yQQQy.
+y..y..y
+.......
+
+= res/gems 7x7 3,3
+: types BONUS_GEMS
+: note a cut gem
+.......
+.FFFFf.
+F8FfFff
+.fFFff.
+..fFf..
+...f...
+.......
+
+= res/gold 7x7 3,3
+: types BONUS_GOLD
+: note a gold nugget with one glow pixel
+.......
+..yYy..
 .yYLYy.
 yYYYYYy
 .yYYYy.
+..yyy..
+.......
+
+= res/incense 7x7 3,3
+: types BONUS_INCENSE
+: note a censer with a smoke curl
+...6...
+..6....
+...7...
+....7..
+...7...
+..yyy..
+...u...
+
+= res/ivory 7x7 3,3
+: types BONUS_IVORY
+: note a curved tusk
+......8
+.....87
+....87.
+...87..
+..87...
+.776...
+.66....
+
+= res/silk 7x7 3,3
+: types BONUS_SILK
+: note a bolt of cloth with a loose end
+.......
+.66666.
+6787876
+6878786
+.66666.
+.....77
+......7
+
+= res/sugar 7x7 3,3
+: types BONUS_SUGAR
+: note cane stalks with nodes
+.O...O.
+.o.O.o.
+.O.o.O.
+.y.O.y.
+.O.o.O.
+.o.O.o.
+.......
+
+= res/wine 7x7 3,3
+: types BONUS_WINE
+: note a bunch of grapes on a stem with a leaf
+...uo..
+..u.oo.
+.O.O.O.
+..O.O..
+.O.O.O.
+..O.O..
+...O...
+
+= res/pearl 7x7 3,3
+: types BONUS_PEARL
+: note a pearl on a half shell
+.......
+...7...
+..787..
+..777..
+.66666.
+6555556
+.......
+
+= res/cotton 7x7 3,3
+: types BONUS_COTTON
+: note a cotton boll
+..7.7..
+.78787.
+.77777.
+..7u7..
+...u...
+..u.u..
+.......
+
+= res/ale 7x7 3,3
+: types BONUS_ALE
+: note a tankard with a head of foam
+.......
+.7777..
+.QQQQu.
+.QyyQ.u
+.QyyQ.u
+.QQQQu.
+.uuuu..
+
+= res/fine_clothes 7x7 3,3
+: types BONUS_FINE_CLOTHES
+: note folded cloth with a gilt hem
+.......
+.TTTTT.
+.tTTTt.
+.yyyyy.
+.TTTTT.
+.ttttt.
+.......
+
+= res/jewels 7x7 3,3
+: types BONUS_JEWELS
+: note a ring set with a stone
+...F...
+..F8F..
 ..yYy..
-...y...
+.y...y.
+.y...y.
+..yyy..
 .......
 
-= res/_mana 7x7 3,3
-: note mana: a lilac crystal (sphere glyphs to come); one L core pixel
-...P...
-..PP8..
-..PPp..
-.PPLp..
-..PPp..
-..Pp...
-...p...
+= res/razorweed 7x7 3,3
+: types BONUS_RAZORWEED
+: note a thorned stalk
+...o...
+..6o6..
+...o6..
+.6oo...
+...o6..
+..6o...
+...o...
 
-= res/fish 7x7 3,3
-: types BONUS_FISH
-.......
-.g...gg
-gFg.gFg
-gFFgFFg
-gFg.gFg
-.g...gg
+= res/gulagarm 7x7 3,3
+: types BONUS_GULAGARM
+: note a sealed jar
+..yyy..
+..yQy..
+.YQQQu.
+YQyQQQu
+YQQQQQu
+.QQQQu.
+..uuu..
+
+= res/fruit_of_yggdrasil 7x7 3,3
+: types BONUS_FRUIT_OF_YGGDRASIL
+: note a fruit with one wisp pixel
+....O..
+...uO..
+..ooo..
+.oOWOo.
+.oOOOo.
+..ooo..
 .......
 
-= res/iron 7x7 3,3
-: types BONUS_IRON
+; ---------------------------------------------------------------- mana (rim lilac): the sphere runes
+
+= res/mana_air 7x7 3,3
+: types BONUS_MANA_AIR
+: note three wind strokes
+.FFFF..
+.....F.
+FFFFF..
+......F
+.FFF.F.
+....F..
 .......
-..555..
-.54445.
-5444443
-3333332
-.222222
+
+= res/mana_body 7x7 3,3
+: types BONUS_MANA_BODY
+: note a hand
+.Y.Y.Y.
+.Y.Y.Y.
+.YYYYY.
+YYYYYY.
+.YYYYY.
+..YYY..
 .......
+
+= res/mana_chaos 7x7 3,3
+: types BONUS_MANA_CHAOS
+: note an eight-pointed burst
+R..R..R
+.R.R.R.
+..RRR..
+RRRLRRR
+..RRR..
+.R.R.R.
+R..R..R
+
+= res/mana_death 7x7 3,3
+: types BONUS_MANA_DEATH
+: note a skull
+.77777.
+7777777
+7077707
+7777777
+.77077.
+.7.7.7.
+.......
+
+= res/mana_earth 7x7 3,3
+: types BONUS_MANA_EARTH
+: note a mountain
+.......
+..y....
+.yyy...
+.yyyyy.
+yyyyyyy
+.......
+yyyyyyy
+
+= res/mana_enchantment 7x7 3,3
+: types BONUS_MANA_ENCHANTMENT
+: note a star in a circle
+..PPP..
+.P.P.P.
+P.PPP.P
+PPP8PPP
+P.PPP.P
+.PP.PP.
+..PPP..
+
+= res/mana_entropy 7x7 3,3
+: types BONUS_MANA_ENTROPY
+: note a spiral turning inward
+pPPPPPp
+......P
+.pPPp.P
+.P..P.P
+.P.PP.P
+.P....P
+.pPPPPp
+
+= res/mana_fire 7x7 3,3
+: types BONUS_MANA_FIRE
+: note a flame
+...l...
+...ll..
+..lll..
+.llLll.
+.lllll.
+..lll..
+.......
+
+= res/mana_law 7x7 3,3
+: types BONUS_MANA_LAW
+: note scales
+...8...
+8888888
+8..8..8
+8..8..8
+77.8.77
+...8...
+..888..
+
+= res/mana_life 7x7 3,3
+: types BONUS_MANA_LIFE
+: note an ankh-like knot
+..SSS..
+.S...S.
+.S...S.
+..SWS..
+SSSSSSS
+...S...
+...S...
+
+= res/mana_metamagic 7x7 3,3
+: types BONUS_MANA_METAMAGIC
+: note two interlocked rings
+.......
+.PP.PP.
+P..8..P
+P.8.8.P
+P..8..P
+.PP.PP.
+.......
+
+= res/mana_mind 7x7 3,3
+: types BONUS_MANA_MIND
+: note an eye
+.......
+..TTT..
+.TT.TT.
+TT.8.TT
+.TT.TT.
+..TTT..
+.......
+
+= res/mana_nature 7x7 3,3
+: types BONUS_MANA_NATURE
+: note a leaf
+....OO.
+...OOO.
+..OOoO.
+.OOoOO.
+.OoOO..
+.oOO...
+o......
+
+= res/mana_shadow 7x7 3,3
+: types BONUS_MANA_SHADOW
+: note a hood with a void face
+..444..
+.44444.
+4400044
+4400044
+440004.
+.4...4.
+.......
+
+= res/mana_spirit 7x7 3,3
+: types BONUS_MANA_SPIRIT
+: note a rising wisp
+....F..
+...g.g.
+..g..g.
+..g.g..
+...g...
+..ggg..
+.g...g.
+
+= res/mana_sun 7x7 3,3
+: types BONUS_MANA_SUN
+: note a rayed disc
+...l...
+.l.l.l.
+..lll..
+lllLlll
+..lll..
+.l.l.l.
+...l...
+
+= res/mana_water 7x7 3,3
+: types BONUS_MANA_WATER
+: note waves
+.......
+.g...g.
+gNg.gNg
+N.NgN.N
+.......
+.g...g.
+gNg.gNg
+
+
+= res/mana_ice 7x7 3,3
+: types BONUS_MANA_ICE
+: note a six-rayed crystal
+...F...
+.f.f.f.
+..fff..
+FffFffF
+..fff..
+.f.f.f.
+...F...
