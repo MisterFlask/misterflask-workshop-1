@@ -438,6 +438,30 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
             .int("founded", ev.founded)
             .int("cities_lost_rule", pl.cities_lost)
             .int("players_killed", pl.players_killed);
+        // Victory progress (ffh-ai's victory planner; reads the game only).
+        if !barbarian && pl.alive {
+            use ffh_ai::victory;
+            let vs = victory::statics(d);
+            let towers: i32 = vs.tower_classes.iter().filter(|&&(bc, n)| g.teams[team].building_class_count[bc] >= n).count() as i32;
+            let plan = victory::plan(g, p);
+            // The third-best city's culture as a share of legendary (per mille).
+            let mut culture: Vec<i64> = pl.cities.iter().map(|&c| g.cities[c].culture[p] as i64 / 100).collect();
+            culture.sort_unstable_by(|a, b| b.cmp(a));
+            let legend = legendary.map_or(1, |l| g.culture_threshold(l).max(1) as i64);
+            o.int("towers", towers)
+                .opt_int("tower_eta", victory::tower_eta(g, p))
+                .opt_int("culture_eta", victory::culture_eta(g, p))
+                .int("legend3_pm", culture.get(2).map_or(0, |&c| c * 1000 / legend))
+                .opt_int("domination_eta", victory::domination_eta(g, p))
+                .opt_int("conquest_eta", victory::conquest_eta(g, p))
+                .int("altar_stage", victory::altar_stage(g, team).map_or(-1, |s| s as i64))
+                .int("mana_raw", victory::raw_mana_plots(g, p).len() as i64)
+                .int("mana_types", vs.mana_builds.iter().filter(|&&(_, bn)| g.player_has_bonus(p, bn)).count() as i64)
+                .int("culture_pct", pl.commerce_percent[CommerceType::COMMERCE_CULTURE.idx()])
+                .str("goal", &plan.ours.map_or("-".to_string(), |r| format!("{:?}", r.goal)))
+                .opt_int("goal_eta", plan.ours.map(|r| r.eta))
+                .opt_int("rival", plan.rival.map(|(q, _)| q.0 as i32));
+        }
         parts.push(o.done());
     }
     format!("[{}]", parts.join(","))
