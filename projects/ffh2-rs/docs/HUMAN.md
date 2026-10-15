@@ -6,10 +6,11 @@ or a program (JSONL over stdio) play one slot while the AI plays the others. The
 
 ## Status
 
-Phases **P0** (skeleton: JSON, type names), **P1** (session core, in-process API) and **P2**
-(the AI-as-human soak, `ffh-play soak`) are done. A program linked with the `ffh_play` library
-can play a whole game; there is no browser or JSONL agent yet (P4-P5) and no views or queries
-beyond `Session::pending` (P3). See the status table at the top of `docs/PLAY_DESIGN.md`.
+Phases **P0** (skeleton: JSON, type names), **P1** (session core, in-process API), **P2**
+(the AI-as-human soak, `ffh-play soak`) and **P3** (views and queries, the turn report, deals)
+are done. A program linked with the `ffh_play` library can play a whole game through the
+protocol's queries and commands (the test bot does); there is no JSONL agent or browser yet
+(P4-P5). See the status table at the top of `docs/PLAY_DESIGN.md`.
 
 ## Commands
 
@@ -34,9 +35,10 @@ cargo build --release
 * `lookup` prints one JSON line per reference (`kind`, `index`, `name`, `display`, `text_key`, or
   `error`) and exits with code 1 if any reference does not resolve. A kind is named by its Rust
   type (`UnitType`) or its table (`units`).
-* `bot` plays the human slot with the scripted test bot (design §8 T1) and prints one line per
-  turn and the bot's and session's counters. With `--saves DIR` it writes the journal and the
-  autosaves there.
+* `bot` plays the human slot with the scripted test bot (design §8 T1), which reads the game only
+  through the queries below and acts with commands, and prints one line per turn and the bot's
+  and session's counters; `--verbose` also prints the `text` query each turn (what an agent
+  reads). With `--saves DIR` it writes the journal and the autosaves there.
 * `replay` re-plays a journal from its first line (a new game), or `--from` an autosave of the
   same game; a journal that starts with a load or take-over line replays `--from` the save it was
   loaded from (its sidecar next to it) or taken over from. It stops with exit code 1 at the first
@@ -103,6 +105,9 @@ loop {
   Where Civ4 asks for confirmation the reply is `NeedsConfirm` (declare war to move, delete,
   global or war spells, which transport to load into, ending the turn with things open); resend
   with the flag set.
+* `query(&Query)` (or `query_json` of a `{"q": ..}` object) answers a protocol query from your
+  side of the fog (below); `set_reveal(true)` switches debug reveal on (the true state, every
+  reply marked `"reveal": true`).
 * `read(|g| ..)` reads the game under a `QueryGuard` (no side effects on the saved state).
 * `save(name)` / `save_bytes()` work at a control point or turn boundary; `Session::load`,
   `Session::take_over` (an AI save, debugging) resume.
@@ -117,15 +122,59 @@ loop {
 ### Commands
 
 `move`, `mission`, `do_command`, `join_group`, `auto_mission`, `push_order`, `pop_order`,
-`do_task`, `research`, `update_civics`, `percent_change`, `convert`, `declare_war`, `event`,
-`vote`, `set_option`, `auto_moves`, `end_turn`, `autoplay` (`propose_deal` comes with P3). Each
-is the port of what Civ4 sends for that input; design §4.5 and the "As built" notes of P1 in
-§7 list the rules calls and checks. Their JSON form is the protocol request (`{"c": "move",
+`do_task`, `research`, `update_civics`, `percent_change`, `convert`, `declare_war`,
+`propose_deal`, `event`, `vote`, `set_option`, `auto_moves`, `end_turn`, `autoplay`. Each is
+the port of what Civ4 sends for that input; design §4.5 and the "As built" notes of P1 and P3 in
+§7 list the rules calls and checks. The `group` query lists the actions of a selection with the
+command that performs each, ready to send. Their JSON form is the protocol request (`{"c": "move",
 "units": [..], "x": .., "y": ..}`), with type names or indices. Parameters are accepted only in
 the form the Civ4 interface sends them: missions without movement `flags` (0) and with the data
 their button carries (a plot, a build/religion/specialist/building, else -1), no
 `MISSION_MOVE_TO_UNIT`, specialist changes of +1/-1 where the city screen shows the button,
 slider steps of ±`COMMERCE_PERCENT_CHANGE_INCREMENTS` (10), `TASK_LIBERATE` with `data1` 0.
+
+### Deals
+
+`propose_deal {"to": 2, "give": [{"item": "TRADE_PEACE_TREATY"}], "get": [{"item":
+"TRADE_PEACE_TREATY"}]}` offers a deal to an AI, as the diplomacy screen does. The `trade {with}`
+query lists what each side can give (Civ4's trade table: gold and gold per turn up to a maximum,
+maps, open borders, pacts, a peace treaty while at war, techs, resources, cities, ...) with
+Civ4's refusals. A deal must use those items (gold as an amount), not twice, and put a peace
+treaty, open borders, a defensive pact or a permanent alliance on both sides. The AI answers at
+once: `accepted: false` changes nothing; `accepted: true` signs it. Today's AI (ffh-ai's
+`consider_offer`) accepts gifts, peace after 10 turns of war unless it is clearly winning, open
+borders when it likes you, and a fair tech swap, and refuses anything else.
+
+### Queries
+
+Requests are `{"q": "<name>", ..}`; replies are JSON with type indices (`data` names them).
+Errors: `invalid`, `not_owner`, `gone`, `busy`.
+
+| `q` | Reply |
+|---|---|
+| `status` | phase (`human`, `running`, `decision`, `over`), turn, year, you, the active players, the open decision, the winner |
+| `pending` | open events (with each option's effects), votes, research needed, idle cities, promotions, ready groups, idle AI-controlled groups |
+| `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis), the players you met, the cities you revealed, the units you see, your groups, `pending`, `log_next` |
+| `map` | flat arrays `y * w + x`: `vis` (0 unrevealed, 1 fogged, 2 visible), `plot_type`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `owner`, `river` (bit 0 river on the south edge, bit 1 on the east edge, bits 2-4 north/south flow + 1, bits 5-7 west/east flow + 1), `city`, `yield` (`food \| production << 8 \| commerce << 16`, visible plots only), and `map_rev` |
+| `plot {x,y}` | a plot as you know it; while visible also yields, defence, culture and the units |
+| `group {units}` | the units in detail and the actions: `mission`, `target` (needs a plot), `command`, `load`, `spell`, `promotion`, `upgrade`, each `enabled` or not, each with its `cmd` |
+| `path {units,x,y}` | the path preview: nodes with the turn of arrival and moves left, total turns, a war it would declare, whether it ends in an attack |
+| `combat {units,x,y}` | the attack preview: attacker, defender, odds of winning and of retreating (per mille), strengths, the modifiers of both sides |
+| `city {city}` | the city screen of one of your cities: plots, specialists, yields, happiness, health, buildings, queue, the buildable list with cost and turns |
+| `techs`, `civics`, `religions`, `players` | the tech tree (prerequisites, depth, turns), civics (availability, upkeep, anarchy), religions, the players you met with your deals |
+| `trade {with}` | the trade tables both ways (see Deals) |
+| `log {since}` | your messages from index `since` (`view.log_next` is the next one) |
+| `report` | the turn report: what changed between your end of turn and now (units lost and gained, cities founded, lost, grown, starving, buildings, techs, wars and peace, enemies near your cities, the Armageddon counter, borders), with the messages |
+| `text` | a plain-text summary for agents |
+| `ascii {x,y,w,h,layer}` | an ASCII map, 2 characters per plot, north up, `::` unrevealed; layers `terrain`, `political`, `yield`, `units`; a legend |
+| `inspect {kind,id}` | `{:#?}` of your unit, group, city, plot, player, team, deal, or of an info entry (`UnitType`, `units`, ...) |
+| `data` | the static tables (every kind: type, name, texts, the main gameplay fields) |
+| `setup`, `saves` | the new-game lists; the saves of the game's directory |
+
+What you see is what Civ4 shows the player: your units, and others only on plots you see and
+when they are not invisible to you (hidden-nationality units show as barbarians; the cargo of a
+foreign ship is hidden); cities you revealed (size only while you see them); players you met;
+bonuses your techs reveal; improvements, roads and borders as you last saw them.
 
 ### Decisions and popups
 
@@ -142,6 +191,8 @@ Civ4 answers some rules questions with popups for a human. `ffh-play` keeps the 
 * **Blocking** (answered during the rules call that asks, through the session's `Answerer`):
   a free tech, keeping or abandoning an acquired city, the secretary general's election, a deal
   offered to you, founding a religion. Each offers the C++ popup's options and the advisor's pick.
+  An answerer that implements `ask_with` can run the queries meanwhile (through the
+  `DecisionReader`; messages, the report and the saves list are not available then).
 
 The advisor is a private `ffh_ai::Ai`; with `autoplay` it plays your slot for N turns.
 
@@ -151,7 +202,8 @@ With `SessionOptions::saves_dir = DIR`: autosaves at every turn boundary in `DIR
 last 20, `T0057.ffhsave` = the end of turn 57) and `DIR/auto/start.ffhsave` at a new game's
 first control point, the journal `DIR/journal.jsonl` (one line per command, decision answer and turn
 checkpoint), manual saves `DIR/<name>.ffhsave`. A save is two files: `.ffhsave` (the game, any
-tool loads it) and `.ffhsess` (session state: your open event popups, the journal position).
+tool loads it) and `.ffhsess` (session state: your open event popups, the journal position, the
+latest messages and the turn report).
 
 ## Protocol conventions
 
@@ -182,7 +234,13 @@ These hold for every request and reply of the protocol (design §4.1):
 
 ## Known gaps
 
-* No views, queries, turn report, deals (P3), transports (P4), browser (P5-P6).
+* No transports (P4: `ffh-play agent` and `serve`), no browser (P5-P6).
+* AI players never offer you deals or ask anything (ffh-ai); you propose. The trade screen shows
+  an AI's whole gold and gold rate as what it can give (Civ4's AI caps it; that AI code is not
+  ported), and Civ4's AI refusals ("we don't want to trade that") are mostly not ported either.
+* A path preview for part of a stack uses the whole stack's speed (`approximate: true`).
+* Fogged plots show no yield, defence or culture (the rules engine computes them from the real
+  improvement, not the one you last saw).
 * Automation and FfH AI-controlled units idle (ffh-ai has no `update_automated_group` yet); the
   automate commands are refused, and such groups do not count as ready.
 * Civ4 ends your turn by itself when nothing is left to move; here you always end it.

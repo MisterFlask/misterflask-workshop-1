@@ -88,6 +88,12 @@ without changing the rules engine:
 - **Soak.** `ffh-play soak` lets `ffh_ai::Ai` play the human slot through the session over a
   settings matrix (each game in a child process, ffh-stress's invariant checks every 5 turns), so
   the rules' human-only branches run before people play; failures print a repro command.
+- **Views and queries.** Clients read the game only through protocol queries (`query.rs`,
+  `view/`), answered under a `QueryGuard` from the human team's side: `view/fog.rs` holds the
+  only visibility predicates (revealed and visible plots, invisible units, revealed cities, met
+  players). Path previews use a session-owned interface path finder, never the game's. A turn
+  report diffs a fog-filtered snapshot taken at the end of the human's turn against its next
+  control point. Queries can also be served inside a blocking decision (`Answerer::ask_with`).
 
 ## Saved games
 
