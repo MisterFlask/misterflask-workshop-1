@@ -1,0 +1,6 @@
+; Sprite sets, loaded in this order. Each directory has its own manifest.txt (sources and
+; mapping rules), so sets can grow in parallel without editing a shared file.
+terrain
+units
+cities
+ui

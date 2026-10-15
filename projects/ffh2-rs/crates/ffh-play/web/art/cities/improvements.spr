@@ -1,0 +1,1232 @@
+; improvements (docs/ART.md 5.7-5.8, 6.2): quiet marks in the tile's lower half, at most 4
+; colours plus outline, below the value of the ground's light marks except lit windows and fires.
+; Placed with the anchor at tile (16, 29) unless `: place` says otherwise. `: flat` ones are drawn
+; in the ground pass, under trees and buildings.
+; The unique landmarks (6.2) are the terrain set's (improvement/landmark_*); _landmark below is only the
+; fallback for unique types added later.
+
+= improvement/farm 24x11 12,10
+: types IMPROVEMENT_FARM
+: flat
+: note ruled furrow rows (u and Q dashes); no outline, it is a ground mark
+..QQQu.QQQu.QQQu.QQQu...
+........................
+.uQQQ.uQQQ.uQQQ.uQQQ.uQQ
+........................
+QQQu.QQQu.QQQu.QQQu.QQQu
+........................
+.uQQQ.uQQQ.uQQQ.uQQQ.uQQ
+........................
+QQQu.QQQu.QQQu.QQQu.QQQu
+........................
+..uQQQ.uQQQ.uQQQ.uQQQ...
+
+= improvement/cottage 8x8 4,7
+: types IMPROVEMENT_COTTAGE
+: note one hut, no light yet (cottages grow into lit hamlets, villages and towns)
+...00...
+..0520..
+.053220.
+05332220
+.042220.
+.043320.
+.043320.
+..0000..
+
+= improvement/hamlet 15x13 7,12
+: types IMPROVEMENT_HAMLET
+: note two huts and the first lit window
+..........0....
+.........050...
+.........050...
+........05320..
+........05320..
+...00..0533220.
+..0520.0533220.
+.05322053332220
+053322053332220
+.0422200422220.
+.043320043l320.
+.0433200433320.
+..0000..00000..
+
+= improvement/mine 18x11 9,9
+: types IMPROVEMENT_MINE
+: note an adit (void square in an umber frame) with an ash spoil heap
+....00000.........
+...0uuuuu0........
+...0u000u0.....0..
+...0u000u0....050.
+...0u000u0...05560
+..0uuuuuuu00055556
+...000000055555560
+........0555555550
+.........00000000.
+..................
+..................
+
+= improvement/_mark 10x11 5,9
+: note fallback for improvements without a sprite: a marker post with a pale flag
+....0.....
+...0600...
+...06770..
+...06770..
+...0600...
+...060....
+...060....
+...060....
+..02220...
+...000....
+..........
+
+= improvement/_lair 18x12 9,10
+: note fallback for lairs (permanent, spawning): a rock cave mouth with a bone pixel
+.......00.........
+.....00550........
+....0554430.......
+...05544430.......
+..0554400330......
+.05544000330......
+.055400003320.....
+05544000033200....
+055440070333220...
+.0000..0.00000....
+..................
+..................
+
+= improvement/_landmark 26x14 13,12
+: note fallback for unique landmarks: menhirs around a pale-green ritual ring
+: light 13,11 RITE 8
+...0..............0.......
+..050.....0......050......
+.05540...050....05540.....
+.05540..05540...05540.....
+.05430..05540...05430.....
+.05430..05430...05430.....
+.04430..05430...04430.....
+0444300.044300.044430.....
+044430S0S4430S0S44430.....
+.0300.0S0000S0.00300......
+..0....00SS00....0........
+.........00...............
+..........................
+..........................
+
+= improvement/_node 12x14 6,12
+: note fallback for mana nodes: a slate obelisk with the sphere rune in the @ accent
+: accent P
+: light 6,12 ARC 6
+.....0......
+....050.....
+...05540....
+...05540....
+...05@40....
+...0@@@0....
+...05@40....
+...05540....
+...05540....
+..0554430...
+..0444330...
+...00000....
+............
+............
+
+= improvement/_cairn 14x11 7,9
+: note the goody hut: a small cairn with one lit candle
+: light 7,5 FIRE 5
+......0.......
+.....0L0......
+.....0l0......
+....05550.....
+...0555430....
+..055544330...
+.0555443330...
+.0444433330...
+..00000000....
+..............
+..............
+
+= improvement/_boat 16x9 8,7
+: note water improvements: a tiny boat with net dots
+.......0........
+......0u0.......
+...0..0u00......
+..06000u060.....
+.0uuuuuuuuu0....
+..0uQQQQQu0.....
+...0uuuuu0......
+....00000.......
+................
+
+= improvement/village 19x12 9,11
+: types IMPROVEMENT_VILLAGE
+: note three huts, two lit windows
+........00.........
+.......0520........
+.......0520........
+......053220..0....
+...00.053220.050...
+..052053322205320..
+.05322033220533220.
+0533222022053332220
+.04222043320422220.
+.04l32043320433l20.
+.04332043320433320.
+..0000.0000.00000..
+
+= improvement/town 23x14 11,13
+: types IMPROVEMENT_TOWN
+: note five huts around a small spire, three lit windows
+............0..........
+...........050.........
+...........050.........
+......00..05320........
+.....0520.05320........
+.....05200503220.......
+...00532200502200000...
+..0520322053200050520..
+.053220205332205053220.
+05332220533322205332220
+.042220204222204042220.
+.04l320304333204043l20.
+.043320304333204043320.
+..000000000000.000000..
+
+= improvement/pirate_cove 11x13 5,12
+: types IMPROVEMENT_PIRATE_COVE
+: note a stilted shack under a sable flag
+...00......
+..0520.....
+..0520.000.
+.0532202720
+.053220220.
+053322200..
+053322200..
+.0Q2220u0..
+.0Quu200...
+.0Quu20....
+0u0u0u0....
+0u0u0u0....
+.0.0.0.....
+
+= improvement/pirate_harbor 16x16 8,15
+: types IMPROVEMENT_PIRATE_HARBOR
+: note two stilted shacks, a lit window, a sable flag
+..........0.....
+.........050....
+.........050....
+...00...05320...
+..0520..0532000.
+..0520.053322020
+.05322005332200.
+.05322053332220.
+053322053332220.
+05332220Q22220..
+.0Q22200Quuu20..
+.0Qlu200Quuu20..
+.0Quu200Quuu20..
+0u0u0u0u0u0u0u0.
+0u0u0u0u0u0u0u0.
+.0.0.0.0.0.0.0..
+
+= improvement/pirate_port 21x17 10,16
+: types IMPROVEMENT_PIRATE_PORT
+: note three stilted shacks, two lit windows, a sable flag
+..........0..........
+....0....050.........
+...050...050.........
+...050..05320........
+..05320005320...00...
+..053200533220.0520..
+.0533220533220.0520..
+.0533205333222053220.
+05333205333222053220.
+05333220Q222205332220
+.0Q22220Quuu205332220
+.0Qulu20Quul200Q2220.
+.0Quuu20Quuu200Quu20.
+.0Quuu20Quuu200Quu20.
+0u0u0u0u0u0u0u00u0u0.
+0u0u0u0u0u0u0u00u0u0.
+.0.0.0.0.0.0.00.0.0..
+
+= improvement/castle 12x15 6,14
+: types IMPROVEMENT_CASTLE
+: note a crenellated keep over a curtain wall, a bone pennant
+......00....
+.....0770...
+.....070....
+...0.050....
+..0504040...
+..05444440..
+..05444430..
+..05444430..
+.000404030..
+05040404040.
+054444444440
+054444444430
+054444444430
+054444444430
+.0000000000.
+
+= improvement/citadel 18x17 9,16
+: types IMPROVEMENT_CITADEL
+: note a keep between two towers over a curtain wall
+.........00.......
+........0770......
+........070.......
+......0.050.......
+.....0504040......
+.....05444440.....
+.0.0.05444430.0.0.
+050400544443005040
+054400544443005440
+05430054l443005430
+050300040403000430
+005040404040404030
+005444444444444400
+005444444444444300
+005444444444444300
+005444444444444300
+.0000000000000000.
+
+= improvement/fort 18x10 9,9
+: types IMPROVEMENT_FORT
+: note a palisade square of umber stakes
+.00.0.0.0.0.0.0.0.
+0QQ0Q0Q0Q0Q0Q0Q0Q0
+0uu0u0u0u0u0u0u0u0
+0uu0u0u0u0u0u0u0u0
+0u00000000000000u0
+0u0Q0Q0Q0Q0Q0Q0Qu0
+0u0u0u0u0u0u0u0uu0
+0u0u0u0u0u0u0u0uu0
+0u0u0u0u0u0u0u0uu0
+.0.0.0.0.0.0.0.00.
+
+= improvement/tower 7x16 3,15
+: types IMPROVEMENT_TOWER
+: note a skeletal watchtower: open timber frame, one lantern
+: light 3,3 FIRE 5
+..000..
+.0uQu0.
+0uQQQu0
+0u0l0u0
+0uuuuu0
+.0u0u0.
+.0uuu0.
+.0u0u0.
+.0u0u0.
+0u0u0u0
+0u0u0u0
+0uu0uu0
+0u0.0u0
+0u0.0u0
+0u0.0u0
+.0...0.
+
+= improvement/pasture 22x11 11,10
+: types IMPROVEMENT_PASTURE
+: flat
+: note a dotted fence loop of stone posts around two grazing beasts
+.........6..6.........
+.....6.6.2..2.6.6.....
+..6.62.2......2.26.6..
+.62.2.6665.......2.26.
+.6....6.6...........6.
+.6..........6665....26
+.6..........6.6.....62
+.6..................6.
+.26.6............6.62.
+..2.2.66......6.62.2..
+......22.6..6.2.2.....
+
+= improvement/plantation 22x9 11,8
+: types IMPROVEMENT_PLANTATION
+: flat
+: note staggered rows of shrubs
+..O....O....O....O....
+.ooq..ooq..ooq..ooq...
+......................
+.....O....O....O....O.
+....ooq..ooq..ooq..ooq
+......................
+..O....O....O....O....
+.ooq..ooq..ooq..ooq...
+......................
+
+= improvement/winery 22x9 11,8
+: types IMPROVEMENT_WINERY
+: flat
+: note trellis rows: umber posts with olive leaf dots
+Q....Q....Q....Q......
+uooOouOooOuoOoouooO...
+uo.o.u.o.ouo.o.u.o....
+u....u....u....u......
+......................
+...Q....Q....Q....Q...
+...uOooOuoOoouooOouOoo
+...uo.o.u.o.ouo.o.u.o.
+...u....u....u....u...
+
+= improvement/windmill 15x21 7,20
+: types IMPROVEMENT_WINDMILL
+: note a stone mill with four bone sail lines and one lit window
+..0.........0..
+.070.......070.
+..070.....070..
+...070...070...
+....0700070....
+.....07570.....
+.....05530.....
+.....07470.....
+....0754370....
+...070543070...
+..07054443070..
+.0700544430070.
+..0.054l430.0..
+....0544430....
+....0544430....
+...054444430...
+...054444430...
+...054444430...
+...054414430...
+...054414430...
+....0000000....
+
+= improvement/mana_air 9x17 4,16
+: types IMPROVEMENT_MANA_AIR
+: note a slate obelisk carved with the air rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05FFF1120
+05111F120
+05FFFF120
+051111F20
+051FF1120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_body 9x17 4,16
+: types IMPROVEMENT_MANA_BODY
+: note a slate obelisk carved with the body rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05Y1Y1Y20
+05Y1Y1Y20
+05YYYYY20
+05YYYY120
+051YY1120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_chaos 9x17 4,16
+: types IMPROVEMENT_MANA_CHAOS
+: note a slate obelisk carved with the chaos rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05R1R1R20
+051RRR120
+05RRLRR20
+051RRR120
+05R1R1R20
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_death 9x17 4,16
+: types IMPROVEMENT_MANA_DEATH
+: note a slate obelisk carved with the death rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051777120
+057171720
+057777720
+051717120
+051111120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_earth 9x17 4,16
+: types IMPROVEMENT_MANA_EARTH
+: note a slate obelisk carved with the earth rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051111120
+0511y1120
+051yyy120
+05yyyyy20
+051111120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_enchantment 9x17 4,16
+: types IMPROVEMENT_MANA_ENCHANTMENT
+: note a slate obelisk carved with the enchantment rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+0511P1120
+05P1P1P20
+051P8P120
+05P1P1P20
+0511P1120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_entropy 9x17 4,16
+: types IMPROVEMENT_MANA_ENTROPY
+: note a slate obelisk carved with the entropy rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05ppppp20
+051111p20
+051pp1p20
+051p11p20
+051pppp20
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_fire 9x17 4,16
+: types IMPROVEMENT_MANA_FIRE
+: note a slate obelisk carved with the fire rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+0511l1120
+051ll1120
+051lLl120
+05lllll20
+051lll120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_law 9x17 4,16
+: types IMPROVEMENT_MANA_LAW
+: note a slate obelisk carved with the law rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051181120
+058888820
+058181820
+057181720
+051888120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_life 9x17 4,16
+: types IMPROVEMENT_MANA_LIFE
+: note a slate obelisk carved with the life rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051SSS120
+051S1S120
+051SWS120
+05SSSSS20
+0511S1120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_metamagic 9x17 4,16
+: types IMPROVEMENT_MANA_METAMAGIC
+: note a slate obelisk carved with the metamagic rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05PP1PP20
+05P181P20
+05P818P20
+05P181P20
+05PP1PP20
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_mind 9x17 4,16
+: types IMPROVEMENT_MANA_MIND
+: note a slate obelisk carved with the mind rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051TTT120
+05T111T20
+05T181T20
+05T111T20
+051TTT120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_nature 9x17 4,16
+: types IMPROVEMENT_MANA_NATURE
+: note a slate obelisk carved with the nature rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05111OO20
+0511OOO20
+051OOoO20
+05OOoO120
+05o111120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_shadow 9x17 4,16
+: types IMPROVEMENT_MANA_SHADOW
+: note a slate obelisk carved with the shadow rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051444120
+054444420
+054111420
+054111420
+054111420
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_spirit 9x17 4,16
+: types IMPROVEMENT_MANA_SPIRIT
+: note a slate obelisk carved with the spirit rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+0511F1120
+051g1g120
+0511g1120
+051g1g120
+0511g1120
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_sun 9x17 4,16
+: types IMPROVEMENT_MANA_SUN
+: note a slate obelisk carved with the sun rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+05l1l1l20
+051lll120
+05llLll20
+051lll120
+05l1l1l20
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/mana_water 9x17 4,16
+: types IMPROVEMENT_MANA_WATER
+: note a slate obelisk carved with the water rune
+: light 4,14 ARC 6
+....0....
+...050...
+..05320..
+.0533220.
+.0533320.
+.0533320.
+.0533320.
+053333320
+051g11g20
+05gNggN20
+051111120
+051g11g20
+05gNggN20
+053333320
+053333320
+053333320
+.0000000.
+
+= improvement/graveyard 16x9 8,8
+: types IMPROVEMENT_GRAVEYARD
+: note four headstones and a bone cross
+...........0....
+...0......070...
+..050.....070...
+.05450.0.07670..
+.05440050.070...
+.0544054500640..
+.0433054400540..
+..000043300430..
+......000..00...
+
+= improvement/workshop 12x12 6,11
+: types IMPROVEMENT_WORKSHOP
+: note a small hall: ash smoke from the chimney, one forge pixel at the door
+.........00.
+........0450
+.....0.0400.
+....050.040.
+...0532000..
+..053322020.
+.0533322200.
+05333322220.
+.042222220..
+.04l332320..
+.04333E320..
+..0000000...
+
+= improvement/enclave 22x13 11,12
+: types IMPROVEMENT_ENCLAVE
+: note a small walled garden
+............0.........
+..........00O00.......
+......0..0OOoOm0.0....
+....00O00Oooomm00O00..
+...0OOom0Oommm0OOomm0.
+...0Oom0Oommmm0Oommm0.
+..0Oommm0mmmm0Oommmmm0
+..00mmmm0mmmmm0mmmmm0.
+..00mmmmm0mmmm0mmmmm0.
+.0000000000000000000..
+05444444422444444440..
+05444444422444444440..
+.000000000000000000...
+
+= improvement/jungle_altar 14x10 7,9
+: types IMPROVEMENT_JUNGLE_ALTAR
+: note a stepped altar with a stair and a crimson-stained top
+.....0000.....
+....05CC30....
+...005cc300...
+..0544554430..
+..0544664430..
+.005445544300.
+05444466444430
+05444455444430
+05444466444430
+.000000000000.
+
+= improvement/portal 15x17 7,16
+: types IMPROVEMENT_PORTAL
+: note an upright stone ring around a lilac swirl
+: light 7,14 ARC 7
+.....00000.....
+....0555550....
+...055555550...
+..0555ppp5440..
+.055PPPPppp420.
+0555PPpPPpp2220
+055Pppp8PppP220
+055Ppp888ppP220
+055PppP8pppP220
+0555ppPPpPP2220
+.054pppPPPP220.
+..0442ppp2220..
+...022222220...
+.0000222220000.
+054444444444420
+054444444444420
+.0000000000000.
+
+= improvement/barrow 20x9 10,8
+: types IMPROVEMENT_BARROW
+: note a grassed barrow mound, a stone door onto void, one pale-green pixel
+......00000000......
+....00OOOOOOmm00....
+...0OOoommmmmmmm0...
+..0Ooooommmmmmmmm0..
+.0Oooooommmmmmmmmm0.
+.0Oooooo555mmmmmmm0.
+0Ooooooo502mmmmmmmm0
+0ooooooo5S2mmmmmmmm0
+.000000000000000000.
+
+= improvement/bear_den 20x13 10,12
+: types IMPROVEMENT_BEAR_DEN
+: note a rock cave mouth with a gnawed bone
+......0.............
+.....050............
+.....05000000.......
+....05455555300.....
+....054433333320....
+...05444333223220...
+..0544443333332220..
+.054444433333322220.
+.054444433333322220.
+05444444300023222220
+04444444000003222220
+04444447000007222220
+.000000000000000000.
+
+= improvement/lion_den 20x13 10,12
+: types IMPROVEMENT_LION_DEN
+: note a sandstone cave mouth with bones
+......0.............
+.....0Y0............
+.....0Y000000.......
+....0Y6YYYYYQ00.....
+....0Y66QQQQQQu0....
+...0Y666QQQuuQuu0...
+..0Y6666QQQQQQuuu0..
+.0Y66666QQQQQQuuuu0.
+.0Y66666QQQQQQuuuu0.
+0Y666666Q000uQuuuuu0
+0666666600000Quuuuu0
+066666670000077uuuu0
+.000000000000000000.
+
+= improvement/goblin_fort 21x15 10,14
+: types IMPROVEMENT_GOBLIN_FORT
+: note a spiked palisade ring around a hut and a campfire
+: light 6,7 FIRE 5
+..............0......
+.............0y0.....
+.............0y0.....
+............0yQu0....
+............0yQu0....
+...........0yQQuu0...
+...........0yQQuu0...
+.0...0...00yQ0Quu00..
+0Q000Q000Q000Q000Q00.
+0u0Q0u0Q0u0Q0u0Q0u0Q0
+0u0u0u0u0u0u0u0u0u0u0
+0u0u0u0u0u0u0u0u0u0u0
+0u0u0u0u0u0u0u0u0u0u0
+0u0u0u0u0u0u0u0u0u0u0
+.0.0.0.0.0.0.0.0.0.0.
+
+= improvement/ruins 16x13 8,12
+: types IMPROVEMENT_RUINS
+: note broken columns wrapped in vine, a fallen drum
+............000.
+...........05430
+.00........05o30
+0540.......054O0
+05o0.......05430
+054O0..00..0o430
+05430.0540.05430
+0o430.05o0.054O0
+05430.054O005o30
+0540000000000430
+0505555505443030
+05044444043320O0
+.00000000000000.
+
+= improvement/snake_pillar 8x20 4,19
+: types IMPROVEMENT_SNAKE_PILLAR
+: note a stone pillar with a serpent coiled about it
+...00...
+..0oO0..
+.0oyoO0.
+..00o0..
+.054430.
+.054430.
+.054430.
+.054430.
+.0Oo430.
+.054oo0.
+.054430.
+.0oo430.
+.054Oo0.
+.054430.
+.0Oo430.
+.054oo0.
+.054430.
+.0oo430.
+05444430
+.000000.
+
+= improvement/monster_skeleton 24x13 12,12
+: types IMPROVEMENT_MONSTER_SKELETON
+: note a huge ribcage arching out of the ground
+........................
+...........0............
+........0.080.0.........
+.......080070080........
+.....0.080070080.0......
+....080070070070080.0...
+....07007070.070070080..
+....07070070070.0707770.
+...070070070070070776770
+...070070070070070760670
+.0070070070070070007770.
+0767676767676767676760..
+.00000000000000000000...
+
+= improvement/dungeon 13x12 6,11
+: types IMPROVEMENT_DUNGEON
+: note a stone doorway with stairs down into void, an ember glow below
+: light 6,7 FIRE 3
+..000000000..
+.05555555550.
+0554444444320
+0544444444430
+0544444444430
+0540000000430
+0540000000430
+05400eeE00430
+0540055500430
+0540444440430
+0545555555430
+.00000000000.
+
+= improvement/city_ruins 20x10 10,9
+: types IMPROVEMENT_CITY_RUINS
+: note broken walls and a tower stump in ash; no light at all
+...0................
+..050...........0...
+.0550..........050..
+.0540..0......0540..
+.05440050..0..0540..
+055440054005005540..
+0554405540054054420.
+0554405540054454420.
+05544444425444444220
+.000000000000000000.
+
+= improvement/camp 15x11 7,9
+: types IMPROVEMENT_CAMP
+: light 12,8 FIRE 4
+: note a hide lean-to on its pole and a small campfire
+.....0.........
+....0u0........
+...05Qu0.......
+..05QQ2u0......
+.05QQQ22u0.....
+05QQQQ222u0....
+05QQQQ22220.0..
+05QQQQ222200l0.
+05QQQQ22220lEl0
+05QQQQ22220uEu0
+.000000000.000.
+
+= improvement/fishing_boats 16x9 9,7
+: types IMPROVEMENT_FISHING_BOATS
+: note a small boat with a stub sail and a trail of net floats
+..........0.....
+.........0u0....
+.........0u70...
+.........0u770..
+..0.0.0000u7770.
+.06060yQQQQQQQy0
+..06060uuuuuuu0.
+.06060.0222200..
+..0.0...0000....
+
+= improvement/whaling_boats 19x9 10,7
+: types IMPROVEMENT_WHALING_BOATS
+: note a whaleboat with a harpoon line running to a fluke
+............0......
+...........0u0.....
+...........0u70....
+.0.0.......0u770...
+0g0g0...0.00u77700.
+0ggg0..070yQQQQQQy0
+.0g0..070.0uuuuuu0.
+.0g0.070...022220..
+..0...0.....0000...
+
+= improvement/penguins 19x8 9,6
+: types IMPROVEMENT_PENGUINS
+: note four penguins: dark backs, bone fronts
+......0............
+..0..020......0....
+.02002270.0..020...
+02270227002002270..
+022700y0022702270..
+.0y0..0.022700y0...
+..0......0y0..0....
+..........0........
+
+= improvement/mushrooms 18x8 8,6
+: types IMPROVEMENT_MUSHROOMS
+: note pale caps on short stems
+..........000.....
+...000...07770....
+..07770.0777760...
+.0777760000600....
+..00600777060.....
+...060777760......
+....0.00600.......
+........0.........
+
+= improvement/quarry 18x11 9,10
+: types IMPROVEMENT_QUARRY
+: note a rock outcrop with a stepped cut face, cut blocks stacked in front
+........000.......
+......0053300.....
+.....055422330....
+.....0446666660...
+....054444444430..
+...0003333666660..
+..06660332444440..
+.0044300322266000.
+066000660222406660
+044304430233204430
+.0000000000000000.
+
+= improvement/lumbermill 18x11 9,10
+: types IMPROVEMENT_LUMBERMILL
+: note a stack of logs and a spoked saw wheel on its frame
+............000...
+...........05550..
+..........0504050.
+.........050040050
+.........054444420
+....00000050040020
+...0yQQQu00504020.
+.000yuuuu0.02220..
+0yQQQyQQQu0u000u0.
+0yuuuyuuuu00...0u0
+.0000000000.....0.
+
+= improvement/necrototem 7x16 3,14
+: types IMPROVEMENT_NECROTOTEM
+: note a bone totem crowned with a skull, one pale-green eye
+..000..
+.07770.
+0777770
+071S170
+.07770.
+.07070.
+..060..
+.07670.
+.00600.
+0706070
+.07670.
+..060..
+..060..
+.06660.
+0666660
+.00000.
+
+= improvement/warning_post 7x12 3,10
+: types IMPROVEMENT_WARNING_POST
+: note a stake with a skull and a rag
+..000..
+.07770.
+.07170.
+..070..
+.03u0..
+033u0..
+.03u0..
+..0u0..
+..0u0..
+..0u0..
+.0uuu0.
+..000..
+
+= improvement/cage 9x10 4,8
+: types IMPROVEMENT_CAGE
+: note an iron cage of bars on a plinth
+...000...
+..05550..
+.0544420.
+.0404020.
+.0404020.
+.0404020.
+.0404020.
+.0544420.
+054444420
+.0000000.
+
+= improvement/smoke 7x15 3,14
+: types IMPROVEMENT_SMOKE
+: note an ash smoke column rising from a smouldering patch
+...56..
+..5665.
+.56665.
+..5655.
+...55..
+..454..
+..445..
+...44..
+...44..
+..434..
+..43...
+...33..
+..333..
+.3333..
+.3e3e3.
+
+= improvement/hellfire 15x9 7,7
+: types IMPROVEMENT_HELLFIRE
+: light 7,5 BLOOD 8
+: note a pit of hellfire: a scarlet core in a crimson flame, a rim of soot rock
+......0........
+.....0R0.......
+....0CRC0......
+...0cCRCc0.....
+..03cCRCc30....
+.043ccCcc3400..
+04433ccc334420.
+.043322222340..
+..0000000000...
+
+= improvement/ship_wreck 15x10 7,8
+: types IMPROVEMENT_SHIP_WRECK
+: note a broken hull canted on the shore, its mast snapped
+.......0.......
+......0u0......
+.....0u0.......
+..0.0u0........
+.0y00u0..0.0...
+.0uy00..0y0y0..
+.0uuyy00yQ0Q0..
+..0uuuyyQuQu0..
+...02uuuuuu20..
+....00000000...
+
+= improvement/goody_hut_f1 11x11 5,9
+: types IMPROVEMENT_GOODY_HUT
+: light 5,2 FIRE 5
+: note the goody hut: a small cairn with one lit candle (2-frame flicker)
+.....0.....
+....0L0....
+....0l0....
+...05550...
+..0555440..
+.055544330.
+.054444330.
+0554443330.
+0544433320.
+.022222220.
+..0000000..
+
+= improvement/goody_hut_f2 11x11 5,9
+: types IMPROVEMENT_GOODY_HUT
+: light 5,2 FIRE 5
+.....0.....
+....0l0....
+....0L0....
+...05550...
+..0555440..
+.055544330.
+.054444330.
+0554443330.
+0544433320.
+.022222220.
+..0000000..
+

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terrain plates</title>
+<link rel="stylesheet" href="../preview/preview.css">
+<style>
+  body { padding: 12px; }
+  .plates { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-start; }
+  .plate { display: flex; flex-direction: column; gap: 4px; }
+  canvas { image-rendering: pixelated; display: block; }
+</style>
+</head>
+<body>
+<h1>Terrain: ground, relief and woods through terrain/ground.js</h1>
+<div class="meta">terrain/preview.html: ?map=sample|mosaic|north|relief|woods|landmarks (default all), ?scale=N, ?pass=0 for art.js's seed ground (before/after).</div>
+<div id="out" class="plates"></div>
+<div id="err" class="errors"></div>
+<script type="module" src="preview.js"></script>
+</body>
+</html>

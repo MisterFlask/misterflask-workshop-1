@@ -1,0 +1,14 @@
+; routes (docs/ART.md 5.6): drawRoad stamps the dot every 3 px from the tile anchor (16, 18) toward
+; each connected neighbour. The anchor is the dot itself.
+
+= route/road 2x2 0,0
+: types ROUTE_ROAD
+: note the road: a bone ink dot with a coal shadow pixel below-right, stamped every 3 px (the board's path motif)
+7.
+.2
+
+= route/railroad 2x2 0,0
+: types ROUTE_RAILROAD
+: note the railroad: a stone dot with a soot shadow, stamped twice 2 px apart (mapping option `double`): two ruled lines
+6.
+.1
