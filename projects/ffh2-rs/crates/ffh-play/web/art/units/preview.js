@@ -47,6 +47,7 @@ const CASES = [
   ['hidden nationality (own)', 'UNIT_PRIVATEER', 'h', { hp: 100, moves: true }, 'TERRAIN_COAST'],
   ['barbarian', 'UNIT_SKELETON', 'barb', { hp: 70, facing: 'left' }],
   ['animal', 'UNIT_WOLF', 'animal', { hp: 100, facing: 'left' }],
+  ['in a city, stack of 4', 'UNIT_LONGBOWMAN', 'a', { hp: 100, moves: true, count: 4, inCity: true, mark: 'fortify' }, 'TERRAIN_PLAINS', 5],
 ];
 
 function stacks(art, owners) {
@@ -58,10 +59,11 @@ function stacks(art, owners) {
     const gap = 6;
     const W = CASES.length * (TILE + gap) + gap;
     const [c, ctx] = canvas(art, W * s, (TILE + 2 * gap) * s, '0');
-    CASES.forEach(([, unit, owner, state, terrain], i) => {
+    CASES.forEach(([, unit, owner, state, terrain, city], i) => {
       const x = (gap + i * (TILE + gap)) * s, y = gap * s;
       const t = terrain || 'TERRAIN_GRASS';
       art.drawTerrain(ctx, x, y, tile(t, { mx: i, plotType: t === 'TERRAIN_COAST' ? 'OCEAN' : 'LAND' }));
+      if (city) art.drawCity(ctx, x, y, { size: city, name: '', plaque: false }, owners.get(owner));
       art.drawUnit(ctx, x, y, unit, owners.get(owner), state);
     });
     sec.append(el('h3', {}, `${scale}x`), c);
@@ -171,6 +173,8 @@ const STACKS = [
   [14, 8, 'UNIT_HILL_GIANT', 'barb', { hp: 100, facing: 'left' }],
   [9, 9, 'UNIT_GRIFFON', 'animal', { hp: 100 }],
   [7, 3, 'UNIT_ANGEL', 'a', { hp: 100, moves: true }],
+  [3, 2, 'UNIT_PHALANX', 'a', { hp: 100, moves: false, count: 2, mark: 'fortify', inCity: true }],
+  [10, 6, 'UNIT_DWARVEN_SLINGER', 'd', { hp: 100, inCity: true, facing: 'left' }],
   [13, 9, 'UNIT_ACHERON', 'barb', { hp: 100, facing: 'left' }],
 ];
 const CITIES = [

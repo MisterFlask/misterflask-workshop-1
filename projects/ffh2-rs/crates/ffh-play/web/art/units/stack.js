@@ -13,6 +13,8 @@
 //   health     a 12x2 bar on the bottom edge with a void frame, drawn when the head unit is hurt
 //              (or selected): bone above 50%, ochre from 25%, crimson below 25%; the rest iron.
 //   state      top-right: the 8x8 state mark (ui/mark_<state>: fortify, sleep, sentry, heal...).
+//   in a city  state.inCity (or state.standard = 'right') mirrors the standard to the top-right,
+//              since the city banner holds the top-left; the state mark then sits at the top centre.
 //
 // No standard for animals, equipment on the ground and hidden nationality (privateers, assassins):
 // their own units then show moves as a 2x2 pip at the end of the health bar's row.
@@ -65,22 +67,29 @@ export function drawStackOverlay(art, ctx, x, y, unitType, owner, state = {}) {
   const spent = known && !state.moves;
   const banner = owner && !animal && !item && !owner.hidden && !state.noPennant && art.hasSprite(BANNER);
 
+  // in a city the city's own banner holds the top-left: the standard moves to the top-right
+  const right = !!(state.inCity || state.standard === 'right');
   if (banner) {
     const table = spent ? 'FOG' : undefined;
-    art.drawSprite(ctx, x, y, art.pick(BANNER).name, { owner, flag: true, rim: 1, table });
+    const pole = right ? 30 : 1;
+    if (right) art.drawSprite(ctx, x + 31 * s, y, art.pick(BANNER).name, { owner, flag: true, rim: 1, table, mirror: true });
+    else art.drawSprite(ctx, x, y, art.pick(BANNER).name, { owner, flag: true, rim: 1, table });
     if (owner.sigil && art.hasSprite(owner.sigil)) {
-      art.drawSprite(ctx, x + 3 * s, y + 4 * s, art.pick(owner.sigil).name, { owner, table });
+      art.drawSprite(ctx, x + (right ? 24 : 3) * s, y + 4 * s, art.pick(owner.sigil).name, { owner, table });
     }
-    if (state.hero) px(art, ctx, x, y, [[1, 1, 'y'], [1, 0, 'L']]);
-    else px(art, ctx, x, y, [[1, 1, spent ? '4' : known ? '8' : '7']]);
-    if (count > 1) countChip(art, ctx, x, y, 3, 16, count, spent);
+    if (state.hero) px(art, ctx, x, y, [[pole, 1, 'y'], [pole, 0, 'L']]);
+    else px(art, ctx, x, y, [[pole, 1, spent ? '4' : known ? '8' : '7']]);
+    if (count > 1) {
+      const w = art.measureText(count > 99 ? '99' : String(count), 'tally') + 2;
+      countChip(art, ctx, x, y, right ? pole - 1 - w : 3, 16, count, spent);
+    }
   } else if (count > 1) {
     countChip(art, ctx, x, y, 2, 2, count, spent);
   }
 
   if (state.mark && !(count > 1 && !banner)) {
     const m = art.hasSprite(`ui/mark_${state.mark}`) ? art.pick(`ui/mark_${state.mark}`) : null;
-    if (m) art.drawSprite(ctx, x + 23 * s, y + 1 * s, m.name);
+    if (m) art.drawSprite(ctx, x + (right && banner ? 12 : 23) * s, y + 1 * s, m.name);
   }
 
   const hp = state.hp;

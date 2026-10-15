@@ -121,6 +121,21 @@ map unit UNIT_EIDOLON -> unit/spectre remap=4p,5P ghost
 map unit UNIT_SUPPLIES -> unit/supplies
 map unit UNIT_BOARDING_PARTY -> unit/guybrush
 map unit UNIT_DISCIPLE_OF_ACHERON -> unit/_adept accent=E
+map unit UNIT_AURIC_ASCENDED -> unit/hyborem remap=2g,cf,3F,EF,lF,L8,R8
+map unit UNIT_BEAST_OF_AGARES -> unit/pit_beast
+map unit UNIT_IRA|UNIT_STYGIAN_GUARD -> unit/chaos_marauder
+map unit UNIT_SAVEROUS -> unit/chaos_marauder remap=CT,cT
+map unit UNIT_MINOTAUR -> unit/berserker
+map unit UNIT_MUIRIN -> unit/drown
+map unit UNIT_SHADOWRIDER -> unit/knight remap=43,54,65
+map unit UNIT_ROSIER|UNIT_ROSIER_OATHTAKER -> unit/knight remap=*C
+map unit UNIT_HEMAH -> unit/archmage accent=T
+map unit UNIT_GAELAN -> unit/mage accent=R
+map unit UNIT_GIBBON -> unit/mage accent=p ghost
+map unit UNIT_MOBIUS_WITCH -> unit/mage accent=C
+map unit UNIT_PARAMANDER -> unit/priest accent=L
+map unit UNIT_FIREBOW -> unit/longbowman
+map unit UNIT_GURID|UNIT_MARGALARD -> unit/hill_giant remap=Qo,uu,2q
 map unit UNIT_SON_OF_THE_INFERNO -> unit/archmage accent=E
 
 ; ================================================================ category rules
