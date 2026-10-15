@@ -130,8 +130,9 @@ export function ask(title, text, choices, { tag = "ask" } = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The blocking decision (design §2.3 (b)): free tech, keep or abandon a city, election, offer,
-// religion. It cannot be dismissed: the game waits inside a rules call for the answer.
+// The blocking decision (design §2.3 (b)): free tech, keep, raze or give back a conquered city,
+// keep or disband a city that joined, city or settlement, take control of a new civilization,
+// offer, religion. It cannot be dismissed: the game waits inside a rules call for the answer.
 
 let decisionModal = null;
 let decisionId = null;

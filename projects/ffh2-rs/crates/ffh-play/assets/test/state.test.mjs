@@ -223,13 +223,14 @@ test("deferred popups in C++ order, and set aside per turn", () => {
   const pending = {
     events: [{ triggered: 5 }],
     votes: [{ vote: 2 }],
+    elections: [{ selection: 7 }],
     research_needed: true,
     idle_cities: [4, 8],
   };
   const q = St.popupQueue(pending, new Set(), 12);
-  assert.deepEqual(q.map((p) => p.kind), ["event", "vote", "research", "city", "city"]);
-  assert.deepEqual(q.map((p) => p.key), ["event:5", "vote:2", "research:12", "city:4:12", "city:8:12"]);
-  const later = St.popupQueue(pending, new Set(["event:5", "research:12", "city:8:12"]), 12);
+  assert.deepEqual(q.map((p) => p.kind), ["event", "vote", "election", "research", "city", "city"]);
+  assert.deepEqual(q.map((p) => p.key), ["event:5", "vote:2", "election:7", "research:12", "city:4:12", "city:8:12"]);
+  const later = St.popupQueue(pending, new Set(["event:5", "election:7", "research:12", "city:8:12"]), 12);
   assert.deepEqual(later.map((p) => p.key), ["vote:2", "city:4:12"]);
   // A new turn asks again for research and cities.
   assert.equal(St.popupQueue(pending, new Set(["research:12"]), 13).filter((p) => p.kind === "research").length, 1);
@@ -260,6 +261,7 @@ test("vote choices, the end-turn gate, moves and turns", () => {
     "a unit is waiting for orders",
   ]);
   assert.deepEqual(St.gateLines({ events: 0, votes: 1, research: false, ready_units: 0 }), ["a vote is open"]);
+  assert.deepEqual(St.gateLines({ events: 0, votes: 0, elections: 2, research: false, ready_units: 0 }), ["2 elections wait for your choice"]);
   assert.equal(St.moves(120), "2");
   assert.equal(St.moves(80), "1 1/3");
   assert.equal(St.moves(40), "2/3");

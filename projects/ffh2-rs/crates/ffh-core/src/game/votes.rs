@@ -1126,11 +1126,16 @@ impl Game {
                         if let Some(secretary_player) = secretary_player {
                             if let Some(selection_id) = self.add_vote_selection(vote_source) {
                                 // Human secretary: BUTTONPOPUP_CHOOSEELECTION, answered with
-                                // setVoteChosen; AI: GET_TEAM(eSecretaryGeneral).AI_chooseElection.
-                                // Both: the secretary player's controller.
+                                // CvNetChooseElection (setVoteChosen); AI:
+                                // setVoteChosen(GET_TEAM(eSecretaryGeneral).AI_chooseElection(..)).
+                                // Both: the secretary player's controller. A human's `None` is the
+                                // popup not answered yet: the selection stays until the human's
+                                // answer (`set_vote_chosen`; the popup's "none" sends nothing).
                                 let selection = self.vote_selection(selection_id).cloned().expect("vote selection just added");
                                 let choice = self.controller(secretary_player).choose_election(self, secretary_player, &selection);
-                                self.set_vote_chosen(choice, selection_id);
+                                if choice.is_some() || !self.players[secretary_player].human {
+                                    self.set_vote_chosen(choice, selection_id);
+                                }
                             } else {
                                 self.vote_timer[vote_source] = 0;
                             }

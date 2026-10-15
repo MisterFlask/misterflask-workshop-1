@@ -123,7 +123,7 @@ fn capture_asks_keep_or_raze_inside_the_command() {
     assert_eq!(asked.len(), 1, "one decision, asked during the command");
     // Acquiring a city makes a new city object on the plot (CvPlayer::acquireCity).
     let c = s.g.map.plots[city_plot].plot_city.expect("the city stands");
-    assert!(matches!(asked[0].0, DecisionKind::KeepCity { city, can_raze: true } if city == c), "{:?} (city {c:?})", asked[0].1);
+    assert!(matches!(asked[0].0, DecisionKind::KeepCity { city, can_raze: true, .. } if city == c), "{:?} (city {c:?})", asked[0].1);
     assert_eq!(asked[0].2, h.0 as i64, "asked with the city already ours and its queue empty");
     assert_eq!(asked[0].1.options.len(), 2);
     // Option 0 = keep.

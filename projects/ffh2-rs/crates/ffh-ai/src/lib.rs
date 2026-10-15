@@ -18,6 +18,7 @@ use ffh_core::structs::*;
 use ffh_data::*;
 
 pub mod advanced_start;
+pub mod automation;
 pub mod campaign;
 pub mod casting;
 pub mod civs;
@@ -28,6 +29,7 @@ pub mod expansion;
 pub mod finance;
 pub mod military;
 pub mod naval;
+pub mod offers;
 pub mod production;
 pub mod reach;
 pub mod research;
@@ -109,6 +111,7 @@ impl Controller for Ai {
             production::emergency(self, g, p);
             expansion::prepare_escorts(g, p); // early-expansion
             diplomacy::manage(g, &v);
+            offers::to_humans(g, &v); // ai-offers: deals offered to human players
             // War declarations change the picture.
             v = view::View::new(g, p);
         }
@@ -137,6 +140,8 @@ impl Controller for Ai {
     fn attitude(&self, g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
         diplomacy::attitude(g, p, towards)
     }
+
+    fn update_automated_group(&self, g: &mut Game, grp: GroupId) -> bool { automation::update(self, g, grp) }
 
     fn choose_religion(&self, g: &Game, p: PlayerId) -> Option<ReligionType> {
         g.players[p].personality_type.and_then(|l| g.d.leader_heads[l].favorite_religion)

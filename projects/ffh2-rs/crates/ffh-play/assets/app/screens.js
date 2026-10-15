@@ -69,7 +69,7 @@ export async function openResearch({ popup = false } = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Events and votes (deferred popups, design §2.3).
+// Events, votes and elections (deferred popups, design §2.3).
 
 /** An event popup (`pending.events[]`). Resolves "chosen", "later" or null. */
 export async function openEvent(ev) {
@@ -136,6 +136,33 @@ export async function openVote(v) {
     buttons: [{ label: "Later", value: "later", title: "Unanswered votes get one more turn, then abstain" }],
     tag: "vote",
     className: "event",
+  });
+  const r = await m.done;
+  return result ?? r;
+}
+
+/** The secretary general's election (`pending.elections[]`, C++ BUTTONPOPUP_CHOOSEELECTION):
+ *  one button per resolution, then "None". Resolves "chosen", "later" or null. */
+export async function openElection(e) {
+  let result = null;
+  const err = h("p.error");
+  const send = async (option) => {
+    const reply = await run({ c: "election", selection: e.selection, option });
+    if (reply) {
+      result = "chosen";
+      m.close("chosen");
+    }
+  };
+  const options = h(
+    "div.options",
+    e.options.map((o, i) => h("button.option", { "data-option": i, onclick: () => send(i) }, h("span", markup(o.text || dname("VoteType", o.vote))))),
+    h("button.option", { "data-option": "none", onclick: () => send(null) }, h("span", "None")),
+  );
+  const m = openModal({
+    title: dname("VoteSourceType", e.source),
+    body: [h("p", "As secretary general, choose the resolution to put to the vote."), options, err],
+    buttons: [{ label: "Later", value: "later", title: "Answer later (ending the turn without an answer puts no resolution to the vote)" }],
+    tag: "election",
   });
   const r = await m.done;
   return result ?? r;

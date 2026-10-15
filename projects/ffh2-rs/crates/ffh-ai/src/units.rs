@@ -437,6 +437,27 @@ fn explore(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     if !alive(g, grp) || !g.units.contains(u) {
         return;
     }
+    match explore_target(g, v, u) {
+        Some(plot) => {
+            v.claimed.push(plot);
+            move_to(g, grp, plot, 0);
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+        }
+        None => {
+            // Nothing left to explore: become a regular army unit.
+            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_ATTACK);
+            if let Some(ng) = g.units[u].group {
+                crate::military::army(g, v, ng, u);
+            }
+        }
+    }
+}
+
+/// The land explorer's next goal: the reachable plot (8 turns) that reveals the most unrevealed
+/// plots or a goody hut, per turn of travel, away from danger and other explorers' goals.
+pub(crate) fn explore_target(g: &Game, v: &mut View, u: UnitId) -> Option<PlotIdx> {
     let team = v.team;
     let reach = v.flood.run(g, u, 8, false);
     let mut best: Option<(PlotIdx, i32)> = None;
@@ -467,22 +488,7 @@ fn explore(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             best = Some((r.plot, score));
         }
     }
-    match best {
-        Some((plot, _)) => {
-            v.claimed.push(plot);
-            move_to(g, grp, plot, 0);
-            if alive(g, grp) && g.group_ready_to_move(grp, false) {
-                skip(g, grp);
-            }
-        }
-        None => {
-            // Nothing left to explore: become a regular army unit.
-            g.unit_ai_set_unit_ai_type(u, UnitAIType::UNITAI_ATTACK);
-            if let Some(ng) = g.units[u].group {
-                crate::military::army(g, v, ng, u);
-            }
-        }
-    }
+    best.map(|(plot, _)| plot)
 }
 
 pub(crate) fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
@@ -554,7 +560,7 @@ fn great_person(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     hold(g, grp);
 }
 
-fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
+pub(crate) fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let ut = g.units[u].unit_type;
     let religions: Vec<ReligionType> = g.d.units[ut].religion_spreads.iter_enumerated().filter(|(_, &n)| n > 0).map(|(r, _)| r).collect();

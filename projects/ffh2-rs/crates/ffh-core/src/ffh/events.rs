@@ -1504,7 +1504,19 @@ impl Game {
                 self.units[new_unit].has_casted = true;
             }
         }
-        // Human founder: popup offering control of the Infernals (`reassignPlayer`), not ported.
+        // `if gc.getPlayer(iPlayer).isHuman()`: the TXT_KEY_POPUP_CONTROL_INFERNAL popup, whose
+        // `reassignPlayer` callback moves the human to the Infernals on "yes" (button 0).
+        self.ev_offer_control(p, infernal_player);
+    }
+
+    /// The human-only "take control" popup of the Infernal Pact and the Mercurian Gate
+    /// (BUTTONPOPUP_PYTHON with `CvScreensInterface.reassignPlayer`): on "yes" (the controller's
+    /// `take_control`), `reassignPlayerAdvanced(player, new, -1)`. C++ moves the human when the
+    /// popup is answered; here at once, at the end of the event.
+    fn ev_offer_control(&mut self, player: PlayerId, new: PlayerId) {
+        if self.players[player].human && self.controller(player).take_control(self, player, new) {
+            crate::player::turn::reassign_player_advanced(self, player, new, -1);
+        }
     }
 
     /// onBuildingBuilt, Mercurian Gate: the city's units step aside and Basium's Mercurians join
@@ -1542,7 +1554,8 @@ impl Game {
         for unit in UNITS {
             self.player_init_unit(mercurian_player, d.t::<UnitType>(unit), x, y, None, Some(DirectionType::DIRECTION_NORTH));
         }
-        // Human builder: popup offering control of the Mercurians (`reassignPlayer`), not ported.
+        // `if pPlayer.isHuman()`: the TXT_KEY_POPUP_CONTROL_MERCURIANS popup.
+        self.ev_offer_control(player, mercurian_player);
     }
 
     /// onProjectBuilt, Nature's Revolt: barbarian workers, scouts, warriors, hunters and axemen

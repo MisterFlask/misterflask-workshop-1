@@ -118,7 +118,7 @@ fn t11_agent_transcript_with_a_decision_inside_a_command() {
     assert_eq!(d.req_str("kind"), Ok("keep_city"));
     let id: u32 = d.req("id").unwrap();
     let options: Vec<&str> = d.req_arr("options").unwrap().iter().map(|o| o.req_str("key").unwrap()).collect();
-    assert_eq!(options, ["keep", "abandon"]);
+    assert_eq!(options, ["keep", "raze"]);
 
     // Inside the decision: queries are answered from the deciding player's side, the message
     // log is not available, commands and session operations wait for the answer.

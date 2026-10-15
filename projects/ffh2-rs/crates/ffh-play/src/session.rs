@@ -404,7 +404,7 @@ impl Session {
         match action {
             Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|e| (e.player, e.triggered) != (h, *triggered)),
             // C++: closing an event popup without a choice does nothing; the popup is gone.
-            Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
+            Action::EndTurn { drop_events: true, .. } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
             _ => {}
         }
         if let Action::EndTurn { .. } = action {
@@ -436,7 +436,8 @@ impl Session {
     }
 
     /// The exe's next frames after a command: at least one `update()` (the governor, war and
-    /// timers react), then while a human group is busy (missions in progress, combat).
+    /// timers react), then while a human group is busy (missions in progress, combat) or one the
+    /// AI moves waits for orders.
     fn settle(&mut self) {
         let mut n = 0;
         loop {
@@ -447,7 +448,7 @@ impl Session {
             if self.g.at_turn_boundary() {
                 self.boundary();
             }
-            if self.phase() == Phase::Over || n >= self.opts.settle_limit || !human_busy(&self.g, self.human) {
+            if self.phase() == Phase::Over || n >= self.opts.settle_limit || !(human_busy(&self.g, self.human) || ai_groups_waiting(&self.g, self.human)) {
                 break;
             }
         }
@@ -710,13 +711,22 @@ fn human_busy(g: &Game, h: PlayerId) -> bool {
     g.players[h].groups.iter().any(|&grp| g.group_is_busy(grp) || g.group_is_cargo_busy(grp))
 }
 
+/// During the human's turn, a group the AI moves (automated, FfH AI-controlled) waits for its
+/// next orders: C++ `AI_unitUpdate` gives them in the exe's next frames, while the human plays;
+/// the session runs those frames first (`update_automated_group` never leaves a group ready, so
+/// this ends).
+fn ai_groups_waiting(g: &Game, h: PlayerId) -> bool {
+    let pl = &g.players[h];
+    pl.human && pl.turn_active && !pl.auto_moves && !pl.end_turn && !decision::ai_groups_waiting(g, h).is_empty()
+}
+
 /// The phase predicate (design §2.2): pure, `&self` functions only.
 pub fn phase(g: &Game, h: PlayerId) -> Phase {
     if g.game_state == GameStateType::GAMESTATE_OVER {
         return Phase::Over;
     }
     let pl = &g.players[h];
-    if pl.alive && pl.human && pl.turn_active && !pl.auto_moves && !pl.end_turn && !human_busy(g, h) {
+    if pl.alive && pl.human && pl.turn_active && !pl.auto_moves && !pl.end_turn && !human_busy(g, h) && !ai_groups_waiting(g, h) {
         return Phase::Human(h);
     }
     Phase::Running

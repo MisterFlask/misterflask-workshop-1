@@ -65,6 +65,10 @@ pub fn text(v: &Viewer, ctx: &Ctx) -> Json {
         let choices: Vec<String> = vote.choices.iter().map(|c| crate::names::player_vote_name(*c).map_or_else(|| format!("team {}", c.0), str::to_string)).collect();
         let _ = writeln!(s, "Vote {} ({}): {} choices {}", vote.vote.0, name(d, vote.resolution), vote.text, choices.join(", "));
     }
+    for e in &p.elections {
+        let options: Vec<String> = e.options.iter().enumerate().map(|(i, o)| format!("{i}: {}", o.text)).collect();
+        let _ = writeln!(s, "Election {} ({}): {}; or none", e.selection.0, name(d, e.source), options.join("; "));
+    }
     if p.research_needed {
         let _ = writeln!(s, "Research needed");
     }
@@ -76,7 +80,7 @@ pub fn text(v: &Viewer, ctx: &Ctx) -> Json {
         let _ = writeln!(s, "Promotions ready: units {:?}", p.promotions_ready.iter().map(|u| u.0).collect::<Vec<_>>());
     }
     if !p.ai_groups_idle.is_empty() {
-        let _ = writeln!(s, "{} AI-controlled groups idle (no automation yet)", p.ai_groups_idle.len());
+        let _ = writeln!(s, "{} automated or AI-controlled groups wait for the AI's moves", p.ai_groups_idle.len());
     }
     let _ = writeln!(s, "Ready groups ({}):", p.ready_groups.len());
     for &grp in &p.ready_groups {

@@ -352,6 +352,8 @@ pub struct SoakStats {
     /// Event popups left unanswered (no option doable): closed by the forced end turn.
     pub events_unanswerable: usize,
     pub votes: usize,
+    /// Elections answered (the human was secretary general).
+    pub elections: usize,
     /// Deferred popups left open on the quiet turns (research, events, votes).
     pub popups_left: usize,
     /// Of those, research popups (still open at the forced end turn: C++ then makes the
@@ -645,6 +647,13 @@ impl Driver {
             };
             self.applied(s, Command::Vote { vote: v.vote, choice })?;
             self.stats.votes += 1;
+        }
+        // Elections (the human is secretary general): the AI's pick (`AI_chooseElection`).
+        while at_control(s) {
+            let Some(e) = s.pending().elections.into_iter().next() else { break };
+            let pick = s.read(|g| g.vote_selection(e.selection).cloned().and_then(|vs| self.ai.choose_election(g, h, &vs)));
+            self.applied(s, Command::Election { selection: e.selection, option: pick.filter(|&i| i < e.options.len()) })?;
+            self.stats.elections += 1;
         }
         Ok(())
     }

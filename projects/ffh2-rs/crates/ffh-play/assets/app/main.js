@@ -259,8 +259,8 @@ async function onControl(st) {
   runPopups();
 }
 
-/** Shows the deferred popups one at a time, in C++ order (events, votes, research, idle
- *  cities); "Later" sets one aside for the turn. */
+/** Shows the deferred popups one at a time, in C++ order (events, votes, elections, research,
+ *  idle cities); "Later" sets one aside for the turn. */
 async function runPopups() {
   if (popupsRunning) return;
   popupsRunning = true;
@@ -275,6 +275,7 @@ async function runPopups() {
       S.dismissed.add(p.key);
       if (p.kind === "event") await screens.openEvent(p.event);
       else if (p.kind === "vote") await screens.openVote(p.vote);
+      else if (p.kind === "election") await screens.openElection(p.election);
       else if (p.kind === "research") await screens.openResearch({ popup: true });
       else {
         mapView.reveal(S.cities.get(p.city)?.x ?? 0, S.cities.get(p.city)?.y ?? 0);
