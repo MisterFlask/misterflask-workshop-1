@@ -12,29 +12,30 @@ source promotions.spr
 source kinds.spr
 
 ; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
-; Celeste Sable Cendree). Sigils without a bespoke sprite yet use the lozenge.
-map civ CIVILIZATION_AMURITES -> sigil/_lozenge tincture=Purpure
-map civ CIVILIZATION_BALSERAPHS -> sigil/_lozenge tincture=Or
+; Celeste Sable Cendree). Every civilization has its own 5x5 charge; the lozenge is for unknown ones.
+map civ CIVILIZATION_AMURITES -> sigil/amurites tincture=Purpure
+map civ CIVILIZATION_BALSERAPHS -> sigil/balseraphs tincture=Or
 map civ CIVILIZATION_BANNOR -> sigil/sword tincture=Argent
-map civ CIVILIZATION_CALABIM -> sigil/_lozenge tincture=Gules
-map civ CIVILIZATION_CLAN_OF_EMBERS -> sigil/_lozenge tincture=Tenne
+map civ CIVILIZATION_CALABIM -> sigil/calabim tincture=Gules
+map civ CIVILIZATION_CLAN_OF_EMBERS -> sigil/clan_of_embers tincture=Tenne
 map civ CIVILIZATION_DOVIELLO -> sigil/wolf tincture=Sable
-map civ CIVILIZATION_ELOHIM -> sigil/_lozenge tincture=Argent
-map civ CIVILIZATION_GRIGORI -> sigil/_lozenge tincture=Azure
-map civ CIVILIZATION_HIPPUS -> sigil/_lozenge tincture=Tenne
-map civ CIVILIZATION_ILLIANS -> sigil/_lozenge tincture=Celeste
-map civ CIVILIZATION_INFERNAL -> sigil/_lozenge tincture=Gules
-map civ CIVILIZATION_KHAZAD -> sigil/_lozenge tincture=Or
-map civ CIVILIZATION_KURIOTATES -> sigil/_lozenge tincture=Vert
-map civ CIVILIZATION_LANUN -> sigil/_lozenge tincture=Azure
+map civ CIVILIZATION_ELOHIM -> sigil/elohim tincture=Argent
+map civ CIVILIZATION_GRIGORI -> sigil/grigori tincture=Azure
+map civ CIVILIZATION_HIPPUS -> sigil/hippus tincture=Tenne
+map civ CIVILIZATION_ILLIANS -> sigil/illians tincture=Celeste
+map civ CIVILIZATION_INFERNAL -> sigil/infernal tincture=Gules
+map civ CIVILIZATION_KHAZAD -> sigil/khazad tincture=Or
+map civ CIVILIZATION_KURIOTATES -> sigil/kuriotates tincture=Vert
+map civ CIVILIZATION_LANUN -> sigil/lanun tincture=Azure
 map civ CIVILIZATION_LJOSALFAR -> sigil/leaf tincture=Vert
-map civ CIVILIZATION_LUCHUIRP -> sigil/_lozenge tincture=Cendree
-map civ CIVILIZATION_MALAKIM -> sigil/_lozenge tincture=Or
-map civ CIVILIZATION_MERCURIANS -> sigil/_lozenge tincture=Argent
+map civ CIVILIZATION_LUCHUIRP -> sigil/luchuirp tincture=Cendree
+map civ CIVILIZATION_MALAKIM -> sigil/malakim tincture=Or
+map civ CIVILIZATION_MERCURIANS -> sigil/mercurians tincture=Argent
 map civ CIVILIZATION_SHEAIM -> sigil/ring tincture=Gules
-map civ CIVILIZATION_SIDAR -> sigil/_lozenge tincture=Cendree
-map civ CIVILIZATION_SVARTALFAR -> sigil/_lozenge tincture=Purpure
+map civ CIVILIZATION_SIDAR -> sigil/sidar tincture=Cendree
+map civ CIVILIZATION_SVARTALFAR -> sigil/svartalfar tincture=Purpure
 map civ CIVILIZATION_BARBARIAN -> sigil/skull tincture=Sable
+map civ CIVILIZATION_RANDOM -> sigil/_lozenge tincture=Argent
 map civ * -> sigil/_lozenge tincture=Argent
 
 ; ---- religions (11.5): bespoke glyphs by name (icon16/religion_<x>, icon8/religion_<x>); the haloed

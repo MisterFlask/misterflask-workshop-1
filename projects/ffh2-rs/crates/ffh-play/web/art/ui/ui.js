@@ -359,6 +359,25 @@ export function drawRange(art, ctx, x, y, { mx = 0, my = 0, ring = true } = {}) 
   if (ring) { const spr = art.pick('ui/tile_target'); if (spr) art.drawSprite(ctx, x + spr.ax * art.scale, y + spr.ay * art.scale, spr.name); }
 }
 
+/**
+ * The yield layer (PLAY_DESIGN "yield digits"): each non-zero yield of a tile as its 8x8 icon and a
+ * Tally number with a void shadow, stacked in the tile's left column. yields: [food, production,
+ * commerce]; (x, y) the tile's top-left.
+ */
+export function drawTileYields(art, ctx, x, y, yields) {
+  const s = art.scale;
+  let row = 0;
+  YIELDS.forEach((name, i) => {
+    const v = yields[i] | 0;
+    if (!v) return;
+    const yy = y + (2 + row * 9) * s;
+    const spr = art.pick(`icon8/${name}`);
+    if (spr) art.drawSprite(ctx, x + (1 + spr.ax) * s, yy + spr.ay * s, spr.name);
+    art.drawText(ctx, x + 9 * s, yy + 6 * s, String(v), { font: 'tally', color: '8', shadow: true });
+    row++;
+  });
+}
+
 /** Where a path leg starts and ends inside a tile (the road anchor, docs/ART.md 5.6). */
 export const PATH_ANCHOR = [16, 18];
 

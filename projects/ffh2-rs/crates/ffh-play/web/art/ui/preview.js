@@ -495,10 +495,11 @@ function kit(art) {
     return c;
   };
   for (const kind of ['hover', 'select', 'attack', 'route', 'target']) g.append(cell(`tile ${kind}`, mini((ctx) => UI.drawTileMark(art, ctx, 0, 0, kind), 1, 1)));
-  g.append(cell('path: two turns, then an attack (73%)', mini((ctx) => UI.drawPath(art, ctx, 0, 0, [{ x: 0, y: 1 }, { x: 1, y: 1, turn: 1 }, { x: 2, y: 1, turn: 2 }, { x: 3, y: 0, turn: 2 }, { x: 4, y: 0, turn: 2 }], { kind: 'attack', odds: 73 }), 5, 2)));
+  g.append(cell('path: two turns, then an attack (73%)', mini((ctx) => UI.drawPath(art, ctx, 0, 0, [{ x: 0, y: 2 }, { x: 1, y: 2, turn: 1 }, { x: 2, y: 2, turn: 2 }, { x: 3, y: 1, turn: 2 }, { x: 4, y: 1, turn: 2 }], { kind: 'attack', odds: 73 }), 5, 3)));
   g.append(cell('path: unreachable, beyond this turn', mini((ctx) => UI.drawPath(art, ctx, 0, 0, [{ x: 0, y: 0 }, { x: 1, y: 1, turn: 1 }, { x: 2, y: 1, turn: 2 }, { x: 3, y: 1, turn: 2 }], { unreachable: true }), 4, 2, 'TERRAIN_PLAINS')));
   g.append(cell('route-to path (ochre), 3 turns', mini((ctx) => UI.drawPath(art, ctx, 0, 0, [{ x: 0, y: 0 }, { x: 1, y: 0, turn: 1 }, { x: 2, y: 1, turn: 2 }, { x: 3, y: 1, turn: 3 }], { kind: 'route' }), 4, 2, 'TERRAIN_PLAINS')));
   g.append(cell('odds chips: 73%, 31%, 99.2%', mini((ctx) => { UI.drawOdds(art, ctx, 16 * K, 16 * K, 73); UI.drawOdds(art, ctx, 48 * K, 16 * K, 31); UI.drawOdds(art, ctx, 80 * K, 16 * K, 99.2); }, 3, 1, 'TERRAIN_DESERT')));
+  g.append(cell('yield layer (icon8 + Tally)', mini((ctx) => { [[2, 1, 0], [1, 2, 1], [3, 0, 2], [0, 4, 0], [1, 1, 5], [5, 3, 1]].forEach((yl, i) => UI.drawTileYields(art, ctx, (i % 3) * TILE * K, Math.floor(i / 3) * TILE * K, yl)); }, 3, 2, 'TERRAIN_PLAINS')));
   g.append(cell('range preview (ARC grid + ring)', mini((ctx) => { for (const [x, y] of [[1, 0], [0, 1], [1, 1], [2, 1]]) UI.drawRange(art, ctx, x * TILE * K, y * TILE * K, { mx: x, my: y }); }, 3, 2)));
   g = grid();
   for (const n of icons('ui/mark_')) g.append(cell(n, mini((ctx) => art.drawSprite(ctx, 4 * K, 4 * K, n), 1, 1, 'TERRAIN_SNOW')));
