@@ -524,7 +524,9 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
   Mercurian Gate; the Infernals and empires formed by events get a new team), so aggregate by
   `team`.
   `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare
-  old.json]` runs it over many seeds in parallel and summarizes.
+  old.json]` runs it over many seeds in parallel and summarizes. With the agents' cache present
+  it replays games already played from the shared run cache and takes a machine-wide CPU slot
+  per game; `tools/agents/ab.sh` runs it on a base and on your worktree (docs/AGENTS.md).
 - `ffh autoplay --report T` prints, per civ, costs, unit roles, improvements, civics and every
   city's yields, trade, happiness and production; `ffh inspect <player>` shows each city's
   plots (worked, yields, improvements).

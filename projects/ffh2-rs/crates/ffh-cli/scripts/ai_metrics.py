@@ -14,16 +14,36 @@ averaged over games, the leading team's share, its ratio to the runner-up team, 
 usage: ai_metrics.py [--bin target/release/ffh] [--seeds 1-6] [--civs 6]
                      [--size WORLDSIZE_STANDARD] [--turns 300] [--at 100,200,300]
                      [--out results.json] [--compare old.json] [--jobs 4] [--option GAMEOPTION_X]
-                     [--until-supremacy] [--every N]
+                     [--until-supremacy] [--every N] [--cache | --no-cache] [--no-slots]
 
 --every N also snapshots every N turns (and `ffh stats` always adds the final state). Each saved
 game carries per-civ snapshots (`snapshots`), game-wide values (`world_at`), the outcome and the
 turn each civ was eliminated (`eliminated_at`); see docs/AI.md "Tools" for the fields.
+
+Parallel agents (docs/AGENTS.md): when the shared cache /home/user/.cache/ffh2-rs exists
+(tools/agents/), each game goes through its run cache -- a game already played with the same
+binary, data and arguments (e.g. the integration tip's side of an A/B test, by any agent) is
+replayed from the cache, and identical games started concurrently are played once -- and every
+game played holds one of the machine-wide CPU slots, so all agents together run at most nproc
+games at a time. --no-cache / --no-slots turn these off; cached games keep the timings
+(ms/turn) of their original run.
 """
 import argparse
 import json
+import os
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
+
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools', 'agents'))
+    import ffh_agents
+except ImportError:
+    ffh_agents = None
+finally:
+    del sys.path[0]
+
+CACHED = set()  # seeds whose result came from the run cache
 
 
 def parse_seeds(s):
@@ -46,10 +66,17 @@ def run_one(args, seed):
         cmd += ['--until-supremacy']
     if args.every:
         cmd += ['--every', str(args.every)]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        return {'seed': seed, 'error': (r.stderr or r.stdout)[-2000:]}
-    line = [l for l in r.stdout.splitlines() if l.startswith('{')][-1]
+    if ffh_agents and (args.cache or args.slots):
+        rc, out, err, hit = ffh_agents.run_cached(cmd, cache=args.cache, slots=args.slots)
+        out, err = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+        if hit:
+            CACHED.add(seed)
+    else:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        rc, out, err = r.returncode, r.stdout, r.stderr
+    if rc != 0:
+        return {'seed': seed, 'error': (err or out)[-2000:]}
+    line = [l for l in out.splitlines() if l.startswith('{')][-1]
     return json.loads(line)
 
 
@@ -132,7 +159,7 @@ def totals(results):
     return tot
 
 
-def print_report(results, at, label=''):
+def print_report(results, at, label='', cached=()):
     errs = [r for r in results if 'error' in r]
     for e in errs:
         print('seed %s FAILED: %s' % (e['seed'], e['error']))
@@ -149,7 +176,10 @@ def print_report(results, at, label=''):
     tot = totals(results)
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)
-    print('time: %.2f ms/turn avg, slowest turn %.1f ms' % (tot['ms_per_turn'], tot['slowest_ms']))
+    n_cached = sum(1 for r in results if 'error' not in r and r['seed'] in cached)
+    print('time: %.2f ms/turn avg, slowest turn %.1f ms%s' % (
+        tot['ms_per_turn'], tot['slowest_ms'],
+        ' (%d of %d games from the run cache: timings of their original runs)' % (n_cached, tot['games']) if n_cached else ''))
     outs = [r['outcome'] for r in results if 'error' not in r and 'outcome' in r]
     if outs:
         decided = [o for o in outs if o['kind'] != 'turn_limit']
@@ -187,7 +217,26 @@ def main():
     ap.add_argument('--until-supremacy', action='store_true',
                     help="stop each game at victory, last civ standing, or clear supremacy (1.5x the runner-up's score, "
                          "i.e. share of the world, held 30 turns, counted from turn 200)")
+    ap.add_argument('--cache', dest='cache', action='store_true', default=None,
+                    help='replay games already played (same binary, data, arguments) from the shared run cache '
+                         '(default: on when %s exists)' % (ffh_agents.ROOT if ffh_agents else 'the agents cache'))
+    ap.add_argument('--no-cache', dest='cache', action='store_false')
+    ap.add_argument('--no-slots', dest='slots', action='store_false', default=None,
+                    help='do not take machine-wide CPU slots (tools/agents/slot.sh) per game')
     args = ap.parse_args()
+    if ffh_agents is None:
+        args.cache = args.slots = False
+    else:
+        if args.cache and not os.path.isdir(ffh_agents.ROOT):
+            os.makedirs(ffh_agents.ROOT, exist_ok=True)
+        if args.cache is None:
+            args.cache = ffh_agents.cache_enabled()
+        if args.slots is None:
+            args.slots = ffh_agents.slots_enabled()
+        if args.cache:
+            key, why = ffh_agents.run_key([args.bin, 'stats'])
+            if key is None:
+                print('ai_metrics: run cache off for %s: %s' % (args.bin, why), file=sys.stderr)
     seeds = parse_seeds(args.seeds)
     at = [int(t) for t in args.at.split(',')]
     if args.every:
@@ -202,7 +251,7 @@ def main():
             old = json.load(f)
         print_report(old, at, 'before: ' + args.compare)
         print()
-    print_report(results, at, args.label)
+    print_report(results, at, args.label, CACHED)
 
 
 if __name__ == '__main__':

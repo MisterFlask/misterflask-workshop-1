@@ -1,0 +1,45 @@
+#!/bin/sh
+# ffh2-rs agents: sparse agent worktrees (installed by projects/ffh2-rs/tools/agents/install-hooks.sh;
+# see projects/ffh2-rs/docs/AGENTS.md).
+#
+# When `git worktree add` creates a worktree under <main checkout>/.claude/worktrees/, limit it to
+# the repository's root files, .claude/ and projects/ffh2-rs/ (sparse checkout, non-cone patterns):
+# ~30 MB instead of ~200 MB (projects/ffh-simplified alone is ~170 MB). Anything else -- the main
+# checkout, worktrees elsewhere, branch switches, clones -- is left alone.
+#
+# Undo in one worktree:  git sparse-checkout disable
+# Opt out at creation:   FFH2_FULL_CHECKOUT=1 git worktree add ...
+# Remove the hook:       projects/ffh2-rs/tools/agents/install-hooks.sh --uninstall
+
+hook_dir=$(dirname "$0")
+if [ -x "$hook_dir/post-checkout.local" ]; then
+    "$hook_dir/post-checkout.local" "$@" || exit $?
+fi
+
+# Only a checkout from nothing (all-zero previous HEAD) that switched branches: worktree creation.
+case "$1" in *[!0]*|'') exit 0 ;; esac
+[ "$3" = 1 ] || exit 0
+[ -z "$FFH2_FULL_CHECKOUT" ] || exit 0
+
+git_dir=$(git rev-parse --absolute-git-dir 2>/dev/null) || exit 0
+common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+[ "$git_dir" != "$common" ] || exit 0                     # the main checkout (or a clone): never
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+main=$(dirname "$common")
+case "$top/" in "$main/.claude/worktrees/"?*/) ;; *) exit 0 ;; esac
+[ -d "$top/projects/ffh2-rs" ] || exit 0                   # a revision without the project: leave it
+
+# Per-worktree sparse settings need extensions.worktreeConfig (set once by install-hooks.sh);
+# without it core.sparseCheckout would land in the shared config and affect every checkout.
+if [ "$(git config --bool extensions.worktreeConfig)" != true ]; then
+    echo "ffh2-rs post-checkout: extensions.worktreeConfig is off; not making $top sparse (rerun install-hooks.sh)" >&2
+    exit 0
+fi
+[ "$(git config --worktree --bool core.sparseCheckout 2>/dev/null)" = true ] && exit 0   # already sparse
+
+if git sparse-checkout set --no-cone '/*' '!/*/' '/.claude/' '/projects/' '!/projects/*/' '/projects/ffh2-rs/' 2>/dev/null; then
+    echo "ffh2-rs: sparse worktree (root files, .claude/, projects/ffh2-rs/); 'git sparse-checkout disable' restores the full tree" >&2
+else
+    echo "ffh2-rs post-checkout: git sparse-checkout failed in $top; the worktree stays full" >&2
+fi
+exit 0

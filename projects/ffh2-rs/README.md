@@ -23,8 +23,8 @@ the AI is new. Base mod only; no UI (headless runner).
 | `crates/ffh-cli` | `ffh` binary: data checks, AI-only autoplay, benchmarks |
 | `crates/ffh-stress` | `ffh-stress` binary: AI games over a matrix of game settings (speed, handicap, era, world size, civs, climate, sea level, options, teams, victories), crashes caught per game |
 | `crates/ffh-play` | `ffh-play` binary and library: human play (session core, JSONL agent, HTTP server with the browser client; see `docs/HUMAN.md`) |
-| `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `porting/*.md` (C++ function maps) |
-| `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness |
+| `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `AGENTS.md` (parallel agents), `porting/*.md` (C++ function maps) |
+| `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness; `tools/agents/`: infrastructure for parallel agents (shared incremental builds per revision or worktree, a run cache for deterministic games, machine-wide CPU slots, sparse agent worktrees; `docs/AGENTS.md`) |
 
 ## Build and run
 
