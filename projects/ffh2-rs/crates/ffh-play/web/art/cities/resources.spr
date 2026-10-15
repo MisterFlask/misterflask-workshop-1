@@ -31,13 +31,13 @@
 .y.y.y.
 
 = res/_strategic 7x7 3,3
-: note strategic fallback: an ingot
+: note strategic fallback: a lump of ore
 .......
-..666..
-.65556.
-6555554
-4444443
-.333333
+...65..
+..6554.
+.65554.
+6555443
+.44433.
 .......
 
 = res/_luxury 7x7 3,3
@@ -223,11 +223,11 @@ uuuuuu2
 : types BONUS_IRON
 : note an iron ingot
 .......
-..555..
-.54445.
-5444443
-3333332
-.222222
+..666..
+.65556.
+6555554
+4444443
+.333333
 .......
 
 = res/mithril 7x7 3,3
@@ -289,10 +289,10 @@ ffffffg
 : types BONUS_SHEUT_STONE
 : note a black stone with a crimson vein
 .......
-..443..
-.4332C.
-433C22.
-43C222.
+..553..
+.5332C.
+533C22.
+53C222.
 .2222..
 .......
 
@@ -477,11 +477,11 @@ yYYYYYy
 = res/gulagarm 7x7 3,3
 : types BONUS_GULAGARM
 : note a sealed jar
-..555..
+..yyy..
 ..yQy..
-.QQQQu.
-QQyQQQu
-QQQQQQu
+.YQQQu.
+YQyQQQu
+YQQQQQu
 .QQQQu.
 ..uuu..
 
