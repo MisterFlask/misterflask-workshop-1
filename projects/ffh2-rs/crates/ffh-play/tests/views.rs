@@ -120,7 +120,9 @@ fn item(item_type: TradeableItem, data: i32) -> TradeData {
 }
 
 /// `propose_deal`: the trade tables' items only, both sides of a dual item, the AI's answer
-/// (`consider_offer`): a refusal changes nothing, an accepted peace treaty makes peace.
+/// (`consider_offer`): a refusal changes nothing, an accepted peace treaty makes peace. At war the
+/// AI refuses to talk until its war counter reaches its leader's threshold
+/// (`AI_isWillingToTalk`), and a deal must be a peace deal: a gift cannot end the war.
 #[test]
 fn propose_deal_follows_the_trade_tables_and_the_ai_answer() {
     let mut s = duel(21);
@@ -128,34 +130,69 @@ fn propose_deal_follows_the_trade_tables_and_the_ai_answer() {
     let ai = s.g.civ_player_ids().find(|&p| p != h).unwrap();
     let (my, their) = (s.g.players[h].team, s.g.players[ai].team);
     let peace = || vec![item(TradeableItem::TRADE_PEACE_TREATY, 0)];
+    let gold = |n: i32| vec![item(TradeableItem::TRADE_GOLD, n)];
     // Unmet: no contact, no trade query.
     let deal = |give: Vec<TradeData>, get: Vec<TradeData>| Command::ProposeDeal { to: ai, give, get };
     assert!(matches!(s.execute(&deal(peace(), peace())), Err(CmdErr::Cannot(_))));
     assert!(s.query(&Query::Trade { with: ai }).is_err());
     s.g.team_meet(my, their, false);
+    // Gold trading on for both, and gold on both sides, for the gift cases below.
+    s.g.teams[my].gold_trading_count += 1;
+    s.g.players[h].gold = s.g.players[h].gold.max(50);
+    s.g.players[ai].gold = s.g.players[ai].gold.max(50);
     let t = s.query(&Query::Trade { with: ai }).unwrap();
     assert_eq!(t.get("contact"), Some(&Json::Bool(true)));
-    // At peace there is no peace treaty to offer.
+    // At peace there is no peace treaty to offer; nonsense is refused before the AI is asked.
     assert!(matches!(s.execute(&deal(peace(), peace())), Err(CmdErr::Cannot(_))));
-    applied(&mut s, Command::DeclareWar { team: their });
-    let t = s.query(&Query::Trade { with: ai }).unwrap();
-    let has_peace = |side: &str| t.get(side).unwrap().as_arr().unwrap().iter().any(|i| i.get("item") == Some(&Json::idx(TradeableItem::TRADE_PEACE_TREATY)));
-    assert!(has_peace("we_give") && has_peace("they_give"));
-    // A dual item goes on both sides; nonsense is refused before the AI is asked.
-    assert!(matches!(s.execute(&deal(peace(), vec![])), Err(CmdErr::Invalid(e)) if e.contains("both sides")));
     assert!(matches!(s.execute(&deal(vec![], vec![])), Err(CmdErr::Invalid(_))));
     assert!(matches!(s.execute(&deal(vec![item(TradeableItem::TRADE_GOLD, i32::MAX)], vec![])), Err(CmdErr::Cannot(_))));
     assert!(matches!(s.execute(&deal(vec![item(TradeableItem::TRADE_CITIES, 999_999)], vec![])), Err(CmdErr::Cannot(_))));
     assert!(matches!(s.execute(&Command::ProposeDeal { to: h, give: peace(), get: peace() }), Err(CmdErr::Cannot(_))));
     assert!(matches!(s.execute(&Command::ProposeDeal { to: PlayerId(200), give: peace(), get: peace() }), Err(CmdErr::Invalid(_))));
-    // Fresh war: the AI declines (its war counter is under 10); nothing changes, nothing is
-    // journaled.
+    applied(&mut s, Command::DeclareWar { team: their });
+
+    // Fresh war: the AI refuses to talk (its war counter is under its leader's threshold). No
+    // trade table, no deal: neither peace nor a gift (which would make peace, CvDeal::addTrades).
+    assert!(!ffh_play::view::diplo::ai_willing_to_talk(&s.g, ai, h));
+    let t = s.query(&Query::Trade { with: ai }).unwrap();
+    assert_eq!(t.get("contact"), Some(&Json::Bool(false)));
+    assert!(t.get("why_not").and_then(Json::as_str).is_some_and(|w| w.contains("refuses to talk")), "{t}");
     let (before, lines) = (s.g.save(), s.journal_lines().unwrap().len());
-    assert_eq!(applied(&mut s, deal(peace(), peace())), Some(false));
+    for (give, get) in [(peace(), peace()), (gold(1), vec![]), (vec![], gold(1))] {
+        let r = s.execute(&deal(give, get));
+        assert!(matches!(&r, Err(CmdErr::Cannot(e)) if e.contains("refuses to talk")), "{r:?}");
+    }
     assert!(before == s.g.save());
     assert_eq!(s.journal_lines().unwrap().len(), lines);
     assert!(s.g.at_war(my, their));
-    // After ten turns of war it takes peace.
+
+    // The AI talks once its war counter reaches the threshold.
+    while !ffh_play::view::diplo::ai_willing_to_talk(&s.g, ai, h) {
+        next_turn(&mut s);
+        assert!(s.g.at_war(my, their));
+    }
+    assert!(s.g.teams[their].ai_at_war_counter[my] > 0);
+    s.g.players[h].gold = s.g.players[h].gold.max(50);
+    s.g.players[ai].gold = s.g.players[ai].gold.max(50);
+    let t = s.query(&Query::Trade { with: ai }).unwrap();
+    let has_peace = |side: &str| t.get(side).unwrap().as_arr().unwrap().iter().any(|i| i.get("item") == Some(&Json::idx(TradeableItem::TRADE_PEACE_TREATY)));
+    assert!(has_peace("we_give") && has_peace("they_give"));
+    // A dual item goes on both sides; at war a deal is a peace deal: a gift alone is refused.
+    assert!(matches!(s.execute(&deal(peace(), vec![])), Err(CmdErr::Invalid(e)) if e.contains("both sides")));
+    let (before, lines) = (s.g.save(), s.journal_lines().unwrap().len());
+    for (give, get) in [(gold(1), vec![]), (vec![], gold(1))] {
+        let r = s.execute(&deal(give, get));
+        assert!(matches!(&r, Err(CmdErr::Invalid(e)) if e.contains("peace treaty")), "{r:?}");
+    }
+    // A peace treaty the AI does not take (it would give gold too): declined, nothing changes,
+    // nothing is journaled.
+    let mut get = peace();
+    get.extend(gold(1));
+    assert_eq!(applied(&mut s, deal(peace(), get)), Some(false));
+    assert!(before == s.g.save());
+    assert_eq!(s.journal_lines().unwrap().len(), lines);
+    assert!(s.g.at_war(my, their));
+    // After ten turns of war it takes peace (ffh-ai's judgement).
     while s.g.teams[their].ai_at_war_counter[my] < 10 {
         next_turn(&mut s);
     }

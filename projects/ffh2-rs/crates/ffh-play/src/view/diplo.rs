@@ -10,6 +10,14 @@
 //! limits are not ported, so the same bounds apply). The C++ AI's denials are not ported either
 //! (ffh-core reads them as "no denial" except the rules-based ones); whether an AI accepts is its
 //! controller's `consider_offer`.
+//!
+//! Whether an AI talks at all is [`ai_willing_to_talk`] (`CvPlayerAI::AI_isWillingToTalk`, which
+//! gates the exe's diplomacy screen: "refuses to talk"): at war, not before its war counter
+//! reaches its leader's refuse-to-talk threshold. A deal between teams at war always makes peace
+//! (`CvDeal::addTrades` calls `makePeace` for any deal at war), so at war a deal must say so: a
+//! peace treaty on both sides, or a capitulation, as the C++ AI's own war offers and counter
+//! proposals have it (`AI_doDiplo`, `AI_counterPropose`). A gift alone would end the war past the
+//! AI's peace judgement.
 
 use ffh_core::deal::Deal;
 use ffh_core::game::Game;
@@ -105,7 +113,43 @@ fn item_json(g: &Game, from: PlayerId, to: PlayerId, t: &TradeData) -> Json {
     j
 }
 
-/// Why the human cannot trade with `with` (or `Ok`): a met, alive civilization it can contact.
+/// C++ `CvPlayerAI::AI_isWillingToTalk(ePlayer)`: whether the AI `ai` talks to `other` (the exe
+/// opens the diplomacy screen only then; the contact button's help says "refuses to talk"). At
+/// war it refuses until its war counter reaches its leader's `iRefuseToTalkWarThreshold` (doubled
+/// for a war it chose, shortened when the other side is clearly winning), and a vassal never
+/// talks at war. In peace C++ also refuses while it remembers the other stopping trade with it
+/// (`MEMORY_STOPPED_TRADING_RECENT`); that branch is not ported: the AI memory decay
+/// (`CvPlayerAI::AI_doCounter`) is AI code that ffh-ai does not run, so the memory would never
+/// fade and the AI would refuse to talk for the rest of the game.
+pub fn ai_willing_to_talk(g: &Game, ai: PlayerId, other: PlayerId) -> bool {
+    let (team, their) = (g.players[ai].team, g.players[other].team);
+    if their == team || g.teams[their].vassal[team] || g.teams[team].vassal[their] {
+        return true;
+    }
+    if g.team_is_human(team) {
+        return false;
+    }
+    if g.at_war(team, their) {
+        let threshold = g.players[ai].personality_type.map_or(0, |l| g.d.leader_heads[l].refuse_to_talk_war_threshold);
+        let mut refuse = threshold * if g.team_ai_is_chosen_war(team, their) { 2 } else { 1 };
+        let ours = 1 + g.teams[team].ai_war_success[their];
+        let theirs = 1 + g.teams[their].ai_war_success[team];
+        if theirs > ours * 2 {
+            refuse *= 20 + (80 * ours * 2) / theirs;
+            refuse /= 100;
+        }
+        if g.teams[team].ai_at_war_counter[their] < refuse {
+            return false;
+        }
+        if g.team_is_a_vassal(team) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Why the human cannot trade with `with` (or `Ok`): a met, alive civilization it can contact
+/// and that is willing to talk ([`ai_willing_to_talk`]).
 pub fn contact(g: &Game, h: PlayerId, with: PlayerId) -> Result<(), String> {
     if with.idx() >= g.num_civ_players() || with == h || g.player_is_barbarian(with) {
         return Err(format!("player {} is not another civilization", with.0));
@@ -116,6 +160,9 @@ pub fn contact(g: &Game, h: PlayerId, with: PlayerId) -> Result<(), String> {
     }
     if !g.player_can_contact(h, with) {
         return Err(format!("player {} cannot be contacted now", with.0));
+    }
+    if !g.players[with].human && !ai_willing_to_talk(g, with, h) {
+        return Err(format!("player {} refuses to talk", with.0));
     }
     Ok(())
 }
@@ -140,10 +187,11 @@ pub fn trade(v: &Viewer, with: PlayerId) -> Result<Json, QueryErr> {
 }
 
 /// The deal checks of `propose_deal` (the diplomacy screen only offers these): `to` can be
-/// contacted; something is traded; every item is in its side's trade table (gold and gold per
-/// turn as an amount from 1 to the side's maximum), not twice, and passes
-/// `canTradeItem(.., bTestDenial = true)`; a dual item (peace treaty, open borders, defensive
-/// pact, permanent alliance) is on both sides, as the screen puts it.
+/// contacted and is willing to talk ([`contact`]); something is traded; every item is in its
+/// side's trade table (gold and gold per turn as an amount from 1 to the side's maximum), not
+/// twice, and passes `canTradeItem(.., bTestDenial = true)`; a dual item (peace treaty, open
+/// borders, defensive pact, permanent alliance) is on both sides, as the screen puts it; at war,
+/// the deal carries the peace treaty or a capitulation (see the module docs).
 pub fn check_deal(g: &Game, h: PlayerId, to: PlayerId, give: &[TradeData], get: &[TradeData]) -> Result<(), crate::command::CmdErr> {
     use crate::command::CmdErr;
     if to.idx() >= g.num_players() {
@@ -188,6 +236,13 @@ pub fn check_deal(g: &Game, h: PlayerId, to: PlayerId, give: &[TradeData], get: 
                     crate::names::name(g.d, t.item_type)
                 )));
             }
+        }
+    }
+    // At war every deal makes peace (`CvDeal::addTrades`): it has to be a peace deal.
+    if g.at_war(g.players[h].team, g.players[to].team) {
+        let has = |kind: TradeableItem| give.iter().chain(get).any(|t| t.item_type == kind);
+        if !has(TradeableItem::TRADE_PEACE_TREATY) && !has(TradeableItem::TRADE_SURRENDER) {
+            return Err(CmdErr::Invalid("at war a deal makes peace: it needs the peace treaty (both sides) or a capitulation".into()));
         }
     }
     Ok(())

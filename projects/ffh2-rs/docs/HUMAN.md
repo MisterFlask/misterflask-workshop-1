@@ -140,10 +140,15 @@ slider steps of ±`COMMERCE_PERCENT_CHANGE_INCREMENTS` (10), `TASK_LIBERATE` wit
 query lists what each side can give (Civ4's trade table: gold and gold per turn up to a maximum,
 maps, open borders, pacts, a peace treaty while at war, techs, resources, cities, ...) with
 Civ4's refusals. A deal must use those items (gold as an amount), not twice, and put a peace
-treaty, open borders, a defensive pact or a permanent alliance on both sides. The AI answers at
-once: `accepted: false` changes nothing; `accepted: true` signs it. Today's AI (ffh-ai's
-`consider_offer`) accepts gifts, peace after 10 turns of war unless it is clearly winning, open
-borders when it likes you, and a fair tech swap, and refuses anything else.
+treaty, open borders, a defensive pact or a permanent alliance on both sides. At war an AI
+refuses to talk at all until the war has lasted its leader's refuse-to-talk threshold (5 to 20
+turns, doubled for a war it chose, shorter when you are clearly winning; Civ4's
+`AI_isWillingToTalk`): `trade` then answers `contact: false`, `why_not: "... refuses to talk"`,
+and `propose_deal` `cannot`. As every deal between enemies ends the war (Civ4's `CvDeal`), a deal
+at war must carry the peace treaty (both sides) or a capitulation; a gift alone is `invalid`.
+The AI answers at once: `accepted: false` changes nothing; `accepted: true` signs it. Today's
+AI (ffh-ai's `consider_offer`) accepts gifts, peace after 10 turns of war unless it is clearly
+winning, open borders when it likes you, and a fair tech swap, and refuses anything else.
 
 ### Queries
 
