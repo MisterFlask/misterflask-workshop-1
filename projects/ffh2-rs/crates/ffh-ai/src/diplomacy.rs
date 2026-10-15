@@ -374,7 +374,7 @@ fn can_take_cities(g: &Game, p: PlayerId, other: PlayerId) -> bool {
 }
 
 /// Should `team` seek peace with `enemy`?
-fn want_peace(g: &Game, team: TeamId, enemy: TeamId) -> bool {
+pub(crate) fn want_peace(g: &Game, team: TeamId, enemy: TeamId) -> bool {
     let counter = g.teams[team].ai_at_war_counter[enemy];
     if counter < 10 {
         return false;

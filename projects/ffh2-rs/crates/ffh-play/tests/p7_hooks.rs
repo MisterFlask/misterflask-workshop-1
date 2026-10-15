@@ -434,3 +434,93 @@ fn the_ai_research_pick_goes_through_its_own_hook() {
     assert!(asked(&script).is_empty(), "no blocking decision");
     assert!(s.pending().research_needed);
 }
+
+/// The leader's contact period of the AI `ai` for `contact` (ffh-ai `offers.rs`).
+fn contact_period(g: &Game, ai: PlayerId, contact: &str) -> i32 {
+    let l = &g.d.leader_heads[g.players[ai].personality_type.unwrap()];
+    let c = g.d.t::<ContactType>(contact);
+    (l.contact_delay[c] + l.contact_rand[c]).max(1)
+}
+
+/// An AI losing its war with the human offers peace (C++ AI_doDiplo's CONTACT_PEACE_TREATY): the
+/// offer is a blocking decision; refused, the war goes on, accepted, peace is signed.
+#[test]
+fn a_losing_ai_offers_peace_to_the_human() {
+    let (mut s, script) = session(39, 1, "WORLDSIZE_DUEL", Some("CIVILIZATION_BANNOR"));
+    to_turn(&mut s, 2);
+    let h = s.human;
+    let ai = s.g.civ_player_ids().find(|&p| p != h && s.g.players[p].alive).unwrap();
+    let (my, theirs) = (s.g.players[h].team, s.g.players[ai].team);
+    s.g.team_meet(my, theirs, false);
+    s.g.team_declare_war(my, theirs, false, None);
+    // The human is strong and winning; the AI wants peace.
+    let capital = s.g.players[h].cities[0];
+    let (x, y) = (s.g.cities[capital].x, s.g.cities[capital].y);
+    let archer = s.g.d.t::<UnitType>("UNIT_ARCHER");
+    for _ in 0..8 {
+        s.g.player_init_unit(h, archer, x, y, None, None);
+    }
+    let period = contact_period(&s.g, ai, "CONTACT_PEACE_TREATY");
+    let mut offers = Vec::new();
+    for _ in 0..(2 * period + 25) {
+        s.g.teams[theirs].ai_at_war_counter[my] = s.g.teams[theirs].ai_at_war_counter[my].max(15);
+        s.g.teams[my].ai_war_success[theirs] = 500;
+        // Refuse the first offer, accept the second.
+        answer(&script, "offer", if offers.is_empty() { "refuse" } else { "accept" });
+        ok(&mut s, Command::EndTurn { force: true });
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+        offers.extend(asked(&script).into_iter().filter(|d| matches!(d.kind, DecisionKind::Offer { from } if from == ai)));
+        if offers.len() >= 2 || !s.g.at_war(my, theirs) {
+            break;
+        }
+    }
+    assert!(offers.len() >= 2, "the AI offered peace twice ({} offers)", offers.len());
+    assert!(offers[0].text.contains("a peace treaty"), "{}", offers[0].text);
+    assert!(!s.g.at_war(my, theirs), "accepted: peace");
+}
+
+/// An AI at peace with the human offers a tech swap of similar value (CONTACT_TRADE_TECH);
+/// accepted, both sides get the other's tech.
+#[test]
+fn the_ai_offers_tech_trades_to_the_human() {
+    let (mut s, script) = session(40, 1, "WORLDSIZE_DUEL", Some("CIVILIZATION_BANNOR"));
+    to_turn(&mut s, 2);
+    let h = s.human;
+    let d = s.g.d;
+    let ai = s.g.civ_player_ids().find(|&p| p != h && s.g.players[p].alive).unwrap();
+    let (my, theirs) = (s.g.players[h].team, s.g.players[ai].team);
+    s.g.team_meet(my, theirs, false);
+    // Tech trading (TECH_TRADE), and an AI that does not dislike us (the same alignment).
+    let trading = d.t::<TechType>("TECH_TRADE");
+    s.g.team_set_has_tech(my, trading, true, Some(h), false, false);
+    s.g.team_set_has_tech(theirs, trading, true, Some(ai), false, false);
+    s.g.players[h].alignment = s.g.players[ai].alignment;
+    // Each side has a tech the other lacks and can research.
+    let lacks = |g: &Game, t: TeamId, p: PlayerId| d.techs.keys().filter(|&x| !g.team_is_has_tech(t, Some(x)) && g.player_can_research(p, x, false)).collect::<Vec<_>>();
+    let mine = *lacks(&s.g, theirs, ai).iter().find(|&&x| s.g.player_can_research(h, x, false)).expect("a tech for the human");
+    s.g.team_set_has_tech(my, mine, true, Some(h), false, false);
+    let other = *lacks(&s.g, my, h)
+        .iter()
+        .find(|&&x| x != mine && s.g.player_can_research(ai, x, false) && s.g.team_get_research_cost(theirs, x) <= s.g.team_get_research_cost(theirs, mine))
+        .expect("a tech for the AI");
+    s.g.team_set_has_tech(theirs, other, true, Some(ai), false, false);
+    answer(&script, "offer", "accept");
+    let period = contact_period(&s.g, ai, "CONTACT_TRADE_TECH");
+    let mut offer = None;
+    // Techs one side has and the other does not (the trade reduces both counts).
+    let only = |g: &Game, a: TeamId, b: TeamId| d.techs.keys().filter(|&x| g.team_is_has_tech(a, Some(x)) && !g.team_is_has_tech(b, Some(x))).count();
+    let mut before = (0, 0);
+    for _ in 0..(period + 3) {
+        before = (only(&s.g, my, theirs), only(&s.g, theirs, my));
+        ok(&mut s, Command::EndTurn { force: true });
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+        if let Some(o) = asked(&script).into_iter().find(|d| matches!(d.kind, DecisionKind::Offer { from } if from == ai)) {
+            offer = Some(o);
+            break;
+        }
+    }
+    let offer = offer.expect("the AI offered a trade");
+    assert!(offer.text.contains("They give:") && !offer.text.contains("TECHNOLOGIES"), "named items: {}", offer.text);
+    let after = (only(&s.g, my, theirs), only(&s.g, theirs, my));
+    assert!(after.0 < before.0 && after.1 < before.1, "accepted: each side got a tech of the other's ({before:?} -> {after:?}; {})", offer.text);
+}

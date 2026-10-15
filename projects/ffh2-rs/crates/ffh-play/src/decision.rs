@@ -282,7 +282,7 @@ pub fn take_control(g: &Game, p: PlayerId, new: PlayerId, advisor_takes: bool) -
 
 /// A deal offered to the human.
 pub fn offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeData], we_give: &[TradeData], advisor_accepts: bool) -> Decision {
-    let items = |v: &[TradeData]| v.iter().map(trade_item_text).collect::<Vec<_>>().join(", ");
+    let items = |v: &[TradeData]| if v.is_empty() { "nothing".to_string() } else { v.iter().map(|t| trade_item_text(g, t)).collect::<Vec<_>>().join(", ") };
     Decision {
         id: 0,
         player: p,
@@ -295,9 +295,26 @@ pub fn offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeData], we_
     }
 }
 
-fn trade_item_text(t: &TradeData) -> String {
-    let name = TradeableItem::NAMES.get(t.item_type.0 as usize).copied().unwrap_or("TRADE_?");
-    format!("{} {}", name.trim_start_matches("TRADE_"), t.data)
+/// A trade item as the diplomacy screen names it.
+fn trade_item_text(g: &Game, t: &TradeData) -> String {
+    let d = g.d;
+    let data = t.data.max(0) as usize;
+    match t.item_type {
+        TradeableItem::TRADE_TECHNOLOGIES if data < d.techs.len() => names::display(d, TechType::from_usize(data)).into_owned(),
+        TradeableItem::TRADE_RESOURCES if data < d.bonuses.len() => names::display(d, BonusType::from_usize(data)).into_owned(),
+        TradeableItem::TRADE_CITIES if g.cities.contains(CityId(data as u32)) => crate::view::city_name(g, CityId(data as u32)),
+        TradeableItem::TRADE_GOLD => format!("{} gold", t.data),
+        TradeableItem::TRADE_GOLD_PER_TURN => format!("{} gold per turn", t.data),
+        TradeableItem::TRADE_PEACE_TREATY => "a peace treaty".into(),
+        TradeableItem::TRADE_OPEN_BORDERS => "open borders".into(),
+        TradeableItem::TRADE_DEFENSIVE_PACT => "a defensive pact".into(),
+        TradeableItem::TRADE_PERMANENT_ALLIANCE => "a permanent alliance".into(),
+        TradeableItem::TRADE_MAPS => "the world map".into(),
+        _ => {
+            let name = TradeableItem::NAMES.get(t.item_type.0 as usize).copied().unwrap_or("TRADE_?");
+            format!("{} {}", name.trim_start_matches("TRADE_").to_lowercase().replace('_', " "), t.data)
+        }
+    }
 }
 
 /// Religion choice (BUTTONPOPUP_FOUND_RELIGION): religions not founded yet.

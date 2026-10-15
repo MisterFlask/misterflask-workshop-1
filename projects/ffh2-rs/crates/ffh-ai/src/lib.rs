@@ -29,6 +29,7 @@ pub mod expansion;
 pub mod finance;
 pub mod military;
 pub mod naval;
+pub mod offers;
 pub mod production;
 pub mod reach;
 pub mod research;
@@ -110,6 +111,7 @@ impl Controller for Ai {
             production::emergency(self, g, p);
             expansion::prepare_escorts(g, p); // early-expansion
             diplomacy::manage(g, &v);
+            offers::to_humans(g, &v); // ai-offers: deals offered to human players
             // War declarations change the picture.
             v = view::View::new(g, p);
         }
