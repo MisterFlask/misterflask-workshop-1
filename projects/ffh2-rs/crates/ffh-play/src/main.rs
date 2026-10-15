@@ -1,6 +1,6 @@
 //! `ffh-play`: human play for ffh2-rs (docs/PLAY_DESIGN.md, docs/HUMAN.md).
 //!
-//! Commands (serve and bench come with later phases):
+//! Commands (bench comes with a later phase):
 //!   ffh-play kinds                     list every named kind (info tables, GlobalTypes lists,
 //!                                      hard-coded C++ enums) with its source and count
 //!   ffh-play names [KIND] [--pretty]   JSON of the type names of one kind (`UnitType` or
@@ -35,6 +35,9 @@
 //!                                      JSONL over stdin/stdout (design §4.1): requests in, replies
 //!                                      and events out; starts a new game unless --no-game,
 //!                                      --load or --take-over; exit 3 after a crash
+//!   ffh-play serve [GAME] [--port N] [--bind ADDR] [--assets DIR]
+//!                                      the HTTP server (design §4.2) on 127.0.0.1:8642; no game
+//!                                      until the client starts one, or GAME says so
 //!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
 //!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
 //!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
@@ -48,6 +51,7 @@ use ffh_play::bot::Bot;
 use ffh_play::names::{self, Source, KINDS};
 use ffh_play::session::ReplayFrom;
 use ffh_play::soak::{self, batch, Matrix, RunOptions, SoakGame};
+use ffh_play::transport::server::{ServeOptions, Server};
 use ffh_play::transport::stdio::{AgentOptions, OnEof};
 use ffh_play::transport::{HostOptions, Start};
 use ffh_play::{NewGame, Session, SessionOptions, Stop};
@@ -61,6 +65,7 @@ fn usage() -> ! {
          \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--speeds ..] [--turns N] [--jobs N] [--timeout SECS]\n\
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
+         \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR]\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -380,7 +385,7 @@ fn cmd_soak(args: &[String]) {
     }
 }
 
-/// The game options of `agent` (see the source header).
+/// The game options `agent` and `serve` share (see the source header).
 struct GameArgs {
     host: HostOptions,
     /// `--setup` with the new-game flags merged in.
@@ -486,6 +491,38 @@ fn cmd_agent(args: &[String]) {
     std::process::exit(code);
 }
 
+fn cmd_serve(args: &[String]) {
+    let mut game = GameArgs::new();
+    let mut opts = ServeOptions::default();
+    let mut i = 0;
+    while i < args.len() {
+        if !game.take(args, &mut i) {
+            match args[i].as_str() {
+                "--port" => opts.bind.set_port(flag_value(args, &mut i).parse().unwrap_or_else(|_| usage())),
+                "--bind" => {
+                    let v = flag_value(args, &mut i);
+                    opts.bind = match v.parse::<std::net::SocketAddr>() {
+                        Ok(a) => a,
+                        Err(_) => std::net::SocketAddr::new(v.parse().unwrap_or_else(|_| usage()), opts.bind.port()),
+                    }
+                }
+                "--assets" => opts.assets = Some(flag_value(args, &mut i).into()),
+                _ => usage(),
+            }
+        }
+        i += 1;
+    }
+    opts.start = game.start(false);
+    let saves = game.host.saves.as_ref().map_or("none (--no-saves)".to_string(), |d| d.display().to_string());
+    opts.host = game.host;
+    let server = Server::start(opts).unwrap_or_else(|e| {
+        eprintln!("ffh-play serve: {e}");
+        std::process::exit(2)
+    });
+    println!("ffh-play: serving http://{}/ (saves: {saves}); stop with Ctrl-C or the quit request", server.addr());
+    server.wait();
+}
+
 fn cmd_kinds() {
     let d = ffh_data::global();
     for k in KINDS {
@@ -583,6 +620,7 @@ fn main() {
         "journal" => cmd_journal(&args[1..]),
         "soak" => cmd_soak(&args[1..]),
         "agent" => cmd_agent(&args[1..]),
+        "serve" => cmd_serve(&args[1..]),
         _ => usage(),
     }
 }

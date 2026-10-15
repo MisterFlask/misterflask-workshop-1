@@ -1,0 +1,502 @@
+//! A small HTTP/1.1 server over `std::net` (design §4.2): one request per connection
+//! (`Connection: close`), `Content-Length` bodies only, a thread per connection.
+//!
+//! | Request | Answer |
+//! |---|---|
+//! | `GET /`, `/app/..` | the client's files (embedded; `--assets DIR` serves them from disk) |
+//! | `GET /api/status` | the status ([`Shared`]) |
+//! | `GET /api/wait?since=V&timeout_ms=T` | the status once its version is above `V` (long-poll) |
+//! | `GET /api/view`, `/api/map` | the cached view and map of the last control point (409 without a game) |
+//! | `GET /api/data` | the static tables, with an ETag |
+//! | `GET /api/setup` | the new-game lists |
+//! | `POST /api` | the envelope, answered by the game thread; needs the header `X-FFH: 1` |
+//!
+//! Safety for a local server: the custom header stops cross-site form posts (a browser sends it
+//! only after a CORS preflight, which this server never grants); on a loopback address every
+//! request must name a loopback host (`Host: 127.0.0.1:8642`, `localhost`, `[::1]`), which stops
+//! DNS rebinding; asset paths and save names cannot leave their directories.
+
+use std::io::{Read, Write};
+use std::net::{Shutdown, TcpStream};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
+
+use super::server::Envelope;
+use super::shared::Shared;
+use crate::json::Json;
+
+/// Largest request head (request line and headers).
+pub const MAX_HEAD: usize = 16 * 1024;
+/// Largest request body.
+pub const MAX_BODY: usize = 1 << 20;
+
+/// The client files compiled into the binary: `(path, content type, content)`.
+pub const ASSETS: &[(&str, &str, &str)] = &[("index.html", "text/html; charset=utf-8", include_str!("../../assets/index.html"))];
+
+/// A parsed request.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HttpRequest {
+    pub method: String,
+    /// The path of the target (before `?`).
+    pub path: String,
+    /// The query string (after `?`, without it).
+    pub query: String,
+    pub headers: Vec<(String, String)>,
+    pub body: Vec<u8>,
+}
+
+impl HttpRequest {
+    /// A header's value (names are case-insensitive).
+    pub fn header(&self, name: &str) -> Option<&str> {
+        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
+    }
+
+    /// A query parameter (no percent-decoding: the parameters are numbers).
+    pub fn param(&self, name: &str) -> Option<&str> {
+        self.query.split('&').filter_map(|kv| kv.split_once('=')).find(|(k, _)| *k == name).map(|(_, v)| v)
+    }
+}
+
+/// A request that cannot be served: the status and why.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HttpError {
+    pub status: u16,
+    pub msg: String,
+}
+
+fn http_err(status: u16, msg: impl Into<String>) -> HttpError {
+    HttpError { status, msg: msg.into() }
+}
+
+/// Where the head ends: the index after the blank line.
+fn head_end(buf: &[u8]) -> Option<usize> {
+    let crlf = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4);
+    let lf = buf.windows(2).position(|w| w == b"\n\n").map(|i| i + 2);
+    match (crlf, lf) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
+/// Reads one request: the head (at most [`MAX_HEAD`]), then a `Content-Length` body (at most
+/// [`MAX_BODY`]). A chunked body is refused (400), a POST without a length too (411).
+pub fn read_request(r: &mut impl Read) -> Result<HttpRequest, HttpError> {
+    let mut buf = Vec::with_capacity(1024);
+    let mut chunk = [0u8; 4096];
+    let end = loop {
+        if let Some(e) = head_end(&buf) {
+            break e;
+        }
+        if buf.len() > MAX_HEAD {
+            return Err(http_err(431, "the request head is too large"));
+        }
+        let n = r.read(&mut chunk).map_err(|e| http_err(400, format!("reading the request: {e}")))?;
+        if n == 0 {
+            return Err(http_err(400, "the connection closed before the end of the request head"));
+        }
+        buf.extend_from_slice(&chunk[..n]);
+    };
+    if end > MAX_HEAD {
+        return Err(http_err(431, "the request head is too large"));
+    }
+    let head = std::str::from_utf8(&buf[..end]).map_err(|_| http_err(400, "the request head is not UTF-8"))?;
+    let mut lines = head.split('\n').map(|l| l.strip_suffix('\r').unwrap_or(l));
+    let request_line = lines.next().unwrap_or_default();
+    let mut parts = request_line.split(' ');
+    let (Some(method), Some(target), Some(version), None) = (parts.next(), parts.next(), parts.next(), parts.next()) else {
+        return Err(http_err(400, format!("bad request line {request_line:?}")));
+    };
+    if !version.starts_with("HTTP/1.") {
+        return Err(http_err(505, format!("{version} is not supported")));
+    }
+    if method.is_empty() || !method.bytes().all(|b| b.is_ascii_uppercase()) {
+        return Err(http_err(400, format!("bad method {method:?}")));
+    }
+    if !target.starts_with('/') {
+        return Err(http_err(400, "the target must be a path"));
+    }
+    let (path, query) = target.split_once('?').unwrap_or((target, ""));
+    let mut headers = Vec::new();
+    for l in lines {
+        if l.is_empty() {
+            continue;
+        }
+        if l.starts_with(' ') || l.starts_with('\t') {
+            return Err(http_err(400, "folded header lines are not accepted"));
+        }
+        let Some((k, v)) = l.split_once(':') else { return Err(http_err(400, format!("bad header line {l:?}"))) };
+        if k.is_empty() || !k.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_!#$%&'*+.^`|~".contains(&b)) {
+            return Err(http_err(400, format!("bad header name {k:?}")));
+        }
+        headers.push((k.to_string(), v.trim().to_string()));
+    }
+    let mut req = HttpRequest { method: method.to_string(), path: path.to_string(), query: query.to_string(), headers, body: Vec::new() };
+    if req.header("transfer-encoding").is_some() {
+        return Err(http_err(400, "only Content-Length bodies are accepted"));
+    }
+    let lengths: Vec<&str> = req.headers.iter().filter(|(k, _)| k.eq_ignore_ascii_case("content-length")).map(|(_, v)| v.as_str()).collect();
+    let length = match lengths.as_slice() {
+        [] if req.method == "POST" => return Err(http_err(411, "a POST needs a Content-Length")),
+        [] => 0,
+        [v] if !v.is_empty() && v.len() <= 12 && v.bytes().all(|b| b.is_ascii_digit()) => v.parse::<usize>().unwrap_or(usize::MAX),
+        _ => return Err(http_err(400, "bad Content-Length")),
+    };
+    if length > MAX_BODY {
+        return Err(http_err(413, format!("the body is larger than {MAX_BODY} bytes")));
+    }
+    let mut body = buf[end..].to_vec();
+    if body.len() > length {
+        body.truncate(length);
+    }
+    if body.len() < length {
+        let have = body.len();
+        body.resize(length, 0);
+        r.read_exact(&mut body[have..]).map_err(|e| http_err(400, format!("reading the body: {e}")))?;
+    }
+    req.body = body;
+    Ok(req)
+}
+
+/// A response body.
+pub enum Body {
+    Bytes(Vec<u8>),
+    Shared(Arc<String>),
+    Static(&'static str),
+}
+
+impl Body {
+    fn bytes(&self) -> &[u8] {
+        match self {
+            Body::Bytes(b) => b,
+            Body::Shared(s) => s.as_bytes(),
+            Body::Static(s) => s.as_bytes(),
+        }
+    }
+}
+
+/// A response: every one closes the connection.
+pub struct Response {
+    pub status: u16,
+    pub content_type: &'static str,
+    pub headers: Vec<(&'static str, String)>,
+    pub body: Body,
+}
+
+const JSON_TYPE: &str = "application/json; charset=utf-8";
+
+impl Response {
+    pub fn json(status: u16, j: &Json) -> Response {
+        Response { status, content_type: JSON_TYPE, headers: Vec::new(), body: Body::Bytes(j.to_string().into_bytes()) }
+    }
+
+    fn shared_json(s: Arc<String>) -> Response {
+        Response { status: 200, content_type: JSON_TYPE, headers: Vec::new(), body: Body::Shared(s) }
+    }
+
+    /// An error as JSON: `{"ok": false, "error", "detail"}`.
+    pub fn error(status: u16, code: &str, detail: impl Into<String>) -> Response {
+        let detail: String = detail.into();
+        Response::json(status, &crate::jobj! { "ok" => false, "error" => code, "detail" => detail })
+    }
+
+    fn with(mut self, k: &'static str, v: impl Into<String>) -> Response {
+        self.headers.push((k, v.into()));
+        self
+    }
+
+    /// Writes the response.
+    pub fn write_to(&self, w: &mut impl Write) -> std::io::Result<()> {
+        let body = self.body.bytes();
+        let mut head = format!("HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\n", self.status, reason(self.status), self.content_type, body.len());
+        if !self.headers.iter().any(|(k, _)| *k == "Cache-Control") {
+            head += "Cache-Control: no-store\r\n";
+        }
+        for (k, v) in &self.headers {
+            head += &format!("{k}: {v}\r\n");
+        }
+        head += "\r\n";
+        w.write_all(head.as_bytes())?;
+        if self.status != 304 {
+            w.write_all(body)?;
+        }
+        w.flush()
+    }
+}
+
+fn reason(status: u16) -> &'static str {
+    match status {
+        200 => "OK",
+        304 => "Not Modified",
+        400 => "Bad Request",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        409 => "Conflict",
+        411 => "Length Required",
+        413 => "Content Too Large",
+        431 => "Request Header Fields Too Large",
+        500 => "Internal Server Error",
+        503 => "Service Unavailable",
+        505 => "HTTP Version Not Supported",
+        _ => "Status",
+    }
+}
+
+/// What the HTTP threads need.
+pub struct HttpCtx {
+    pub shared: Arc<Shared>,
+    /// To the game thread.
+    pub tx: Sender<Envelope>,
+    /// `--assets DIR`: the client files from disk instead of the embedded ones.
+    pub assets: Option<PathBuf>,
+    /// Bound to a loopback address: requests must name a loopback host.
+    pub loopback: bool,
+}
+
+/// Serves one connection: one request, one response, then close.
+pub fn handle_connection(mut stream: TcpStream, ctx: &HttpCtx) {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(15)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
+    let (resp, drain) = match read_request(&mut stream) {
+        Ok(req) => (route(&req, ctx), false),
+        Err(e) => (Response::error(e.status, "http", e.msg), true),
+    };
+    let _ = resp.write_to(&mut stream);
+    let _ = stream.shutdown(Shutdown::Write);
+    if drain {
+        // Unread input would make the close a reset, and the client could lose the answer.
+        let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+        let mut sink = [0u8; 8192];
+        let mut total = 0;
+        while let Ok(n) = stream.read(&mut sink) {
+            total += n;
+            if n == 0 || total > 2 * MAX_BODY {
+                break;
+            }
+        }
+    }
+}
+
+/// `Host:` names a loopback host (a port may follow).
+pub fn loopback_host(host: &str) -> bool {
+    let name = match host.rsplit_once(':') {
+        Some((h, port)) if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) && (!h.contains(':') || h.ends_with(']')) => h,
+        _ => host,
+    };
+    name.eq_ignore_ascii_case("localhost") || name == "127.0.0.1" || name == "[::1]"
+}
+
+fn data_json() -> &'static (Arc<String>, String) {
+    static DATA: OnceLock<(Arc<String>, String)> = OnceLock::new();
+    DATA.get_or_init(|| {
+        let s = crate::view::data::data(ffh_data::global()).to_string();
+        let etag = format!("\"{}\"", crate::journal::fnv_hex(s.as_bytes()));
+        (Arc::new(s), etag)
+    })
+}
+
+fn setup_json() -> Arc<String> {
+    static SETUP: OnceLock<Arc<String>> = OnceLock::new();
+    SETUP.get_or_init(|| Arc::new(crate::setup::setup_lists(ffh_data::global()).to_string())).clone()
+}
+
+const ROUTES: &[(&str, &str)] = &[
+    ("/api", "POST"),
+    ("/api/status", "GET"),
+    ("/api/wait", "GET"),
+    ("/api/view", "GET"),
+    ("/api/map", "GET"),
+    ("/api/data", "GET"),
+    ("/api/setup", "GET"),
+    ("/", "GET"),
+    ("/index.html", "GET"),
+];
+
+/// Answers a request (the game thread only for `POST /api`).
+pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
+    if ctx.loopback && !req.header("host").is_some_and(loopback_host) {
+        return Response::error(403, "forbidden", "the Host header must name this computer (127.0.0.1, localhost or [::1])");
+    }
+    let path = req.path.as_str();
+    let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| path.starts_with("/app/").then_some("GET"));
+    match known {
+        None => return Response::error(404, "not_found", format!("no {path}")),
+        Some(m) if m != req.method => return Response::error(405, "method", format!("{path} answers {m} only")).with("Allow", m),
+        Some(_) => {}
+    }
+    match path {
+        "/api" => post_api(req, ctx),
+        "/api/status" => Response::json(200, &ctx.shared.status()),
+        "/api/wait" => {
+            let since = req.param("since").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+            let ms = req.param("timeout_ms").and_then(|v| v.parse::<u64>().ok()).unwrap_or(25_000);
+            Response::json(200, &ctx.shared.wait(since, Duration::from_millis(ms)))
+        }
+        "/api/view" => ctx.shared.view().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
+        "/api/map" => ctx.shared.map().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
+        "/api/data" => {
+            let (data, etag) = data_json();
+            if req.header("if-none-match") == Some(etag.as_str()) {
+                Response { status: 304, content_type: JSON_TYPE, headers: Vec::new(), body: Body::Static("") }
+            } else {
+                Response::shared_json(data.clone())
+            }
+            .with("ETag", etag.clone())
+            .with("Cache-Control", "no-cache")
+        }
+        "/api/setup" => Response::shared_json(setup_json()),
+        "/" => asset("index.html", ctx),
+        p => asset(p.trim_start_matches('/'), ctx),
+    }
+}
+
+fn post_api(req: &HttpRequest, ctx: &HttpCtx) -> Response {
+    if req.header("x-ffh") != Some("1") {
+        return Response::error(403, "forbidden", "POST /api needs the header X-FFH: 1");
+    }
+    let Ok(text) = std::str::from_utf8(&req.body) else { return Response::error(400, "invalid", "the body is not UTF-8") };
+    let j = match Json::parse(text) {
+        Ok(j) => j,
+        Err(e) => return Response::json(200, &super::err_reply(Json::Null, &super::ProtoErr::invalid(format!("not JSON: {e}")))),
+    };
+    let id = j.get("id").cloned().unwrap_or(Json::Null);
+    let (tx, rx) = mpsc::channel();
+    if ctx.tx.send(Envelope { req: j, reply: tx }).is_err() {
+        return Response::error(503, "stopped", "the game thread has stopped");
+    }
+    match rx.recv() {
+        Ok(reply) => Response::json(200, &reply),
+        // The game thread dropped the request: it crashed while handling it (see the status).
+        Err(_) => Response::json(200, &super::err_reply(id, &super::ProtoErr::new("crashed", "the game crashed while handling this request: see /api/status"))),
+    }
+}
+
+/// A client file: embedded, or from `--assets DIR`. Paths are 1-4 parts of `[A-Za-z0-9_.-]`
+/// not starting with a dot, so a request cannot leave the directory.
+fn asset(path: &str, ctx: &HttpCtx) -> Response {
+    let parts: Vec<&str> = path.split('/').collect();
+    let ok = (1..=4).contains(&parts.len()) && parts.iter().all(|p| crate::save::sanitize_name(p).is_ok());
+    if !ok {
+        return Response::error(404, "not_found", format!("no /{path}"));
+    }
+    let content_type = content_type(path);
+    match &ctx.assets {
+        Some(dir) => match std::fs::read(asset_path(dir, &parts)) {
+            Ok(bytes) => Response { status: 200, content_type, headers: Vec::new(), body: Body::Bytes(bytes) },
+            Err(_) => Response::error(404, "not_found", format!("no /{path} in {}", dir.display())),
+        },
+        None => match ASSETS.iter().find(|(p, _, _)| *p == path) {
+            Some((_, ct, body)) => Response { status: 200, content_type: ct, headers: Vec::new(), body: Body::Static(body) },
+            None => Response::error(404, "not_found", format!("no /{path}")),
+        },
+    }
+}
+
+fn asset_path(dir: &Path, parts: &[&str]) -> PathBuf {
+    parts.iter().fold(dir.to_path_buf(), |p, part| p.join(part))
+}
+
+fn content_type(path: &str) -> &'static str {
+    match path.rsplit_once('.').map(|(_, e)| e) {
+        Some("html") => "text/html; charset=utf-8",
+        Some("js" | "mjs") => "text/javascript; charset=utf-8",
+        Some("css") => "text/css; charset=utf-8",
+        Some("json") => JSON_TYPE,
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("txt" | "md") => "text/plain; charset=utf-8",
+        _ => "application/octet-stream",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(s: &str) -> Result<HttpRequest, HttpError> {
+        read_request(&mut std::io::Cursor::new(s.as_bytes().to_vec()))
+    }
+
+    #[test]
+    fn requests_parse_strictly() {
+        let r = parse("GET /api/wait?since=4&timeout_ms=10 HTTP/1.1\r\nHost: 127.0.0.1:8642\r\nX-FFH: 1\r\n\r\n").unwrap();
+        assert_eq!((r.method.as_str(), r.path.as_str(), r.param("since"), r.param("timeout_ms"), r.param("x")), ("GET", "/api/wait", Some("4"), Some("10"), None));
+        assert_eq!(r.header("x-ffh"), Some("1"));
+        assert_eq!(r.header("HOST"), Some("127.0.0.1:8642"));
+        let r = parse("POST /api HTTP/1.1\nHost: localhost\nContent-Length: 7\n\n{\"k\":1}trailing").unwrap();
+        assert_eq!(r.body, b"{\"k\":1}");
+        // Errors.
+        let cases: &[(&str, u16)] = &[
+            ("POST /api HTTP/1.1\r\nHost: x\r\n\r\n{}", 411),
+            ("POST /api HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n2\r\n{}\r\n0\r\n\r\n", 400),
+            ("POST /api HTTP/1.1\r\nContent-Length: 99999999\r\n\r\n", 413),
+            ("POST /api HTTP/1.1\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\n{}", 400),
+            ("POST /api HTTP/1.1\r\nContent-Length: -1\r\n\r\n", 400),
+            ("POST /api HTTP/1.1\r\nContent-Length: 10\r\n\r\n{}", 400),
+            ("GET /api HTTP/2\r\n\r\n", 505),
+            ("GET api HTTP/1.1\r\n\r\n", 400),
+            ("GET /a b HTTP/1.1\r\n\r\n", 400),
+            ("get / HTTP/1.1\r\n\r\n", 400),
+            ("GET / HTTP/1.1\r\n folded\r\n\r\n", 400),
+            ("GET / HTTP/1.1\r\nno colon\r\n\r\n", 400),
+            ("GET / HTTP/1.1\r\n", 400),
+        ];
+        for (s, status) in cases {
+            assert_eq!(parse(s).map_err(|e| e.status), Err(*status), "{s:?}");
+        }
+        let big = format!("GET / HTTP/1.1\r\nX: {}\r\n\r\n", "a".repeat(MAX_HEAD));
+        assert_eq!(parse(&big).map_err(|e| e.status), Err(431));
+    }
+
+    #[test]
+    fn hosts_and_assets() {
+        for ok in ["127.0.0.1", "127.0.0.1:8642", "localhost", "LOCALHOST:1", "[::1]", "[::1]:8642"] {
+            assert!(loopback_host(ok), "{ok}");
+        }
+        for bad in ["", "evil.example", "evil.example:8642", "127.0.0.1.evil.example", "localhost.evil", "[::2]:80", "127.0.0.2", "::1"] {
+            assert!(!loopback_host(bad), "{bad}");
+        }
+        let (tx, _rx) = mpsc::channel();
+        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: true };
+        let get = |path: &str, host: &str| {
+            let req = HttpRequest { method: "GET".into(), path: path.into(), query: String::new(), headers: vec![("Host".into(), host.into())], body: Vec::new() };
+            route(&req, &ctx)
+        };
+        assert_eq!(get("/", "127.0.0.1").status, 200);
+        assert_eq!(get("/", "evil.example").status, 403);
+        for bad in ["/app/../Cargo.toml", "/app/.hidden", "/app/a/b/c/d/e", "/app/%2e%2e/x", "/etc/passwd", "/app/"] {
+            assert_eq!(get(bad, "localhost").status, 404, "{bad}");
+        }
+        assert_eq!(get("/api", "localhost").status, 405);
+        assert_eq!(get("/api/view", "localhost").status, 409);
+        let r = get("/api/data", "localhost");
+        assert_eq!(r.status, 200);
+        let etag = r.headers.iter().find(|(k, _)| *k == "ETag").unwrap().1.clone();
+        let req = HttpRequest {
+            method: "GET".into(),
+            path: "/api/data".into(),
+            query: String::new(),
+            headers: vec![("Host".into(), "localhost".into()), ("If-None-Match".into(), etag)],
+            body: Vec::new(),
+        };
+        assert_eq!(route(&req, &ctx).status, 304);
+        // POST /api without the header.
+        let req = HttpRequest { method: "POST".into(), path: "/api".into(), query: String::new(), headers: vec![("Host".into(), "localhost".into())], body: b"{}".to_vec() };
+        assert_eq!(route(&req, &ctx).status, 403);
+        // The game thread is gone (the receiver dropped): 503.
+        let (tx, rx) = mpsc::channel();
+        drop(rx);
+        let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: false };
+        let req = HttpRequest {
+            method: "POST".into(),
+            path: "/api".into(),
+            query: String::new(),
+            headers: vec![("X-FFH".into(), "1".into())],
+            body: b"{\"k\":\"q\",\"q\":\"status\"}".to_vec(),
+        };
+        assert_eq!(route(&req, &ctx).status, 503);
+        assert_eq!(content_type("app/x.js"), "text/javascript; charset=utf-8");
+    }
+}
