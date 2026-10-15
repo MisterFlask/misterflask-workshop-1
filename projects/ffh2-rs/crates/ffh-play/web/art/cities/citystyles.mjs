@@ -60,7 +60,7 @@ function cloister(t, o = {}) {
     return compose([
       [land(15, [[1, 4], [1, 9]]), 18],
       [front(7, 9), 6],
-      [spire(3, 10), 3],
+      [spire(3, 6), 3],
       [spire(3, 10, [[1, 3]]), 13],
       [Hs({ w: 3, h: 4, roof: 'gable', win: [[1, 1]] }), 0],
       [Hs({ w: 5, h: 4, roof: 'steep', win: [[3, 1]] }), 22],
@@ -70,7 +70,7 @@ function cloister(t, o = {}) {
     [Hs({ w: 9, h: 9, roof: 'steep' }), 13],
     [land(19, [[1, 4], [1, 9], [1, 14]]), 21],
     [front(7, 10), 6],
-    [spire(3, 11), 3],
+    [spire(3, 7), 3],
     [spire(3, 11, [[1, 3]]), 13],
     [Hs({ w: 3, h: 5, roof: 'steep', win: [[1, 2]] }), 0],
     [Hs({ w: 4, h: 4, roof: 'gable' }), 18],
@@ -114,7 +114,7 @@ function sundomes(t) {
   if (t === 4) {
     return compose([
       [mn(16, [[0, 3], [0, 8]]), 21],
-      [mn(10), 2],
+      [mn(6), 2],
       [domed(11, 6, 11, 6, [[2, 2], [8, 2]], 5), 7],
       [block(5, 4, [[1, 1]]), 0],
       [block(4, 3, [[2, 1]]), 19],
@@ -123,7 +123,7 @@ function sundomes(t) {
   }
   return compose([
     [mn(19, [[0, 3], [0, 8]]), 25],
-    [mn(13, [[0, 3]]), 4],
+    [mn(8, [[0, 3]]), 4],
     [block(4, 8), 18],
     [domed(13, 7, 13, 7, [[2, 2], [10, 2], [6, 1, 'L']], 6), 8],
     [block(5, 4, [[1, 1]]), 0],
@@ -179,17 +179,17 @@ function elven(t, o = {}) {
   }
   if (t === 4) {
     return compose([
-      [tree(13, 11, 3, 8, [[1, 3]], [5]), 15],
-      [tree(17, 15, 5, 11, [[2, 2], [1, 6], [3, 6]], [4, 8]), 2],
+      [tree(11, 9, 3, 6, [[1, 3]]), 0],
+      [tree(17, 15, 5, 11, [[2, 2], [1, 6], [3, 6]], [4, 8]), 10],
       [pod(4), 0],
-      [pod(5), 21],
-      [pod(4, false), 12],
+      [pod(5), 25],
+      [pod(4, false), 7],
     ]);
   }
   return compose([
-    [tree(11, 9, 3, 7, [[1, 2]]), 0],
+    [tree(11, 9, 3, 5, [[1, 2]]), 0],
     [tree(11, 10, 3, 9, [[1, 3]], [5]), 20],
-    [tree(19, 17, 5, 14, [[2, 2], [1, 6], [3, 6], [2, 10, 'L']], [4, 9]), 7],
+    [tree(19, 17, 5, 14, [[2, 2], [1, 6], [3, 6], [2, 10, 'L']], [4, 9]), 11],
     [pod(4), 2],
     [pod(5), 24],
     [pod(4, false), 16],
@@ -251,7 +251,7 @@ function dwarven(t, o = {}) {
     return hall(27, [[0, 4], [5, 12], [9, 18], [13, 15], [18, 19], [23, 12], [26, 5]],
       [[gate(true), 9, 0], [door, 2, 0], L ? [forge, 21, 0] : [door, 21, 0], [door, 5, 6], [win, 18, 8], [win, 10, 12], L ? [gear, 19, 11] : [win, 22, 7]], [[3, 3], [23, 3], [15, 4]]);
   }
-  return hall(31, [[0, 5], [5, 14], [10, 22], [14, 19], [17, 24], [21, 20], [26, 14], [30, 6]],
+  return hall(31, [[0, 5], [5, 12], [10, 16], [14, 19], [17, 24], [21, 20], [26, 14], [30, 6]],
     [[gate(true), 11, 0], [door, 2, 0], L ? [forge, 25, 0] : [door, 25, 0], [door, 6, 7], [door, 21, 8], [win, 12, 13], [win, 17, 16], [win, 9, 10], L ? [gear, 22, 13] : [win, 24, 12]],
     [[3, 3], [27, 3], [14, 4]]);
 }
@@ -364,8 +364,8 @@ function harbour(t) {
   if (t === 1) return compose([[ship, 8, 0], [shack(4, 3, [[1, 1]]), 0]]);
   if (t === 2) return compose([[ship, 11, 0], [shack(5, 4, [[2, 1]]), 0], [shack(3, 3), 6], [pier(6), 9, 0, { bare: true }]]);
   if (t === 3) return compose([[bigship, 12, 0], [shack(5, 5, [[1, 1], [3, 3]]), 0], [shack(4, 3, [[2, 1]]), 7], [pier(6), 10, 0, { bare: true }]]);
-  if (t === 4) return compose([[lighthouse(12), 0], [bigship, 15, 0], [shack(5, 5, [[1, 1], [3, 3]]), 5], [shack(4, 3, [[2, 1]]), 11]]);
-  return compose([[lighthouse(15), 0], [bigship, 19, 0], [ship, 11, 2], [shack(5, 6, [[1, 1], [3, 1], [1, 4]]), 5], [shack(4, 3, [[2, 1]]), 13], [pier(8), 12, 0, { bare: true }]]);
+  if (t === 4) return compose([[lighthouse(12), 24], [bigship, 8, 0], [shack(5, 5, [[1, 1], [3, 3]]), 0], [shack(4, 3, [[2, 1]]), 20]]);
+  return compose([[lighthouse(15), 27], [bigship, 11, 0], [ship, 4, 2], [shack(5, 6, [[1, 1], [3, 1], [1, 4]]), 21], [shack(4, 3, [[2, 1]]), 0], [pier(8), 6, 0, { bare: true }]]);
 }
 
 // ================================================================================== carnival
@@ -398,7 +398,7 @@ function carnival(t) {
     for (let x = 0; x < w; x++) {
       const y = Math.round(sag * Math.sin((Math.PI * x) / (w - 1)));
       g.set(x, y, '2');
-      if (x % 3 === 1) g.set(x, y + 1, 'l');
+      if (x % 4 === 2) g.set(x, y + 1, 'l');
     }
     return g;
   };
@@ -409,10 +409,10 @@ function carnival(t) {
   }
   if (t === 4) {
     return compose([[bigtop(15, 5, [[2, 2], [10, 2]]), 6], [pavilion(9, 4), 0], [pavilion(9, 3), 19], [pavilion(5, 2), 14],
-      [string(11, 3), 2, 16, { bare: true }], [string(11, 3), 14, 16, { bare: true }]]);
+      [string(11, 3), 2, 11, { bare: true }], [string(11, 3), 14, 11, { bare: true }]]);
   }
   return compose([[bigtop(17, 6, [[2, 2], [13, 2], [7, 3, 'L']]), 8], [pavilion(9, 4), 0], [pavilion(9, 4), 23], [pavilion(5, 2), 18], [pavilion(5, 2, false), 5],
-    [string(13, 3), 2, 18, { bare: true }], [string(13, 3), 17, 18, { bare: true }]]);
+    [string(13, 3), 2, 13, { bare: true }], [string(13, 3), 17, 13, { bare: true }]]);
 }
 
 // ================================================================================== infernal
@@ -462,7 +462,7 @@ function infernal(t) {
   if (t === 4) {
     return compose([
       [thorn(25, 7, 3, [[3, 10], [3, 16], [3, 21, 'L']]), 10],
-      [thorn(17, 5, -2, [[2, 10]]), 3],
+      [thorn(13, 5, -2, [[2, 8]]), 3],
       [thorn(13, 5, 2, [[2, 9]]), 19],
       [thorn(9, 3, -1), 0],
       [thorn(8, 3, 2), 25],
@@ -471,7 +471,7 @@ function infernal(t) {
   }
   return compose([
     [thorn(29, 7, 3, [[3, 11], [3, 18], [3, 24, 'L']]), 12],
-    [thorn(21, 5, -3, [[2, 11], [2, 16]]), 4],
+    [thorn(15, 5, -3, [[2, 8], [2, 11]]), 4],
     [thorn(17, 5, 3, [[2, 10]]), 22],
     [thorn(11, 3, -1), 0],
     [thorn(10, 3, 2), 28],
@@ -504,8 +504,8 @@ function celestial(t) {
     return compose([
       [needle(3, 17, [[1, 4], [1, 9]]), 11],
       [orb(3, 8, [[1, 3]]), 3],
-      [needle(2, 9), 18],
-      [orb(3, 4), 0],
+      [needle(2, 9, [[0, 3]]), 18],
+      [orb(3, 4, [[1, 1]]), 0],
       [arch(5), 6, 7, { bare: true }],
       [house({ m, w: 4, h: 3, roof: 'dome', eave: 1, win: [[1, 1]] }), 15],
     ]);
@@ -523,7 +523,7 @@ function celestial(t) {
   }
   return compose([
     [needle(3, 23, [[1, 5], [1, 11], [1, 17]]), 15],
-    [orb(5, 13, [[2, 3], [2, 8]]), 4],
+    [orb(5, 9, [[2, 3], [2, 6]]), 4],
     [needle(3, 16, [[1, 5]]), 24],
     [needle(2, 10), 0],
     [needle(2, 9), 30],
@@ -568,17 +568,16 @@ function frost(t) {
   }
   if (t === 3) {
     return compose([
-      [crystal(16), 9],
-      [Hs({ w: 6, h: 5, win: [[2, 2]] }), 2],
-      [Hs({ w: 6, h: 4, win: [[3, 1]] }), 15],
-      [Hs({ w: 4, h: 3, roof: 'gable', win: [[1, 1]] }), 0],
-      [Hs({ w: 4, h: 3 }), 10],
+      [crystal(16), 8],
+      [Hs({ w: 6, h: 5, win: [[1, 2], [4, 2]] }), 0],
+      [Hs({ w: 6, h: 4, win: [[2, 1], [4, 1]] }), 16],
+      [Hs({ w: 4, h: 3, roof: 'gable', win: [[2, 1]] }), 10],
     ]);
   }
   if (t === 4) {
     return compose([
       [crystal(21), 11],
-      [Hs({ w: 3, h: 9, roof: 'spire', eave: 1, win: [[1, 3]] }), 3],
+      [Hs({ w: 3, h: 6, roof: 'spire', eave: 1, win: [[1, 3]] }), 3],
       [Hs({ w: 7, h: 6, win: [[2, 2], [5, 2]] }), 6],
       [Hs({ w: 6, h: 5, win: [[2, 2]] }), 18],
       [Hs({ w: 4, h: 3, roof: 'gable', win: [[1, 1]] }), 0],
@@ -588,7 +587,7 @@ function frost(t) {
   }
   return compose([
     [crystal(27), 13],
-    [Hs({ w: 3, h: 12, roof: 'spire', eave: 1, win: [[1, 3], [1, 8]] }), 4],
+    [Hs({ w: 3, h: 8, roof: 'spire', eave: 1, win: [[1, 3]] }), 4],
     [Hs({ w: 3, h: 9, roof: 'spire', eave: 1 }), 25],
     [Hs({ w: 8, h: 7, win: [[2, 2], [5, 2], [2, 5]] }), 7],
     [Hs({ w: 6, h: 5, win: [[2, 2]] }), 19],
