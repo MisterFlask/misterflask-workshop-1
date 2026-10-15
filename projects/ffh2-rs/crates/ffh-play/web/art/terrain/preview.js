@@ -5,10 +5,12 @@
 //   relief     hills on every land terrain, bare and under forest, ancient forest and jungle
 //   woods      forest, ancient forest and jungle masses side by side; roads and a river with verges
 //   landmarks  the 17 landmarks on suitable ground, lit
-// ?scale=N (default 2; plates other than sample also at 3), ?pass=0 shows art.js's seed ground.
+// ?scale=N (default 2; plates other than sample also at 3), ?pass=0 shows art.js's seed ground, ?light=0
+// leaves out the light pass (cities/citylight.js: pools of landmarks, flames and cities).
 import { loadArt, TILE } from '../art.js';
 import { makePlots, renderMap } from '../compose.js';
 import { installTerrain } from './ground.js';
+import { installCityLight } from '../cities/citylight.js';
 
 const q = new URLSearchParams(location.search);
 const ONLY = q.get('map');
@@ -234,6 +236,7 @@ async function main() {
   const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true, passes: false });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   if (PASS) installTerrain(art, q.get('rim') ? { rimKey: q.get('rim') } : {});
+  if (q.get('light') !== '0') installCityLight(art); // the light pass: pools of landmarks, flames, cities
   const want = (m) => !ONLY || ONLY === m;
   const sc = (d) => SCALE || d;
   if (q.get('bench')) {

@@ -5,25 +5,41 @@
 //   const art = await loadArt({ passes: false });
 //   installTerrain(art);                      // once; idempotent. art.drawTerrain etc. then use it.
 //
-// What it changes, against the seed drawing (the art director's terrain review, round 2):
+// What it changes, against the seed drawing (the art director's terrain review, round 2, and the
+// light and ground review, round 3):
 //
 //  classes  a pixel no longer takes the tile its warped position falls in (which keeps every tile a
 //           warped square with four corners); it takes the class (terrain type and water) with the
 //           largest sum of Gaussian weights (sigma 13 px) of the 3x3 tile centres around it, sampled
 //           at the warped position. A lone tile of one terrain amid another becomes a blob (a disc
 //           of about 15 px radius, displaced by the warp), runs of tiles merge, junctions round off.
-//  warp     a third, low-frequency octave (cell 44 px) under the 22 px and 7 px ones, |w| <= 10 px,
-//           so long runs of tile edges wander. It is evaluated exactly on a 4 px map lattice and
-//           bilinearly in between: the same value for a map pixel whichever tile asks.
-//  feather  between two land textures each pixel's lookup is offset by an ordered-dither vector of
-//           up to 1.5 px (4x4 Bayer, a second phase for y), so a 3 px band of every edge is
-//           dithered and edges feather like an ink wash. Shorelines and the depth contour stay crisp.
-//  fog      seen and remembered are classified the same way among revealed tiles (same warp, same
-//           feather), so the fog edge is organic and follows the land's edges; the unrevealed edge
-//           has its own warp, a 4 px feather, and is ragged both ways (unrevealed tiles show their
-//           revealed neighbours' ground where the edge gives it to them).
-//  verges   rivers meander inside the wider warp (11 px pad), and rivers and roads get a pale verge:
-//           a 50% checker one step lighter on the ground beside the ink (the board's pale paths).
+//           Each tile's weight is scaled by e^(+-G.bias) from a hash of its position, so a run of
+//           edges does not follow the tile lattice exactly.
+//  warp     a low-frequency octave (cell 46 px, amplitude 10, shaped toward its extremes so most
+//           edges really wander) under the 22 px and 7 px ones, |w| <= 14 px. It is evaluated
+//           exactly on a 4 px map lattice and bilinearly in between: the same value for a map pixel
+//           whichever tile asks.
+//  bands    where two land textures meet, the winner's share rises from 50% on the edge to 100%
+//           G.band (4) px inside it, thresholded by the 4x4 Bayer matrix in map space: a 25/50/75%
+//           ordered transition band rather than a line (round 3; round 2 offset each lookup by a
+//           1.5 px ordered-dither vector, which left the squares readable). Shorelines and the depth
+//           contour stay crisp.
+//  moon     moonlit clearings and cloud shade: a low-frequency field (cells 88 and 30 px) lifts the
+//           land one step (MOON) by a Bayer share up to 60% where it is high, adds a cold grain
+//           (GRAIN, up to 30%) at its brightest, and lowers it one step (SHADE, up to 25%) where it
+//           is low: the board's lighter open ground between dark woods, instead of flat mid-value
+//           fields. Water, shoreline ink and unrevealed void are left alone.
+//  fog      seen and remembered are classified the same way among revealed tiles (same warp, a 4 px
+//           band), so the fog edge is organic and follows the land's edges; the unrevealed edge has
+//           its own warp, a 3 px band, and is ragged both ways (unrevealed tiles show their revealed
+//           neighbours' ground where the edge gives it to them). Fogged pixels go through REMEMBER:
+//           docs/ART.md 2.4 FOG with the frost family sent to the neutrals, so remembered snow is
+//           grey, not steel-blue. The vignette uses REMEMBER too.
+//  paths    roads are pale paths: dashes of the route sprite (2 on, 2 off) along a line that sways
+//           with a slow warp of its own (a function of the map position, so two tiles' halves meet),
+//           over a worn verge one step lighter (50% within 1.6 px, 25% out to 2.2 px).
+//  verges   rivers meander inside the wider warp (14 px pad) with a pale verge: a 50% checker one
+//           step lighter on the ground beside the ink.
 //  hills    humps are never mirrored (the moon stays in the north-west). On a wooded hill, trees
 //           standing on a hump's lit side are lifted onto its crest (three at most, 6 px apart),
 //           and no other tree may hide a hump's body or dark flank: the mound reads under the wood.
@@ -39,14 +55,22 @@ const DIRS8 = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, 
 
 /** Tunables of the ground pass (art px). */
 export const GROUND = {
-  octaves: [[44, 4.5, 5, 6], [22, 5.5, 1, 3], [7, 1.5, 2, 4]], // [cell, amplitude, seed offset x, seed offset y]
-  maxWarp: 10,
+  // [cell, amplitude, seed offset x, seed offset y, gamma]: the 46 px octave bends long runs of tile
+  // edges; its gamma (< 1) pushes the noise toward its extremes, so most edges really wander
+  octaves: [[46, 10, 5, 6, 0.6], [22, 4.5, 1, 3, 1], [7, 1.5, 2, 4, 1]],
+  maxWarp: 14,
+  bias: 0.5, // each tile's class weight times exp(bias x a hash in [-1, 1]): edges shift +-2.6 px per tile
   sigma: 13, // the class kernel (Gaussian) around each tile centre
-  feather: 1.5, // half-width of the dithered band between two land textures
-  fogFeather: 1.5,
-  voidFeather: 2,
-  riverPad: 11,
-  verge: 1.6, // road verge half-width
+  band: 4, // half-width of the Bayer-dithered transition band between two land textures
+  fogBand: 4, // ... between seen and remembered
+  voidBand: 3, // ... between revealed and unrevealed
+  riverPad: 14,
+  verge: 2.2, // half-width of a path's pale verge
+  path: { dash: 2, gap: 2, sway: 0.55 }, // pale paths: dash and gap lengths, sway (x the warp)
+  // moonlit clearings and cloud shade: low-frequency noise (cells in px, weights) lifting the ground
+  // one step where it is above `lit`, lowering it below `shade`, by a Bayer share rising over `ramp`
+  // to `max` (`shadeMax`); `grain` above `lit` a share up to `grainMax` takes the pale mark colour
+  moon: { cells: [[88, 0.65], [30, 0.35]], lit: -0.06, shade: -0.38, ramp: 0.35, max: 0.6, shadeMax: 0.25, grain: 0.16, grainMax: 0.3 },
   rimKey: 'O', // the moonlit rim of woods
   massGap: 3, // gaps narrower than about twice this between trees still count as one wood
   crestTrees: 3, // trees standing on one hump's crest (wooded hills)
@@ -55,6 +79,18 @@ export const GROUND = {
 
 // one step lighter within the family, for ground colours only (water, ink and lights unchanged)
 const VERGE = 'q:m m:o o:O k:t t:T u:Q Q:y x:y y:Y Y:7 1:2 2:3 3:4 4:5 5:6 6:7 g:f v:p';
+// the moonlit step of a ground colour (clearings): grass to olive and lichen, plains to ash, ash to
+// stone; snow, water, hell purples and lights unchanged
+const MOON = 'q:m m:o o:O u:Q Q:5 5:6 6:7 y:Y 3:4 4:5 k:t t:T x:y';
+// the moonlit grain: in the brightest clearings a share of the ground takes a pale, cold-washed
+// colour (moonlight greys what it lights: grass and plains to stone 6, tufts to lichen O, slate to ash)
+const GRAIN = 'q:5 m:6 o:O u:Q Q:6 5:6 3:4 4:5 y:Y k:t t:T x:y';
+// the shaded step (cloud shade): one step darker in the family
+const SHADE = 'm:q o:m O:o Q:u 5:4 6:5 4:3 y:Q Y:6 t:k T:t';
+// remembered ground (the fog): docs/ART.md 2.4 FOG, but the frost family goes grey rather than
+// steel-blue (frost f to slate, rime F to ash, glint g to iron), so remembered snow and ice are grey,
+// not a vivid blue field; water's own navies keep FOG's steps
+const REMEMBER = 'f:4 F:5 g:3';
 // scattered features whose wood masses take the moonlit rim
 const RIMMED = new Set(['feature/conifer', 'feature/ancient', 'feature/jungle', 'feature/sapling']);
 
@@ -62,8 +98,14 @@ export function installTerrain(art, opts = {}) {
   if (art._terrainPass) return art;
   const G = { ...GROUND, ...opts };
   const orig = { drawRoad: art.drawRoad.bind(art), drawFeature: art.drawFeature.bind(art), drawRelief: art.drawRelief.bind(art) };
-  const verge = new Uint8Array(64).map((_, i) => i);
-  for (const p of VERGE.split(' ')) { const [a, b] = p.split(':'); verge[art.K(a)] = art.K(b); }
+  const table = (spec, base = null) => {
+    const t = base ? Uint8Array.from(base) : new Uint8Array(64).map((_, i) => i);
+    for (const p of spec.split(' ')) { const [a, b] = p.split(':'); t[art.K(a)] = art.K(b); }
+    return t;
+  };
+  const verge = table(VERGE), moonT = table(MOON), grainT = table(GRAIN), shadeT = table(SHADE);
+  const remember = table(REMEMBER, art.tables.FOG);
+  art.tables.REMEMBER = remember;
   const kO = art.K(G.rimKey), k0 = art.K('0'), ku = art.K('u'), k2 = art.K('2');
   const spotCache = new Map();
   const rimCache = new Map();
@@ -74,13 +116,14 @@ export function installTerrain(art, opts = {}) {
 
   // ---- the warp: value noise as art.js's _noise (same lattice hash), three octaves, no allocation
   const W2 = new Float64Array(2);
-  const octs = G.octaves.map(([cell, amp, sx, sy]) => ({ cell, amp, sx, sy }));
+  const octs = G.octaves.map(([cell, amp, sx, sy, gamma = 1]) => ({ cell, amp, sx, sy, gamma }));
+  const shape = (n, g) => (g === 1 ? n : Math.sign(n) * Math.abs(n) ** g);
   const lat = (i, j, z) => hash3(i, j, z) / 4294967296;
   function warpInto(X, Y, seed) {
     const wpx = art.world.wrapX && art.world.width ? art.world.width * TILE : 0;
     let wx = 0, wy = 0;
     for (let o = 0; o < octs.length; o++) {
-      const { cell, amp, sx, sy } = octs[o];
+      const { cell, amp, sx, sy, gamma } = octs[o];
       let c = cell, per = 0;
       if (wpx) { per = Math.max(1, Math.round(wpx / cell)); c = wpx / per; }
       const fx = X / c, fy = Y / c;
@@ -92,9 +135,9 @@ export function installTerrain(art, opts = {}) {
       if (per) { ix = ((ix % per) + per) % per; ix1 = ((ix1 % per) + per) % per; }
       const z1 = seed + sx, z2 = seed + sy;
       let a = lat(ix, iy, z1), b = lat(ix1, iy, z1), cc = lat(ix, iy + 1, z1), d = lat(ix1, iy + 1, z1);
-      wx += amp * ((a + (b - a) * ux + (cc - a) * uy + (a - b - cc + d) * ux * uy) * 2 - 1);
+      wx += amp * shape((a + (b - a) * ux + (cc - a) * uy + (a - b - cc + d) * ux * uy) * 2 - 1, gamma);
       a = lat(ix, iy, z2); b = lat(ix1, iy, z2); cc = lat(ix, iy + 1, z2); d = lat(ix1, iy + 1, z2);
-      wy += amp * ((a + (b - a) * ux + (cc - a) * uy + (a - b - cc + d) * ux * uy) * 2 - 1);
+      wy += amp * shape((a + (b - a) * ux + (cc - a) * uy + (a - b - cc + d) * ux * uy) * 2 - 1, gamma);
     }
     W2[0] = clip(wx, G.maxWarp); W2[1] = clip(wy, G.maxWarp);
   }
@@ -138,11 +181,18 @@ export function installTerrain(art, opts = {}) {
    * each neighbour's class (terrain type, visibility...; null: takes no part). A pixel takes the
    * class with the largest sum of Gaussian weights of its tiles' centres, sampled through the warp:
    * one tile of a class amid another becomes a blob rather than a square, and junctions round off.
-   * `crisp` is the class through the warp alone, `soft` with an ordered-dither offset of half-width
-   * `f` (the feather). Both hold the index of a neighbour of the winning class.
+   * Each tile's weight is scaled by a hash of its position (G.bias), so a run of edges does not
+   * follow the tile lattice exactly. `crisp` is that class; `soft` dithers it with the runner-up across a band of half-width `band`
+   * px: the share of the winner rises from 50% on the edge to 100% `band` px inside, thresholded by
+   * the 4x4 Bayer matrix in map space, so an edge is a 25/50/75% ordered transition, not a line.
+   * Both hold the index of a neighbour of the class.
    */
-  function cells(plot, pad, seed, cls, f, phase = 0) {
+  // the log ratio of two adjacent tiles' weights changes by 32 / sigma^2 per px across their edge
+  const SLOPE = 32 / (G.sigma * G.sigma);
+  function cells(plot, pad, seed, cls, band, phase = 0) {
     const N = TILE + 2 * pad;
+    const nb = art._nbhd(plot);
+    const bias = nb.map((p) => Math.exp(G.bias * (2 * lat(p.x, p.y, seed + 41) - 1)));
     const crisp = new Uint8Array(N * N), soft = new Uint8Array(N * N);
     const uniq = [...new Set(cls.filter((c) => c !== null))];
     if (uniq.length === 1 && cls[4] !== null) { crisp.fill(4); soft.fill(4); return { crisp, soft }; }
@@ -150,39 +200,80 @@ export function installTerrain(art, opts = {}) {
     const rep = uniq.map((c) => (cls[4] === c ? 4 : cls.indexOf(c)));
     const nc = uniq.length;
     const sums = new Float64Array(nc);
-    const best = (u, v) => {
-      const x0 = E(u + 16), x1 = E(u - 16), x2 = E(u - 48);
-      const y0 = E(v + 16), y1 = E(v - 16), y2 = E(v - 48);
-      sums.fill(0);
-      if (ci[0] >= 0) sums[ci[0]] += x0 * y0;
-      if (ci[1] >= 0) sums[ci[1]] += x1 * y0;
-      if (ci[2] >= 0) sums[ci[2]] += x2 * y0;
-      if (ci[3] >= 0) sums[ci[3]] += x0 * y1;
-      if (ci[4] >= 0) sums[ci[4]] += x1 * y1;
-      if (ci[5] >= 0) sums[ci[5]] += x2 * y1;
-      if (ci[6] >= 0) sums[ci[6]] += x0 * y2;
-      if (ci[7] >= 0) sums[ci[7]] += x1 * y2;
-      if (ci[8] >= 0) sums[ci[8]] += x2 * y2;
-      let b = 0;
-      for (let c = 1; c < nc; c++) if (sums[c] > sums[b]) b = c;
-      return rep[b];
-    };
+    const L2 = band ? 2 * SLOPE * band : 0;
     const X0 = plot.x * TILE - pad, Y0 = plot.y * TILE - pad;
     const { wx, wy } = warpRegion(X0, Y0, N, seed);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const X = X0 + i, Y = Y0 + j;
       const k = j * N + i;
       const u = i - pad + wx[k], v = j - pad + wy[k];
-      const c = best(u, v);
-      crisp[k] = c;
-      if (!f) { soft[k] = c; continue; }
-      const du = f * (2 * bayer(X + phase, Y) - 1), dv = f * (2 * bayer(Y + 1, X + 2 + phase) - 1);
-      soft[k] = best(u + du, v + dv);
+      const x0 = E(u + 16), x1 = E(u - 16), x2 = E(u - 48);
+      const y0 = E(v + 16), y1 = E(v - 16), y2 = E(v - 48);
+      sums.fill(0);
+      if (ci[0] >= 0) sums[ci[0]] += x0 * y0 * bias[0];
+      if (ci[1] >= 0) sums[ci[1]] += x1 * y0 * bias[1];
+      if (ci[2] >= 0) sums[ci[2]] += x2 * y0 * bias[2];
+      if (ci[3] >= 0) sums[ci[3]] += x0 * y1 * bias[3];
+      if (ci[4] >= 0) sums[ci[4]] += x1 * y1 * bias[4];
+      if (ci[5] >= 0) sums[ci[5]] += x2 * y1 * bias[5];
+      if (ci[6] >= 0) sums[ci[6]] += x0 * y2 * bias[6];
+      if (ci[7] >= 0) sums[ci[7]] += x1 * y2 * bias[7];
+      if (ci[8] >= 0) sums[ci[8]] += x2 * y2 * bias[8];
+      let b1 = 0, b2 = -1;
+      for (let c = 1; c < nc; c++) {
+        if (sums[c] > sums[b1]) { b2 = b1; b1 = c; } else if (b2 < 0 || sums[c] > sums[b2]) b2 = c;
+      }
+      crisp[k] = rep[b1];
+      if (!L2 || b2 < 0) { soft[k] = rep[b1]; continue; }
+      const t = 0.5 + Math.log(sums[b1] / Math.max(sums[b2], 1e-300)) / L2; // the winner's share
+      soft[k] = t >= 1 || bayer(X0 + i + phase, Y0 + j) < t ? rep[b1] : rep[b2];
     }
     return { crisp, soft };
   }
 
-  /** Ground indices of a tile (32x32): feathered textures, shoreline ink, foam, depth contour. */
+  // ---- moonlit clearings and cloud shade: a low-frequency field over the land, on the 4 px lattice
+  const moonLat = (X, Y) => {
+    const wpx = art.world.wrapX && art.world.width ? art.world.width * TILE : 0;
+    let n = 0;
+    for (const [cell, w] of G.moon.cells) n += w * art._noise(X, Y, cell, 700 + cell, wpx);
+    return n;
+  };
+  function moonRegion(X0, Y0, N) {
+    const gx0 = Math.floor(X0 / STEP), gy0 = Math.floor(Y0 / STEP);
+    const gw = Math.floor((X0 + N - 1) / STEP) - gx0 + 2, gh = Math.floor((Y0 + N - 1) / STEP) - gy0 + 2;
+    const lat = new Float64Array(gw * gh);
+    for (let b = 0; b < gh; b++) for (let a = 0; a < gw; a++) lat[b * gw + a] = moonLat((gx0 + a) * STEP, (gy0 + b) * STEP);
+    const out = new Float64Array(N * N);
+    for (let j = 0; j < N; j++) {
+      const Y = Y0 + j, b = Math.floor(Y / STEP) - gy0, ty = (Y - (gy0 + b) * STEP) / STEP;
+      for (let i = 0; i < N; i++) {
+        const X = X0 + i, a = Math.floor(X / STEP) - gx0, tx = (X - (gx0 + a) * STEP) / STEP;
+        const p = b * gw + a;
+        out[j * N + i] = (lat[p] * (1 - tx) + lat[p + 1] * tx) * (1 - ty) + (lat[p + gw] * (1 - tx) + lat[p + gw + 1] * tx) * ty;
+      }
+    }
+    return out;
+  }
+  /** Moonlight over a tile's ground indices (in place); `skip(k)` marks pixels left alone (water, ink). */
+  function moonlight(plot, out, skip) {
+    const M = G.moon;
+    const X0 = plot.x * TILE, Y0 = plot.y * TILE;
+    const n = moonRegion(X0, Y0, TILE);
+    for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) {
+      const k = j * TILE + i;
+      const v = n[k];
+      if (v < M.lit && v > M.shade) continue;
+      if (skip && skip(k)) continue;
+      const b = bayer(X0 + i + 2, Y0 + j + 1);
+      if (v >= M.lit) {
+        if (b < Math.min(1, (v - M.lit - M.grain) / M.ramp) * M.grainMax) out[k] = grainT[out[k]];
+        else if (b < Math.min(1, (v - M.lit) / M.ramp) * M.max) out[k] = moonT[out[k]];
+      }
+      else if (b < Math.min(1, (M.shade - v) / M.ramp) * M.shadeMax) out[k] = shadeT[out[k]];
+    }
+  }
+  art._moon = (X, Y) => moonLat(X, Y);
+
+  /** Ground indices of a tile (32x32): banded textures, moonlight, shoreline ink, foam, depth contour. */
   art.groundIndices = function (plot) {
     const nb = this._nbhd(plot, true);
     const infos = nb.map((p) => this._terrain(p.terrain));
@@ -196,12 +287,14 @@ export function installTerrain(art, opts = {}) {
     if (infos.every((t, k) => t === infos[4] && water[k] === water[4])) {
       const t = infos[4].tex;
       for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) out[j * TILE + i] = texel(t, plot.x * TILE + i, plot.y * TILE + j);
+      if (!water[4]) moonlight(plot, out, null);
       this._ground.set(key, out);
       return out;
     }
     const shore = water.some((w) => w);
     const PAD = 3, N = TILE + 2 * PAD;
-    const { crisp, soft } = cells(plot, PAD, 100, nb.map((p, k) => infos[k].type + (water[k] ? 'w' : '')), G.feather);
+    const { crisp, soft } = cells(plot, PAD, 100, nb.map((p, k) => infos[k].type + (water[k] ? 'w' : '')), G.band);
+    const still = new Uint8Array(TILE * TILE); // water and shoreline ink: no moonlight
     const cls = new Uint8Array(N * N); // 0 land, 1 shallow water, 2 deep water
     for (let k = 0; k < N * N; k++) { const c = crisp[k]; cls[k] = water[c] ? (infos[c].deep ? 2 : 1) : 0; }
     const C = (i, j) => cls[(j + PAD) * N + i + PAD];
@@ -210,16 +303,16 @@ export function installTerrain(art, opts = {}) {
       const X = plot.x * TILE + i, Y = plot.y * TILE + j;
       const k = (j + PAD) * N + i + PAD;
       let c = crisp[k];
-      // feather only between two land textures: water edges keep their ink
+      // the dithered band only between two land textures: water edges keep their ink
       if (soft[k] !== c && !water[c] && !water[soft[k]]) c = soft[k];
       let v = texel(infos[c].tex, X, Y);
       const me = C(i, j);
+      if (me) still[j * TILE + i] = 1;
       if (!shore) { /* no water near: texture only */ } else if (me === 0) {
-        if (C(i - 1, j) || C(i + 1, j) || C(i, j - 1) || C(i, j + 1)) v = (X + Y) % 5 === 0 ? k6 : k7;
-        else {
+        if (C(i - 1, j) || C(i + 1, j) || C(i, j - 1) || C(i, j + 1)) { v = (X + Y) % 5 === 0 ? k6 : k7; still[j * TILE + i] = 1; } else {
           let near = false;
           for (let dj = -2; dj <= 2 && !near; dj++) for (let di = -2; di <= 2; di++) if (C(i + di, j + dj)) { near = true; break; }
-          if (near) v = k2;
+          if (near) { v = k2; still[j * TILE + i] = 1; }
         }
       } else {
         let land = false;
@@ -231,11 +324,15 @@ export function installTerrain(art, opts = {}) {
       }
       out[j * TILE + i] = v;
     }
+    moonlight(plot, out, (k) => still[k]);
     this._ground.set(key, out);
     return out;
   };
 
-  /** Fog pass: FOG with ink hatching on fogged pixels, void on unrevealed; both edges feathered. */
+  /**
+   * Fog pass: REMEMBER (FOG with grey frost) with ink hatching on fogged pixels, void on unrevealed;
+   * both edges are Bayer-dithered bands that follow the warp.
+   */
   art.drawFog = function (ctx, x, y, plot) {
     const nb = this._nbhd(plot);
     const vis = nb.map((p) => (p.vis === undefined ? 2 : p.vis));
@@ -246,10 +343,10 @@ export function installTerrain(art, opts = {}) {
     if (!fc) {
       if (fogCache.size > 4096) fogCache.clear();
       // seen and remembered are judged among revealed tiles only; the void edge separately
-      fc = { fog: cells(plot, 0, 100, vis.map((v) => (v ? v : null)), G.fogFeather).soft, rev: revealCells(plot, vis) };
+      fc = { fog: cells(plot, 0, 100, vis.map((v) => (v ? v : null)), G.fogBand).soft, rev: revealCells(plot, vis) };
       fogCache.set(ck, fc);
     }
-    const FOG = this.tables.FOG;
+    const FOG = remember;
     const X0 = plot.x * TILE, Y0 = plot.y * TILE;
     this.remapRegion(ctx, x, y, TILE, TILE, (i, j, c) => {
       const k = j * TILE + i;
@@ -262,11 +359,11 @@ export function installTerrain(art, opts = {}) {
     });
   };
 
-  function revealCells(plot, vis) { return cells(plot, 0, 300, vis.map((v) => (v ? 1 : 0)), G.voidFeather, 1).soft; }
+  function revealCells(plot, vis) { return cells(plot, 0, 300, vis.map((v) => (v ? 1 : 0)), G.voidBand, 1).soft; }
 
   /**
    * Ground of a tile. An unrevealed tile next to revealed ones shows their ground where the
-   * feathered void edge (seed 300) gives the pixel to them, so the edge is ragged both ways.
+   * banded void edge (seed 300) gives the pixel to them, so the edge is ragged both ways.
    */
   art.drawTerrain = function (ctx, x, y, plot) {
     if (plot.vis !== 0) { this.blit(ctx, x, y, this.groundIndices(plot), TILE, TILE); return; }
@@ -276,14 +373,17 @@ export function installTerrain(art, opts = {}) {
     const rev = revealCells(plot, vis);
     const infos = nb.map((p) => this._terrain(p.terrain));
     const water = nb.map((p) => this._isWater(p));
-    const { soft } = cells(plot, 0, 100, nb.map((p, k) => (vis[k] ? infos[k].type + (water[k] ? 'w' : '') : null)), G.feather);
+    const { soft } = cells(plot, 0, 100, nb.map((p, k) => (vis[k] ? infos[k].type + (water[k] ? 'w' : '') : null)), G.band);
     const out = new Uint8Array(TILE * TILE);
+    const still = new Uint8Array(TILE * TILE);
     for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) {
       const k = j * TILE + i;
-      if (!vis[rev[k]] || !vis[soft[k]]) { out[k] = k0; continue; }
+      if (!vis[rev[k]] || !vis[soft[k]]) { out[k] = k0; still[k] = 1; continue; }
+      if (water[soft[k]]) still[k] = 1;
       const t = infos[soft[k]].tex, X = plot.x * TILE + i, Y = plot.y * TILE + j;
       out[k] = t.data[(((Y % t.h) + t.h) % t.h) * t.w + (((X % t.w) + t.w) % t.w)];
     }
+    moonlight(plot, out, (k) => still[k]);
     this.blit(ctx, x, y, out, TILE, TILE);
   };
 
@@ -320,26 +420,82 @@ export function installTerrain(art, opts = {}) {
     this.blit(ctx, x - PAD * s, y - PAD * s, out, N, N);
   };
 
-  /** Road: a pale verge (50% checker one step lighter) under art.js's dotted ink. */
+  /**
+   * Road: a pale path. From the tile anchor (16, 18) half-way toward each connected neighbour, the
+   * line sways with a slow warp (seed 500, x G.path.sway; a function of the map position, so the
+   * halves drawn by two tiles meet), drawn as dashes of the route sprite (bone ink with its coal
+   * shadow) G.path.dash px on and G.path.gap off along the arc, over a worn verge: the ground one
+   * step lighter, a 50% checker within 1.6 px of the line and 25% out to G.verge. Railroads keep
+   * art.js's two straight ruled lines (over the same verge).
+   */
   art.drawRoad = function (ctx, x, y, plot, dirs = null) {
     const type = this.typeName('route', plot.route);
     if (!type && !plot.city) return;
+    const r = this.mapper.resolve('route', type || 'ROUTE_ROAD');
+    if (!r || r.sprite === 'none') return;
     const has = dirs || DIRS8.map(([dx, dy]) => { const n = plot.at?.(dx, dy); return !!n && n.vis !== 0 && (!!this.typeName('route', n.route) || !!n.city); });
     const segs = [];
     has.forEach((on, k) => { if (on) segs.push(DIRS8[k]); });
-    const ax = 16, ay = 18, R = G.verge;
+    const ax = 16, ay = 18, s = this.scale;
     const X0 = plot.x * TILE, Y0 = plot.y * TILE;
-    this.remapRegion(ctx, x, y, TILE, TILE, (i, j, c) => {
-      if (((X0 + i + Y0 + j) & 1) !== 0) return c;
-      let d = Math.hypot(i - ax, j - ay);
-      for (const [dx, dy] of segs) {
-        const ex = dx * 16, ey = dy * 16, L2 = ex * ex + ey * ey;
-        const t = Math.max(0, Math.min(1, ((i - ax) * ex + (j - ay) * ey) / L2));
-        d = Math.min(d, Math.hypot(i - ax - t * ex, j - ay - t * ey));
+    const sway = r.opts.double ? 0 : G.path.sway;
+    const PAD = 10, N = TILE + 2 * PAD;
+    const w = sway ? warpRegion(X0 - PAD, Y0 - PAD, N, 500) : null;
+    const dot = this.pick(r.sprite, 0);
+    const ink = new Uint8Array(N * N).fill(TRANSPARENT);
+    const wear = new Uint8Array(N * N); // 2: inner verge, 1: outer
+    const R = G.verge;
+    const stamp = (qx, qy) => {
+      if (!dot) return;
+      for (let j = 0; j < dot.h; j++) for (let i = 0; i < dot.w; i++) {
+        const c = dot.data[j * dot.w + i];
+        if (c === TRANSPARENT) continue;
+        const X = Math.round(qx) + i - dot.ax + PAD, Y = Math.round(qy) + j - dot.ay + PAD;
+        if (X < 0 || Y < 0 || X >= N || Y >= N) continue;
+        const p = Y * N + X;
+        // ink over shadow: a later dot's shadow never covers an earlier dot
+        if (ink[p] === TRANSPARENT || (i === dot.ax && j === dot.ay)) ink[p] = c;
       }
-      return d <= R ? verge[c] : c;
+    };
+    const worn = (qx, qy) => {
+      for (let j = Math.floor(qy - R); j <= Math.ceil(qy + R); j++) for (let i = Math.floor(qx - R); i <= Math.ceil(qx + R); i++) {
+        const X = i + PAD, Y = j + PAD;
+        if (X < 0 || Y < 0 || X >= N || Y >= N) continue;
+        const d = Math.hypot(i - qx, j - qy);
+        const v = d <= 1.6 ? 2 : d <= R ? 1 : 0;
+        if (v > wear[Y * N + X]) wear[Y * N + X] = v;
+      }
+    };
+    const at = (px, py) => {
+      if (!w) return [px, py];
+      const i = Math.max(0, Math.min(N - 1, Math.round(px) + PAD)), j = Math.max(0, Math.min(N - 1, Math.round(py) + PAD));
+      return [px + sway * w.wx[j * N + i], py + sway * w.wy[j * N + i]];
+    };
+    const period = G.path.dash + G.path.gap;
+    const lines = segs.length ? segs : [[0, 0]];
+    for (const [dx, dy] of lines) {
+      const len = 16 * Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.ceil(len * 4));
+      let arc = 0, prev = null;
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
+        const [qx, qy] = at(ax + dx * 16 * t, ay + dy * 16 * t);
+        if (prev) arc += Math.hypot(qx - prev[0], qy - prev[1]);
+        prev = [qx, qy];
+        worn(qx, qy);
+        if (r.opts.double) continue;
+        if (arc % period < G.path.dash) stamp(qx, qy);
+      }
+    }
+    this.remapRegion(ctx, x - PAD * s, y - PAD * s, N, N, (i, j, c) => {
+      const v = wear[j * N + i];
+      if (!v) return c;
+      const X = X0 - PAD + i, Y = Y0 - PAD + j;
+      if (v === 2 ? ((X + Y) & 1) !== 0 : bayer(X, Y) >= 0.25) return c;
+      return verge[c];
     });
-    return orig.drawRoad(ctx, x, y, plot, dirs);
+    if (r.opts.double) return orig.drawRoad(ctx, x, y, plot, dirs);
+    this.blit(ctx, x - PAD * s, y - PAD * s, ink, N, N);
   };
 
   // ---------------------------------------------------------------- woods
@@ -527,6 +683,18 @@ export function installTerrain(art, opts = {}) {
     for (const sp of this._woodSpots(plot, type)) this.drawSprite(ctx, x + sp.px * s, y + sp.py * s, sp.spr.name, { ...v, mirror: sp.mirror });
     const rim = this._woodRim(plot);
     if (rim) this.blit(ctx, x + rim.x0 * s, y + rim.y0 * s, rim.data, rim.w, rim.h);
+  };
+
+  /** Viewport vignette (docs/ART.md 8.3) through REMEMBER, as the fog: grey snow at the corners. */
+  art.drawVignette = function (ctx, x, y, w, h) {
+    const s = this.scale;
+    const W = Math.floor(w / s), H = Math.floor(h / s);
+    const cx = W / 2, cy = H / 2, R = Math.hypot(cx, cy);
+    this.remapRegion(ctx, x, y, W, H, (i, j, c) => {
+      const d = Math.hypot(i - cx, j - cy) / R;
+      if (d <= 0.75) return c;
+      return (d - 0.75) / 0.25 > bayer(i, j) ? remember[c] : c;
+    });
   };
 
   art._terrainPass = true;
