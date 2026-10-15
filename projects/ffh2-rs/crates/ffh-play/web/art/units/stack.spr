@@ -1,0 +1,22 @@
+; units/stack.spr: the stack presentation drawn by units/stack.js: the standard (owner field, division
+; and sigil), with moves shown by its finial pip and brightness.
+; The ui namespace belongs to the ui set: this sprite moves to ui/heraldry.spr verbatim when the ui
+; set adopts it (stack.js finds it by name, wherever it is defined; then drop this file's source
+; line from units/manifest.txt).
+
+= ui/stack_banner 7x12 0,0
+: flag 1,2,5,8
+: finial 0,0
+: note the stack standard: a slate pole and crossbar with a 5x8 gonfalon (the owner's field and division, the civ sigil centred on it, swallow tails in the shade); the finial pip at 0,0 shows moves and heroes; stack.js draws it in the shade (quiet) except for your own movable or selected stack
+4......
+4444440
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4#####0
+4%#0#%0
+4%0.0%0
+40...0.

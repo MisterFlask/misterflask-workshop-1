@@ -1,36 +1,208 @@
 ; units set (docs/ART.md 10). Bespoke sprites are named unit/<type without UNIT_> (EQUIPMENT_X:
 ; unit/equipment_x) and need no rule. Until one exists, a unit resolves to the default unit of
 ; its class (unique units), then to the category rules below (most conditions wins; prio adds).
+; Exact rules (naming a type) come first: they give faith accents, material remaps and ghosts, and
+; stop a unique unit of another nature from borrowing its base unit's look (an undead axeman is
+; not an axeman).
+;
+; Sources: generic.spr (category silhouettes, equipment glyphs), infantry.spr, mounted.spr,
+; robed.spr (arcane, divine, civilians, great people), siege_naval.spr, animals.spr (and beasts),
+; natures.spr (demons, undead, angels, golems, elementals), heroes.spr, stack.spr.
+; Stack presentation: units/stack.js (installStackOverlay(art) or drawStackOverlay) draws the
+; standard, count, health, moves and the lantern reflections on water; units/preview.html shows it,
+; every tincture in every state, the naval line and the weapon lines, a muster and the roster.
+;   standard  ui/stack_banner (stack.spr), 7x12: pole, crossbar, a 5x8 field with the 5x5 sigil;
+;             top-left at tile (1,1), mirrored to the top-right in cities. Quiet by default (the
+;             tincture's shade as the field); the full tincture only on your own movable or
+;             selected stack; the vellum finial pip says 'can move'. The ui namespace is the ui
+;             set's: the sprite moves to ui/heraldry.spr verbatim when that set adopts it
+;             (stack.js reads its geometry from `: flag` and `: finial`), then stack.spr goes.
+;   lanterns  ship and settler lanterns are a glow pixel over an amber one in a void frame,
+;             FIRE radius 6; on water stack.js adds the ART.md 5.4 reflection under each light
+;             (E E e e dashes, 2 px apart, from the waterline). A ship whose oars or hull dip
+;             below its waterline names it: `: tags waterline=<row>`.
+;   naval     one silhouette feature per line ship at 1x: galleon two masts and a stern castle,
+;             frigate three narrow sails and one gun-port row, man-o-war two rows, queen of the
+;             line three gun decks and a long owner pennant from the main truck.
+; reference.png (stacks, standards, naval line at 2x, the muster) and reference-roster.png are
+; small reference sheets of preview.html (regenerate them from its screenshots when the set
+; changes).
 set units
 source generic.spr
+source infantry.spr
+source mounted.spr
+source robed.spr
+source siege_naval.spr
+source animals.spr
+source natures.spr
+source heroes.spr
+source stack.spr
 
+; ================================================================ exact rules
+; ---- faith colour in the @ accent (docs/ART.md 11.5): disciples, priests, high priests
+map unit UNIT_DISCIPLE_EMPYREAN -> unit/disciple accent=L
+map unit UNIT_DISCIPLE_FELLOWSHIP_OF_LEAVES -> unit/disciple accent=O
+map unit UNIT_DISCIPLE_OCTOPUS_OVERLORDS -> unit/disciple accent=T
+map unit UNIT_DISCIPLE_RUNES_OF_KILMORPH -> unit/disciple accent=y
+map unit UNIT_DISCIPLE_THE_ASHEN_VEIL -> unit/disciple accent=C
+map unit UNIT_DISCIPLE_THE_ORDER -> unit/disciple accent=8
+map unit UNIT_PRIEST_OF_THE_EMPYREAN -> unit/priest accent=L
+map unit UNIT_PRIEST_OF_LEAVES -> unit/priest accent=O
+map unit UNIT_PRIEST_OF_THE_OVERLORDS -> unit/priest accent=T
+map unit UNIT_PRIEST_OF_KILMORPH -> unit/priest accent=y
+map unit UNIT_PRIEST_OF_THE_VEIL -> unit/priest accent=C
+map unit UNIT_PRIEST_OF_THE_ORDER -> unit/priest accent=8
+map unit UNIT_PRIEST_OF_WINTER -> unit/priest accent=F
+map unit UNIT_HIGH_PRIEST_OF_THE_EMPYREAN -> unit/high_priest accent=L
+map unit UNIT_HIGH_PRIEST_OF_LEAVES -> unit/high_priest accent=O
+map unit UNIT_HIGH_PRIEST_OF_THE_OVERLORDS -> unit/high_priest accent=T
+map unit UNIT_HIGH_PRIEST_OF_KILMORPH -> unit/high_priest accent=y
+map unit UNIT_HIGH_PRIEST_OF_THE_VEIL -> unit/high_priest accent=C
+map unit UNIT_HIGH_PRIEST_OF_THE_ORDER -> unit/high_priest accent=8
+map unit UNIT_HIGH_PRIEST_OF_WINTER -> unit/high_priest accent=F
+map unit UNIT_LIGHTBRINGER -> unit/disciple accent=L
+map unit UNIT_EINHERJAR -> unit/einherjar ghost
+
+; ---- dragons: one huge sprite, recoloured (docs/ART.md 10.4)
+map unit UNIT_ABASHI -> unit/_dragon remap=32,43,21,54
+map unit UNIT_ACHERON -> unit/_dragon remap=5C,yR
+map unit UNIT_DRIFA -> unit/_dragon remap=3f,4F,2g,5F
+map unit UNIT_EURABATRES -> unit/_dragon remap=3y,4Y,2u,5Y
+
+; ---- golems by material: wood u, clay Q, iron 3, bone 7, mithril F, nullstone 1 (core E, or P when magical)
+map unit UNIT_WOOD_GOLEM -> unit/_golem remap=3u,4Q
+map unit UNIT_MUD_GOLEM -> unit/_golem remap=3Q,4y
+map unit UNIT_IRON_GOLEM -> unit/_golem
+map unit UNIT_BONE_GOLEM -> unit/_golem remap=36,47,ES
+map unit UNIT_MITHRIL_GOLEM -> unit/_golem remap=3f,4F,EP
+map unit UNIT_NULLSTONE_GOLEM -> unit/_golem remap=31,42,Eg
+map unit UNIT_CLOCKWORK_GOLEM -> unit/_golem remap=3y,4Y,El
+map unit UNIT_FLESH_GOLEM -> unit/_golem remap=3Q,46,EC
+
+; ---- elementals and spells made of their element (docs/ART.md 10.4)
+map unit UNIT_AZER -> unit/fire_elemental
+map unit UNIT_AUREALIS -> unit/fire_elemental remap=ey,EY,l8,LW
+map unit UNIT_ICE_ELEMENTAL -> unit/water_elemental remap=Nf,gF
+map unit UNIT_LIGHTNING_ELEMENTAL -> unit/air_elemental remap=F8 ghost
+map unit UNIT_AIR_ELEMENTAL|UNIT_DJINN -> unit/air_elemental ghost
+map unit UNIT_MISTFORM -> unit/air_elemental remap=Ff ghost
+map unit UNIT_TREANT -> unit/earth_elemental remap=4u,5o
+map unit UNIT_SAND_LION -> unit/lion remap=yY,uy
+map unit UNIT_FIREBALL|UNIT_METEOR -> unit/_spell remap=pe,PE,Wl
+map unit UNIT_SEVERED_SOUL -> unit/_spell remap=ps,PS ghost
+map unit UNIT_EYE -> unit/_spell remap=pv,Pp
+
+; ---- ghosts, illusions and puppets are translucent (docs/ART.md 4.5)
+map unit UNIT_SPECTRE -> unit/spectre ghost
+map unit UNIT_WRAITH -> unit/wraith ghost
+map unit UNIT_SAILORS_DIRGE -> unit/sailors_dirge ghost
+map unit UNIT_GHOST -> unit/assassin ghost
+map unit UNIT_SHADE -> unit/spectre remap=42,53 ghost
+map unit UNIT_DIVIDED_SOUL -> unit/hunter ghost
+map unit UNIT_PUPPET|UNIT_PUPPET_LOKI -> unit/_adept ghost
+map unit UNIT_MIMIC -> unit/champion ghost
+
+; ---- unique units of another nature than their base unit
+map unit UNIT_PYRE_ZOMBIE -> unit/pyre_zombie
+map unit UNIT_MOROI -> unit/vampire
+map unit UNIT_BRUJAH -> unit/vampire
+map unit UNIT_VAMPIRE_LORD -> unit/vampire
+map unit UNIT_BALOR -> unit/balor
+map unit UNIT_IMP -> unit/imp
+map unit UNIT_HELLHOUND -> unit/hellhound
+map unit UNIT_OGRE_WARCHIEF|UNIT_STONESKIN_OGRE -> unit/ogre
+map unit UNIT_POLAR_BEAR -> unit/bear remap=uF,Q8,2g
+map unit UNIT_GARGOYLE -> unit/gargoyle
+map unit UNIT_BLOODPET -> unit/warrior remap=QQ,uc
+map unit UNIT_BEASTMAN -> unit/werewolf remap=4u,3u,5Q
+map unit UNIT_LIZARDMAN|UNIT_LIZARDMAN_RANGER|UNIT_LIZARDMAN_ASSASSIN -> unit/scout remap=Qo,uq
+map unit UNIT_LIZARDMAN_BEASTMASTER -> unit/beastmaster remap=Qo,uq
+map unit UNIT_GOBLIN_SCORPION_CLAN -> unit/goblin
+map unit UNIT_WOLF_RIDER_SCORPION_CLAN -> unit/wolf_rider
+map unit UNIT_STEPHANOS|UNIT_BUBOES|UNIT_YERSINIA|UNIT_ARS -> unit/death_knight
+map unit UNIT_CENTAUR_ARCHER -> unit/herne
+map unit UNIT_CENTAUR_CHARGER|UNIT_CENTAUR_LANCER -> unit/centaur
+map unit UNIT_CHARIOT_SCORPION_CLAN -> unit/chariot
+map unit UNIT_ARCHER_SCORPION_CLAN -> unit/archer remap=Qo
+map unit UNIT_FROSTLING_ARCHER -> unit/archer remap=4f,3g,Qf
+map unit UNIT_FROSTLING -> unit/scout remap=Qf,ug
+map unit UNIT_FROSTLING_WOLF_RIDER -> unit/wolf_rider remap=of,Of,mg
+map unit UNIT_MOKKA -> unit/shaman remap=Qf,ug
+map unit UNIT_DWARVEN_DRUID -> unit/druid
+map unit UNIT_LIZARDMAN_DRUID -> unit/druid
+map unit UNIT_BISON_RIDER|UNIT_HORNGUARD -> unit/boar_rider
+map unit UNIT_DEATH_KNIGHT -> unit/death_knight
+map unit UNIT_BRIGIT|UNIT_BRIGIT_HELD -> unit/valkyrie
+map unit UNIT_REPENTANT_ANGEL|UNIT_ANGEL_OF_DEATH -> unit/angel remap=73,85,62
+map unit UNIT_OPHANIM -> unit/knight remap=36,47,25
+map unit UNIT_YVAIN -> unit/earth_elemental remap=4u,5o
+map unit UNIT_DUIN|UNIT_GREATER_WEREWOLF|UNIT_RAVENOUS_WEREWOLF -> unit/werewolf
+map unit UNIT_TAR_DEMON -> unit/manes remap=2u,c1
+map unit UNIT_MESHABBER -> unit/balor remap=2u
+map unit UNIT_EIDOLON -> unit/spectre remap=4p,5P ghost
+map unit UNIT_SUPPLIES -> unit/supplies
+map unit UNIT_BOARDING_PARTY -> unit/guybrush
+map unit UNIT_DISCIPLE_OF_ACHERON -> unit/_adept accent=E
+map unit UNIT_AURIC_ASCENDED -> unit/hyborem remap=2g,cf,3F,EF,lF,L8,R8
+map unit UNIT_BEAST_OF_AGARES -> unit/pit_beast
+map unit UNIT_IRA|UNIT_STYGIAN_GUARD -> unit/chaos_marauder
+map unit UNIT_SAVEROUS -> unit/chaos_marauder remap=CT,cT
+map unit UNIT_MINOTAUR -> unit/berserker
+map unit UNIT_MUIRIN -> unit/drown
+map unit UNIT_SHADOWRIDER -> unit/knight remap=43,54,65
+map unit UNIT_ROSIER|UNIT_ROSIER_OATHTAKER -> unit/knight remap=*C
+map unit UNIT_HEMAH -> unit/archmage accent=T
+map unit UNIT_GAELAN -> unit/mage accent=R
+map unit UNIT_GIBBON -> unit/mage accent=p ghost
+map unit UNIT_MOBIUS_WITCH -> unit/mage accent=C
+map unit UNIT_PARAMANDER -> unit/priest accent=L
+map unit UNIT_FIREBOW -> unit/longbowman
+map unit UNIT_GURID|UNIT_MARGALARD -> unit/hill_giant remap=Qo,uu,2q
+map unit UNIT_SON_OF_THE_INFERNO -> unit/archmage accent=E
+
+; ================================================================ category rules
 ; ---- natures that override the class silhouette (10.4)
 map unit equipment=1 -> unit/_item
+map unit special=SPELL -> unit/_spell prio=20
 map unit race=UNDEAD -> unit/_undead prio=15
 map unit race=DEMON -> unit/_demon prio=15
-map unit race=GOLEM|ELEMENTAL -> unit/_beast prio=5
-map unit race=ANGEL -> unit/_melee prio=5 remap=37,48,46,57,u6,Q7
-map unit special=SPELL -> unit/_item
+map unit race=ANGEL -> unit/angel prio=5
+map unit race=GOLEM -> unit/_golem prio=5
+map unit race=ELEMENTAL -> unit/_elemental prio=5
+map unit race=DRAGON -> unit/_dragon prio=5
+map unit race=ILLUSION|PUPPET -> unit/_adept ghost prio=5
+map unit race=DWARF combat=MELEE -> unit/dwarven_soldier_runes
+map unit race=DWARF combat=ARCHER -> unit/dwarven_slinger
+map unit race=ORC combat=MELEE -> unit/ogre
+map unit race=ORC combat=RECON -> unit/goblin
+map unit race=CENTAUR -> unit/centaur
 map unit domain=AIR -> unit/_bird
-map unit domain=SEA combat=ANIMAL|BEAST -> unit/_animal remap=4g,3N,5F,2n
+map unit domain=SEA combat=ANIMAL|BEAST -> unit/sea_serpent
 
-; ---- one silhouette per combat class (10.2)
+; ---- one silhouette per combat class (10.2), refined by tier (10.3): tier is gear, not size
 map unit combat=MELEE -> unit/_melee
-map unit combat=ARCHER -> unit/_archer
-map unit combat=MOUNTED -> unit/_mounted
+map unit combat=MELEE tier=1 -> unit/warrior
+map unit combat=MELEE tier=3 -> unit/champion
+map unit combat=MELEE tier=4 -> unit/immortal
+map unit combat=ARCHER -> unit/archer
+map unit combat=ARCHER tier=3 -> unit/longbowman
+map unit combat=ARCHER tier=4 -> unit/crossbowman
+map unit combat=MOUNTED -> unit/horseman
+map unit combat=MOUNTED tier=3 -> unit/horse_archer
+map unit combat=MOUNTED tier=4 -> unit/knight
 map unit combat=RECON -> unit/_recon
+map unit combat=RECON tier=1 -> unit/scout
+map unit combat=RECON tier=3 -> unit/ranger
+map unit combat=RECON tier=4 -> unit/shadow
 map unit combat=SIEGE -> unit/_siege
 map unit combat=ADEPT -> unit/_adept
-map unit combat=DISCIPLE -> unit/_disciple
+map unit combat=ADEPT tier=3 -> unit/mage
+map unit combat=ADEPT tier=4 -> unit/archmage
+map unit combat=DISCIPLE -> unit/disciple
+map unit combat=DISCIPLE tier=3 -> unit/priest
+map unit combat=DISCIPLE tier=4 -> unit/high_priest
 map unit combat=NAVAL -> unit/_ship
 map unit combat=ANIMAL -> unit/_animal
 map unit combat=BEAST -> unit/_beast
 map unit domain=SEA -> unit/_ship
 map unit * -> unit/_civilian
-
-; ---- tier is ornament, not size (10.3): tier 1 in leather, tier 3-4 with lit metal edges
-map unit combat=MELEE tier=1 -> unit/_melee remap=4u,3u,5Q,yu
-map unit combat=MELEE tier=3 -> unit/_melee remap=45,56
-map unit combat=MELEE tier=4 -> unit/_melee remap=34,45,56,u3
-map unit combat=MOUNTED tier=4 -> unit/_mounted remap=34,45,56
-map unit combat=ARCHER tier=1 -> unit/_archer remap=4u,3Q
