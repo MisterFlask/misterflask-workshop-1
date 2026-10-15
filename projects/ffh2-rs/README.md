@@ -48,8 +48,12 @@ CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECK
 ```
 
 `--until-supremacy` stops a game once it is decided: a victory, the last civ standing, or one
-team holding 1.5x the runner-up's score for 30 turns (counted from turn 150); `--turns` stays the
+team holding 1.5x the runner-up's score for 30 turns (counted from turn 200); `--turns` stays the
 cap, and the outcome is printed (and reported by `ffh stats` / `ai_metrics.py --until-supremacy`).
+
+The game score is each civ's share of the world: the average of its shares of all people, all
+land and all knowledge, in basis points (alive civs sum to 10000; shown as e.g. 25.4% next to the
+fair share 100/N %). It replaces FFH2's score on purpose; see `docs/SCORE.md`.
 
 `autoplay` prints one line per turn (time, units, cities, sync checksum) and a final
 per-player summary; `bench` prints only the timing summary.
@@ -60,8 +64,9 @@ Rules code follows the C++ line by line, including its quirks (marked `// C++ qu
 the same random-number calls in the same order (the C++ `CvRandom` and `CvFractal` are
 verified bit-exact against the original source). The rules Python is ported the same way.
 What is deliberately different is listed in `docs/PORTING.md`; the main items are the AI
-(new), the exe's closed-source A* (re-implemented over the DLL's own callbacks) and the
-Python map scripts (a Fractal generator ships instead).
+(new), the exe's closed-source A* (re-implemented over the DLL's own callbacks), the
+Python map scripts (a Fractal generator ships instead) and the game score (a share of the
+world, `docs/SCORE.md`).
 
 ## Status
 

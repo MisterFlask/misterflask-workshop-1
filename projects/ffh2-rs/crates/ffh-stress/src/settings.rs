@@ -21,6 +21,7 @@ pub struct Settings {
     pub teams: usize,
     pub turns: i32,
     pub max_turns: i32,
+    /// Score victory target in basis points of the world (score v2; 5000 = half), 0 = off.
     pub target_score: i32,
     pub max_city_elimination: i32,
     pub no_victory: Vec<String>,

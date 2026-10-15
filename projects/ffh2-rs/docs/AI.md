@@ -477,11 +477,54 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 
 ## Tools
 
-- `ffh stats --seed N --at T1,T2,..` prints JSON snapshots (per civ cities, population, techs,
-  units, workers, improvements, research, production, gold, score) and whole-game events
-  (captures by and from barbarians, wars, peace, eliminations).
-  `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--compare old.json]` runs it over many
-  seeds in parallel and summarizes.
+- `ffh stats --seed N --at T1,T2,.. [--every N]` plays one game and prints one JSON line:
+  per-civ snapshots after the given numbers of turns played (and always at the end), game-wide
+  values at the same turns, whole-game events (captures by and from barbarians, wars, peace,
+  eliminations), the outcome and the turn each civ died. Snapshots only read the game (the sync
+  checksum is the same with or without them). Fields of a snapshot row (one per ever-alive
+  player, barbarians included; all computed from game state at the end of that turn):
+  - identity: `p` player id, `team`, `civ`, `leader`, `alignment`, `barb`, `alive`, `elim_turn`
+    (turns played when found dead), `era`, `religion` (state religion), `vassal`;
+  - size: `cities`, `pop`, `land` (plots owned), `land_scored`, `area_tiles`, `area_civs`
+    (other civs on the capital's landmass), `overseas` cities;
+  - score (top-level `score_version: 2`; docs/SCORE.md): `score` (share of the world in basis
+    points, 10000 = all of it) and its shares `score_pop_share`, `score_land_share`,
+    `score_know_share` (parts per million); `legacy_score` (FFH2 `calculateScore`, which was
+    `score` in output without `score_version`) and its raw inputs `score_pop_raw`,
+    `score_land_raw`, `score_tech_raw` (sum of era+1 over known techs), `score_wonders_raw` (5
+    per limited wonder); Civ4 `power` and `assets`;
+  - technology: `techs` known, `tech_cost` (beakers of known techs at this game's settings),
+    `tech_progress` (beakers into unfinished techs), `research` (beakers/turn), `pct` (research
+    slider), `research_commerce`;
+  - economy: `prod` (hammers/turn), `food`, `food_surplus` (sum of city food differences),
+    `yield_commerce` (gross commerce), `commerce` (gold + research commerce), `commerce_total`
+    (net of expenses, plus culture and espionage), `gold`, `gold_commerce`, `gold_rate` (net
+    gold/turn), `maint`, `ucost` (unit cost + supply), `civ_upkeep`, `culture` (total, /100),
+    `culture_rate`, `espionage_rate`, `max_culture_level`, `legendary_cities`,
+    `golden_age_turns`, `anarchy_turns`, `impr` (worked improved plots);
+  - buildings and people: `wonders` (world wonders), `team_wonders`, `nat_wonders`, `buildings`
+    (other buildings), `projects` (team project count), `holy_cities`, `gp_created`,
+    `gg_created`, `gp_units` (great-person units alive), `gp_settled` (settled great specialists);
+  - units: `units`, `mil`, `workers`, `settlers`, `animals`, `ships`, `heroes` (PROMOTION_HERO),
+    `world_units`, `summons`, `casters` (adept + disciple units), `ucombat` (count by unit combat
+    type, `NONE` for workers/settlers/great people), `levels` and `xp` (summed over fighting
+    units); `mil_str` = sum over non-naval units that can fight of max(attack, defence) base
+    strength x (100 + promotion combat %) / 100 x hit-point fraction, `mil_best` (strongest
+    such unit), `naval_str` (same over ships);
+  - happiness/health: `happy_margin` (sum over cities of happy - unhappy), `min_happy_margin`,
+    `unhappy_cities`, `angry_pop`, `disorder_cities`, `health_margin` (good - bad health),
+    `min_health_margin`, `unhealthy_cities`;
+  - diplomacy and conquest (cumulative, from comparing city owners turn by turn): `met`, `wars`
+    (alive civ teams), `taken_civ`, `taken_barb` (cities taken and kept), `razed` (cities that
+    vanished with this player's units on the ruins), `lost_civ`, `lost_barb` (taken or razed by
+    them), `lost_other`, `founded`, `cities_lost_rule` (Civ4 `getCitiesLost`), `players_killed`.
+  Game-wide (`world_at`): `game_turn`, `alive_civs`, `war_pairs`, `armageddon` (counter %),
+  `land_plots`, `estimate_end_turn`, and the legacy score's `max_*`/`init_*` (population, land,
+  tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
+  Mercurian Gate; the Infernals and empires formed by events get a new team), so aggregate by
+  `team`.
+  `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare
+  old.json]` runs it over many seeds in parallel and summarizes.
 - `ffh autoplay --report T` prints, per civ, costs, unit roles, improvements, civics and every
   city's yields, trade, happiness and production; `ffh inspect <player>` shows each city's
   plots (worked, yields, improvements).

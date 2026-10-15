@@ -147,24 +147,25 @@ pub fn autoplay_with(g: &mut Game, cfg: &RunConfig, on_turn: impl FnMut(&Game, &
     play(g, cfg, on_turn).stats
 }
 
-/// When a game counts as decided for testing purposes ("clear supremacy").
+/// When a game counts as decided for testing purposes ("clear supremacy"), on team scores (the
+/// team's share of the world, score v2: docs/SCORE.md).
 #[derive(Clone, Copy, Debug)]
 pub struct SupremacyRule {
     /// Leader's score as a percentage of the runner-up's (200 = twice).
     pub ratio_pct: i64,
     /// Consecutive turns the leader must keep that margin.
     pub hold_turns: i32,
-    /// Margins before this game turn don't count (early scores are tiny and noisy).
+    /// Margins before this game turn don't count (early leads are small and still reverse).
     pub min_turn: i32,
 }
 
-/// Default: 1.5x the runner-up's score held 30 turns, counted from turn 150. Calibrated on 24
-/// full-length games (6 civs, standard, normal speed): it fired in 7 of 24 games (around turn
-/// 340) and named the eventual winner every time; 1.25x was right only 60-80% of the time, and 2x
-/// almost never happens.
+/// Default: 1.5x the runner-up's score (share of the world) held 30 turns, counted from turn
+/// 200: on 36 full games it fired in 15, median turn 440, and named the full-game winner in 13.
+/// (Calibrated at normal speed, 4-9 civs; docs/SCORE.md has the alternatives: from turn 150 it
+/// is right in 12 of 15, 1.4x held 50 turns in 15 of 18, 2x almost never fires.)
 impl Default for SupremacyRule {
     fn default() -> Self {
-        SupremacyRule { ratio_pct: 150, hold_turns: 30, min_turn: 150 }
+        SupremacyRule { ratio_pct: 150, hold_turns: 30, min_turn: 200 }
     }
 }
 
@@ -187,16 +188,18 @@ pub struct Played {
     pub outcome: Outcome,
 }
 
-/// Score of each alive civ team (sum over its alive members), barbarians excluded, by team id.
+/// Score of each alive civ team (sum of its alive members' `world_scores`, basis points of the
+/// world; the teams sum to 10000), barbarians excluded, by team id.
 pub fn team_scores(g: &Game) -> Vec<(TeamId, i64)> {
     let barb = g.barbarian_team();
+    let scores = g.world_scores();
     let mut out: Vec<(TeamId, i64)> = Vec::new();
-    for p in g.player_ids() {
+    for p in g.civ_player_ids() {
         let pl = &g.players[p];
         if !pl.alive || pl.team == barb {
             continue;
         }
-        let score = g.player_calculate_score(p, false, false) as i64;
+        let score = scores[p.idx()] as i64;
         match out.iter_mut().find(|(t, _)| *t == pl.team) {
             Some(e) => e.1 += score,
             None => out.push((pl.team, score)),
@@ -345,7 +348,7 @@ pub fn describe_outcome(g: &Game, outcome: &Outcome) -> String {
         ),
         Outcome::LastStanding { turn, team } => format!("last civ standing at turn {turn}: {}", team_name(*team)),
         Outcome::Supremacy { turn, team, since } => {
-            format!("clear supremacy at turn {turn}: {} has held 1.5x the runner-up's score since turn {since}", team_name(*team))
+            format!("clear supremacy at turn {turn}: {} has held 1.5x the runner-up's share of the world since turn {since}", team_name(*team))
         }
     }
 }
@@ -464,18 +467,31 @@ fn unit_ai_name(a: UnitAIType) -> &'static str {
     NAMES.get(a.i() as usize).copied().unwrap_or("OTHER")
 }
 
-/// One line per player: civ, leader, cities, population, units, score.
+/// A score in basis points as a percentage with one decimal (2537 -> "25.4%").
+pub fn format_score(bp: i32) -> String {
+    format!("{:.1}%", bp as f64 / 100.0)
+}
+
+/// One line per player: civ, cities, population, units, gold, score (share of the world, with
+/// the fair share 100/N % of the N alive civs; barbarians have no score), legacy FFH2 score.
 pub fn summary(g: &Game) -> String {
     let d = g.d;
-    let mut out = String::new();
+    let scores = g.world_scores();
+    let alive_civs = g.civ_player_ids().filter(|&p| g.players[p].alive).count().max(1);
+    let mut out = format!("  score = share of the world's people, land and knowledge; fair share {:.1}%\n", 100.0 / alive_civs as f64);
     for p in g.player_ids() {
         let pl = &g.players[p];
         if !pl.ever_alive {
             continue;
         }
         let civ = g.player_get_civilization_type(p).map_or("?".to_string(), |c| d.civilizations[c].base.type_.clone());
+        let score = if g.player_is_barbarian(p) {
+            String::new()
+        } else {
+            format!(" score={:>6} legacy={}", format_score(scores[p.idx()]), g.player_legacy_score(p))
+        };
         out += &format!(
-            "  {:2} {:28} alive={:5} cities={:3} pop={:4} units={:4} gold={:5} score={}\n",
+            "  {:2} {:28} alive={:5} cities={:3} pop={:4} units={:4} gold={:5}{}\n",
             p.0,
             civ,
             pl.alive,
@@ -483,7 +499,7 @@ pub fn summary(g: &Game) -> String {
             pl.total_population,
             pl.units.len(),
             pl.gold,
-            g.player_calculate_score(p, false, false)
+            score
         );
     }
     out
@@ -523,6 +539,69 @@ mod tests {
             Outcome::TurnLimit => assert_eq!(played.stats.len(), 400),
             Outcome::Victory { .. } | Outcome::LastStanding { .. } => {}
         }
+    }
+
+    /// Alive civs' scores sum to the whole world (10000) with at least 1 each, every turn.
+    fn assert_world_shares(g: &Game) {
+        let s = g.world_scores();
+        let alive: Vec<PlayerId> = g.civ_player_ids().filter(|&p| g.players[p].alive).collect();
+        assert_eq!(alive.iter().map(|&p| s[p.idx()]).sum::<i32>(), 10_000, "turn {}: {s:?}", g.game_turn());
+        assert!(alive.iter().all(|&p| s[p.idx()] >= 1), "turn {}: {s:?}", g.game_turn());
+        assert_eq!(team_scores(g).iter().map(|&(_, v)| v).sum::<i64>(), 10_000);
+    }
+
+    /// Score v2 in a real game: a share of the world every turn, cached by the rules at turn
+    /// boundaries, and a saved game resumes with the same scores, checksums and saves.
+    #[test]
+    fn score_is_a_share_of_the_world_and_resumes_from_a_save() {
+        let cfg = RunConfig { seed: 11, civs: 4, world: "WORLDSIZE_TINY".into(), turns: 40, ..RunConfig::default() };
+        let (mut g, _) = new_game(&cfg);
+        autoplay_with(&mut g, &cfg, |g, _| assert_world_shares(g));
+        // Finish the turn in progress: at a turn boundary the cache is fresh after update_score.
+        while !g.at_turn_boundary() {
+            g.update();
+        }
+        g.update_score(true);
+        let fresh = g.world_scores();
+        for p in g.civ_player_ids() {
+            assert_eq!(g.player_score[p], fresh[p.idx()]);
+            assert_eq!(g.player_calculate_score(p, false, false), fresh[p.idx()]);
+        }
+        // The team leader holds more than a fair share.
+        let n = g.civ_player_ids().filter(|&p| g.players[p].alive).count() as i32;
+        assert!(g.team_score[g.rank_team[0]] >= 10_000 / n);
+
+        let bytes = g.save();
+        let mut h = Game::load(g.d, &bytes).expect("load");
+        assert!(h.save() == bytes, "save(load(save)) differs");
+        assert_eq!(h.world_scores(), fresh);
+        assert_eq!((&h.player_score, &h.team_score, &h.rank_player), (&g.player_score, &g.team_score, &g.rank_player));
+        let ai = ffh_ai::ai_controller();
+        for p in h.player_ids() {
+            h.controllers[p] = ai.clone();
+        }
+        let more = RunConfig { turns: 10, ..cfg };
+        let sa = autoplay_with(&mut g, &more, |g, _| assert_world_shares(g));
+        let sb = autoplay(&mut h, &more);
+        assert_eq!(sa.len(), sb.len());
+        for (x, y) in sa.iter().zip(sb.iter()) {
+            assert_eq!((x.turn, x.checksum), (y.turn, y.checksum), "resumed game diverged at turn {}", x.turn);
+        }
+        while !g.at_turn_boundary() {
+            g.update();
+        }
+        while !h.at_turn_boundary() {
+            h.update();
+        }
+        assert!(g.save() == h.save(), "later saves differ");
+        assert_eq!(g.players[PlayerId(0)].score_history, h.players[PlayerId(0)].score_history);
+    }
+
+    /// The supremacy rule reads team sums of the share of the world.
+    #[test]
+    fn supremacy_rule_defaults() {
+        let r = SupremacyRule::default();
+        assert_eq!((r.ratio_pct, r.hold_turns, r.min_turn), (150, 30, 200));
     }
 
     /// Different seeds should give different games.

@@ -330,6 +330,7 @@ pub struct Player {
     // ---------------------------------------------------------------- score history
     // C++ `m_mapScoreHistory` .. `m_mapEspionageHistory` (hash_map turn -> value), kept as
     // vectors indexed by game turn (missing turns read 0); see `turn_history` / `set_turn_history`.
+    /// Score v2 (share of the world in basis points) recorded by `update_score`.
     pub score_history: Vec<i32>,
     pub economy_history: Vec<i32>,
     pub industry_history: Vec<i32>,

@@ -124,7 +124,7 @@ used in the C++. `m_bScoreDirty` is kept (rank update timing feeds the FfH chall
 | C++ | lines | n | Rust | status |
 |---|---|---:|---|---|
 | `update` | 2230-2294 | 65 | `update` | ported |
-| `updateScore` | 2297-2384 | 88 | `update_score(force)` | ported |
+| `updateScore` | 2297-2384 | 88 | `update_score(force)` | ported; scores are score v2 (`world_scores`, deliberate deviation: docs/SCORE.md) |
 | `updatePlotGroups` | 2386-2399 | 14 | `update_plot_groups` | ported |
 | `updateBuildingCommerce` | 2402-2413 | 12 | `update_building_commerce` | ported |
 | `updateCitySight` | 2416-2429 | 14 | `update_city_sight` | ported |

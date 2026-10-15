@@ -51,8 +51,13 @@ use ffh_data::*;
 /// First bytes of every save.
 pub const MAGIC: &[u8; 8] = b"FFH2SAVE";
 
-/// Version of the save layout; bump it whenever the encoding or a saved struct changes.
-pub const FORMAT_VERSION: u32 = 1;
+/// Version of the save layout; bump it whenever the encoding or a saved struct changes, or a
+/// saved value changes meaning.
+///
+/// - 1: first layout.
+/// - 2: score v2 (docs/SCORE.md): `player_score`, `team_score` and `Player::score_history` hold
+///   shares of the world in basis points instead of FFH2's `calculateScore` (no new fields).
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Why [`Game::load`] rejected a save.
 #[derive(Clone, Debug, PartialEq, Eq)]

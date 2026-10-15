@@ -18,7 +18,8 @@
 //! Settings (`run`): --seed N --civs N --size WORLDSIZE_X --speed GAMESPEED_X
 //!   --handicap HANDICAP_X (game handicap) --player-handicap HANDICAP_X (AI slots)
 //!   --era ERA_X --climate CLIMATE_X --sea SEALEVEL_X --options GAMEOPTION_A,GAMEOPTION_B
-//!   --teams N (consecutive civs in teams of N) --turns N --max-turns N --target-score N
+//!   --teams N (consecutive civs in teams of N) --turns N --max-turns N
+//!   --target-score N (score victory at N basis points of the world: 5000 = half; 0 = off)
 //!   --max-city-elimination N --no-victory VICTORY_A,VICTORY_B --spare N
 //!
 //! Batch options: --matrix NAME[,NAME..] (speed handicap era world civs climate sea options

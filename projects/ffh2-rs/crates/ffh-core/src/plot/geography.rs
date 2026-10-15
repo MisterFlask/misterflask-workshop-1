@@ -113,6 +113,8 @@ impl Game {
                 self.players[owner].total_land += land_change;
                 let team = self.plot_get_team(p).expect("owned plot has a team");
                 self.teams[team].total_land += land_change;
+                // Score v2 reads total_land (docs/SCORE.md).
+                self.score_dirty = true;
             }
 
             if recalculate {
@@ -1639,6 +1641,59 @@ mod tests {
         let ignore = d.builds[build_farm].feature_remove[forest];
         let with_build = g.plot_calculate_nature_yield(hills, food, None, ignore) + expect;
         assert_eq!(g.plot_get_yield_with_build(hills, build_farm, food, false), with_build);
+    }
+
+    /// Score v2 reads `total_land`: every change of it marks the score dirty (C++ only marked it
+    /// through the land score, which counts plots owned long enough), and so does a vassal change.
+    #[test]
+    fn land_and_vassal_changes_mark_the_score_dirty() {
+        let d = ffh_data::global();
+        let mut g = game_from_ascii(&["....", ".##.", ".#..", "...."], false, false);
+        assign_test_areas(&mut g);
+        let grass = d.t::<TerrainType>("TERRAIN_GRASS");
+        let coast = d.t::<TerrainType>("TERRAIN_COAST");
+        for q in g.map.plot_ids() {
+            g.map.plots[q].terrain_type = Some(if g.plot_is_water(q) { coast } else { grass });
+        }
+        for p in g.player_ids() {
+            g.players[p].id = p;
+            g.players[p].team = TeamId(p.0);
+        }
+        let (p0, p1) = (PlayerId(0), PlayerId(1));
+        for p in [p0, p1, g.barbarian_player()] {
+            g.players[p].alive = true;
+            let t = g.players[p].team;
+            g.teams[t].alive_count = 1;
+        }
+
+        let land = at(&g, 1, 2);
+        g.score_dirty = false;
+        g.plot_set_owner(land, Some(p0), false, false);
+        assert_eq!(g.players[p0].total_land, 1);
+        assert!(g.score_dirty, "a land plot gained");
+
+        g.score_dirty = false;
+        g.plot_set_owner(land, Some(p1), false, false);
+        assert_eq!((g.players[p0].total_land, g.players[p1].total_land), (0, 1));
+        assert!(g.score_dirty, "a land plot changed hands");
+
+        g.score_dirty = false;
+        g.plot_set_owner(land, None, false, false);
+        assert_eq!(g.players[p1].total_land, 0);
+        assert!(g.score_dirty, "a land plot lost");
+
+        // an owned water plot turning into land changes the owner's land
+        let water = at(&g, 2, 1);
+        g.plot_set_owner(water, Some(p0), false, false);
+        assert_eq!(g.players[p0].total_land, 0, "water is not land");
+        g.score_dirty = false;
+        g.plot_set_plot_type(water, PlotType::PLOT_LAND, false);
+        assert_eq!(g.players[p0].total_land, 1);
+        assert!(g.score_dirty, "an owned plot became land");
+
+        g.score_dirty = false;
+        g.team_set_vassal(TeamId(1), TeamId(0), true, false);
+        assert!(g.score_dirty, "a new vassal shares its people and land");
     }
 
     #[test]

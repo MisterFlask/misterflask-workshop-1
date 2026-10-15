@@ -47,6 +47,7 @@ pub struct GameSetup {
     pub victories: IdxVec<VictoryType, bool>,
     pub game_turn: i32,
     pub max_turns: i32,
+    /// Score victory target in basis points of the world (score v2, docs/SCORE.md; 0 = none).
     pub target_score: i32,
     pub max_city_elimination: i32,
     pub num_advanced_start_points: i32,
@@ -93,7 +94,8 @@ pub struct SetupOptions {
     pub disabled_victories: Vec<VictoryType>,
     /// `CvInitCore::m_iMaxTurns` (0 = from the game speed, as the exe does).
     pub max_turns: i32,
-    /// `CvInitCore::m_iTargetScore` (0 = none).
+    /// `CvInitCore::m_iTargetScore` (0 = none). In basis points of the world (score v2,
+    /// docs/SCORE.md): a team wins by score at this share or more (5000 = half the world).
     pub target_score: i32,
     /// `CvInitCore::m_iMaxCityElimination` (0 = none).
     pub max_city_elimination: i32,

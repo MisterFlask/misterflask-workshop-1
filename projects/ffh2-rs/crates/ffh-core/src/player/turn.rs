@@ -102,6 +102,9 @@ impl Game {
         self.teams[new_team].num_cities += num_cities;
         self.teams[new_team].total_population += total_population;
         self.teams[new_team].total_land += total_land;
+
+        // Score v2 splits a team's knowledge among its members (docs/SCORE.md).
+        self.score_dirty = true;
     }
 
     /// C++ `CvPlayer::getName(uiForm = 0)`: setup leader name, else the leader's description.
@@ -590,8 +593,24 @@ impl Game {
 
     // ------------------------------------------------------------------ score / population
 
-    /// C++ `CvPlayer::calculateScore(bFinal, bVictory)` (Python `calculateScore`, CvGameUtils).
-    pub fn player_calculate_score(&self, p: PlayerId, final_score: bool, victory: bool) -> i32 {
+    /// C++ `CvPlayer::calculateScore(bFinal, bVictory)`, kept for compatibility: score v2 (the
+    /// player's share of the world in basis points, [`Game::world_scores`]; a deliberate
+    /// deviation, docs/SCORE.md). Dead players and barbarians score 0. `bFinal`/`bVictory` only
+    /// fed the Hall of Fame and replay scores, which are not ported, so they are ignored.
+    /// Computes every player's score; read `player_score` for the cached value.
+    pub fn player_calculate_score(&self, p: PlayerId, _final_score: bool, _victory: bool) -> i32 {
+        if !self.players[p].alive || self.player_is_barbarian(p) {
+            return 0;
+        }
+
+        self.world_scores().get(p.idx()).copied().unwrap_or(0)
+    }
+
+    /// FFH2's own score, C++ `CvPlayer::calculateScore(false, false)` (Python `calculateScore`,
+    /// CvGameUtils): population, land, tech and wonders as shares of game-wide maxima. Score v2
+    /// replaced it as the game score; this is computed on demand for tools only (absolute
+    /// progress, which the zero-sum v2 score cannot show). No rule reads it.
+    pub fn player_legacy_score(&self, p: PlayerId) -> i32 {
         if !self.players[p].alive {
             return 0;
         }
@@ -600,7 +619,7 @@ impl Game {
             return 0;
         }
 
-        self.py_calculate_score(p, final_score, victory)
+        self.py_calculate_score(p)
     }
 
     /// C++ `CvPlayer::getAveragePopulation`.
@@ -1357,6 +1376,8 @@ mod tests {
     fn population_and_land_bookkeeping() {
         let mut g = game(&[("CIVILIZATION_BANNOR", "LEADER_SABATHIEL")]);
         let p = PlayerId(0);
+        // Every input of score v2 (people, land, knowledge, alive, team) marks the score dirty;
+        // land plots are covered in plot/ownership.rs.
         g.score_dirty = false;
         g.player_change_total_population(p, 5);
         let pl = &g.players[p];
@@ -1367,6 +1388,7 @@ mod tests {
         // power: -(5 / 2) + (3 / 2) = -1
         assert_eq!((pl.total_population, pl.assets, pl.power, pl.population_score), (3, 6, 1, 3));
 
+        // the legacy score's land (plots owned long enough) still marks it too
         g.score_dirty = false;
         g.player_change_total_land_scored(p, 0);
         assert!(!g.score_dirty);
@@ -1376,15 +1398,29 @@ mod tests {
         assert!(g.score_dirty);
 
         g.score_dirty = false;
-        g.player_change_wonders_score(p, 5);
         g.player_change_tech_score(p, 3);
-        assert_eq!((g.players[p].wonders_score, g.players[p].tech_score), (5, 3));
+        assert_eq!(g.players[p].tech_score, 3);
+        assert!(g.score_dirty);
+        g.score_dirty = false;
+        g.player_change_wonders_score(p, 5);
+        assert_eq!(g.players[p].wonders_score, 5);
+        assert!(g.score_dirty);
+
+        g.score_dirty = false;
+        g.player_set_team(p, TeamId(1));
+        assert!(g.score_dirty, "a team change moves knowledge between members");
+
+        g.score_dirty = false;
+        g.player_set_alive(PlayerId(1), true);
         assert!(g.score_dirty);
 
         // no cities: no real population
         assert_eq!(g.player_get_real_population(p), 0);
     }
 
+    /// The legacy (FFH2) getters `getPopScore`/`getLandScore`(bCheckVassal) give a vassal half
+    /// of its own and every master member half of the vassal's; score v2 instead moves the
+    /// vassal's other half to the master's leader, conserving the totals.
     #[test]
     fn pop_and_land_scores_share_vassal_scores() {
         let mut g = game(&[("CIVILIZATION_BANNOR", "LEADER_SABATHIEL"), ("CIVILIZATION_LJOSALFAR", "LEADER_ARENDEL")]);
@@ -1405,6 +1441,20 @@ mod tests {
         assert_eq!(g.player_get_pop_score(master, true), 10 + 3);
         assert_eq!(g.player_get_land_score(master, true), 20 + 4);
         assert_eq!(g.player_get_land_score(master, false), 20);
+
+        // score v2: the vassal keeps floor(7 / 2) = 3 people and floor(9 / 2) = 4 plots, the
+        // master's leader gets the rest; nothing is created (17 people, 29 plots in all)
+        for (pl, pop, land) in [(master, 10, 20), (vassal, 7, 9)] {
+            g.players[pl].total_population = pop;
+            g.players[pl].total_land = land;
+        }
+        let shares = g.world_score_shares();
+        assert_eq!((shares[0][0], shares[1][0]), (1_000_000 * 14 / 17, 1_000_000 * 3 / 17));
+        assert_eq!((shares[0][1], shares[1][1]), (1_000_000 * 25 / 29, 1_000_000 * 4 / 29));
+        let scores = g.world_scores();
+        assert_eq!(scores[0] + scores[1], 10_000);
+        assert!(scores[0] > scores[1] && scores[1] > 0);
+
         // a dead vassal does not count
         g.players[vassal].alive = false;
         assert_eq!(g.player_get_pop_score(master, true), 10);
@@ -1433,9 +1483,12 @@ mod tests {
     fn score_unit_checks_and_launch_without_state() {
         let mut g = game(&[("CIVILIZATION_BANNOR", "LEADER_SABATHIEL")]);
         let p = PlayerId(0);
-        // a dead player scores 0 (no Python call)
+        // alone in the world: all of it
+        assert_eq!(g.player_calculate_score(p, false, false), 10_000);
+        // a dead player scores 0 (and its legacy score too, with no Python call)
         g.players[p].alive = false;
         assert_eq!(g.player_calculate_score(p, false, false), 0);
+        assert_eq!(g.player_legacy_score(p), 0);
         // no groups: nothing ready / automated / busy
         assert!(!g.player_has_ready_unit(p, true));
         assert!(!g.player_has_auto_unit(p));

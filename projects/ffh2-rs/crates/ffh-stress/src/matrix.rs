@@ -123,7 +123,9 @@ pub fn build(d: &GameData, group: &str, seeds: &[u32], turns: i32, n_random: usi
                 v.push(Settings { max_turns: 60, ..base(seed) });
                 // Time victory at the end of a quick game (480 turns; no max turns given).
                 v.push(Settings { speed: "GAMESPEED_QUICK".into(), turns: 500, ..base(seed) });
-                // Score target.
+                // Score target, in basis points of the world (score v2): the leader always holds
+                // at least 10000/N >= 150, so the score victory fires as soon as victory tests
+                // start (turn 11).
                 v.push(Settings { target_score: 150, ..base(seed) });
                 // City elimination: a player that lost N cities is out.
                 v.push(Settings { max_city_elimination: 1, civs: 6, options: vec!["GAMEOPTION_AGGRESSIVE_AI".into()], ..base(seed) });

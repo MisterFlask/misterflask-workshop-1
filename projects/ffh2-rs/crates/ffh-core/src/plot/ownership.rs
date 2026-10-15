@@ -118,6 +118,8 @@ impl Game {
                 if !self.plot_is_water(p) {
                     self.players[old_owner].total_land -= 1;
                     self.teams[old_team].total_land -= 1;
+                    // Score v2 reads total_land (docs/SCORE.md); C++ only dirties via land_score.
+                    self.score_dirty = true;
 
                     if self.plot_is_ownership_score(p) {
                         self.player_change_total_land_scored(old_owner, -1);
@@ -169,6 +171,8 @@ impl Game {
                 if !self.plot_is_water(p) {
                     self.players[owner].total_land += 1;
                     self.teams[team].total_land += 1;
+                    // Score v2 reads total_land (docs/SCORE.md).
+                    self.score_dirty = true;
 
                     if self.plot_is_ownership_score(p) {
                         self.player_change_total_land_scored(owner, 1);
