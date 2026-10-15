@@ -96,6 +96,23 @@ impl Decision {
         self.advisor.filter(|&i| self.is_valid(i)).or_else(|| self.options.iter().position(|o| o.enabled)).unwrap_or(0)
     }
 
+    /// Resolves the `TXT_KEY_*` tokens of the title, the text and the options' labels and help
+    /// (ffh-core keeps some names as text keys: city names, ...); the option keys stay as they
+    /// are.
+    pub fn resolve_keys(&mut self, d: &GameData) {
+        let resolve = |s: &mut String| {
+            if let std::borrow::Cow::Owned(t) = names::resolve_keys(d, s) {
+                *s = t;
+            }
+        };
+        resolve(&mut self.title);
+        resolve(&mut self.text);
+        for o in &mut self.options {
+            resolve(&mut o.label);
+            resolve(&mut o.help);
+        }
+    }
+
     pub fn to_json(&self) -> Json {
         let c = &self.context;
         crate::jobj! {

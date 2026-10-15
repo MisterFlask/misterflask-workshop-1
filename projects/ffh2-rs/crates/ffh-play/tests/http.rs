@@ -262,14 +262,23 @@ fn t12_a_decision_inside_a_command_is_answered_on_another_connection() {
     c.ok(ffh_play::jobj! { "k" => "session", "op" => "load", "name" => "staged/capture" });
     let st = c.wait_for("the loaded game", |st| phase(st) == "human");
     assert_eq!(st.req::<i32>("turn"), Ok(staged.turn));
+    let version = |j: &Json| j.req::<i64>("view_version").unwrap();
+    let before = version(&st);
+    assert_eq!(version(&c.get("/api/view").json()), before);
 
     let mv = cmd("move").with("id", 7).with("units", vec![staged.unit]).with("x", staged.x).with("y", staged.y);
     let waiting = std::thread::spawn(move || c.post(&mv));
     let st = c.wait_for("the decision", |st| phase(st) == "decision");
     let d = st.get("decision").unwrap();
     assert_eq!(d.req_str("kind"), Ok("keep_city"));
+    // The city's name, not its text key (P4 review).
+    assert!(!d.req_str("text").unwrap().contains("TXT_KEY"), "{d}");
     let id: u32 = d.req("id").unwrap();
     assert!(!waiting.is_finished(), "the move's request waits for the answer");
+    // The decision's view (the city captured) is a new view (P4 review).
+    let in_decision = version(&st);
+    assert!(in_decision > before, "{st}");
+    assert_eq!(version(&c.get("/api/view").json()), in_decision);
     // Other connections meanwhile.
     assert_eq!(c.get("/api/view").status, 200);
     let view = c.ok(ffh_play::jobj! { "k" => "q", "q" => "view" });
@@ -287,8 +296,16 @@ fn t12_a_decision_inside_a_command_is_answered_on_another_connection() {
     assert!(log.iter().any(|t| t.contains("captured")), "{log:?}");
     let st = c.wait_for("control again", |st| phase(st) == "human");
     assert!(st.get("decision").unwrap().is_null());
-    let ours = c.get("/api/view").json().req_arr("cities").unwrap().iter().filter(|c| c.req::<i32>("owner") == Ok(0)).count();
+    let view = c.get("/api/view").json();
+    assert!(version(&st) > in_decision);
+    assert_eq!(version(&view), version(&st));
+    let ours = view.req_arr("cities").unwrap().iter().filter(|c| c.req::<i32>("owner") == Ok(0)).count();
     assert_eq!(ours, 2, "the capital and the kept city");
+    // Debug reveal changes the view: a new version (P4 review).
+    c.ok(ffh_play::jobj! { "k" => "session", "op" => "debug", "reveal" => true });
+    let revealed = c.status();
+    assert!(version(&revealed) > version(&st));
+    assert_eq!(version(&c.get("/api/view").json()), version(&revealed));
     server.shutdown();
 }
 

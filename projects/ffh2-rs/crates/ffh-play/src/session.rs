@@ -541,9 +541,14 @@ impl Session {
         self.report.as_ref()
     }
 
-    /// Debug reveal: queries answer with the true state (marked `"reveal": true`).
+    /// Debug reveal: queries answer with the true state (marked `"reveal": true`). Switching it
+    /// changes the view: `view_version` is bumped, so a client refetches it.
     pub fn set_reveal(&self, on: bool) {
-        UiState::lock(&self.ui).reveal = on;
+        let mut ui = UiState::lock(&self.ui);
+        if ui.reveal != on {
+            ui.reveal = on;
+            ui.view_version += 1;
+        }
     }
 
     /// Answers a protocol query (design §4.6) from the human's side, under a `QueryGuard`.

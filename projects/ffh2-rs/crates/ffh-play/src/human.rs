@@ -267,13 +267,20 @@ impl HumanController {
     /// Asks the human `d` (a blocking decision) and returns the chosen option, journaled.
     fn block(&self, g: &Game, mut d: Decision) -> usize {
         d.id = self.shared.next_decision.fetch_add(1, Ordering::Relaxed);
+        // The text keys ffh-core uses for names (city names, ...) are shown resolved, as in the
+        // message log.
+        d.resolve_keys(g.d);
         *self.shared.open_decision.lock().unwrap() = Some(d.clone());
+        // The game changed since the last control point (the command or the AI turns that raised
+        // the decision): the decision's view is a new one, and so is the view after it.
+        UiState::lock(&self.ui).view_version += 1;
         let answer = {
             let guard = QueryGuard::new(g);
             let reader = DecisionReader { g: &guard, shared: &self.shared, ui: &self.ui, decision: &d };
             self.answerer.ask_with(&reader, &d)
         };
         *self.shared.open_decision.lock().unwrap() = None;
+        UiState::lock(&self.ui).view_version += 1;
         let option = match answer {
             Answer::Option(i) if d.is_valid(i) => i,
             _ => d.default_option(),
