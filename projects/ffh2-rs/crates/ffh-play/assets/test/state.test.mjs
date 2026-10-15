@@ -32,10 +32,10 @@ const view = {
     { id: 20, owner: 1, type: 0, x: 3, y: 3 },
   ],
   groups: [
-    { id: 100, head: 10, units: [10] },
-    { id: 101, head: 11, units: [11] },
-    { id: 102, head: 12, units: [12] },
-    { id: 103, head: 13, units: [13] },
+    { id: 100, head: 10, units: [10], selectable: true },
+    { id: 101, head: 11, units: [11], selectable: false },
+    { id: 102, head: 12, units: [12], selectable: true },
+    { id: 103, head: 13, units: [13], selectable: true },
   ],
   pending: { events: [], votes: [], research_needed: false, idle_cities: [], ready_groups: [100, 102, 103] },
 };
@@ -71,16 +71,35 @@ test("view lookups", () => {
   assert.equal(St.S.units.size, 0);
 });
 
-test("cycling over the ready groups: next in order, or the nearest", () => {
+test("cycling over the selectable groups: next in order, or the nearest", () => {
   St.setView(view);
-  assert.equal(St.nextReadyGroup(-1), 100);
-  assert.equal(St.nextReadyGroup(100), 102);
-  assert.equal(St.nextReadyGroup(103), 100);
+  assert.equal(St.nextSelectableGroup(-1), 100);
+  assert.equal(St.nextSelectableGroup(100), 102);
+  assert.equal(St.nextSelectableGroup(103), 100);
   const dist = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
-  assert.equal(St.nextReadyGroup(100, { x: 3, y: 3 }, dist), 103);
-  assert.equal(St.nextReadyGroup(100, { x: 3, y: 3 }, dist, [103]), 102);
-  St.setView({ ...view, pending: { ...view.pending, ready_groups: [100] } });
-  assert.equal(St.nextReadyGroup(100), null);
+  assert.equal(St.nextSelectableGroup(100, { x: 3, y: 3 }, dist), 103);
+  assert.equal(St.nextSelectableGroup(100, { x: 3, y: 3 }, dist, [103]), 102);
+  const only100 = view.groups.map((g) => ({ ...g, selectable: g.id === 100 }));
+  St.setView({ ...view, groups: only100 });
+  assert.equal(St.nextSelectableGroup(100), null);
+});
+
+test("a partly moved stack waits but the cycle skips it (readyToSelect() is canAllMove)", () => {
+  // 103 has a unit with moves left and one without: `pending.ready_groups` (readyToMove(bAny =
+  // true)) holds it, the view's `selectable` (readyToSelect(), bAny = false) does not.
+  const partly = view.groups.map((g) => (g.id === 103 ? { ...g, selectable: false } : g));
+  St.setView({ ...view, groups: partly });
+  assert.deepEqual(St.readyGroups(), [100, 102, 103]);
+  assert.deepEqual(St.selectableGroups(), [100, 102]);
+  const dist = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
+  // The nearest group to (4, 4) is 103, but findSelectionGroup takes the nearest selectable one.
+  assert.equal(St.nextSelectableGroup(-1, { x: 4, y: 4 }, dist), 100);
+  assert.equal(St.nextSelectableGroup(102), 100);
+  assert.deepEqual(St.selectableGroupsOnPlot(4, 4), []);
+  const cycle = [100, 101, 102, 103];
+  const sel = new Set(St.selectableGroups());
+  assert.deepEqual(St.cycleGroups(cycle, sel, 102), { group: 100, wrapped: true });
+  St.setView(view);
 });
 
 test("Civ4's group cycle: the next waiting group after the selection's place, going round (CvPlayer::cycleSelectionGroups)", () => {
@@ -114,14 +133,53 @@ test("Civ4's group cycle: the next waiting group after the selection's place, go
 test("the waiting groups on a plot (updateSelectionList), player options", () => {
   St.setData({ ...data, tables: { ...data.tables, PlayerOptionType: [{ type: "PLAYEROPTION_ADVISOR_POPUPS" }, { type: "PLAYEROPTION_NO_UNIT_CYCLING" }] } });
   St.setView({ ...view, me: { ...view.me, options: [false, true] } });
-  assert.deepEqual(St.readyGroupsOnPlot(3, 3), [100]); // 101 does not wait
-  assert.deepEqual(St.readyGroupsOnPlot(3, 3, 100), []);
-  assert.deepEqual(St.readyGroupsOnPlot(4, 4), [103]);
-  assert.deepEqual(St.readyGroupsOnPlot(0, 0), []);
+  assert.deepEqual(St.selectableGroupsOnPlot(3, 3), [100]); // 101 does not wait
+  assert.deepEqual(St.selectableGroupsOnPlot(3, 3, 100), []);
+  assert.deepEqual(St.selectableGroupsOnPlot(4, 4), [103]);
+  assert.deepEqual(St.selectableGroupsOnPlot(0, 0), []);
   assert.ok(St.option("PLAYEROPTION_NO_UNIT_CYCLING"));
   assert.ok(!St.option("PLAYEROPTION_ADVISOR_POPUPS"));
   assert.ok(!St.option("PLAYEROPTION_NOT_THERE"));
   St.setData(data);
+});
+
+test("Enter ends the turn only when the end-turn message is up (CvGame::updateTestEndTurn, canDoControl)", () => {
+  St.setData({ ...data, tables: { ...data.tables, PlayerOptionType: [{ type: "PLAYEROPTION_ADVISOR_POPUPS" }, { type: "PLAYEROPTION_NO_UNIT_CYCLING" }] } });
+  St.setView({ ...view, me: { ...view.me, options: [false, false] } });
+  St.S.status = { phase: "running" };
+  assert.ok(!St.endTurnMessage(false)); // not the human's turn
+  St.S.status = { phase: "human" };
+  assert.ok(!St.endTurnMessage(false)); // groups wait: Enter cycles
+  // Only a partly moved stack (103) waits: hasReadyUnit(bAny) is true with a selection (the
+  // message stays off) and false without one (canAllMove).
+  const partly = view.groups.map((g) => ({ ...g, selectable: false }));
+  St.setView({ ...view, me: { ...view.me, options: [false, false] }, groups: partly, pending: { ...view.pending, ready_groups: [103] } });
+  assert.ok(!St.endTurnMessage(true));
+  assert.ok(St.endTurnMessage(false));
+  // With unit cycling off, bAny is false even with a selection.
+  St.setView({ ...view, me: { ...view.me, options: [false, true] }, groups: partly, pending: { ...view.pending, ready_groups: [103] } });
+  assert.ok(St.endTurnMessage(true));
+  // Nothing waits.
+  St.setView({ ...view, me: { ...view.me, options: [false, false] }, groups: partly, pending: { ...view.pending, ready_groups: [] } });
+  assert.ok(St.endTurnMessage(true));
+  assert.ok(St.endTurnMessage(false));
+  St.S.status = null;
+  St.setData(data);
+  St.setView(view);
+});
+
+test("Home / End: the next / previous city, else the one nearest the look-at plot (cycleCities)", () => {
+  const cities = [{ id: 2, x: 0, y: 0 }, { id: 5, x: 10, y: 0 }, { id: 9, x: 20, y: 0 }];
+  const dist = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
+  assert.equal(St.cycleCity(cities, 2).id, 5);
+  assert.equal(St.cycleCity(cities, 9).id, 2);
+  assert.equal(St.cycleCity(cities, 2, false).id, 9);
+  assert.equal(St.cycleCity(cities, 5, false).id, 2);
+  // No city selected (or one no longer ours): the city nearest the look-at plot.
+  assert.equal(St.cycleCity(cities, null, true, { x: 18, y: 1 }, dist).id, 9);
+  assert.equal(St.cycleCity(cities, 77, false, { x: 9, y: 1 }, dist).id, 5);
+  assert.equal(St.cycleCity(cities, null).id, 2);
+  assert.equal(St.cycleCity([], 2), null);
 });
 
 test("trade items for people", () => {
@@ -142,6 +200,22 @@ test("trade items for people", () => {
   assert.equal(St.tradeItemLabel({ item: 4, data: 9, name: "Their city" }), "Their city");
   assert.equal(St.tradeItemLabel({ item: 5, data: 1 }), "Make peace with Basium & Hyborem");
   assert.ok(St.DUAL_ITEMS.includes("TRADE_OPEN_BORDERS"));
+  St.setData(data);
+});
+
+test("an item on both sides is refused when either side refuses it (the trade screen greys both)", () => {
+  St.setData({ ...data, tables: { ...data.tables, TradeableItem: ["TRADE_GOLD", "TRADE_MAPS", "TRADE_OPEN_BORDERS"].map((type) => ({ type })) } });
+  const ours = [{ item: 0, data: 0, denial: null, max: 10 }, { item: 1, data: 0, denial: null }, { item: 2, data: 0, denial: null }];
+  const theirs = [{ item: 0, data: 0, denial: null, max: 5 }, { item: 1, data: 0, denial: 7 }, { item: 2, data: 0, denial: 4 }];
+  // Our open borders: their twin refuses it.
+  assert.deepEqual(St.tradeRefusal(ours[2], theirs), { denial: 4, twin: true });
+  assert.deepEqual(St.tradeRefusal(theirs[2], ours), { denial: 4, twin: false });
+  // Maps are not on both sides: their refusal of their maps does not touch ours.
+  assert.equal(St.tradeRefusal(ours[1], theirs), null);
+  assert.deepEqual(St.tradeRefusal(theirs[1], ours), { denial: 7, twin: false });
+  assert.equal(St.tradeRefusal(ours[0], theirs), null);
+  // No twin listed: only the item's own refusal counts.
+  assert.equal(St.tradeRefusal(ours[2], []), null);
   St.setData(data);
 });
 

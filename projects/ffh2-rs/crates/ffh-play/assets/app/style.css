@@ -44,6 +44,7 @@ button:hover:not([disabled]) { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button[disabled] { opacity: 0.45; cursor: default; }
 button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+#end-turn.end-turn-message:not(:disabled) { box-shadow: 0 0 0 2px var(--accent-fg), 0 0 8px 2px var(--accent); }
 button.small { padding: 0 6px; font-size: 12px; }
 button.link { background: none; border: none; color: var(--link); padding: 0; text-decoration: underline; }
 kbd { font: 10px var(--mono); color: var(--dim); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; margin-left: 6px; }

@@ -9,14 +9,14 @@
 // sends commands (commands.js). `window.ffh` exposes the state for the headless smoke test.
 
 import * as api from "./api.js";
-import { S, setData, setView, setMap, on, emit, resetDismissed, clearDismissed, popupQueue } from "./state.js";
+import { S, setData, setView, setMap, on, emit, resetDismissed, clearDismissed, popupQueue, endTurnMessage, cycleCity } from "./state.js";
 import { MapView } from "./map.js";
 import * as units from "./units.js";
-import { openCity, ownCities } from "./city.js";
+import { openCity, ownCities, stepCityScreen } from "./city.js";
 import * as empire from "./empire.js";
 import { openDiplomacy } from "./diplo.js";
 import * as tools from "./tools.js";
-import { applyMapDelta } from "./tiles.js";
+import { applyMapDelta, plotDistance } from "./tiles.js";
 import * as K from "./hotkeys.js";
 import * as screens from "./screens.js";
 import { showDecision, modalOpen, closeTag, closeAll, onEscape, openTags, openModal } from "./modals.js";
@@ -346,10 +346,33 @@ function setLayer(layer) {
   for (const b of document.querySelectorAll("#mapwrap .layers button")) b.classList.toggle("active", b.dataset.layer === layer);
 }
 
-/** The keys (also under `?`): Civ4's controls (end turn, cycle, centre, capital, the advisors,
- *  save and load, the layers), then the selection's action hotkeys from the XML
- *  (`units.hotkeyEvent`: F fortify or sleep, S sentry, Space skip, B found, G go to, R road,
- *  Del delete, Backspace cancel, L load, U unload, Shift+P pillage, ...). */
+/** The city Home / End selected last (Civ4's city selection, without the city screen), or null;
+ *  selecting units clears it, as in Civ4. */
+let citySel = null;
+
+/** C++ CONTROL_NEXTCITY / CONTROL_PREVCITY (Home / End, Num+ / Num-) outside the city screen:
+ *  the next / previous of the player's cities after the one selected (`cycleCities`), else the
+ *  city at the look-at plot (`selectLookAtCity(true)`); then the map looks at it. */
+function stepCity(forward) {
+  const near = mapView?.center?.() ?? null;
+  const dist = near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
+  const c = cycleCity(ownCities(), citySel, forward, near, dist);
+  if (!c) return;
+  if (S.sel) units.clearSelection();
+  citySel = c.id;
+  mapView.centerOn(c.x, c.y);
+}
+
+/** The keys (also under `?`). Civ4's controls (CIV4ControlInfos.xml, CvGame::doControl): Enter
+ *  ends the turn when the end-turn message is up (no group waits) and otherwise cycles to the
+ *  next group (CONTROL_ENDTURN, priority 1, before CONTROL_CYCLEUNIT); Shift+Enter ends it
+ *  whatever waits; Space ends it like Enter when the selection's actions do not take it (no
+ *  selection: CONTROL_ENDTURN_ALT); W cycles; C centres on the selection; Home / End the next /
+ *  previous city; F10 the capital's screen; F1-F4, F6, F7 the advisors; Ctrl+S, Ctrl+L. Then
+ *  ffh-play's own: Tab / Shift+Tab cycle forward / back (Civ4's Tab is chat), Ctrl+1/2/3 the
+ *  layers, `?`, the arrows and `+`/`-`. Then the selection's action hotkeys from the XML
+ *  (`units.hotkeyEvent`: F fortify or sleep, S sentry, Space skip, B found, G go to, R road, Del
+ *  delete, Backspace cancel, L load, U unload, Shift+P pillage, ...). */
 function onKey(ev) {
   const t = ev.target;
   const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement;
@@ -359,11 +382,15 @@ function onKey(ev) {
     else if (!onEscape() && !modalOpen()) units.clearSelection();
     return;
   }
-  if (typing || modalOpen()) return;
-  const human = S.status?.phase === "human";
   const k = ev.key;
   const handled = () => ev.preventDefault();
   const ctrl = ev.ctrlKey || ev.metaKey;
+  const plain = !ctrl && !ev.altKey && !ev.shiftKey;
+  // Home / End in the city screen: its next / previous city (cycleCities with the screen up).
+  const cityStep = { Home: 1, End: -1 }[k] ?? (ev.code === "NumpadAdd" ? 1 : ev.code === "NumpadSubtract" ? -1 : 0);
+  if (cityStep && plain && !typing && stepCityScreen(cityStep, openTags().at(-1))) return handled();
+  if (typing || modalOpen()) return;
+  const human = S.status?.phase === "human";
   if (ctrl && !ev.altKey) {
     const lower = k.toLowerCase();
     if (lower === "s" && !ev.shiftKey) return handled(), S.view && screens.saveDialog();
@@ -375,11 +402,18 @@ function onKey(ev) {
     handled();
     return openScreen(F_KEYS[k]);
   }
-  const plain = !ctrl && !ev.altKey && !ev.shiftKey;
+  if (cityStep && plain) {
+    stepCity(cityStep > 0);
+    return handled();
+  }
   switch (k) {
     case "Enter":
       if (!ctrl && !ev.altKey) {
-        if (human) endTurn(ev.shiftKey);
+        // Shift+Enter: CONTROL_FORCEENDTURN. Enter: CONTROL_ENDTURN while the end-turn message
+        // is up, else CONTROL_CYCLEUNIT.
+        if (human && ev.shiftKey) endTurn(true);
+        else if (human && endTurnMessage()) endTurn(false);
+        else if (human) units.selectNext();
         return handled();
       }
       break;
@@ -403,11 +437,24 @@ function onKey(ev) {
         return handled();
       }
       break;
-    case "Home": {
-      const cap = ownCities().find((c) => c.capital);
-      if (cap) mapView.centerOn(cap.x, cap.y);
-      return handled();
-    }
+    case "F10":
+      if (plain) {
+        // CONTROL_SELECTCAPITAL: the capital's city screen.
+        const cap = ownCities().find((c) => c.capital);
+        if (cap) {
+          mapView.centerOn(cap.x, cap.y);
+          openCity(cap.id);
+        }
+        return handled();
+      }
+      break;
+    case " ":
+      if (plain && !S.sel) {
+        // CONTROL_ENDTURN_ALT: with no selection, Space ends the turn when nothing waits.
+        if (human && endTurnMessage()) endTurn(false);
+        return handled();
+      }
+      break;
     case "?":
       screens.keysHelp();
       return handled();
@@ -438,11 +485,14 @@ function onKey(ev) {
       break;
   }
   // The selection's action hotkeys (Civ4's, from the XML). With Ctrl only a key the selection's
-  // actions use (the browser keeps Ctrl+C, Ctrl+R, ...).
+  // actions use (the browser keeps Ctrl+C, Ctrl+R, ...). Space with no action taking it (the
+  // selected group cannot skip) ends the turn when the end-turn message is up (ENDTURN_ALT).
   if (!S.sel || ["Shift", "Control", "Alt", "Meta"].includes(k)) return;
   if (ctrl ? K.boundTo(units.currentActions(), ev, S.data) : k.length === 1 || ["Delete", "Backspace"].includes(k) || /^(Numpad|Key|Digit)/.test(ev.code ?? "")) {
     handled();
-    units.hotkeyEvent(ev);
+    units.hotkeyEvent(ev).then((ran) => {
+      if (!ran && k === " " && plain && S.status?.phase === "human" && endTurnMessage()) endTurn(false);
+    });
   }
 }
 
@@ -472,8 +522,8 @@ function wire() {
   document.addEventListener("ffh-research", () => S.view && screens.openResearch());
   document.addEventListener("keydown", onKey);
   // Shift-right-click waypoints are sent when Shift is released (or the page loses the keys).
-  document.addEventListener("keyup", (ev) => ev.key === "Shift" && units.flushWaypoints());
-  window.addEventListener("blur", () => units.flushWaypoints());
+  document.addEventListener("keyup", (ev) => ev.key === "Shift" && units.shiftReleased());
+  window.addEventListener("blur", () => units.shiftReleased());
   on("applied", () => refreshStatus());
   on("refused", () => refreshStatus());
   on("kick", () => refreshStatus());
@@ -497,7 +547,11 @@ function wire() {
   on("modals-closed", () => S.status?.phase === "human" && runPopups());
   on("open-city", (id) => openCity(id));
   on("center", (x, y) => mapView.centerOn(x, y));
-  on("selection", () => units.renderPanel());
+  on("selection", () => {
+    if (S.sel) citySel = null;
+    units.renderPanel();
+    renderTop();
+  });
   on("mode", () => units.renderPanel());
 }
 

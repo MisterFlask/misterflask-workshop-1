@@ -227,6 +227,38 @@ fn the_view_has_the_cycle_the_options_and_the_data_the_hotkeys() {
     assert_eq!(step, Some(s.g.d.defines.commerce_percent_change_increments as i64));
 }
 
+/// The group cycle's test is C++ `readyToSelect()` (`bAny = false`): a stack in which one unit
+/// has used its moves still waits for orders (`ready`, `pending.ready_groups`: the end-turn gate)
+/// but the cycle skips it (`selectable` false); a group whose units can all move is both
+/// (P6 review).
+#[test]
+fn a_partly_moved_stack_waits_but_is_not_selectable() {
+    let (mut s, c) = duel(5);
+    let h = s.human;
+    let (x, y) = (s.g.cities[c].x, s.g.cities[c].y);
+    // Test setup through the rules: two warriors in the capital, grouped by the command.
+    let warrior: UnitType = s.g.d.t("UNIT_WARRIOR");
+    let a = s.g.player_init_unit(h, warrior, x, y, None, None);
+    let b = s.g.player_init_unit(h, warrior, x, y, None, None);
+    applied(&mut s, Command::JoinGroup { unit: b, head: Some(a) });
+    let grp = s.g.units[a].group.unwrap();
+    assert_eq!(s.g.units[b].group, Some(grp));
+    let flags = |s: &Session| {
+        let view = s.query(&Query::View).unwrap();
+        let j = view.req_arr("groups").unwrap().iter().find(|j| j.req::<i64>("id") == Ok(grp.0 as i64)).unwrap().clone();
+        let pending: Vec<i64> = view.get("pending").unwrap().req_arr("ready_groups").unwrap().iter().map(|g| g.as_i64().unwrap()).collect();
+        (j.req::<bool>("ready").unwrap(), j.req::<bool>("selectable").unwrap(), pending.contains(&(grp.0 as i64)))
+    };
+    assert_eq!(flags(&s), (true, true, true));
+    // One of the two has no moves left (as after a Warrior and a Scout moved one plot).
+    s.g.unit_finish_moves(b);
+    assert!(s.g.group_ready_to_move(grp, true) && !s.g.group_ready_to_move(grp, false));
+    assert_eq!(flags(&s), (true, false, true));
+    // None can move: neither.
+    s.g.unit_finish_moves(a);
+    assert_eq!(flags(&s), (false, false, false));
+}
+
 /// The trade tables name the cities either side offers (the diplomacy screen lists them).
 #[test]
 fn trade_tables_name_the_cities() {

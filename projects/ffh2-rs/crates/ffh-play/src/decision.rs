@@ -542,6 +542,15 @@ pub fn ready_groups(g: &Game, p: PlayerId) -> Vec<GroupId> {
     g.players[p].groups.iter().copied().filter(|&grp| g.group_ready_to_move(grp, true) && !is_ai_group(g, grp)).collect()
 }
 
+/// A group Civ4's group cycle selects: C++ `CvSelectionGroup::readyToSelect()` (`bAny = false`:
+/// every unit can move, `canAllMove`), as `CvPlayer::cycleSelectionGroups`, `cyclePlotUnits(..,
+/// bAuto)` and `CvMap::findSelectionGroup` test it, without the AI-moved groups. A stack in
+/// which one unit has moved all its moves is ready (`ready_groups`) but not selectable; only
+/// `updateSelectionList`'s "does the selected group still wait" check uses `readyToSelect(true)`.
+pub fn is_selectable_group(g: &Game, grp: GroupId) -> bool {
+    g.group_ready_to_select(grp, false) && !is_ai_group(g, grp)
+}
+
 /// [`Pending`] for `p`, with the open event popups in `events` (the session's launched ones).
 pub fn pending(g: &Game, p: PlayerId, events: &[TriggeredId]) -> Pending {
     let pl = &g.players[p];

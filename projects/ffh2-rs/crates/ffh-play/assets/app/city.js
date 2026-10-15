@@ -35,6 +35,19 @@ export function ownCity(id) {
   return S.cities.get(id)?.owner === me()?.player;
 }
 
+/** The open city screen's previous / next (`go`), for Home / End (C++ CONTROL_NEXTCITY /
+ *  PREVCITY with the city screen up: `cycleCities`, the screen moves to that city); null while
+ *  no city screen is open, or the screen is a production popup (it has no previous / next). */
+let screenGo = null;
+
+/** Home / End in the city screen: moves it to the next (`step` 1) or previous (-1) city. Whether
+ *  a city screen took the key (it is the top dialog). */
+export function stepCityScreen(step, topTag) {
+  if (!screenGo || topTag !== "city") return false;
+  screenGo(step);
+  return true;
+}
+
 /** Opens city `id`'s screen. With `popup` (an idle city's chooser at a control point, design
  *  §2.3) the dialog offers "Later" and closes once production is chosen. Resolves with "chosen",
  *  "later" or null (closed). */
@@ -96,7 +109,9 @@ export async function openCity(id, { popup = false } = {}) {
         ],
   );
   load();
+  if (!popup) screenGo = go;
   const v = await m.done;
+  if (screenGo === go) screenGo = null;
   return result ?? v;
 }
 

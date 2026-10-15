@@ -56,7 +56,9 @@ owner's colour, unowned land grey: who owns what at a glance); **Yields** (food,
 commerce of the plots in sight; fogged plots show none).
 
 **Mouse and keys** (also under `?`). The keys are Civ4's: the orders' keys come from the game's
-XML (each button shows its key), so they match the original's.
+XML (each button shows its key), and the global keys are Civ4's controls
+(`CIV4ControlInfos.xml`, what `CvGame::doControl` does with them), except the few marked
+"ffh-play's own" below.
 
 | | |
 |---|---|
@@ -64,20 +66,24 @@ XML (each button shows its key), so they match the original's.
 | right click | move or attack with the selection; with Shift held, each right click adds a waypoint (numbered on the map), and releasing Shift sends them (`Esc` drops them) |
 | drag, wheel, arrows, `+` `-` | pan and zoom; click or drag the minimap to jump |
 | double click | open your city |
-| `Enter` / `Shift+Enter` | end the turn / end it without the checks |
-| `W` or `Tab` / `Shift+Tab` | the next / previous group waiting for orders, in Civ4's group cycle; when it comes round, units with orders left move (Civ4's automatic moves) |
-| `C` / `Home` | centre on the selection / on your capital |
-| `Space` | skip the turn |
+| `Enter` | the next group waiting for orders, as `W`; when none waits (Civ4's "end of turn" state: the End turn button glows), end the turn |
+| `Shift+Enter` | end the turn whatever waits, without the checks |
+| `W` | the next group waiting for orders, in Civ4's group cycle (a stack in which a unit has used its moves is skipped, as in Civ4); when it comes round, units with orders left move (Civ4's automatic moves) |
+| `Space` | with a unit selected: skip its turn; with none, end the turn when no group waits |
+| `C` | centre on the selection |
+| `Home` / `End` (`Num+` / `Num-`) | the next / previous of your cities (the first: the one nearest the centre of the map); in the city screen, its next / previous city |
+| `F10` | your capital's city screen |
+| `Tab` / `Shift+Tab` | ffh-play's own: the next / previous group waiting (in Civ4, `Tab` is chat) |
 | `F` / `S` / `H` | fortify (sleep for a unit that cannot fortify) / sentry / heal |
 | `B` | found a city (bombard or a ranged attack for units that cannot) |
-| `G` then click, `Alt+R` then click | go to a plot / build a route to it |
+| `G` then click, `Alt+R` then click | go to a plot (Shift-clicks add waypoints, sent when Shift is released, as with right clicks) / build a route to it |
 | `R`, `I`, `M`, … | a worker's builds: road, farm, mine, … (`Shift+W` windmill, `Alt+C` chop) |
 | `L` / `U` / `Shift+U` | load / unload / unload all |
 | `Shift+P` | pillage |
 | `Del` / `Backspace` | delete the selected units (asks first) / cancel their orders |
 | `F1` `F2` `F3` `F4` `F6` `F7` | cities, finances (the sliders), civics, diplomacy, the tech tree, religion |
 | `Ctrl+S` / `Ctrl+L` | save / load |
-| `Ctrl+1` `Ctrl+2` `Ctrl+3` | the terrain, political and yield layers |
+| `Ctrl+1` `Ctrl+2` `Ctrl+3`, `?` | ffh-play's own: the terrain, political and yield layers; the keys list |
 | `Esc` | leave a plot pick, close a dialog, clear the selection |
 
 **Units.** The selection panel lists your units on the plot (click a row: its group;
@@ -92,7 +98,9 @@ Upgrades). "Promote…" lists the promotions with their help, "details" by Spell
 spell with its help and whether it can be cast now. Units in a transport are listed under it.
 When a group is done, the next one waiting for orders on the plot it left, then on its plot,
 then the next in Civ4's group cycle is selected, as in Civ4 (not with the player option "No
-unit cycling", Tools → Options). Moving into a rival's land asks whether to declare war;
+unit cycling", Tools → Options). As in Civ4, the cycle (`W`, `Enter`, the next group after an
+order) selects only groups whose units can all still move: a stack in which one unit has used its
+moves still counts as waiting (the end-turn check counts it) but is not selected for you. Moving into a rival's land asks whether to declare war;
 deleting, world spells and spells that start a war ask first; loading with more than one
 transport asks which.
 
@@ -103,7 +111,7 @@ waiting for orders is selected, and the open questions come up one at a time in 
 events (each choice with its effects; greyed when not possible now), votes, research (click:
 research it; Shift-click: add it to the queue), then each city with nothing to build (click:
 build it now; Shift-click: add to the queue; Ctrl-click: put it first). "Later" sets one aside
-for this turn. End turn (button or `Enter`) asks first when an event, a vote or the research is
+for this turn. End turn (the button, or `Enter` once no group waits) asks first when an event, a vote or the research is
 open or units wait for orders: answer them, select a unit, or end the turn anyway (Civ4's
 consequences: open events are dropped, votes get one more turn and then abstain, empty research
 takes the automatic pick). A question the rules must have answered at once (keep or raze a
@@ -133,8 +141,8 @@ commerce's share with `−`/`+` by Civ4's step (only the ones you may change).
 **Diplomacy** (`F4`): every player you met (war or peace, open borders, pacts, vassals, attitude,
 score, your deals with them) with "Trade…" and "Declare war" (it asks first). The trade screen
 lists what each side can give (refusals greyed with Civ4's reason); click items into the deal
-(gold with an amount; peace, open borders and pacts go both ways), "Propose": the AI accepts or
-declines at once.
+(gold with an amount; peace, open borders and pacts go both ways, so they are greyed on both
+sides when either side refuses them), "Propose": the AI accepts or declines at once.
 
 **Tools** (the Tools menu): **Debug reveal** (the whole map and every unit and city; the top
 bar says DEBUG REVEAL); the **Inspector** (the rules engine's own data of your unit, group, city,
@@ -360,7 +368,7 @@ Errors: `invalid`, `not_owner`, `gone`, `busy`.
 |---|---|
 | `status` | phase (`human`, `running`, `decision`, `over`; over the transports also `stuck`, `no_game`, `crashed` with the report), turn, year, you, the active players, the open decision, the winner, `view_version` (changes whenever the view does: a command, a decision opening or closing, debug reveal), and over the transports `game {dir, journal, autosave}` |
 | `pending` | open events (with each option's effects), votes, research needed, idle cities, promotions, ready groups, idle AI-controlled groups |
-| `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis, the player options, AI autoplay), the players you met, the cities you revealed, the units you see, your groups, `group_cycle` (your groups in Civ4's cycle order) and `has_auto_unit`, `pending`, `log_next` |
+| `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis, the player options, AI autoplay), the players you met, the cities you revealed, the units you see, your groups (`ready`: some unit can move, as `pending.ready_groups`; `selectable`: every unit can, what Civ4's cycle selects), `group_cycle` (your groups in Civ4's cycle order) and `has_auto_unit`, `pending`, `log_next` |
 | `map` | flat arrays `y * w + x`: `vis` (0 unrevealed, 1 fogged, 2 visible), `plot_type`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `owner`, `river` (bit 0 river on the south edge, bit 1 on the east edge, bits 2-4 north/south flow + 1, bits 5-7 west/east flow + 1), `city`, `yield` (`food \| production << 8 \| commerce << 16`, visible plots only), `map_rev`, and `epoch` and `rev`. `map {since: R, epoch: E}` answers only the tiles changed since revision `R` (`full: false`, `tiles` = their indices, each array the values of those tiles), or the full map (`full: true`) when `E` is not the current epoch, `R` is unknown or much of the map changed |
 | `plot {x,y}` | a plot as you know it; while visible also yields, defence, culture and the units |
 | `group {units}` | the units in detail and the actions: `mission`, `target` (an interface mode, `mode`: go-to, route-to for workers, range attack, the air modes; needs a plot), `command`, `load`, `spell`, `promotion`, `upgrade`, each `enabled` or not, each with its `cmd` |
@@ -545,13 +553,15 @@ node tools/web-smoke.mjs                 # headless Chromium plays through the p
 * `web-smoke.mjs [--turns 4] [--seed 5] [--out DIR] [--assets DIR] [--cdp] [--headed]` drives the
   page with the mouse and keyboard in headless Chromium (the `playwright` package if it resolves,
   else Chromium over the DevTools protocol; skipped without a browser): new game (Start
-  double-clicked: one game), `W` over every waiting group, hotkeys pressed in the same tick as a
+  double-clicked: one game), `W` over every group the cycle selects, hotkeys pressed in the same tick as a
   selection change, found a city with `B`, the research and production popups, the city queue
-  (Shift-click appends, ✕ removes), select a unit, the path preview, a right-click move, end turns
-  through the gate, the turn report, save and load through the dialogs, the odds tooltip and an
+  (Shift-click appends, ✕ removes), select a unit, the path preview, a right-click move, `Enter`
+  while groups wait (it selects one and does not end the turn), end turns with the button through
+  the gate, the turn report, save and load through the dialogs, the odds tooltip and an
   attack (`stage attack`), the keep/raze dialog (`stage capture`), popups set aside and asked
   again after loading the same turn, the transport picker (`stage load`), Shift-right-click
-  waypoints held until Shift is released (`stage automoves`), a game started by another client
+  waypoints and go-to (`G`) Shift-click waypoints held until Shift is released (`stage
+  automoves`), a game started by another client
   while the page shows the new-game screen, and the crash screen of a server started with
   `--panic-at`; and (P6) the city screen (a worked plot clicked off and on, the automation), the
   tech tree (`F6`, a click researches), civics (`F3`, a pick and the revolution), religion
@@ -576,15 +586,20 @@ window):
 4. Select a warrior: the path preview follows the mouse with turn numbers; right-click moves;
    hold Shift and right-click two or three plots: they are numbered on the map and the warrior
    stays selected; release Shift: the warrior gets them as orders in turn (it moves once nothing
-   else waits for orders); `M` then click moves; `Esc` cancels. A move into a rival's land asks
-   to declare war (try "Cancel").
-5. Group units on one plot (`All`, `Group`), split them, Ctrl-click rows; `W`/`Tab` goes through
-   every waiting group before any comes up again (`Shift+Tab` backwards); `Space`, `F`, `S`, `G`
+   else waits for orders); `G` then click goes there, `G` then Shift-clicks add waypoints the
+   same way (the go-to mode stays on until Shift is released); `Esc` cancels. A move into a
+   rival's land asks to declare war (try "Cancel").
+5. Group units on one plot (`All`, `Group`), split them, Ctrl-click rows; `W`, `Enter` and `Tab`
+   go through every waiting group before any comes up again (`Shift+Tab` backwards); move one unit
+   of a two-unit stack with different moves (a warrior and a scout grouped, one plot): `W` skips
+   the stack from then on, as Civ4 does; once nothing waits the End turn button glows and `Enter`
+   (or `Space` with nothing selected) ends the turn; `Home`/`End` go through your cities, `F10`
+   opens the capital; `Space`, `F`, `S`, `G`
    work on the selection (also pressed right after clicking another unit); a worker's build
    buttons show turns and their keys (`R` road, `I` farm, `M` mine); compare a few keys with
    Civ4's.
-6. End the turn with units waiting: the gate lists them; "Select a unit" goes back, "End turn
-   anyway" ends it. During the AI turns the top bar says who is moving. The next turn's report
+6. End the turn with units waiting (the End turn button; `Enter` selects the next unit then): the
+   gate lists them; "Select a unit" goes back, "End turn anyway" ends it. During the AI turns the top bar says who is moving. The next turn's report
    and messages appear in the bottom panel.
 7. Open a city (double-click, the Cities list, or the button when your units stand in it):
    replace, append (Shift), insert first (Ctrl) and remove (✕) production; click worked and

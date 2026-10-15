@@ -3,7 +3,7 @@
 // modes (go-to, route-to, range attack: pick a plot), grouping, and cycling over the ready groups.
 
 import * as api from "./api.js";
-import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, nextReadyGroup, cycleGroups, readyGroupsOnPlot, option, moves, turns, info } from "./state.js";
+import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, selectableGroups, nextSelectableGroup, cycleGroups, selectableGroupsOnPlot, option, moves, turns, info } from "./state.js";
 import * as K from "./hotkeys.js";
 import { h, fill, toast } from "./dom.js";
 import { openModal } from "./modals.js";
@@ -21,7 +21,8 @@ let group = null;
 let groupFor = "";
 let groupKey = "";
 let groupPending = null;
-/** An interface mode: `{kind: "move"}` or `{kind: "target", action}`. */
+/** An interface mode: `{kind: "target", action, waypoints?}` (`waypoints`: go-to waypoints
+ *  were added with Shift, the mode ends when Shift is released). */
 let mode = null;
 /** After a command on the selection: the plot the selection was on (C++ `getOriginalPlot`),
  *  to move on from once the group no longer waits for orders (`updateSelection`); else null. */
@@ -88,27 +89,28 @@ export function clearSelection() {
   select([]);
 }
 
-/** The groups waiting for orders (`readyToSelect`), as a Set. */
-function readySet() {
-  return new Set(readyGroups().filter((g) => S.groups.has(g)));
+/** The groups the cycle selects (C++ `readyToSelect()`, every unit can move), as a Set. */
+function selectableSet() {
+  return new Set(selectableGroups().filter((g) => S.groups.has(g)));
 }
 
-/** C++ `CvGame::cycleSelectionGroups(bClear, bForward)` (W, Tab, Next; P6): the next group in
+/** C++ `CvGame::cycleSelectionGroups(bClear, bForward)` (W, Enter, Next; P6): the next group in
  *  the player's group cycle (`view.group_cycle`, C++ `m_groupCycle`) after the selection's that
- *  waits for orders, going round; with no selection, the waiting group nearest the centre of the
- *  map view (`findSelectionGroup` at the look-at plot). When the search went round and a group
- *  has orders to continue, the exe sends AutoMoves (they move now). */
+ *  the cycle selects (`readyToSelect()`: every unit can move), going round; with no selection,
+ *  the selectable group nearest the centre of the map view (`findSelectionGroup` at the look-at
+ *  plot). When the search went round and a group has orders to continue, the exe sends
+ *  AutoMoves (they move now). */
 export function selectNext({ forward = true } = {}) {
   const cur = currentGroup();
   if (cur === null) {
     const near = mapView?.center?.() ?? null;
     const dist = near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
-    const g = nextReadyGroup(-1, near, dist);
+    const g = nextSelectableGroup(-1, near, dist);
     if (g === null || g === undefined) return false;
     selectGroup(g, { center: true });
     return true;
   }
-  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? readyGroups(), readySet(), cur, forward);
+  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? selectableGroups(), selectableSet(), cur, forward);
   if (wrapped && S.view?.has_auto_unit) autoMoves();
   if (group === null) return false;
   selectGroup(group, { center: true });
@@ -116,30 +118,32 @@ export function selectNext({ forward = true } = {}) {
 }
 
 /** C++ `CvGame::updateSelectionList` (after a command, P6): once the selected group no longer
- *  waits for orders, the next waiting group on the plot it started from, then on its plot,
- *  then the next in the group cycle (`cycleSelectionGroups`, AutoMoves on a wrap); nothing when
- *  the player turned unit cycling off (PLAYEROPTION_NO_UNIT_CYCLING). */
+ *  waits for orders (`readyToSelect(true)`: no unit can move, `readyGroups`), the next
+ *  selectable group (`readyToSelect()`) on the plot it started from, then on its plot, then the
+ *  next in the group cycle (`cycleSelectionGroups`, AutoMoves on a wrap), and no selection when
+ *  none is selectable; nothing when the player turned unit cycling off
+ *  (PLAYEROPTION_NO_UNIT_CYCLING). */
 function updateSelection(origin) {
   if (option("PLAYEROPTION_NO_UNIT_CYCLING")) return false;
   const cur = currentGroup();
   for (const p of [origin, S.sel ? { x: S.sel.x, y: S.sel.y } : null]) {
     if (!p) continue;
-    const g = readyGroupsOnPlot(p.x, p.y, cur)[0];
+    const g = selectableGroupsOnPlot(p.x, p.y, cur)[0];
     if (g !== undefined) {
       selectGroup(g, { center: true });
       return true;
     }
   }
   if (cur === null) {
-    // The selected units are gone (killed, joined a city): the waiting group nearest the plot
-    // they were on (C++ `findSelectionGroup` at the look-at plot).
+    // The selected units are gone (killed, joined a city): the selectable group nearest the
+    // plot they were on (C++ `findSelectionGroup` at the look-at plot).
     const dist = origin && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
-    const g = nextReadyGroup(-1, origin, dist);
+    const g = nextSelectableGroup(-1, origin, dist);
     if (g === null || g === undefined) return false;
     selectGroup(g, { center: true });
     return true;
   }
-  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? readyGroups(), readySet(), cur);
+  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? selectableGroups(), selectableSet(), cur);
   if (wrapped && S.view?.has_auto_unit) autoMoves();
   if (group === null || group === cur) {
     S.sel = null;
@@ -340,8 +344,8 @@ export function currentActions() {
   return reply()?.actions ?? [];
 }
 
-/** Enters an interface mode: `{kind: "move"}` (move to the plot clicked) or `{kind: "target",
- *  action}`; null leaves it. */
+/** Enters an interface mode, `{kind: "target", action}` (pick a plot for the action); null
+ *  leaves it. */
 export function setMode(m) {
   mode = m;
   const targets = m?.kind === "target" ? (m.action.any ? null : m.action.targets) : null;
@@ -354,21 +358,43 @@ export function currentMode() {
   return mode;
 }
 
+/** Whether action `a` is the go-to interface mode (INTERFACEMODE_GO_TO: a `move`). */
+export function isGoTo(a) {
+  return a?.kind === "target" && a.mode === "INTERFACEMODE_GO_TO" && a.cmd?.c === "move";
+}
+
+/** A plot picked in an interface mode. Go-to with Shift held adds a waypoint: C++ sends a
+ *  go-to pick through `selectionListMove(pPlot, bAlt, bShift, bCtrl)`, which pushes
+ *  MISSION_MOVE_TO with `bShift` as append (and keeps it through the DECLAREWARMOVE popup); the
+ *  waypoints are held like Shift-right-click's and sent when Shift is released, and the mode
+ *  stays on meanwhile so that more can be added (P6 review). */
 async function pickPlot(x, y, ev) {
   const m = mode;
-  setMode(null);
-  if (!S.sel) return;
-  if (m.kind === "move") {
-    if (ev?.shiftKey) addWaypoint(x, y);
-    else await moveTo(x, y);
+  if (!S.sel) {
+    setMode(null);
     return;
   }
   const a = m.action;
   if (!a.any && !(a.targets ?? []).some(([tx, ty]) => tx === x && ty === y)) {
+    setMode(null);
     toast("Not a valid target.", "error");
     return;
   }
-  await run(actionCommand(a, x, y));
+  if (ev?.shiftKey && isGoTo(a)) {
+    m.waypoints = true;
+    addWaypoint(x, y);
+    return;
+  }
+  setMode(null);
+  if (isGoTo(a)) await moveTo(x, y);
+  else await run(actionCommand(a, x, y));
+}
+
+/** Shift was released (or the window lost the focus): the held waypoints are sent, and a go-to
+ *  mode that added them ends. */
+export function shiftReleased() {
+  if (mode?.waypoints) setMode(null);
+  return flushWaypoints();
 }
 
 /** Merges the selected units into one group (`join_group` of each into the first's). */
@@ -766,7 +792,7 @@ export function renderPanel() {
     }
   }
   const others = foreign.length ? h("div.section", h("h4", "Others here"), foreign.map((u) => h("div.dim", `${dname("UnitType", u.type)} (${playerName(u.owner)})`))) : null;
-  const hint = mode ? h("p.mode-hint", mode.kind === "move" ? "Click a plot to move there (Shift: add waypoints; Esc cancels)." : `Pick a plot: ${actionLabel(mode.action)} (Esc cancels).`) : null;
+  const hint = mode ? h("p.mode-hint", isGoTo(mode.action) ? "Click a plot to go there (Shift: add waypoints; Esc cancels)." : `Pick a plot: ${actionLabel(mode.action)} (Esc cancels).`) : null;
   const way = waypoints && unitsKey(waypoints.units) === unitsKey(S.sel.units)
     ? h("p.mode-hint", `${waypoints.points.length === 1 ? "1 waypoint" : `${waypoints.points.length} waypoints`}: release Shift to send (Esc drops them).`)
     : null;

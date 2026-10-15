@@ -325,10 +325,10 @@ async function recordPosts() {
 }
 const posted = () => b.eval(`window.__posts.filter((p) => p.k === "cmd")`);
 
-/** W (and Tab, "Next") reaches every group waiting for orders, not just the two nearest each
- *  other (P5 review). */
+/** W (and Tab, "Next") reaches every group the cycle selects (`selectable`: C++
+ *  `readyToSelect()`), not just the two nearest each other (P5 review). */
 async function cycleAll() {
-  const ready = await S("S.view.pending.ready_groups.filter((g) => S.groups.has(g))");
+  const ready = await S("S.view.groups.filter((g) => g.selectable).map((g) => g.id)");
   if (ready.length < 2) return steps.push(`W: ${ready.length} group waiting, nothing to cycle`);
   const seen = new Set([await S("S.sel ? S.units.get(S.sel.units[0]).group : null")]);
   for (let k = 0; k < 2 * ready.length; k++) {
@@ -450,10 +450,28 @@ async function moveUnit() {
   steps.push(`moved unit ${unit.id} toward (${target.x}, ${target.y}) with a right-click`);
 }
 
+/** Enter while groups wait selects the next one and does not end the turn (Civ4: CONTROL_ENDTURN
+ *  only while the end-turn message is up, else CONTROL_CYCLEUNIT; P6 review). */
+async function enterCycles() {
+  const waiting = await S("S.view.groups.filter((g) => g.selectable).map((g) => g.id)");
+  if (!waiting.length) return steps.push("Enter: no group waiting");
+  if (await S("window.ffh.S.status.phase !== 'human'")) return steps.push("Enter: not the player's turn");
+  await recordPosts();
+  await b.key("Enter");
+  await until2(`(() => { const S = window.ffh.S; const g = S.sel && S.units.get(S.sel.units[0]); return !!g && ${JSON.stringify(waiting)}.includes(g.group); })()`, "Enter to select a waiting group");
+  await new Promise((r) => setTimeout(r, 400));
+  const sent = (await posted()).filter((c) => c.c === "end_turn");
+  if (sent.length) throw new Error(`Enter ended the turn while ${waiting.length} groups waited`);
+  if ((await modalTitles()).includes("End the turn?")) throw new Error("Enter asked to end the turn while groups waited");
+  steps.push(`Enter with ${waiting.length} groups waiting: the next one selected, the turn not ended`);
+}
+
+/** Ends `n` turns with the End turn button (the gate when units wait: end anyway). */
 async function endTurns(n) {
+  await enterCycles();
   for (let k = 0; k < n; k++) {
     const turn = await S("S.status.turn");
-    await b.key("Enter");
+    await click("#end-turn");
     // The end-turn gate when units wait for orders: end anyway.
     await new Promise((r) => setTimeout(r, 400));
     const titles = await modalTitles();
@@ -775,11 +793,13 @@ async function stagedTrade(bin, saves) {
   steps.push("trade screen (stage trade): 7 gold offered and accepted");
 }
 
-/** Shift-right-click waypoints (P5 review), on the staged AutoMoves situation (the warrior
- *  `ready` is the only group waiting; another has orders): while Shift is held nothing is sent
- *  and the warrior stays selected; on release both legs are sent for the warrior, appended,
- *  and its orders end at the second. */
-async function shiftWaypoints(bin, saves) {
+/** Shift waypoints, on the staged AutoMoves situation (the warrior `ready` is the only group
+ *  waiting; another has orders): with Shift-right-clicks (P5 review), or (`how` "goto") in the
+ *  go-to mode, G then Shift-clicks (C++ `selectionListMove` with bShift: P6 review). While Shift
+ *  is held nothing is sent and the warrior stays selected (the go-to mode stays on); on release
+ *  both legs are sent for the warrior, appended (the go-to mode ends), and its orders end at the
+ *  second. */
+async function shiftWaypoints(bin, saves, how = "right") {
   const st = await loadStaged(bin, saves, "automoves");
   const w = await S(`S.units.get(${st.ready})`);
   const p = await plotPos(w.x, w.y);
@@ -807,18 +827,27 @@ async function shiftWaypoints(bin, saves) {
   const p2 = await plotPos(t[1].x, t[1].y);
   const p1b = await plotPos(t[0].x, t[0].y);
   if (p1.x !== p1b.x || p1.y !== p1b.y) throw new Error("the map moved while placing the waypoints");
+  const button = how === "goto" ? "left" : "right";
+  const goTo = `(() => { const m = window.ffh.units.currentMode(); return !!m && m.kind === "target" && m.action.mode === "INTERFACEMODE_GO_TO"; })()`;
+  if (how === "goto") {
+    await until2(`window.ffh.units.currentActions().some((a) => a.kind === "target" && a.mode === "INTERFACEMODE_GO_TO" && a.enabled)`, "the warrior's go-to action");
+    await b.key("g");
+    await until2(goTo, "the go-to mode (G)");
+  }
   await recordPosts();
   await b.keyDown("Shift");
-  await b.mouse(p1.x, p1.y, "right");
+  await b.mouse(p1.x, p1.y, button);
   await until2(`(() => { const w = window.ffh.units.pendingWaypoints(); return w && w.points.length === 1; })()`, "the first waypoint");
-  await b.mouse(p2.x, p2.y, "right");
+  if (how === "goto" && !(await b.eval(goTo))) throw new Error("the go-to mode ended at the first Shift-click");
+  await b.mouse(p2.x, p2.y, button);
   await until2(`(() => { const w = window.ffh.units.pendingWaypoints(); return w && w.points.length === 2; })()`, "the second waypoint");
   await new Promise((r) => setTimeout(r, 300));
   const early = await posted();
   if (early.length) throw new Error(`sent while Shift was held: ${JSON.stringify(early)}`);
   if (!(await S(`S.sel && S.sel.units.length === 1 && S.sel.units[0] === ${st.ready}`))) throw new Error("the selection moved while Shift was held");
-  await shot("waypoints");
+  await shot(how === "goto" ? "waypoints-goto" : "waypoints");
   await b.keyUp("Shift");
+  if (how === "goto") await until2("!window.ffh.units.currentMode()", "the go-to mode to end when Shift is released");
   await until(async () => (await posted()).filter((c) => c.c === "move").length >= 2, "the waypoints sent");
   const sent = (await posted()).filter((c) => c.c === "move");
   const want = t.map(({ x, y }) => ({ units: [st.ready], x, y, append: true }));
@@ -832,7 +861,7 @@ async function shiftWaypoints(bin, saves) {
     const last = g && g.missions.length ? g.missions[g.missions.length - 1] : null;
     return u && ((u.x === ${t[1].x} && u.y === ${t[1].y}) || (last && last.d1 === ${t[1].x} && last.d2 === ${t[1].y}));
   })()`, "the warrior's orders to end at the second waypoint", 10000);
-  steps.push(`Shift-right-click: two waypoints held, sent on release, the warrior's orders end at (${t[1].x}, ${t[1].y})`);
+  steps.push(`${how === "goto" ? "G, Shift-click" : "Shift-right-click"}: two waypoints held, sent on release, the warrior's orders end at (${t[1].x}, ${t[1].y})`);
 }
 
 /** A staged load: the warrior's Load action asks which of two triremes (the LOADUNIT picker);
@@ -895,7 +924,7 @@ async function crashScreen(bin) {
     await until2("window.ffh && window.ffh.ready", "the client to boot");
     await waitHuman("the crash test game");
     await answerPopups(false);
-    await b.key("Enter");
+    await click("#end-turn");
     await new Promise((r) => setTimeout(r, 400));
     if ((await modalTitles()).includes("End the turn?")) await click('#modals .modal-buttons button:not(.primary):last-child');
     await until(async () => (await modalTitles()).includes("The game crashed"), "the crash screen", 60000);
@@ -944,6 +973,7 @@ async function main() {
     await stagedTrade(bin, saves);
     await stagedLoad(bin, saves);
     await shiftWaypoints(bin, saves);
+    await shiftWaypoints(bin, saves, "goto");
     await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

@@ -171,21 +171,33 @@ export function teamName(t) {
   return names.length ? names.join(" & ") : `Team ${t}`;
 }
 
-/** The groups waiting for orders (`pending.ready_groups`), in the server's order. */
+/** The groups waiting for orders (`pending.ready_groups`: C++ `readyToMove(bAny = true)`, some
+ *  unit can move), in the server's order: what the end-turn gate counts and what
+ *  `updateSelectionList` asks of the selected group ("does it still wait"). */
 export function readyGroups() {
   return S.view?.pending?.ready_groups ?? [];
 }
 
-/** The next ready group after `current` (the first one when `current` is not ready or none),
- *  preferring the group nearest (`dist`) to the plot given, as Civ4 cycles near the last
- *  selection. `skip` lists groups to leave out. */
-export function nextReadyGroup(current, near = null, dist = null, skip = []) {
-  const ready = readyGroups().filter((g) => g !== current && !skip.includes(g) && S.groups.has(g));
+/** The groups Civ4's cycle selects (the view's `selectable`: C++ `readyToSelect()`, whose
+ *  default `bAny = false` needs every unit able to move), in the server's order (the player's
+ *  groups). A stack in which one unit has used its moves waits (`readyGroups`) but is skipped
+ *  by W, Enter, the plot cycle and the nearest-group search, as in Civ4 (P6 review). */
+export function selectableGroups() {
+  return (S.view?.groups ?? []).filter((g) => g.selectable).map((g) => g.id);
+}
+
+/** The next selectable group after `current` (the first one when `current` is not selectable
+ *  or none), or, given a plot and `dist`, the one nearest to it (C++ `CvMap::findSelectionGroup`
+ *  with `bReadyToSelect`: the first of the nearest in the player's group order). `skip` lists
+ *  groups to leave out. */
+export function nextSelectableGroup(current, near = null, dist = null, skip = []) {
+  const all = selectableGroups();
+  const ready = all.filter((g) => g !== current && !skip.includes(g) && S.groups.has(g));
   if (ready.length === 0) return null;
   if (!near || !dist) {
-    const after = readyGroups().indexOf(current);
+    const after = all.indexOf(current);
     if (after >= 0) {
-      const later = readyGroups().slice(after + 1).find((g) => ready.includes(g));
+      const later = all.slice(after + 1).find((g) => ready.includes(g));
       if (later !== undefined) return later;
     }
     return ready[0];
@@ -205,7 +217,7 @@ export function nextReadyGroup(current, near = null, dist = null, skip = []) {
 }
 
 /** C++ `CvPlayer::cycleSelectionGroups(pUnit, bForward)` (P6: Civ4's group cycle): the first
- *  group waiting for orders (`ready`, a Set: `readyToSelect`) after `current`'s place in the
+ *  selectable group (`ready`, a Set: `readyToSelect()`) after `current`'s place in the
  *  player's group cycle (`cycle`, the view's `group_cycle`), going round. `wrapped` when the
  *  search went past the end of the cycle (or started there, `current` being last or not in
  *  it) or came back to `current`: the exe then sends AutoMoves when a group has orders to
@@ -240,15 +252,48 @@ export function cycleGroups(cycle, ready, current, forward = true) {
   return { group: null, wrapped: true };
 }
 
-/** The groups waiting for orders on plot (x, y), in the plot's unit order (C++
- *  `cyclePlotUnits(.., bAuto)`): the own units' groups there that are ready, without `skip`. */
-export function readyGroupsOnPlot(x, y, skip = null) {
-  const ready = new Set(readyGroups());
+/** The selectable groups on plot (x, y), in the plot's unit order (C++ `cyclePlotUnits(..,
+ *  bAuto)`, which tests `readyToSelect()`): the own units' groups there, without `skip`. */
+export function selectableGroupsOnPlot(x, y, skip = null) {
+  const ready = new Set(selectableGroups());
   const out = [];
   for (const u of ownUnitsAt(x, y)) {
     if (u.group !== skip && ready.has(u.group) && !out.includes(u.group)) out.push(u.group);
   }
   return out;
+}
+
+/** C++ `CvGame::cycleCities(bForward)` for Home / End (CONTROL_NEXTCITY / PREVCITY): with a
+ *  city selected (`current`, an id), the next / previous of `cities` (the player's, in its
+ *  order), going round; with none, the city at the look-at plot (the exe's
+ *  `selectLookAtCity(true)`, not in the DLL source: here the one nearest `near` by `dist`, the
+ *  first of the nearest; the first city without a plot). Null when there is no city. */
+export function cycleCity(cities, current, forward = true, near = null, dist = null) {
+  if (!cities.length) return null;
+  const i = current === null || current === undefined ? -1 : cities.findIndex((c) => c.id === current);
+  if (i >= 0) return cities[(i + (forward ? 1 : -1) + cities.length) % cities.length];
+  if (!near || !dist) return cities[0];
+  let best = cities[0];
+  let bestD = Infinity;
+  for (const c of cities) {
+    const d = dist(near.x, near.y, c.x, c.y);
+    if (d < bestD) {
+      bestD = d;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/** C++ `CvGame::updateTestEndTurn`'s end-turn message ("press Enter to end the turn"): the turn
+ *  is the human's and no group waits, `!hasReadyUnit(bAny)` with `bAny` when a unit is selected
+ *  and unit cycling is on (`readyGroups`, else `selectableGroups`: a selected stack with a unit
+ *  that can still move keeps the message off). Enter and Space end the turn only then
+ *  (CvGame::canDoControl CONTROL_ENDTURN / _ALT); otherwise Enter cycles (CONTROL_CYCLEUNIT). */
+export function endTurnMessage(selected = !!S.sel) {
+  if (S.status?.phase !== "human") return false;
+  const any = selected && !option("PLAYEROPTION_NO_UNIT_CYCLING");
+  return !(any ? readyGroups() : selectableGroups()).some((g) => S.groups.has(g));
 }
 
 /** The PlayerOptionType index of an option, and whether the human has it on (`me.options`). */
@@ -363,6 +408,21 @@ export function tradeItemLabel(it) {
 /** Trade items that go on both sides of a deal (C++ `CvDeal::isDual`): peace treaty, open
  *  borders, defensive pact, permanent alliance. */
 export const DUAL_ITEMS = ["TRADE_PEACE_TREATY", "TRADE_OPEN_BORDERS", "TRADE_DEFENSIVE_PACT", "TRADE_PERMANENT_ALLIANCE"];
+
+/** Why trade item `it` cannot go into a deal, or null: its own refusal (`denial`, a DenialType),
+ *  or, for an item that goes on both sides (DUAL_ITEMS), its twin's on the other side (`other`,
+ *  that side's table): the deal would hold both and be refused (P6 review: the AI's refusal of,
+ *  say, open borders is on its own side only). `{denial, twin}`, `twin` when the refusal is the
+ *  other side's. */
+export function tradeRefusal(it, other) {
+  const refused = (x) => x && x.denial !== null && x.denial !== undefined;
+  if (refused(it)) return { denial: it.denial, twin: false };
+  if (DUAL_ITEMS.includes(tname("TradeableItem", it.item))) {
+    const twin = (other ?? []).find((o) => o.item === it.item);
+    if (refused(twin)) return { denial: twin.denial, twin: true };
+  }
+  return null;
+}
 
 /** The lines of the end-turn gate (`confirm end_turn`). */
 export function gateLines(c) {

@@ -5,7 +5,7 @@
 // tables and offered (`propose_deal`), which the AI accepts or declines at once.
 
 import * as api from "./api.js";
-import { S, dname, tname, teamName, tradeItemLabel, DUAL_ITEMS } from "./state.js";
+import { S, dname, tname, teamName, tradeItemLabel, tradeRefusal, DUAL_ITEMS } from "./state.js";
 import { h, toast } from "./dom.js";
 import { openModal, ask, closeTag } from "./modals.js";
 import { run } from "./commands.js";
@@ -60,8 +60,8 @@ async function declareWar(p) {
 }
 
 /** The trade screen with player `with`: both trade tables; clicking an item puts it into the
- *  deal (an item that goes on both sides, such as a peace treaty, goes on both), gold as an
- *  amount; Propose offers it. */
+ *  deal (an item that goes on both sides, such as a peace treaty, goes on both, and is greyed on
+ *  both when either side refuses it), gold as an amount; Propose offers it. */
 export async function openTrade(withPlayer, name = null) {
   const m = openModal({ title: `Trade with ${name ?? S.players.get(withPlayer)?.name ?? `player ${withPlayer}`}`, body: [h("p.dim", "…")], tag: "trade", wide: true, buttons: [{ label: "Close", value: null }] });
   let t;
@@ -90,7 +90,10 @@ export async function openTrade(withPlayer, name = null) {
           ? list.map((it) => {
               const k = keyOf(it);
               const on = deal[mapKey].has(k);
-              const denied = it.denial !== null && it.denial !== undefined;
+              // Refused by its side, or (an item on both sides) by the other side.
+              const refusal = tradeRefusal(it, other);
+              const denied = !!refusal;
+              const why = refusal ? `${refusal.twin ? "the other side refuses: " : ""}${dname("DenialType", refusal.denial)}` : "";
               const label = isGold(it) ? `${tradeItemLabel({ ...it, data: 0 })} (up to ${it.max})` : tradeItemLabel(it);
               const row = h(
                 "div.trade-item",
@@ -99,7 +102,7 @@ export async function openTrade(withPlayer, name = null) {
                   "button.small",
                   {
                     disabled: denied || (isGold(it) && !it.max),
-                    title: denied ? `Refused: ${dname("DenialType", it.denial)}` : "Add to the deal / take it out",
+                    title: denied ? `Refused (${why})` : "Add to the deal / take it out",
                     onclick: () => {
                       const toggle = (map, item) => (map.has(keyOf(item)) ? map.delete(keyOf(item)) : map.set(keyOf(item), { item: item.item, data: isGold(item) ? Math.min(item.max, 1) : item.data }));
                       toggle(deal[mapKey], it);
@@ -123,7 +126,7 @@ export async function openTrade(withPlayer, name = null) {
                       oninput: (ev) => (deal[mapKey].get(k).data = Math.max(1, Math.min(it.max, Number(ev.target.value) || 1))),
                     })
                   : null,
-                denied ? h("span.dim", ` (${dname("DenialType", it.denial)})`) : null,
+                denied ? h("span.dim", ` (${why})`) : null,
               );
               return row;
             })

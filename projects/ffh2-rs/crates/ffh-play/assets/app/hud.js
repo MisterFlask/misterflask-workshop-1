@@ -2,7 +2,7 @@
 // counter, mana, anarchy, golden age, Stasis) with the phase and the progress line during the
 // AI turns, and the bottom panel: the turn report, the messages by turn, the game's files.
 
-import { S, dname, tname, turns, playerName, me, emit } from "./state.js";
+import { S, dname, tname, turns, playerName, me, emit, endTurnMessage } from "./state.js";
 import { h, fill } from "./dom.js";
 import { openCount } from "./commands.js";
 import { spectatorBar } from "./tools.js";
@@ -51,6 +51,11 @@ export function renderTop() {
     end.disabled = st.phase !== "human";
     const n = openCount();
     end.textContent = n ? `End turn (${n} open)` : "End turn";
+    // Civ4's end-turn message: no group waits, so Enter (or Space) ends the turn; else Enter
+    // selects the next group.
+    const msg = endTurnMessage();
+    end.classList.toggle("end-turn-message", msg);
+    end.title = msg ? "End the turn [Enter, Space]; Shift: without the checks" : "End the turn [Shift+Enter: without the checks]; Enter selects the next unit waiting";
   }
   if (!m) {
     fill(info);
@@ -61,7 +66,7 @@ export function renderTop() {
     h("span.stat", { title: "Gold (per turn)" }, h("span.icon.gold", "¤"), ` ${m.gold} `, h("span.dim", `(${m.gold_rate >= 0 ? "+" : ""}${m.gold_rate})`)),
     h(
       "button.stat.research",
-      { id: "research-button", title: "Research [R]", onclick: () => document.dispatchEvent(new CustomEvent("ffh-research")) },
+      { id: "research-button", title: "Research (the tech tree: F6)", onclick: () => document.dispatchEvent(new CustomEvent("ffh-research")) },
       h("span.icon", "⚗"),
       r ? ` ${dname("TechType", r.tech)} (${turns(r.turns)})` : h("span.warn", " choose research"),
       r ? h("span.bar", h("span.fill", { style: { width: `${Math.min(100, Math.round((100 * r.progress) / Math.max(1, r.cost)))}%` } })) : null,

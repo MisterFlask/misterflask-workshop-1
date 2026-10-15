@@ -288,6 +288,10 @@ pub fn groups(v: &Viewer) -> Json {
             "head" => g.group_get_head_unit(grp),
             "units" => group.units.clone(),
             "ready" => g.group_ready_to_move(grp, true) && !crate::decision::is_ai_group(g, grp),
+            // What Civ4's group cycle selects (W, Enter, the next group after a command, the
+            // waiting groups on a plot, the nearest group): C++ `readyToSelect()` with its
+            // default `bAny = false`, i.e. every unit can move (`canAllMove`), not only one.
+            "selectable" => crate::decision::is_selectable_group(g, grp),
             "busy" => g.group_is_busy(grp),
             "activity" => Json::idx(group.activity_type),
             "missions" => Json::Arr(group.mission_queue.iter().map(|m| crate::jobj! {
