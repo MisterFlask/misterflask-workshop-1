@@ -1267,32 +1267,35 @@ u....u....u....u......
 ....0.00600.......
 ........0.........
 
-= improvement/quarry 18x9 9,7
+= improvement/quarry 18x11 9,10
 : types IMPROVEMENT_QUARRY
-: note stepped cuts in the rock: lit ledges over shadowed faces
-.0000.............
-066660000.........
-0555566660000.....
-04444555566660000.
-033334444555566660
-022223333444455530
-.02222222333344420
-..0000222222222220
-......00000000000.
+: note a rock outcrop with a stepped cut face, cut blocks stacked in front
+........000.......
+......0053300.....
+.....055422330....
+.....0446666660...
+....054444444430..
+...0003333666660..
+..06660332444440..
+.0044300322266000.
+066000660222406660
+044304430233204430
+.0000000000000000.
 
-= improvement/lumbermill 17x10 8,8
+= improvement/lumbermill 18x11 9,10
 : types IMPROVEMENT_LUMBERMILL
-: note a stack of logs and a saw wheel on its frame
-...........000...
-..........05550..
-.........0504050.
-.........0544450.
-....000000504050.
-...0yQQQu005550..
-.000yuuuu00u0u0..
-0yQQQyQQQu0u0u0..
-0yuuuyuuuu0u0u0..
-.000000000.0.0...
+: note a stack of logs and a spoked saw wheel on its frame
+............000...
+...........05550..
+..........0504050.
+.........050040050
+.........054444420
+....00000050040020
+...0yQQQu00504020.
+.000yuuuu0.02220..
+0yQQQyQQQu0u000u0.
+0yuuuyuuuu00...0u0
+.0000000000.....0.
 
 = improvement/necrototem 7x16 3,14
 : types IMPROVEMENT_NECROTOTEM
