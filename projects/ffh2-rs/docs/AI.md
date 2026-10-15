@@ -459,13 +459,20 @@ plot falls or the odds turn bad, and moves in.
 ## Diplomacy (`diplomacy.rs`)
 
 Relations come from alignment, state religion, war history and open borders. One war at a
-time; wars follow C++ `AI_doWar`'s three kinds, each with the leader's own odds (a
-deterministic roll every 5 turns): total war (their defensive power x 2/3 below ours x
-`iMaxWarNearbyPowerRatio`), limited war (`iLimitedWarRand`, `iLimitedWarPowerRatio`) and
-dogpiling on a civ already at war (`iDogpileWarRand`), only against a civ we have met, do not
-like, can reach over land within 16 plots, and whose weakest known city our best attacker can
-take (siege engines lower the bar). A broke empire needs a quarter more margin; a bankrupt one
-does not start wars. The war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
+time; war is **greedy expansion**, not a dice roll: when free to start one (checked every 5
+turns from turn 50, with 2+ cities), a civ prepares war on the met, land-reachable (within 16
+plots) rival whose weakest known city its best trainable attacker can take (siege engines
+lower the bar, `can_take_cities`), when our power is a sufficient edge over their defensive
+power. The territory is the point -- domination and conquest are this rule run to its
+conclusion -- so there is no grudge requirement and no roll. Flavour biases the bar, not the
+drive: the leader's `iMaxWarRand` (low = war-eager) sets the required power edge, from near
+parity (an eager warmonger accepts a slight underdog as acceptable risk) up to clear
+superiority for a cautious leader, who also spares civs it likes; the greediest leaders strike
+any profitable, reachable target. A broke empire wants a bigger edge; a bankrupt one does not
+start wars. (This replaces the earlier port of `AI_doWar`'s three odds-gated kinds, which left
+strong civs idle for want of a grudge or a lucky roll; a continentally isolated civ still can
+not expand -- it has no land-reachable target and there are no amphibious invasions yet.) The
+war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
 stacks gather on the rally city) and is declared when the army is ready (or after 40 turns).
 Peace is sought when the war goes badly (war success and power), or drags on without gains;
 it is offered as a real peace-treaty deal the other AI must accept. Every 5 turns an AI swaps

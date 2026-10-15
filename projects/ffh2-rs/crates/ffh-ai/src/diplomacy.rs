@@ -191,38 +191,26 @@ pub fn manage(g: &mut Game, v: &View) {
         return;
     }
     let leader = g.players[p].personality_type.map(|l| &g.d.leader_heads[l]);
-    // C++ AI_doWar's three kinds of war, each with its own leader odds (deterministic stand-in
-    // for `getSorenRandNum(iRand) == 0`, checked every 5 turns): total war against a weaker
-    // neighbour, limited war at closer odds, and dogpiling on a civ already at war.
-    let roll = |salt: u32, rand: i32| -> bool {
-        let h = (turn as u32).wrapping_mul(2654435761) ^ (p.0 as u32).wrapping_mul(40503) ^ salt.wrapping_mul(97);
-        h % (rand.max(1) as u32 / 5 + 1) == 0
-    };
-    #[derive(PartialEq, Clone, Copy)]
-    enum Kind {
-        Total,
-        Limited,
-        Dogpile,
-    }
-    let kind = if roll(0, leader.map_or(100, |l| l.max_war_rand)) {
-        Kind::Total
-    } else if roll(1, leader.map_or(100, |l| l.limited_war_rand)) {
-        Kind::Limited
-    } else if roll(2, leader.map_or(100, |l| l.dogpile_war_rand)) {
-        Kind::Dogpile
-    } else {
-        return;
-    };
-    // A broke empire only picks on clearly weaker neighbours (a captured city pays for itself
-    // in plunder and land); a bankrupt one not at all.
+    // Greedy expansion by war: prepare war on the reachable rival whose territory we can take at
+    // acceptable risk, for the best gain -- no dice roll and no grudge requirement. A civ uses the
+    // military power it has to take land whenever the opportunity is good (domination and conquest
+    // are this greedy rule run to its conclusion; the victory planner no longer drives wars).
+    // Flavour biases the bar, not the drive: a war-eager leader (low C++ iMaxWarRand) strikes at
+    // near parity and will hit anyone, a cautious one needs a clear edge and spares civs it likes.
     let broke = crate::production::financial_trouble(g, p);
     if broke && g.player_calculate_gold_rate(p) < 0 && crate::economy::spend_pct(g, p) == 0 {
-        crate::trace!(g, p, "war roll passed but bankrupt");
+        crate::trace!(g, p, "would expand by war but is bankrupt");
         return;
     }
-    let margin = if broke { 75 } else { 100 };
+    // iMaxWarRand is the leader's propensity to start total war -- LOW = eager. Map it to the power
+    // edge we require over the target's defence: eager leaders accept near parity (even a slight
+    // underdog, acceptable risk for a warmonger), cautious ones want clear superiority. A broke
+    // empire wants a bigger edge (a captured city has to pay for itself in plunder and land).
+    let war_rand = leader.map_or(150, |l| l.max_war_rand);
+    let need_ratio = (80 + war_rand as i64 / 4).clamp(85, 180) + if broke { 30 } else { 0 };
+    let spare_friends = war_rand > 80;
     let ours = g.team_get_power(team, true).max(1) as i64;
-    let mut best: Option<(TeamId, i64)> = None;
+    let mut best: Option<(TeamId, i64, bool)> = None;
     for other in g.player_ids() {
         let op = &g.players[other];
         if !op.alive || op.team == team || g.player_is_barbarian(other) || op.cities.is_empty() {
@@ -237,38 +225,34 @@ pub fn manage(g: &mut Game, v: &View) {
             continue;
         }
         let rel = relation(g, p, other);
-        if rel > 1 {
+        // A cautious leader does not attack a civ it likes; a war-eager one takes any opening.
+        if spare_friends && rel > 1 {
             continue;
         }
         let theirs = g.team_get_defensive_power(ot).max(1) as i64;
-        // Power checks as in C++ (their defensive power against ours times the leader ratio).
-        let ok = match kind {
-            Kind::Total => theirs * 2 / 3 < ours * leader.map_or(100, |l| l.max_war_nearby_power_ratio) as i64 * margin / 10000,
-            Kind::Limited => theirs < ours * leader.map_or(100, |l| l.limited_war_power_ratio) as i64 * margin / 10000,
-            Kind::Dogpile => {
-                // Their enemies' power counts on our side.
-                let at_war_with: i64 = g.team_ids().into_iter().filter(|&o| o != ot && o != team && g.team_is_alive(o) && o != g.barbarian_team() && g.at_war(o, ot)).map(|o| g.team_get_power(o, true) as i64).sum();
-                at_war_with > 0 && theirs < (ours + at_war_with) * margin / 100
-            }
-        };
-        if !ok {
+        let ratio = ours * 100 / theirs;
+        if ratio < need_ratio {
             continue;
         }
         let Some(dist) = reach_distance(g, team, ot) else { continue };
         if dist > 16 {
             continue;
         }
+        // Data-driven floor on "could we take a city from them": our best trainable attacker
+        // against their weakest city's defence (siege-aware). No hardcoded unit or stat.
         if !can_take_cities(g, p, other) {
             continue;
         }
-        let score = ours * 100 / theirs - dist as i64 * 6 - rel as i64 * 20 + op.cities.len() as i64 * 10;
-        if best.map_or(true, |(_, s)| score > s) {
-            best = Some((ot, score));
+        // Greedy gain: a bigger edge, more and closer cities; minus how much we like them.
+        let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10;
+        let total = ratio >= 140;
+        if best.map_or(true, |(_, s, _)| score > s) {
+            best = Some((ot, score, total));
         }
     }
-    if let Some((target, _)) = best {
-        let plan = if kind == Kind::Total { WarPlanType::WARPLAN_PREPARING_TOTAL } else { WarPlanType::WARPLAN_PREPARING_LIMITED };
-        crate::trace!(g, p, "prepares war on team {:?} ({:?})", target, plan);
+    if let Some((target, _, total)) = best {
+        let plan = if total { WarPlanType::WARPLAN_PREPARING_TOTAL } else { WarPlanType::WARPLAN_PREPARING_LIMITED };
+        crate::trace!(g, p, "prepares war on team {:?} to take territory ({:?}, power ratio {})", target, plan, ours * 100 / g.team_get_defensive_power(target).max(1) as i64);
         g.team_ai_set_war_plan(team, target, Some(plan), false);
     }
 }
