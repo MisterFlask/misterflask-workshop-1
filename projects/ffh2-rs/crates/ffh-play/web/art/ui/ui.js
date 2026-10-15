@@ -402,7 +402,7 @@ export function drawPath(art, ctx, x0, y0, steps, { kind = 'move', unreachable =
   if (kind === 'attack') {
     drawTileMark(art, ctx, x0 + fin.x * 32 * s, y0 + fin.y * 32 * s, 'attack');
     art.drawSprite(ctx, x0 + (fin.x * 32 + 16) * s, y0 + (fin.y * 32 + 15) * s, 'ui/path_attack');
-    if (odds != null) drawOdds(art, ctx, x0 + (fin.x * 32 + 16) * s, y0 + (fin.y * 32 - 2) * s, odds);
+    if (odds != null) drawOdds(art, ctx, x0 + (fin.x * 32 + 16) * s, y0 + (fin.y * 32 - 5) * s, odds);
   } else if (unreachable) {
     art.drawSprite(ctx, x0 + end[0] * s, y0 + end[1] * s, 'ui/path_unreachable');
   } else if ((fin.turn || 1) > 1) {
@@ -440,7 +440,7 @@ export function drawOdds(art, ctx, cx, cy, pct) {
 // ------------------------------------------------------------------------------------ promotions
 
 /**
- * A promotion seal (11.5) with its level as vellum pips on the lower rim (levels 1-5).
+ * A promotion seal (11.5) with its level as vellum pips inside the lower rim (levels 1-5).
  * (x, y): canvas position of the seal's top-left. Returns false if the type has no icon.
  */
 export function drawPromotion(art, ctx, x, y, type, { pips = true } = {}) {
@@ -453,15 +453,12 @@ export function drawPromotion(art, ctx, x, y, type, { pips = true } = {}) {
   return true;
 }
 
-/** Level pips under a seal of width w: n vellum dots 2 px apart, centred, on a void underlay. */
+/** Level pips inside the lower rim of a seal of width w: n vellum dots 2 px apart, centred (row 13). */
 export function drawPips(art, ctx, x, y, n, w = 16) {
   const s = art.scale;
-  const span = 2 * n - 1;
-  const x1 = Math.floor((w - span) / 2);
-  ctx.fillStyle = art.css('0');
-  ctx.fillRect(x + (x1 - 1) * s, y + 13 * s, (span + 2) * s, 3 * s);
-  ctx.fillStyle = art.css('8');
-  for (let i = 0; i < n; i++) ctx.fillRect(x + (x1 + 2 * i) * s, y + 14 * s, s, s);
+  const x1 = Math.floor((w - (2 * n - 1)) / 2);
+  ctx.fillStyle = art.css("8");
+  for (let i = 0; i < n; i++) ctx.fillRect(x + (x1 + 2 * i) * s, y + 13 * s, s, s);
 }
 
 /** Promotion seal as a DOM canvas (seal plus pips) at UI scale u. */

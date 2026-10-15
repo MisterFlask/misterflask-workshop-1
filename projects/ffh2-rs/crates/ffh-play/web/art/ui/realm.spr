@@ -1,0 +1,642 @@
+; realm icons (docs/ART.md 11.5): religions (icon16/religion_<x>, icon8/religion_<x>, found by name;
+; the faith's colour dominates), alignments (alignment_good|neutral|evil), civic categories
+; (civic_<CIVICOPTION without prefix>) and the 18 mana spheres (icon8/sphere_<x>: the rune in the
+; sphere's colour; the promotion seals reuse them).
+
+= icon16/alignment_good 16x16 0,0
+.......0........
+...0..080..0....
+..080.080.080...
+...080070080....
+....0088800.....
+..00088888000...
+.0887888887880..
+..00088888000...
+....0088800.....
+...080070080....
+..080.080.080...
+...0..080..0....
+.......0........
+................
+................
+................
+
+= icon16/alignment_neutral 16x16 0,0
+.......0........
+......070.......
+.00000777000000.
+0666666766666660
+060000070000060.
+6060..070..06060
+60060.070.060060
+6000600700600060
+6666660706666660
+066660070066660.
+.0000007000000..
+....0666660.....
+...066666660....
+....0000000.....
+................
+................
+
+= icon16/alignment_evil 16x16 0,0
+: note evil: a crimson crescent, horns to the left
+................
+......00000.....
+.....0CCCRR0....
+......000CCR0...
+.........0cCR0..
+..........0cCR0.
+..........0cCR0.
+..........0cCR0.
+..........0cCR0.
+..........0cCR0.
+..........0cCR0.
+.........0cCR0..
+......000CCR0...
+.....0CCCRR0....
+......00000.....
+................
+
+= icon16/civic_government 16x16 0,0
+................
+................
+..0....0....0...
+.0y0..0Y0..0y0..
+.0yy00YYY00yy0..
+.0yYy0YLY0yYy0..
+.0yYYyYYYyYYy0..
+.0yYYYYYYYYYy0..
+.0yyyyyyyyyyy0..
+.0y7y7yyy7y7y0..
+.0yyyyyyyyyyy0..
+..00000000000...
+................
+................
+................
+................
+
+= icon16/civic_cultural_values 16x16 0,0
+: note civic category: cultural values (a gonfalon with a gilt lozenge)
+...00008000000..
+..0877777777760.
+...08777777760..
+...08777777760..
+...08777y77760..
+...0877y8y7760..
+...08777y77760..
+...08777777760..
+...08777777760..
+...08777777760..
+...08777077760..
+...08770.07760..
+...0870...0760..
+....00.....00...
+................
+................
+
+= icon16/civic_labor 16x16 0,0
+: note civic category: labor (a pick crossed with a spade)
+..000.......000.
+.066600....07780
+060006u0..078870
+060..0u0..077870
+.0....0u00u7700.
+.......0uu000...
+.......0uu0.....
+......0u00u0....
+.....0u0..0u0...
+...00u0....0u0..
+..07u70.....0u0.
+...070.......060
+....0.........0.
+................
+................
+................
+
+= icon16/civic_economy 16x16 0,0
+................
+......0..0......
+.....0y00y0.....
+......0yy0......
+.....077770.....
+.....00yy0......
+....0yYYYy0.....
+...0yYYYYYy0....
+..0yYYYYYYYy0...
+..0yYYyYYYyy0...
+..0yYYYYYyyy0...
+..0yyYYYyyyy0...
+...0yyyyyyy0....
+....0000000.....
+................
+................
+
+= icon16/civic_membership 16x16 0,0
+: note civic category: membership (a sealed charter)
+................
+..0000000000....
+.077777777770...
+07888888888870..
+.078888888870...
+.078777777870...
+.078888888870...
+.078777777870...
+.078888888870...
+07777777777770..
+.00000yy00000...
+....0yYYy0......
+....0yYyy0......
+.....0yy0.......
+......00........
+................
+
+= icon16/religion_fellowship_of_leaves 16x16 0,0
+.......0........
+......0O0.......
+....00OOO0.0....
+...0O0OOOo0o0...
+...0OOOOOooo0...
+...00OOOOoo00...
+..0O0OOOOoo0o0..
+..0OOOOO7ooooo0.
+...0OOOO7oooo0..
+....0OOO7ooo0...
+.....0OO7oo0....
+......0O7o0.....
+.......070......
+.......070......
+........0.......
+................
+
+= icon16/religion_the_order 16x16 0,0
+.......00.......
+...0..0880..0...
+..070.0880.070..
+...0700880070...
+....07088070....
+.00000088000000.
+0888888888888880
+0888888888888880
+.00000088000000.
+....07088070....
+...0700880070...
+..070.0880.070..
+...0..0880..0...
+......0880......
+......0880......
+.......00.......
+
+= icon16/religion_octopus_overlords 16x16 0,0
+.....000000.....
+....0TTTTTT0....
+...0TTTTTTTt0...
+..0TT777777Tt0..
+..0T77700777t0..
+..0TT777777Tt0..
+...0TTTTTTtt0...
+..0T0T0TT0t0t0..
+.0T00T0T00t00t0.
+.0T0T00t0.0t0t0.
+..0T0.0T0.0t0t0.
+..0T00t0...0t0..
+...0T0t0..0t0...
+....0.0....0....
+................
+................
+
+= icon16/religion_runes_of_kilmorph 16x16 0,0
+: note Runes of Kilmorph: a menhir with a carved rune in ochre
+........0.......
+.......0500.....
+......054430....
+.....0554430....
+....05Y444Y30...
+....054Y4Y430...
+....0544Y4430...
+....0544Y4430...
+....0544Y4430...
+....0544Y4430...
+....0544Y4430...
+....054444430...
+...05544444330..
+...05544444330..
+....000000000...
+................
+
+= icon16/religion_the_ashen_veil 16x16 0,0
+.....000000.....
+....0CCCCCC0....
+...0CCCCCCCC0...
+..0CCC7777CCC0..
+..0CC777777CC0..
+..0CC700700CC0..
+..0CC700700CC0..
+..0CC777777CC0..
+..0CCC7707CCc0..
+..0CCC7777CCc0..
+..0CcC7777Ccc0..
+.0CcCC7070CCcc0.
+.0Cc0c0.00c0cc0.
+..00.0....0.00..
+................
+................
+
+= icon16/religion_the_empyrean 16x16 0,0
+.......0........
+...0..0L0..0....
+..0L0.0l0.0L0...
+...0l00000l0....
+.0..00LLL00..0..
+0L00LL777LL00L0.
+.00L7770777L00..
+0ll77700077ll0..
+.00L7770777L00..
+0L00LL777LL00L0.
+.0..00LLL00..0..
+...0l00000l0....
+..0L0.0l0.0L0...
+...0..0L0..0....
+.......0........
+................
+
+= icon16/religion_council_of_esus 16x16 0,0
+......0000......
+.....0pppp0.....
+....0pPPPPp0....
+...0pPpppPPp0...
+...0pP7777Pp0...
+..0pP777777Pp0..
+..0pP707707Pp0..
+..0pP777777Pp0..
+..0pP776677Pp0..
+..0pPp7777pPp0..
+.0pPPpp77ppPPp0.
+.0pPPpppppPPPp0.
+.0pppppppppppp0.
+..000000000000..
+................
+................
+
+= icon8/alignment_good 8x8 0,0
+: note good: a vellum sun
+.00800..
+0807080.
+0088800.
+87888780
+0088800.
+0807080.
+.00800..
+...0....
+
+= icon8/alignment_neutral 8x8 0,0
+: note neutral: stone scales
+0007000.
+66676660
+60070060
+66070660
+0007000.
+.06660..
+..000...
+........
+
+= icon8/alignment_evil 8x8 0,0
+: note evil: a crimson crescent
+..000...
+.0CCR0..
+..00CR0.
+...0cCR0
+...0cCR0
+..00CR0.
+.0CCR0..
+..000...
+
+= icon8/civic_government 8x8 0,0
+: note civic category: government (a crown)
+........
+.0.0.0..
+0y0Y0y0.
+0yyLyy0.
+0yYYYy0.
+0yyyyy0.
+0y7y7y0.
+.00000..
+
+= icon8/civic_cultural_values 8x8 0,0
+: note civic category: cultural values (a gonfalon)
+0800000.
+08777760
+0877y760
+08777760
+08700760
+080..00.
+080.....
+.0......
+
+= icon8/civic_labor 8x8 0,0
+: note civic category: labor (pick and spade)
+66600770
+60u00770
+0.0u0u0.
+...0u0..
+..0u0u0.
+.0u0.0u0
+070...06
+.0.....0
+
+= icon8/civic_economy 8x8 0,0
+: note civic category: economy (a purse)
+.0y00y0.
+..0yy0..
+.077770.
+.0yYYy0.
+0yYYYYy0
+0yYYYyy0
+.0yyyy0.
+..0000..
+
+= icon8/civic_membership 8x8 0,0
+: note civic category: membership (a sealed charter)
+0000000.
+77777770
+0788870.
+0777770.
+0788870.
+77777770
+000yy00.
+..0yy0..
+
+= icon8/religion_fellowship_of_leaves 8x8 0,0
+: note Fellowship of Leaves
+..0O0...
+.0OOo0..
+0OOOoo0.
+0OO7oo0.
+.0O7o0..
+..070...
+..070...
+...0....
+
+= icon8/religion_the_order 8x8 0,0
+: note The Order
+.00800..
+0708070.
+0008000.
+88888880
+0008000.
+0708070.
+.00800..
+..080...
+
+= icon8/religion_octopus_overlords 8x8 0,0
+: note Octopus Overlords
+0TTTTT0.
+T77077T0
+0TTTTT0.
+0T0T0T0.
+T00T00T0
+0t0t0t0.
+.0.0.0..
+........
+
+= icon8/religion_runes_of_kilmorph 8x8 0,0
+: note Runes of Kilmorph
+..0550..
+.055440.
+05Y4Y40.
+055Y440.
+054Y440.
+054Y440.
+44444440
+0000000.
+
+= icon8/religion_the_ashen_veil 8x8 0,0
+: note The Ashen Veil
+0CCCCC0.
+CC777CC0
+C70707C0
+C77777C0
+CC707CC0
+CC070CC0
+C0.0.0C0
+0.....0.
+
+= icon8/religion_the_empyrean 8x8 0,0
+: note The Empyrean
+.00L00..
+0L0l0L0.
+00LLL00.
+lL707Ll0
+00LLL00.
+0L0l0L0.
+.00L00..
+...0....
+
+= icon8/religion_council_of_esus 8x8 0,0
+: note Council of Esus
+.0ppp0..
+0pPPPp0.
+pP777Pp0
+pP070Pp0
+pP777Pp0
+pPp7pPp0
+ppppppp0
+0000000.
+
+= icon8/sphere_air 8x8 0,0
+: note mana sphere: air (three wind strokes, rime)
+..0000..
+.0FFFf0.
+.00000F0
+0FFFFf0.
+000000..
+FFFFf0..
+00000F0.
+.....0..
+
+= icon8/sphere_body 8x8 0,0
+: note mana sphere: body (a hand, sand)
+0Y0Y0Y0.
+0Y0Y0Y00
+0YYYYY0Y
+0YYYYYy0
+0YYYYy0.
+.0YYy0..
+.0YYy0..
+..000...
+
+= icon8/sphere_chaos 8x8 0,0
+: note mana sphere: chaos (an eight-pointed burst, scarlet)
+.00R00..
+0R0R0R0.
+00RRR00.
+RRRLRRR0
+00RRR00.
+0R0R0R0.
+.00R00..
+...0....
+
+= icon8/sphere_death 8x8 0,0
+: note mana sphere: death (a skull, bone)
+.00000..
+0777770.
+77777770
+70070070
+77777770
+0770770.
+0707070.
+.0.0.0..
+
+= icon8/sphere_earth 8x8 0,0
+: note mana sphere: earth (a mountain, ochre)
+...0....
+..0Y0...
+.0YYy0..
+.0YYy0..
+0YYyyy0.
+0YYyyy0.
+yyyyyyy0
+0000000.
+
+= icon8/sphere_enchantment 8x8 0,0
+: note mana sphere: enchantment (a star in a circle, lilac)
+.0PPP0..
+0P000P0.
+P00800P0
+P08880P0
+P00800P0
+0P000P0.
+.0PPP0..
+..000...
+
+= icon8/sphere_entropy 8x8 0,0
+: note mana sphere: entropy (an inward spiral, dusk)
+pppppPp0
+000000p0
+0pppp0p0
+0p00p0p0
+0p0Pp0p0
+0p0000p0
+0pppppp0
+.000000.
+
+= icon8/sphere_fire 8x8 0,0
+: note mana sphere: fire (a flame, amber)
+..0l0...
+.0ll00..
+0lLl0l0.
+0lLLll0.
+lLLLLl0.
+0lLLl0..
+.0EE0...
+..00....
+
+= icon8/sphere_ice 8x8 0,0
+: note mana sphere: ice (a crystal, frost)
+.00F00..
+0F0F0F0.
+00fFf00.
+FFFFFFF0
+00fFf00.
+0F0F0F0.
+.00F00..
+...0....
+
+= icon8/sphere_law 8x8 0,0
+: note mana sphere: law (scales, vellum)
+0008000.
+88888880
+80080080
+88080880
+0008000.
+0888880.
+.00000..
+........
+
+= icon8/sphere_life 8x8 0,0
+: note mana sphere: life (an ankh-like knot, wisp)
+.0SWS0..
+.0W0W0..
+00SWS00.
+WWWWWWW0
+000W000.
+..0W0...
+..0S0...
+...0....
+
+= icon8/sphere_metamagic 8x8 0,0
+: note mana sphere: metamagic (two interlocked rings, lilac with a vellum centre)
+.00.00..
+0PP0PP0.
+P00800P0
+P00800P0
+0PP0PP0.
+.00.00..
+........
+........
+
+= icon8/sphere_mind 8x8 0,0
+: note mana sphere: mind (an eye, patina)
+..000...
+.0TTT0..
+0T888T0.
+T88088T0
+0T888T0.
+.0TTT0..
+..000...
+........
+
+= icon8/sphere_nature 8x8 0,0
+: note mana sphere: nature (a leaf, lichen)
+...0OO0.
+..0OOO0.
+.0OOOo0.
+0OOOo0..
+0OOo0...
+0o00....
+o0......
+0.......
+
+= icon8/sphere_shadow 8x8 0,0
+: note mana sphere: shadow (a hood over darkness, slate)
+..040...
+.04540..
+0450540.
+0400040.
+54000450
+540.0450
+440.0440
+00...00.
+
+= icon8/sphere_spirit 8x8 0,0
+: note mana sphere: spirit (a rising wisp, glint)
+...0g0..
+..0g0...
+..0gg0..
+.0gFg0..
+0gFFg0..
+0gFg0...
+.0g0....
+..0.....
+
+= icon8/sphere_sun 8x8 0,0
+: note mana sphere: sun (a rayed disc, glow)
+.00L00..
+0L0l0L0.
+00LLL00.
+LlLLLlL0
+00LLL00.
+0L0l0L0.
+.00L00..
+...0....
+
+= icon8/sphere_water 8x8 0,0
+: note mana sphere: water (waves, tide and glint)
+.00..00.
+0gg00gg0
+g00gg00g
+00000000
+0gg00gg0
+N00NN00N
+0..00..0
+........

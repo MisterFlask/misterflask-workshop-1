@@ -3,8 +3,10 @@ set ui
 source heraldry.spr
 source fonts.spr
 source icons.spr
+source realm.spr
 source chrome.spr
 source marks.spr
+source promotions.spr
 
 ; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
 ; Celeste Sable Cendree). Sigils without a bespoke sprite yet use the lozenge.
@@ -36,30 +38,48 @@ map civ * -> sigil/_lozenge tincture=Argent
 ; roundel is the fallback for a religion without one
 map religion * -> icon16/_religion
 
-; ---- promotions (11.5): a seal whose rim gives the family
-map promotion race=1 -> icon16/_seal remap=#7
-map promotion equipment=1 -> icon16/_seal remap=#y
-map promotion sphere=AIR -> icon16/_seal remap=#F
-map promotion sphere=BODY -> icon16/_seal remap=#Y
-map promotion sphere=CHAOS -> icon16/_seal remap=#R
-map promotion sphere=DEATH -> icon16/_seal remap=#7
-map promotion sphere=EARTH -> icon16/_seal remap=#y
-map promotion sphere=ENCHANTMENT -> icon16/_seal remap=#P
-map promotion sphere=ENTROPY -> icon16/_seal remap=#p
-map promotion sphere=FIRE -> icon16/_seal remap=#l
-map promotion sphere=ICE -> icon16/_seal remap=#f
-map promotion sphere=LAW -> icon16/_seal remap=#8
-map promotion sphere=LIFE -> icon16/_seal remap=#W
-map promotion sphere=METAMAGIC -> icon16/_seal remap=#P
-map promotion sphere=MIND -> icon16/_seal remap=#T
-map promotion sphere=NATURE -> icon16/_seal remap=#O
-map promotion sphere=SHADOW -> icon16/_seal remap=#4
-map promotion sphere=SPIRIT -> icon16/_seal remap=#g
-map promotion sphere=SUN -> icon16/_seal remap=#L
-map promotion sphere=WATER -> icon16/_seal remap=#N
-map promotion PROMOTION_POISONED|PROMOTION_PLAGUED|PROMOTION_DISEASED|PROMOTION_WITHERED|PROMOTION_RUSTED|PROMOTION_ENRAGED|PROMOTION_CRAZED|PROMOTION_FATIGUED|PROMOTION_WEAK|PROMOTION_SLOW|PROMOTION_HELD|PROMOTION_CHARMED|PROMOTION_BURNING_BLOOD|PROMOTION_VULNERABLE_TO_FIRE|PROMOTION_UNHOLY_TAINT|PROMOTION_MUTATED -> icon16/_seal remap=#C
-map promotion PROMOTION_HERO|PROMOTION_DIVINE|PROMOTION_AVATAR|PROMOTION_HEROIC_DEFENSE|PROMOTION_HEROIC_DEFENSE2|PROMOTION_HEROIC_STRENGTH|PROMOTION_HEROIC_STRENGTH2|PROMOTION_BLESSED|PROMOTION_GREAT_COMMANDER -> icon16/_seal remap=#l
-map promotion * -> icon16/_seal remap=#6
+; ---- promotions (11.5): a seal (promotions.spr) whose rim gives the family and whose glyph gives the
+; kind of line. ui.js drawPromotion adds the level (I-V) as pips. Afflictions and the heroic or divine
+; first (named), then races, equipment and the 18 spheres, then lines by kind; anything else is a
+; stone star. Rims: combat lines stone, arcane lilac, races bone, equipment and weapons ochre,
+; afflictions crimson, heroic amber, spheres the sphere colour.
+map promotion PROMOTION_POISONED|PROMOTION_PLAGUED|PROMOTION_DISEASED|PROMOTION_WITHERED|PROMOTION_RUSTED|PROMOTION_ENRAGED|PROMOTION_CRAZED|PROMOTION_FATIGUED|PROMOTION_WEAK|PROMOTION_SLOW|PROMOTION_HELD|PROMOTION_CHARMED|PROMOTION_BURNING_BLOOD|PROMOTION_VULNERABLE_TO_FIRE|PROMOTION_UNHOLY_TAINT|PROMOTION_MUTATED|PROMOTION_SUNDERED -> icon16/promo_affliction remap=#C
+map promotion PROMOTION_HERO|PROMOTION_DIVINE|PROMOTION_AVATAR|PROMOTION_HEROIC_DEFENSE|PROMOTION_HEROIC_DEFENSE2|PROMOTION_HEROIC_STRENGTH|PROMOTION_HEROIC_STRENGTH2|PROMOTION_BLESSED|PROMOTION_GREAT_COMMANDER|PROMOTION_IMMORTAL|PROMOTION_STIGMATA -> icon16/promo_heroic remap=#l
+map promotion race=1 -> icon16/promo_race remap=#7
+map promotion equipment=1 -> icon16/promo_equipment remap=#y
+map promotion sphere=AIR -> icon16/promo_sphere_air remap=#F
+map promotion sphere=BODY -> icon16/promo_sphere_body remap=#Y
+map promotion sphere=CHAOS -> icon16/promo_sphere_chaos remap=#R
+map promotion sphere=DEATH -> icon16/promo_sphere_death remap=#7
+map promotion sphere=EARTH -> icon16/promo_sphere_earth remap=#y
+map promotion sphere=ENCHANTMENT -> icon16/promo_sphere_enchantment remap=#P
+map promotion sphere=ENTROPY -> icon16/promo_sphere_entropy remap=#p
+map promotion sphere=FIRE -> icon16/promo_sphere_fire remap=#l
+map promotion sphere=ICE -> icon16/promo_sphere_ice remap=#f
+map promotion sphere=LAW -> icon16/promo_sphere_law remap=#8
+map promotion sphere=LIFE -> icon16/promo_sphere_life remap=#W
+map promotion sphere=METAMAGIC -> icon16/promo_sphere_metamagic remap=#P
+map promotion sphere=MIND -> icon16/promo_sphere_mind remap=#T
+map promotion sphere=NATURE -> icon16/promo_sphere_nature remap=#O
+map promotion sphere=SHADOW -> icon16/promo_sphere_shadow remap=#4
+map promotion sphere=SPIRIT -> icon16/promo_sphere_spirit remap=#g
+map promotion sphere=SUN -> icon16/promo_sphere_sun remap=#L
+map promotion sphere=WATER -> icon16/promo_sphere_water remap=#N
+map promotion line=COMBAT|SHOCK|CITY_RAIDER|COMMANDO|BLITZ|DEXTEROUS|STRONG|CANNIBALIZE|VILE_TOUCH|DANCE_OF_BLADES -> icon16/promo_offense remap=#6
+map promotion line=COVER|FORMATION|CITY_GARRISON|DEFENSIVE|GUARDSMAN|DRILL|STONESKIN|SHIELD_OF_FAITH|HEAVY -> icon16/promo_defense remap=#6
+map promotion line=ACCURACY|BARRAGE|MARKSMAN|PRECISION|FLAMING_ARROWS -> icon16/promo_ranged remap=#6
+map promotion line=MOBILITY|MARCH|FLANKING|NAVIGATION|FAIR_WINDS|HASTED|NOMAD|HORSELORD|FLYING|AMPHIBIOUS|WATER_WALKING -> icon16/promo_mobility remap=#6
+map promotion line=WOODSMAN|GUERILLA|HOMELAND|WINTERBORN -> icon16/promo_terrain remap=#6
+map promotion line=MEDIC|REGENERATION -> icon16/promo_medic remap=#6
+map promotion line=COMMAND|LOYALTY|MORALE|RECRUITER|VALOR|COURAGE|WARCRY|FEAR|SPIRIT_GUIDE -> icon16/promo_command remap=#6
+map promotion line=KEEN_SIGHT|PERFECT_SIGHT|SENTRY|LIGHT -> icon16/promo_sight remap=#6
+map promotion line=HIDDEN|INVISIBLE|STEALTH|HIDDEN_NATIONALITY|BLUR|SINISTER|SHADOWWALK -> icon16/promo_stealth remap=#6
+map promotion line=CHANNELING|EMPOWER|SPELLSTAFF|TWINCAST|EXTENSION|POTENCY|SUMMONER|ILLUSIONIST|MAGIC_RESISTANCE|MAGIC_IMMUNE|ENCHANTED_BLADE -> icon16/promo_arcane remap=#P
+map promotion line=COLD_RESISTANCE|FIRE_RESISTANCE|POISON_RESISTANCE|LIGHTNING_RESISTANCE|IMMUNE_COLD|IMMUNE_FIRE|IMMUNE_LIGHTNING|IMMUNE_DISEASE -> icon16/promo_ward remap=#6
+map promotion line=DEMON_SLAYING|DRAGON_SLAYING|UNDEAD_SLAYING|BOUNTY_HUNTER|SCOURGE|SUBDUE_ANIMAL|SUBDUE_BEASTS|INQUISITOR -> icon16/promo_slaying remap=#6
+map promotion line=BOARDING|EXPANDED_HULL|BUCCANEERS|LONGSHOREMEN|SKELETON_CREW -> icon16/promo_naval remap=#6
+map promotion line=BRONZE_WEAPONS|IRON_WEAPONS|MITHRIL_WEAPONS|POISONED_BLADE -> icon16/promo_weapons remap=#y
+map promotion * -> icon16/promo_star remap=#6
 
 ; ---- buildings: no art in the MVP (11.5); category icons so lists can show something
 map building wonder=WORLD -> icon16/_wonder

@@ -499,6 +499,7 @@ async function main() {
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   document.documentElement.style.setProperty('--u', `${U}px`);
   UI.installCSS(art, O);
+  window.__art = art; window.__ui = UI;
   if (q.has('kit')) kit(art);
   else await screen(art);
 }
