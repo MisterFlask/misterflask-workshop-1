@@ -22,7 +22,7 @@ the AI is new. Base mod only; no UI (headless runner).
 | `crates/ffh-ai` | the new AI (implements `ffh_core::Controller`) |
 | `crates/ffh-cli` | `ffh` binary: data checks, AI-only autoplay, benchmarks |
 | `crates/ffh-stress` | `ffh-stress` binary: AI games over a matrix of game settings (speed, handicap, era, world size, civs, climate, sea level, options, teams, victories), crashes caught per game |
-| `crates/ffh-play` | `ffh-play` binary and library: human play (session core, browser and JSONL agent front-ends; in progress, see `docs/HUMAN.md`) |
+| `crates/ffh-play` | `ffh-play` binary and library: human play (session core, JSONL agent and HTTP server; the browser client is in progress, see `docs/HUMAN.md`) |
 | `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `porting/*.md` (C++ function maps) |
 | `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness |
 
@@ -57,6 +57,15 @@ human slot through the human-play session (`docs/HUMAN.md`):
 ```
 ./target/release/ffh-play soak --jobs 4 --out soak.tsv          # 144 games: 2 seeds x 3 sizes x 6 civs x 4 option sets
 ./target/release/ffh-play soak run --seed 2 --size tiny --civ kuriotates --options challenges
+```
+
+To play a game yourself (or let a script or an LLM play it), `ffh-play agent` speaks JSON lines
+over stdin/stdout and `ffh-play serve` the same protocol over HTTP on `http://127.0.0.1:8642/`
+(`docs/HUMAN.md`):
+
+```
+printf '%s\n' '{"k":"q","q":"text"}' '{"k":"cmd","c":"end_turn","force":true}' | ./target/release/ffh-play agent --seed 3
+./target/release/ffh-play serve
 ```
 
 ## Faithfulness

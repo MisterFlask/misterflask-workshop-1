@@ -7,10 +7,11 @@ or a program (JSONL over stdio) play one slot while the AI plays the others. The
 ## Status
 
 Phases **P0** (skeleton: JSON, type names), **P1** (session core, in-process API), **P2**
-(the AI-as-human soak, `ffh-play soak`) and **P3** (views and queries, the turn report, deals)
-are done. A program linked with the `ffh_play` library can play a whole game through the
-protocol's queries and commands (the test bot does); there is no JSONL agent or browser yet
-(P4-P5). See the status table at the top of `docs/PLAY_DESIGN.md`.
+(the AI-as-human soak, `ffh-play soak`), **P3** (views and queries, the turn report, deals) and
+**P4** (transports) are done. A script or an LLM can play a whole game headless with
+`ffh-play agent` (JSON lines over stdin/stdout), and `ffh-play serve` serves the same protocol
+over HTTP with a placeholder page; the browser client is P5-P6. See the status table at the top
+of `docs/PLAY_DESIGN.md`.
 
 ## Commands
 
@@ -30,6 +31,11 @@ cargo build --release
 ./target/release/ffh-play soak [--seeds 1..2] [--sizes tiny,small,standard] [--civs ..] [--options default,raging,occ,challenges]
                               [--speeds normal,quick] [--turns 300] [--jobs N] [--timeout SECS] [--saves DIR]
                               [--keep-saves] [--out results.tsv] [--filter TEXT] [--list] [--check-every N] [--save-check-every N]
+./target/release/ffh-play agent [GAME] [--on-eof quit|end-turn] [--progress]
+./target/release/ffh-play serve [GAME] [--port 8642] [--bind ADDR] [--assets DIR]
+    GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W]
+          [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE]
+          [--take-over SAVE --player P] [--panic-at T]
 ```
 
 * `lookup` prints one JSON line per reference (`kind`, `index`, `name`, `display`, `text_key`, or
@@ -63,6 +69,20 @@ cargo build --release
   that act only on human players. `--civ infernal` or `mercurians` (not playable at the start)
   plays an AI-only game whose player 0 founds them at turn 30 (`--spawn-turn`) and takes the new
   player over, with your `--handicap`.
+* `agent` plays one game over JSON lines: each line you write to its stdin is a request, each
+  line it prints is a reply or an event (see "Transports" below). It starts a new game (the
+  defaults, or `--setup '{"seed":3,"world":"WORLDSIZE_DUEL","opponents":1}'`, or the flags
+  `--seed`, `--world`, ... which set the same members) unless `--no-game`, `--load SAVE` or
+  `--take-over SAVE --player P`. Example: `printf '%s\n' '{"k":"q","q":"text"}' | ffh-play agent --seed 3`.
+* `serve` starts the HTTP server on `http://127.0.0.1:8642/` (open it in a browser: a placeholder
+  page until P5 shows the status, the `text` summary, the ASCII map, popups and a box for raw
+  requests). No game is started unless the GAME flags say so; the page or a client starts one.
+  `--bind 0.0.0.0` listens on every interface (then the `Host` check below is off: only do this on
+  a network you trust). `--assets DIR` serves the client files from `DIR` (live editing).
+* GAME flags: each game gets a directory in `--saves DIR` (default `./saves`), `game-<seed>`
+  (`-2`, ... when taken), with its autosaves (`auto/`, `--autosaves N` kept, default 20), journal
+  and manual saves; `--no-saves` writes nothing. `--panic-at T` panics once when the game reaches
+  turn T, a self-test of the crash report.
 * `soak` runs the matrix (default: 2 seeds × tiny, small, standard × Kuriotates, Infernal,
   Sheaim, Mercurians, Bannor, Calabim × default, raging barbarians, `occ`, `challenges`, 300
   turns, normal speed; `--speeds` adds speeds, a game given twice runs once), each game in a
@@ -215,6 +235,76 @@ checkpoint), manual saves `DIR/<name>.ffhsave`. A save is two files: `.ffhsave` 
 tool loads it) and `.ffhsess` (session state: your open event popups, the journal position, the
 latest messages and the turn report).
 
+## Transports: `ffh-play agent` and `ffh-play serve`
+
+Both speak the same envelope (design §4.1). A request is a JSON object with `k` and an optional
+`id` (an integer or a string) that the reply echoes:
+
+```
+{"id":1,"k":"q","q":"view"}                                     a query (the table above)
+{"id":2,"k":"cmd","c":"move","units":[881],"x":15,"y":33}       a command
+{"id":3,"k":"answer","decision":17,"option":1}                  or {"advisor":true}
+{"id":4,"k":"session","op":"save","name":"before-war"}          a session operation
+```
+
+Replies are `{"id":1,"ok":true,"r":{..}}` (a command's adds `log`, the messages it produced, and
+`status`; a command Civ4 would confirm answers `{"confirm":{"kind":"declare_war",..}}`, resend
+it with the flag), or `{"id":1,"ok":false,"error":"<code>","detail":".."}` with the codes
+`invalid`, `not_your_turn`, `decision_pending`, `not_owner`, `gone`, `cannot`, `busy`,
+`no_game`, and over HTTP `crashed`.
+
+Session operations (`op`):
+
+| `op` | |
+|---|---|
+| `new {setup, name?}` | a new game (`setup` as `--setup`; `name`: its directory, default `game-<seed>`) |
+| `load {name}` | a save by name: `NAME` or `auto/NAME` in the current game's directory, `GAME/NAME` or `GAME/auto/NAME` in another game's (as the `saves` query and operation list them); nothing outside the saves directory |
+| `take_over {player, name}` | take over slot `player` of an AI-only save (debugging) |
+| `save {name}` | save the game in its directory (`[A-Za-z0-9_.-]`, 1-64, not starting with a dot) |
+| `debug {reveal}` | debug reveal on or off |
+| `saves` | every game directory with its saves |
+| `quit` | end the agent / stop the server |
+
+**Blocking decisions** (keep or abandon a captured city, a free tech, an election, ...) are
+asked in the middle of a command or of the AI turns. While one is open, queries are answered
+(from your side; the message log, report and saves list are `busy`), commands and session
+operations get `decision_pending`, and `answer` with the decision's id and an enabled option (or
+`advisor`) closes it; then the command that raised it gets its reply.
+
+**The agent** prints events as well as replies, one per line:
+
+* `{"ev":"control","turn","year","human","pending","log_next"}`: you have control (at the start,
+  after your end of turn, after a load);
+* `{"ev":"decision","decision":{id, kind, title, text, options, advisor, context}}`: the next
+  lines you send go to the decision;
+* `over` (the game ended), `stuck` (a turn did not finish: load an autosave), `no_game`,
+  `progress` (with `--progress`, during the AI turns), `answered` (the end of input gave a
+  decision to the advisor), `error` (the start failed, exit code 2), `crashed` (a panic, with the
+  message, the last autosave, the journal and the `ffh-play replay` command; exit code 3).
+
+A reply that hands control back (`end_turn`, `auto_moves`, `autoplay`, `new`, `load`) comes
+first, then the AI turns run, then the event. At the end of your input an open decision takes the
+advisor's pick, then the agent quits, or with `--on-eof end-turn` ends the turn and prints the
+next `control` first.
+
+**The server** answers:
+
+| Request | |
+|---|---|
+| `GET /` | the page (placeholder until P5) |
+| `GET /api/status` | the status: `version`, `phase` (`human`, `running`, `decision`, `over`, `stuck`, `no_game`, `crashed`), `turn`, `year`, `human`, `active_players`, `view_version`, `decision`, `over`, `reveal`, `ms_in_phase`, `map_rev`, `game {dir, journal, autosave}`, `crash` |
+| `GET /api/wait?since=V&timeout_ms=T` | the status as soon as its `version` is above `V` (long-poll, at most 60 s) |
+| `GET /api/view`, `/api/map` | the `view` and `map` of the last control point or decision (409 without a game) |
+| `GET /api/data`, `/api/setup` | the static tables (with an ETag) and the new-game lists |
+| `POST /api` | the envelope; needs the header `X-FFH: 1` |
+
+The server listens on 127.0.0.1 only (unless `--bind`), refuses requests whose `Host` is not
+`127.0.0.1`, `localhost` or `[::1]`, and refuses a `POST` without `X-FFH: 1`, so other web pages
+cannot drive it. A command's request waits while a decision it raised is open: answer the
+decision on another connection (the status shows `phase: decision`). If the rules crash, the
+status becomes `crashed` with the report and the server stays up: load the autosave. Report the
+bug with the journal and that autosave (`ffh-play replay JOURNAL --from AUTOSAVE`).
+
 ## Protocol conventions
 
 These hold for every request and reply of the protocol (design §4.1):
@@ -244,7 +334,8 @@ These hold for every request and reply of the protocol (design §4.1):
 
 ## Known gaps
 
-* No transports (P4: `ffh-play agent` and `serve`), no browser (P5-P6).
+* No browser client yet (P5-P6): `ffh-play serve` shows a placeholder page; play with
+  `ffh-play agent` or a script.
 * AI players never offer you deals or ask anything (ffh-ai); you propose. The trade screen shows
   an AI's whole gold and gold rate as what it can give (Civ4's AI caps it; that AI code is not
   ported), and Civ4's AI refusals ("we don't want to trade that") are mostly not ported either.

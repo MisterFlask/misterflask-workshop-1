@@ -94,6 +94,13 @@ without changing the rules engine:
   players). Path previews use a session-owned interface path finder, never the game's. A turn
   report diffs a fog-filtered snapshot taken at the end of the human's turn against its next
   control point. Queries can also be served inside a blocking decision (`Answerer::ask_with`).
+- **Transports.** One JSON envelope (`cmd`, `q`, `answer`, `session`) over two transports:
+  `ffh-play agent` reads JSON lines from stdin on the game thread itself; `ffh-play serve` runs a
+  std-only HTTP/1.1 server (127.0.0.1, a thread per connection) whose GET requests are served
+  from a published status and cached view and map, and whose `POST /api` envelopes go over a
+  channel to the game thread. A blocking decision raised inside a rules call reads the same
+  input (the next lines, the same channel), so it is answered while the command that raised it
+  waits. A panic on the game thread is caught and reported with the replay command.
 
 ## Saved games
 
