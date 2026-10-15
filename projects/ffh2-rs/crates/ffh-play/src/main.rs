@@ -25,11 +25,12 @@
 //!                                      panic is caught and reported with its repro command
 //!                                      (exit 101; stuck 4; other failure 5); --panic-at T
 //!                                      panics at turn T (a self-test of the report)
-//!   ffh-play soak [--seeds A..B] [--sizes ..] [--civs ..] [--options default,raging,..] [--turns N]
+//!   ffh-play soak [--seeds A..B] [--sizes ..] [--civs ..] [--options default,raging,..] [--speeds ..] [--turns N]
 //!                 [--jobs N] [--timeout SECS] [--saves DIR] [--keep-saves] [--out FILE]
 //!                 [--filter TEXT] [--list] [--check-every N] [--save-check-every N]
-//!                                      the soak matrix (default: design §7 P2's), each game in
-//!                                      a child `soak run`; summary on stdout, exit 1 on failures
+//!                                      the soak matrix (default: design §7 P2's; duplicates dropped), each
+//!                                      game in a child `soak run` (its repro has the check
+//!                                      settings); summary on stdout, exit 1 on failures
 
 use ffh_play::jobj;
 use ffh_play::json::Json;
@@ -45,7 +46,7 @@ fn usage() -> ! {
          \x20      | bot [--seed N] [--turns T] [--opponents N] [--world WORLDSIZE_X] [--saves DIR] [--quiet]\n\
          \x20      | replay JOURNAL [--from SAVE] | journal print JOURNAL\n\
          \x20      | soak run [SETTINGS] [--saves DIR] [--resume SAVE] [--check-every N] [--save-check-every N]\n\
-         \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--turns N] [--jobs N] [--timeout SECS]\n\
+         \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--speeds ..] [--turns N] [--jobs N] [--timeout SECS]\n\
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list] (see the source header)"
     );
     std::process::exit(2)
@@ -196,13 +197,17 @@ fn cmd_soak_run(args: &[String]) {
     let d = ffh_data::global();
     let mut opts = RunOptions::default();
     let mut settings = Vec::new();
+    let fail = |e: String| -> ! {
+        eprintln!("soak run: {e}");
+        std::process::exit(2)
+    };
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
             "--saves" => opts.saves = Some(flag_value(args, &mut i).into()),
             "--resume" => opts.resume = Some(flag_value(args, &mut i).into()),
-            "--check-every" => opts.check_every = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
-            "--save-check-every" => opts.save_check_every = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            k @ "--check-every" => opts.check_every = soak::parse_every(k, flag_value(args, &mut i)).unwrap_or_else(|e| fail(e)),
+            k @ "--save-check-every" => opts.save_check_every = soak::parse_every(k, flag_value(args, &mut i)).unwrap_or_else(|e| fail(e)),
             "--panic-at" => opts.panic_at = Some(flag_value(args, &mut i).parse().unwrap_or_else(|_| usage())),
             _ => {
                 settings.push(args[i].clone());
@@ -211,11 +216,10 @@ fn cmd_soak_run(args: &[String]) {
         }
         i += 1;
     }
-    let game = SoakGame::parse(d, &settings).unwrap_or_else(|e| {
-        eprintln!("soak run: {e}");
-        std::process::exit(2)
-    });
-    let mut repro = format!("ffh-play soak run {}", game.to_args(d).join(" "));
+    let game = SoakGame::parse(d, &settings).unwrap_or_else(|e| fail(e));
+    // The game and the check settings (a check runs only on the turns they name); not
+    // `--panic-at`, a self-test of this report.
+    let mut repro = format!("ffh-play soak run {}", game.to_args(d).into_iter().chain(opts.check_args()).collect::<Vec<_>>().join(" "));
     let r = soak::run_caught(&game, &opts, &mut |s| println!("PROGRESS\t{}", s.g.game_turn()));
     if let Some(dir) = &opts.saves {
         if let Some(a) = soak::latest_autosave(dir) {
@@ -231,7 +235,7 @@ fn cmd_soak_run(args: &[String]) {
             println!("END\t{} ({:.1} s, checksum {:08x}, save {})", o.end_text(d), o.secs, o.checksum as u32, o.save_fnv);
             println!("CITIES\t{}\t{}", o.human_cities, o.ai_cities.iter().map(|c| c.to_string()).collect::<Vec<_>>().join(","));
             println!(
-                "STATS\thuman p{} {}{}: cities {} vs AI {:?}; turns {} prod {} auto {} research {} events {} (closed {}) votes {} left open {} gate {}; decisions {:?} events deferred {} research AI {} moved {}; checks {}+{}{}",
+                "STATS\thuman p{} {}{}: cities {} vs AI {:?}; turns {} prod {} auto {} research {} events {} (closed {}) votes {} left open {} (research {}) gate {}; decisions {:?} events deferred {} research AI {} moved {}; checks {}+{}{}",
                 o.human.0,
                 o.human_civ.map_or("?", |c| d.type_name(c)),
                 match game.civ() {
@@ -248,6 +252,7 @@ fn cmd_soak_run(args: &[String]) {
                 st.events_unanswerable,
                 st.votes,
                 st.popups_left,
+                st.research_left_open,
                 st.gate_confirms,
                 o.session.decisions,
                 o.session.events_deferred,
@@ -314,6 +319,9 @@ fn cmd_soak(args: &[String]) {
             "--options" => {
                 m.options = flag_value(args, &mut i).split(',').map(|s| soak::parse_options(d, s)).collect::<Result<_, _>>().unwrap_or_else(|e| fail(e))
             }
+            "--speeds" => {
+                m.speeds = flag_value(args, &mut i).split(',').map(|s| soak::lenient(d, "GAMESPEED_", s)).collect::<Result<_, _>>().unwrap_or_else(|e| fail(e))
+            }
             "--turns" => m.turns = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
             "--jobs" => o.jobs = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
             "--timeout" => o.timeout = std::time::Duration::from_secs(flag_value(args, &mut i).parse().unwrap_or_else(|_| usage())),
@@ -323,29 +331,50 @@ fn cmd_soak(args: &[String]) {
             "--filter" => filters.push(flag_value(args, &mut i).to_string()),
             "--list" => list = true,
             k @ ("--check-every" | "--save-check-every") => {
-                let v = flag_value(args, &mut i).to_string();
-                o.extra.extend([k.to_string(), v]);
+                // Checked here, so that a bad value is a usage error, not a failure of every game.
+                let n = soak::parse_every(k, flag_value(args, &mut i)).unwrap_or_else(|e| fail(e));
+                o.extra.extend([k.to_string(), n.to_string()]);
             }
             _ => usage(),
         }
         i += 1;
     }
+    if m.turns < 1 {
+        fail("--turns must be at least 1".into());
+    }
     let mut games = m.games(d);
     games.retain(|g| filters.iter().all(|f| g.describe(d).contains(f.as_str())));
+    // Every game's settings as its child reads them (e.g. a game option a new game refuses).
+    for g in &games {
+        if let Err(e) = SoakGame::parse(d, &g.to_args(d)) {
+            fail(format!("{}: {e}", g.describe(d)));
+        }
+    }
     if list {
         for g in &games {
             println!("ffh-play soak run {}", g.to_args(d).join(" "));
         }
         return;
     }
+    // The TSV file is created before the games run: a bad path must not cost the batch.
+    let mut out = out.map(|path| {
+        let f = std::fs::File::create(&path).unwrap_or_else(|e| fail(format!("{path}: {e}")));
+        (path, f)
+    });
     let exe = std::env::current_exe().unwrap_or_else(|e| fail(format!("current_exe: {e}")));
     let t0 = std::time::Instant::now();
     let results = batch::run_all(d, &exe, games, &o);
     print!("{}", batch::summary(d, &results, t0.elapsed()));
-    if let Some(path) = out {
-        std::fs::write(&path, batch::tsv(d, &results)).unwrap_or_else(|e| fail(format!("{path}: {e}")));
+    let failed = results.iter().any(|r| r.status != "ok");
+    if let Some((path, f)) = &mut out {
+        use std::io::Write;
+        if let Err(e) = f.write_all(batch::tsv(d, &results).as_bytes()) {
+            eprintln!("soak: {path}: {e}");
+            // Failed games decide the exit code first.
+            std::process::exit(if failed { 1 } else { 2 });
+        }
     }
-    if results.iter().any(|r| r.status != "ok") {
+    if failed {
         std::process::exit(1);
     }
 }

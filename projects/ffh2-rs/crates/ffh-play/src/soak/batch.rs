@@ -14,13 +14,16 @@ use ffh_data::*;
 use super::{default_opponents, latest_autosave, lenient, options_label, parse_options, SoakGame, SPAWNED_CIVS};
 use crate::names;
 
-/// The matrix of design §7 P2: seeds × sizes × civs × option sets.
+/// The matrix of design §7 P2: seeds × sizes × civs × option sets (× game speeds).
 #[derive(Clone, Debug)]
 pub struct Matrix {
     pub seeds: Vec<u32>,
     pub sizes: Vec<WorldSizeType>,
     pub civs: Vec<CivilizationType>,
     pub options: Vec<Vec<GameOptionType>>,
+    /// Game speeds (default: the new game's, normal). A quicker speed reaches the late game
+    /// in fewer turns.
+    pub speeds: Vec<GameSpeedType>,
     pub turns: i32,
 }
 
@@ -40,27 +43,35 @@ impl Matrix {
             sizes: ["tiny", "small", "standard"].iter().map(|s| t(d, "WORLDSIZE_", s)).collect(),
             civs: ["kuriotates", "infernal", "sheaim", "mercurians", "bannor", "calabim"].iter().map(|s| t(d, "CIVILIZATION_", s)).collect(),
             options: ["default", "raging_barbarians", "occ", "challenges"].iter().map(|o| parse_options(d, o).expect("matrix options")).collect(),
+            speeds: vec![SoakGame::new(d, 1).ng.speed],
             turns: 300,
         }
     }
 
+    /// The games, each once (a seed, size, civ, option set or speed given twice adds nothing:
+    /// a game is deterministic).
     pub fn games(&self, d: &GameData) -> Vec<SoakGame> {
-        let mut v = Vec::new();
+        let mut v: Vec<SoakGame> = Vec::new();
         for &size in &self.sizes {
             for &civ in &self.civs {
                 for opts in &self.options {
-                    for &seed in &self.seeds {
-                        let mut g = SoakGame::new(d, seed);
-                        g.ng.world = size;
-                        g.ng.opponents = default_opponents(d, size);
-                        if SPAWNED_CIVS.contains(&d.type_name(civ)) {
-                            g.spawn = Some(civ);
-                        } else {
-                            g.ng.civ = Some(civ);
+                    for &speed in &self.speeds {
+                        for &seed in &self.seeds {
+                            let mut g = SoakGame::new(d, seed);
+                            g.ng.world = size;
+                            g.ng.opponents = default_opponents(d, size);
+                            if SPAWNED_CIVS.contains(&d.type_name(civ)) {
+                                g.spawn = Some(civ);
+                            } else {
+                                g.ng.civ = Some(civ);
+                            }
+                            g.ng.options = opts.clone();
+                            g.ng.speed = speed;
+                            g.turns = self.turns;
+                            if !v.contains(&g) {
+                                v.push(g);
+                            }
                         }
-                        g.ng.options = opts.clone();
-                        g.turns = self.turns;
-                        v.push(g);
                     }
                 }
             }
@@ -108,7 +119,7 @@ pub struct BatchOptions {
     /// Each game's autosaves in `<saves>/<game>/` (kept for failures only, unless `keep_saves`).
     pub saves: Option<PathBuf>,
     pub keep_saves: bool,
-    /// Extra arguments for every `soak run` (e.g. `--check-every 1`).
+    /// Extra arguments for every `soak run` (e.g. `--check-every 1`); also in every repro.
     pub extra: Vec<String>,
 }
 
@@ -150,15 +161,16 @@ pub fn run_all(d: &GameData, exe: &Path, games: Vec<SoakGame>, o: &BatchOptions)
 /// One `soak run` child with a timeout.
 fn run_child(d: &GameData, exe: &Path, game: &SoakGame, o: &BatchOptions) -> Done {
     let t = Instant::now();
+    // The game and the run options that decide its checks: the repro has both.
+    let run_args: Vec<String> = game.to_args(d).into_iter().chain(o.extra.iter().cloned()).collect();
     let mut args: Vec<String> = vec!["soak".into(), "run".into()];
-    args.extend(game.to_args(d));
+    args.extend(run_args.iter().cloned());
     let saves = o.saves.as_ref().map(|s| s.join(game.file_name(d)));
     if let Some(dir) = &saves {
         let _ = std::fs::remove_dir_all(dir);
         args.push("--saves".into());
         args.push(dir.display().to_string());
     }
-    args.extend(o.extra.iter().cloned());
     let mut done = Done {
         game: game.clone(),
         status: String::new(),
@@ -169,7 +181,7 @@ fn run_child(d: &GameData, exe: &Path, game: &SoakGame, o: &BatchOptions) -> Don
         human_cities: None,
         ai_cities: Vec::new(),
         secs: 0.0,
-        repro: format!("ffh-play soak run {}", game.to_args(d).join(" ")),
+        repro: format!("ffh-play soak run {}", run_args.join(" ")),
     };
     let child = std::process::Command::new(exe).args(&args).env("RUST_BACKTRACE", "0").stdout(Stdio::piped()).stderr(Stdio::piped()).spawn();
     let mut child = match child {
@@ -387,5 +399,27 @@ mod tests {
         assert!(games.iter().all(|g| g.turns == 300 && g.ng.validate(d).is_ok()));
         let names: Vec<String> = games.iter().map(|g| g.file_name(d)).collect();
         assert!(names.iter().enumerate().all(|(i, n)| !names[..i].contains(n)), "file names are unique");
+    }
+
+    /// Each game of a batch gets its own save directory: also games whose descriptions share
+    /// the first 55 characters or differ only in the speed; a repeated seed adds no game.
+    #[test]
+    fn save_directories_are_unique() {
+        let d = ffh_data::global();
+        let mut m = Matrix::design(d);
+        m.seeds = vec![1, 1];
+        m.sizes = vec![lenient(d, "WORLDSIZE_", "standard").unwrap()];
+        m.civs = vec![lenient(d, "CIVILIZATION_", "kuriotates").unwrap()];
+        m.options = ["raging+aggressive+no_tech_trading", "raging+aggressive+no_tech_brokering"].iter().map(|o| parse_options(d, o).unwrap()).collect();
+        m.speeds = ["normal", "quick"].iter().map(|s| lenient(d, "GAMESPEED_", s).unwrap()).collect();
+        m.turns = 1;
+        let games = m.games(d);
+        assert_eq!(games.len(), 4, "the repeated seed is dropped");
+        let (a, b) = (games[0].describe(d), games[2].describe(d));
+        assert_eq!(a.chars().take(60).collect::<String>(), b.chars().take(60).collect::<String>(), "{a} / {b}");
+        let names: Vec<String> = games.iter().map(|g| g.file_name(d)).collect();
+        assert!(names.iter().enumerate().all(|(i, n)| !names[..i].contains(n)), "{names:?}");
+        assert!(names.iter().all(|n| n.len() <= 64 && n.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')), "{names:?}");
+        assert!(games[1].describe(d).contains(" QUICK "), "{}", games[1].describe(d));
     }
 }

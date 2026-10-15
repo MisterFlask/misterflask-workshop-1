@@ -151,3 +151,35 @@ fn soak_run_report_and_batch() {
     assert_eq!(run(&["soak", "--seeds", "3..1"]).0, 2);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+/// A repro keeps the check settings that decide on which turns checks run (`soak run`'s own
+/// and those a batch passes to its games); arguments are checked before any game runs.
+#[test]
+fn soak_repro_keeps_the_checks_and_arguments_are_checked_first() {
+    let dir = std::env::temp_dir().join(format!("ffh-play-cli-soak-checks-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let saves = dir.join("run");
+    let (code, out) =
+        run(&["soak", "run", "--size", "duel", "--turns", "6", "--check-every", "1", "--save-check-every", "2", "--panic-at", "4", "--saves", saves.to_str().unwrap()]);
+    assert_eq!(code, 101, "{out}");
+    let expected = format!("ffh-play soak run --seed 1 --size WORLDSIZE_DUEL --turns 6 --check-every 1 --save-check-every 2 --resume {}", saves.join("auto/T0003.ffhsave").display());
+    assert_eq!(field(&out, "REPRO"), Some(expected.as_str()), "{out}");
+    // Numbers out of their range are refused, not wrapped.
+    for bad in [&["--turns", "4294967297"][..], &["--seed", "-1"], &["--check-every", "x"], &["--save-check-every", "-1"]] {
+        let (code, out) = run(&[&["soak", "run", "--size", "duel"][..], bad].concat());
+        assert_eq!(code, 2, "{bad:?}: {out}");
+    }
+    // The batch: usage errors before any game runs.
+    let one = ["soak", "--seeds", "1", "--sizes", "duel", "--civs", "calabim", "--options", "default", "--turns", "2", "--jobs", "1"];
+    for bad in [&["--out", "/nonexistent/dir/x.tsv"][..], &["--turns", "0"], &["--check-every", "x"], &["--options", "GAMEOPTION_ADVANCED_START"]] {
+        let (code, out) = run(&[&one[..], bad].concat());
+        assert_eq!(code, 2, "{bad:?}: {out}");
+        assert!(!out.contains("soak summary"), "{bad:?}: a game ran: {out}");
+    }
+    // A failed game's repro has the check settings the batch gave it (a timeout of 0 s fails
+    // the game at once).
+    let (code, out) = run(&[&one[..], &["--timeout", "0", "--check-every", "1"]].concat());
+    assert_eq!(code, 1, "{out}");
+    assert!(out.contains("timeout") && out.contains("  ffh-play soak run --seed 1 --size WORLDSIZE_DUEL --civ CIVILIZATION_CALABIM --turns 2 --check-every 1\n"), "{out}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

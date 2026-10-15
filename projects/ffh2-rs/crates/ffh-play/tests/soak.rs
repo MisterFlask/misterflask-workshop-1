@@ -29,6 +29,7 @@ fn play(g: &SoakGame, opts: &RunOptions) -> Outcome {
 fn t5_ai_as_human_soak_smoke() {
     let d = ffh_data::global();
     let mut popups = 0;
+    let (mut research_left_open, mut research_ai_picks) = (0, 0);
     for seed in [1, 2] {
         let mut g = game(seed, "WORLDSIZE_SMALL", 150);
         g.ng.opponents = 3;
@@ -40,8 +41,13 @@ fn t5_ai_as_human_soak_smoke() {
         assert!(o.stats.checks >= 30 && o.stats.save_checks >= 6, "{:?}", o.stats);
         assert!(o.stats.research > 0 && o.stats.productions > 0 && o.stats.gate_confirms > 0, "{:?}", o.stats);
         popups += o.stats.events + o.stats.popups_left;
+        research_left_open += o.stats.research_left_open;
+        research_ai_picks += o.session.research_ai_picks;
     }
     assert!(popups > 0, "no deferred popup in two games");
+    // A research popup left open on a quiet turn reaches the forced end turn open (the AI's
+    // own research choice is cleared), where C++ makes the AI_chooseResearch pick.
+    assert!(research_left_open > 0 && research_ai_picks >= research_left_open, "research left open {research_left_open}, AI picks {research_ai_picks}");
 }
 
 /// The repro of a failure: a game resumed from one of its autosaves ends exactly as the
@@ -81,7 +87,8 @@ fn human_only_options() {
 }
 
 /// Infernals and Mercurians (not playable at the start) are founded by player 0 of an AI-only
-/// game and taken over at the next turn boundary.
+/// game and taken over at the next turn boundary, with the human's handicap (FfH's
+/// `reassignPlayerAdvanced` gives the slot the human founder's).
 #[test]
 fn spawned_civilizations_are_taken_over() {
     let d = ffh_data::global();
@@ -89,6 +96,7 @@ fn spawned_civilizations_are_taken_over() {
         let mut g = game(4, "WORLDSIZE_TINY", 45);
         g.spawn = Some(d.t::<CivilizationType>(civ));
         g.spawn_turn = 15;
+        g.ng.handicap = d.t("HANDICAP_PRINCE");
         let dir = TempDir::new(&format!("soak-spawn-{civ}"));
         let o = play(&g, &RunOptions { saves: Some(dir.0.clone()), ..RunOptions::default() });
         assert_eq!(o.end, End::Turns, "{civ}");
@@ -100,6 +108,8 @@ fn spawned_civilizations_are_taken_over() {
         assert_eq!(h, o.human);
         assert_eq!(g2.player_get_civilization_type(h), Some(d.t(civ)), "{civ}");
         assert!(g2.setup.players[h.0 as usize].human && g2.num_human_players() == 1);
+        assert_eq!(g2.player_get_handicap_type(h), Some(g.ng.handicap), "{civ}: the human's handicap");
+        assert_eq!(g2.player_get_handicap_type(ffh_core::ids::PlayerId(0)), Some(d.t("HANDICAP_NOBLE")), "{civ}: the founder is an AI");
         if civ == "CIVILIZATION_MERCURIANS" {
             // The Mercurians join the builder's team.
             assert_eq!(g2.players[h].team, g2.players[ffh_core::ids::PlayerId(0)].team);

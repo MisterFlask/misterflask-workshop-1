@@ -12,7 +12,10 @@
 //!   `research`, `event` and `vote` commands (a refusal of what `pending` offers is a failure),
 //!   except on one turn in [`QUIET_EVERY`], when they are left open and the end-turn gate is
 //!   forced (C++ then closes the event popups, gives a vote its extra turn then abstains, and
-//!   makes the AI research pick after turn 4: human-only paths too);
+//!   makes the AI research pick after turn 4: human-only paths too). The research the AI's own
+//!   empire management sets on such a turn (its first `play_turn` fills an empty queue) is
+//!   cleared with `research {tech: null}` before the end turn, so the popup really is open;
+//!   popups are read again before each answer (one answer can change what the next offers);
 //! * blocking decisions (keep/raze, free tech, election, ...) take the advisor's pick
 //!   ([`AdvisorAnswerer`]);
 //! * the AI moves the human's units (`Controller::play_turn`, which uses the rules' mission API
@@ -54,7 +57,6 @@ use ffh_core::structs::PlayerVote;
 use ffh_data::*;
 
 use crate::command::{CmdOk, Command, Confirm};
-use crate::decision::Pending;
 use crate::human::{AdvisorAnswerer, Answerer, Stats};
 use crate::names;
 use crate::save::{self, Sidecar};
@@ -111,9 +113,13 @@ impl SoakGame {
         let mut i = 0;
         while i < args.len() {
             let v = args.get(i + 1).ok_or_else(|| format!("{} needs a value", args[i]))?;
-            let num = |v: &str| v.parse::<i64>().map_err(|_| format!("{}: not a number: {v}", args[i]));
-            match args[i].as_str() {
-                "--seed" => g.ng.seed = num(v)? as u32,
+            // Each number in its own type: an out-of-range value is an error, not a wrapped one.
+            fn num<T: std::str::FromStr>(flag: &str, v: &str) -> Result<T, String> {
+                v.parse::<T>().map_err(|_| format!("{flag}: not a number in range: {v}"))
+            }
+            let flag = args[i].as_str();
+            match flag {
+                "--seed" => g.ng.seed = num::<u32>(flag, v)?,
                 "--size" => g.ng.world = lenient(d, "WORLDSIZE_", v)?,
                 "--civ" => {
                     let c: CivilizationType = lenient(d, "CIVILIZATION_", v)?;
@@ -125,13 +131,13 @@ impl SoakGame {
                         g.ng.civ = Some(c);
                     }
                 }
-                "--opponents" => opponents = Some(num(v)? as usize),
+                "--opponents" => opponents = Some(num::<usize>(flag, v)?),
                 "--options" => g.ng.options = parse_options(d, v)?,
-                "--turns" => g.turns = num(v)? as i32,
+                "--turns" => g.turns = num::<i32>(flag, v)?,
                 "--speed" => g.ng.speed = lenient(d, "GAMESPEED_", v)?,
                 "--handicap" => g.ng.handicap = lenient(d, "HANDICAP_", v)?,
                 "--era" => g.ng.era = lenient(d, "ERA_", v)?,
-                "--spawn-turn" => g.spawn_turn = num(v)? as i32,
+                "--spawn-turn" => g.spawn_turn = num::<i32>(flag, v)?,
                 a => return Err(format!("unknown soak setting {a}")),
             }
             i += 2;
@@ -179,9 +185,12 @@ impl SoakGame {
         a
     }
 
-    /// One line for people (prefixes dropped): `s1 TINY KURIOTATES [RAGING_BARBARIANS] 300`.
+    /// One line for people (prefixes dropped): `s1 TINYx3 KURIOTATES [RAGING_BARBARIANS] 300`,
+    /// plus the speed, handicap, era and spawn turn where they are not the defaults
+    /// (`s1 TINYx3 BANNOR QUICK DEITY 400`).
     pub fn describe(&self, d: &GameData) -> String {
         let short = |s: &str| s.split_once('_').map_or(s.to_string(), |(_, r)| r.to_string());
+        let base = SoakGame::new(d, self.ng.seed);
         let mut out = format!(
             "s{} {}x{} {}",
             self.ng.seed,
@@ -192,16 +201,33 @@ impl SoakGame {
         if !self.ng.options.is_empty() {
             out += &format!(" [{}]", options_label(d, &self.ng.options));
         }
+        if self.ng.speed != base.ng.speed {
+            out += &format!(" {}", short(d.type_name(self.ng.speed)));
+        }
+        if self.ng.handicap != base.ng.handicap {
+            out += &format!(" {}", short(d.type_name(self.ng.handicap)));
+        }
+        if self.ng.era != base.ng.era {
+            out += &format!(" {}", short(d.type_name(self.ng.era)));
+        }
+        if self.spawn.is_some() && self.spawn_turn != base.spawn_turn {
+            out += &format!(" spawn@{}", self.spawn_turn);
+        }
         out + &format!(" {}", self.turns)
     }
 
-    /// A file-name form of [`SoakGame::describe`] (`s1-tiny-kuriotates-raging_barbarians`).
+    /// A file-name form of [`SoakGame::describe`], cut to 55 characters, then 8 hex digits of
+    /// the FNV-1a hash of [`SoakGame::to_args`] (`s1-tinyx3-kuriotates-raging_barbarians-300-…`):
+    /// different settings get different names, also where the description is cut or does not
+    /// show a setting (speed, handicap, era, spawn turn).
     pub fn file_name(&self, d: &GameData) -> String {
         let mut s: String = self.describe(d).chars().map(|c| if c.is_ascii_alphanumeric() || c == '_' { c.to_ascii_lowercase() } else { '-' }).collect();
         while s.contains("--") {
             s = s.replace("--", "-");
         }
-        s.trim_matches('-').chars().take(64).collect()
+        let base: String = s.trim_matches('-').chars().take(55).collect();
+        let hash = crate::journal::fnv_hex(self.to_args(d).join(" ").as_bytes());
+        format!("{}-{}", base.trim_end_matches('-'), &hash[..8])
     }
 }
 
@@ -293,6 +319,27 @@ impl Default for RunOptions {
     }
 }
 
+impl RunOptions {
+    /// The check settings that are not the defaults, as `soak run` arguments. They belong in a
+    /// repro: a check runs only on the turns they name.
+    pub fn check_args(&self) -> Vec<String> {
+        let def = RunOptions::default();
+        let mut a = Vec::new();
+        if self.check_every != def.check_every {
+            a.extend(["--check-every".to_string(), self.check_every.to_string()]);
+        }
+        if self.save_check_every != def.save_check_every {
+            a.extend(["--save-check-every".to_string(), self.save_check_every.to_string()]);
+        }
+        a
+    }
+}
+
+/// A `--check-every` / `--save-check-every` value: game turns, 0 = never.
+pub fn parse_every(flag: &str, v: &str) -> Result<i32, String> {
+    v.parse::<i32>().ok().filter(|&n| n >= 0).ok_or_else(|| format!("{flag}: expected a number of turns (0 = never), got {v:?}"))
+}
+
 /// What the AI-as-human did.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SoakStats {
@@ -307,6 +354,9 @@ pub struct SoakStats {
     pub votes: usize,
     /// Deferred popups left open on the quiet turns (research, events, votes).
     pub popups_left: usize,
+    /// Of those, research popups (still open at the forced end turn: C++ then makes the
+    /// AI_chooseResearch pick after turn 4, `Stats::research_ai_picks`).
+    pub research_left_open: usize,
     /// `end_turn` answered with the gate's confirmation (then forced).
     pub gate_confirms: usize,
     pub checks: usize,
@@ -501,10 +551,11 @@ impl Driver {
         // what C++ does to unanswered popups (events closed, a vote's extra turn then abstain,
         // the AI's research pick after turn 4).
         let p = s.pending();
-        if s.g.game_turn() % QUIET_EVERY == QUIET_TURN {
+        let quiet = s.g.game_turn() % QUIET_EVERY == QUIET_TURN;
+        if quiet {
             self.stats.popups_left += p.popups();
         } else {
-            self.answer_popups(s, &p)?;
+            self.answer_popups(s, p.research_needed)?;
         }
         if !at_control(s) {
             return Ok(());
@@ -527,6 +578,20 @@ impl Driver {
         if !at_control(s) {
             return Ok(());
         }
+        // A research popup left open stays open: the AI's first `play_turn` of a turn (its
+        // empire management) sets research with a rules call when the queue is empty, which a
+        // human with the popup open has not done. Undo it as the human would, with CvNetResearch
+        // and NO_TECH (`clearResearchQueue`, CvMessageData.cpp:383-385), so that the forced end
+        // turn runs `doResearch` with no research (the AI_chooseResearch pick after turn 4).
+        if quiet && p.research_needed {
+            if s.g.player_get_current_research(h).is_some() {
+                self.applied(s, Command::Research { tech: None, shift: false })?;
+                if !at_control(s) {
+                    return Ok(());
+                }
+            }
+            self.stats.research_left_open += 1;
+        }
         // End the turn; the gate's confirmation (popups left open, ready units) is forced.
         if let CmdOk::NeedsConfirm(c) = self.exec(s, Command::EndTurn { force: false })? {
             if !matches!(c, Confirm::EndTurn { .. }) {
@@ -539,22 +604,26 @@ impl Driver {
         Ok(())
     }
 
-    /// Research, event popups and votes, with the AI's choices.
-    fn answer_popups(&mut self, s: &mut Session, p: &Pending) -> Result<(), String> {
+    /// Research (when `research_needed`), event popups and votes, with the AI's choices. Each
+    /// answer can change what the other popups offer (gold spent, a unit gone, a new popup
+    /// launched by an event's outcome), and the commands check their gates when applied, so the
+    /// pending popups are read again before each answer.
+    fn answer_popups(&mut self, s: &mut Session, research_needed: bool) -> Result<(), String> {
         let h = s.human;
         // Still the human's control point, and the same human (the rules may move the human
         // to another slot: then the next control point is the new slot's).
         let at_control = |s: &Session| s.phase() == Phase::Human(h);
-        if p.research_needed && at_control(s) {
+        if research_needed && at_control(s) {
             if let Some(t) = s.read(|g| self.ai.choose_research(g, h)) {
                 self.applied(s, Command::Research { tech: Some(t), shift: false })?;
                 self.stats.research += 1;
             }
         }
-        for e in &p.events {
-            if !at_control(s) {
-                return Ok(());
-            }
+        // Popups already answered or found with no doable option (those stay open).
+        let mut seen: Vec<TriggeredId> = Vec::new();
+        while at_control(s) {
+            let Some(e) = s.pending().events.into_iter().find(|e| !seen.contains(&e.triggered)) else { break };
+            seen.push(e.triggered);
             let options: Vec<EventType> = e.options.iter().filter(|o| o.enabled).map(|o| o.event).collect();
             if options.is_empty() {
                 self.stats.events_unanswerable += 1;
@@ -565,10 +634,10 @@ impl Driver {
             self.applied(s, Command::Event { triggered: e.triggered, event })?;
             self.stats.events += 1;
         }
-        for v in &p.votes {
-            if !at_control(s) {
-                return Ok(());
-            }
+        let mut seen: Vec<VoteId> = Vec::new();
+        while at_control(s) {
+            let Some(v) = s.pending().votes.into_iter().find(|v| !seen.contains(&v.vote)) else { break };
+            seen.push(v.vote);
             let pick = s.read(|g| g.vote_triggered(v.vote).cloned().map(|data| self.ai.diplo_vote(g, h, &data.vote_option, data.vote_source)));
             let choice = match pick {
                 Some(c) if v.choices.contains(&c) => c,
@@ -642,6 +711,10 @@ pub fn spawn_civ(game: &SoakGame, civ: CivilizationType) -> Result<(Vec<u8>, Pla
         if g.at_turn_boundary() {
             if let Some(p) = spawned {
                 if g.players[p].alive {
+                    // The take-over stands for FfH's `reassignPlayerAdvanced(founder, p)`, which
+                    // gives the slot the human founder's handicap: the human's handicap of a new
+                    // game (`setup::build_game`), while every AI slot has the setup's default.
+                    g.setup.players[p.idx()].handicap = Some(ng.handicap);
                     return Ok((g.save(), p, g.game_turn()));
                 }
             } else if g.game_turn() >= game.spawn_turn {
@@ -801,14 +874,20 @@ mod tests {
         let occ = parse_options(d, "default,occ+GAMEOPTION_ONE_CITY_CHALLENGE").unwrap();
         assert_eq!(occ.iter().map(|&o| d.type_name(o)).collect::<Vec<_>>(), ["GAMEOPTION_ONE_CITY_CHALLENGE", "GAMEOPTION_NO_HEALING_FOR_HUMANS"]);
         assert_eq!(parse_options(d, "default").unwrap(), []);
-        assert_eq!(g.file_name(d), "s7-tinyx3-kuriotates-raging_barbarians-aggressive_ai-40");
+        let name = g.file_name(d);
+        assert!(name.starts_with("s7-tinyx3-kuriotates-raging_barbarians-aggressive_ai-40-") && name.len() == 55 + 1 + 8, "{name}");
+        let mut quick = g.clone();
+        quick.ng.speed = d.t("GAMESPEED_QUICK");
+        assert_eq!(quick.describe(d), "s7 TINYx3 KURIOTATES [RAGING_BARBARIANS,AGGRESSIVE_AI] QUICK 40");
+        assert_ne!(quick.file_name(d), name);
         // Spawned civilizations, an explicit opponent count.
         let args: Vec<String> = ["--civ", "mercurian", "--opponents", "3", "--spawn-turn", "12"].iter().map(|s| s.to_string()).collect();
         let g = SoakGame::parse(d, &args).unwrap();
         assert_eq!((g.spawn.map(|c| d.type_name(c)), g.ng.civ, g.ng.opponents, g.spawn_turn), (Some("CIVILIZATION_MERCURIANS"), None, 3, 12));
         assert_eq!(SoakGame::parse(d, &g.to_args(d)).unwrap(), g);
         // Errors.
-        for bad in [&["--size", "enormous"][..], &["--civ", "a"], &["--turns", "0"], &["--seed"], &["--color", "red"], &["--options", "GAMEOPTION_ADVANCED_START"]] {
+        let bad_numbers = [&["--seed", "-1"][..], &["--seed", "4294967296"], &["--turns", "4294967297"], &["--opponents", "-2"], &["--spawn-turn", "x"]];
+        for bad in [&["--size", "enormous"][..], &["--civ", "a"], &["--turns", "0"], &["--seed"], &["--color", "red"], &["--options", "GAMEOPTION_ADVANCED_START"]].into_iter().chain(bad_numbers) {
             let args: Vec<String> = bad.iter().map(|s| s.to_string()).collect();
             assert!(SoakGame::parse(d, &args).is_err(), "{bad:?}");
         }
