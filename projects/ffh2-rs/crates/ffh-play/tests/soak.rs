@@ -106,3 +106,33 @@ fn spawned_civilizations_are_taken_over() {
         }
     }
 }
+
+/// When the rules move the human inside `update()` (High to Low at turn 50: slot 0's turn
+/// starts while it is human, then it is reassigned and plays that turn as an AI in the same
+/// update), the rest of that update is not the human's: C++ moves the active player at once
+/// (CvInitCore.cpp:474-482), so the old slot's messages from its AI turn reach nobody. The
+/// session drains such an update for the new slot.
+#[test]
+fn a_slot_move_inside_an_update_drains_for_the_new_slot() {
+    let d = ffh_data::global();
+    let mut g = game(2, "WORLDSIZE_TINY", 52);
+    g.ng.civ = Some(d.t("CIVILIZATION_BANNOR"));
+    g.ng.options = soak::parse_options(d, "challenges").unwrap();
+    let mut prev = None;
+    let mut moved = None;
+    let o = soak::run(&g, &RunOptions::default(), &mut |s| {
+        let (h, turn) = (s.human, s.g.game_turn());
+        if let Some(old) = prev.filter(|&p| p != h) {
+            moved = Some((old, h, turn));
+        }
+        prev = Some(h);
+        if let Some((old, _, at)) = moved {
+            let leaked: Vec<String> = s.messages().iter().filter(|m| m.player == Some(old.0) && m.turn >= at).map(|m| format!("t{} {}", m.turn, m.text)).collect();
+            assert!(leaked.is_empty(), "the old slot's messages after the move reached the human: {leaked:?}");
+        }
+    })
+    .unwrap();
+    let (old, new, at) = moved.expect("High to Low moves the human in this game");
+    eprintln!("moved {old:?} -> {new:?} at turn {at}");
+    assert_eq!((old, o.human, at), (ffh_core::ids::PlayerId(0), new, 50));
+}

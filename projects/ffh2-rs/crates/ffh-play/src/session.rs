@@ -266,8 +266,9 @@ impl Session {
                     return Stop::Human;
                 }
                 Phase::Running => {
+                    let log_mark = self.g.log.entries.len();
                     self.g.update();
-                    self.follow_human();
+                    self.follow_human(MovedIn::Update { log_mark });
                     if self.g.at_turn_boundary() {
                         self.boundary();
                         slices = 0;
@@ -318,7 +319,7 @@ impl Session {
             _ => {}
         }
         command::apply(&mut self.g, h, action);
-        self.follow_human();
+        self.follow_human(MovedIn::Command);
         self.settle();
         // Back at a control point: popups the command queued are shown now (as the exe shows
         // them in its next frames).
@@ -338,8 +339,9 @@ impl Session {
     fn settle(&mut self) {
         let mut n = 0;
         loop {
+            let log_mark = self.g.log.entries.len();
             self.g.update();
-            self.follow_human();
+            self.follow_human(MovedIn::Update { log_mark });
             n += 1;
             if self.g.at_turn_boundary() {
                 self.boundary();
@@ -355,14 +357,27 @@ impl Session {
     /// timer, the "switch civilizations" event, the High to Low challenge): the slot's human flag,
     /// options and controller move (ffh-core `reassign_player_advanced`), and C++ also moves the
     /// active player (CvInitCore.cpp:474-482), which ffh-core does not: the session does it here,
-    /// after the rules call that moved the human (a P7 note). The messages so far are drained
-    /// for the old slot first.
-    fn follow_human(&mut self) {
+    /// after the rules call that moved the human (a P7 note).
+    ///
+    /// The log entries since the last drain are split at the move in C++: those before go to
+    /// the old slot's player, those after to the new one, and the old slot's later messages
+    /// reach nobody (the active player has moved). Without a log marker at the move (P7), the
+    /// session splits them by the rules call that moved the human (`at`).
+    fn follow_human(&mut self, at: MovedIn) {
         if self.g.players[self.human].human {
             return;
         }
         let Some(new) = self.g.civ_player_ids().find(|&p| self.g.players[p].human) else { return };
-        self.drain_log();
+        match at {
+            MovedIn::Command => self.drain_log(),
+            MovedIn::Update { log_mark } => {
+                // The entries of earlier slices are the old slot's; the update's wait for the
+                // next drain, for the new slot.
+                let update = self.g.log.entries.split_off(log_mark.min(self.g.log.entries.len()));
+                self.drain_log();
+                self.g.log.entries = update;
+            }
+        }
         let old = std::mem::replace(&mut self.human, new);
         if self.g.active_player == Some(old) {
             self.g.active_player = Some(new);
@@ -508,6 +523,24 @@ impl Session {
         let (bytes, sidecar) = self.save_bytes()?;
         save::write_bundle(dir, name, &bytes, &sidecar).map_err(|e| PlayError::Io(e.to_string()))
     }
+}
+
+/// Where the rules moved the human to another slot (`Session::follow_human`).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum MovedIn {
+    /// The human's own command (casting Impersonate Leader, answering the "switch civilizations"
+    /// event): the move is the command's last act, so its entries are drained for the old slot.
+    Command,
+    /// An `update()`, which started when the log had `log_mark` entries: High to Low reassigns
+    /// slot 0 as its turn starts, and slot 0 then plays that turn as an AI in the same update;
+    /// the Impersonate Leader timer runs out at the end of the impersonated slot's turn, and the
+    /// AI turns that follow run in the same update. The entries of earlier slices are drained
+    /// for the old slot, the update's for the new slot: the old slot's messages from after the
+    /// move reach nobody, as in C++; the old slot's messages logged earlier in the same update
+    /// are lost (the start of turn 50 for High to Low, the impersonated civ's end-of-turn
+    /// production and research for the timer), and the new slot's from before the move are
+    /// shown (C++ keeps them in that player's message list, which is now the human's).
+    Update { log_mark: usize },
 }
 
 /// A human group is busy (a mission step under way, or combat).
