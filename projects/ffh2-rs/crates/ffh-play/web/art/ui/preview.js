@@ -534,7 +534,7 @@ async function main() {
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   document.documentElement.style.setProperty('--u', `${U}px`);
   UI.installCSS(art, O);
-  window.__art = art; window.__ui = UI;
+  window.__art = art; window.__ui = UI; // for poking at the kit from the console or a test
   if (q.has('kit')) kit(art);
   else await screen(art);
 }
