@@ -214,10 +214,18 @@ async function main() {
   const mx = M * s, my = (M * 2 + band) * s;
   const t0 = performance.now();
   const timings = {};
-  renderMap(art, ctx, map, {
-    x0: mx, y0: my, owners, timings,
-    cities: CITIES, stacks: STACKS, cursor: { x: 8, y: 4, selected: true },
-  });
+  const view = { owners, timings, cities: CITIES, stacks: STACKS, cursor: { x: 8, y: 4, selected: true } };
+  if (q.get('cache')) {
+    // the client's way: terrain into an offscreen cache, then blit, vignette, units on top
+    const cache = document.createElement('canvas');
+    cache.width = mapW * s; cache.height = mapH * s;
+    renderMap(art, cache.getContext('2d', { willReadFrequently: true }), map, { ...view, x0: 0, y0: 0, only: 'terrain' });
+    ctx.drawImage(cache, mx, my);
+    art.drawVignette(ctx, mx, my, mapW * s, mapH * s);
+    renderMap(art, ctx, map, { ...view, x0: mx, y0: my, only: 'units' });
+  } else {
+    renderMap(art, ctx, map, { ...view, x0: mx, y0: my });
+  }
   const ms = Math.round(performance.now() - t0);
   // the page frame: a double rule, ash outside and iron inside, with gilt nails at the corners
   const frame = (x, y, w, h) => {

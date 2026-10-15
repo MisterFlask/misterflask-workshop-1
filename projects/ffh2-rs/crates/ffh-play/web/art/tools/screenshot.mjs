@@ -3,7 +3,8 @@
 //
 //   node tools/screenshot.mjs <outdir> [page ...]
 //
-// Pages (default: all): sheet-terrain sheet-units sheet-cities sheet-ui sheet-all coverage scene scene-1x.
+// Pages (default: all): sheet-terrain sheet-units sheet-cities sheet-ui sheet-all coverage scene
+// scene-1x scene-cached (the scene through a terrain cache: should look the same as scene).
 // Uses the playwright package when it resolves (local, or the global node_modules next to node),
 // else runs the chrome binary under $PLAYWRIGHT_BROWSERS_PATH (or /opt/pw-browsers) with
 // --headless --screenshot (fixed window size, no console check). Exits 1 if a page reports an
@@ -23,6 +24,7 @@ export const PAGES = {
   coverage: ['preview/sheet.html?set=coverage', 1400, 900],
   scene: ['preview/scene.html', 1400, 1000],
   'scene-1x': ['preview/scene.html?scale=1', 760, 560],
+  'scene-cached': ['preview/scene.html?cache=1', 1400, 1000],
 };
 
 function loadPlaywright() {

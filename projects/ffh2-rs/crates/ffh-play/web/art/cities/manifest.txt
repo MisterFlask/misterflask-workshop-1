@@ -35,6 +35,7 @@ map improvement graphical=1 -> none
 map improvement mana=1 -> improvement/_node
 map improvement unique=1 -> improvement/_landmark
 map improvement goody=1 -> improvement/_cairn
+map improvement spawn!=NONE -> improvement/_lair
 map improvement permanent=1 -> improvement/_lair
 map improvement water=1 -> improvement/_boat
 map improvement IMPROVEMENT_VILLAGE|IMPROVEMENT_TOWN -> improvement/hamlet

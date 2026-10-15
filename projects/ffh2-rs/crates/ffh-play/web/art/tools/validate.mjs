@@ -67,7 +67,8 @@ const RULES = [
   [/^city\//, () => false, "named city/<style>_<tier 1-5>", 10],
   [/^improvement\//, (s) => s.w <= 34 && s.h <= 34, 'at most 34x34', 6],
   [/^feature\//, (s) => s.w <= 34 && s.h <= 40, 'at most 34x40', 6],
-  [/^(hill|peak)\//, (s) => s.w <= 34 && s.h <= 42, 'at most 34x42', 6],
+  // peaks: 5.3 itself names 4/5, 6, 3/2, 1 and a 7/f snow cap
+  [/^(hill|peak)\//, (s) => s.w <= 34 && s.h <= 42, 'at most 34x42', 8],
   [/^route\//, (s) => s.w <= 4 && s.h <= 4, 'a dot of at most 4x4', 3],
   [/^ui\//, () => true, '', 8],
 ];

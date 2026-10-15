@@ -56,7 +56,12 @@ export function fromApiMap(api, width, height, wrapX = false) {
  *   cursor      { x, y, selected }
  *   vignette    bool (default true); skip: Set of layers to leave out (rivers roads lights borders fog)
  *   timings     an object that receives milliseconds per phase
+ *   only        'terrain': phases 1-9 (everything a terrain cache holds; no vignette, no units);
+ *               'units': units, city overlays and the cursor only, over what is already drawn.
+ *               A client keeping a terrain cache blits it, calls art.drawVignette on the view,
+ *               then renderMap(..., { only: 'units' }).
  * Drawing is clipped to the view rectangle (sprites overhang into the tile to the north).
+ * Fog and light pools read the canvas back: create its context with { willReadFrequently: true }.
  */
 export function renderMap(art, ctx, map, opts = {}) {
   const s = art.scale;
@@ -85,61 +90,68 @@ export function renderMap(art, ctx, map, opts = {}) {
   ctx.beginPath();
   ctx.rect(x0, y0, cols * TILE * s, rows * TILE * s);
   ctx.clip();
+  if (opts.only !== 'units') terrainLayers();
+  if (opts.only !== 'terrain') unitLayers();
+  ctx.restore();
 
-  // 1. ground
-  ctx.fillStyle = art.css('0');
-  ctx.fillRect(x0, y0, cols * TILE * s, rows * TILE * s);
-  each(0, (p, x, y) => art.drawTerrain(ctx, x, y, p));
-  lap('ground');
-  // 2. rivers, 3. roads, 4. flat improvements
-  if (!skip.has('rivers')) each(1, (p, x, y) => { if (p.vis) art.drawRiver(ctx, x, y, p); });
-  if (!skip.has('roads')) each(0, (p, x, y) => { if (p.vis) art.drawRoad(ctx, x, y, p); });
-  each(0, (p, x, y) => { if (p.vis && p.improvement != null && art.isFlatImprovement(p.improvement)) art.drawImprovement(ctx, x, y, p.improvement, p); });
-  lap('lines');
-  // 5. city light pools (lights only on visible tiles)
-  if (!skip.has('lights')) {
+  function terrainLayers() {
+    // 1. ground
+    ctx.fillStyle = art.css('0');
+    ctx.fillRect(x0, y0, cols * TILE * s, rows * TILE * s);
+    each(0, (p, x, y) => art.drawTerrain(ctx, x, y, p));
+    lap('ground');
+    // 2. rivers, 3. roads, 4. flat improvements
+    if (!skip.has('rivers')) each(1, (p, x, y) => { if (p.vis) art.drawRiver(ctx, x, y, p); });
+    if (!skip.has('roads')) each(0, (p, x, y) => { if (p.vis) art.drawRoad(ctx, x, y, p); });
+    each(0, (p, x, y) => { if (p.vis && p.improvement != null && art.isFlatImprovement(p.improvement)) art.drawImprovement(ctx, x, y, p.improvement, p); });
+    lap('lines');
+    // 5. city light pools (lights only on visible tiles)
+    if (!skip.has('lights')) {
+      for (const c of opts.cities || []) {
+        const p = P(c.x, c.y);
+        const o = owners.get(c.owner);
+        if (!p || !visible(p) || c.disorder || (o && o.pool === 'none')) continue;
+        const tier = tierOf(c.size | 0 || 1);
+        art.drawLight(ctx, px(c.x) + 16 * s, py(c.y) + 28 * s, o?.pool || 'FIRE', 12 + 3 * tier, { inner: true });
+      }
+    }
+    lap('lights');
+    // 6. uprights row by row (one row of margin above: sprites rise into the tile to the north)
+    for (let y = ty0 - 1; y < ty0 + rows + 1; y++) {
+      for (let x = tx0 - 1; x < tx0 + cols + 1; x++) {
+        const p = P(x, y);
+        if (!p || !p.vis) continue;
+        const X = px(x), Y = py(y);
+        art.drawRelief(ctx, X, Y, p);
+        if (p.feature != null) art.drawFeature(ctx, X, Y, p);
+        if (p.improvement != null && !art.isFlatImprovement(p.improvement)) art.drawImprovement(ctx, X, Y, p.improvement, p);
+        const c = cityAt.get(`${x},${y}`);
+        if (c) art.drawCity(ctx, X, Y, { ...c, visible: visible(p), layer: 'sprite', pool: false }, owners.get(c.owner));
+      }
+    }
+    lap('uprights');
+    // 7. resource seals
+    each(0, (p, x, y) => { if (p.vis && p.bonus != null && !cityAt.has(`${p.x},${p.y}`)) art.drawResource(ctx, x, y, p.bonus); });
+    // 8. borders
+    if (!skip.has('borders')) each(0, (p, x, y) => { if (p.vis && p.owner != null) art.drawBorder(ctx, x, y, p, owners.get(p.owner)); });
+    // 9. fog, 10. vignette
+    lap('borders');
+    if (!skip.has('fog')) each(0, (p, x, y) => art.drawFog(ctx, x, y, p));
+    lap('fog');
+    if (opts.vignette !== false && opts.only !== 'terrain') art.drawVignette(ctx, x0, y0, cols * TILE * s, rows * TILE * s);
+    lap('vignette');
+  }
+
+  function unitLayers() {
+    // 11. units row by row, then overlays
+    const stacks = (opts.stacks || []).slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'sprite' });
     for (const c of opts.cities || []) {
       const p = P(c.x, c.y);
-      const o = owners.get(c.owner);
-      if (!p || !visible(p) || c.disorder || (o && o.pool === 'none')) continue;
-      const tier = tierOf(c.size | 0 || 1);
-      art.drawLight(ctx, px(c.x) + 16 * s, py(c.y) + 28 * s, o?.pool || 'FIRE', 12 + 3 * tier, { inner: true });
+      if (p && p.vis) art.drawCity(ctx, px(c.x), py(c.y), { ...c, visible: visible(p), layer: 'overlay' }, owners.get(c.owner));
     }
+    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'overlay' });
+    if (opts.cursor) art.drawTileCursor(ctx, px(opts.cursor.x), py(opts.cursor.y), !!opts.cursor.selected);
+    lap('units');
   }
-  lap('lights');
-  // 6. uprights row by row (one row of margin above: sprites rise into the tile to the north)
-  for (let y = ty0 - 1; y < ty0 + rows + 1; y++) {
-    for (let x = tx0 - 1; x < tx0 + cols + 1; x++) {
-      const p = P(x, y);
-      if (!p || !p.vis) continue;
-      const X = px(x), Y = py(y);
-      art.drawRelief(ctx, X, Y, p);
-      if (p.feature != null) art.drawFeature(ctx, X, Y, p);
-      if (p.improvement != null && !art.isFlatImprovement(p.improvement)) art.drawImprovement(ctx, X, Y, p.improvement, p);
-      const c = cityAt.get(`${x},${y}`);
-      if (c) art.drawCity(ctx, X, Y, { ...c, visible: visible(p), layer: 'sprite', pool: false }, owners.get(c.owner));
-    }
-  }
-  lap('uprights');
-  // 7. resource seals
-  each(0, (p, x, y) => { if (p.vis && p.bonus != null && !cityAt.has(`${p.x},${p.y}`)) art.drawResource(ctx, x, y, p.bonus); });
-  // 8. borders
-  if (!skip.has('borders')) each(0, (p, x, y) => { if (p.vis && p.owner != null) art.drawBorder(ctx, x, y, p, owners.get(p.owner)); });
-  // 9. fog, 10. vignette
-  lap('borders');
-  if (!skip.has('fog')) each(0, (p, x, y) => art.drawFog(ctx, x, y, p));
-  lap('fog');
-  if (opts.vignette !== false) art.drawVignette(ctx, x0, y0, cols * TILE * s, rows * TILE * s);
-  lap('vignette');
-  // 11. units row by row, then overlays
-  const stacks = (opts.stacks || []).slice().sort((a, b) => a.y - b.y || a.x - b.x);
-  for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'sprite' });
-  for (const c of opts.cities || []) {
-    const p = P(c.x, c.y);
-    if (p && p.vis) art.drawCity(ctx, px(c.x), py(c.y), { ...c, visible: visible(p), layer: 'overlay' }, owners.get(c.owner));
-  }
-  for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'overlay' });
-  if (opts.cursor) art.drawTileCursor(ctx, px(opts.cursor.x), py(opts.cursor.y), !!opts.cursor.selected);
-  ctx.restore();
-  lap('units');
 }

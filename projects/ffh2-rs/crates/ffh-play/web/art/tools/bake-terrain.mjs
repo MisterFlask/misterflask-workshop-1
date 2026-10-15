@@ -96,7 +96,7 @@ const RECIPES = {
   } },
   tundra: { seed: 41, base: '4', make(t, r) {
     mottle(t, r, '3', 8, 'mix');
-    scatter(t, r, 22, 2, (t, x, y, r) => t.set(x, y, r() < 0.5 ? 'O' : 'o')); // lichen dots
+    scatter(t, r, 22, 2, (t, x, y, r) => t.set(x, y, 'O')); // lichen dots (one colour: the texture limit is 5)
     scatter(t, r, 7, 3, (t, x, y, r) => { // crack line 2 with a 5 lip
       const len = 3 + Math.floor(r() * 3);
       for (let j = 0; j < len; j++) { t.set(x + j, y + (j > 1 ? 1 : 0), '2'); t.set(x + j, y - 1 + (j > 1 ? 1 : 0), j === 0 ? '5' : t.get(x + j, y - 1)); }
@@ -117,7 +117,7 @@ const RECIPES = {
       for (let j = 0; j < len; j++) t.set(x + j, y, j === 1 ? 'N' : 'n');
     });
     scatter(t, r, 16, 2, (t, x, y, r) => { // reed tick
-      t.set(x, y, 'o'); t.set(x, y - 1, r() < 0.5 ? 'O' : 'o');
+      t.set(x, y, 'o'); t.set(x, y - 1, 'o');
     });
   } },
   coast: { seed: 71, base: 'n', make(t, r) {

@@ -1405,7 +1405,11 @@ Draw order matters because rivers and uprights spill into neighbouring tiles, an
 read the canvas back: ground for every tile, then rivers, roads, flat improvements, city pools,
 uprights row by row from north to south, seals, borders, fog, vignette, units, overlays.
 `renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, tx0, ty0, cols, rows })`
-does exactly that, clipped to the view, and reports per-phase times in `timings`.
+does exactly that, clipped to the view, and reports per-phase times in `timings`. With
+`only: 'terrain'` it draws what a terrain cache holds (everything up to the fog), with
+`only: 'units'` the units, city overlays and cursor; a client blits its cache, calls
+`drawVignette` on the view, then draws the units (`preview/scene.html?cache=1` does this). Create
+canvases that fog and pools read back with `getContext('2d', { willReadFrequently: true })`.
 
 Internals worth knowing: sprites are rasterised per variant (remap, owner tincture and division,
 accent, FOG, silhouette, rim, translucency) and scale into shared atlas pages; remaps and fog read
@@ -1426,14 +1430,16 @@ redraw only changed tiles (3.1).
   (the playwright package if it resolves, else the chrome binary under `PLAYWRIGHT_BROWSERS_PATH`)
   and fails on console errors. Screenshots are scratch: keep them out of the repo, except the small
   reference sheets in `docs/art/`.
-- `tools/check.sh` (or `node tools/validate.mjs [-v]`) is the test: every module passes
-  `node --check`; palette.txt equals the blocks of section 2; every sprite parses, uses only palette
-  keys and slots and has its namespace's size; every rule's target exists and its options parse;
-  types.json matches data/xml; the bundle loads the same library; and every type of every kind
-  (terrains, hills, peaks, features, bonuses, improvements, routes, all units, civilizations, city
-  styles, religions, buildings, promotions, unit combats, specialists) resolves to a sprite or to
-  `none`. Colour counts over the limits of 4.3 are warnings. The script exits 0 when node is
-  missing. The client crate can run it from `cargo test` with a test like:
+- `tools/check.sh` is the test: every module passes `node --check`; `tools/test-units.mjs`
+  (node's test runner) checks the parsers and the mapping's resolution order on synthetic data;
+  and `tools/validate.mjs [-v]` checks the real sources: palette.txt equals the blocks of
+  section 2; every sprite parses, uses only palette keys and slots and has its namespace's size;
+  every rule's target exists and its options parse; types.json matches data/xml; the bundle
+  loads the same library; and every type of every kind (terrains, hills, peaks, features,
+  bonuses, improvements, routes, all units, civilizations, city styles, religions, buildings,
+  promotions, unit combats, specialists) resolves to a sprite or to `none`. Colour counts over
+  the limits of 4.3 are warnings. The script exits 0 when node is missing. The client crate can
+  run it from `cargo test` with a test like:
 
   ```rust
   #[test]
