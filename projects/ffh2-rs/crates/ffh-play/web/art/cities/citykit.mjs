@@ -178,6 +178,33 @@ function mound(w, h, keys = { rim: '5', lit: '4', body: '3', sh: '2' }, bumps = 
   return g;
 }
 
+/**
+ * A crag w wide: a ridge through control points [[x, height], ...] (linear between them), lit on
+ * the slopes that face the upper left (rim on top, lit below it), shade on the others, body under.
+ */
+function crag(w, pts, keys = { rim: '5', lit: '4', body: '3', sh: '2' }) {
+  const hs = [];
+  for (let x = 0; x < w; x++) {
+    let k = 0;
+    while (k < pts.length - 2 && x > pts[k + 1][0]) k++;
+    const [x0, h0] = pts[k], [x1, h1] = pts[k + 1];
+    hs.push(Math.max(1, Math.round(h0 + ((h1 - h0) * (x - x0)) / Math.max(1, x1 - x0))));
+  }
+  const H = Math.max(...hs);
+  const g = new G(w, H);
+  for (let x = 0; x < w; x++) {
+    const up = (hs[x + 1] ?? hs[x]) - (hs[x - 1] ?? hs[x]);
+    const litSlope = up > 0 || (up === 0 && x < w / 2);
+    for (let y = H - hs[x]; y < H; y++) {
+      const d = y - (H - hs[x]);
+      let k = litSlope ? (d === 0 ? keys.rim : d < 3 ? keys.lit : keys.body) : d === 0 ? keys.body : keys.sh;
+      if (!litSlope && d > 1 && (d + x) % 5 === 0) k = keys.body;
+      g.d[y][x] = k;
+    }
+  }
+  return g;
+}
+
 /** Stack parts vertically, centred: [top, ..., bottom]. */
 function stack(...parts) {
   parts = parts.filter(Boolean);
@@ -283,4 +310,4 @@ function finialOf(g) {
 }
 
 
-export { G, P, M, wall, taper, peak, hip, dome, blobs, mound, stack, mark, side, house, compose, TABLES, halo, trim, finialOf };
+export { G, P, M, wall, taper, peak, hip, dome, blobs, mound, crag, stack, mark, side, house, compose, TABLES, halo, trim, finialOf };
