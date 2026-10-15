@@ -51,6 +51,14 @@ CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true CARGO_PROFILE_RELEASE_OVERFLOW_CHECK
 `autoplay` prints one line per turn (time, units, cities, sync checksum) and a final
 per-player summary; `bench` prints only the timing summary.
 
+The human-only rules branches get the same treatment from `ffh-play soak`: the AI plays the
+human slot through the human-play session (`docs/HUMAN.md`):
+
+```
+./target/release/ffh-play soak --jobs 4 --out soak.tsv          # 144 games: 2 seeds x 3 sizes x 6 civs x 4 option sets
+./target/release/ffh-play soak run --seed 2 --size tiny --civ kuriotates --options challenges
+```
+
 ## Faithfulness
 
 Rules code follows the C++ line by line, including its quirks (marked `// C++ quirk:`), with

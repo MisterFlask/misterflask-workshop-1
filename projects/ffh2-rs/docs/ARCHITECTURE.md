@@ -82,6 +82,12 @@ without changing the rules engine:
 - **Journal.** One JSON line per input (command, decision answer) stamped with `(turn, slice)`,
   plus a checksum checkpoint per turn; `ffh-play replay` re-plays it and stops at the first
   difference.
+- **The human's slot can move.** FfH's `reassignPlayerAdvanced` (Impersonate Leader, the
+  "switch civilizations" event, the High to Low challenge) moves the human flag and controller to
+  another slot; the session follows after every rules call and moves the active player with it.
+- **Soak.** `ffh-play soak` lets `ffh_ai::Ai` play the human slot through the session over a
+  settings matrix (each game in a child process, ffh-stress's invariant checks every 5 turns), so
+  the rules' human-only branches run before people play; failures print a repro command.
 
 ## Saved games
 

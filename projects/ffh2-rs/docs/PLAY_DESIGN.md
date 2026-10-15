@@ -8,7 +8,8 @@ This is the design of `crates/ffh-play`, implemented phase by phase (§7); the s
 |---|---|---|
 | P0 skeleton | done | `json.rs`, `names.rs`, `ffh-play kinds / names / lookup`; see "As built" under P0 in §7. |
 | P1 session core | done | `session.rs`, `human.rs`, `decision.rs`, `command.rs` (+ `selection.rs`), `guard.rs`, `setup.rs`, `journal.rs`, `save.rs`, `bot.rs`, `view/fog.rs` (the log's fog rules); `ffh-play bot / replay / journal print`; T1–T6, T9. See "As built" under P1 in §7. |
-| P2–P7 | not started | |
+| P2 soak | done | `soak.rs` + `soak/batch.rs`, `ffh-play soak run / soak`; the session follows the human across slots (F23); the matrix ran clean on the release and checked builds. See "As built" under P2 in §7. |
+| P3–P7 | not started | |
 
 **Starting point.** The design starts from the **web** design, which had the highest total score: 8.5 + 7.5 + 7 = 23, against 21.5 for tui and 21.5 for engine-first. It grafts on the ideas the judges recommended (§11 lists every disagreement and how it was resolved).
 
@@ -58,6 +59,7 @@ This is the design of `crates/ffh-play`, implemented phase by phase (§7); the s
 | F19 | AI cost: `ffh bench --seed 1 --civs 6 --size WORLDSIZE_STANDARD --turns 150` measured **10.51 ms/turn** (slowest 28.6 ms). | measured today | The UI adds the latency; the AI is fast enough. A synchronous end turn is fine. |
 | F20 | ffh-stress `check.rs` has `pub fn check(&Game)` and depends only on ffh-core. | ffh-stress/src/check.rs | Reused by the bot and soak tests through `#[path = "../../ffh-stress/src/check.rs"] mod check;`, with no edit to ffh-stress. |
 | F21 | Node 22 is installed (`/opt/node22/bin/node`). Headless Chromium is available: the Playwright browsers are in `/opt/pw-browsers` (`PLAYWRIGHT_BROWSERS_PATH`; `chromium-1194`, `chromium_headless_shell-1194`), and the `playwright` npm package (1.56) is installed globally under `/opt/node22/lib/node_modules`. Without that package, `chrome-linux/chrome --headless` can be driven directly (`--dump-dom`, `--screenshot`, DevTools protocol). Only the `x86_64-unknown-linux-gnu` target exists. | env (checked: a Playwright script launched Chromium and ran page JS) | JS gets `node --check` and `node --test`, and P5 adds a **headless-browser smoke test** (load the page against `ffh-play serve`, no console errors, play a few turns through the UI, screenshots for review). All of these are optional and skipped when node or the browser is missing. Correctness still rests mainly on server-side logic and protocol tests: the client only renders what the engine computes. |
+| F23 | FfH moves the human player to another slot: `CvInitCore::reassignPlayerAdvanced` (the Impersonate Leader spell for 5–14 turns and the end of its timer, the "switch civilizations" event, the High to Low challenge at turn 50). It swaps the slots' human flag, handicap, options and (here) controllers; C++ also moves the active player (CvInitCore.cpp:474-482), ffh-core's `reassign_player_advanced` (player/turn.rs:1182) does not. | ffh-core player/turn.rs, game/turn.rs, ffh/spells_a.rs, ffh/random_events_a.rs | The session follows the human after every rules call (P2); before, the old slot's turn ended as an AI's and the new human slot's never did (`Stuck`). |
 | F22 | The FfH main HUD shows the Armageddon counter (`getGlobalCounter`) and mana counts (`getNumAvailableBonuses` over `BONUS_MANA_*`). | CvMainInterface.py:102, 855, 3386 | Both go in the top bar (`get_global_counter`, game/world.rs:1351). |
 
 ---
@@ -714,7 +716,7 @@ Size is about 1–1.5 MB, cached by ETag.
 ```
 Cargo.toml                 lib + [[bin]] ffh-play; deps ffh-data, ffh-core, ffh-ai (path)        ~20
 src/lib.rs                 modules, re-exports                                                    ~60
-src/main.rs                serve | agent | bot | soak | replay | journal print | bench; kinds | names | lookup (P0); bot, replay, journal print (P1) ~220
+src/main.rs                serve | agent | bot | soak | replay | journal print | bench; kinds | names | lookup (P0); bot, replay, journal print (P1); soak run, soak (P2) ~220
 src/json.rs                Json enum, escaping writer, recursive-descent parser, typed getters    ~400
 src/names.rs               type name <-> index for every table and hard-coded enum (NAMES arrays), text lookup ~220
 src/setup.rs               NewGame -> Game, controllers, active_player, options, take_over, setup lists ~250
@@ -736,7 +738,8 @@ src/transport/http.rs      std TcpListener, thread per connection, router, asset
 src/transport/server.rs    game-thread loop for HTTP, ChannelAnswerer, catch_unwind, crash status ~300
 src/transport/stdio.rs     JSONL loop on the game thread, StdioAnswerer, EOF policy                ~250
 src/bot.rs                 scripted human (protocol-level), seeded private RNG                     ~380
-src/soak.rs                AI-as-human driver                                                      ~200
+src/soak.rs                AI-as-human driver (P2: settings, run, checks, spawned civs, panic capture) ~800
+src/soak/batch.rs          (P2) the matrix, child processes with a timeout, summary, TSV          ~400
 assets/index.html ~120, assets/style.css ~450
 assets/js/api.js ~200, state.js ~250, markup.js ~120, map.js ~1,000, units.js ~500, city.js ~600,
           screens.js ~700, modals.js ~400, main.js ~250                                           ~4,600 web total
@@ -759,7 +762,7 @@ Totals: about **7.5k lines** of Rust library and binary code, **1.6k** of Rust t
 
 **Not edited in the MVP:**
 * `crates/ffh-core`, `crates/ffh-ai`, `crates/ffh-cli`, `crates/ffh-stress`, `controller.rs`.
-* Exception: **rules bugs** that the soak finds in core's human branches. These are fixed as separate small commits, each with an ffh-core regression test. They are rules files, not the contested `controller.rs`; the commit message says what was found.
+* Exception (as designed): **rules bugs** that the soak finds in core's human branches, fixed as separate small commits with an ffh-core regression test. In P2 the workstream did not own ffh-core, so its findings are reported in §7 P2 instead.
 
 ---
 
@@ -817,6 +820,53 @@ Each phase is independently testable and committable. `cargo build --release && 
   * at least 2 seeds × {tiny, small, standard} × {Kuriotates, Infernal, Sheaim, Mercurian, Bannor, Calabim} × {default, raging barbarians, aggressive AI}, 300 turns each;
   * also on the checked build (`CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true`).
 * Fix or document what it finds (§6). Exit: the matrix is clean.
+* **As built (done).** No ffh-core, ffh-ai, ffh-cli or `controller.rs` edit; rules findings are reported for their owners (below), not fixed here.
+  * **Driver** (`soak::run`, the T5 policy on the session API):
+    * production: idle cities with manual production get the AI's `choose_production`; cities with odd ids are set to automated production with `do_task SET_AUTOMATED_PRODUCTION` (the human automation path: the rules ask `HumanController`, which asks its advisor);
+    * research, event popups and votes are answered with the AI's choice through `research`, `event` and `vote`, except on one turn in seven (`QUIET_EVERY`): then they are left open and the end-turn gate is forced, so C++'s handling of unanswered popups runs too (closed events, the vote's extra turn then abstain, the `AI_chooseResearch` pick after turn 4);
+    * blocking decisions take the advisor's pick (`AdvisorAnswerer`);
+    * the AI moves the human's units with `Controller::play_turn` (the rules' mission API), repeated while it moves something (at most 20 times), the session running the human's missions in between;
+    * `end_turn`, forced if the gate asks.
+  * **Checks**: `check.rs` every 5 turns (`#[path]` reuse, F20); at most one active player turn; `save(load(save)) == save` and the sidecar's JSON round trip every 25 turns. A command the session offered (a `pending` choice) and then refused is a failure, as is a `Stuck` turn or a panic.
+  * **Repro.** The soak keeps no journal: the AI moves units through rules calls, not commands, so a journal would not replay. Every game is deterministic, so the repro is the game's own `ffh-play soak run ...` line, plus `--resume <autosave>` when `--saves` kept the last 3 autosaves; a game resumed from an autosave ends with the same save bytes as the uninterrupted one (`tests/soak.rs`, `tests/cli.rs`). A caught panic prints its message, location and the workspace frames of the backtrace (exit 101); `STUCK` exits 4, `ERROR` (a refused command, a failed check) 5. `--panic-at T` tests the report.
+  * **Infernals and Mercurians** are not playable at the start (`bPlayable` 0): FfH spawns them mid-game and offers a human founder control of them (`reassignPlayer`), which the port has no hook for (§5.2). Their soak plays an AI-only game with the same settings. At turn 30 (`--spawn-turn`) player 0 founds them through the FfH Python ports: the Infernal Pact tech (`onTechAcquired`), or the Mercurian Gate in its capital (`onBuildingBuilt`; the Mercurians join its team). The new player is taken over at the next turn boundary (`Session::take_over`).
+  * **Matrix change.** The design's "aggressive AI" axis is a no-op in the port. No rules or AI code reads `GAMEOPTION_AGGRESSIVE_AI`: C++ uses it only in CvPlayerAI/CvTeamAI/CvCityAI/CvUnitAI and in the Python `cf.warScript` / `dogpile`, which the new AI replaces. All 36 of its games had the checksum of the matching default game. It is replaced by two sets of game options that only act on human players, and so never ran in ffh-stress's AI-only games:
+    * `occ`: one-city challenge, no healing for humans;
+    * `challenges`: cut losers, high to low, increasing difficulty, flexible difficulty.
+
+    The default matrix is 2 seeds × {tiny, small, standard} × {Kuriotates, Infernal, Sheaim, Mercurians, Bannor, Calabim} × {default, raging barbarians, `occ`, `challenges`}, 300 turns: 144 games. `ffh-play soak` runs each game in a child `soak run` with a timeout, `--jobs` at a time, then prints a summary and an optional TSV. The summary has counts per civilization, size and option set, the human's cities against the AI civs', and every distinct failure with its repro commands.
+  * **Runs** (4 cores; CPU time including the child processes):
+    * release, the design's first matrix (with aggressive AI): 108 games, 11.7 CPU minutes;
+    * release, `occ` and `challenges`: 72 games, 6.7 CPU minutes;
+    * checked build (debug assertions and overflow checks), the 144-game default matrix: 14.9 CPU minutes; every game ended with the checksum of the same game on the release build;
+    * release, seeds 3 and 4 of the default matrix: 144 games, 13.4 CPU minutes.
+
+    In all, 468 games took 46.7 CPU minutes. Nothing was trimmed: every seed, size and civilization, 300 turns each. Every game passed: no panic, no `Stuck`, no refused command, no failed invariant or save round trip. What the three release runs exercised:
+    * 3,181 event popups answered and 4 votes;
+    * 1,282 popups left open, and the end-turn gate forced 1,076 times;
+    * 168 `AI_chooseResearch` picks and 613 cities set to automated production;
+    * 131 keep/raze and 41 free-tech decisions;
+    * 108 Infernal or Mercurian players taken over;
+    * the human moved to another slot in 24 of the 36 `challenges` games of each 144-game run (twice in 2 games).
+
+    No election came up and only 4 votes, as few vote sources (the council civics) are adopted in 300 turns. The election modal is the one blocking decision the soak did not reach; a soak option that adopts a council civic would.
+  * **Found and fixed (ffh-play).** The session kept its `human` when FfH moved the human to another slot (F23). Once High to Low (or Impersonate Leader) moved the human, the turn of the new human slot never ended: the build before the fix stops `ffh-play soak run --seed 2 --size tiny --civ kuriotates --options challenges` with `Stuck` at turn 50. The session now follows the human after every rules call: it drains the log for the old slot, rebuilds the fog and moves the active player as C++ does. `Stats::reassigned` counts the moves. Tests:
+    * `decisions.rs` casts Impersonate Leader through `do_command` (a human-only spell, with no `bAllowAI`), plays the impersonated civilization until the timer moves the human back, and checks that a save of it resumes as that player;
+    * `soak.rs` `human_only_options`.
+  * **Reported for ffh-core** (not edited here):
+    * `reassign_player_advanced` does not move `active_player` as `CvInitCore::reassignPlayerAdvanced` does (`if active == old { active = new } else if active == new { active = old }`, CvInitCore.cpp:474-482). The port's comment calls this UI, but `active_player` gates rules here: QUICK_MOVES mission timers (the options move to the new slot, the active player stays behind), the `doResearch` popup call, and `getDeclareWarMove` visibility. Repro: a human at slot 0 with `active_player = Some(0)`; a Gibbon Goetia of it in player 1's city casts `SPELL_IMPERSONATE_LEADER`; afterwards `players[1].human` is true and `active_player` is still `Some(0)`. The session moves it after the rules call; the rest of that rules call still sees the old value.
+    * Log texts with unresolved keys, in addition to P1's city names and placeholders: civilization descriptions ("was captured by the TXT_KEY_CIV_BARBARIAN_DESC") and unit names ("TXT_KEY_UNIT_WARRIOR died attacking TXT_KEY_UNIT_ARCHER"). Display only.
+    * The soak found no rules crash, invariant failure or save asymmetry in the human branches.
+  * **For the ffh-ai owners.** P1 asked P2 to look at the human's weak expansion. Over the 108 design games the AI-as-human ends with 4.8 cities and the AI civs with 5.4. Part of the gap is the rules:
+    * Noble's AI-only modifiers (construct 85%, unit supply 50%, inflation 50%) do not apply to humans;
+    * a human Kuriotates city stays at radius 2 (no `confirm_settlement` hook, §5.2): human Kuriotates end with 2.6 cities against 5.8.
+
+    The rest is the AI:
+    * the starting warrior does not garrison the new capital, which barbarians took at turn 7 in `s2 STANDARD SHEAIM`, killing the human;
+    * 7 of the 108 games ended with a dead human, 3 of them that game;
+    * ffh-ai neither reads `GAMEOPTION_AGGRESSIVE_AI` nor runs the FfH war scripts.
+
+    The session's own semantics do not slow the human down: production is deferred to the next control point (no turn lost) and AutoMoves runs the queued moves; traced, the AI-as-human's settler timing matched the AI players'.
 
 **P3 — views and queries (about 2.5k plus 0.4k tests).**
 * Scope:
@@ -871,7 +921,9 @@ Each phase is independently testable and committable. `cargo build --release && 
   5. Election deferral (keep the selection when `None`).
   6. Log recipients: tag each `log.msg` with who C++ sends it to (a player, or a recipient rule such as "met both teams" / "revealed the city" / "voting members" / "everyone" with its ids), so `LogFog` (`view/fog.rs`) stops matching message texts and the event world news (held back today) reach the players who met the event's player.
   7. Only if testers find timing differences: engine-first's opt-in C++ popup queue (`takes_popups`, `Player::popups`, save format bump).
-* **Notes for other owners** (found in the P0 review; no behaviour change, not edited here):
+  8. (P2) The founder's "take control" popup after the Infernal Pact and the Mercurian Gate (`reassignPlayer`), e.g. `take_control(g, p, new) -> Option<bool>` (default: no). Until then the soak reaches these civilizations through take-over.
+* **Notes for other owners** (found in the P0 review and the P2 soak; not edited here):
+  * (P2) ffh-core `reassign_player_advanced` does not move the active player (F23; details and repro under P2's "As built"); the session does it after the rules call.
   * ffh-core `structs.rs`: `PlayerVote`'s doc ("a player id"), `PlayerVote::for_player` and `PlayerVote::player()` treat a non-negative value as a player; in C++ it is a `TeamTypes` (team votes only: `CvGame::castVote` compares it with `getTeam()`, and votes.rs's own `team_vote` builds it from a `TeamId`). ffh-play uses `names::voted_team`.
   * ffh-data `Text::name` cuts a text at the first ':' as FfH2's "gendered forms" separator, but English entries have no forms, so it shortens prose: ffh-core's vote option texts (votes.rs `kVoteOption.szText`, "Election cancelled: ...") show "Global Civic" for `VOTE_LIBERTY` and drop the effect of 8 other votes ("Single Currency" for "Single Currency: +1 Trade Route ..."). ffh-play's `names::display` uses the full text.
 
@@ -905,7 +957,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
    * Load each with fresh controllers and continue with the same bot. Checksums and later saves must equal the uninterrupted run.
    * Also check `save(load(save)) == save`.
 4. **T4 — journal replay.** Replay T1's journal from the header and from a mid-game checkpoint; the final saves must be byte-identical and the stamps must match. A deliberately corrupted journal must be detected at the first mismatched stamp.
-5. **T5 — AI-as-human soak smoke** (the short CI variant of P2). Two seeds × 150 turns:
+5. **T5 — AI-as-human soak smoke** (the short CI variant of P2, `soak::run`; `tests/soak.rs` also checks the resume from an autosave, the Infernal and Mercurian take-over and the human-only option sets). Two seeds × 150 turns:
    * `AdvisorAnswerer`;
    * at each control point: idle cities via `advisor.choose_production`, research, pending events and votes answered through the commands with the advisor's choice, then `advisor.play_turn(g, h)` repeated while it moves something (at most 20 times), then `end_turn`;
    * invariants checked.
@@ -954,7 +1006,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
 
 | Risk | Mitigation |
 |---|---|
-| **About 280 human-only rules branches have never run**: keep/raze/disband popups, human research paths, the human-team governor, human mission timers, `active_player` branches (quick moves, `getDeclareWarMove` visibility, `setDisableHuman`), and AI-only `isHuman()` spell checks evaluated for a human. | P2 soak over the matrix (also on the checked build) before anyone plays. T1/T5 in CI. `catch_unwind` plus autosave plus journal gives deterministic repro. Core fixes ship as separate commits with regression tests. |
+| **About 280 human-only rules branches have never run**: keep/raze/disband popups, human research paths, the human-team governor, human mission timers, `active_player` branches (quick moves, `getDeclareWarMove` visibility, `setDisableHuman`), and AI-only `isHuman()` spell checks evaluated for a human. | P2 soak over the matrix (also on the checked build) before anyone plays, including the game options that act only on humans (one-city challenge, the FfH challenges). T1/T5 in CI. `catch_unwind` plus autosave plus journal gives deterministic repro. Core fixes ship as separate commits with regression tests. |
 | **Reads perturbing determinism**: saved RefCell finders, the `ai_bonus_value` memo, and **rank caches filled by happiness displays** (F11). | Session-owned interface finder; allow-list; `QueryGuard` snapshot/restore on every read (including the bot, Answerer modals and report snapshots); T10 and the save-bytes unit test. |
 | **Research double call** (F5): asking twice, or the answer wiped by the forced clear. | Research-site rule with a slice-scoped mark; T6 covers both paths; the phase-7 `ai_choose_research` hook removes the heuristic. |
 | **Deferred events lost on load** (they are not in `Game`). | Session sidecar (`.ffhsess`), as C++ saves `m_listPopups`; T3 saves with an event pending. Take-over of foreign saves starts with an empty list (documented). |
