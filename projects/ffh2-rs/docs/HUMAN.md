@@ -34,7 +34,8 @@ Noir", embedded in the binary like the rest of the page): the map is a night-tim
 the interface a scriptorium at night: soot panels with double rules and gilt nails, the Vigil
 bitmap capitals for titles and numbers, the Vigil Book face for buttons and short labels (long
 texts, such as events and help, stay in the system serif), the game's yield, commerce, mana and
-Armageddon icons, and an illuminated initial on events, votes and decisions. Until the art has
+Armageddon icons (and in the screens those of promotions, unit classes, buildings, specialists,
+religions and civic categories), and an illuminated initial on events, votes and decisions. Until the art has
 loaded (a moment after the page) the page shows the plain look of P5, and keeps it if the art
 cannot load.
 
@@ -70,7 +71,8 @@ Units face east, and west after a move west. Zoom (`+` `-`, the wheel) goes by w
 32, 64 (the default), 96 and 128 screen pixels a plot, and two chart steps, 16 and 8 (flat
 colours, owners' washes, city dots, units as small squares). Hovering a plot shows a tooltip
 (terrain, resource, improvement, owner, yields and defence while you see it, the city and units
-there), and with units selected the path: dots from plot to plot that march, a roundel with the
+there; with the art, the yields, defence and move cost by their icons), and with units selected
+the path: dots from plot to plot that march, a roundel with the
 turn of arrival at each turn's end, the part beyond this turn's moves dimmer, ochre for a route
 to build; an attack ends in crimson brackets with the odds of winning on a chip, and the tooltip
 gives the odds of winning and retreating with both strengths and their modifiers. The layers
@@ -127,6 +129,9 @@ promotions; upgrades with their price; load, unload, wake, cancel, delete. The s
 Civ4's button order (Orders, Build, Great person, Religion, Cargo, Spells, Promotions,
 Upgrades). "Promote…" lists the promotions with their help, "details" by Spells lists every
 spell with its help and whether it can be cast now. Units in a transport are listed under it.
+With the art, the panel's head shows the lead unit's figure in its owner's colours, each row its
+combat class, strength, health bar, moves and level, the lead unit's promotions are seals under
+the list (and each promotion button carries its seal).
 When a group is done, the next one waiting for orders on the plot it left, then on its plot,
 then the next in Civ4's group cycle is selected, as in Civ4 (not with the player option "No
 unit cycling", Tools → Options). As in Civ4, the cycle (`W`, `Enter`, the next group after an

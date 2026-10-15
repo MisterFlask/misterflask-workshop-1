@@ -12,7 +12,7 @@
 import { loadArt } from "../art/art.js";
 import * as UI from "../art/ui/ui.js";
 import { assignHeraldry } from "./stacks.js";
-import { setTextHook } from "./dom.js";
+import { setTextHook, setTypeIconHook } from "./dom.js";
 import { setIconHook } from "./markup.js";
 import { setIlluminate } from "./modals.js";
 
@@ -89,6 +89,7 @@ export function loadLook() {
       installChrome(art);
       setTextHook(hookText);
       setIconHook(markupIcon);
+      setTypeIconHook(hookTypeIcon);
       setIlluminate(illuminate);
       decorate(document.body);
       document.documentElement.classList.add("art");
@@ -268,6 +269,23 @@ export function typeIcon(kind, type, size = 16, opts = {}) {
   if (!look.art) return null;
   const r = UI.iconFor(look.art, kind, look.art.typeName(kind, type), size);
   return r ? iconEl(r.name, { ...opts, remap: r.remap }) : null;
+}
+
+/** A promotion's seal with its level's pips (ui.js `promotionEl`), or null before the art
+ *  loaded; `type` is a type name or an index. */
+export function promotionIcon(type, { u = look.u, title } = {}) {
+  if (!look.art) return null;
+  const name = look.art.typeName("promotion", type);
+  if (!name || !look.art.resolve("promotion", name)) return null;
+  return UI.promotionEl(look.art, name, { u, dpr: look.dpr, title: title ?? name });
+}
+
+/** The type icons of the screens that do not import this module (dom.js `typeIconOf`): the
+ *  civic categories (realm.spr `civic_<option>`) and look.js `typeIcon`'s kinds. */
+function hookTypeIcon(kind, index, size) {
+  if (kind !== "civicoption") return typeIcon(kind, index, size);
+  const t = look.data?.tables?.CivicOptionType?.[index]?.type;
+  return t ? iconEl(`icon16/civic_${t.replace(/^CIVICOPTION_/, "").toLowerCase()}`, { cls: "head-icon" }) : null;
 }
 
 /** A yield (0-2), commerce (0-3) or other interface icon (`UI.iconName`). */

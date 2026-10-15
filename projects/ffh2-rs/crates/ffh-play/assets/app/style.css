@@ -124,6 +124,7 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 @keyframes pulse { from { opacity: 1; } to { opacity: 0.3; } }
 #empire { display: flex; gap: calc(var(--u) * 5); flex-wrap: wrap; align-items: center; flex: 0 1 auto; min-width: 0; font-variant-numeric: lining-nums tabular-nums; }
 .stat { white-space: nowrap; display: inline-flex; align-items: center; gap: calc(var(--u) * 2); }
+.stat > span:not(.num) + .num { margin-left: 3px; }
 .stat .icon.gold { color: var(--c-ochre); }
 .stat.research { background: none; border: 1px solid transparent; padding: 1px 6px; }
 .stat.research:hover { border-color: var(--line); }
@@ -131,7 +132,7 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .bar .fill { display: block; height: 100%; background: var(--c-frost); }
 .armageddon .icon { color: var(--c-crimson); }
 #menu { display: flex; gap: calc(var(--u) * 2); flex-wrap: wrap; align-items: center; }
-#phase .turn { font-weight: normal; display: inline-flex; align-items: center; gap: 4px; color: var(--c-vellum); }
+#phase .turn { font-weight: normal; display: inline-flex; align-items: center; gap: 7px; color: var(--c-vellum); }
 #phase .year { display: inline-flex; align-items: center; }
 .num { color: var(--c-vellum); display: inline-flex; align-items: center; }
 .stat .warn, .stat.warn { color: var(--warn); }
@@ -423,6 +424,17 @@ html.art .cplot .ccity { position: absolute; top: 1px; left: 3px; font-size: 10p
 html.art .cgrid { max-width: 392px; }
 html.art button.civic.current { box-shadow: inset calc(var(--u)) 0 0 var(--c-lichen); color: var(--c-vellum); }
 html.art #phase-text { color: var(--c-stone); }
+
+/* Type icons before a heading or a name (civic categories, religions). */
+.head-icon, td > canvas.ui-px:first-child { vertical-align: middle; margin-right: 4px; }
+.civic-option h4 { display: flex; align-items: center; gap: 4px; }
+
+/* The tooltip's yields and the selection's seals. */
+.tip-yields { display: flex; gap: calc(var(--u) * 4); align-items: center; flex-wrap: wrap; }
+.tip-yields .sr, .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.seals { display: flex; flex-wrap: wrap; gap: 2px; margin: 4px 0 2px; }
+.unit-name .ui-px { margin-right: 1px; }
+button.action canvas.ui-px { margin-right: 2px; }
 
 /* A page's text (events, votes, decisions) with its illuminated initial. */
 .page-text { display: flow-root; font-size: 15px; }

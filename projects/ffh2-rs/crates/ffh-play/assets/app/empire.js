@@ -5,7 +5,7 @@
 
 import * as api from "./api.js";
 import { S, dname, info, turns, me } from "./state.js";
-import { h, toast } from "./dom.js";
+import { h, toast, typeIconOf } from "./dom.js";
 import { openModal } from "./modals.js";
 import { run } from "./commands.js";
 import { plain } from "./markup.js";
@@ -148,7 +148,7 @@ export async function openCivics() {
     const columns = c.options.map((o) =>
       h(
         "div.civic-option",
-        h("h4", dname("CivicOptionType", o.option)),
+        h("h4", typeIconOf("civicoption", o.option), dname("CivicOptionType", o.option)),
         o.civics.map((x) => {
           const chosen = picked.includes(x.civic);
           return h(
@@ -222,7 +222,7 @@ export async function openReligion() {
       h(
         "tr",
         { class: r.state_religion === x.religion ? "state" : "", "data-religion": x.religion },
-        h("td", { title: helpOf("ReligionType", x.religion) }, dname("ReligionType", x.religion), r.state_religion === x.religion ? h("span.badge", "state religion") : null),
+        h("td", { title: helpOf("ReligionType", x.religion) }, typeIconOf("religion", x.religion, 16), dname("ReligionType", x.religion), r.state_religion === x.religion ? h("span.badge", "state religion") : null),
         h("td", x.founded ? "founded" : h("span.dim", "not founded")),
         h("td", x.holy_city !== null ? (S.cities.get(x.holy_city)?.name ?? `city ${x.holy_city}`) : x.our_holy_city ? "yours" : h("span.dim", "-")),
         h("td", String(x.our_cities)),

@@ -811,10 +811,25 @@ async function loadSave(name, turn) {
   await new Promise((r) => setTimeout(r, 300));
 }
 
+/** Clicks `sel` once it has stood still for a moment (a dialog whose body loads after it
+ *  opens, such as the city screen, moves its buttons). */
+async function clickSteady(sel, ms = 10000) {
+  const t0 = Date.now();
+  let last = "";
+  let still = 0;
+  while (still < 3 && Date.now() - t0 < ms) {
+    const r = await b.eval(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return ""; const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].join(","); })()`);
+    still = r && r === last ? still + 1 : 0;
+    last = r;
+    await new Promise((res) => setTimeout(res, 120));
+  }
+  await click(sel);
+}
+
 /** Presses "Later" on the popup whose title matches `re` (waiting for it). */
 async function later(re) {
   await until(async () => (await modalTitles()).some((t) => re.test(t)), `a popup ${re}`);
-  await click('#modals .backdrop:not(.under) .modal-buttons button[data-value="later"]');
+  await clickSteady('#modals .backdrop:not(.under) .modal-buttons button[data-value="later"]');
   await until(async () => !(await modalTitles()).some((t) => re.test(t)), `the popup ${re} set aside`);
 }
 

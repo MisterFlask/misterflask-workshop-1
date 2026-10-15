@@ -10,7 +10,7 @@ import { openModal } from "./modals.js";
 import { run, actionCommand, sending } from "./commands.js";
 import { plotDistance, plotIndex, humanize } from "./tiles.js";
 import { render as markup } from "./markup.js";
-import { look, iconEl, unitIcon, barEl, pix } from "./look.js";
+import { look, iconEl, unitIcon, barEl, pix, typeIcon, promotionIcon, uiIcon } from "./look.js";
 
 /** An 8 px icon of the ui set, or the glyph before the art loaded. */
 const icon8 = (name, glyph, title) => iconEl(`icon8/${name}`, { title }) ?? glyph;
@@ -506,7 +506,17 @@ function showTip() {
   if (m.owner[i] >= 0) lines.push(h("div.dim", `Owner: ${playerName(m.owner[i])}`));
   const p = preview.plot;
   if (p && p.x === x && p.y === y && p.yields) {
-    lines.push(h("div", `Yields ${p.yields[0]} food, ${p.yields[1]} production, ${p.yields[2]} commerce · defence ${p.defense}% · move cost ${p.move_cost}`));
+    lines.push(
+      look.art
+        ? h(
+            "div.tip-yields",
+            p.yields.map((v, j) => h("span.yield-n", { title: dname("YieldType", j) }, uiIcon("yield", j, 8), String(v))),
+            h("span.yield-n", uiIcon("icon", "defense", 8), `${p.defense}%`),
+            h("span.yield-n", uiIcon("icon", "moves", 8), String(p.move_cost)),
+            h("span.sr", `Yields ${p.yields[0]} food, ${p.yields[1]} production, ${p.yields[2]} commerce · defence ${p.defense}% · move cost ${p.move_cost}`),
+          )
+        : h("div", `Yields ${p.yields[0]} food, ${p.yields[1]} production, ${p.yields[2]} commerce · defence ${p.defense}% · move cost ${p.move_cost}`),
+    );
   }
   const city = cityAt(x, y);
   if (city) lines.push(h("div.tip-city", `${city.capital ? "★ " : ""}${city.name}`, h("span.dim", ` (${playerName(city.owner)}${city.size !== null && city.size !== undefined ? `, size ${city.size}` : ""})`)));
@@ -704,6 +714,7 @@ function actionButton(a) {
       title: [key ? `[${key}]` : "", help ? markup(help).textContent : ""].filter(Boolean).join(" "),
       onclick: () => doAction(a),
     },
+    a.kind === "promotion" ? promotionIcon(a.promotion, { u: 1 }) : null,
     actionLabel(a) + extra,
     key ? h("kbd", key) : null,
   );
@@ -731,6 +742,7 @@ function unitRow(u, selected) {
     h(
       "span.unit-name",
       u.transport !== null && u.transport !== undefined ? h("span.dim", "↳ ") : null,
+      u.unit_combat !== undefined && u.unit_combat !== null ? typeIcon("unitcombat", u.unit_combat, 8, { title: dname("UnitCombatType", u.unit_combat) }) : null,
       u.name ?? dname("UnitType", u.type),
       u.promo_ready ? h("span.badge.promo", "promote") : null,
       u.summon_turns ? h("span.badge", { title: "A summoned unit: turns left" }, `${u.summon_turns}t`) : null,
@@ -822,7 +834,12 @@ export function renderPanel() {
   const way = waypoints && unitsKey(waypoints.units) === unitsKey(S.sel.units)
     ? h("p.mode-hint", `${waypoints.points.length === 1 ? "1 waypoint" : `${waypoints.points.length} waypoints`}: release Shift to send (Esc drops them).`)
     : null;
-  fill(panel, head, hint, way, list, tools, status, actions, others);
+  // The lead unit's promotions as their seals (docs/ART.md 11.5), with the level as pips.
+  const leadDetails = details.get(S.sel.units[0]);
+  const seals = look.art && leadDetails?.promotions?.length
+    ? h("div.seals", { title: leadDetails.promotions.map((p) => dname("PromotionType", p)).join(", ") }, leadDetails.promotions.map((p) => promotionIcon(p, { u: 1, title: dname("PromotionType", p) })))
+    : null;
+  fill(panel, head, hint, way, list, seals, tools, status, actions, others);
 }
 
 /** The promotions the selection can take, with their descriptions: a click promotes (every

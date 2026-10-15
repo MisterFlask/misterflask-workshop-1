@@ -9,6 +9,19 @@ export function setTextHook(f) {
   textHook = f;
 }
 
+/** The icon of a game type (`(kind, index, size) => Node | null`), set by look.js once the art
+ *  has loaded; `typeIconOf` answers null before that (and in the node tests). Kinds: those of
+ *  look.js `typeIcon` and "civicoption" (the civic categories). */
+let iconOf = null;
+
+export function setTypeIconHook(f) {
+  iconOf = f;
+}
+
+export function typeIconOf(kind, index, size = 16) {
+  return iconOf?.(kind, index, size) ?? null;
+}
+
 /** The elements whose text children go through the text hook. */
 const HOOKED = new Set(["BUTTON", "H2", "H3", "H4", "KBD"]);
 
