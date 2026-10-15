@@ -247,9 +247,10 @@ impl Session {
     }
 
     /// Runs the game until the human has control or the game ends (design §2.2). `on_slice` is
-    /// called after every `update()` while running (transports publish status there; it must
-    /// read only plain fields or go through a `QueryGuard`).
-    pub fn advance(&mut self, on_slice: &mut dyn FnMut(&Game)) -> Stop {
+    /// called after every `update()` while running, with the session (the HTTP transport
+    /// publishes status there and answers the queries queued meanwhile: `Session::query` reads
+    /// under a `QueryGuard`; plain fields of `s.g` may be read directly).
+    pub fn advance(&mut self, on_slice: &mut dyn FnMut(&Session)) -> Stop {
         let mut slices: u64 = 0;
         loop {
             match self.phase() {
@@ -294,7 +295,7 @@ impl Session {
                         self.boundary();
                         slices = 0;
                     }
-                    on_slice(&self.g);
+                    on_slice(self);
                     slices += 1;
                     if slices > WATCHDOG_SLICES {
                         return Stop::Stuck(diagnose(&self.g));

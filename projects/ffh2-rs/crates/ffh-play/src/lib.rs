@@ -5,7 +5,8 @@
 //! thread owns the `Game`; front-ends (a browser over HTTP, a JSONL agent over stdio) talk to
 //! it with one JSON envelope.
 //!
-//! Status: phases P0 (skeleton), P1 (session core, in-process API) and P2 (the soak).
+//! Status: phases P0 (skeleton), P1 (session core, in-process API), P2 (the soak), P3 (views and
+//! queries) and P4 (transports: the JSONL agent; the HTTP server follows).
 //! * [`json`]: the JSON value, writer and strict parser used by the protocol and the journal.
 //! * [`names`]: type names <-> indices for every info table and hard-coded C++ enum, so the
 //!   protocol accepts `"UNIT_WARRIOR"` or its index wherever a type is expected.
@@ -20,6 +21,8 @@
 //! * [`setup`], [`save`], [`journal`], [`bot`] (a scripted human for tests).
 //! * [`soak`]: the AI plays the human slot through the session over a settings matrix
 //!   (`ffh-play soak`), with ffh-stress's invariant checks.
+//! * [`query`], [`report`]: the protocol's queries and the turn report.
+//! * [`transport`]: the JSON envelope over stdio (`ffh-play agent`).
 
 pub mod bot;
 pub mod command;
@@ -36,6 +39,7 @@ pub mod selection;
 pub mod session;
 pub mod setup;
 pub mod soak;
+pub mod transport;
 pub mod view;
 
 pub use command::{CmdErr, CmdOk, Command, Confirm};

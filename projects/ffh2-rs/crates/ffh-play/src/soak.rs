@@ -441,7 +441,7 @@ pub fn run(game: &SoakGame, opts: &RunOptions, on_turn: &mut dyn FnMut(&Session)
     let until = s.g.start_turn + game.turns;
     let mut driver = Driver { ai: Ai::new(), stats, last_turn: i32::MIN };
     let end = loop {
-        let stop = s.advance(&mut |g| TURN.store(g.game_turn(), Ordering::Relaxed));
+        let stop = s.advance(&mut |s| TURN.store(s.g.game_turn(), Ordering::Relaxed));
         TURN.store(s.g.game_turn(), Ordering::Relaxed);
         match stop {
             Stop::Stuck(diag) => break End::Stuck(diag),
@@ -568,7 +568,7 @@ impl Driver {
             }
             let before = fingerprint(&s.g, h);
             self.ai.play_turn(&mut s.g, h);
-            if s.advance(&mut |g| TURN.store(g.game_turn(), Ordering::Relaxed)) != Stop::Human {
+            if s.advance(&mut |s| TURN.store(s.g.game_turn(), Ordering::Relaxed)) != Stop::Human {
                 return Ok(());
             }
             if fingerprint(&s.g, h) == before {

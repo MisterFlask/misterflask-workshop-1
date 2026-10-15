@@ -1,6 +1,6 @@
 //! `ffh-play`: human play for ffh2-rs (docs/PLAY_DESIGN.md, docs/HUMAN.md).
 //!
-//! Commands (serve, agent and bench come with later phases):
+//! Commands (serve and bench come with later phases):
 //!   ffh-play kinds                     list every named kind (info tables, GlobalTypes lists,
 //!                                      hard-coded C++ enums) with its source and count
 //!   ffh-play names [KIND] [--pretty]   JSON of the type names of one kind (`UnitType` or
@@ -31,6 +31,16 @@
 //!                                      the soak matrix (default: design §7 P2's; duplicates dropped), each
 //!                                      game in a child `soak run` (its repro has the check
 //!                                      settings); summary on stdout, exit 1 on failures
+//!   ffh-play agent [GAME] [--on-eof quit|end-turn] [--progress]
+//!                                      JSONL over stdin/stdout (design §4.1): requests in, replies
+//!                                      and events out; starts a new game unless --no-game,
+//!                                      --load or --take-over; exit 3 after a crash
+//!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
+//!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
+//!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
+//!                                      saves: a directory per game in DIR (default ./saves);
+//!                                      the new-game flags set members of --setup; --panic-at T
+//!                                      panics at turn T (a self-test of the crash report)
 
 use ffh_play::jobj;
 use ffh_play::json::Json;
@@ -38,6 +48,8 @@ use ffh_play::bot::Bot;
 use ffh_play::names::{self, Source, KINDS};
 use ffh_play::session::ReplayFrom;
 use ffh_play::soak::{self, batch, Matrix, RunOptions, SoakGame};
+use ffh_play::transport::stdio::{AgentOptions, OnEof};
+use ffh_play::transport::{HostOptions, Start};
 use ffh_play::{NewGame, Session, SessionOptions, Stop};
 
 fn usage() -> ! {
@@ -47,7 +59,11 @@ fn usage() -> ! {
          \x20      | replay JOURNAL [--from SAVE] | journal print JOURNAL\n\
          \x20      | soak run [SETTINGS] [--saves DIR] [--resume SAVE] [--check-every N] [--save-check-every N]\n\
          \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--speeds ..] [--turns N] [--jobs N] [--timeout SECS]\n\
-         \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list] (see the source header)"
+         \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
+         \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
+         \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
+         \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
+         \x20        [--panic-at T]   (see the source header)"
     );
     std::process::exit(2)
 }
@@ -364,6 +380,112 @@ fn cmd_soak(args: &[String]) {
     }
 }
 
+/// The game options of `agent` (see the source header).
+struct GameArgs {
+    host: HostOptions,
+    /// `--setup` with the new-game flags merged in.
+    setup: Json,
+    /// A new-game flag was given (`--new`, `--setup`, `--seed`, ...).
+    new: bool,
+    no_game: bool,
+    load: Option<std::path::PathBuf>,
+    take_over: Option<std::path::PathBuf>,
+    player: Option<u8>,
+}
+
+impl GameArgs {
+    fn new() -> GameArgs {
+        GameArgs { host: HostOptions::default(), setup: Json::obj(), new: false, no_game: false, load: None, take_over: None, player: None }
+    }
+
+    /// Takes the flag at `args[*i]` (and its value) if it is a game option.
+    fn take(&mut self, args: &[String], i: &mut usize) -> bool {
+        let fail = |e: String| -> ! {
+            eprintln!("ffh-play: {e}");
+            std::process::exit(2)
+        };
+        let flag = args[*i].as_str();
+        match flag {
+            "--saves" => self.host.saves = Some(flag_value(args, i).into()),
+            "--no-saves" => self.host.saves = None,
+            "--autosaves" => self.host.autosave_keep = flag_value(args, i).parse().unwrap_or_else(|_| usage()),
+            "--panic-at" => self.host.panic_at = Some(flag_value(args, i).parse().unwrap_or_else(|_| usage())),
+            "--setup" => {
+                let j = Json::parse(flag_value(args, i)).unwrap_or_else(|e| fail(format!("--setup: {e}")));
+                if j.as_obj().is_none() {
+                    fail("--setup: expected a JSON object".into());
+                }
+                for (k, v) in j.as_obj().unwrap_or_default() {
+                    self.setup.set(k, v.clone());
+                }
+                self.new = true;
+            }
+            "--seed" | "--opponents" => {
+                let v: i64 = flag_value(args, i).parse().unwrap_or_else(|_| usage());
+                self.setup.set(&flag[2..], v);
+                self.new = true;
+            }
+            "--world" | "--civ" | "--leader" | "--handicap" | "--speed" => {
+                let v = flag_value(args, i).to_string();
+                self.setup.set(&flag[2..], v);
+                self.new = true;
+            }
+            "--new" => self.new = true,
+            "--no-game" => self.no_game = true,
+            "--load" => self.load = Some(flag_value(args, i).into()),
+            "--take-over" => self.take_over = Some(flag_value(args, i).into()),
+            "--player" => self.player = Some(flag_value(args, i).parse().unwrap_or_else(|_| usage())),
+            _ => return false,
+        }
+        true
+    }
+
+    /// How to start; `default_new`: a new game when nothing is said.
+    fn start(&self, default_new: bool) -> Start {
+        let picked = [self.new, self.no_game, self.load.is_some(), self.take_over.is_some()].iter().filter(|&&b| b).count();
+        if picked > 1 || self.player.is_some() != self.take_over.is_some() {
+            eprintln!("ffh-play: give one of the new-game flags, --no-game, --load SAVE or --take-over SAVE --player P");
+            std::process::exit(2);
+        }
+        if let Some(p) = &self.load {
+            Start::Load(p.clone())
+        } else if let (Some(p), Some(player)) = (&self.take_over, self.player) {
+            Start::TakeOver(p.clone(), ffh_core::ids::PlayerId(player))
+        } else if self.new || (default_new && !self.no_game) {
+            Start::New(self.setup.clone())
+        } else {
+            Start::None
+        }
+    }
+}
+
+fn cmd_agent(args: &[String]) {
+    let mut game = GameArgs::new();
+    let mut on_eof = OnEof::Quit;
+    let mut progress = false;
+    let mut i = 0;
+    while i < args.len() {
+        if !game.take(args, &mut i) {
+            match args[i].as_str() {
+                "--on-eof" => {
+                    on_eof = match flag_value(args, &mut i) {
+                        "quit" => OnEof::Quit,
+                        "end-turn" => OnEof::EndTurn,
+                        _ => usage(),
+                    }
+                }
+                "--progress" => progress = true,
+                _ => usage(),
+            }
+        }
+        i += 1;
+    }
+    let opts = AgentOptions { start: game.start(true), host: game.host, on_eof, progress };
+    let stdin = std::io::BufReader::new(std::io::stdin());
+    let code = ffh_play::transport::stdio::run(Box::new(stdin), Box::new(std::io::stdout()), &opts);
+    std::process::exit(code);
+}
+
 fn cmd_kinds() {
     let d = ffh_data::global();
     for k in KINDS {
@@ -460,6 +582,7 @@ fn main() {
         "replay" => cmd_replay(&args[1..]),
         "journal" => cmd_journal(&args[1..]),
         "soak" => cmd_soak(&args[1..]),
+        "agent" => cmd_agent(&args[1..]),
         _ => usage(),
     }
 }
