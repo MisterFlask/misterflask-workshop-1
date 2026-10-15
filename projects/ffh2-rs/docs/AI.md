@@ -393,8 +393,12 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   city defense, first strikes, the attacker's health): collateral attackers first, then the
   strongest; a lost fight still wounds (the rounds won before dying), collateral damage hits
   the other defenders, siege engines that can bring the walls down in three turns count as
-  having done so. The force covers the city when the defenders fall with a fifth of the
-  attackers (at least one) to spare. Unseen cities: 2 + population/5 defenders for a civ,
+  having done so. The force covers the city when the defenders fall; committing to *march* wants
+  a fifth of the attackers (at least one) to spare (so stacks do not advance understrength), but a
+  committed force already positioned next to or beside the city *strikes at acceptable odds* -- it
+  expects to clear the defenders without keeping that reserve -- rather than retreating to muster
+  an overwhelming force against a target that only hardens while it waits (a lone unit still never
+  qualifies: it cannot clear a city). Unseen cities: 2 + population/5 defenders for a civ,
   1 + age/25 for a barbarian town.
 - *Commitment*: at war every stack on the landmass within 24 plots; against barbarians the
   nearest stacks until they hold twice the force needed (plus those already on their way).

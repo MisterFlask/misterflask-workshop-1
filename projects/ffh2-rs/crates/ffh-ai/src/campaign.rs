@@ -570,11 +570,17 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
     let near = units_of(&|d, _| d <= 2);
     let adj: Vec<UnitId> = units_of(&|d, _| d <= 1).into_iter().filter(|&u| g.unit_moves_left(u) > 0).collect();
     let defs = visible_defenders(g, team, tp);
+    // We commit to marching only with a confident force (a reserve to spare: `spare = true`), so
+    // stacks do not advance understrength; but once a committed force is positioned next to or
+    // beside the city it strikes at ACCEPTABLE odds (`spare = false`: it expects to clear the
+    // defenders, without insisting on keeping a reserve) rather than retreating to muster an
+    // overwhelming force against a target that only hardens while it waits. Taking territory at
+    // acceptable risk is the point; a lone unit still never qualifies (it cannot clear a city).
     let (ok_all, ok_near, ok_adj) = if cand.visible {
         (
             covers(g, cand.city, tp, &defs, &all, true, true),
-            covers(g, cand.city, tp, &defs, &near, true, true),
-            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, true, false),
+            covers(g, cand.city, tp, &defs, &near, false, true),
+            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, false, false),
         )
     } else {
         // Unseen: enough to go and look (two more than the defenders we assume).
