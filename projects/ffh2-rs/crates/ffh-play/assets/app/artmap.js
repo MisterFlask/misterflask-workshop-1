@@ -3,30 +3,37 @@
 //
 // The terrain (ground, rivers, roads, improvements, relief, features, city sprites and their
 // light, resources, borders, fog: compose.js `renderMap(.., {only: 'terrain'})`) is drawn into
-// offscreen chunks of CHUNK x CHUNK plots at the art's own scale (1x) and blown up to the zoom's
-// integer scale when the frame is drawn, so every zoom shares one cache, a zoom costs nothing,
-// and panning blits. A chunk is redrawn only when a tile it depends on changed (map deltas) or a
-// city near it did (size tier, owner, capital, light, walls). Chunks not drawn yet are drawn a
-// few per frame within a time budget (FRAME_MS) and shown meanwhile as their chart (flat
-// palette colours); once the view is complete the chunks around it are drawn while the page is
-// idle. Each frame then draws the vignette, the units (sprites row by row, the city banners and
+// chunks of CHUNK x CHUNK plots at the art's own scale (1x) and blown up to the zoom's integer
+// scale when the frame is drawn, so every zoom shares one cache, a zoom costs nothing, and
+// panning blits. The chunks are drawn by a worker (artworker.js), a few at a time, the ones in
+// view first and then those around it, so a frame never waits for the art; a chunk not drawn
+// yet shows its chart (flat palette colours) meanwhile. Without a worker (or until it is ready)
+// the page draws them itself within a time budget per frame. A chunk is drawn again only when a
+// tile it depends on changed (map deltas) or a city near it did (size tier, owner, capital,
+// light, walls).
+//
+// Each frame then draws the vignette, the units (sprites row by row, the city banners and
 // plaques, the stack standards), the tile marks, the path preview with the odds, and the
 // minimap. The two smallest zoom steps are the chart (docs/ART.md 3.2: flat colours, owner
 // washes, city dots; no sprites).
 
-import { S, tname, info, me, isBarbarian } from "./state.js";
+import { S, tname, info, me } from "./state.js";
 import * as T from "./tiles.js";
-import { look, UI, ownerStyles, unknownOwner } from "./look.js";
+import { look, UI, heraldry, KIND_TABLES } from "./look.js";
 import { renderMap, makePlots, fromApiMap } from "../art/compose.js";
 import { TILE } from "../art/art.js";
-import { CHUNK, artScale, rowOf, rowChunksOfTiles, changedTiles, stackState, citySignature, updateFacing, tierOf } from "./stacks.js";
+import { CHUNK, artScale, rowOf, rowChunksOfTiles, changedTiles, stackState, citySignature, updateFacing, OwnerStyles } from "./stacks.js";
+import { drawChunkLayers } from "./chunks.js";
 
 /** The terrain cache's budget, in art pixels (least recently used chunks go first). */
 const PIXEL_BUDGET = 24e6;
-/** The time a frame may spend drawing chunks (at least one is drawn per frame). */
+/** Without the worker: the time a frame may spend drawing chunks (at least one per frame), and
+ *  an idle slice drawing the chunks around the view. */
 const FRAME_MS = 24;
-/** The time an idle slice may spend drawing the chunks around the view. */
 const IDLE_MS = 12;
+/** Chunks the worker may hold at once (the page asks for more as they come back, the ones in view
+ *  first). */
+const IN_FLIGHT = 3;
 /** Chart pixels per tile (the chart zoom steps and the placeholders of chunks not drawn yet). */
 const CHART = 4;
 
@@ -39,30 +46,111 @@ export class ArtMap {
     this.art = look.art;
     this.chunks = new Map();
     this.charts = new Map();
+    /** A chunk's generation (key "cx,cr" -> n): bumped when it is dropped, so a chunk the worker
+     *  drew before the drop is not taken. */
+    this.gens = new Map();
+    this.inflight = new Map();
     this.pixels = 0;
     this.clock = 0;
     this.map = null;
     this.cmap = null;
     this.plots = null;
     this.ccities = [];
-    this.cityById = new Map();
     this.sigs = new Map();
     this.lastSize = new Map();
     this.facing = new Map();
-    this.owners = new Map();
+    this.owners = new OwnerStyles(this.art, []);
+    this.ownerSpecs = [];
+    this.ownersSig = "";
     this.viewSeen = null;
     this.miniCanvas = null;
     this.idleTimer = null;
     this.vig = null;
     this.fogRgb = new Map();
+    this.worker = null;
+    this.workerReady = false;
     /** Frame statistics (`window.ffh.mapView.art.stats`): the last frame's milliseconds by
-     *  phase, chunks drawn, the slowest chunk. */
-    this.stats = { frames: 0, frame: 0, phases: {}, chunksDrawn: 0, chunkMs: 0, chunkMax: 0, placeholders: 0 };
+     *  phase, chunks drawn on the page in that frame and by the worker in all, the slowest chunk,
+     *  the placeholders shown. */
+    this.stats = { frames: 0, frame: 0, phases: {}, chunksDrawn: 0, workerChunks: 0, chunkMs: 0, chunkMax: 0, placeholders: 0, worker: false };
+    this.startWorker();
   }
 
-  /** Every cached chunk is dropped (another layer of the same map keeps its own). */
+  /** The worker that draws the chunks (none where module workers or OffscreenCanvas are
+   *  missing: the page draws them then). */
+  startWorker() {
+    if (typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined" || !look.bundle) return;
+    try {
+      this.worker = new Worker(new URL("./artworker.js", import.meta.url), { type: "module" });
+    } catch (e) {
+      console.warn("art worker:", e);
+      this.worker = null;
+      return;
+    }
+    this.worker.onmessage = (e) => this.fromWorker(e.data);
+    this.worker.onerror = (e) => {
+      console.warn("art worker failed, the page draws the map:", e.message ?? e);
+      this.stopWorker();
+    };
+    const names = {};
+    for (const [kind, table] of Object.entries(KIND_TABLES)) {
+      const list = look.data?.tables?.[table];
+      if (list) names[kind] = list.map((e) => e.type);
+    }
+    this.worker.postMessage({ t: "init", bundle: look.bundle, names });
+    if (this.map) this.worker.postMessage({ t: "map", map: plainMap(this.map) });
+  }
+
+  stopWorker() {
+    this.worker?.terminate();
+    this.worker = null;
+    this.workerReady = false;
+    this.stats.worker = false;
+    this.inflight.clear();
+    this.v.request();
+  }
+
+  fromWorker(m) {
+    if (m.t === "ready") {
+      this.workerReady = true;
+      this.stats.worker = true;
+      this.v.request();
+      return;
+    }
+    if (m.t === "error") {
+      console.error("art worker:", m.error);
+      if (m.key) this.inflight.delete(m.key);
+      return;
+    }
+    if (m.t !== "chunk") return;
+    const want = this.inflight.get(m.key);
+    this.inflight.delete(m.key);
+    const xy = m.key.slice(m.key.indexOf("|") + 1);
+    // Dropped since it was asked for (a tile or a city near it changed): drawn again later.
+    if (want !== m.gen || (this.gens.get(xy) ?? 0) !== m.gen) {
+      m.bitmap.close?.();
+    } else {
+      const old = this.chunks.get(m.key);
+      if (old) this.forget(m.key, old);
+      this.chunks.set(m.key, { canvas: m.bitmap, used: this.clock });
+      this.pixels += m.bitmap.width * m.bitmap.height;
+      this.stats.workerChunks++;
+      this.stats.chunkMax = Math.max(this.stats.chunkMax, m.ms);
+      this.evict();
+    }
+    this.v.request();
+  }
+
+  forget(key, c) {
+    this.pixels -= c.canvas.width * c.canvas.height;
+    c.canvas.close?.();
+    this.chunks.delete(key);
+  }
+
+  /** Every cached chunk is dropped. */
   clear() {
-    this.chunks.clear();
+    for (const [key, c] of [...this.chunks]) this.forget(key, c);
+    for (const k of new Set([...this.gens.keys(), ...[...this.inflight.keys()].map((x) => x.slice(x.indexOf("|") + 1))])) this.gens.set(k, (this.gens.get(k) ?? 0) + 1);
     this.charts.clear();
     this.pixels = 0;
     this.miniCanvas = null;
@@ -79,16 +167,19 @@ export class ArtMap {
       this.cmap = null;
       this.plots = null;
       this.clear();
+      this.worker?.postMessage({ t: "map", map: null });
       return;
     }
     this.cmap = fromApiMap(map, map.w, map.h, !!map.wrap_x);
     this.plots = makePlots(this.cmap);
+    this.worker?.postMessage({ t: "map", map: plainMap(map) });
     const tiles = changed === "all" || !prev ? "all" : Array.isArray(changed) ? changed : changedTiles(prev, map, LAYERS);
     if (tiles === "all" || prev.w !== map.w || prev.h !== map.h) {
       this.clear();
       this.sigs.clear();
       this.facing.clear();
       this.lastSize.clear();
+      this.viewSeen = null;
     } else {
       this.drop(rowChunksOfTiles(map, tiles));
     }
@@ -98,13 +189,11 @@ export class ArtMap {
   /** Drops the chunks (every layer) and charts with keys in `keys` ("cx,cr"). */
   drop(keys) {
     if (!keys.size) return;
-    for (const [key, c] of [...this.chunks]) {
-      if (keys.has(key.slice(key.indexOf("|") + 1))) {
-        this.pixels -= c.canvas.width * c.canvas.height;
-        this.chunks.delete(key);
-      }
+    for (const [key, c] of [...this.chunks]) if (keys.has(key.slice(key.indexOf("|") + 1))) this.forget(key, c);
+    for (const k of keys) {
+      this.charts.delete(k);
+      this.gens.set(k, (this.gens.get(k) ?? 0) + 1);
     }
-    for (const k of keys) this.charts.delete(k);
   }
 
   /** The view changed (units, cities, players): owners, facing, the cities the art draws, and
@@ -114,14 +203,23 @@ export class ArtMap {
     if (view === this.viewSeen || !this.map) return;
     this.viewSeen = view;
     const map = this.map;
-    // Owners: you, then the players you met, in slot order; others fly the lozenge.
+    // Heraldry: you, then the players you met, in slot order; others fly the lozenge.
     const players = [];
     const m = me();
     const civ = (i) => (i === null || i === undefined ? null : tname("CivilizationType", i));
     if (m) players.push({ id: m.player, civ: civ(m.civ), barbarian: false });
     for (const p of [...S.players.values()].sort((a, b) => a.id - b.id)) players.push({ id: p.id, civ: civ(p.civ), barbarian: !!p.barbarian });
-    const styles = ownerStyles(players, S.status?.game?.journal ?? S.status?.game?.dir ?? "memory");
-    this.owners = new OwnerMap(styles);
+    const specs = heraldry(players, S.status?.game?.journal ?? S.status?.game?.dir ?? "memory");
+    const ownersSig = JSON.stringify(specs);
+    let viewChanged = false;
+    if (ownersSig !== this.ownersSig) {
+      // Borders and city banners change with the owners: everything is drawn again.
+      if (this.ownersSig) this.clear();
+      this.ownersSig = ownersSig;
+      this.ownerSpecs = specs;
+      this.owners = new OwnerStyles(this.art, specs);
+      viewChanged = true;
+    }
     // Facing from the moves since the last view.
     this.facing = updateFacing(this.facing, view?.units ?? [], map.w, !!map.wrap_x);
     // Cities as the art draws them; a city looks like the last size seen while it is fogged.
@@ -157,10 +255,11 @@ export class ArtMap {
       });
       this.drop(rowChunksOfTiles(map, tiles));
       this.miniCanvas = null;
+      viewChanged = true;
     }
     this.sigs = sigs;
     this.ccities = cities;
-    this.cityById = new Map(cities.map((c) => [c.id, c]));
+    if (viewChanged) this.worker?.postMessage({ t: "view", owners: this.ownerSpecs, cities: cities.map(terrainCity) });
   }
 
   // ------------------------------------------------------------------------------------------
@@ -196,20 +295,25 @@ export class ArtMap {
     return out;
   }
 
-  /** The chunks in view: `{cx, cr, cols, rows, X, Y}` (X, Y: device position). */
-  visibleChunks(f) {
+  /** The chunks in view, by unwrapped chunk columns `ux` from `cx0` to `cx1` (a margin of
+   *  chunks around the view with `margin`): `{cx, cr, cols, rows, X, Y}` (X, Y: device
+   *  position). */
+  visibleChunks(f, margin = 0) {
     const map = this.map;
     const out = [];
     const ncx = Math.ceil(map.w / CHUNK);
-    const k0 = map.wrap_x ? Math.floor(f.c0 / map.w) : 0;
-    const k1 = map.wrap_x ? Math.floor(f.c1 / map.w) : 0;
-    for (let cr = Math.floor(f.r0 / CHUNK); cr <= Math.floor(f.r1 / CHUNK); cr++) {
+    const ncr = Math.ceil(map.h / CHUNK);
+    const k0 = map.wrap_x ? Math.floor((f.c0 - margin * CHUNK) / map.w) : 0;
+    const k1 = map.wrap_x ? Math.floor((f.c1 + margin * CHUNK) / map.w) : 0;
+    const cr0 = Math.max(0, Math.floor(f.r0 / CHUNK) - margin);
+    const cr1 = Math.min(ncr - 1, Math.floor(f.r1 / CHUNK) + margin);
+    for (let cr = cr0; cr <= cr1; cr++) {
       const rows = Math.min(CHUNK, map.h - cr * CHUNK);
       for (let k = k0; k <= k1; k++) {
         for (let cx = 0; cx < ncx; cx++) {
           const x0 = cx * CHUNK + k * map.w;
           const cols = Math.min(CHUNK, map.w - cx * CHUNK);
-          if (x0 + cols - 1 < f.c0 || x0 > f.c1) continue;
+          if (x0 + cols - 1 < f.c0 - margin * CHUNK || x0 > f.c1 + margin * CHUNK) continue;
           out.push({ cx, cr, cols, rows, X: f.ox + x0 * f.tp, Y: f.oy + cr * CHUNK * f.tp });
         }
       }
@@ -242,24 +346,27 @@ export class ArtMap {
     const layer = v.layer;
     const art = this.art;
     art.time = performance.now();
-    let incomplete = false;
+    let missing = 0;
     this.stats.chunksDrawn = 0;
     this.stats.placeholders = 0;
     const deadline = t0 + FRAME_MS;
+    const worker = this.worker && this.workerReady;
     for (const c of this.visibleChunks(f)) {
       if (!f.s) {
         const chart = this.chart(c.cx, c.cr, c.cols, c.rows);
         g.drawImage(chart, 0, 0, c.cols * CHART, c.rows * CHART, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
         continue;
       }
-      let ch = this.chunks.get(`${layer}|${c.cx},${c.cr}`);
-      if (!ch && (this.stats.chunksDrawn === 0 || performance.now() < deadline)) ch = this.renderChunk(c.cx, c.cr, layer);
+      const key = `${layer}|${c.cx},${c.cr}`;
+      let ch = this.chunks.get(key);
+      if (!ch && !worker && !this.worker && (this.stats.chunksDrawn === 0 || performance.now() < deadline)) ch = this.renderChunk(c.cx, c.cr, layer);
       if (ch) {
         ch.used = this.clock;
         g.drawImage(ch.canvas, 0, 0, c.cols * TILE, c.rows * TILE, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
       } else {
-        incomplete = true;
+        missing++;
         this.stats.placeholders++;
+        if (worker) this.ask(c, layer);
         const chart = this.chart(c.cx, c.cr, c.cols, c.rows);
         g.drawImage(chart, 0, 0, c.cols * CHART, c.rows * CHART, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
       }
@@ -282,8 +389,8 @@ export class ArtMap {
     this.stats.frames++;
     this.stats.frame = Math.round((performance.now() - t0) * 10) / 10;
     this.stats.phases = ph;
-    if (incomplete) v.request();
-    else this.idle(f);
+    if (missing && !worker) v.request();
+    else if (!missing && f.s) this.prefetch(f);
     // The path's dots march (docs/ART.md 4.5: 1 px every 150 ms) while a path is shown.
     if (f.s && v.overlay.path?.ok && !this.marching) {
       this.marching = setTimeout(() => {
@@ -293,7 +400,52 @@ export class ArtMap {
     }
   }
 
-  /** Draws chunk (cx, cr) of `layer` at 1x into the cache. */
+  /** Asks the worker for chunk `c` of `layer` (at most IN_FLIGHT at once). */
+  ask(c, layer) {
+    const xy = `${c.cx},${c.cr}`;
+    const key = `${layer}|${xy}`;
+    if (this.inflight.has(key) || this.inflight.size >= IN_FLIGHT) return false;
+    const gen = this.gens.get(xy) ?? 0;
+    this.inflight.set(key, gen);
+    this.worker.postMessage({ t: "render", key, cx: c.cx, cr: c.cr, layer, gen });
+    return true;
+  }
+
+  /** Once the view is complete: the chunks around it (one chunk's margin), by the worker, or by
+   *  the page while it is idle a few milliseconds at a time, so that panning finds them ready. */
+  prefetch(f) {
+    const layer = this.v.layer;
+    const want = this.visibleChunks(f, 1).filter((c) => !this.chunks.has(`${layer}|${c.cx},${c.cr}`));
+    if (!want.length) return;
+    if (this.worker) {
+      if (this.workerReady) for (const c of want) if (!this.ask(c, layer) && this.inflight.size >= IN_FLIGHT) break;
+      return;
+    }
+    if (this.idleTimer) return;
+    const map = this.map;
+    const step = (deadline) => {
+      this.idleTimer = null;
+      if (this.map !== map || this.v.layer !== layer) return;
+      const until = performance.now() + Math.min(IDLE_MS, deadline?.timeRemaining?.() ?? IDLE_MS);
+      while (want.length && performance.now() < until) {
+        const c = want.shift();
+        if (!this.chunks.has(`${layer}|${c.cx},${c.cr}`)) this.renderChunk(c.cx, c.cr, layer).used = this.clock;
+      }
+      if (want.length) this.idleTimer = schedule(step);
+    };
+    this.idleTimer = schedule(step);
+  }
+
+  /** Whether the view is drawn (no chunk in view or around it waits; for the tests). */
+  settled() {
+    if (!this.map) return true;
+    const f = this.frame();
+    if (!f.s) return true;
+    const layer = this.v.layer;
+    return this.visibleChunks(f).every((c) => this.chunks.has(`${layer}|${c.cx},${c.cr}`)) && !this.idleTimer && this.inflight.size === 0;
+  }
+
+  /** Draws chunk (cx, cr) of `layer` at 1x into the cache on the page (without the worker). */
   renderChunk(cx, cr, layer) {
     const t0 = performance.now();
     const map = this.map;
@@ -311,8 +463,7 @@ export class ArtMap {
       const tx0 = cx * CHUNK;
       const ty0 = cr * CHUNK;
       renderMap(art, ctx, this.cmap, { plots: this.plots, owners: this.owners, cities: this.ccities, only: "terrain", x0: 0, y0: 0, tx0, ty0, cols, rows });
-      if (layer === "political") this.politicalWash(ctx, tx0, ty0, cols, rows);
-      if (layer === "yield") this.yieldLayer(ctx, tx0, ty0, cols, rows);
+      drawChunkLayers(art, ctx, layer, { map, plots: this.plots, owners: this.owners, tx0, ty0, cols, rows });
     } catch (e) {
       console.error("art: chunk", cx, cr, e);
     } finally {
@@ -333,76 +484,7 @@ export class ArtMap {
     const old = [...this.chunks].filter(([, c]) => c.used < this.clock).sort((a, b) => a[1].used - b[1].used);
     for (const [key, c] of old) {
       if (this.pixels <= PIXEL_BUDGET * 0.75) break;
-      this.chunks.delete(key);
-      this.pixels -= c.canvas.width * c.canvas.height;
-    }
-  }
-
-  /** Once the view is complete: the chunks around it (one chunk's margin), drawn while the page
-   *  is idle, a few milliseconds at a time, so that panning finds them ready. */
-  idle(f) {
-    if (this.idleTimer || !f.s) return;
-    const layer = this.v.layer;
-    const map = this.map;
-    const ncx = Math.ceil(map.w / CHUNK);
-    const ncr = Math.ceil(map.h / CHUNK);
-    const want = [];
-    const cx0 = Math.floor(f.c0 / CHUNK) - 1;
-    const cx1 = Math.floor(f.c1 / CHUNK) + 1;
-    for (let cr = Math.max(0, Math.floor(f.r0 / CHUNK) - 1); cr <= Math.min(ncr - 1, Math.floor(f.r1 / CHUNK) + 1); cr++) {
-      for (let ux = cx0; ux <= cx1; ux++) {
-        const cx = map.wrap_x ? ((ux % ncx) + ncx) % ncx : ux;
-        if (cx < 0 || cx >= ncx) continue;
-        if (!this.chunks.has(`${layer}|${cx},${cr}`) && !want.some(([a, b]) => a === cx && b === cr)) want.push([cx, cr]);
-      }
-    }
-    if (!want.length) return;
-    const step = (deadline) => {
-      this.idleTimer = null;
-      if (this.map !== map || this.v.layer !== layer) return;
-      const until = performance.now() + Math.min(IDLE_MS, deadline?.timeRemaining?.() ?? IDLE_MS);
-      while (want.length && performance.now() < until) {
-        const [cx, cr] = want.shift();
-        if (!this.chunks.has(`${layer}|${cx},${cr}`)) this.renderChunk(cx, cr, layer).used = this.clock;
-      }
-      if (want.length) this.idleTimer = schedule(step);
-    };
-    this.idleTimer = schedule(step);
-  }
-
-  /** The political layer (docs/ART.md 8.1): every owned pixel of revealed ground through a
-   *  25% grid of the owner's shade. */
-  politicalWash(ctx, tx0, ty0, cols, rows) {
-    const art = this.art;
-    for (let j = 0; j < rows; j++) {
-      for (let i = 0; i < cols; i++) {
-        const p = this.plots.get(tx0 + i, ty0 + j);
-        if (!p || !p.vis || p.owner === null || p.owner === undefined) continue;
-        const o = this.owners.get(p.owner);
-        if (!o) continue;
-        const shade = o.tincture.shade;
-        const X0 = p.x * TILE;
-        const Y0 = p.y * TILE;
-        art.remapRegion(ctx, i * TILE, j * TILE, TILE, TILE, (a, b, c) => (((X0 + a) & 1) === 0 && ((Y0 + b) & 1) === 0 ? shade : c));
-      }
-    }
-  }
-
-  /** The yield layer: the ground through FOG, and each visible plot's food, production and
-   *  commerce as their 8x8 icons and Tally digits (ui.js drawTileYields). */
-  yieldLayer(ctx, tx0, ty0, cols, rows) {
-    const art = this.art;
-    const FOG = art.tables.FOG;
-    art.remapRegion(ctx, 0, 0, cols * TILE, rows * TILE, (a, b, c) => FOG[c]);
-    const map = this.map;
-    for (let j = 0; j < rows; j++) {
-      for (let i = 0; i < cols; i++) {
-        const row = ty0 + j;
-        const y = map.h - 1 - row;
-        const x = tx0 + i;
-        const yl = T.unpackYield(map.yield[y * map.w + x]);
-        if (yl) UI.drawTileYields(art, ctx, i * TILE, j * TILE, yl);
-      }
+      this.forget(key, c);
     }
   }
 
@@ -575,12 +657,6 @@ export class ArtMap {
   // ------------------------------------------------------------------------------------------
   // The chart (the two smallest zoom steps, the minimap, the placeholders)
 
-  /** A palette key's colour as [r, g, b]. */
-  rgbOf(index) {
-    const a = this.art.rgb;
-    return [a[index * 3], a[index * 3 + 1], a[index * 3 + 2]];
-  }
-
   /** The chart colour (a palette index) of a plot (docs/ART.md 8.4, terrain/manifest.txt
    *  `mini`): the feature's, else the peak's or hill's, else the terrain's; null unrevealed. */
   miniIndex(p) {
@@ -727,17 +803,16 @@ export class ArtMap {
   }
 }
 
-/** Owner styles by player id; a player the client does not know flies the lozenge (and a
- *  barbarian the skull on Sable). */
-class OwnerMap extends Map {
-  get(id) {
-    if (id === null || id === undefined || id < 0) return undefined;
-    if (!super.has(id)) {
-      const st = isBarbarian(id) ? look.art.ownerStyle("CIVILIZATION_BARBARIAN", { id, barbarian: true }) : unknownOwner(id);
-      super.set(id, st);
-    }
-    return super.get(id);
-  }
+/** What the terrain cache draws of a city (the worker's copy). */
+function terrainCity(c) {
+  return { x: c.x, y: c.y, owner: c.owner, size: c.size, capital: c.capital, own: c.own, disorder: c.disorder, walls: c.walls, visible: c.visible, name: c.name };
+}
+
+/** The map's arrays and size for the worker (the reply's other fields stay on the page). */
+function plainMap(map) {
+  const out = { w: map.w, h: map.h, wrap_x: !!map.wrap_x, wrap_y: !!map.wrap_y };
+  for (const k of LAYERS) out[k] = map[k];
+  return out;
 }
 
 /** The vignette's pixels for a view of Wa x Ha art px: per row, the columns of the left and the
@@ -775,5 +850,3 @@ export function vignetteMask(Wa, Ha) {
 function schedule(fn) {
   return typeof requestIdleCallback === "function" ? requestIdleCallback(fn, { timeout: 200 }) : setTimeout(fn, 30);
 }
-
-export { tierOf };

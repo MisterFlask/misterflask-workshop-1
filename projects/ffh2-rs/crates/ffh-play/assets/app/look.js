@@ -11,15 +11,16 @@
 
 import { loadArt } from "../art/art.js";
 import * as UI from "../art/ui/ui.js";
-import { ownerKey } from "./stacks.js";
+import { assignHeraldry } from "./stacks.js";
 import { setTextHook } from "./dom.js";
 import { setIconHook } from "./markup.js";
+import { setIlluminate } from "./modals.js";
 
 export { UI };
 
 /** The art (an `Art` of art.js) once loaded, the error if it failed, the UI scale `u` (CSS px
  *  per art px) and the device-pixel ratio the bitmaps are drawn for. */
-export const look = { art: null, error: null, u: 2, dpr: 1, ms: 0, data: null };
+export const look = { art: null, error: null, u: 2, dpr: 1, ms: 0, data: null, bundle: null };
 
 const RENDERER_KEY = "ffh.renderer";
 
@@ -51,8 +52,8 @@ export function setRendererChoice(r) {
   }
 }
 
-/** The art kinds and the `/api/data` tables that name their indices. */
-const KIND_TABLES = {
+/** The art kinds and the `/api/data` tables that name their indices (also the art worker's). */
+export const KIND_TABLES = {
   terrain: "TerrainType",
   feature: "FeatureType",
   bonus: "BonusType",
@@ -80,6 +81,7 @@ export function loadLook() {
       if (!r.ok) throw new Error(`/art/art.bundle.txt: HTTP ${r.status}`);
       const bundle = await r.text();
       const art = await loadArt({ bundle, lenient: true });
+      look.bundle = bundle;
       if (art.lib.errors.length) console.warn(`art: ${art.lib.errors.length} source errors:\n${art.lib.errors.slice(0, 5).join("\n")}`);
       look.art = art;
       if (look.data) nameIndices(look.data);
@@ -87,6 +89,7 @@ export function loadLook() {
       installChrome(art);
       setTextHook(hookText);
       setIconHook(markupIcon);
+      setIlluminate(illuminate);
       decorate(document.body);
       document.documentElement.classList.add("art");
       look.ms = Math.round(performance.now() - t0);
@@ -184,6 +187,44 @@ export function decorate(root) {
     const n = hookText(el.tagName, el.firstChild.textContent, el);
     if (n instanceof Node) el.replaceChildren(n);
   }
+}
+
+/** A page's text with an illuminated initial (docs/ART.md 11.3, events, votes and decisions):
+ *  its first letter in Vigil at 2x, ochre on a dusk square, floated at the left of the text, and
+ *  left out of the text. `frag`: the text's nodes (markup.js `render`). Without the art, or when
+ *  the text does not start with a letter, the text as it is. */
+export function illuminate(frag) {
+  const art = look.art;
+  if (!art || typeof document === "undefined") return frag;
+  const walker = document.createTreeWalker(frag, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node && !node.textContent.trim()) node = walker.nextNode();
+  const m = node ? /^(\s*)([A-Za-z])/.exec(node.textContent) : null;
+  if (!m) return frag;
+  const k = Math.max(1, Math.round(look.u * look.dpr));
+  const size = 22;
+  const c = document.createElement("canvas");
+  c.width = size * k;
+  c.height = size * k;
+  const old = art.scale;
+  art.scale = k;
+  try {
+    UI.drawInitial(art, c.getContext("2d"), 0, 0, m[2], { size });
+  } finally {
+    art.scale = old;
+  }
+  c.style.width = `${size * look.u}px`;
+  c.style.height = `${size * look.u}px`;
+  c.className = "ui-px initial";
+  c.setAttribute("aria-hidden", "true");
+  // The letter stays for screen readers and find-in-page, out of sight.
+  const letter = document.createElement("span");
+  letter.className = "ui-sr";
+  letter.textContent = m[2];
+  node.textContent = node.textContent.slice(m[0].length);
+  const out = document.createDocumentFragment();
+  out.append(c, letter, frag);
+  return out;
 }
 
 /** Civ4's [ICON_X] in game text as the ui set's 8 px icons (markup.js). */
@@ -299,42 +340,20 @@ export function unitIcon(unitType, owner, { u = look.u, title } = {}) {
 // ---------------------------------------------------------------------------------------------
 // Owners: heraldry (docs/ART.md 7.2)
 
-const assigned = new Map();
-let assignedGame = null;
+const memo = new Map();
+let memoGame = null;
 
-/** The owner styles of the players the client knows (`[{id, civ (type name), barbarian}]`),
- *  as a Map(id -> style). Each civilization takes its tincture plain, or the next free
- *  division of it, in the order the players became known (yours first): an assignment is kept
- *  for the game, so meeting another civilization never changes a banner already seen. A player
- *  the client does not know (not met) flies the lozenge. */
-export function ownerStyles(players, game) {
+/** The heraldry of the players the client knows (`[{id, civ (type name), barbarian}]`, yours
+ *  first, then by slot), as specs for `stacks.js` `OwnerStyles`: each civilization takes its
+ *  tincture plain, or the next free division of it, in the order the players became known; an
+ *  assignment is kept for the game (`game`), so meeting another civilization never changes a
+ *  banner already seen. A player the client does not know flies the lozenge. */
+export function heraldry(players, game) {
   const art = look.art;
-  if (!art) return new Map();
-  if (game !== assignedGame) {
-    assigned.clear();
-    assignedGame = game;
+  if (!art) return [];
+  if (game !== memoGame) {
+    memo.clear();
+    memoGame = game;
   }
-  const taken = new Set([...assigned.values()].map((s) => `${s.tinctureName}/${s.division}`));
-  const out = new Map();
-  for (const p of players) {
-    const key = ownerKey(p);
-    let st = assigned.get(key);
-    if (!st) {
-      if (p.barbarian || p.civ === "CIVILIZATION_BARBARIAN") st = art.ownerStyle("CIVILIZATION_BARBARIAN", { id: p.id, barbarian: true });
-      else {
-        const base = art.ownerStyle(p.civ ?? null, { id: p.id });
-        const division = ["plain", "pale", "fess", "bend", "quarterly"].find((d) => !taken.has(`${base.tinctureName}/${d}`)) ?? "plain";
-        st = art.ownerStyle(p.civ ?? null, { id: p.id, division });
-        taken.add(`${st.tinctureName}/${division}`);
-      }
-      assigned.set(key, st);
-    }
-    out.set(p.id, st);
-  }
-  return out;
-}
-
-/** The owner style of an unknown player (not met): the lozenge on Argent. */
-export function unknownOwner(id) {
-  return look.art ? look.art.ownerStyle(null, { id: `unknown-${id}` }) : null;
+  return assignHeraldry(players, memo, (civ) => (civ ? art.resolve("civ", civ)?.opts?.tincture : null) ?? "Argent");
 }

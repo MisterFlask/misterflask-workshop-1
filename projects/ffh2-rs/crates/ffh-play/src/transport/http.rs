@@ -73,6 +73,8 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/look.js", JS, include_str!("../../assets/app/look.js")),
     ("app/artmap.js", JS, include_str!("../../assets/app/artmap.js")),
     ("app/stacks.js", JS, include_str!("../../assets/app/stacks.js")),
+    ("app/chunks.js", JS, include_str!("../../assets/app/chunks.js")),
+    ("app/artworker.js", JS, include_str!("../../assets/app/artworker.js")),
 ];
 
 // `ART_MODULES`: the art toolkit's modules (`web/art`, docs/ART.md 15-16), embedded by `build.rs`

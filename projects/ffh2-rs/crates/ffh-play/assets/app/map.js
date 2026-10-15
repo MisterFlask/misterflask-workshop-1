@@ -264,10 +264,13 @@ export class MapView {
   /** Switches to the art renderer (`on`, once the art has loaded) or back to the flat one; the
    *  zoom moves to the nearest step of the renderer. */
   useArt(on) {
-    if (on && !this.art) {
+    if (!!on === !!this.art) return;
+    if (on) {
       this.art = new ArtMap(this);
       if (this.map) this.art.setMap(null, this.map, "all");
-    } else if (!on && this.art) {
+    } else {
+      this.art.stopWorker();
+      this.art.clear();
       this.art = null;
     }
     this.snapZoom(on ? defaultArtZoom(this.dpr) : null);

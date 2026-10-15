@@ -11,6 +11,7 @@ import { openModal, closeTag } from "./modals.js";
 import { run, sending } from "./commands.js";
 import { rawRequest, loadScreen } from "./screens.js";
 import { plotIndex } from "./tiles.js";
+import { look, setRendererChoice } from "./look.js";
 
 /** The tools menu. */
 export function openTools() {
@@ -289,7 +290,30 @@ export function openOptions() {
       ` ${label}`,
     );
   });
-  return openModal({ title: "Options", tag: "options", body: [h("div.checks.single", rows)], buttons: [{ label: "Close", value: null }] });
+  // The map's renderer (not a game option: remembered by this browser). The flat one is the P5
+  // renderer, kept for debugging; `?renderer=flat` in the address does the same for one page.
+  const renderer = h(
+    "label.toggle",
+    { title: look.art ? "Off: the flat debugging renderer (colours, glyphs, labels)" : `The art did not load${look.error ? `: ${look.error.message ?? look.error}` : ""}` },
+    h("input", {
+      type: "checkbox",
+      id: "option-art-renderer",
+      disabled: !look.art,
+      checked: !!look.art && globalThis.ffh?.mapView?.renderer?.() === "art",
+      onchange: (ev) => {
+        const r = ev.target.checked ? "art" : "flat";
+        setRendererChoice(r);
+        emit("renderer", r);
+      },
+    }),
+    " Draw the map with the pixel art",
+  );
+  return openModal({
+    title: "Options",
+    tag: "options",
+    body: [h("div.checks.single", rows), h("h4", "This browser"), h("div.checks.single", renderer)],
+    buttons: [{ label: "Close", value: null }],
+  });
 }
 
 /** The spectator bar's buttons (the top bar shows them while spectating). */

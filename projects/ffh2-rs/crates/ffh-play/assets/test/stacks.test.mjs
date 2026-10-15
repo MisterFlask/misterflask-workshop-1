@@ -117,3 +117,29 @@ test("facing follows the last move, across the seam", () => {
   assert.equal(f.get(2).facing, "right");
   assert.equal(f.has(3), false);
 });
+
+test("heraldry: a tincture plain, then its divisions, kept for the game", () => {
+  const T = { CIVILIZATION_BANNOR: "Argent", CIVILIZATION_ELOHIM: "Argent", CIVILIZATION_LANUN: "Azure", CIVILIZATION_MERCURIANS: "Argent" };
+  const tinctureOf = (civ) => T[civ] ?? "Argent";
+  const memo = new Map();
+  let specs = St.assignHeraldry([{ id: 0, civ: "CIVILIZATION_ELOHIM" }, { id: 3, civ: "CIVILIZATION_LANUN" }, { id: 9, civ: "CIVILIZATION_BARBARIAN", barbarian: true }], memo, tinctureOf);
+  assert.deepEqual(specs.map((s) => [s.id, s.division, s.barbarian]), [[0, "plain", false], [3, "plain", false], [9, "plain", true]]);
+  // Meeting slot 1 (Argent too) later: it takes the next division; the Elohim keep theirs.
+  specs = St.assignHeraldry([{ id: 0, civ: "CIVILIZATION_ELOHIM" }, { id: 1, civ: "CIVILIZATION_BANNOR" }, { id: 3, civ: "CIVILIZATION_LANUN" }, { id: 5, civ: "CIVILIZATION_MERCURIANS" }], memo, tinctureOf);
+  assert.deepEqual(specs.map((s) => [s.id, s.division]), [[0, "plain"], [1, "pale"], [3, "plain"], [5, "fess"]]);
+  // A new game: a new memo.
+  assert.equal(St.assignHeraldry([{ id: 1, civ: "CIVILIZATION_BANNOR" }], new Map(), tinctureOf)[0].division, "plain");
+});
+
+test("owner styles from heraldry specs, the lozenge for unknown players", () => {
+  const calls = [];
+  const art = { ownerStyle: (civ, opts) => (calls.push([civ, opts.division ?? null, !!opts.barbarian]), { civ, ...opts }) };
+  const o = new St.OwnerStyles(art, [{ id: 0, civ: "CIVILIZATION_BANNOR", division: "pale", barbarian: false }, { id: 7, civ: "CIVILIZATION_BARBARIAN", division: "plain", barbarian: true }]);
+  assert.equal(o.get(0).division, "pale");
+  assert.equal(o.get(0), o.get(0), "made once");
+  assert.equal(o.get(7).barbarian, true);
+  assert.equal(o.get(4).civ, "CIVILIZATION_UNKNOWN");
+  assert.equal(o.get(-1), undefined);
+  assert.equal(o.get(null), undefined);
+  assert.deepEqual(calls, [["CIVILIZATION_BANNOR", "pale", false], ["CIVILIZATION_BARBARIAN", null, true], ["CIVILIZATION_UNKNOWN", null, false]]);
+});

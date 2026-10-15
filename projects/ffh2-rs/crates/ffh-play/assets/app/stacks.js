@@ -77,6 +77,62 @@ export function ownerKey(p) {
   return `${p.id}:${p.civ ?? "?"}`;
 }
 
+/** Heraldry (docs/ART.md 7.2) for players in the order they became known: each civilization's
+ *  tincture plain, or the next free division of it; barbarians are not assigned. `players`:
+ *  [{id, civ (type name), barbarian}]; `memo`: a Map(ownerKey -> spec) kept for the game, so an
+ *  assignment never changes; `tinctureOf(civ)` names a civilization's tincture. Returns the specs
+ *  [{id, civ, division, barbarian}] that `ownerStyleOf` turns into the art's owner styles (the
+ *  same on the page and in the art worker). */
+export function assignHeraldry(players, memo, tinctureOf) {
+  const DIVISIONS = ["plain", "pale", "fess", "bend", "quarterly"];
+  const taken = new Set([...memo.values()].filter((s) => !s.barbarian).map((s) => `${tinctureOf(s.civ)}/${s.division}`));
+  const out = [];
+  for (const p of players) {
+    const key = ownerKey(p);
+    let spec = memo.get(key);
+    if (!spec) {
+      if (p.barbarian || p.civ === "CIVILIZATION_BARBARIAN") spec = { id: p.id, civ: "CIVILIZATION_BARBARIAN", division: "plain", barbarian: true };
+      else {
+        const t = tinctureOf(p.civ);
+        const division = DIVISIONS.find((d) => !taken.has(`${t}/${d}`)) ?? "plain";
+        taken.add(`${t}/${division}`);
+        spec = { id: p.id, civ: p.civ ?? null, division, barbarian: false };
+      }
+      memo.set(key, spec);
+    }
+    out.push(spec);
+  }
+  return out;
+}
+
+/** The art's owner style of a heraldry spec (`assignHeraldry`); a player the client does not
+ *  know (no spec, or no civilization) flies the lozenge on Argent. */
+export function ownerStyleOf(art, spec) {
+  if (spec?.barbarian) return art.ownerStyle("CIVILIZATION_BARBARIAN", { id: spec.id, barbarian: true });
+  if (!spec?.civ) return art.ownerStyle("CIVILIZATION_UNKNOWN", { id: `unknown-${spec?.id}` });
+  return art.ownerStyle(spec.civ, { id: spec.id, division: spec.division ?? "plain" });
+}
+
+/** Owner styles by player id from heraldry specs, made when first asked for (unknown players:
+ *  the lozenge). */
+export class OwnerStyles {
+  constructor(art, specs) {
+    this.art = art;
+    this.specs = new Map(specs.map((s) => [s.id, s]));
+    this.styles = new Map();
+  }
+
+  get(id) {
+    if (id === null || id === undefined || id < 0) return undefined;
+    let st = this.styles.get(id);
+    if (!st) {
+      st = ownerStyleOf(this.art, this.specs.get(id) ?? { id });
+      this.styles.set(id, st);
+    }
+    return st;
+  }
+}
+
 /** Civ4's activities as the art's state marks (ui/mark_<state>). Fortified units sleep in C++
  *  (MISSION_FORTIFY sets ACTIVITY_SLEEP), so a sleeping unit that can fight shows the shield. */
 export function markOf(activity, { canFight = false, automated = false, promote = false } = {}) {

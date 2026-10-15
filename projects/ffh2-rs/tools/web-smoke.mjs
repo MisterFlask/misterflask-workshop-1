@@ -13,7 +13,9 @@
 // bar), diplomacy (F4, the trade screen when a player was met), the cities list (F1), the keys
 // (?), the go-to mode (G, Esc), the map layers, the inspector, debug reveal, AI autoplay and the
 // spectator mode (play, pause, step, stop), and the trade screen (`stage trade`: gold offered and
-// accepted). It fails on any console error, page error, failed
+// accepted). The art client: the map drawn with the original pixel art (its worker, the view
+// drawn in full, a frame's time, the zoom steps and the chart, the bitmap type), Tools → Options
+// and `?renderer=flat` for the flat renderer. It fails on any console error, page error, failed
 // request or HTTP error, and saves screenshots for review.
 //
 //   node tools/web-smoke.mjs [--bin PATH] [--out DIR] [--turns 4] [--seed 5] [--cdp] [--headed]
@@ -307,6 +309,77 @@ async function newGame(url, saves) {
   if (games.length !== 1) throw new Error(`a double click on Start made ${games.length} games: ${games}`);
   steps.push(`new game (Start double-clicked: one game): turn ${await S("S.status.turn")}`);
   await shot("first-turn");
+}
+
+/** The art client (docs/ART.md, look.js, artmap.js): the art loaded and draws the map (in its
+ *  worker where there is one), the view is drawn in full, the map is not blank, a frame takes
+ *  little time, the zoom goes through the art's steps and the chart, the interface uses the
+ *  bitmap type and frames, and Tools → Options switches to the flat renderer and back. */
+async function artClient() {
+  await until2("!!(window.ffh.look.art || window.ffh.look.error)", "the art to load");
+  const err = await b.eval("window.ffh.look.error ? String(window.ffh.look.error.message || window.ffh.look.error) : null");
+  if (err) throw new Error(`the art did not load: ${err}`);
+  if ((await b.eval("window.ffh.mapView.renderer()")) !== "art") throw new Error("the map is not drawn with the art");
+  if (!(await b.eval(`document.documentElement.classList.contains("art") && !!document.querySelector("#btn-techs .ui-ptext") && !!document.querySelector("#empire canvas.ui-px")`))) {
+    throw new Error("the interface has no bitmap type or icons");
+  }
+  await until2("window.ffh.mapView.art.settled()", "the art map drawn in full", 60000);
+  const look = await b.eval(`(() => {
+    const mv = window.ffh.mapView;
+    const c = mv.canvas;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    const w = Math.min(240, c.width >> 1), h = Math.min(240, c.height >> 1);
+    const d = g.getImageData((c.width - w) >> 1, (c.height - h) >> 1, w, h).data;
+    const colours = new Set();
+    for (let i = 0; i < d.length; i += 4) colours.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    const times = [];
+    for (let k = 0; k < 15; k++) { const t = performance.now(); mv.draw(); times.push(performance.now() - t); }
+    times.sort((a, b) => a - b);
+    return { colours: colours.size, median: times[7], worker: !!mv.art.stats.worker, ts: mv.cam.ts };
+  })()`);
+  if (look.colours < 8) throw new Error(`the art map is nearly blank (${look.colours} colours in the middle of the view)`);
+  if (look.median > 60) throw new Error(`an art frame takes ${look.median.toFixed(1)} ms (median of 15)`);
+  if (look.ts !== 64) throw new Error(`the art's default zoom is ${look.ts} px a plot (want 64)`);
+  await shot("art-map");
+  steps.push(`art map: ${look.colours} colours mid-view, a frame in ${look.median.toFixed(1)} ms (median), chunks drawn ${look.worker ? "by the worker" : "on the page"}`);
+  // The zoom steps: 64 -> 32 (survey) -> 16 -> 8 (the chart) -> 8, then back up to 128 and to 64.
+  const zooms = [];
+  for (const k of ["-", "-", "-", "-", "+", "+", "+", "+", "+", "-"]) {
+    await b.key(k);
+    zooms.push(await b.eval("window.ffh.mapView.cam.ts"));
+    if (zooms.at(-1) === 32 && k === "-") {
+      await until2("window.ffh.mapView.art.settled()", "the survey zoom drawn", 60000);
+      await shot("art-survey");
+    }
+    if (zooms.at(-1) === 16 && k === "-") await shot("art-chart");
+  }
+  if (JSON.stringify(zooms) !== JSON.stringify([32, 16, 8, 8, 16, 32, 64, 96, 128, 96])) throw new Error(`the zoom steps: ${zooms}`);
+  await b.key("-");
+  if ((await b.eval("window.ffh.mapView.cam.ts")) !== 64) throw new Error("the zoom did not come back to 64");
+  steps.push(`zoom steps ${zooms.join(" ")} (the chart at 8 and 16, the art at 32-128)`);
+  // Tools → Options: the flat renderer and back.
+  await click("#btn-tools");
+  await dialog("Tools");
+  await click("#tool-options");
+  await dialog("Options");
+  await click("#option-art-renderer");
+  await until2(`window.ffh.mapView.renderer() === "flat"`, "the flat renderer (Options)");
+  await click("#option-art-renderer");
+  await until2(`window.ffh.mapView.renderer() === "art"`, "the art renderer again (Options)");
+  await closeDialog("Options");
+  await until2("window.ffh.mapView.art.settled()", "the art map drawn again", 60000);
+  steps.push("Tools → Options: the flat renderer and back to the art");
+}
+
+/** `?renderer=flat`: the P5 renderer, kept for debugging, on the same game. */
+async function flatRenderer(url) {
+  await b.goto(`${url}/?renderer=flat`);
+  await until2("window.ffh && window.ffh.ready", "the client to boot (flat)");
+  await waitHuman("the game in the flat renderer");
+  if ((await b.eval("window.ffh.mapView.renderer()")) !== "flat") throw new Error("?renderer=flat did not keep the flat renderer");
+  await answerPopups(false);
+  await shot("flat-renderer");
+  steps.push("?renderer=flat: the flat map of P5");
 }
 
 /** Records the page's POST bodies in `window.__posts` (from now on). */
@@ -972,6 +1045,7 @@ async function main() {
     console.log(`web-smoke: ${b.name}; server ${server.url}; screenshots in ${OUT}`);
     const t0 = Date.now();
     await newGame(server.url, saves);
+    await artClient();
     await cycleAll();
     await staleSelection();
     await foundCity();
@@ -989,6 +1063,7 @@ async function main() {
     await stagedLoad(bin, saves);
     await shiftWaypoints(bin, saves);
     await shiftWaypoints(bin, saves, "goto");
+    await flatRenderer(server.url);
     await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

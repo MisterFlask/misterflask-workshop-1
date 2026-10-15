@@ -82,11 +82,21 @@ fn the_art_is_embedded_as_it_is_on_disk() {
 }
 
 /// The module specifiers a module imports: `import ... from "x"`, `export ... from "x"`, the
-/// last line of a multi-line import (`} from "x"`) and `import "x"`.
+/// last line of a multi-line import (`} from "x"`), `import "x"`, and the module of a worker
+/// (`new Worker(new URL("x", import.meta.url), ..)`).
 fn imports(src: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in src.lines() {
         let l = line.trim_start();
+        if let Some(i) = l.find("new Worker(new URL(") {
+            let s = &l[i + "new Worker(new URL(".len()..];
+            if let Some(q) = s.chars().next().filter(|c| *c == '"' || *c == '\'') {
+                if let Some(end) = s[1..].find(q) {
+                    out.push(s[1..1 + end].to_string());
+                }
+            }
+            continue;
+        }
         let spec = if l.starts_with("import ") || l.starts_with("export ") || l.starts_with('}') {
             match l.rfind(" from ") {
                 Some(i) => &l[i + 6..],
@@ -187,8 +197,8 @@ fn the_page_and_its_modules_reference_only_embedded_files() {
         }
     }
     assert_eq!(
-        imports("import { a } from \"./x.js\";\nimport * as b from './y.js';\nimport {\n  c,\n} from \"./z.js\";\nimport \"./w.js\";\nconst s = \"a from b\";"),
-        ["./x.js", "./y.js", "./z.js", "./w.js"]
+        imports("import { a } from \"./x.js\";\nimport * as b from './y.js';\nimport {\n  c,\n} from \"./z.js\";\nimport \"./w.js\";\nconst s = \"a from b\";\n    this.worker = new Worker(new URL(\"./v.js\", import.meta.url), { type: \"module\" });"),
+        ["./x.js", "./y.js", "./z.js", "./w.js", "./v.js"]
     );
     assert_eq!(resolve("app/main.js", "../art/ui/ui.js").as_deref(), Some("art/ui/ui.js"));
     assert_eq!(resolve("art/terrain/ground.js", "../art.js").as_deref(), Some("art/art.js"));

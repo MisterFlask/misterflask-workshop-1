@@ -7,6 +7,13 @@ import { emit } from "./state.js";
 
 const stack = [];
 
+/** How a page's text is set (look.js: an illuminated initial once the art has loaded). */
+let illuminate = (frag) => frag;
+
+export function setIlluminate(f) {
+  illuminate = f;
+}
+
 /** Whether any dialog is open (the map's hotkeys are off then). */
 export function modalOpen() {
   return stack.length > 0;
@@ -166,7 +173,7 @@ export function showDecision(d, answer) {
   );
   m = openModal({
     title: d.title,
-    body: [h("p", markup(d.text)), options, errorLine],
+    body: [h("p.page-text", illuminate(markup(d.text))), options, errorLine],
     buttons: [{ label: "AI default", title: "The advisor's pick", onClick: () => send(null) }],
     dismissible: false,
     tag: "decision",
