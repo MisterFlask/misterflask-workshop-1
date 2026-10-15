@@ -75,6 +75,9 @@ async function playwrightBrowser(pw, problems) {
     mouse: async (x, y, button = "left") => page.mouse.click(x, y, { button }),
     move: (x, y) => page.mouse.move(x, y),
     key: (key, shift = false) => page.keyboard.press(shift ? `Shift+${key}` : key),
+    // A held key (Shift): the mouse events meanwhile carry it.
+    keyDown: (key) => page.keyboard.down(key),
+    keyUp: (key) => page.keyboard.up(key),
     type: (text) => page.keyboard.type(text),
     shot: (file) => page.screenshot({ path: file }),
     close: () => browser.close(),
@@ -164,8 +167,11 @@ async function cdpBrowser(exe, problems) {
     if (r.exceptionDetails) throw new Error(`evaluate: ${r.exceptionDetails.exception?.description ?? r.exceptionDetails.text}`);
     return r.result.value;
   };
-  const mouseEvent = (type, x, y, button = "none", clickCount = 0) => send("Input.dispatchMouseEvent", { type, x, y, button, clickCount, buttons: button === "left" ? 1 : button === "right" ? 2 : 0 });
+  // Modifiers held with keyDown (8 = Shift), carried by the mouse events meanwhile.
+  let held = 0;
+  const mouseEvent = (type, x, y, button = "none", clickCount = 0) => send("Input.dispatchMouseEvent", { type, x, y, button, clickCount, modifiers: held, buttons: button === "left" ? 1 : button === "right" ? 2 : 0 });
   const KEYS = { Enter: [13, "\r"], Escape: [27, ""], Tab: [9, ""], Delete: [46, ""] };
+  const MODIFIERS = { Shift: [16, 8, "ShiftLeft"] };
   return {
     name: `Chromium over the DevTools protocol (${exe})`,
     goto: async (url) => {
@@ -185,6 +191,16 @@ async function cdpBrowser(exe, problems) {
       const base = { key, windowsVirtualKeyCode: code, modifiers: shift ? 8 : 0 };
       await send("Input.dispatchKeyEvent", { type: text ? "keyDown" : "rawKeyDown", text: text || undefined, ...base });
       await send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
+    },
+    keyDown: async (key) => {
+      const [code, bit, name] = MODIFIERS[key];
+      held |= bit;
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key, code: name, windowsVirtualKeyCode: code, modifiers: held });
+    },
+    keyUp: async (key) => {
+      const [code, bit, name] = MODIFIERS[key];
+      held &= ~bit;
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key, code: name, windowsVirtualKeyCode: code, modifiers: held });
     },
     type: (text) => send("Input.insertText", { text }),
     shot: async (file) => fs.writeFileSync(file, Buffer.from((await send("Page.captureScreenshot", { format: "png" })).data, "base64")),
@@ -264,6 +280,78 @@ async function newGame(url) {
   await waitHuman("the first turn");
   steps.push(`new game: turn ${await S("S.status.turn")}`);
   await shot("first-turn");
+}
+
+/** Records the page's POST bodies in `window.__posts` (from now on). */
+async function recordPosts() {
+  await b.eval(`(() => {
+    if (!window.__recording) {
+      window.__recording = true;
+      const f = window.fetch.bind(window);
+      window.fetch = (u, o) => {
+        if (o && o.method === "POST") try { window.__posts.push(JSON.parse(o.body)); } catch {}
+        return f(u, o);
+      };
+    }
+    window.__posts = [];
+  })()`);
+}
+const posted = () => b.eval(`window.__posts.filter((p) => p.k === "cmd")`);
+
+/** W (and Tab, "Next") reaches every group waiting for orders, not just the two nearest each
+ *  other (P5 review). */
+async function cycleAll() {
+  const ready = await S("S.view.pending.ready_groups.filter((g) => S.groups.has(g))");
+  if (ready.length < 2) return steps.push(`W: ${ready.length} group waiting, nothing to cycle`);
+  const seen = new Set([await S("S.sel ? S.units.get(S.sel.units[0]).group : null")]);
+  for (let k = 0; k < 2 * ready.length; k++) {
+    await b.key("w");
+    await new Promise((r) => setTimeout(r, 120));
+    seen.add(await S("S.sel ? S.units.get(S.sel.units[0]).group : null"));
+  }
+  const missed = ready.filter((g) => !seen.has(g));
+  if (missed.length) throw new Error(`W never selected groups ${missed} of ${ready}`);
+  steps.push(`W selected all ${ready.length} waiting groups`);
+}
+
+/** A hotkey pressed right after the selection changed acts on the new selection, never with the
+ *  previous selection's actions (P5 review): select the settler, see its Found action, then in
+ *  one tick select another group and press B (nothing to found: nothing is sent) or Space
+ *  (that group skips). */
+async function staleSelection() {
+  const pick = await S(`(() => {
+    const me = S.view.me.player;
+    const found = (u) => S.data.tables.UnitType[u.type].found;
+    const settler = S.view.units.find((u) => u.owner === me && found(u));
+    const other = settler && S.view.units.find((u) => u.owner === me && u.group !== settler.group && !found(u) && S.view.pending.ready_groups.includes(u.group));
+    return other ? { settler: settler.group, other: other.group, units: S.groups.get(other.group).units } : null;
+  })()`);
+  if (!pick) return steps.push("no second group for the selection check");
+  await b.eval(`window.ffh.units.selectGroup(${pick.settler})`);
+  await until2(`!!document.querySelector('#unit-panel button.action[data-type="MISSION_FOUND"]:not([disabled])')`, "the settler's Found action");
+  await recordPosts();
+  const stale = await b.eval(`(() => {
+    window.ffh.units.selectGroup(${pick.other});
+    const shown = !!document.querySelector('#unit-panel button.action[data-type="MISSION_FOUND"]');
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", bubbles: true }));
+    return shown;
+  })()`);
+  if (stale) throw new Error("the settler's Found action is drawn under the other group");
+  await new Promise((r) => setTimeout(r, 500));
+  let sent = await posted();
+  if (sent.length) throw new Error(`B after the selection changed sent ${JSON.stringify(sent)}`);
+  if (await S("S.view.cities.some((c) => c.owner === S.view.me.player)")) throw new Error("a city was founded");
+  await b.eval(`window.ffh.units.selectGroup(${pick.settler})`);
+  await until2(`!!document.querySelector('#unit-panel button.action[data-type="MISSION_FOUND"]:not([disabled])')`, "the settler's Found action again");
+  await b.eval(`(() => {
+    window.ffh.units.selectGroup(${pick.other});
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+  })()`);
+  await until(async () => (sent = await posted()).length > 0, "the skip of the other group");
+  if (sent.length !== 1 || sent[0].c !== "mission" || JSON.stringify(sent[0].units) !== JSON.stringify(pick.units)) throw new Error(`Space after the selection changed sent ${JSON.stringify(sent)} (want a mission of ${pick.units})`);
+  steps.push("hotkeys right after a selection change act on the new selection");
+  await new Promise((r) => setTimeout(r, 300));
+  await b.eval("window.ffh.units.clearSelection()");
 }
 
 async function foundCity() {
@@ -423,6 +511,66 @@ async function stagedCapture(bin, saves) {
   await answerPopups();
 }
 
+/** Shift-right-click waypoints (P5 review), on the staged AutoMoves situation (the warrior
+ *  `ready` is the only group waiting; another has orders): while Shift is held nothing is sent
+ *  and the warrior stays selected; on release both legs are sent for the warrior, appended,
+ *  and its orders end at the second. */
+async function shiftWaypoints(bin, saves) {
+  const st = await loadStaged(bin, saves, "automoves");
+  const w = await S(`S.units.get(${st.ready})`);
+  const p = await plotPos(w.x, w.y);
+  await b.mouse(p.x, p.y);
+  await until2(`window.ffh.S.sel && window.ffh.S.sel.units.length === 1 && window.ffh.S.sel.units[0] === ${st.ready}`, "the waiting warrior selected");
+  // Two land plots: one with a path, then a neighbour of it with a path (neither the start).
+  const t = await b.eval(`(async () => {
+    const S = window.ffh.S;
+    const ok = async (x, y) => { const r = await window.ffh.api.query("path", { units: [${st.ready}], x, y }); return r.ok && r.declare_war_team === null && !r.attack; };
+    const around = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
+    const at = (x, y, dx, dy) => ({ x: (x + dx + S.map.w) % S.map.w, y: y + dy });
+    for (const [dx, dy] of around) {
+      const a = at(${w.x}, ${w.y}, dx, dy);
+      if (a.y < 0 || a.y >= S.map.h || !(await ok(a.x, a.y))) continue;
+      for (const [ex, ey] of around) {
+        const c = at(a.x, a.y, ex, ey);
+        if (c.y < 0 || c.y >= S.map.h || (c.x === ${w.x} && c.y === ${w.y})) continue;
+        if (await ok(c.x, c.y)) return [a, c];
+      }
+    }
+    return null;
+  })()`);
+  if (!t) return steps.push("no two plots for the waypoints");
+  const p1 = await plotPos(t[0].x, t[0].y);
+  const p2 = await plotPos(t[1].x, t[1].y);
+  const p1b = await plotPos(t[0].x, t[0].y);
+  if (p1.x !== p1b.x || p1.y !== p1b.y) throw new Error("the map moved while placing the waypoints");
+  await recordPosts();
+  await b.keyDown("Shift");
+  await b.mouse(p1.x, p1.y, "right");
+  await until2(`(() => { const w = window.ffh.units.pendingWaypoints(); return w && w.points.length === 1; })()`, "the first waypoint");
+  await b.mouse(p2.x, p2.y, "right");
+  await until2(`(() => { const w = window.ffh.units.pendingWaypoints(); return w && w.points.length === 2; })()`, "the second waypoint");
+  await new Promise((r) => setTimeout(r, 300));
+  const early = await posted();
+  if (early.length) throw new Error(`sent while Shift was held: ${JSON.stringify(early)}`);
+  if (!(await S(`S.sel && S.sel.units.length === 1 && S.sel.units[0] === ${st.ready}`))) throw new Error("the selection moved while Shift was held");
+  await shot("waypoints");
+  await b.keyUp("Shift");
+  await until(async () => (await posted()).filter((c) => c.c === "move").length >= 2, "the waypoints sent");
+  const sent = (await posted()).filter((c) => c.c === "move");
+  const want = t.map(({ x, y }) => ({ units: [st.ready], x, y, append: true }));
+  const got = sent.map(({ units, x, y, append }) => ({ units, x, y, append }));
+  if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`the waypoints sent: ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  await waitHuman("the control point after the waypoints");
+  await until2(`(() => {
+    const S = window.ffh.S;
+    const u = S.units.get(${st.ready});
+    const g = u && S.groups.get(u.group);
+    const last = g && g.missions.length ? g.missions[g.missions.length - 1] : null;
+    return u && ((u.x === ${t[1].x} && u.y === ${t[1].y}) || (last && last.d1 === ${t[1].x} && last.d2 === ${t[1].y}));
+  })()`, "the warrior's orders to end at the second waypoint", 10000);
+  steps.push(`Shift-right-click: two waypoints held, sent on release, the warrior's orders end at (${t[1].x}, ${t[1].y})`);
+}
+
 /** A staged load: the warrior's Load action asks which of two triremes (the LOADUNIT picker);
  *  the second one picked, the warrior is in it. */
 async function stagedLoad(bin, saves) {
@@ -516,6 +664,8 @@ async function main() {
     console.log(`web-smoke: ${b.name}; server ${server.url}; screenshots in ${OUT}`);
     const t0 = Date.now();
     await newGame(server.url);
+    await cycleAll();
+    await staleSelection();
     await foundCity();
     await moveUnit();
     await endTurns(TURNS);
@@ -523,6 +673,7 @@ async function main() {
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);
     await stagedLoad(bin, saves);
+    await shiftWaypoints(bin, saves);
     await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

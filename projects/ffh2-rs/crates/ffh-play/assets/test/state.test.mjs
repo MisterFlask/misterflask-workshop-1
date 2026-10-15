@@ -83,6 +83,44 @@ test("cycling over the ready groups: next in order, or the nearest", () => {
   assert.equal(St.nextReadyGroup(100), null);
 });
 
+test("W cycles over every waiting group, not between the two nearest (P5 review)", () => {
+  // The review's game: settler g0 at (13,10), scout g1 at (13,12), warrior g2 at (15,10);
+  // settler-scout 2, settler-warrior 2, scout-warrior 3 (Civ4's plot distance).
+  const units = [
+    { id: 0, owner: 0, type: 1, x: 13, y: 10, group: 0 },
+    { id: 1, owner: 0, type: 0, x: 13, y: 12, group: 1 },
+    { id: 2, owner: 0, type: 0, x: 15, y: 10, group: 2 },
+  ];
+  St.setView({
+    ...view,
+    units,
+    groups: units.map((u) => ({ id: u.group, head: u.id, units: [u.id] })),
+    pending: { ...view.pending, ready_groups: [0, 1, 2] },
+  });
+  const dist = (ax, ay, bx, by) => {
+    const dx = Math.abs(ax - bx);
+    const dy = Math.abs(ay - by);
+    return Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2);
+  };
+  const visited = new Set();
+  let cur = 0;
+  const seen = [cur];
+  for (let k = 0; k < 8; k++) {
+    const u = St.S.units.get(St.S.groups.get(cur).head);
+    const next = St.cycleNext(cur, visited, { x: u.x, y: u.y }, dist);
+    assert.notEqual(next, cur, "a press always moves on");
+    cur = next;
+    seen.push(cur);
+  }
+  // Every group within each press cycle: the first three presses reach all of them, and over
+  // eight presses each one comes up at least twice.
+  assert.deepEqual(new Set(seen.slice(0, 3)), new Set([0, 1, 2]), `${seen}`);
+  for (const g of [0, 1, 2]) assert.ok(seen.filter((s) => s === g).length >= 2, `${seen}`);
+  // One waiting group (the current one): nothing else to select.
+  St.setView({ ...view, units, groups: units.map((u) => ({ id: u.group, head: u.id, units: [u.id] })), pending: { ...view.pending, ready_groups: [2] } });
+  assert.equal(St.cycleNext(2, new Set()), null);
+});
+
 test("deferred popups in C++ order, and set aside per turn", () => {
   const pending = {
     events: [{ triggered: 5 }],

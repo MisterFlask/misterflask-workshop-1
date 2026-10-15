@@ -204,6 +204,25 @@ export function nextReadyGroup(current, near = null, dist = null, skip = []) {
   return best ?? ready[0];
 }
 
+/** W, Tab and "Next": the next waiting group in a cycle that selects every ready group before
+ *  any one again (P5 review: nearest-first alone went back and forth between the two groups
+ *  nearest each other). `visited` (a Set, updated here) holds the groups this cycle selected;
+ *  the nearest (`dist`) ready group to `near` not yet visited is chosen, and when every ready
+ *  group was, a new cycle starts from `current`. Returns the group, or null when no other
+ *  group waits. */
+export function cycleNext(current, visited, near = null, dist = null) {
+  const cur = current ?? -1;
+  if (cur >= 0) visited.add(cur);
+  let g = nextReadyGroup(cur, near, dist, [...visited]);
+  if (g === null) {
+    visited.clear();
+    if (cur >= 0) visited.add(cur);
+    g = nextReadyGroup(cur, near, dist);
+  }
+  if (g !== null) visited.add(g);
+  return g;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Deferred popups (design §2.3, §5.1): what the player answers at a control point, in C++
 // order: events, votes, research, idle cities. A popup set aside ("Later") stays aside for the

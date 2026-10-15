@@ -1,27 +1,50 @@
 // Units (design §5.1 "Units"): the selection, the stack list, the actions panel from the `group`
-// query, moving and attacking with the path and combat previews, interface modes (go-to,
-// route-to, range attack: pick a plot), grouping, and cycling over the ready groups.
+// query, moving and attacking with the path and combat previews, Shift waypoints, interface
+// modes (go-to, route-to, range attack: pick a plot), grouping, and cycling over the ready groups.
 
 import * as api from "./api.js";
-import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, nextReadyGroup, moves, turns, info } from "./state.js";
+import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, nextReadyGroup, cycleNext, moves, turns, info } from "./state.js";
 import { h, fill, toast } from "./dom.js";
-import { run, actionCommand } from "./commands.js";
+import { run, actionCommand, sending } from "./commands.js";
 import { plotDistance, plotIndex, humanize } from "./tiles.js";
 import { render as markup } from "./markup.js";
 
 let mapView = null;
 let panel = null;
-/** The last `group` query reply for the selection, and the key it answers. */
+/** The last `group` query reply, the units it answers (`groupFor`, as `unitsKey`), the key of
+ *  the latest request (units, view version, turn) and that request while it runs. Only a reply
+ *  for the selected units is used (`reply()`): the previous selection's actions are neither
+ *  drawn nor sent while the new selection's reply is on its way (P5 review). */
 let group = null;
+let groupFor = "";
 let groupKey = "";
+let groupPending = null;
 /** An interface mode: `{kind: "move"}` or `{kind: "target", action}`. */
 let mode = null;
 /** After a command on the selection, move on to the next ready group once it is done. */
 let advance = false;
+/** W/Tab/Next: the groups this cycle selected, and the game turn they belong to. */
+let cycle = { key: "", visited: new Set() };
+/** Shift-right-click waypoints, held while Shift is down and sent when it is released
+ *  (`flushWaypoints`): `{units, points: [[x, y]]}` or null. The exe sends each one at once but
+ *  no AutoMoves while Shift is down (CvGame::updateTestEndTurn `if (!gDLL->shiftKey())`), and
+ *  the session runs the AutoMoves rule right after a command that leaves nothing ready, so the
+ *  client holds them instead (P5 review). */
+let waypoints = null;
 /** Hover previews: the plot, and the replies. */
 let hover = null;
 let hoverTimer = null;
 let preview = { path: null, combat: null, plot: null };
+
+/** A selection's units as a key. */
+function unitsKey(units) {
+  return (units ?? []).join(",");
+}
+
+/** The `group` reply when it answers the selected units, else null. */
+function reply() {
+  return group && S.sel && groupFor === unitsKey(S.sel.units) ? group : null;
+}
 
 export function initUnits(view, panelEl) {
   mapView = view;
@@ -36,6 +59,8 @@ export function initUnits(view, panelEl) {
 
 /** Selects own units `ids` (on one plot), or nothing. */
 export function select(ids, { center = false } = {}) {
+  // Waypoints of other units are sent before the selection changes.
+  if (waypoints && unitsKey(waypoints.units) !== unitsKey(ids)) flushWaypoints();
   const units = (ids ?? []).map((id) => S.units.get(id)).filter((u) => u && u.owner === me()?.player);
   if (units.length === 0) {
     S.sel = null;
@@ -62,11 +87,21 @@ export function clearSelection() {
   select([]);
 }
 
-/** Selects the next ready group (Civ4's cycle: the nearest to the last selection). */
-export function selectNext({ skipCurrent = false } = {}) {
+/** Selects the next ready group: the nearest to the selection (after a command, at a new turn);
+ *  with `cycle` (W, Tab, "Next") the nearest not yet selected in this cycle, so that pressing
+ *  it again reaches every waiting group (`cycleNext`). */
+export function selectNext({ skipCurrent = false, cycle: cycling = false } = {}) {
   const cur = currentGroup();
   const near = S.sel ? { x: S.sel.x, y: S.sel.y } : null;
-  const g = nextReadyGroup(skipCurrent ? cur : -1, near, near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null, skipCurrent && cur !== null ? [cur] : []);
+  const dist = near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
+  let g;
+  if (cycling) {
+    const key = `${S.status?.game?.journal ?? ""}|${S.view?.turn}`;
+    if (cycle.key !== key) cycle = { key, visited: new Set() };
+    g = cycleNext(cur, cycle.visited, near, dist);
+  } else {
+    g = nextReadyGroup(skipCurrent ? cur : -1, near, dist, skipCurrent && cur !== null ? [cur] : []);
+  }
   if (g !== null && g !== undefined) {
     selectGroup(g, { center: true });
     return true;
@@ -140,17 +175,88 @@ export function rightClick(x, y, ev) {
     setMode(null);
     return;
   }
-  if (S.sel) moveTo(x, y, ev?.shiftKey ?? false);
+  if (!S.sel) return;
+  if (ev?.shiftKey) addWaypoint(x, y);
+  else moveTo(x, y);
 }
 
-export async function moveTo(x, y, append = false) {
-  if (!S.sel || (S.sel.x === x && S.sel.y === y && !append)) return;
-  await run({ c: "move", units: S.sel.units, x, y, append });
+/** Moves the selection to (x, y) now, replacing its orders (waypoints not sent yet are
+ *  dropped: the move replaces them). */
+export async function moveTo(x, y) {
+  if (!S.sel) return;
+  if (waypoints && unitsKey(waypoints.units) === unitsKey(S.sel.units)) clearWaypoints();
+  if (S.sel.x === x && S.sel.y === y) return;
+  await run({ c: "move", units: S.sel.units, x, y, append: false });
 }
 
-/** Sends the action (a `group` query action); a `target` action first asks for a plot. */
+// ---------------------------------------------------------------------------------------------
+// Shift waypoints
+
+/** Adds waypoint (x, y) for the selection (Shift is down). */
+export function addWaypoint(x, y) {
+  if (!S.sel || S.status?.phase !== "human") return;
+  if (!waypoints || unitsKey(waypoints.units) !== unitsKey(S.sel.units)) {
+    flushWaypoints();
+    waypoints = { units: [...S.sel.units], points: [] };
+  }
+  waypoints.points.push([x, y]);
+  mapView?.setOverlay({ waypoints: waypoints.points });
+  renderPanel();
+}
+
+/** The waypoints not sent yet (for the tests and the panel). */
+export function pendingWaypoints() {
+  return waypoints ? { units: [...waypoints.units], points: waypoints.points.map((p) => [...p]) } : null;
+}
+
+/** Drops the waypoints not sent yet (Esc). Returns whether there were any. */
+export function clearWaypoints() {
+  const had = !!waypoints;
+  waypoints = null;
+  mapView?.setOverlay({ waypoints: null });
+  if (had) renderPanel();
+  return had;
+}
+
+/** Shift was released (or the window lost the focus): sends the waypoints, each a `move` with
+ *  `append`, as the exe sent them, waiting for the control point between them (the first may
+ *  let the AutoMoves rule run the game on). A refused or cancelled one drops the rest. Once
+ *  sent, the selection moves on when the group no longer waits for orders (the `applied`
+ *  rule). */
+export async function flushWaypoints() {
+  const w = waypoints;
+  clearWaypoints();
+  if (!w?.points.length) return;
+  let st = S.status;
+  for (const [x, y] of w.points) {
+    if (!(await atControl(st))) return;
+    for (let i = 0; sending() && i < 500; i++) await new Promise((r) => setTimeout(r, 20));
+    const r = await run({ c: "move", units: w.units, x, y, append: true });
+    if (!r?.r?.applied) return;
+    st = r.status ?? S.status;
+  }
+}
+
+/** Waits (long-polling from status `st`) until the player has control again; false when the
+ *  game left the player's turn (over, crashed, no game). */
+async function atControl(st) {
+  for (let i = 0; st && i < 1000; i++) {
+    if (st.phase === "human") return true;
+    if (st.phase !== "running" && st.phase !== "decision") return false;
+    try {
+      st = await api.wait(st.version, 20000);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/** Sends the action (a `group` query action); a `target` action first asks for a plot. An
+ *  action of other units than the selected ones (a reply that came late) is not sent. */
 export async function doAction(a) {
   if (!a.enabled) return;
+  if (a.cmd?.units && unitsKey(a.cmd.units) !== unitsKey(S.sel?.units)) return;
   if (a.kind === "target") {
     if (!a.any && (a.targets ?? []).length === 0) {
       toast("No target in range.", "error");
@@ -162,18 +268,22 @@ export async function doAction(a) {
   await run(a.cmd);
 }
 
-/** Runs the first enabled action of a kind the hotkey names (`MISSION_FORTIFY`, ...). */
+/** Runs the first enabled action of a kind the hotkey names (`MISSION_FORTIFY`, ...) for the
+ *  selection: pressed just after the selection changed, it waits for the selection's own
+ *  actions (P5 review: not the previous selection's). */
 export async function hotkey(type) {
+  for (let i = 0; i < 3 && S.sel && !reply() && groupPending; i++) await groupPending;
   const a = findAction(type);
   if (a) await doAction(a);
   return !!a;
 }
 
 function findAction(type) {
-  if (!group?.actions) return null;
+  const r = reply();
+  if (!r?.actions) return null;
   const m = tidx("MissionType", type);
   const c = tidx("CommandType", type);
-  return group.actions.find((a) => a.enabled && ((m >= 0 && a.mission === m && a.kind === "mission") || (c >= 0 && a.command === c))) ?? null;
+  return r.actions.find((a) => a.enabled && ((m >= 0 && a.mission === m && a.kind === "mission") || (c >= 0 && a.command === c))) ?? null;
 }
 
 /** Enters an interface mode: `{kind: "move"}` (move to the plot clicked) or `{kind: "target",
@@ -195,7 +305,8 @@ async function pickPlot(x, y, ev) {
   setMode(null);
   if (!S.sel) return;
   if (m.kind === "move") {
-    await moveTo(x, y, ev?.shiftKey ?? false);
+    if (ev?.shiftKey) addWaypoint(x, y);
+    else await moveTo(x, y);
     return;
   }
   const a = m.action;
@@ -387,27 +498,46 @@ function syncOverlay() {
   mapView?.setOverlay({ sel: S.sel ? { x: S.sel.x, y: S.sel.y } : null, units: S.sel?.units ?? [] });
 }
 
-/** Re-reads the selection's actions (`group` query) and redraws the panel. */
+/** Re-reads the selection's actions (`group` query) and redraws the panel. Until the reply for
+ *  newly selected units arrives the panel shows "…" and the hotkeys wait (a reply for the same
+ *  units at an older view stays shown meanwhile). */
 export async function refreshGroup() {
   if (!S.sel) {
     group = null;
+    groupFor = "";
     groupKey = "";
+    groupPending = null;
     renderPanel();
     return;
   }
-  const key = `${S.sel.units.join(",")}@${S.view?.view_version}:${S.view?.turn}`;
-  if (key === groupKey && group) return renderPanel();
+  const units = [...S.sel.units];
+  const uk = unitsKey(units);
+  const key = `${uk}@${S.view?.view_version}:${S.view?.turn}`;
+  if (key === groupKey && (groupPending || (group && groupFor === uk))) {
+    renderPanel();
+    return groupPending ?? undefined;
+  }
   groupKey = key;
-  renderPanel();
-  try {
-    const r = await api.query("group", { units: S.sel.units });
-    if (key !== groupKey) return;
-    group = r;
-  } catch (e) {
-    if (key !== groupKey) return;
-    group = { error: e.detail ?? e.message };
+  if (groupFor !== uk) {
+    group = null;
+    groupFor = "";
   }
   renderPanel();
+  const pending = (async () => {
+    let r;
+    try {
+      r = await api.query("group", { units });
+    } catch (e) {
+      r = { error: e.detail ?? e.message };
+    }
+    if (key !== groupKey) return;
+    group = r;
+    groupFor = uk;
+    groupPending = null;
+    renderPanel();
+  })();
+  groupPending = pending;
+  return pending;
 }
 
 function actionLabel(a) {
@@ -523,7 +653,10 @@ export function renderPanel() {
   delete panel.dataset.plot;
   const { x, y } = S.sel;
   const own = ownUnitsAt(x, y);
-  const details = new Map((group?.units ?? []).map((u) => [u.id, u]));
+  // Only a reply for the selected units: the previous selection's actions are not drawn under
+  // the new selection's header while its reply is on its way.
+  const r = reply();
+  const details = new Map((r?.units ?? []).map((u) => [u.id, u]));
   const foreign = unitsAt(x, y).filter((u) => u.owner !== me()?.player);
   const g = currentGroup();
   const grp = g !== null ? S.groups.get(g) : null;
@@ -538,7 +671,7 @@ export function renderPanel() {
     h("button", { onclick: () => select(own.map((u) => u.id)), disabled: own.length < 2, title: "Select every unit here" }, "All"),
     h("button", { onclick: groupAll, disabled: own.length < 2, title: "Join the units here into one group" }, "Group"),
     h("button", { onclick: splitAll, disabled: S.sel.units.length < 2, title: "Each selected unit its own group" }, "Split"),
-    h("button", { onclick: () => selectNext({ skipCurrent: true }), title: "Next unit waiting for orders [W]" }, "Next ⟳"),
+    h("button", { onclick: () => selectNext({ cycle: true }), title: "Next unit waiting for orders [W]" }, "Next ⟳"),
   );
   const city = cityAt(x, y);
   if (city && city.owner === me()?.player) {
@@ -548,17 +681,20 @@ export function renderPanel() {
   if (grp?.missions?.length) status.push(h("div.dim", `Orders: ${grp.missions.map((m) => dname("MissionType", m.m)).join(", ")}`));
   if (grp && !grp.ready) status.push(h("div.dim", grp.busy ? "Busy" : "Done for this turn"));
   const actions = [];
-  if (group?.error) actions.push(h("p.warn", group.error));
-  else if (!group?.actions) actions.push(h("p.dim", "…"));
+  if (r?.error) actions.push(h("p.warn", r.error));
+  else if (!r?.actions) actions.push(h("p.dim", "…"));
   else {
     for (const [title, test] of SECTIONS) {
-      const list = group.actions.filter(test);
+      const list = r.actions.filter(test);
       if (list.length) actions.push(h("div.section", h("h4", title), h("div.actions", list.map(actionButton))));
     }
   }
   const others = foreign.length ? h("div.section", h("h4", "Others here"), foreign.map((u) => h("div.dim", `${dname("UnitType", u.type)} (${playerName(u.owner)})`))) : null;
-  const hint = mode ? h("p.mode-hint", mode.kind === "move" ? "Click a plot to move there (Esc cancels)." : `Pick a plot: ${actionLabel(mode.action)} (Esc cancels).`) : null;
-  fill(panel, head, hint, list, tools, status, actions, others);
+  const hint = mode ? h("p.mode-hint", mode.kind === "move" ? "Click a plot to move there (Shift: add waypoints; Esc cancels)." : `Pick a plot: ${actionLabel(mode.action)} (Esc cancels).`) : null;
+  const way = waypoints && unitsKey(waypoints.units) === unitsKey(S.sel.units)
+    ? h("p.mode-hint", `${waypoints.points.length === 1 ? "1 waypoint" : `${waypoints.points.length} waypoints`}: release Shift to send (Esc drops them).`)
+    : null;
+  fill(panel, head, hint, way, list, tools, status, actions, others);
 }
 
 /** The side panel for a plot without units of ours. */

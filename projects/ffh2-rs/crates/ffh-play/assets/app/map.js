@@ -69,8 +69,9 @@ export class MapView {
     this.clock = 0;
     this.miniImage = null;
     /** Overlays: `path` (path query reply), `targets` ([[x, y]] or "any"), `hover` ({x, y}),
-     *  `sel` ({x, y}), `units` (selected unit ids). */
-    this.overlay = { path: null, targets: null, hover: null, sel: null, units: [] };
+     *  `sel` ({x, y}), `units` (selected unit ids), `waypoints` ([[x, y]] held while Shift is
+     *  down). */
+    this.overlay = { path: null, targets: null, hover: null, sel: null, units: [], waypoints: null };
     this.queued = false;
     this.listen();
     new ResizeObserver(() => this.resize()).observe(wrap);
@@ -649,6 +650,23 @@ export class MapView {
     if (Array.isArray(o.targets)) for (const [x, y] of o.targets) outline(x, y, "#4fe3ff", 2, [4, 3]);
     if (o.sel) outline(o.sel.x, o.sel.y, "#ffe14d", 2.5);
     if (o.hover) outline(o.hover.x, o.hover.y, o.targets ? "#4fe3ff" : "rgba(255,255,255,0.7)", 1.5);
+    // Waypoints not sent yet: numbered, in order.
+    if (Array.isArray(o.waypoints)) {
+      o.waypoints.forEach(([x, y], i) => {
+        outline(x, y, "#ffe14d", 2, [3, 3]);
+        this.eachCopy(x, y, (sx, sy) => {
+          g.fillStyle = "#ffe14d";
+          g.beginPath();
+          g.arc(sx + ts / 2, sy + ts / 2, Math.max(6, ts * 0.18), 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = "#111";
+          g.font = `bold ${Math.max(9, Math.round(ts * 0.22))}px ${FONT}`;
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillText(String(i + 1), sx + ts / 2, sy + ts / 2 + 0.5);
+        });
+      });
+    }
     const path = o.path;
     if (path?.ok && path.nodes?.length > 1) {
       // The path is drawn in one copy: from the selection's copy nearest the centre.

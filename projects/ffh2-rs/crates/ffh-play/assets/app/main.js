@@ -137,6 +137,7 @@ function clearGame() {
   viewKey = null;
   lastTurn = null;
   clearDismissed();
+  units.clearWaypoints();
   mapView.map = null;
   mapView.chunks.clear();
   mapView.request();
@@ -160,8 +161,10 @@ async function refreshView(st) {
     S.sel = null;
     lastTurn = null;
     // Another game (new, loaded, started elsewhere): its deferred popups are asked again,
-    // also at the turn the last game's were set aside (P5 review).
+    // also at the turn the last game's were set aside (P5 review); waypoints not sent yet
+    // were the last game's.
     clearDismissed();
+    units.clearWaypoints();
   }
   setView(view);
   if (newGame || !S.map || st.map_rev !== S.map.map_rev) {
@@ -295,6 +298,7 @@ function onKey(ev) {
   const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement;
   if (ev.key === "Escape") {
     if (units.currentMode()) units.setMode(null);
+    else if (units.clearWaypoints()) return;
     else if (!onEscape() && !modalOpen()) units.clearSelection();
     return;
   }
@@ -335,7 +339,7 @@ function onKey(ev) {
     case "w":
     case "W":
     case "Tab":
-      units.selectNext({ skipCurrent: true });
+      units.selectNext({ cycle: true });
       return handled();
     case "c":
     case "C":
@@ -389,11 +393,15 @@ function wire() {
   click("bottom-toggle", () => document.body.classList.toggle("bottom-closed"));
   document.addEventListener("ffh-research", () => S.view && screens.openResearch());
   document.addEventListener("keydown", onKey);
+  // Shift-right-click waypoints are sent when Shift is released (or the page loses the keys).
+  document.addEventListener("keyup", (ev) => ev.key === "Shift" && units.flushWaypoints());
+  window.addEventListener("blur", () => units.flushWaypoints());
   on("applied", () => refreshStatus());
   on("refused", () => refreshStatus());
   on("kick", () => refreshStatus());
   on("game-started", () => {
     closeAll();
+    units.clearWaypoints();
     S.sel = null;
     viewKey = null;
     clearDismissed();
