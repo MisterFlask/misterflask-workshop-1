@@ -105,6 +105,7 @@ def summarize(results, at):
             return (fmt + ' [' + fmt + '-' + fmt + ']') % (sum(v) / len(v), min(v), max(v))
         lead = leader_stats(ok, key)
         legacy = [legacy_score(r, c) for r in ok for c in r['snapshots'].get(key, []) if not c['barb'] and c['alive']]
+        religions = [r['world_at'][key]['religions'] for r in ok if 'religions' in r.get('world_at', {}).get(key, {})]
         rows.append((t, {
             'cities': stat('cities'), 'pop': stat('pop'), 'techs': stat('techs'), 'mil': stat('mil'),
             'workers': stat('workers'), 'impr': stat('impr'), 'research': stat('research'), 'prod': stat('prod'),
@@ -118,6 +119,7 @@ def summarize(results, at):
             'shared': stat('cities', [c for c in alive if c.get('area_civs', 0) > 0]),
             'barb_units': '%.0f' % (sum(b['units'] for b in barbs) / max(1, len(barbs))),
             'barb_cities': '%.1f' % (sum(b['cities'] for b in barbs) / max(1, len(barbs))),
+            'religions': mean_range(religions, '%.1f'),
         }))
     return rows
 
@@ -145,7 +147,8 @@ def print_report(results, at, label=''):
             row['lead_share'], row['fair_share'], row['lead_ratio'], row['legacy']))
         print('          slider %s | commerce %s | maint %s | units %s | civics %s | gold %s' % (
             row['pct'], row['commerce'], row['maint'], row['ucost'], row['civ_upkeep'], row['gold']))
-        print('          overseas %s | ships %s | cities alone %s, shared %s' % (row['overseas'], row['ships'], row['alone'], row['shared']))
+        print('          overseas %s | ships %s | cities alone %s, shared %s | religions founded %s' % (
+            row['overseas'], row['ships'], row['alone'], row['shared'], row['religions']))
     tot = totals(results)
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)

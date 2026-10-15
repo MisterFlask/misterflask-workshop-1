@@ -519,8 +519,8 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
     vanished with this player's units on the ruins), `lost_civ`, `lost_barb` (taken or razed by
     them), `lost_other`, `founded`, `cities_lost_rule` (Civ4 `getCitiesLost`), `players_killed`.
   Game-wide (`world_at`): `game_turn`, `alive_civs`, `war_pairs`, `armageddon` (counter %),
-  `land_plots`, `estimate_end_turn`, and the legacy score's `max_*`/`init_*` (population, land,
-  tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
+  `religions` (founded so far), `land_plots`, `estimate_end_turn`, and the legacy score's
+  `max_*`/`init_*` (population, land, tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
   Mercurian Gate; the Infernals and empires formed by events get a new team), so aggregate by
   `team`.
   `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare
