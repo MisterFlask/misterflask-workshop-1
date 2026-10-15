@@ -14,3 +14,7 @@ and layout are placeholders from the mock-up tool, not part of the direction.
 (kept for reference: same mood, less colour).
 
 All game art is original (no Civ4/FFH2 assets); see `docs/ART.md` for the style guide.
+
+`style-reference.png` is a prototype study rendered while writing `docs/ART.md`: the 40-colour
+palette, the terrain and feature key, unit silhouettes on three grounds with the ten owner
+tinctures, and a sample map at 2x. It validates the guide's rules. It is not final art.
