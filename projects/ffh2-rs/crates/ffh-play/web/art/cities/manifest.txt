@@ -6,10 +6,10 @@ source resources.spr
 
 ; ---- city style per civilization (9.2, 7.3): the target is a style (city/<style>_<tier>);
 ; light = window colour key, pool = FIRE | BLOOD | none. Missing styles fall back to cloister.
-map citystyle CIVILIZATION_AMURITES -> cloister light=P
+map citystyle CIVILIZATION_AMURITES -> amurite light=P pool=ARC
 map citystyle CIVILIZATION_BALSERAPHS -> carnival
 map citystyle CIVILIZATION_BANNOR -> cloister
-map citystyle CIVILIZATION_CALABIM -> cloister
+map citystyle CIVILIZATION_CALABIM -> calabim
 map citystyle CIVILIZATION_CLAN_OF_EMBERS -> tribal
 map citystyle CIVILIZATION_DOVIELLO -> tribal
 map citystyle CIVILIZATION_ELOHIM -> cloister
@@ -21,13 +21,13 @@ map citystyle CIVILIZATION_KHAZAD -> dwarven
 map citystyle CIVILIZATION_KURIOTATES -> cloister
 map citystyle CIVILIZATION_LANUN -> harbour
 map citystyle CIVILIZATION_LJOSALFAR -> elven
-map citystyle CIVILIZATION_LUCHUIRP -> dwarven
+map citystyle CIVILIZATION_LUCHUIRP -> luchuirp
 map citystyle CIVILIZATION_MALAKIM -> sundomes
 map citystyle CIVILIZATION_MERCURIANS -> celestial light=8 pool=none
 map citystyle CIVILIZATION_SHEAIM -> infernal light=R pool=BLOOD
-map citystyle CIVILIZATION_SIDAR -> cloister light=6
-map citystyle CIVILIZATION_SVARTALFAR -> elven light=P
-map citystyle CIVILIZATION_BARBARIAN -> tribal
+map citystyle CIVILIZATION_SIDAR -> sidar light=6 pool=none
+map citystyle CIVILIZATION_SVARTALFAR -> svartalfar light=P pool=ARC
+map citystyle CIVILIZATION_BARBARIAN -> barbarian
 map citystyle * -> cloister
 
 ; ---- improvements: bespoke sprites claim their types with `: types`; the rest by category

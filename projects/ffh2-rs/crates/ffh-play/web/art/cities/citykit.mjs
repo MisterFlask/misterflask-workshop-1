@@ -1,0 +1,286 @@
+// citykit.mjs: the city sprite kit (docs/ART.md 9): a pixel grid, materials, building primitives
+// and the compositor that citystyles.mjs uses to build every city/<style>_<tier> sprite.
+//
+// Pieces are drawn back to front, each with its own 1 px void outline (4.2), so a building in front
+// is inked against the one behind. Moonlight from the upper left: the left column of a wall and the
+// left slope of a roof carry a lit rim, the right side is in shade. Walls are lighter than roofs, so
+// a roof reads at 1x as a dark cap with a lit edge. Windows are amber `l` (the renderer recolours
+// them to the style's light, 7.3); the stone beside and under a window is pre-lit through the
+// style's pool table (9.1).
+
+// ------------------------------------------------------------------------------------- grid
+
+class G {
+  constructor(w, h) { this.w = w; this.h = h; this.d = Array.from({ length: h }, () => Array(w).fill('.')); }
+  /** A hand-drawn stamp: rows of keys, '.' or ' ' transparent; a leading '|' protects spaces. */
+  static of(text) {
+    const rows = text.split('\n').filter((r) => r.trim().length).map((r) => r.trim().replace(/^\|/, '').replace(/\|$/, ''));
+    const g = new G(Math.max(...rows.map((r) => r.length)), rows.length);
+    rows.forEach((r, y) => [...r].forEach((c, x) => { g.d[y][x] = c === ' ' ? '.' : c; }));
+    return g;
+  }
+  get(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h ? this.d[y][x] : '.'; }
+  set(x, y, c) { if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.d[y][x] = c; }
+  op(x, y) { return this.get(x, y) !== '.'; }
+  clone() { const g = new G(this.w, this.h); g.d = this.d.map((r) => r.slice()); return g; }
+  map(fn) { const g = this.clone(); for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) g.d[y][x] = fn(this.d[y][x], x, y); return g; }
+  remap(t) { return t ? this.map((c) => (c in t ? t[c] : c)) : this; }
+  mirror() { return this.map((_, x, y) => this.d[y][this.w - 1 - x]); }
+  paint(src, x, y) {
+    for (let j = 0; j < src.h; j++) for (let i = 0; i < src.w; i++) { const c = src.d[j][i]; if (c !== '.') this.set(x + i, y + j, c); }
+    return this;
+  }
+  /** A copy grown by 1 px all round, with a void outline (4-neighbour) around opaque pixels. */
+  outlined() {
+    const g = new G(this.w + 2, this.h + 2);
+    g.paint(this, 1, 1);
+    const add = [];
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+      if (g.d[y][x] === '.' && (g.op(x - 1, y) || g.op(x + 1, y) || g.op(x, y - 1) || g.op(x, y + 1))) add.push([x, y]);
+    }
+    for (const [x, y] of add) g.d[y][x] = '0';
+    return g;
+  }
+  bbox() {
+    let x0 = this.w, y0 = this.h, x1 = -1, y1 = -1;
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (this.d[y][x] !== '.') { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return { x0, y0, x1, y1 };
+  }
+  crop(x0, y0, w, h) { const g = new G(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) g.d[y][x] = this.get(x0 + x, y0 + y); return g; }
+  colours() { const s = new Set(); for (const r of this.d) for (const c of r) if (!'.0#%*@'.includes(c)) s.add(c); return s; }
+  rows() { return this.d.map((r) => r.join('')); }
+}
+const P = (text) => G.of(text);
+
+// ------------------------------------------------------------------------------- materials
+// Walls: e (lit edge), b (body), s (shade side); roofs: r (rim on the lit slope), l (lit half),
+// d (dark half), t (tip); door: an unlit doorway.
+
+const M = {
+  stone: { e: '5', b: '4', s: '3', r: '5', l: '2', d: '1', t: '6', door: '1' },
+  dark: { e: '4', b: '3', s: '2', r: '4', l: '1', d: '1', t: '5', door: '0' },
+  faded: { e: '6', b: '5', s: '4', r: '6', l: '4', d: '3', t: '7', door: '3' },
+  rime: { e: '5', b: '4', s: '3', r: 'F', l: 'f', d: 'g', t: 'F', door: '1' },
+  sand: { e: '6', b: 'Q', s: 'u', r: 'Y', l: '6', d: 'Q', t: 'Y', door: '2' },
+  wood: { e: 'Q', b: 'u', s: '2', r: '5', l: '3', d: '2', t: '6', door: '1' },
+  hide: { e: 'y', b: 'Q', s: 'u', r: 'y', l: 'Q', d: 'u', t: 'u', door: '1' },
+  pelt: { e: '5', b: '3', s: '2', r: '5', l: '3', d: '2', t: 'u', door: '1' },
+  thatch: { e: 'Q', b: 'u', s: '2', r: 'y', l: 'Q', d: 'u', t: 'y', door: '1' },
+  pale: { e: '7', b: '6', s: '5', r: '8', l: '7', d: '5', t: '8', door: '4' },
+  thorn: { e: '3', b: '1', s: '1', r: '4', l: '2', d: '1', t: '4', door: '0' },
+  rock: { e: '5', b: '3', s: '2', r: '5', l: '4', d: '2', t: '6', door: '0' },
+};
+
+// ------------------------------------------------------------------------------ primitives
+
+/** A wall w x h: the left column lit, the right column in shade, the rest body. */
+function wall(w, h, m, o = {}) {
+  const g = new G(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) g.d[y][x] = x === 0 && w > 1 ? m.e : x === w - 1 && w > 2 ? m.s : m.b;
+  if (o.eave) for (let x = 1; x < w - 1; x++) g.d[0][x] = m.s;
+  return g;
+}
+
+/** Row widths of a tapering roof from the top: `pitch` rows per 1 px step in on each side. */
+function taper(w, pitch, top) {
+  const rows = [];
+  for (let wd = top ?? (w % 2 ? 1 : 2); wd <= w; wd += 2) for (let k = 0; k < pitch; k++) rows.push(wd);
+  return rows;
+}
+
+/** A pointed roof (spire, gable end, tent): rim on the lit slope, left half lit, right half dark. */
+function peak(w, pitch, m, o = {}) {
+  const rows = taper(w, pitch, o.top);
+  if (o.cut) rows.splice(0, o.cut);
+  const g = new G(w, rows.length);
+  const c = (w - 1) / 2;
+  rows.forEach((wd, y) => {
+    const a = (w - wd) / 2;
+    for (let x = a; x < a + wd; x++) g.d[y][x] = x === a ? m.r : x <= c ? m.l : m.d;
+  });
+  if (o.tip !== false) g.d[0][Math.floor(c)] = o.tip || m.t;
+  return g;
+}
+
+/** A long (hipped) roof seen from the side: a trapezoid h rows tall, lit ridge, shaded eave row. */
+function hip(w, h, m) {
+  const g = new G(w, h);
+  for (let y = 0; y < h; y++) {
+    const a = h - 1 - y;
+    for (let x = a; x < w - a; x++) g.d[y][x] = y === 0 || x === a ? m.r : x === w - 1 - a ? m.d : y === h - 1 ? m.d : m.l;
+  }
+  return g;
+}
+
+/** A half-ellipse dome w wide and h tall, lit at the upper left. */
+function dome(w, h, m) {
+  const g = new G(w, h);
+  const cx = (w - 1) / 2, rx = w / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = (x - cx) / rx, v = (h - 0.5 - y) / h;
+    if (u * u + v * v <= 1.05) g.d[y][x] = u > 0.25 ? m.d : m.l;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (g.d[y][x] === '.' || x > cx + 0.5) continue;
+    if (g.get(x - 1, y) === '.' || g.get(x, y - 1) === '.') g.d[y][x] = m.r;
+  }
+  return g;
+}
+
+/** Union of discs [[cx, cy, r]], lit from the upper left: rim, lit, body, shade (canopies, mounds). */
+function blobs(list, keys, o = {}) {
+  const W = Math.ceil(Math.max(...list.map(([x, , r]) => x + r))) + 1, H = Math.ceil(Math.max(...list.map(([, y, r]) => y + r))) + 1;
+  const g = new G(W, H);
+  const inside = (x, y) => list.some(([cx, cy, r]) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!inside(x, y)) continue;
+    // nearest disc decides the light
+    let best = null, bd = Infinity;
+    for (const [cx, cy, r] of list) { const d = Math.hypot(x - cx, y - cy) / r; if (d < bd) { bd = d; best = [cx, cy, r]; } }
+    const [cx, cy, r] = best;
+    const nx = (x - cx) / r, ny = (y - cy) / r;
+    const lightness = -nx * 0.6 - ny * 0.8;
+    g.d[y][x] = lightness > 0.35 ? keys.lit : lightness < -0.25 ? keys.sh : keys.body;
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (g.d[y][x] === '.') continue;
+    if ((!g.op(x, y - 1) || !g.op(x - 1, y)) && g.d[y][x] === keys.lit) g.d[y][x] = keys.rim;
+  }
+  if (o.flatBottom) { const b = g.bbox(); return g.crop(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1); }
+  const b = g.bbox();
+  return g.crop(b.x0, b.y0, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
+}
+
+/**
+ * A rock mound w wide, h tall at its crown: a rounded mesa (plus optional bumps [[x, h]]) lit from
+ * the upper left: rim along the lit top edge, lit left flank, body, shade at the right with strata.
+ */
+function mound(w, h, keys = { rim: '5', lit: '4', body: '3', sh: '2' }, bumps = []) {
+  const hs = [];
+  for (let x = 0; x < w; x++) {
+    const u = Math.abs((2 * x + 1) / w - 1);
+    let hx = h * Math.pow(Math.max(0, 1 - Math.pow(u, 2.2)), 0.55);
+    for (const [bx, bh, br = 4] of bumps) hx = Math.max(hx, bh * Math.max(0, 1 - Math.abs(x - bx) / br));
+    hs.push(Math.max(1, Math.round(hx)));
+  }
+  const H = Math.max(...hs);
+  const g = new G(w, H);
+  for (let x = 0; x < w; x++) for (let y = H - hs[x]; y < H; y++) {
+    const f = x / (w - 1);
+    let k = f < 0.38 ? keys.lit : f > 0.72 ? keys.sh : keys.body;
+    if (f > 0.5 && (y - (H - hs[x])) % 4 === 2 && x % 3 !== 0) k = keys.sh;
+    g.d[y][x] = k;
+  }
+  for (let x = 0; x < w; x++) {
+    const top = H - hs[x];
+    if (x / (w - 1) < 0.6) { g.d[top][x] = keys.rim; if (x > 0 && hs[x] > hs[x - 1] + 1) for (let y = top; y < H - hs[x - 1]; y++) g.d[y][x] = keys.rim; }
+  }
+  return g;
+}
+
+/** Stack parts vertically, centred: [top, ..., bottom]. */
+function stack(...parts) {
+  parts = parts.filter(Boolean);
+  const W = Math.max(...parts.map((p) => p.w));
+  const g = new G(W, parts.reduce((a, p) => a + p.h, 0));
+  let y = 0;
+  for (const p of parts) { g.paint(p, Math.floor((W - p.w) / 2), y); y += p.h; }
+  return g;
+}
+
+/** Put marks on a part: [[x, y, key], ...] (windows, doors, details), in the part's coordinates. */
+function mark(g, list) { const o = g.clone(); for (const [x, y, k] of list) o.set(x, y, k || 'l'); return o; }
+
+/** Paint parts side by side on a common ground line: [[part, x], ...] (no outlines: one mass). */
+function side(items) {
+  const W = Math.max(...items.map(([p, x]) => x + p.w)), H = Math.max(...items.map(([p]) => p.h));
+  const g = new G(W, H);
+  for (const [p, x] of items) g.paint(p, x, H - p.h);
+  return g;
+}
+
+/**
+ * A building: a wall with a roof. roof: gable | steep | spire | dome | flat | crenel | none;
+ * eave: roof overhang per side; win: [[x, y, key]] in wall coordinates; door: x of a door.
+ */
+function house({ w, h, m = M.stone, roof = 'gable', eave = 1, win = [], door = null, lit = false, pitch, tip, domeH, rm }) {
+  const R = rm || m;
+  let body = wall(w, h, m, { eave: ['gable', 'steep', 'spire'].includes(roof) && w >= 4 });
+  body = mark(body, win);
+  if (door !== null) body = mark(body, lit ? [[door, h - 2, m.door], [door, h - 1, 'l']] : [[door, h - 1, m.door], [door, h - 2, m.door]]);
+  let top = null;
+  const rw = w + 2 * eave;
+  if (roof === 'gable') top = peak(rw, pitch || 1, R, { tip });
+  else if (roof === 'steep') top = peak(rw, pitch || 2, R, { tip });
+  else if (roof === 'spire') top = peak(rw, pitch || 3, R, { tip });
+  else if (roof === 'dome') top = dome(rw, domeH || Math.ceil(rw / 2), R);
+  else if (roof === 'flat') { top = new G(rw, 1); for (let x = 0; x < rw; x++) top.d[0][x] = x === 0 ? R.r : x === rw - 1 ? R.d : R.l; }
+  else if (roof === 'crenel') {
+    top = new G(w, 2);
+    for (let x = 0; x < w; x++) { top.d[1][x] = x === 0 ? m.e : m.b; if (x % 2 === 0) top.d[0][x] = x === 0 ? m.e : m.b; }
+  }
+  return stack(top, body);
+}
+
+// ------------------------------------------------------------------------------ composing
+
+/**
+ * Compose pieces back to front: [part, x, lift, {bare}] with x the part's left edge and lift its
+ * rows above the ground line. Each part gets its own outline unless bare.
+ */
+function compose(items, W = 40, H = 48) {
+  const c = new G(W, H);
+  const ground = H - 2;
+  for (const it of items) {
+    if (!it) continue;
+    const [part, x, lift = 0, o = {}] = it;
+    const p = o.bare ? part : part.outlined();
+    const k = o.bare ? 0 : 1;
+    c.paint(p, x + 2 - k, ground - lift - (part.h - 1) - k);
+  }
+  return c;
+}
+
+const TABLES = {
+  FIRE: { 1: 'u', 2: 'u', 3: 'u', 4: 'Q', 5: '6', 6: '7', u: 'Q', Q: 'y', k: 'u', t: 'Q', T: 'y', v: 'u', p: 'Q', y: 'Y', x: 'E', '#': '#', '%': '%' },
+  BLOOD: { 1: 'c', 2: 'c', 3: 'c', 4: 'c', 5: 'C', u: 'c' },
+  ARC: { 1: 'v', 2: 'v', 3: 'p', 4: 'p', 5: 'p', 6: 'P', k: 'v', t: 'p', T: 'P', v: 'p', p: 'P', u: 'v', Q: 'p' },
+  COLD: { 2: 'g', 3: 'g', 4: 'f', 5: 'f' },
+};
+
+/** Pre-light the stone beside a window through `table`, and twice under it (the sill). */
+function halo(g, table, keys = 'lL') {
+  if (!table) return g;
+  const out = g.clone();
+  const T = (c) => (table[c] && !'0.'.includes(c) ? table[c] : c);
+  for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+    if (!keys.includes(g.d[y][x])) continue;
+    for (const [dx, dy, n] of [[1, 0, 1], [-1, 0, 1], [0, 1, 2]]) {
+      const c = g.get(x + dx, y + dy);
+      if (c === '.' || c === '0' || keys.includes(c)) continue;
+      const once = T(c);
+      out.set(x + dx, y + dy, n === 2 && once === 'u' ? T(once) : once);
+    }
+  }
+  return out;
+}
+
+/** Trim to the opaque bounding box, keeping `room` empty rows above for the capital finial. */
+function trim(g, room = 2) {
+  const b = g.bbox();
+  const y0 = Math.max(0, b.y0 - room);
+  return g.crop(b.x0, y0, b.x1 - b.x0 + 1, b.y1 - y0 + 1);
+}
+
+/** The finial point: the topmost outline pixel (over the tallest spire). */
+function finialOf(g) {
+  for (let y = 0; y < g.h; y++) {
+    const xs = [];
+    for (let x = 0; x < g.w; x++) if (g.d[y][x] !== '.') xs.push(x);
+    if (xs.length) return [xs[Math.floor((xs.length - 1) / 2)], y];
+  }
+  return [0, 0];
+}
+
+
+export { G, P, M, wall, taper, peak, hip, dome, blobs, mound, stack, mark, side, house, compose, TABLES, halo, trim, finialOf };
