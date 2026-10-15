@@ -433,23 +433,22 @@ pub fn resolve_keys<'t>(d: &GameData, text: &'t str) -> Cow<'t, str> {
     Cow::Owned(out)
 }
 
-/// Display name of a value: its full description text, with Civ4 markup such as `[ICON_TRADE]`
-/// kept (`VOTE_LIBERTY` -> "Global Civic: Liberty"), or its [`humanize`]d type name when it has
-/// no description, the text is missing or empty, or the text holds an unfilled `%D1`-style
-/// placeholder (the Somnium memories: `%D1: "Learn how to play Somnium!"`).
+/// Display name of a value: its description text (`Text::name`, C++ `getDescription()`: the
+/// whole text, colons included, as FfH2's English entries have no grammatical forms), with Civ4
+/// markup such as `[ICON_TRADE]` kept (`VOTE_LIBERTY` -> "Global Civic: Liberty"), or its
+/// [`humanize`]d type name when it has no description, the text is missing or empty, or the text
+/// holds an unfilled `%D1`-style placeholder (the Somnium memories: `%D1: "Learn how to play
+/// Somnium!"`).
 ///
-/// The full text, not `Text::name`: that cuts at the first ':', which FfH2's English text uses
-/// only as prose ("Global Civic: Liberty", "Single Currency: +1 Trade Route ..."); no English
-/// entry of CIV4GameText_FFH2.xml has `<Text>`/`<Gender>` forms. The vendored text is FfH2's own
-/// file only, so descriptions FfH2 inherits from BtS, such as `TXT_KEY_UNIT_WARRIOR`, have no
-/// text and use the type name.
+/// The vendored text is FfH2's own file only, so descriptions FfH2 inherits from BtS, such as
+/// `TXT_KEY_UNIT_WARRIOR`, have no text and use the type name.
 pub fn display<T: Named>(d: &GameData, v: T) -> Cow<'_, str> {
     display_of(T::text_key(d, v), T::name(d, v), d)
 }
 
 fn display_of<'d>(key: Option<&'d str>, name: &'d str, d: &'d GameData) -> Cow<'d, str> {
     if let Some(k) = key {
-        let t = d.text.get(k).trim();
+        let t = d.text.name(k).trim();
         if t != k && !t.is_empty() && !has_placeholder(t) {
             return Cow::Borrowed(t);
         }
