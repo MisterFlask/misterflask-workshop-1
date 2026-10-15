@@ -5,8 +5,8 @@
 ; this set keeps only the improvement/_landmark fallback for unique types added later.
 ; citylight.js is the cities set's proposal for the city's light (ART.md 9.1): the hearth pool
 ; (ember ring by the walls, FIRE falling off to umber and dun; GORE and AURA for BLOOD and ARC), the
-; wall glow and the sprite's own lights (the tribal bonfire). The client calls installCityLight(art)
-; after loadArt() until art.js adopts it. preview.html shows every style and a town map with it;
+; wall glow and the sprite's own lights (the tribal bonfire). loadArt() installs it (art.js
+; PASSES, installCityLight). preview.html shows every style and a town map with it;
 ; ref-styles.png is its reference sheet (?part=ref, rendered with every set merged: 704x768, indexed).
 set cities
 source cities.spr

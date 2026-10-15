@@ -9,7 +9,9 @@ The direction comes from the user's mood board (`docs/art/mood-board.png`, v2). 
 **mood**, not the UX. Its words, specific symbols, icons, panel layout and resource counters are
 placeholders from the mock-up tool and are not copied. `docs/art/style-reference.png` is a
 prototype study rendered while writing this guide (palette, terrain key, unit silhouettes, owner
-pennants, a sample map). It validates the rules below. It is not final art.
+pennants, a sample map). It validates the rules below. It is not final art. Section 16 is the
+status of the art as assembled (coverage, fallbacks, how the client calls the toolkit, and where
+the sets' second rounds supersede sections of this guide).
 
 ---
 
@@ -1323,13 +1325,13 @@ Section 13's format, extended with metadata lines between the header and the row
   | `icon16/`, `icon8/`, `ui/mark_*` | 16x16, 8x8, 8x8 |
   | `sigil/` | 5x5 (or 7x7) charges in `*` |
   | `font/vigil/`, `font/tally/` | glyphs in `8`, anchor at the baseline; `x_sc` are small capitals |
-  | `ui/` | pennant, banner and other chrome |
+  | `ui/` | the stack standard, the city banner and other chrome |
 
 - Groups: `name_a`, `name_b`... are variants of `name` (picked per tile by hash); `name_f1`,
   `name_f2`... are animation frames (picked by `art.time`, 400 ms each). A rule targets the group.
 - Names starting with `_` (`unit/_melee`) are generic: category fallbacks, not a game type.
-- Outlines are part of the sprite. Moon rims, contact shadows, pools, pennants, HP strips and plaques
-  are added by the renderer.
+- Outlines are part of the sprite. Moon rims, contact shadows, pools, standards, HP strips and
+  plaques are added by the renderer.
 
 ### 15.2 Sets, manifests and the mapping
 
@@ -1388,7 +1390,8 @@ cannot read the XML). Regenerate it when the XML changes; the validator fails wh
 ```js
 import { loadArt, TILE } from './art/art.js';
 import { renderMap, makePlots, fromApiMap } from './art/compose.js';
-const art = await loadArt();                 // or loadArt({ base: url }) or loadArt({ bundle: text })
+const art = await loadArt();                 // or loadArt({ base: url }) or loadArt({ bundle: text });
+                                             // installs the set passes (section 16.3)
 art.scale = 2;                               // canvas pixels per art pixel, an integer (3.2)
 art.setWorld({ width, height, wrapX });      // the warp noise wraps with the map
 art.setIndexNames('terrain', names);         // let plots carry engine indices (from /api/data)
@@ -1414,7 +1417,7 @@ Drawing functions take the canvas position of the tile's top-left corner:
 | `drawResource(ctx, x, y, bonusType)` | the seal at tile 25,25 |
 | `drawImprovement(ctx, x, y, type, plot)` | improvement with its pools (dark windows when not visible) |
 | `drawCity(ctx, x, y, city, ownerStyle)` | style and tier sprite, pool, window light, finial, banner, plaque |
-| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | contact shadow, echoes, rim, pennant, HP strip, moves pip, stack chip or mark |
+| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | contact shadow, echoes, rim; the overlay (standard, count chip, health bar, mark, lantern reflections) from `units/stack.js` |
 | `drawFog(ctx, x, y, plot)` | the fog pass: FOG remap with hatching, void for unrevealed, ragged edges |
 | `drawLight(ctx, cx, cy, table, r, {inner})`, `drawVignette(ctx, x, y, w, h)` | index-remap pools and the vignette |
 | `drawText(ctx, x, y, text, {font, color, shadow, smallCaps})`, `measureText` | Vigil and Tally |
@@ -1422,7 +1425,7 @@ Drawing functions take the canvas position of the tile's top-left corner:
 | `drawSprite(ctx, x, y, name, variant)`, `drawTileCursor` | any sprite by name; the tile cursor |
 
 `city` is `{ size, name, capital, own, turns, disorder, visible, style, plaque, layer }`; `state` is
-`{ facing, selected, hp, moves, count, mark, hero, translucent, accent, noPennant, layer }`;
+`{ facing, selected, hp, moves, own, count, mark, hero, inCity, translucent, accent, noPennant, layer }`;
 `layer: 'sprite' | 'overlay'` splits a unit or city into the map part and the overlays drawn
 above every unit. `ownerStyle(civ, {division, tincture, ...})` builds an owner style and
 `assignOwners([{id, civ}])` applies the assignment of section 7.2.
@@ -1493,7 +1496,7 @@ redraw only changed tiles (3.1).
 4. Run `tools/check.sh`, then look: `node tools/screenshot.mjs /tmp/art` and read the set's sheet,
    `coverage.png` and `scene.png` at 1x and 2x. Review against section 14.
 
-The seed art is deliberately small: 8 terrain textures (hell terrains are recoloured twins), hill
+The toolkit started from seed art (section 16 has the art as it now stands), deliberately small: 8 terrain textures (hell terrains are recoloured twins), hill
 humps, rock and snow peaks, three conifers (also ancient, burnt, new forest and jungle through
 remaps), flames, routes; 15 generic unit silhouettes that every unit falls back to by combat class,
 race, domain and tier; Cloister tiers 1-3, Infernal 2 and Tribal 2 cities; farm, cottage, hamlet,
@@ -1501,3 +1504,148 @@ mine and category fallbacks for improvements and lairs; resource seals; pennant,
 sigils; the Vigil and Tally fonts; yield and category icons. Not drawn yet: bespoke units, most
 sigils and city styles, the 18 sphere runes, landmarks, walls, disorder smoke, holy-city glyphs,
 cursors and path previews.
+
+---
+
+## 16. Status
+
+The four sets were drawn in parallel (terrain, units, cities, ui), each revised in a second round
+after review, and merged on the branch `art-final`. `tools/check.sh` passes: every module parses,
+the unit tests pass, every sprite and rule validates, `types.json` matches `data/xml`, every game
+type of every kind resolves, and `loadArt` installs the set passes.
+
+### 16.1 Coverage
+
+959 sprites (924 groups) in 25 source files: terrain 89, units 187, cities 211 (80 city sprites,
+69 improvements, 62 resource glyphs and the seal), ui 472 (192 font glyphs). How each game type
+resolves (`tools/validate.mjs`, also the table at the top of `preview/sheet.html?set=all`):
+
+| kind | types | exact | base unit | category | none |
+|---|---|---|---|---|---|
+| terrain | 14 | 14 | | | |
+| hill / peak | 14 / 14 | 10 / 10 | | | 4 / 4 |
+| feature | 20 | 20 | | | |
+| bonus | 58 | 58 | | | |
+| improvement | 81 | 79 | | | 2 |
+| route | 2 | 2 | | | |
+| unit | 325 | 283 | 24 | 18 | |
+| civ (sigil) | 23 | 23 | | | |
+| citystyle | 23 | 22 | | 1 | |
+| religion | 7 | 7 | | | |
+| building | 170 | 90 | | 80 | |
+| promotion | 261 | 30 | | 231 | |
+| unitcombat | 10 | 10 | | | |
+| specialist | 11 | 11 | | | |
+
+"Exact" means a rule naming the type, a sprite claiming it (`: types`) or the naming convention;
+several exact unit rules point at a shared sprite with a faith accent, a material remap or the
+ghost flag. Every land terrain has its own hill and peak rule; city styles: 16 styles x 5 tiers;
+landmarks: the 17 unique improvements, drawn by the terrain set.
+
+### 16.2 What uses fallbacks
+
+- **Units, 24 by their base unit's sprite** (unique units without a sprite of their own): Eater
+  of Dreams (archmage); Chanter, Devout, Taskmaster (assassin); Sons of Asena (axeman); Myconid,
+  Spiderkin (beastmaster); Circle of Urd (berserker); Dwarven Cannon (cannon); Battlemaster,
+  Dragon Slayer (champion); Decius (commander); Flurry (crossbowman); Luonnotar (druid); Fyrdwell,
+  Nyxkin (horse archer); Skuld (immortal); Illusionist, Wizard (mage); Verdandi (phalanx); Pirate
+  (privateer); Harlequin (ranger); Courtesan, Dwarven Shadow (shadow).
+- **Units, 18 by a category rule** (to the nearest silhouette of their class): Arquebus
+  (crossbowman); Auric, Lucian, Radiant Guard (generic melee); Demagog, Grigori Medic, Lunatic,
+  Mary, Mercenary (champion); Fawn (generic recon); Freak (warrior); Kithra, Mercenary Mounted,
+  Royal Guard (horse archer); Nightwatch (longbowman); Ratha (horseman); Revelers, Satyr (ranger).
+- **Buildings**: no building has an icon of its own; every one shows its class icon
+  (`icon16/bclass_<class>`, 20 icons: a temple per faith, shrine, government, military, defence,
+  economy, provision, health, harbour, learning, culture, arcane, forge, wonder). 90 are mapped by
+  rules naming them, the other 80 by category (world wonders, faith, defence...).
+- **Promotions**: 37 seals (19 kinds of line and the 18 spheres) with the rim colour by family;
+  30 promotions by rules naming them, 231 by category (line, sphere, race, equipment...). Levels
+  show as pips (`UI.drawPromotion`).
+- **City style**: CIVILIZATION_RANDOM falls back to the Cloister.
+- **Deliberately not drawn** (`none`): hills and peaks on water and on the graphics-only
+  TERRAIN_PEAK and TERRAIN_HILL; IMPROVEMENT_LAND_WORKED and IMPROVEMENT_WATER_WORKED.
+- Category rules remain for types added to the XML later (a new unit falls back by combat class,
+  race and domain; a new improvement or landmark to its category sprite).
+
+### 16.3 How the client calls the toolkit
+
+`loadArt()` loads the sprites and the mapping, then installs the sets' **passes** (`PASSES` in
+art.js): `terrain/ground.js` (the ground pass: blob terrain classes, wider warp, feathered edges,
+organic fog, river and road verges, wooded crests, moonlit wood rims), `units/stack.js` (the stack
+standard, count chip, health bar, marks and lantern reflections) and `cities/citylight.js` (the
+hearth pool, wall glow and bonfires). Each wraps or replaces some `Art` methods, so the drawing
+functions of 15.3 and `renderMap` produce the final look without further calls.
+`loadArt({ passes: false })` gives the seed drawing (the set previews use it to install their own
+module with their toggles). The pass modules are imported next to art.js, so serve the whole
+`web/art` directory even when the sprites come from a bundle.
+
+```js
+import { loadArt, TILE } from './art/art.js';
+import { renderMap, makePlots, fromApiMap } from './art/compose.js';
+import * as UI from './art/ui/ui.js';
+
+const art = await loadArt();                       // sprites, mapping, set passes
+for (const [kind, names] of Object.entries(typeNames)) art.setIndexNames(kind, names); // /api/data
+art.scale = zoom;                                  // 1 (survey) to 4; integers only
+const owners = art.assignOwners(players);          // [{ id, civ }] -> Map(id -> owner style)
+const map = fromApiMap(apiMap, w, h, wrapX);
+const plots = makePlots(map);
+UI.installCSS(art, { u, dpr });                    // chrome: frames, buttons, cursors, colours
+
+// per zoom: the terrain layer into an offscreen cache (redraw only tiles that change) ...
+renderMap(art, cacheCtx, map, { plots, owners, cities, only: 'terrain' });
+// ... per frame: blit the cache, vignette, then units, city overlays and the cursor
+ctx.drawImage(cache, x0, y0);
+art.drawVignette(ctx, x0, y0, viewW, viewH);
+renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 'units' });
+```
+
+- `cities`: `{ x, y, owner, size, name, capital, own, turns, disorder }`; `stacks`: one per tile,
+  the head unit, `{ x, y, unit, owner, count, state }` with `state` `{ own, moves, selected, hp,
+  mark, hero, facing }` (`moves` only for your own units; foreign stacks stay quiet). A stack on a
+  city tile flies its standard at the top-right (`inCity`, set by `renderMap` from `cities`).
+- Canvases that fog and pools read back need `getContext('2d', { willReadFrequently: true })`.
+- Map overlays from `ui/ui.js`: `UI.drawTileMark`, `drawPath`, `drawOdds`, `drawRange`,
+  `drawTileYields`; panels and text: `UI.textSpan` (Vigil, Vigil Book), `UI.iconFor(art, kind, TYPE,
+  16|8)`, `UI.promotionEl`, `drawButton`, `drawBar` (`ui/README.md` lists them all).
+- Minimap colours: `art.resolve(kind, type).opts.mini` on the terrain, hill, peak and feature
+  rules (`terrain/manifest.txt`); owned land takes the owner's field colour.
+- Working examples: `preview/scene.html` (`?cache=1` the cached path, `?scale=1`, `?passes=0`
+  the seed) and `ui/preview.html?ground&citylight` (a mock screen) draw this way.
+
+### 16.4 Where the sets supersede this guide
+
+The sets' notes (`*/manifest.txt`, `ui/README.md`) record their choices; the ones that change
+sections above:
+
+- **3.3, 7.4, 10.1: one owner mark.** A stack flies the 7x12 standard `ui/stack_banner` (pole,
+  crossbar, a 5x8 field with the civilization's 5x5 sigil, swallow tails) at the tile's top-left
+  (top-right in a city), quiet (the tincture's shade) except on your own movable or selected stack;
+  the finial pip shows moves (vellum) and heroes (gilt); the count chip hangs under it; the health
+  bar (12x2, void frame) shows only when hurt or selected; the state mark sits at the top-right
+  (top centre in a city). The 6x8 pennant is retired. The city banner `ui/banner` is the same
+  field without the pole.
+- **5.1-5.6: the ground pass** (`terrain/ground.js`) replaces the per-tile warp of 5.1 with
+  class blobs (Gaussian weights of the 3x3 tile centres, sigma 13 px, a three-octave warp up to
+  10 px), dithered feathers between land textures, organic fog and unrevealed edges, pale road and
+  river verges, unmirrored hills with wooded crests and a moonlit rim on woods
+  (`terrain/manifest.txt` lists the texture choices: flecked mottling, ash desert, wind-streaked
+  snow, umber burning sands).
+- **9.1: city light** as written there (the hearth pool, `cities/citylight.js`); its HEARTH,
+  GORE and AURA tables are candidates for new columns of 2.4.
+- **10.5: lanterns.** Ships and settlers carry a lantern (glow over amber, FIRE radius 6); on water
+  it casts the broken reflection of 5.4 under the hull.
+- **11.5: icons.** Buildings have class icons; heroic and divine promotion seals have a double
+  gilt rim; the Armageddon eclipse under 50 is soot with an iron corona.
+- **11.6: type.** Vigil Book (lower case, 5 px x-height) is the body face for short UI text; the
+  system serif is for long prose only.
+- **3.3: city height.** City sprites stay within the validator's 34x34 (tier V rises 6 px into the
+  tile to the north, not 12).
+
+### 16.5 Reference shots
+
+`docs/art/toolkit-scene.png` (the sample scene at 2x) and `docs/art/toolkit-units.png` (the top of
+the units sheet) show the assembled art; each set keeps its own small reference sheets
+(`terrain/ref/`, `units/reference*.png`, `cities/ref-styles.png`, `ui/ref/`). Regenerate with
+`node tools/screenshot.mjs /tmp/art` and read `scene.png`, `scene-1x.png`, the four set sheets and
+`coverage.png`.

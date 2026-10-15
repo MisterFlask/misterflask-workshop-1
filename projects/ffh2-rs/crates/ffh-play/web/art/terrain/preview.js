@@ -231,7 +231,7 @@ async function plate(art, title, L, scale, extra = {}) {
 }
 
 async function main() {
-  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true });
+  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true, passes: false });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   if (PASS) installTerrain(art, q.get('rim') ? { rimKey: q.get('rim') } : {});
   const want = (m) => !ONLY || ONLY === m;

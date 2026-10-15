@@ -254,7 +254,7 @@ function towns(art) {
 }
 
 async function main() {
-  const art = await loadArt();
+  const art = await loadArt({ passes: false });
   if (q.get('light') !== '0') installCityLight(art);
   if (q.get('banner') !== 'ui') useBannerStudy(art);
   if (parts.includes('styles')) out.append(styles(art));

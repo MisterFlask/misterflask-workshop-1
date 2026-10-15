@@ -52,7 +52,9 @@ export function fromApiMap(api, width, height, wrapX = false) {
  *   x0, y0      canvas position of tile (0, 0); tx0, ty0, cols, rows: the tile range drawn
  *   owners      Map(ownerId -> art owner style)
  *   cities      [{ x, y, owner, size, name, capital, own, turns, disorder }]
- *   stacks      [{ x, y, unit, owner, count, state }]   one per tile: the head unit
+ *   stacks      [{ x, y, unit, owner, count, state }]   one per tile: the head unit; state as
+ *               units/stack.js reads it ({ own, moves, selected, hp, mark, hero, facing, ... });
+ *               inCity defaults to whether a city of `cities` stands on the tile
  *   cursor      { x, y, selected }
  *   vignette    bool (default true); skip: Set of layers to leave out (rivers roads lights borders fog)
  *   timings     an object that receives milliseconds per phase
@@ -143,14 +145,16 @@ export function renderMap(art, ctx, map, opts = {}) {
   }
 
   function unitLayers() {
-    // 11. units row by row, then overlays
+    // 11. units row by row, then overlays. A stack on a city tile flies its standard at the
+    // top-right (state.inCity, units/stack.js): the city banner holds the top-left.
     const stacks = (opts.stacks || []).slice().sort((a, b) => a.y - b.y || a.x - b.x);
-    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'sprite' });
+    const stateOf = (st, layer) => ({ inCity: cityAt.has(`${st.x},${st.y}`), ...st.state, count: st.count, layer });
+    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), stateOf(st, 'sprite'));
     for (const c of opts.cities || []) {
       const p = P(c.x, c.y);
       if (p && p.vis) art.drawCity(ctx, px(c.x), py(c.y), { ...c, visible: visible(p), layer: 'overlay' }, owners.get(c.owner));
     }
-    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), { ...st.state, count: st.count, layer: 'overlay' });
+    for (const st of stacks) art.drawUnit(ctx, px(st.x), py(st.y), st.unit, owners.get(st.owner), stateOf(st, 'overlay'));
     if (opts.cursor) art.drawTileCursor(ctx, px(opts.cursor.x), py(opts.cursor.y), !!opts.cursor.selected);
     lap('units');
   }

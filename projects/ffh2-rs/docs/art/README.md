@@ -20,6 +20,7 @@ palette, the terrain and feature key, unit silhouettes on three grounds with the
 tinctures, and a sample map at 2x. It validates the guide's rules. It is not final art.
 
 `toolkit-scene.png` and `toolkit-units.png` are screenshots of the art toolkit's preview pages
-(`crates/ffh-play/web/art/preview/`, see `docs/ART.md` section 15): the 20x14 sample scene at 2x
-rendered from the seed sprites, and the generic unit silhouettes on three grounds. They show the
-toolkit's state when it was built; regenerate them with `node tools/screenshot.mjs`.
+(`crates/ffh-play/web/art/preview/`, see `docs/ART.md` sections 15 and 16): the 20x14 sample scene
+at 2x and the top of the units sheet (generic silhouettes and equipment on three grounds), both
+from the assembled sets (`art-final`: all four sets with the ground pass, stack standards and city
+light installed by `loadArt`). Regenerate them with `node tools/screenshot.mjs`.

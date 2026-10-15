@@ -195,7 +195,7 @@ function renderSet(set) {
         else if (ns === 'improvement') c = improvementCell(s);
         else if (ns === 'res') c = resourceCell(s);
         else if (ns === 'route') c = spriteCell(s, 6, 'Q');
-        else if (ns === 'ui' && (s.name === 'ui/pennant' || s.name === 'ui/banner')) { grid.append(heraldryCells(s)); continue; }
+        else if (ns === 'ui' && (s.name === 'ui/stack_banner' || s.name === 'ui/banner')) { grid.append(heraldryCells(s)); continue; }
         else if (ns === 'sigil') { grid.append(sigilCell(s)); continue; }
         else c = spriteCell(s, ns === 'icon8' ? 5 : 4, '1');
         const sub = `${s.w}x${s.h}${s.meta.types.length ? ' ' + s.meta.types.join(' ') : ''}${s.meta.note ? '<br>' + s.meta.note : ''}`;

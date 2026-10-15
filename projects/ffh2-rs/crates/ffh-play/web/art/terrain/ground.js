@@ -1,8 +1,8 @@
 // terrain/ground.js: the terrain set's ground pass (docs/ART.md 5.1, 5.3, 5.5, 5.6, 8.2), drawn over
-// art.js's seed versions of the same functions until the toolkit adopts them.
+// art.js's seed versions of the same functions. loadArt() installs it (art.js PASSES); by hand:
 //
 //   import { installTerrain } from './art/terrain/ground.js';
-//   const art = await loadArt();
+//   const art = await loadArt({ passes: false });
 //   installTerrain(art);                      // once; idempotent. art.drawTerrain etc. then use it.
 //
 // What it changes, against the seed drawing (the art director's terrain review, round 2):

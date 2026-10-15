@@ -356,7 +356,7 @@ function roster(art, owners) {
 }
 
 async function main() {
-  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true });
+  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true, passes: false });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   installStackOverlay(art);
   const owners = new Map([

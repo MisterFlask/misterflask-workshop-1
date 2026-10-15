@@ -43,16 +43,15 @@ A player's mark is the same field, division, sigil and swallow tails everywhere:
 - **Stacks** fly `ui/stack_banner`, the standard designed by the units set: a slate pole and
   crossbar with a 5x8 field, the civilization's sigil centred on it, at the tile's top-left (top-right
   in a city). `units/stack.js` draws it with its looks (quiet for foreign and spent stacks, the full
-  tincture for your own movable or selected one), the finial pip (moves, hero) and the count chip:
-  call `installStackOverlay(art)` once after `loadArt()`.
+  tincture for your own movable or selected one), the finial pip (moves, hero) and the count chip;
+  `loadArt()` installs it (art.js `PASSES`).
 - **Cities** fly `ui/banner`, the standard without its pole, hung from a slate rod with ash finials
   at the city tile's top-left (the cities set's study, adopted); art.js draws the sigil at tile
   (2, 3), centred on the field as on the standard.
-- The 6x8 stack pennant (`ui/pennant`) is retired. art.js drew it by default; without it art.js
-  draws no stack mark at all, so until the toolkit installs the standard by default (art.js /
-  compose.js), a client calls `installStackOverlay`. Merging this set with the units set: the
-  standard now lives here, so `units/manifest.txt` drops `source stack.spr` (stack.js finds the sprite
-  by name, whichever set defines it).
+- The 6x8 stack pennant (`ui/pennant`) is retired. art.js's seed `drawUnit` drew it and now draws
+  no stack mark; the standard comes from `units/stack.js`, which `loadArt()` installs (art.js
+  `PASSES`; `loadArt({ passes: false })` leaves it out). The standard lives here; the units set's
+  `stack.spr` copy was dropped when the sets were merged (stack.js finds the sprite by name).
 
 ## Text: Vigil, Vigil Book, Tally, and the serif
 

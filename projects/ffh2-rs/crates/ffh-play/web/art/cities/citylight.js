@@ -3,6 +3,7 @@
 //
 //   import { installCityLight } from './cities/citylight.js';
 //   installCityLight(art);        // once, after loadArt(): drawCity and renderMap pick it up
+//   (loadArt() installs it by default, art.js PASSES; this is for loadArt({ passes: false }))
 //
 // 1. The hearth pool. art.drawLight's city pool applies FIRE twice (full radius, then half), and
 //    FIRE twice walks moss to dun, then ochre: the city stands in mud. Here a lit city sits in two

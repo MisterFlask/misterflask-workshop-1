@@ -21,14 +21,14 @@
 ; landmarks that are the map's focal glows (standing stones, Carcer) carry a wide pool, an inner
 ; pass and three small pools round the ring, so the ground itself glows.
 ;
-; ground.js (installTerrain(art), once after loadArt) is the set's ground pass over art.js's seed
-; drawing: a pixel takes the terrain class with the largest sum of Gaussian weights (sigma 13 px)
-; of the 3x3 tile centres, sampled through a three-octave warp (cells 44/22/7 px, |w| <= 10), so
+; ground.js (installTerrain) is the set's ground pass over art.js's seed drawing: a pixel takes
+; the terrain class with the largest sum of Gaussian weights (sigma 13 px) of the 3x3 tile centres,
+; sampled through a three-octave warp (cells 44/22/7 px, |w| <= 10), so
 ; single tiles become blobs, not rounded squares; a 3 px Bayer-dithered feather between land
 ; textures; the fog and unrevealed edges classified the same way (full warp, feathered); river and
 ; road verges (a 50% checker one step lighter); hills never mirrored; wooded hills with trees on the
 ; crests and the mounds kept clear; a 1 px moonlit lichen rim on the north-west edge of every wood
-; mass. Until the toolkit installs it by default, only pages that call it show it (terrain/preview).
+; mass. loadArt() installs it (art.js PASSES); loadArt({ passes: false }) gives the seed drawing.
 ; terrain/preview.html: plates for the set (?map=sample|mosaic|north|relief|woods|landmarks, ?pass=0
 ; for the seed ground); ref/: the shared scene through ground.js at 2x (with the review sets) and the
 ; relief plate at 3x (hills, wooded hills, flat woods, peaks on every land terrain).

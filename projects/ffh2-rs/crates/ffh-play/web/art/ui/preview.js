@@ -590,9 +590,10 @@ async function optional(path, install) {
 }
 
 async function main() {
-  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true });
+  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true, passes: false });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
-  // the other sets' drawing modules, until the toolkit adopts them: the units set's stack standard
+  // the other sets' drawing modules, picked here (passes: false; loadArt installs all three by
+  // default): the units set's stack standard
   // (the gonfalon, ui/stack_banner: the only owner mark on a stack); with ?ground the terrain set's
   // ground pass and with ?citylight the cities set's hearth pools (both from their second round)
   await optional('../units/stack.js', (m) => m.installStackOverlay(art));

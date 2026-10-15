@@ -6,8 +6,8 @@
 // Checks: palette.txt equals the guide's palette and remap blocks; every sprite parses, uses only
 // palette keys and slots, has the size its namespace requires; every manifest rule targets an
 // existing sprite and parses; types.json matches data/xml; every game type of every kind
-// resolves to a sprite (or to `none`) through the mapping. Warnings (colour counts, unknown
-// metadata) do not fail the run. Also run by tools/check.sh.
+// resolves to a sprite (or to `none`) through the mapping; loadArt installs the set passes (art.js
+// PASSES). Warnings (colour counts, unknown metadata) do not fail the run. Also run by tools/check.sh.
 import { readFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -149,6 +149,22 @@ for (const [kind, c] of Object.entries(cov)) {
     if (r && !NON_SPRITE_KINDS.has(kind) && r.sprite !== 'none' && !lib.groups.has(r.sprite)) err(`mapping: ${kind} ${t} -> missing sprite ${r.sprite}`);
   }
 }
+
+// ---- the set passes (art.js PASSES) load and install; loadArt({ passes: false }) leaves them out
+try {
+  const { loadArt, PASSES } = await import('../art.js');
+  const read = (p) => readFile(join(ART_DIR, p), 'utf8');
+  const wrapped = ['drawTerrain', 'drawUnit', 'drawCity', 'drawLight'];
+  const own = (a) => wrapped.filter((k) => Object.hasOwn(a, k));
+  for (const [path, fn] of PASSES) {
+    const m = await import(new URL(path, new URL('../art.js', import.meta.url)));
+    if (typeof m[fn] !== 'function') err(`art.js PASSES: ${path} exports no ${fn}`);
+  }
+  const seed = await loadArt({ read, lenient: true, passes: false });
+  const full = await loadArt({ read, lenient: true });
+  if (own(seed).length) err(`loadArt({ passes: false }) installed ${own(seed).join(' ')}`);
+  if (own(full).length !== wrapped.length) err(`loadArt: set passes not installed (only ${own(full).join(' ') || 'none'})`);
+} catch (e) { err(`art.js passes: ${e.stack || e}`); }
 
 // ---- report
 const pad = (s, n) => String(s).padStart(n);

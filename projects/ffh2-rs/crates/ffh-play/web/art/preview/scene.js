@@ -1,5 +1,6 @@
 // scene.js: a 20x14 sample map in the mood-board composition: the map as a framed night page,
-// a thin top band, a minimap. ?scale=N sets the art scale (default 2). Rendered with compose.js.
+// a thin top band, a minimap. Rendered with compose.js. ?scale=N sets the art scale (default 2);
+// ?passes=0 leaves out the set passes (art.js PASSES: ground, stack standards, city light).
 import { loadArt, TILE } from '../art.js';
 import { makePlots, renderMap } from '../compose.js';
 
@@ -106,6 +107,7 @@ const STACKS = [
   { x: 8, y: 4, unit: 'UNIT_SWORDSMAN', owner: 'a', count: 3, state: { selected: true, hp: 100, moves: true } },
   { x: 10, y: 7, unit: 'UNIT_HORSEMAN', owner: 'a', count: 1, state: { hp: 60, moves: true } },
   { x: 4, y: 5, unit: 'UNIT_ARCHER', owner: 'a', count: 1, state: { hp: 100, moves: false, mark: 'fortify' } },
+  { x: 6, y: 5, unit: 'UNIT_LONGBOWMAN', owner: 'a', count: 2, state: { hp: 100, moves: false, mark: 'fortify' } },
   { x: 11, y: 4, unit: 'UNIT_ADEPT', owner: 'a', count: 1, state: { hp: 100, moves: true } },
   { x: 2, y: 8, unit: 'UNIT_TRIREME', owner: 'a', count: 2, state: { hp: 100, moves: true } },
   { x: 14, y: 5, unit: 'UNIT_IMP', owner: 'b', count: 2, state: { hp: 80, facing: 'left' } },
@@ -186,7 +188,7 @@ function minimap(art, ctx, x, y, map, owners) {
 }
 
 async function main() {
-  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true });
+  const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true, passes: q.get('passes') !== '0' });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
   art.scale = SCALE;
   const s = SCALE;

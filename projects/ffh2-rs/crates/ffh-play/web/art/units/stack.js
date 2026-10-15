@@ -32,7 +32,8 @@
 // pip; the count chip hangs under the sprite), so the sprite can be redrawn or moved to another set
 // without touching this file.
 //
-// Use: `installStackOverlay(art)` once after loadArt(); art.drawUnit then draws this overlay
+// Use: loadArt() installs it (art.js PASSES); by hand, `installStackOverlay(art)` once after
+// loadArt({ passes: false }); art.drawUnit then draws this overlay
 // instead of the seed pennant/strip (layer 'sprite' is unchanged; 'overlay' and 'all' use this).
 // Or call `drawStackOverlay(art, ctx, x, y, unitType, owner, state)` directly after
 // drawUnit(..., { layer: 'sprite' }). Position: the canvas point of the tile's top-left corner.

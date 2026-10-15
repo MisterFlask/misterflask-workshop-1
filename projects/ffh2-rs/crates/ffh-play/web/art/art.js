@@ -2,6 +2,7 @@
 //
 //   import { loadArt } from './art/art.js';
 //   const art = await loadArt();          // fetches palette, sets, manifests, sprites, types.json
+//                                         // and installs the set passes (PASSES)
 //   art.scale = 2;                        // canvas pixels per art pixel (integer)
 //   art.setWorld({ width, height, wrapX });
 //   art.drawTerrain(ctx, px, py, plot);   // px, py: canvas position of the tile's top-left corner
@@ -28,7 +29,31 @@ const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
 const DIRS8 = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 const DIVISIONS = ['plain', 'pale', 'fess', 'bend', 'quarterly'];
 
-/** Load the toolkit. opts: { base (URL of the art directory), bundle (text from tools/bundle.mjs), read (async path => text) } */
+/**
+ * The sets' passes over the seed drawing below, installed by loadArt (docs/ART.md 16): each wraps
+ * or replaces some Art methods and is idempotent. Paths are relative to this module.
+ *   terrain/ground.js    the ground pass: drawTerrain, drawFog, drawRiver, drawRoad, drawRelief,
+ *                        drawFeature
+ *   units/stack.js       drawUnit's overlay: the stack standard, count, health, marks, reflections
+ *   cities/citylight.js  drawLight's city pools (opts.inner) and drawCity's wall glow and lights
+ */
+export const PASSES = [
+  ['./terrain/ground.js', 'installTerrain'],
+  ['./units/stack.js', 'installStackOverlay'],
+  ['./cities/citylight.js', 'installCityLight'],
+];
+
+/** Install the set passes on an Art (idempotent). loadArt calls it unless opts.passes === false. */
+export async function installPasses(art) {
+  for (const [path, fn] of PASSES) (await import(path))[fn](art);
+  return art;
+}
+
+/**
+ * Load the toolkit. opts: { base (URL of the art directory), bundle (text from tools/bundle.mjs),
+ * read (async path => text), passes (default true: install the set passes, PASSES), lenient }.
+ * The pass modules are always imported next to this module, whatever `base` or `bundle` say.
+ */
 export async function loadArt(opts = {}) {
   let read = opts.read;
   if (!read && opts.bundle) {
@@ -45,7 +70,9 @@ export async function loadArt(opts = {}) {
   }
   const lib = await loadLibrary(read);
   if (lib.errors.length && !opts.lenient) console.warn(`art: ${lib.errors.length} source errors\n` + lib.errors.slice(0, 20).join('\n'));
-  return new Art(lib);
+  const art = new Art(lib);
+  if (opts.passes !== false) await installPasses(art);
+  return art;
 }
 
 function makeCanvas(w, h) {
