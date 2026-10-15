@@ -45,7 +45,11 @@ export class ArtMap {
     this.v = view;
     this.art = look.art;
     this.chunks = new Map();
-    this.charts = new Map();
+    /** The chart of the whole map (CHART px a tile, rows in the art's order), painted again in
+     *  full (`chartAll`) or by chunk (`chartDirty`, keys "cx,cr") when it is next needed. */
+    this.chartC = null;
+    this.chartAll = true;
+    this.chartDirty = new Set();
     /** A chunk's generation (key "cx,cr" -> n): bumped when it is dropped, so a chunk the worker
      *  drew before the drop is not taken. */
     this.gens = new Map();
@@ -151,7 +155,8 @@ export class ArtMap {
   clear() {
     for (const [key, c] of [...this.chunks]) this.forget(key, c);
     for (const k of new Set([...this.gens.keys(), ...[...this.inflight.keys()].map((x) => x.slice(x.indexOf("|") + 1))])) this.gens.set(k, (this.gens.get(k) ?? 0) + 1);
-    this.charts.clear();
+    this.chartAll = true;
+    this.chartDirty.clear();
     this.pixels = 0;
     this.miniCanvas = null;
   }
@@ -191,7 +196,7 @@ export class ArtMap {
     if (!keys.size) return;
     for (const [key, c] of [...this.chunks]) if (keys.has(key.slice(key.indexOf("|") + 1))) this.forget(key, c);
     for (const k of keys) {
-      this.charts.delete(k);
+      this.chartDirty.add(k);
       this.gens.set(k, (this.gens.get(k) ?? 0) + 1);
     }
   }
@@ -351,10 +356,14 @@ export class ArtMap {
     this.stats.placeholders = 0;
     const deadline = t0 + FRAME_MS;
     const worker = this.worker && this.workerReady;
+    let chart = null;
+    const drawChart = (c) => {
+      chart ??= this.chart();
+      g.drawImage(chart, c.cx * CHUNK * CHART, c.cr * CHUNK * CHART, c.cols * CHART, c.rows * CHART, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
+    };
     for (const c of this.visibleChunks(f)) {
       if (!f.s) {
-        const chart = this.chart(c.cx, c.cr, c.cols, c.rows);
-        g.drawImage(chart, 0, 0, c.cols * CHART, c.rows * CHART, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
+        drawChart(c);
         continue;
       }
       const key = `${layer}|${c.cx},${c.cr}`;
@@ -367,8 +376,7 @@ export class ArtMap {
         missing++;
         this.stats.placeholders++;
         if (worker) this.ask(c, layer);
-        const chart = this.chart(c.cx, c.cr, c.cols, c.rows);
-        g.drawImage(chart, 0, 0, c.cols * CHART, c.rows * CHART, c.X, c.Y, c.cols * f.tp, c.rows * f.tp);
+        drawChart(c);
       }
     }
     this.evict();
@@ -676,12 +684,38 @@ export class ArtMap {
     }
   }
 
-  /** Chunk (cx, cr) as a chart: CHART px a tile, terrain colours, owned land washed with a 50%
-   *  checker of the owner's field, cities as vellum dots, fog through FOG, unrevealed void. */
-  chart(cx, cr, cols, rows) {
-    const key = `${cx},${cr}`;
-    let c = this.charts.get(key);
-    if (c) return c;
+  /** The map as a chart (one canvas, CHART px a tile, rows in the art's order): terrain
+   *  colours, owned land washed with a 50% checker of the owner's field, cities as vellum dots,
+   *  fog through FOG, unrevealed void. Painted in full after a new map or new owners, else only
+   *  the chunks dropped since (`drop`). */
+  chart() {
+    const map = this.map;
+    const w = map.w * CHART;
+    const hgt = map.h * CHART;
+    if (!this.chartC || this.chartC.width !== w || this.chartC.height !== hgt) {
+      this.chartC = document.createElement("canvas");
+      this.chartC.width = w;
+      this.chartC.height = hgt;
+      this.chartAll = true;
+    }
+    const g = this.chartC.getContext("2d");
+    if (this.chartAll) {
+      this.paintChart(g, 0, 0, map.w, map.h);
+      this.chartAll = false;
+    } else {
+      for (const k of this.chartDirty) {
+        const [cx, cr] = k.split(",").map(Number);
+        const x0 = cx * CHUNK;
+        const y0 = cr * CHUNK;
+        if (x0 < map.w && y0 < map.h) this.paintChart(g, x0, y0, Math.min(CHUNK, map.w - x0), Math.min(CHUNK, map.h - y0));
+      }
+    }
+    this.chartDirty.clear();
+    return this.chartC;
+  }
+
+  /** Paints the chart of columns x0.. and art rows y0.. (`cols` x `rows` plots). */
+  paintChart(g, x0, y0, cols, rows) {
     const art = this.art;
     const FOG = art.tables.FOG;
     const img = new ImageData(cols * CHART, rows * CHART);
@@ -690,7 +724,7 @@ export class ArtMap {
     const v0 = art.K("0");
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
-        const p = this.plots.get(cx * CHUNK + i, cr * CHUNK + j);
+        const p = this.plots.get(x0 + i, y0 + j);
         const base = this.miniIndex(p);
         const o = p && p.owner !== null && p.owner !== undefined && p.plotType !== 3 ? this.owners.get(p.owner) : null;
         for (let b = 0; b < CHART; b++) {
@@ -708,12 +742,7 @@ export class ArtMap {
         }
       }
     }
-    c = document.createElement("canvas");
-    c.width = cols * CHART;
-    c.height = rows * CHART;
-    c.getContext("2d").putImageData(img, 0, 0);
-    this.charts.set(key, c);
-    return c;
+    g.putImageData(img, x0 * CHART, y0 * CHART);
   }
 
   /** Units at a chart step: a square of the owner's field in a void frame (vellum when
