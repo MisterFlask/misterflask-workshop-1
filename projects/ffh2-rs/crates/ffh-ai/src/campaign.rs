@@ -693,10 +693,16 @@ fn order(g: &mut Game, grp: GroupId, mission: MissionType, x: i32, y: i32, flags
     g.group_push_mission(grp, mission, x, y, flags, false, false, Some(MissionAIType::MISSIONAI_ASSAULT), Some(tp), None);
 }
 
-/// [`order`] a move to `dest`.
+/// [`order`] a move to `dest`, one turn of it: the rest of the path is dropped, so the stack
+/// decides again next turn (an AI group on a multi-turn mission gets no orders until it ends,
+/// C++ `CvSelectionGroup::doTurn`: stacks walked on to plots chosen for an earlier phase while
+/// the force they were part of dwindled, or past cities of ours in peril while gathering).
 fn march(g: &mut Game, grp: GroupId, dest: PlotIdx, tp: PlotIdx) {
     let (x, y) = g.map.xy(dest);
     order(g, grp, MissionType::MISSION_MOVE_TO, x, y, 0, tp);
+    if alive(g, grp) && !g.groups[grp].mission_queue.is_empty() && !g.group_ready_to_move(grp, false) {
+        g.group_clear_mission_queue(grp);
+    }
 }
 
 /// [`order`] the group to hold its ground (fortify, else sleep, else skip).
@@ -851,7 +857,9 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
                     hold_for(g, grp, op.plot);
                 }
             } else {
-                approach(g, v, grp, u, &op, 1);
+                // From the assembly ring only: a stack coming from afar would otherwise step
+                // next to the city alone, ahead of the others.
+                approach(g, v, grp, u, &op, if dist == 2 { 1 } else { 2 });
             }
         }
         Phase::March => {
@@ -868,9 +876,11 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
             }
         }
         Phase::Gather => {
-            // Too weak (or the war is not declared yet): gather in the rally city; a force
-            // almost strong enough that watches the city from the assembly plot waits there
-            // for the rest (stepping back would lose sight of the garrison).
+            // Too weak (or the war is not declared yet): gather in the rally city (at war; the
+            // stacks committed against a barbarian town stay where they are, hunting raiders
+            // and holding our cities, until the force is there: gathering them in one city bared
+            // the others); a force almost strong enough that watches the city from the assembly
+            // plot waits there for the rest (stepping back would lose sight of the garrison).
             let close = op.at_war && op.have * 10 >= op.need * 7;
             if dist == 2 && close && g.plot_is_visible(op.plot, v.team) {
                 hold_for(g, grp, op.plot);
@@ -884,6 +894,9 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
                         return true;
                     }
                 }
+            }
+            if !op.civ && dist > 1 {
+                return false;
             }
             let Some(r) = op.rally else { return false };
             go(g, v, grp, u, r, op.plot);
