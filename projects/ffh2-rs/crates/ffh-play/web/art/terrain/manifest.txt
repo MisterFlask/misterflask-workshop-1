@@ -76,7 +76,24 @@ map feature FEATURE_DOOR_NORTH_OPEN -> feature/door_north_open mini=4
 map feature FEATURE_WALLS -> feature/walls mini=5
 map feature * -> feature/_mark
 
-; ---- landmarks (6.2) live in landmarks.spr and are listed here once drawn.
+; ---- landmarks (6.2): the unique features (bUnique improvements). Pools come from `: light`.
+map improvement IMPROVEMENT_AIFON_ISLE -> improvement/landmark_aifon_isle
+map improvement IMPROVEMENT_BRADELINES_WELL -> improvement/landmark_bradelines_well
+map improvement IMPROVEMENT_BROKEN_SEPULCHER -> improvement/landmark_broken_sepulcher
+map improvement IMPROVEMENT_DRAGON_BONES -> improvement/landmark_dragon_bones
+map improvement IMPROVEMENT_GUARDIAN -> improvement/landmark_guardian
+map improvement IMPROVEMENT_LETUM_FRIGUS -> improvement/landmark_letum_frigus
+map improvement IMPROVEMENT_MAELSTROM -> improvement/landmark_maelstrom
+map improvement IMPROVEMENT_MIRROR_OF_HEAVEN -> improvement/landmark_mirror_of_heaven
+map improvement IMPROVEMENT_ODIOS_PRISON -> improvement/landmark_odios_prison
+map improvement IMPROVEMENT_POOL_OF_TEARS -> improvement/landmark_pool_of_tears
+map improvement IMPROVEMENT_PYRE_OF_THE_SERAPHIC -> improvement/landmark_pyre_of_the_seraphic
+map improvement IMPROVEMENT_REMNANTS_OF_PATRIA -> improvement/landmark_remnants_of_patria
+map improvement IMPROVEMENT_RING_OF_CARCER -> improvement/landmark_ring_of_carcer
+map improvement IMPROVEMENT_SEVEN_PINES -> improvement/landmark_seven_pines
+map improvement IMPROVEMENT_STANDING_STONES -> improvement/landmark_standing_stones
+map improvement IMPROVEMENT_TOMB_OF_SUCELLUS -> improvement/landmark_tomb_of_sucellus
+map improvement IMPROVEMENT_YGGDRASIL -> improvement/landmark_yggdrasil
 
 ; ---- routes (5.6)
 map route ROUTE_RAILROAD -> route/railroad double
