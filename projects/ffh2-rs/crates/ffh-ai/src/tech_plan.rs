@@ -200,58 +200,72 @@ pub fn goals(g: &Game, p: PlayerId) -> Vec<Goal> {
     out
 }
 
+/// The three early religion techs, in the fixed fallback order of [`religion_preferences`].
+const EARLY_RELIGION_TECHS: [&str; 3] = ["TECH_WAY_OF_THE_EARTHMOTHER", "TECH_WAY_OF_THE_FORESTS", "TECH_MESSAGE_FROM_THE_DEEP"];
+
 /// AI_chooseTech "Early Religion Beeline": the religion tech we head for, if we know none of the
-/// three early ones and have no holy city. Only a religion nobody has founded yet: when the
-/// preferred one is taken, the next of the three that is still free.
+/// three early ones and have no holy city: the first of [`religion_preferences`] whose religion
+/// nobody has founded yet and that we can ever research.
 fn early_religion_tech(g: &Game, p: PlayerId, n: &Names) -> Option<TechType> {
-    let d = g.d;
-    let pl = &g.players[p];
-    let early = ["TECH_WAY_OF_THE_EARTHMOTHER", "TECH_WAY_OF_THE_FORESTS", "TECH_MESSAGE_FROM_THE_DEEP"];
-    if early.iter().any(|t| n.has(t)) || d.religions.keys().any(|r| g.player_has_holy_city(p, r)) {
+    if EARLY_RELIGION_TECHS.iter().any(|t| n.has(t)) || g.d.religions.keys().any(|r| g.player_has_holy_city(p, r)) {
         return None;
     }
+    let d = g.d;
+    let unfounded = |t: TechType| d.religions.keys().any(|r| d.religions[r].tech_prereq == Some(t) && g.religion_game_turn_founded[r] == -1);
+    religion_preferences(g, p, n).into_iter().find(|&t| unfounded(t) && g.player_can_ever_research(p, t))
+}
+
+/// The religion techs `p` prefers, most preferred first: Way of the Earthmother for the Khazad
+/// and Way of the Forests for the elves, the founding tech of the leader's favorite early
+/// religion, the early tech of the favorite religion (Fellowship of Leaves, Runes of Kilmorph,
+/// Octopus Overlords), the alignment's (good: Earthmother, neutral: Forests, evil: Message from
+/// the Deep); then the three early ones in a fixed order ([`EARLY_RELIGION_TECHS`]), so that a
+/// religion someone else founded falls back to a free one. `AI_chooseTech` assigns the same
+/// overrides in the reverse order (the last assignment wins) and has no fallback.
+fn religion_preferences(g: &Game, p: PlayerId, n: &Names) -> Vec<TechType> {
+    let d = g.d;
+    let pl = &g.players[p];
     let civ = g.player_get_civilization_type(p);
     let is_civ = |name: &str| civ.is_some() && civ == d.ty::<CivilizationType>(name);
     let leader = pl.personality_type.map(|l| &d.leader_heads[l]);
     let religion = |name: &str| d.ty::<ReligionType>(name);
-    // Python's order of overrides: alignment, favorite religion, favorite early religion, elves
-    // and dwarves. The last match wins, so collect them in reverse priority.
-    let mut prefs: Vec<&str> = Vec::new();
+    let mut prefs: Vec<TechType> = Vec::new();
+    let mut push = |name: &str| prefs.extend(n.tech(name));
     if is_civ("CIVILIZATION_KHAZAD") {
-        prefs.push("TECH_WAY_OF_THE_EARTHMOTHER");
+        push("TECH_WAY_OF_THE_EARTHMOTHER");
     }
     if is_civ("CIVILIZATION_LJOSALFAR") || is_civ("CIVILIZATION_SVARTALFAR") {
-        prefs.push("TECH_WAY_OF_THE_FORESTS");
+        push("TECH_WAY_OF_THE_FORESTS");
     }
     if let Some(r) = leader.and_then(|l| l.favorite_early_religion) {
         if let Some(t) = d.religions[r].tech_prereq {
-            prefs.push(&d.techs[t].base.type_);
+            push(&d.techs[t].base.type_);
         }
     }
     let fav = pl.favorite_religion.or(leader.and_then(|l| l.favorite_religion));
     if fav.is_some() {
         if fav == religion("RELIGION_FELLOWSHIP_OF_LEAVES") {
-            prefs.push("TECH_WAY_OF_THE_FORESTS");
+            push("TECH_WAY_OF_THE_FORESTS");
         } else if fav == religion("RELIGION_RUNES_OF_KILMORPH") {
-            prefs.push("TECH_WAY_OF_THE_EARTHMOTHER");
+            push("TECH_WAY_OF_THE_EARTHMOTHER");
         } else if fav == religion("RELIGION_OCTOPUS_OVERLORDS") {
-            prefs.push("TECH_MESSAGE_FROM_THE_DEEP");
+            push("TECH_MESSAGE_FROM_THE_DEEP");
         }
     }
     let alignment = pl.alignment;
     if alignment.is_some() {
         if alignment == d.ty::<AlignmentType>("ALIGNMENT_GOOD") {
-            prefs.push("TECH_WAY_OF_THE_EARTHMOTHER");
+            push("TECH_WAY_OF_THE_EARTHMOTHER");
         } else if alignment == d.ty::<AlignmentType>("ALIGNMENT_NEUTRAL") {
-            prefs.push("TECH_WAY_OF_THE_FORESTS");
+            push("TECH_WAY_OF_THE_FORESTS");
         } else if alignment == d.ty::<AlignmentType>("ALIGNMENT_EVIL") {
-            prefs.push("TECH_MESSAGE_FROM_THE_DEEP");
+            push("TECH_MESSAGE_FROM_THE_DEEP");
         }
     }
-    // Then the other two, so that a taken religion falls back to a free one.
-    prefs.extend(early.iter().rev());
-    let unfounded = |t: TechType| d.religions.keys().any(|r| d.religions[r].tech_prereq == Some(t) && g.religion_game_turn_founded[r] == -1);
-    prefs.iter().rev().filter_map(|name| n.tech(name)).find(|&t| unfounded(t) && g.player_can_ever_research(p, t))
+    for t in EARLY_RELIGION_TECHS {
+        push(t);
+    }
+    prefs
 }
 
 /// AI_chooseTech "Civ Specific" beelines (and the Luchuirp's early Construction).
@@ -409,5 +423,70 @@ mod tests {
         if let Some(k) = known {
             assert!(path(&g, p, k).unwrap().techs.is_empty());
         }
+    }
+
+    /// A player whose civilization has no religion or military override (not the Khazad, the
+    /// elves or the Luchuirp), who can research the three early religion techs and knows none.
+    fn plain_player(g: &Game) -> PlayerId {
+        let d = g.d;
+        let early: Vec<TechType> = EARLY_RELIGION_TECHS.iter().map(|n| d.t::<TechType>(n)).collect();
+        let special = ["CIVILIZATION_KHAZAD", "CIVILIZATION_LJOSALFAR", "CIVILIZATION_SVARTALFAR", "CIVILIZATION_LUCHUIRP"];
+        g.player_ids()
+            .filter(|&p| g.players[p].alive && !g.player_is_barbarian(p))
+            .find(|&p| {
+                let civ = g.player_get_civilization_type(p);
+                !special.iter().any(|c| civ == d.ty::<CivilizationType>(c))
+                    && early.iter().all(|&t| g.player_can_ever_research(p, t) && !g.team_is_has_tech(g.players[p].team, Some(t)))
+                    && !d.religions.keys().any(|r| g.player_has_holy_city(p, r))
+            })
+            .expect("a player without religion overrides")
+    }
+
+    #[test]
+    fn early_religion_preference_order() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 6, "WORLDSIZE_SMALL", 5));
+        g.map_script = std::sync::Arc::new(ffh_core::mapscript::FractalMapScript::default());
+        g.game_init();
+        let p = plain_player(&g);
+        let team = g.players[p].team;
+        let t = |name: &str| d.t::<TechType>(name);
+        let (earth, forests, deep) = (t("TECH_WAY_OF_THE_EARTHMOTHER"), t("TECH_WAY_OF_THE_FORESTS"), t("TECH_MESSAGE_FROM_THE_DEEP"));
+        let religion_of = |tech: TechType| d.religions.keys().find(|&r| d.religions[r].tech_prereq == Some(tech)).unwrap();
+        let prefs = |g: &Game| religion_preferences(g, p, &Names { g, team });
+        let pick = |g: &Game| early_religion_tech(g, p, &Names { g, team });
+        let align = |name: &str| Some(d.t::<AlignmentType>(name));
+        // No leader favorites: the alignment decides, then the fixed fallback order.
+        g.players[p].personality_type = None;
+        g.players[p].favorite_religion = None;
+        g.players[p].alignment = align("ALIGNMENT_NEUTRAL");
+        assert_eq!(prefs(&g), vec![forests, earth, forests, deep]);
+        assert_eq!(pick(&g), Some(forests), "a neutral civ heads for Way of the Forests, not the first fallback");
+        g.players[p].alignment = align("ALIGNMENT_EVIL");
+        assert_eq!(pick(&g), Some(deep));
+        g.players[p].alignment = align("ALIGNMENT_GOOD");
+        assert_eq!(pick(&g), Some(earth));
+        // The favorite religion comes before the alignment.
+        g.players[p].alignment = align("ALIGNMENT_EVIL");
+        g.players[p].favorite_religion = Some(d.t::<ReligionType>("RELIGION_FELLOWSHIP_OF_LEAVES"));
+        assert_eq!(prefs(&g)[..2], [forests, deep]);
+        assert_eq!(pick(&g), Some(forests));
+        // The leader's favorite early religion comes before both.
+        let leader = d.leader_heads.keys().find(|&l| d.leader_heads[l].favorite_early_religion == Some(religion_of(deep)) && d.leader_heads[l].favorite_religion.is_none());
+        let l = leader.expect("a leader whose favorite early religion is the Octopus Overlords");
+        g.players[p].personality_type = Some(l);
+        g.players[p].alignment = align("ALIGNMENT_GOOD");
+        assert_eq!(prefs(&g)[..3], [deep, forests, earth]);
+        assert_eq!(pick(&g), Some(deep));
+        // A religion someone founded falls back to the next preference still free.
+        g.players[p].personality_type = None;
+        g.players[p].favorite_religion = None;
+        g.players[p].alignment = align("ALIGNMENT_EVIL");
+        g.religion_game_turn_founded[religion_of(deep)] = 1;
+        assert_eq!(pick(&g), Some(earth));
+        g.religion_game_turn_founded[religion_of(earth)] = 1;
+        assert_eq!(pick(&g), Some(forests));
+        g.religion_game_turn_founded[religion_of(forests)] = 1;
+        assert_eq!(pick(&g), None);
     }
 }
