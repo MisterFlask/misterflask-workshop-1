@@ -1,5 +1,7 @@
 # ffh2-rs: Fall from Heaven 2 (0.41) ported to Rust
 
+**New session? Read `docs/HANDOFF.md` first** (what is merged, what is on `origin/handoff/*`, next steps).
+
 Rules-faithful port of the FFH2 0.41 Civ4 mod (base mod only). The rules engine
 (DLL C++ + rules Python) is ported function by function; the AI is new.
 
