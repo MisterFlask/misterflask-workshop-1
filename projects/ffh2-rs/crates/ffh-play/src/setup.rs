@@ -56,8 +56,14 @@ impl NewGame {
         }
     }
 
-    /// Decodes a `setup` object (every member optional; types by name or index).
+    /// The members of a `setup` object.
+    pub const FIELDS: &'static [&'static str] =
+        &["seed", "opponents", "world", "speed", "handicap", "era", "climate", "sea_level", "options", "disabled_victories", "max_turns", "civ", "leader"];
+
+    /// Decodes a `setup` object (every member optional; types by name or index; an unknown
+    /// member is an error, so a typo cannot start a game with a default instead).
     pub fn from_json(d: &GameData, j: &Json) -> Result<NewGame, FieldError> {
+        j.only(NewGame::FIELDS)?;
         let mut ng = NewGame::new(d, j.get_or("seed", 1u32)?);
         ng.opponents = j.get_or("opponents", ng.opponents)?;
         if let Some(v) = names::opt_field(d, j, "world")? {
@@ -272,6 +278,10 @@ mod tests {
         assert_eq!(NewGame::from_json(d, &ng.to_json()).unwrap(), ng);
         let err = NewGame::from_json(d, &Json::parse(r#"{"world":"TECH_X"}"#).unwrap()).unwrap_err();
         assert_eq!(err.key, "world");
+        // A misspelt member is an error, not a default game (P4 review).
+        let err = NewGame::from_json(d, &Json::parse(r#"{"seed":4,"world_size":"WORLDSIZE_DUEL","oponents":1}"#).unwrap()).unwrap_err();
+        assert_eq!(err.key, "world_size");
+        assert!(err.to_string().contains("unknown field"), "{err}");
     }
 
     #[test]

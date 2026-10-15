@@ -69,7 +69,7 @@ let nextId = 1;
 let shown = "";
 
 async function api(req) {
-  req.id = nextId++;
+  if (req.id === undefined) req.id = nextId++;
   const r = await fetch("/api", { method: "POST", headers: { "X-FFH": "1", "Content-Type": "application/json" }, body: JSON.stringify(req) });
   return r.json();
 }

@@ -51,7 +51,8 @@ pub enum Query {
     Report,
     /// `{:#?}` of a game object (`unit`, `group`, `city`, `plot`, `player`, `team`, `deal`) or
     /// an info entry (a kind name such as `UnitType`, or a table name such as `units`).
-    Inspect { kind: String, id: i64 },
+    /// `oid` is the object's id (or the info entry's index); `id` is the envelope's request id.
+    Inspect { kind: String, oid: i64 },
     /// A compact text summary (LLM agents).
     Text,
     /// An ASCII map of `w` x `h` plots from `(x, y)`.
@@ -195,7 +196,7 @@ impl Query {
             "trade" => Query::Trade { with: j.req("with")? },
             "log" => Query::Log { since: j.get_or("since", 0)? },
             "report" => Query::Report,
-            "inspect" => Query::Inspect { kind: j.req("kind")?, id: j.req("id")? },
+            "inspect" => Query::Inspect { kind: j.req("kind")?, oid: j.req("oid")? },
             "text" => Query::Text,
             "ascii" => {
                 let layer = match j.opt_str("layer")? {
@@ -224,7 +225,7 @@ impl Query {
             Query::City { city } => j.with("city", *city),
             Query::Trade { with } => j.with("with", *with),
             Query::Log { since } => j.with("since", *since),
-            Query::Inspect { kind, id } => j.with("kind", kind.as_str()).with("id", *id),
+            Query::Inspect { kind, oid } => j.with("kind", kind.as_str()).with("oid", *oid),
             Query::Ascii { x, y, w, h, layer } => j.with("x", *x).with("y", *y).with("w", *w).with("h", *h).with("layer", layer.name()),
             _ => j,
         }
@@ -322,7 +323,7 @@ pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
             }
             ctx.report.map_or(Json::Null, Report::to_json)
         }
-        Query::Inspect { kind, id } => view::text::inspect(&v, kind, *id)?,
+        Query::Inspect { kind, oid } => view::text::inspect(&v, kind, *oid)?,
         Query::Text => view::text::text(&v, ctx),
         Query::Ascii { x, y, w, h, layer } => view::text::ascii(&v, *x, *y, *w, *h, *layer)?,
         Query::Data => view::data::data(g.d).clone(),
@@ -361,7 +362,7 @@ mod tests {
             Query::Trade { with: PlayerId(2) },
             Query::Log { since: 10 },
             Query::Report,
-            Query::Inspect { kind: "unit".into(), id: 4 },
+            Query::Inspect { kind: "unit".into(), oid: 4 },
             Query::Text,
             Query::Ascii { x: 1, y: 2, w: 10, h: 5, layer: Layer::Units },
             Query::Data,
@@ -389,5 +390,10 @@ mod tests {
         let e = Query::from_json(&Json::parse(r#"{"q":"fly"}"#).unwrap()).unwrap_err();
         assert_eq!(e.code(), "invalid");
         assert_eq!(Query::from_json(&Json::parse(r#"{"q":"ascii"}"#).unwrap()).unwrap(), Query::Ascii { x: 0, y: 0, w: 0, h: 0, layer: Layer::Terrain });
+        // `inspect` names its object `oid`: `id` is the envelope's request id (P4 review).
+        let j = Json::parse(r#"{"id":5,"k":"q","q":"inspect","kind":"unit","oid":0}"#).unwrap();
+        assert_eq!(Query::from_json(&j).unwrap(), Query::Inspect { kind: "unit".into(), oid: 0 });
+        let e = Query::from_json(&Json::parse(r#"{"id":0,"q":"inspect","kind":"unit"}"#).unwrap()).unwrap_err();
+        assert!(matches!(&e, QueryErr::Invalid(s) if s.contains("field `oid`")), "{e}");
     }
 }

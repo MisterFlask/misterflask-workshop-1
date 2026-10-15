@@ -284,7 +284,7 @@ impl Fuzz {
     fn query(&mut self, s: &Session) {
         let q = self.pick(QUERY_NAMES);
         let mut j = jobj! { "q" => q };
-        for k in ["units", "x", "y", "w", "h", "city", "with", "since", "kind", "id", "flags", "layer"] {
+        for k in ["units", "x", "y", "w", "h", "city", "with", "since", "kind", "oid", "flags", "layer"] {
             if self.chance(50) {
                 let v = match k {
                     "units" => self.units(s),

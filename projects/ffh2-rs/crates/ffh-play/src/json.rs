@@ -307,6 +307,18 @@ impl Json {
         v.as_arr().ok_or_else(|| FieldError::wrong(key, "an array", v))
     }
 
+    /// Every member's name is in `known` (a typo is an error, not a default silently taken).
+    /// Not an object: an error too.
+    pub fn only(&self, known: &[&str]) -> Result<(), FieldError> {
+        match self {
+            Json::Obj(m) => match m.iter().find(|(k, _)| !known.contains(&k.as_str())) {
+                Some((k, _)) => Err(FieldError::new(k, format!("unknown field (known: {})", known.join(", ")))),
+                None => Ok(()),
+            },
+            _ => Err(FieldError::new("", format!("expected an object, got {}", self.kind()))),
+        }
+    }
+
     /// Required object member, borrowed.
     pub fn req_obj(&self, key: &str) -> Result<&Json, FieldError> {
         let v = self.req_value(key)?;

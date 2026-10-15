@@ -136,10 +136,18 @@ impl Request {
                 return Err(ProtoErr::invalid(format!("field `id`: expected an integer or a string, got {}", id.kind())));
             }
         }
+        // Members other than these (and a command's or a query's own) are refused: a misspelt
+        // flag must not be taken for its default.
+        let only = |fields: &[&str]| -> Result<(), ProtoErr> {
+            let known: Vec<&str> = crate::command::ENVELOPE_FIELDS.iter().chain(fields).copied().collect();
+            Ok(j.only(&known)?)
+        };
         Ok(match j.req_str("k")? {
+            // Command::from_json checks the command's members.
             "cmd" => Request::Cmd(j.clone()),
             "q" => Request::Query(j.clone()),
             "answer" => {
+                only(&["decision", "option", "advisor"])?;
                 let decision: u32 = j.req("decision")?;
                 let advisor: bool = j.get_or("advisor", false)?;
                 let answer = match (j.opt::<usize>("option")?, advisor) {
@@ -149,23 +157,34 @@ impl Request {
                 };
                 Request::Answer { decision, answer }
             }
-            "session" => Request::Session(match j.req_str("op")? {
-                "new" => {
-                    let setup = match j.opt_value("setup")? {
-                        None | Some(Json::Null) => Json::obj(),
-                        Some(s) if s.as_obj().is_some() => s.clone(),
-                        Some(s) => return Err(FieldError::wrong("setup", "an object", s).into()),
-                    };
-                    SessionOp::New { setup, name: j.opt("name")? }
-                }
-                "load" => SessionOp::Load { name: j.req("name")? },
-                "save" => SessionOp::Save { name: j.req("name")? },
-                "take_over" => SessionOp::TakeOver { player: j.req("player")?, name: j.req("name")? },
-                "debug" => SessionOp::Debug { reveal: j.req("reveal")? },
-                "quit" => SessionOp::Quit,
-                "saves" => SessionOp::Saves,
-                other => return Err(ProtoErr::invalid(format!("unknown session op {other:?} (new, load, save, take_over, debug, quit, saves)"))),
-            }),
+            "session" => {
+                let op = j.req_str("op")?;
+                let fields: &[&str] = match op {
+                    "new" => &["op", "setup", "name"],
+                    "load" | "save" => &["op", "name"],
+                    "take_over" => &["op", "player", "name"],
+                    "debug" => &["op", "reveal"],
+                    "quit" | "saves" => &["op"],
+                    other => return Err(ProtoErr::invalid(format!("unknown session op {other:?} (new, load, save, take_over, debug, quit, saves)"))),
+                };
+                only(fields)?;
+                Request::Session(match op {
+                    "new" => {
+                        let setup = match j.opt_value("setup")? {
+                            None | Some(Json::Null) => Json::obj(),
+                            Some(s) if s.as_obj().is_some() => s.clone(),
+                            Some(s) => return Err(FieldError::wrong("setup", "an object", s).into()),
+                        };
+                        SessionOp::New { setup, name: j.opt("name")? }
+                    }
+                    "load" => SessionOp::Load { name: j.req("name")? },
+                    "save" => SessionOp::Save { name: j.req("name")? },
+                    "take_over" => SessionOp::TakeOver { player: j.req("player")?, name: j.req("name")? },
+                    "debug" => SessionOp::Debug { reveal: j.req("reveal")? },
+                    "quit" => SessionOp::Quit,
+                    _ => SessionOp::Saves,
+                })
+            }
             other => return Err(ProtoErr::invalid(format!("unknown request kind {other:?} (cmd, q, answer, session)"))),
         })
     }
@@ -659,6 +678,9 @@ impl Host {
         let ng = NewGame::from_json(d, setup)?;
         ng.validate(d).map_err(ProtoErr::invalid)?;
         let base = match name {
+            // `auto/NAME` names the current game's autosaves: a game called `auto` could not be
+            // loaded from by name.
+            Some(n) if n.eq_ignore_ascii_case(AUTO) => return Err(ProtoErr::invalid(format!("game name {n:?}: reserved (auto/NAME names the autosaves)"))),
             Some(n) => save::sanitize_name(n).map_err(ProtoErr::invalid)?.to_string(),
             None => format!("game-{}", ng.seed),
         };
@@ -708,7 +730,8 @@ impl Host {
             dirs.sort();
             for dir in dirs {
                 let name = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                if save::sanitize_name(&name).is_err() {
+                // A directory `auto` cannot be named as a game (`auto/NAME` is an autosave).
+                if save::sanitize_name(&name).is_err() || name.eq_ignore_ascii_case(AUTO) {
                     continue;
                 }
                 let list = save::list_json(Some(&dir));
@@ -737,6 +760,9 @@ fn read_save(path: &Path) -> Result<(Vec<u8>, Option<save::Sidecar>), ProtoErr> 
     }
     save::read_bundle(path).map_err(|e| ProtoErr::new("cannot", e))
 }
+
+/// The autosaves' subdirectory of a game directory (and the save-name prefix that names them).
+const AUTO: &str = "auto";
 
 /// The game directory of a save: its directory, or the one above for an autosave in `auto/`.
 pub fn game_dir_of(save: &Path) -> PathBuf {
@@ -792,6 +818,10 @@ mod tests {
             ("{\"k\":\"session\",\"op\":\"new\",\"setup\":3}", "field `setup`"),
             ("{\"k\":\"session\",\"op\":\"dance\"}", "unknown session op"),
             ("{\"k\":\"session\",\"op\":\"take_over\",\"player\":300,\"name\":\"x\"}", "field `player`"),
+            // Misspelt members are refused (P4 review).
+            ("{\"k\":\"session\",\"op\":\"new\",\"setp\":{}}", "field `setp`: unknown field"),
+            ("{\"k\":\"session\",\"op\":\"debug\",\"reveal\":true,\"x\":1}", "field `x`: unknown field"),
+            ("{\"k\":\"answer\",\"decision\":1,\"opton\":0}", "field `opton`: unknown field"),
             ("{\"k\":1}", "field `k`"),
             ("{\"id\":1,\"k\":\"q\",\"q\":\"status\"", "not JSON"),
         ] {
@@ -905,6 +935,12 @@ mod tests {
         assert_eq!(game_dir_of(&root.join("g/auto/T0001.ffhsave")), root.join("g"));
         assert_eq!(game_dir_of(&root.join("g/x.ffhsave")), root.join("g"));
         assert_eq!(game_dir_of(Path::new("x.ffhsave")), PathBuf::from("."));
+        // `auto` names the autosaves: not a game (P4 review).
+        assert_eq!(host.new_game(&Json::obj(), Some("auto")).unwrap_err().code, "invalid");
+        assert_eq!(host.new_game(&Json::obj(), Some("AUTO")).unwrap_err().code, "invalid");
+        std::fs::create_dir_all(root.join("auto")).unwrap();
+        let games = host.saves_json().unwrap();
+        assert!(games.req_arr("games").unwrap().iter().all(|g| g.req_str("game") != Ok("auto")), "{games}");
         // No saves root: nothing by name.
         host.opts.saves = None;
         assert_eq!(host.resolve_save("g1/x").unwrap_err().code, "cannot");

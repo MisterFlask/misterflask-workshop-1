@@ -754,7 +754,7 @@ pub fn noise_with(mut query: impl FnMut(&Query) -> Result<Json, QueryErr>) -> us
         }
     }
     if let Some(u) = arr(&view, "units").iter().find(|u| int(u, "owner") == me) {
-        ask(Query::Inspect { kind: "unit".into(), id: int(u, "id") }, false);
+        ask(Query::Inspect { kind: "unit".into(), oid: int(u, "id") }, false);
     }
     for layer in Layer::ALL {
         ask(Query::Ascii { x: 0, y: 0, w: 0, h: 0, layer }, false);

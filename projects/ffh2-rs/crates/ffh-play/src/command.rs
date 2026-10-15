@@ -182,6 +182,35 @@ pub const COMMAND_NAMES: &[&str] = &[
     "autoplay",
 ];
 
+/// The members of each command besides `c` (in the order of [`COMMAND_NAMES`]). A request
+/// object may also carry the envelope's `id` and `k`; any other member is refused, so that a
+/// misspelt flag is an error instead of its default.
+pub const COMMAND_FIELDS: &[(&str, &[&str])] = &[
+    ("move", &["units", "x", "y", "append", "declare_war"]),
+    ("mission", &["units", "mission", "data1", "data2", "flags", "append"]),
+    ("do_command", &["units", "command", "data1", "data2", "alt", "confirmed"]),
+    ("join_group", &["unit", "head"]),
+    ("auto_mission", &["unit"]),
+    ("push_order", &["city", "order", "data", "alt", "shift", "ctrl"]),
+    ("pop_order", &["city", "index"]),
+    ("do_task", &["city", "task", "data1", "data2", "option", "alt", "shift", "ctrl"]),
+    ("research", &["tech", "shift"]),
+    ("update_civics", &["civics"]),
+    ("percent_change", &["commerce", "change"]),
+    ("convert", &["religion"]),
+    ("declare_war", &["team"]),
+    ("propose_deal", &["to", "give", "get"]),
+    ("event", &["triggered", "event"]),
+    ("vote", &["vote", "choice"]),
+    ("set_option", &["option", "value"]),
+    ("auto_moves", &[]),
+    ("end_turn", &["force"]),
+    ("autoplay", &["turns"]),
+];
+
+/// The envelope's members a command or query object may carry (`transport::Request`).
+pub const ENVELOPE_FIELDS: &[&str] = &["id", "k"];
+
 // ---------------------------------------------------------------------------------------------
 // Decoding and the canonical form
 // ---------------------------------------------------------------------------------------------
@@ -269,6 +298,10 @@ impl Command {
     /// ignored). Type references are names or indices.
     pub fn from_json(d: &GameData, j: &Json) -> Result<Command, CmdErr> {
         let c = j.req_str("c")?;
+        if let Some((_, fields)) = COMMAND_FIELDS.iter().find(|(name, _)| *name == c) {
+            let known: Vec<&str> = ["c"].iter().chain(ENVELOPE_FIELDS).chain(fields.iter()).copied().collect();
+            j.only(&known)?;
+        }
         let flag = |k: &str| j.get_or(k, false);
         Ok(match c {
             "move" => Command::Move {
@@ -1203,5 +1236,13 @@ mod tests {
         assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `give`")));
         let j = Json::parse(r#"{"c":"propose_deal","to":1,"get":{"item":0}}"#).unwrap();
         assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `get`")));
+        // A misspelt member is refused, not taken for its default (P4 review); the envelope's
+        // `id` and `k` are allowed.
+        let j = Json::parse(r#"{"c":"end_turn","forse":true}"#).unwrap();
+        assert!(matches!(Command::from_json(d, &j), Err(CmdErr::Invalid(s)) if s.contains("field `forse`: unknown field")));
+        let j = Json::parse(r#"{"id":"x","k":"cmd","c":"end_turn","force":true}"#).unwrap();
+        assert_eq!(Command::from_json(d, &j), Ok(Command::EndTurn { force: true }));
+        let names: Vec<&str> = COMMAND_FIELDS.iter().map(|(n, _)| *n).collect();
+        assert_eq!(names, COMMAND_NAMES);
     }
 }

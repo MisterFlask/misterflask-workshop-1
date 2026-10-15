@@ -305,16 +305,16 @@ pub fn ascii(v: &Viewer, x: i32, y: i32, w: i32, h: i32, layer: Layer) -> Result
     Ok(crate::jobj! { "x" => x, "y" => y, "w" => w, "h" => h, "layer" => layer.name(), "map" => map, "legend" => Json::Arr(legend.into_iter().map(Json::from).collect()) })
 }
 
-/// `inspect {kind,id}`: `{:#?}` of a game object of the human's (`unit`, `group`, `city`,
+/// `inspect {kind,oid}`: `{:#?}` of a game object of the human's (`unit`, `group`, `city`,
 /// `player`, `team`, a `deal` it is part of; any object, and any `plot`, under debug reveal), or
-/// of info entry `id` of an info table (a kind name such as `UnitType` or a table name such as
+/// of info entry `oid` of an info table (a kind name such as `UnitType` or a table name such as
 /// `units`). The dumps of the human's own city, player and team keep their per-team
 /// bookkeeping (which teams revealed the city, espionage and contact counters): this is the
 /// rules tester's raw inspector.
 pub fn inspect(v: &Viewer, kind: &str, id: i64) -> Result<Json, QueryErr> {
     let g = v.g;
     let d = g.d;
-    let id32 = u32::try_from(id).map_err(|_| invalid(format!("field `id`: {id} out of range")))?;
+    let id32 = u32::try_from(id).map_err(|_| invalid(format!("field `oid`: {id} out of range")))?;
     let mine = |owner: PlayerId| v.reveal || owner == v.h;
     let debug = match kind {
         "unit" => {
@@ -381,5 +381,5 @@ pub fn inspect(v: &Viewer, kind: &str, id: i64) -> Result<Json, QueryErr> {
             (k.debug)(d, id32 as usize).ok_or_else(|| invalid(format!("{} has no info entry {id}", k.kind)))?
         }
     };
-    Ok(crate::jobj! { "kind" => kind, "id" => id, "debug" => debug })
+    Ok(crate::jobj! { "kind" => kind, "oid" => id, "debug" => debug })
 }
