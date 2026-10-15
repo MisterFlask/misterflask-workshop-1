@@ -39,8 +39,31 @@ pub const REQUEST_TIME: Duration = Duration::from_secs(15);
 /// How long a connection is drained after an answer sent before its request was read.
 const DRAIN_TIME: Duration = Duration::from_millis(250);
 
-/// The client files compiled into the binary: `(path, content type, content)`.
-pub const ASSETS: &[(&str, &str, &str)] = &[("index.html", "text/html; charset=utf-8", include_str!("../../assets/index.html"))];
+const HTML: &str = "text/html; charset=utf-8";
+const JS: &str = "text/javascript; charset=utf-8";
+const CSS: &str = "text/css; charset=utf-8";
+
+/// The client files compiled into the binary: `(path, content type, content)`, served at
+/// `/<path>` (`/` is `index.html`). The layout of `assets/` is the URL layout, so that
+/// `--assets crates/ffh-play/assets` serves the same files from disk; `tests/web.rs` checks that
+/// every file of `assets/app/` is listed here and that the modules' imports resolve.
+pub const ASSETS: &[(&str, &str, &str)] = &[
+    ("index.html", HTML, include_str!("../../assets/index.html")),
+    ("app/style.css", CSS, include_str!("../../assets/app/style.css")),
+    ("app/main.js", JS, include_str!("../../assets/app/main.js")),
+    ("app/api.js", JS, include_str!("../../assets/app/api.js")),
+    ("app/state.js", JS, include_str!("../../assets/app/state.js")),
+    ("app/tiles.js", JS, include_str!("../../assets/app/tiles.js")),
+    ("app/markup.js", JS, include_str!("../../assets/app/markup.js")),
+    ("app/dom.js", JS, include_str!("../../assets/app/dom.js")),
+    ("app/modals.js", JS, include_str!("../../assets/app/modals.js")),
+    ("app/commands.js", JS, include_str!("../../assets/app/commands.js")),
+    ("app/map.js", JS, include_str!("../../assets/app/map.js")),
+    ("app/units.js", JS, include_str!("../../assets/app/units.js")),
+    ("app/city.js", JS, include_str!("../../assets/app/city.js")),
+    ("app/screens.js", JS, include_str!("../../assets/app/screens.js")),
+    ("app/hud.js", JS, include_str!("../../assets/app/hud.js")),
+];
 
 /// A parsed request.
 #[derive(Clone, Debug, PartialEq, Eq)]

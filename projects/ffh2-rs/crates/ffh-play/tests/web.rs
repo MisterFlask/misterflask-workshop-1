@@ -1,0 +1,170 @@
+//! The browser client's files (design §7 P5): every file of `assets/` is embedded and served
+//! with its type, the page and the modules only reference embedded files (a module that is
+//! added but not listed in `http::ASSETS`, or an import of a missing one, fails here, without a
+//! browser), and the staged situations the browser smoke test uses (`ffh-play stage`) hold
+//! what they promise. The client's own checks need node and a browser and are not part of
+//! `cargo test`: `tools/web-check.sh`, `tools/web-api-smoke.mjs`, `tools/web-smoke.mjs`.
+
+mod common;
+
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::sync::Arc;
+
+use common::TempDir;
+use ffh_play::json::Json;
+use ffh_play::transport::http::{route, HttpCtx, HttpRequest, ASSETS};
+use ffh_play::transport::shared::Shared;
+use ffh_play::{Session, SessionOptions};
+
+fn assets_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("assets")
+}
+
+/// The files a client may load: `index.html` and everything under `app/`.
+fn files_on_disk() -> Vec<String> {
+    let mut out = vec!["index.html".to_string()];
+    let app = assets_dir().join("app");
+    let mut names: Vec<String> = std::fs::read_dir(&app).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+    names.sort();
+    out.extend(names.into_iter().map(|n| format!("app/{n}")));
+    out
+}
+
+#[test]
+fn every_client_file_is_embedded_as_it_is_on_disk() {
+    let disk = files_on_disk();
+    let mut embedded: Vec<String> = ASSETS.iter().map(|(p, _, _)| p.to_string()).collect();
+    embedded.sort();
+    let mut want = disk.clone();
+    want.sort();
+    assert_eq!(embedded, want, "http::ASSETS must list exactly index.html and assets/app/*");
+    for (path, ctype, body) in ASSETS {
+        let on_disk = std::fs::read_to_string(assets_dir().join(path)).unwrap();
+        assert_eq!(*body, on_disk, "{path}");
+        let want = match path.rsplit_once('.').map(|(_, e)| e) {
+            Some("html") => "text/html",
+            Some("js") => "text/javascript",
+            Some("css") => "text/css",
+            other => panic!("unexpected client file type {other:?} ({path})"),
+        };
+        assert!(ctype.starts_with(want), "{path}: {ctype}");
+    }
+}
+
+/// The module specifiers a module imports: `import ... from "x"`, `export ... from "x"`, the
+/// last line of a multi-line import (`} from "x"`) and `import "x"`.
+fn imports(src: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in src.lines() {
+        let l = line.trim_start();
+        let spec = if l.starts_with("import ") || l.starts_with("export ") || l.starts_with('}') {
+            match l.rfind(" from ") {
+                Some(i) => &l[i + 6..],
+                None if l.starts_with("import ") => &l[7..],
+                None => continue,
+            }
+        } else {
+            continue;
+        };
+        let s = spec.trim();
+        let Some(q) = s.chars().next().filter(|c| *c == '"' || *c == '\'') else { continue };
+        if let Some(end) = s[1..].find(q) {
+            out.push(s[1..1 + end].to_string());
+        }
+    }
+    out
+}
+
+#[test]
+fn the_page_and_its_modules_reference_only_embedded_files() {
+    let get = |p: &str| ASSETS.iter().find(|(q, _, _)| *q == p).map(|(_, _, b)| *b);
+    let index = get("index.html").unwrap();
+    // The page loads the stylesheet and the main module, and nothing from another site.
+    let mut refs = Vec::new();
+    for attr in ["src=\"", "href=\""] {
+        let mut s = index;
+        while let Some(i) = s.find(attr) {
+            s = &s[i + attr.len()..];
+            let end = s.find('"').unwrap();
+            refs.push(s[..end].to_string());
+            s = &s[end..];
+        }
+    }
+    assert!(refs.contains(&"/app/main.js".to_string()) && refs.contains(&"/app/style.css".to_string()), "{refs:?}");
+    for r in &refs {
+        if r.starts_with("data:") {
+            continue;
+        }
+        let path = r.strip_prefix('/').unwrap_or_else(|| panic!("page reference {r} is not a server path"));
+        assert!(get(path).is_some(), "the page references {r}, which is not embedded");
+    }
+    // Every module reached from main.js is embedded; every embedded module is reached.
+    let mut seen = vec!["app/main.js".to_string()];
+    let mut queue = vec!["app/main.js".to_string()];
+    while let Some(m) = queue.pop() {
+        let src = get(&m).unwrap_or_else(|| panic!("{m} is imported but not embedded"));
+        for spec in imports(src) {
+            let file = spec.strip_prefix("./").unwrap_or_else(|| panic!("{m} imports {spec:?}: only ./ modules (no CDN, no bare names)"));
+            let path = format!("app/{file}");
+            assert!(get(&path).is_some(), "{m} imports {spec}, which is not embedded");
+            if !seen.contains(&path) {
+                seen.push(path.clone());
+                queue.push(path);
+            }
+        }
+    }
+    for (p, _, _) in ASSETS {
+        if p.ends_with(".js") {
+            assert!(seen.iter().any(|s| s == p), "{p} is embedded but no module imports it");
+        }
+    }
+    assert_eq!(
+        imports("import { a } from \"./x.js\";\nimport * as b from './y.js';\nimport {\n  c,\n} from \"./z.js\";\nimport \"./w.js\";\nconst s = \"a from b\";"),
+        ["./x.js", "./y.js", "./z.js", "./w.js"]
+    );
+}
+
+#[test]
+fn client_files_are_served_with_their_types() {
+    let (tx, _rx) = mpsc::channel();
+    let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx, assets: None, loopback: None };
+    let get = |path: &str| {
+        let req = HttpRequest { method: "GET".into(), path: path.into(), query: String::new(), headers: vec![("Host".into(), "127.0.0.1".into())], body: Vec::new() };
+        route(&req, &ctx)
+    };
+    for (path, ctype, _) in ASSETS {
+        let r = get(&format!("/{path}"));
+        assert_eq!((r.status, r.content_type), (200, *ctype), "{path}");
+    }
+    let root = get("/");
+    assert_eq!((root.status, root.content_type), (200, "text/html; charset=utf-8"));
+    assert_eq!(get("/app/missing.js").status, 404);
+    assert_eq!(get("/app/../index.html").status, 404);
+    // `--assets DIR` serves the same layout from disk.
+    let ctx = HttpCtx { shared: Arc::new(Shared::new()), tx: mpsc::channel().0, assets: Some(assets_dir()), loopback: None };
+    let req = HttpRequest { method: "GET".into(), path: "/app/main.js".into(), query: String::new(), headers: Vec::new(), body: Vec::new() };
+    let r = route(&req, &ctx);
+    assert_eq!((r.status, r.content_type), (200, "text/javascript; charset=utf-8"));
+}
+
+/// `ffh-play stage attack`: the warrior can attack the barbarian next to it, and the `combat`
+/// and `path` queries the client shows say so.
+#[test]
+fn the_staged_attack_shows_odds() {
+    let tmp = TempDir::new("web-stage-attack");
+    let st = ffh_play::stage::attack(&tmp.0).expect("staged attack");
+    let (bytes, sidecar) = ffh_play::save::read_bundle(&st.save).unwrap();
+    let s = Session::load(&bytes, sidecar.as_ref(), Arc::new(ffh_play::human::AdvisorAnswerer), SessionOptions::default()).unwrap();
+    let q = |j: Json| s.query_json(&j).unwrap();
+    let c = q(ffh_play::jobj! { "q" => "combat", "units" => vec![st.unit], "x" => st.x, "y" => st.y });
+    assert_eq!(c.get("valid").and_then(Json::as_bool), Some(true), "{c}");
+    let odds: i64 = c.req("odds").unwrap();
+    assert!((1..1000).contains(&odds), "{c}");
+    assert_eq!(c.req::<i64>("defender").unwrap(), st.enemy.0 as i64);
+    let p = q(ffh_play::jobj! { "q" => "path", "units" => vec![st.unit], "x" => st.x, "y" => st.y });
+    assert_eq!((p.get("ok").and_then(Json::as_bool), p.get("attack").and_then(Json::as_bool)), (Some(true), Some(true)), "{p}");
+    assert_eq!(p.get("declare_war_team"), Some(&Json::Null), "barbarians are always at war: no question");
+    let json = st.to_json();
+    assert_eq!(json.req_str("stage"), Ok("attack"));
+}

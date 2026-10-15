@@ -4,153 +4,52 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ffh-play</title>
-<!-- Placeholder client (design P4): status, the text summary and ASCII map, popups and raw
-     requests over the protocol. The browser client proper comes in P5. -->
-<style>
-  :root { --bg: #f4f1ea; --panel: #fffdf8; --fg: #1e1b16; --muted: #6a6358; --line: #d9d2c4; --accent: #8a3d10; --warn: #9b1c1c; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #15130f; --panel: #1e1b16; --fg: #ebe5d9; --muted: #a29a8b; --line: #3b362d; --accent: #e3a066; --warn: #f08a8a; }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
-  header, .bar, main { padding: 8px 16px; }
-  header { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
-  header .note { color: var(--muted); font-size: 12px; }
-  #status { font-variant-numeric: tabular-nums; }
-  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  input, select, button, textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; }
-  button { cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  #popup { margin: 8px 16px; padding: 8px 12px; border: 2px solid var(--accent); border-radius: 6px; background: var(--panel); }
-  #popup h3 { margin: 0 0 4px; }
-  #popup button { margin: 4px 6px 0 0; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
-  h2 { font-size: 13px; margin: 0 0 4px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  pre { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px; overflow: auto; max-height: 62vh; font: 12px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  textarea { width: 100%; min-height: 4.5em; font: 12px ui-monospace, monospace; }
-  .wide { grid-column: 1 / -1; }
-  .err { color: var(--warn); }
-</style>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/app/style.css">
+<script type="module" src="/app/main.js"></script>
 </head>
 <body>
-<header>
-  <strong>ffh-play</strong>
-  <span id="status">connecting…</span>
-  <span class="note">Placeholder page: the map client comes later. Everything below goes through <code>POST /api</code>.</span>
+<!-- The browser client (docs/PLAY_DESIGN.md §5.1, §7 P5). Everything it shows comes from the
+     server (`ffh-play serve`): /api/status (long-poll), /api/view, /api/map, /api/data and the
+     POST /api envelope. -->
+<header id="top">
+  <div id="phase" aria-live="polite">connecting…</div>
+  <div id="empire"></div>
+  <nav id="menu">
+    <button id="btn-research" title="Research [R]">Research</button>
+    <button id="btn-cities" title="Your cities">Cities</button>
+    <button id="btn-save" title="Save the game">Save</button>
+    <button id="btn-load" title="Load a game">Load</button>
+    <button id="btn-new" title="Start a new game">New</button>
+    <button id="btn-keys" title="Keys [?]">?</button>
+    <button id="btn-raw" title="Send a raw protocol request (testing)">⌘</button>
+    <button id="end-turn" class="primary" title="End the turn [Enter]; Shift: without the checks" disabled>End turn</button>
+  </nav>
 </header>
-<div class="bar">
-  <label>Seed <input id="seed" type="number" value="1" min="0" style="width: 6em"></label>
-  <label>World <select id="world"></select></label>
-  <button id="new">New game</button>
-  <button id="end">End turn</button>
-  <button id="force">End turn (force)</button>
-  <input id="savename" value="mysave" style="width: 9em" aria-label="Save name">
-  <button id="save">Save</button>
-  <label><input id="reveal" type="checkbox"> Debug reveal</label>
-</div>
-<div id="popup" hidden></div>
-<main>
-  <section><h2>Summary (text query)</h2><pre id="text"></pre></section>
-  <section><h2>Map (ascii query)</h2>
-    <div class="bar" style="padding: 0 0 4px">
-      <select id="layer"><option>terrain</option><option>political</option><option>yield</option><option>units</option></select>
+<main id="main">
+  <div id="mapwrap">
+    <canvas class="map" aria-label="The map"></canvas>
+    <canvas class="minimap" aria-label="Minimap"></canvas>
+    <div class="zoom">
+      <button id="zoom-in" title="Zoom in [+]" aria-label="Zoom in">+</button>
+      <button id="zoom-out" title="Zoom out [-]" aria-label="Zoom out">−</button>
     </div>
-    <pre id="ascii"></pre></section>
-  <section class="wide"><h2>Request</h2>
-    <textarea id="req">{"k":"q","q":"pending"}</textarea>
-    <div class="bar" style="padding: 4px 0"><button id="send">Send</button></div>
-    <pre id="reply"></pre></section>
+    <div class="tooltip" hidden></div>
+  </div>
+  <aside id="side">
+    <section id="unit-panel" aria-label="Selection"></section>
+  </aside>
 </main>
-<script>
-"use strict";
-const $ = (id) => document.getElementById(id);
-let nextId = 1;
-let shown = "";
-
-async function api(req) {
-  if (req.id === undefined) req.id = nextId++;
-  const r = await fetch("/api", { method: "POST", headers: { "X-FFH": "1", "Content-Type": "application/json" }, body: JSON.stringify(req) });
-  return r.json();
-}
-
-function say(j) { $("reply").textContent = JSON.stringify(j, null, 2); $("reply").className = j.ok === false ? "err" : ""; }
-
-async function refresh(st) {
-  if (!["human", "over", "decision", "stuck"].includes(st.phase)) return;
-  const t = await api({ k: "q", q: "text" });
-  $("text").textContent = t.ok ? t.r.text : JSON.stringify(t);
-  const a = await api({ k: "q", q: "ascii", layer: $("layer").value });
-  $("ascii").textContent = a.ok ? `${a.r.map}\n\n${a.r.legend.join("\n")}` : JSON.stringify(a);
-}
-
-function popup(st) {
-  const p = $("popup");
-  const d = st.decision;
-  if (!d) { p.hidden = true; p.replaceChildren(); return; }
-  p.hidden = false;
-  const h = document.createElement("h3"); h.textContent = d.title;
-  const txt = document.createElement("div"); txt.textContent = d.text;
-  p.replaceChildren(h, txt);
-  d.options.forEach((o, i) => {
-    const b = document.createElement("button");
-    b.textContent = o.label + (d.advisor === i ? " (advisor)" : "");
-    b.title = o.help; b.disabled = !o.enabled;
-    b.onclick = async () => say(await api({ k: "answer", decision: d.id, option: i }));
-    p.append(b);
-  });
-  const ai = document.createElement("button"); ai.textContent = "AI default";
-  ai.onclick = async () => say(await api({ k: "answer", decision: d.id, advisor: true }));
-  p.append(ai);
-}
-
-function show(st) {
-  let s = `${st.phase}`;
-  if (st.turn !== undefined) s += ` · turn ${st.turn} (${st.year})`;
-  if (st.active_players && st.phase === "running") s += ` · active ${st.active_players.join(",")}`;
-  if (st.reveal) s += " · DEBUG REVEAL";
-  if (st.crash) s += ` · crashed: ${st.crash.message} · ${st.crash.repro || ""}`;
-  if (st.stuck) s += ` · ${st.stuck}`;
-  $("status").textContent = s;
-  popup(st);
-  const key = `${st.phase}/${st.turn}/${st.view_version}/${st.decision ? st.decision.id : ""}`;
-  if (key !== shown) { shown = key; refresh(st); }
-}
-
-async function poll() {
-  let v = -1;
-  for (;;) {
-    try {
-      const r = await fetch(`/api/wait?since=${Math.max(v, 0)}&timeout_ms=25000`);
-      const st = await r.json();
-      if (st.version !== v) { v = st.version; show(st); }
-    } catch (e) {
-      $("status").textContent = "disconnected; retrying…";
-      await new Promise((res) => setTimeout(res, 1000));
-    }
-  }
-}
-
-async function init() {
-  const setup = await (await fetch("/api/setup")).json();
-  for (const w of setup.worlds) {
-    const o = document.createElement("option");
-    o.value = w.type; o.textContent = w.name;
-    if (w.id === setup.defaults.world) o.selected = true;
-    $("world").append(o);
-  }
-  $("new").onclick = async () => say(await api({ k: "session", op: "new", setup: { seed: +$("seed").value, world: $("world").value } }));
-  $("end").onclick = async () => say(await api({ k: "cmd", c: "end_turn" }));
-  $("force").onclick = async () => say(await api({ k: "cmd", c: "end_turn", force: true }));
-  $("save").onclick = async () => say(await api({ k: "session", op: "save", name: $("savename").value }));
-  $("reveal").onchange = async (e) => { say(await api({ k: "session", op: "debug", reveal: e.target.checked })); shown = ""; };
-  $("layer").onchange = () => { shown = ""; fetch("/api/status").then((r) => r.json()).then(show); };
-  $("send").onclick = async () => {
-    try { say(await api(JSON.parse($("req").value))); } catch (e) { $("reply").textContent = String(e); $("reply").className = "err"; }
-  };
-  poll();
-}
-init();
-</script>
+<footer id="bottom">
+  <div id="bottom-tabs" role="tablist">
+    <button data-tab="report" class="active">Turn report</button>
+    <button data-tab="messages">Messages</button>
+    <button data-tab="game">Game files</button>
+    <button id="bottom-toggle" title="Show or hide this panel" aria-label="Toggle the panel">▾</button>
+  </div>
+  <div id="bottom-body"></div>
+</footer>
+<div id="modals"></div>
+<div id="toasts" aria-live="polite"></div>
 </body>
 </html>
