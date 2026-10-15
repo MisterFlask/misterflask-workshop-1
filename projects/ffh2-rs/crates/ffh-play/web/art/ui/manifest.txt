@@ -1,4 +1,6 @@
-; ui set: heraldry, fonts, icons (docs/ART.md 7, 11).
+; ui set (docs/ART.md 7, 11): heraldry, the Vigil and Tally fonts, icons, realm icons (religions,
+; alignments, civic categories, mana spheres), promotion seals, unit classes and specialists, chrome
+; (frames, buttons, bars) and map marks (cursors, path, odds). ui.js draws them; preview.html shows them.
 set ui
 source heraldry.spr
 source fonts.spr
@@ -7,6 +9,7 @@ source realm.spr
 source chrome.spr
 source marks.spr
 source promotions.spr
+source kinds.spr
 
 ; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
 ; Celeste Sable Cendree). Sigils without a bespoke sprite yet use the lozenge.
@@ -85,7 +88,13 @@ map promotion * -> icon16/promo_star remap=#6
 map building wonder=WORLD -> icon16/_wonder
 map building * -> icon16/_building
 
-; ---- unit combat classes and specialists
+; ---- unit combat classes (icon8/combat_<x>) and specialists (icon16/specialist_<x>) are found by
+; name (kinds.spr); great specialists reuse their specialist's disc with a vellum ring
+map specialist SPECIALIST_GREAT_PRIEST -> icon16/specialist_priest remap=58
+map specialist SPECIALIST_GREAT_ARTIST -> icon16/specialist_artist remap=58
+map specialist SPECIALIST_GREAT_SCIENTIST -> icon16/specialist_scientist remap=58
+map specialist SPECIALIST_GREAT_MERCHANT -> icon16/specialist_merchant remap=58
+map specialist SPECIALIST_GREAT_ENGINEER -> icon16/specialist_engineer remap=58
 map unitcombat * -> icon8/_combat
 map specialist great=1 -> icon16/_specialist remap=68
 map specialist * -> icon16/_specialist

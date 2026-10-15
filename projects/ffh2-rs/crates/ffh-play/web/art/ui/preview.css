@@ -21,7 +21,7 @@ body {
 .topbar .label { font-size: 13px; color: var(--c-stone); }
 .topbar .tech { font-size: 14px; color: var(--c-bone); white-space: nowrap; }
 .topbar .ui-button { font-size: 15px; display: flex; align-items: center; gap: calc(var(--u) * 3); padding: 0 calc(var(--u) * 5); }
-.main { display: grid; grid-template-columns: 1fr calc(var(--u) * 156); gap: calc(var(--u) * 3); min-height: 0; }
+.main { display: grid; grid-template-columns: 1fr max(calc(var(--u) * 156), 312px); gap: calc(var(--u) * 3); min-height: 0; }
 .mapwrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .mapwrap canvas.map { position: absolute; left: 0; top: 0; }
 .overlay { position: absolute; }
@@ -39,16 +39,16 @@ body {
 .yields { display: flex; gap: calc(var(--u) * 4); }
 .yields .item { display: flex; align-items: center; gap: calc(var(--u) * 1); }
 .list { padding: calc(var(--u) * 1) 0; }
-.list .li { display: flex; align-items: center; gap: calc(var(--u) * 2); padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 3); font-size: 14px; line-height: calc(var(--u) * 10); }
+.list .li { display: flex; align-items: center; gap: calc(var(--u) * 2); padding: 0 calc(var(--u) * 2) 0 calc(var(--u) * 3); font-size: 14px; line-height: max(calc(var(--u) * 10), 20px); }
 .list .li.hover { background: var(--c-coal); }
 .list .li.sel { background: var(--c-coal); box-shadow: inset var(--u) 0 0 var(--c-bone); color: var(--c-vellum); }
 .list .li .r { margin-left: auto; color: var(--c-stone); }
 .buttons { display: flex; gap: calc(var(--u) * 2); flex-wrap: wrap; margin-top: calc(var(--u) * 3); }
 .buttons .ui-button { font-size: 14px; }
-.tip { width: calc(var(--u) * 118); padding: calc(var(--u) * 1) calc(var(--u) * 2); font-size: 13px; line-height: 1.35; }
+.tip { width: max(calc(var(--u) * 118), 236px); padding: calc(var(--u) * 1) calc(var(--u) * 2); font-size: 13px; line-height: 1.35; }
 .tip .head { font-size: 15px; color: var(--c-vellum); }
 .tip .row + .row { margin-top: 0; }
-.unitpanel { left: calc(var(--u) * 4); bottom: calc(var(--u) * 4); width: calc(var(--u) * 196); }
+.unitpanel { left: calc(var(--u) * 4); bottom: calc(var(--u) * 4); width: max(calc(var(--u) * 196), 392px); }
 .cards { display: flex; gap: calc(var(--u) * 2); }
 .card { width: calc(var(--u) * 28); height: calc(var(--u) * 30); display: flex; align-items: center; justify-content: center; position: relative; }
 .seals { display: flex; gap: calc(var(--u) * 1); flex-wrap: wrap; }

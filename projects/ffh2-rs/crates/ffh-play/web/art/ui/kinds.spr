@@ -1,0 +1,213 @@
+; unit combat classes (icon8/combat_<x>: the class reduced to a glyph, docs/ART.md 10.2) and
+; specialists (icon16/specialist_<x>: the attribute on a plain disc with an ash ring; the great
+; specialists use the same sprite with the ring remapped to vellum, see manifest.txt).
+
+= icon8/combat_melee 8x8 0,0
+: note unit combat: melee (an upright sword)
+..080...
+..080...
+..080...
+.0080...
+066660..
+.0070...
+..070...
+...0....
+= icon8/combat_archer 8x8 0,0
+: note unit combat: archer (a drawn bow)
+.0770...
+060070..
+0600070.
+88888880
+0600070.
+060070..
+.0770...
+..00....
+= icon8/combat_mounted 8x8 0,0
+: note unit combat: mounted (a horse's head)
+..0770..
+.077770.
+07707770
+07777777
+07770077
+07770.00
+077770..
+.0000...
+= icon8/combat_recon 8x8 0,0
+: note unit combat: recon (a pathfinder's compass star)
+..080...
+..080...
+0068600.
+88878880
+0068600.
+..060...
+..060...
+...0....
+= icon8/combat_siege 8x8 0,0
+: note unit combat: siege (a catapult)
+.....070
+....070.
+...070..
+0007000.
+66666660
+0u000u0.
+.0...0..
+........
+= icon8/combat_adept 8x8 0,0
+: note unit combat: adept (a mage's hat, arcane)
+..0P0...
+.0pP0...
+.0pPp0..
+0ppPp0..
+0pppPp0.
+pppppPp0
+0000000.
+........
+= icon8/combat_disciple 8x8 0,0
+: note unit combat: disciple (a lantern)
+..060...
+.06660..
+.07l70..
+.0lLl0..
+.07l70..
+.06660..
+..000...
+........
+= icon8/combat_animal 8x8 0,0
+: note unit combat: animal (a paw print)
+.0.0.0..
+0707070.
+.00000..
+.07770..
+0777770.
+0777770.
+.07070..
+..0.0...
+= icon8/combat_naval 8x8 0,0
+: note unit combat: naval (a ship under sail)
+..070...
+.0870...
+08870...
+88870...
+0006000.
+66666660
+0666660.
+.00000..
+= icon8/combat_beast 8x8 0,0
+: note unit combat: beast (a horned head)
+70..070.
+7700770.
+077770..
+070070..
+077770..
+.0770...
+..00....
+........
+= icon16/specialist_citizen 16x16 0,0
+: note specialist: citizen (a bust on a plain disc; great specialists get a vellum ring)
+.....555555.....
+...5511111155...
+..511111111115..
+.51111177111115.
+.51111788711115.
+5111117777111115
+5111111771111115
+5111177777711115
+5111777777771115
+5111777777771115
+5111111111111115
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....
+= icon16/specialist_priest 16x16 0,0
+: note specialist: priest (a hooded figure under a ring of vellum dots)
+.....555555.....
+...5511111155...
+..511181811115..
+.51118111811115.
+.51111177111115.
+5111117777111115
+5111117777111115
+5111177777711115
+5111177777711115
+5111777777771115
+5111111111111115
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....
+= icon16/specialist_artist 16x16 0,0
+: note specialist: artist (a lyre)
+.....555555.....
+...5511111155...
+..511111111115..
+.51117111171115.
+.51117111171115.
+5111788888871115
+5111717171771115
+5111717171771115
+5111717171771115
+5111177777711115
+5111111771111115
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....
+= icon16/specialist_scientist 16x16 0,0
+: note specialist: scientist (an open codex)
+.....555555.....
+...5511111155...
+..511111111115..
+.51111111111115.
+.51111111111115.
+5118888118888115
+5178888778888715
+5178777777778715
+5178888778888715
+5178777777778715
+5177777777777715
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....
+
+= icon16/specialist_merchant 16x16 0,0
+: note specialist: merchant (a purse)
+.....555555.....
+...5511111155...
+..511111111115..
+.51111y11y11115.
+.51111yyy111115.
+511111yyyy111115
+51111yYYYy111115
+5111yYYYYYy11115
+5111yYYYYyy11115
+5111yYYYyyy11115
+51111yyyyy111115
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....
+= icon16/specialist_engineer 16x16 0,0
+: note specialist: engineer (a square and a hammer)
+.....555555.....
+...5511111155...
+..511111111115..
+.51118111777115.
+.51118111777115.
+5111181111711115
+5111181111711115
+5111181111711115
+5111188888711115
+5111111111711115
+5111111111111115
+.51111111111115.
+.51111111111115.
+..511111111115..
+...5511111155...
+.....555555.....

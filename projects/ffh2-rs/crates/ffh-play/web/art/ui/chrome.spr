@@ -35,28 +35,30 @@
 7y755555557y7
 .7.........7.
 
-= ui/frame_modal 19x19 0,0
-: note modal page: a third rule in ash, a gilt lozenge at each corner and a nail on the inner rule
-: tags nine=9,9,9,9
-..7.............7..
-.7y7...........7y7.
-7yLy75555555557yLy7
-.7y71111111111y7y7.
-..713333333333317..
-..513111111111315..
-..5131y55555y1315..
-..513151111151315..
-..513151111151315..
-..513151111151315..
-..513151111151315..
-..513151111151315..
-..5131y55555y1315..
-..513111111111315..
-..713333333333317..
-.7y71111111111y7y7.
-7yLy75555555557yLy7
-.7y7...........7y7.
-..7.............7..
+= ui/frame_modal 21x21 0,0
+: note modal page: three rules (ash, iron, ash) with a gilt lozenge at each corner and nails on the inner rule
+: tags nine=10,10,10,10
+...0.............0...
+..070...........070..
+.07y70.........07y70.
+07yLy70555555507yLy70
+.07y7011111111107y70.
+..07033333333333070..
+...013111111111310...
+...5131y55555y1315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...513151111151315...
+...5131y55555y1315...
+...013111111111310...
+..07033333333333070..
+.07y7011111111107y70.
+07yLy70555555507yLy70
+.07y70.........07y70.
+..070...........070..
+...0.............0...
 
 = ui/frame_title 5x5 0,0
 : note panel title band: coal, with a 1 px ash rule beneath
@@ -214,14 +216,15 @@
 0CCCCCCC0
 .0000000.
 
-= ui/focus 5x5 0,0
-: note keyboard focus: a dotted vellum ring drawn 1 px outside the control
-: tags nine=2,2,2,2 edge=round
-8.8.8
-.....
-8...8
-.....
-8.8.8
+= ui/focus 6x6 0,0
+: note keyboard focus: a dotted vellum ring drawn 2 px outside the control
+: tags nine=2,2,2,2
+8.8.8.
+.....8
+8.....
+.....8
+8.....
+.8.8.8
 
 = ui/bar 5x5 0,0
 : note progress bar track: void outline, soot well

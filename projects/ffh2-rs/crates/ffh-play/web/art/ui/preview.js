@@ -123,7 +123,7 @@ function owners(art) {
 
 // ---------------------------------------------------------------------------------- small pieces
 
-const icon = (art, name, title, cls) => UI.iconEl(art, name, { ...O, title, cls });
+const icon = (art, name, title, cls, remap) => UI.iconEl(art, name, { ...O, title, cls, remap });
 const vigil = (art, text, color = '7', extra = {}) => UI.textEl(art, text, { ...O, color, ...extra });
 const tally = (art, text, color = '7') => UI.textEl(art, text, { ...O, font: 'tally', color });
 
@@ -141,6 +141,13 @@ function bar(art, w, frac, kind, next) {
   const [c, ctx] = canvasEl(w, 5);
   art.scale = K;
   UI.drawBar(art, ctx, 0, 0, w, frac, kind, { next });
+  return c;
+}
+
+function slider(art, w, pct) {
+  const [c, ctx] = canvasEl(w + 6, 10);
+  art.scale = K;
+  UI.drawSlider(art, ctx, 3 * K, 0, w, pct);
   return c;
 }
 
@@ -177,6 +184,7 @@ function topBar(art) {
   // treasury and research
   bar.append(box(
     item(icon(art, 'icon16/gold', 'Gold'), vigil(art, '214', '8'), span('small pos num', '+12')),
+    item(slider(art, 40, 60), tally(art, '60%', '7')),
     sep(),
     item(icon(art, 'icon16/research', 'Research'), span('tech', 'Way of the Wise'), bar_(art, 40, 0.62, 'research', 0.7), vigil(art, '4', '7')),
     sep(),
@@ -227,7 +235,19 @@ function cityPanel(art) {
   }
   rel.append(span('r cap', 'GREAT PERSON'), bar(art, 30, 0.3, 'gp'));
   p.append(rel);
+  const cit = el('div', 'row section', span('cap', 'CITIZENS'));
+  for (const [sp, n] of [['SPECIALIST_CITIZEN', 2], ['SPECIALIST_PRIEST', 1], ['SPECIALIST_SCIENTIST', 1], ['SPECIALIST_GREAT_ENGINEER', 1]]) {
+    const r = art.resolve('specialist', sp);
+    cit.append(icon(art, r.sprite, sp, null, r.opts.remap), span('small num', String(n)));
+  }
+  p.append(cit);
   p.append(rule(art, 140));
+  const queue = el('div', 'list');
+  const qi = (cls, name, turns) => el('div', 'li ' + cls, icon(art, 'icon8/production'), span('', name), span('r num', turns));
+  queue.append(qi('sel', 'Swordsman', '3'), qi('', 'Temple of Kilmorph', '9'), qi('', 'Worker', '13'));
+  p.append(el('div', 'cap', 'QUEUE'), queue);
+  p.append(rule(art, 140));
+  p.append(el('div', 'cap', 'BUILDINGS'));
   const list = el('div', 'list ui-frame-inset');
   const li = (cls, name, ...right) => el('div', 'li ' + cls, span('', name), el('span', 'r row', ...right));
   list.append(li('', 'Palace', icon(art, 'icon8/research'), icon(art, 'icon8/gold')),
@@ -340,25 +360,35 @@ async function screen(art) {
   main.append(page, cityPanel(art));
   scr.append(main);
   app.append(scr);
-  // the map fills the frame; tile (TX, TY) at the top-left
+  // the map fills the frame at its own zoom (?zoom=N, default 2: 64 CSS px per tile), independent of
+  // the UI scale; tile (TX, TY) at the top-left
+  const Z = Math.max(1, Math.min(4, Number(q.get('zoom')) || 2));
+  const MK = Z * DPR;
   const TX = 2, TY = 0;
-  const W = Math.floor(inner.clientWidth / U), H = Math.floor(inner.clientHeight / U);
-  const [c, ctx] = canvasEl(W, H);
-  c.classList.add('map');
+  const cssW = inner.clientWidth, cssH = inner.clientHeight;
+  const c = document.createElement('canvas');
+  c.width = cssW * DPR; c.height = cssH * DPR;
+  c.style.width = `${cssW}px`; c.style.height = `${cssH}px`;
+  c.className = 'ui-px map';
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
   inner.append(c);
-  art.scale = K;
+  const W = Math.ceil(cssW / Z), H = Math.ceil(cssH / Z);
+  art.scale = MK;
   const cols = Math.min(map.width - TX, Math.ceil(W / TILE) + 1), rows = Math.min(map.height - TY, Math.ceil(H / TILE) + 1);
   renderMap(art, ctx, map, { plots, owners: own, cities: CITIES, stacks: STACKS, x0: 0, y0: 0, tx0: TX, ty0: TY, cols, rows });
-  const ox = -TX * TILE * K, oy = -TY * TILE * K;
-  UI.drawTileMark(art, ctx, ox + 9 * TILE * K, oy + 4 * TILE * K, 'select');
+  const ox = -TX * TILE * MK, oy = -TY * TILE * MK;
+  UI.drawTileMark(art, ctx, ox + 9 * TILE * MK, oy + 4 * TILE * MK, 'select');
   UI.drawPath(art, ctx, ox, oy, PATH, { kind: 'attack', odds: 73 });
-  UI.drawTileMark(art, ctx, ox + 11 * TILE * K, oy + 3 * TILE * K, 'hover');
-  UI.drawRange(art, ctx, ox + 12 * TILE * K, oy + 2 * TILE * K, { mx: 12, my: 2 });
+  UI.drawTileMark(art, ctx, ox + 11 * TILE * MK, oy + 3 * TILE * MK, 'hover');
+  UI.drawRange(art, ctx, ox + 12 * TILE * MK, oy + 2 * TILE * MK, { mx: 12, my: 2 });
   // overlays: tooltip by the target, unit panel bottom-left, minimap bottom-right
   const tip = tooltip(art);
-  tip.style.left = `${((14 - TX) * TILE + 30) * U}px`;
-  tip.style.top = `${((5 - TY) * TILE + 6) * U}px`;
-  inner.append(tip, unitPanel(art, own.get('a')), minimap(art, map, own, { x: TX, y: TY, w: Math.floor(W / TILE), h: Math.floor(H / TILE) }));
+  inner.append(tip);
+  // follow the hovered tile at +12, +12 art px, clamped to the map view (11.7)
+  tip.style.left = `${Math.min(((14 - TX) * TILE + 30) * Z, cssW - tip.offsetWidth - 4 * U)}px`;
+  tip.style.top = `${Math.min(((5 - TY) * TILE + 6) * Z, cssH - tip.offsetHeight - 4 * U)}px`;
+  inner.append(unitPanel(art, own.get('a')), minimap(art, map, own, { x: TX, y: TY, w: Math.floor(W / TILE), h: Math.floor(H / TILE) }));
   if (q.has('modal')) app.append(modal(art));
 }
 
@@ -372,8 +402,11 @@ function kit(art) {
   const app = document.getElementById('app');
   const k = el('div', 'kit');
   app.append(k);
-  const h2 = (t) => k.append(el('h2', '', t));
-  const grid = () => { const g = el('div', 'grid'); k.append(g); return g; };
+  const only = (q.get('kit') || '').split(',').filter(Boolean);
+  const want = (s) => !only.length || only.includes(s);
+  let cur = k;
+  const h2 = (t) => { cur = el('section'); cur.dataset.key = t.split(/[ :,]/)[0]; k.append(cur); cur.append(el('h2', '', t)); };
+  const grid = () => { const g = el('div', 'grid'); cur.append(g); return g; };
   k.append(el('h1', '', 'ui kit'), el('div', 'note', `UI scale u = ${U} (one art pixel = ${U} CSS px). Frames and buttons are nine-slice sprites, shown here stretched to several sizes; the DOM rows use the generated CSS (ui.js cssText).`));
 
   h2('frames');
@@ -492,6 +525,7 @@ function kit(art) {
   tb.style.flexDirection = 'column'; tb.style.alignItems = 'flex-start';
   for (const scale of [1, 2, 3]) tb.append(UI.textEl(art, '0123456789 +-/x %.', { u: scale, dpr: DPR, font: 'tally', color: '7', pad: 1 }));
   g.append(cell('Tally at 1x, 2x, 3x', tb));
+  for (const s of k.querySelectorAll('section')) if (!want(s.dataset.key)) s.remove();
 }
 
 async function main() {
