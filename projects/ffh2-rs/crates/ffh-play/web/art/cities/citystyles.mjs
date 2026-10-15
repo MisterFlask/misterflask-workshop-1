@@ -431,8 +431,16 @@ function infernal(t) {
     const b = o2.bbox();
     return o2.crop(b.x0, 0, b.x1 - b.x0 + 1, h);
   };
-  const base = (w, h, win = []) => mark(wall(w, h, M.thorn).map((k, x, y) => (y === 0 && x % 3 === 1 ? '.' : k)), win);
-  const crack = (w) => { const g = new G(w, 1); for (let x = 0; x < w; x++) g.set(x, 0, x % 5 === 1 ? 'C' : x % 5 === 2 ? 'c' : '.'); return g; };
+  // the base: a jagged black ridge (a zigzag of spurs) with the lower windows in it
+  const base = (w, h, win = []) => {
+    const pts = [];
+    for (let x = 0; x < w; x += 2) pts.push([x, h + ((x * 7) % 5 === 0 ? 2 : (x * 3) % 4 === 1 ? 1 : 0)]);
+    pts.push([w - 1, h]);
+    const g = crag(w, pts, { rim: '4', lit: '3', body: '2', sh: '1' });
+    // crimson cracks glowing in the rock
+    for (let x = 3; x < w - 2; x += 6) { g.set(x, g.h - 2, 'C'); g.set(x, g.h - 3, 'c'); g.set(x + 1, g.h - 1, 'c'); }
+    return mark(g, win.map(([x, y, k]) => [x, g.h - h + y, k]));
+  };
   if (t === 1) {
     return compose([
       [thorn(13, 5, 2, [[2, 9]]), 5],

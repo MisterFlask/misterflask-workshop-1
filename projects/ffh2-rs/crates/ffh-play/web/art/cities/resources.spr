@@ -266,8 +266,8 @@ ffffffg
 = res/gunpowder 7x7 3,3
 : types BONUS_GUNPOWDER
 : note a keg with a fuse
-...5..5
-..QQQ5.
+...4..4
+..QQQ4.
 .uQyQu.
 .44444.
 .uQyQu.
@@ -434,7 +434,7 @@ yYYYYYy
 : types BONUS_ALE
 : note a tankard with a head of foam
 .......
-.8787..
+.7777..
 .QQQQu.
 .QyyQ.u
 .QyyQ.u
