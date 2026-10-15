@@ -228,7 +228,10 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
     if !sea && worker_in_danger(g, v, here) {
         crate::trace!(g, p, "worker {:?} at {:?} flees", u, g.map.xy(here));
         if let Some(c) = nearest_city(g, p, here) {
-            move_to(g, grp, g.city_plot(c), 0);
+            // The rules' path finder refuses a destination an enemy can reach for an AI group
+            // that cannot fight (C++ `pathDestValid`), and a city next to the raider is such a
+            // destination: without MOVE_IGNORE_DANGER the worker stays where it will be taken.
+            move_to(g, grp, g.city_plot(c), MOVE_IGNORE_DANGER);
             if alive(g, grp) && g.group_ready_to_move(grp, true) {
                 skip(g, grp);
             }
