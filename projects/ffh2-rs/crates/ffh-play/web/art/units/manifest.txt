@@ -93,6 +93,7 @@ map unit UNIT_GARGOYLE -> unit/gargoyle
 map unit UNIT_BLOODPET -> unit/warrior remap=QQ,uc
 map unit UNIT_BEASTMAN -> unit/werewolf remap=4u,3u,5Q
 map unit UNIT_LIZARDMAN|UNIT_LIZARDMAN_RANGER|UNIT_LIZARDMAN_ASSASSIN -> unit/scout remap=Qo,uq
+map unit UNIT_LIZARDMAN_BEASTMASTER -> unit/beastmaster remap=Qo,uq
 map unit UNIT_GOBLIN_SCORPION_CLAN -> unit/goblin
 map unit UNIT_WOLF_RIDER_SCORPION_CLAN -> unit/wolf_rider
 map unit UNIT_STEPHANOS|UNIT_BUBOES|UNIT_YERSINIA|UNIT_ARS -> unit/death_knight

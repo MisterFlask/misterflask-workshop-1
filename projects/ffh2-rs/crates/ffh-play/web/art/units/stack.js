@@ -14,8 +14,8 @@
 //              (or selected): bone above 50%, ochre from 25%, crimson below 25%; the rest iron.
 //   state      top-right: the 8x8 state mark (ui/mark_<state>: fortify, sleep, sentry, heal...).
 //
-// No standard for animals and for hidden nationality (privateers, assassins): their own units
-// then show moves as a 2x2 pip at the end of the health bar's row.
+// No standard for animals, equipment on the ground and hidden nationality (privateers, assassins):
+// their own units then show moves as a 2x2 pip at the end of the health bar's row.
 //
 // Use: `installStackOverlay(art)` once after loadArt(); art.drawUnit then draws this overlay
 // instead of the seed pennant/strip (layer 'sprite' is unchanged; 'overlay' and 'all' use this).
@@ -59,10 +59,11 @@ export function drawStackOverlay(art, ctx, x, y, unitType, owner, state = {}) {
   const type = art.typeName('unit', unitType);
   const entry = type ? art.mapper.entry('unit', type) : null;
   const animal = entry?.combat === 'ANIMAL' || !!owner?.animal;
+  const item = !!entry?.equipment;
   const count = state.count | 0;
   const known = state.moves !== undefined && state.moves !== null;
   const spent = known && !state.moves;
-  const banner = owner && !animal && !owner.hidden && !state.noPennant && art.hasSprite(BANNER);
+  const banner = owner && !animal && !item && !owner.hidden && !state.noPennant && art.hasSprite(BANNER);
 
   if (banner) {
     const table = spent ? 'FOG' : undefined;
@@ -91,7 +92,7 @@ export function drawStackOverlay(art, ctx, x, y, unitType, owner, state = {}) {
     rect(art, ctx, x, y, 10, 30, 12, 2, '3');
     if (fill) rect(art, ctx, x, y, 10, 30, fill, 2, hpColour(v));
   }
-  if (!banner && known && owner && !animal) {
+  if (!banner && known && owner && !animal && !item) {
     rect(art, ctx, x, y, 23, 29, 4, 3, '0');
     rect(art, ctx, x, y, 24, 30, 2, 2, spent ? '3' : '8');
   }
