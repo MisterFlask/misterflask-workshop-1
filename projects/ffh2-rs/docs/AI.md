@@ -397,28 +397,30 @@ before (same checksums).
   site on the city's landmass (from a city of size 5+ or at its happy cap, at peace, not
   broke). The sites are `sites.rs`'s: the ported `AI_foundValue` already scores
   settlement-sized sites (9 plots) for a sprawling player at its limit and favours sites more
-  than 4 plots from its cities. 14 games: cities and settlements at turn 300 3.2 -> 9.1,
-  score +19%.
+  than 4 plots from its cities. 15 games (52 seeds): cities and settlements at turn 300
+  3.2 -> 8.9 (14/14 changed games better), score +16% (+137 +- 49), pop and techs a little up.
 - **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
   (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
   on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
   `AI_buildPirateCove`, a city that works a plot where one can go trains a work boat (one at a
   time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
-  (worked plots of big cities first) and casts there. 19 games: score at turn 300 +22%, pop
-  +24%, techs +19% (Lanun that never research Fishing are unchanged).
+  (worked plots of big cities first) and casts there. 23 games (52 seeds): score at turn 300
+  +23% (+134 +- 51), pop +24%, techs +22% (Lanun that never research Fishing are unchanged).
 - **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
   every improvement they build on their own plots (FfH's check in `setImprovementType`), and
   workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
-  logs are other civilizations').
+  logs are other civilizations'; seed 5: 79 clearings, none by the Svartalfar).
 - **Khazad** (tried, not kept): the Dwarven Vault gives every city -2 to +3 happiness (and up
   to +40% production) by the treasury's gold per city (`cf_do_turn_khazad`); the AI holds
-  11-16 gold per city, the Empty Vault (-2). A vault target (the level whose happiness and
+  11-20 gold per city, the Empty Vault (-2). A vault target (the level whose happiness and
   production repay its gold within 30 turns, also the reserve for the sliders, hurrying and
   upgrades) was saved for by lowering research. From the start (20-30 points, 6 games):
-  population +10%, techs -15% to -20%, lower score. Once commerce reached 8 per city (0, 10
-  or 20 points, 47 games each against the same code without it): by turn 300 population +2%
-  to +13% but techs -1% to -6%, score unchanged within noise. The hoarded gold is research
-  the empire does not get back by turn 300.
+  population +10%, techs -15% to -20%, lower score. Once commerce reached 8 per city, research
+  down at most 10 points (40 Khazad games against the same code without it): gold per city at
+  turn 300 17 -> 61, population +2% (+0.9 +- 2.4), techs -3% (-0.6 +- 0.9), score -5 +- 37
+  (other limits, 0 or 20 points, gave the same picture). 100 gold per city costs 5-15 turns of
+  the empire's whole commerce and the extra citizens repay it in 25+ turns more: by turn 300
+  the hoarded gold is research the empire has not got back.
 
 ## Cost control
 
