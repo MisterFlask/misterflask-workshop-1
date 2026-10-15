@@ -75,7 +75,9 @@ pub fn settler_choice(ai: &Ai, g: &Game, c: CityId, p: PlayerId, threat: i32, de
     }
     let settlers = count_ai(g, p, UnitAIType::UNITAI_SETTLE);
     let max_cities = if pl.max_cities > 0 { pl.max_cities } else { i32::MAX };
-    if ctx.n_cities + settlers >= max_cities {
+    // The limit counts full cities (C++ `CvCity::init`): a Kuriotates empire that lost one of
+    // them founds a new one, settlements or not (civs.rs builds the settlement settlers).
+    if ctx.n_cities - g.player_get_num_settlements(p) + settlers >= max_cities {
         return No;
     }
     let area = g.map.plots[g.city_plot(c)].area;

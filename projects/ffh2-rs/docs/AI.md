@@ -395,7 +395,10 @@ before (same checksums).
   upkeep, and its borders claim land and resources. The settler step stops at the limit;
   `civs::production`, asked right after it, builds one settler at a time for a settlement
   site on the city's landmass: from a city of size 3+ at its happy cap, up to one settlement
-  per full city, at peace, not broke. The sites are `sites.rs`'s: the ported `AI_foundValue`
+  per full city, at peace, not broke. The generic settler step counts full cities only, so an
+  empire that lost one founds a full city again (before, its settlements counted toward the
+  limit and it stayed below it: 6 of 40 games change, 3 of them get a full city back; legacy
+  score -1 +- 7). The sites are `sites.rs`'s: the ported `AI_foundValue`
   already scores settlement-sized sites (9 plots) for a sprawling player at its limit and
   favours sites more than 4 plots from its cities. See "Kuriotates settlements" below for
   the measurements (the first version, from size 5 with no cap, cost a fifth of the research).
