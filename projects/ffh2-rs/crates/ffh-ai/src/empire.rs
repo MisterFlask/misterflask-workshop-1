@@ -313,22 +313,36 @@ fn religion(g: &mut Game, p: PlayerId) {
     }
 }
 
-/// Highest research rate that keeps the treasury from running dry.
+/// Highest research rate that keeps the treasury from running dry. A cultural victory first
+/// sets the culture slider (`victory::culture_slider`), lowered in steps when even no research
+/// leaves the treasury short.
 fn sliders(g: &mut Game, p: PlayerId) {
     if !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) {
         return;
     }
     let gold = g.players[p].gold;
     let reserve = 20 + 5 * g.players[p].cities.len() as i32;
-    let mut pct = 100;
-    while pct >= 0 {
-        if g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] != pct {
-            g.player_set_commerce_percent(p, CommerceType::COMMERCE_RESEARCH, pct);
+    let mut culture = crate::victory::culture_slider(g, p); // victory-pursuit
+    loop {
+        if g.players[p].commerce_percent[CommerceType::COMMERCE_CULTURE.idx()] != culture {
+            g.player_set_commerce_percent(p, CommerceType::COMMERCE_CULTURE, culture);
         }
-        let rate = g.player_calculate_gold_rate(p);
-        if rate >= 0 || gold + rate * 10 > reserve {
+        let mut pct = 100 - culture;
+        let mut paid = false;
+        while pct >= 0 {
+            if g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] != pct {
+                g.player_set_commerce_percent(p, CommerceType::COMMERCE_RESEARCH, pct);
+            }
+            let rate = g.player_calculate_gold_rate(p);
+            if rate >= 0 || gold + rate * 10 > reserve {
+                paid = true;
+                break;
+            }
+            pct -= 10;
+        }
+        if paid || culture == 0 {
             break;
         }
-        pct -= 10;
+        culture = (culture - 20).max(0);
     }
 }

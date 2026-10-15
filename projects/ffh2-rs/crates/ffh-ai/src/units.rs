@@ -597,6 +597,7 @@ fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let here = g.unit_plot(u);
+    if crate::victory::mana_node(g, v, grp, u) { return; } // victory-pursuit
     if let Some(target) = crate::military::war_target(g, v) {
         let tp = g.city_plot(target);
         let (tx, ty) = g.map.xy(tp);

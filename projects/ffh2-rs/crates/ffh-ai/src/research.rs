@@ -158,6 +158,10 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
     ctx
 }
 
+/// Value added to a tech our victory goal needs, and the research turns it is charged at most.
+const GOAL_TECH_BONUS: i64 = 4000;
+const GOAL_TECH_TURNS: i64 = 15;
+
 pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
     let team = g.players[p].team;
     if g.players[p].cities.is_empty() {
@@ -169,6 +173,8 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
         }
     }
     let ctx = make_ctx(g, p);
+    // victory-pursuit: the techs our victory goal needs (victory.rs).
+    let goal_techs = crate::victory::goal_techs(g, p, &crate::victory::plan_ours(g, p));
     let mut best: Option<TechType> = None;
     let mut best_score = i64::MIN;
     for t in g.d.techs.keys() {
@@ -191,7 +197,12 @@ pub fn choose(g: &Game, p: PlayerId) -> Option<TechType> {
             }
         }
         let left = g.team_get_research_left(team, t).max(1) as i64;
-        let turns = left / ctx.rate as i64;
+        let mut turns = left / ctx.rate as i64;
+        if goal_techs.contains(&t) {
+            // A beeline: worth more, and a long research no longer counts against it.
+            value = value * 2 + GOAL_TECH_BONUS;
+            turns = turns.min(GOAL_TECH_TURNS);
+        }
         let score = value * 1000 / (turns + 4);
         if crate::trace_on(p) && std::env::var("FFH_AI_TRACE_TECH").is_ok() {
             crate::trace!(g, p, "  tech {} value {} turns {} score {}", g.d.techs[t].base.type_, value, turns, score);
