@@ -444,7 +444,7 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
 }
 
 /// Game-wide values at a snapshot: the score maxima the FFH2 score divides by, the Armageddon
-/// counter, map size.
+/// counter, religions founded, map size.
 fn world_snapshot(g: &Game) -> String {
     let alive_civs = g.player_ids().into_iter().filter(|&p| g.players[p].alive && !g.player_is_barbarian(p)).count();
     let mut o = Obj::new();
@@ -452,6 +452,7 @@ fn world_snapshot(g: &Game) -> String {
         .int("alive_civs", alive_civs as i64)
         .int("war_pairs", civ_war_pairs(g).len() as i64)
         .int("armageddon", g.get_global_counter())
+        .int("religions", g.religion_game_turn_founded.iter().filter(|&&t| t != -1).count() as i64)
         .int("land_plots", g.map.land_plots)
         .int("estimate_end_turn", g.estimate_end_turn)
         .int("max_population", g.max_population)
