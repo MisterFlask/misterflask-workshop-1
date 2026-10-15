@@ -1,41 +1,41 @@
 ; landmarks: the unique features (bUnique improvements, docs/ART.md 6.2), the extraordinary made visible.
 ; Each claims its IMPROVEMENT_* type in the manifest; pools come from `: light`.
 
-= improvement/landmark_standing_stones 29x23 14,22
-: note standing stones: dark slate menhirs round a pale-green ritual ring with wisp sparks; a wide RITE pool with an inner pass, the map's ritual focal glow
-: light 14,16 RITE 20
-: light 14,17 RITE 10
-: light 1,15 RITE 7
-: light 27,15 RITE 7
-: light 14,23 RITE 7
+= improvement/landmark_standing_stones 34x27 17,26
+: note standing stones: five dark slate menhirs round a glowing pale-green ritual ring (the board's circle) with wisp sparks and an inner ring of barrow dots; one wide RITE pool (teal haze round the ring, the ritual light at its heart): the map's ritual focal glow
+: light 16,20 RITE 24
 : place 16,31
-........................00...
-.00..........0.........05500.
-05500.......0500.......053520
-053520......05520......053320
-053320......05320......053320
-053320......05320......053220
-053320......05320......053320
-053220......05320......053320
-053220......05320......053220
-053220......05320......053220
-053220....S.S000.SS....053220
-053220SSS.....W.....SSS053220
-0532050.....s.s.s......053220
-.0000550.s.s.....s.s.0020000.
-SS..05350...........05520..S.
-S...053320....s.....05320..SS
-SW..053220...SWS....05320..SW
-SS..053320....s.....05320...S
-.SS.053220s.......s.05220.SS.
-..S.053220.s.s.s.s..05320SS..
-....053220..........05320....
-....053220SSSSWSSSS.05320....
-.....0000............000.....
+................00................
+...............0530...............
+..............053320..............
+..............053320..............
+..............053320..............
+.....00.......053320.......00.....
+....0530......053320......0530....
+...053320.....053320.....053320...
+...053320.....053320.....053320...
+...053320.....0533s0.....053320...
+...053320.....053320.....053320...
+...053320.....053320.....053320...
+...0533s0.....0533S0.....0s3320...
+...053320.....053320.....053320...
+...05332000...053320...00053320...
+...0533S0530SSS0000SSS0530S3320...
+...0533053320..s..s..0533203320...
+...0533053320s......s0533203320...
+..SS000053320........053320000SS..
+..S...s0533s0...s....0s3320s...S..
+..W...s053320..SWS...053320.s..SS.
+..S...s053320...s....053320s...S..
+..SS...0533S0........0S3320...SW..
+...SSS.053320s......s053320.SSS...
+.....SS053320..s..s..053320SS.....
+........0000WSS....WSS0000........
+..............SSSSSS..............
 
 = improvement/landmark_pool_of_tears 28x11 14,11
 : note pool of tears: a still navy pool with pale-green ripples in a ring of stones; RITE pool
-: light 14,5 RITE 11
+: light 14,5 RITE 16
 : place 16,28
 ........445445445445........
 .....454NNNNNNNNNNNN454.....
@@ -51,7 +51,7 @@ SS..053320....s.....05320...S
 
 = improvement/landmark_seven_pines 34x29 17,28
 : note seven pines: seven tall teal conifers, each with a wisp mote; RITE pool
-: light 17,24 RITE 12
+: light 17,24 RITE 17
 : place 16,30
 ..............00mtk00.............
 ............00mmkkkkk0............
@@ -85,8 +85,8 @@ mmkkkkkkk0..............0mmkkkkkkk
 
 = improvement/landmark_yggdrasil 34x34 17,33
 : note yggdrasil: the world tree; a vast low crown of teal-black with pale-green glints, a buttressed umber trunk; RITE pool
-: light 17,30 RITE 15
-: light 17,30 RITE 5
+: light 17,30 RITE 22
+: light 17,30 RITE 9
 : place 16,31
 ........0Tttkkk0000Tttkkk0........
 .......0Tttkktttttkkkkkkkk0.......
@@ -125,7 +125,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_bradelines_well 19x14 9,13
 : note bradelines well: a round stone well, its mouth lit from below by a wisp core; RITE pool
-: light 8,7 RITE 10
+: light 8,7 RITE 15
 : place 16,28
 ...0.........0.....
 ..03000000000300...
@@ -144,7 +144,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_tomb_of_sucellus 23x14 11,13
 : note tomb of sucellus: a low gabled tomb, the door aglow in pale green; RITE pool
-: light 11,10 RITE 10
+: light 11,10 RITE 14
 : place 16,29
 ...........00..........
 ........000550.........
@@ -163,7 +163,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_aifon_isle 30x24 15,23
 : note aifon isle: a ragged rocky islet with one dark pine and one pale light; RITE pool
-: light 9,13 RITE 9
+: light 9,13 RITE 14
 : place 16,29
 ....................0.........
 ...................0t0........
@@ -206,7 +206,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_pyre_of_the_seraphic 18x16 9,15
 : note pyre of the seraphic: crossed logs and a tall flame with a vellum core; FIRE pool
-: light 9,10 FIRE 10
+: light 9,10 FIRE 14
 : place 16,29
 .........0........
 ........0E0.......
@@ -227,7 +227,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_broken_sepulcher 22x14 11,13
 : note broken sepulcher: a split sarcophagus, its lid cast aside, a scarlet crack within; BLOOD pool
-: light 10,9 BLOOD 10
+: light 10,9 BLOOD 13
 : place 16,29
 .............0000.....
 ..........00055550....
@@ -271,7 +271,7 @@ uuuuuuuuu0000uuuuuu220000222222222
 
 = improvement/landmark_odios_prison 17x24 8,23
 : note odios prison: an iron cage tower on a stone footing, a scarlet-eyed shape within; BLOOD pool
-: light 8,13 BLOOD 9
+: light 8,13 BLOOD 12
 : place 16,30
 .......00........
 ......0440.......
@@ -343,7 +343,7 @@ N..N..Ng...gdddd.g..g..N..N
 
 = improvement/landmark_guardian 15x27 7,26
 : note guardian: a colossal robed statue on a plinth, eyes of pale green; RITE pool radius 4
-: light 7,3 RITE 5
+: light 7,3 RITE 9
 : place 16,30
 .....0000......
 ....055540.....

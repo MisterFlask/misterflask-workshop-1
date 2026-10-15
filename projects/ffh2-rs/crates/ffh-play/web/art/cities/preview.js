@@ -4,13 +4,15 @@
 //   towns   a 16x11 map with cities of several styles and sizes among forests, hills, a river, roads,
 //           coast and borders, at 1x and 2x;
 //   ref     the contact sheet kept as cities/ref-styles.png (every style and tier at 1x).
-// ?light=0 shows the toolkit's own pool (art.drawLight twice FIRE) for comparison. The city banner is
+// ?light=0 shows the toolkit's own pool (art.drawLight twice FIRE) for comparison; ?ground=0 the seed
+// ground instead of the terrain set's ground pass (terrain/ground.js). The city banner is
 // drawn as the pole-less gonfalon study below unless ?banner=ui (the ui set's ui/banner as loaded).
 // Sets window.__artReady = true when done (for screenshots).
 import { loadArt, TILE } from '../art.js';
 import { renderMap } from '../compose.js';
 import { parseSprites } from '../spritefmt.js';
 import { installCityLight } from './citylight.js';
+import { installTerrain } from '../terrain/ground.js';
 
 const q = new URLSearchParams(location.search);
 const parts = (q.get('part') || 'styles,towns').split(',');
@@ -255,6 +257,7 @@ function towns(art) {
 
 async function main() {
   const art = await loadArt({ passes: false });
+  if (q.get('ground') !== '0') installTerrain(art);
   if (q.get('light') !== '0') installCityLight(art);
   if (q.get('banner') !== 'ui') useBannerStudy(art);
   if (parts.includes('styles')) out.append(styles(art));
