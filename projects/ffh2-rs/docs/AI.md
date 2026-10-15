@@ -402,10 +402,12 @@ before (same checksums).
 - **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
   (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
   on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
-  `AI_buildPirateCove`, a city that works a plot where one can go trains a work boat (one at a
-  time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
-  (worked plots of big cities first) and casts there. 23 games (52 seeds): score at turn 300
-  +23% (+134 +- 51), pop +24%, techs +22% (Lanun that never research Fishing are unchanged).
+  `AI_buildPirateCove`, a city that works a plot where one can go, in the city's own water
+  area, trains a work boat (one at a time), and a Lanun work boat with no sea resource to
+  improve in reach sails to the best site (worked plots of big cities first) and casts there.
+  23 games (52 seeds): score at turn 300 +23% (+134 +- 51), pop +24%, techs +22% (Lanun that
+  never research Fishing are unchanged). The water-area check (as in the C++; first version
+  without it) changed 2 of 30 Lanun games (seeds 11-104), legacy score -1.5 +- 2.6.
 - **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
   every improvement they build on their own plots (FfH's check in `setImprovementType`), and
   workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the

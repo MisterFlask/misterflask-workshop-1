@@ -11,7 +11,7 @@
 //! - **Lanun** (`SPELL_PIRATE_COVE`, C++ `CvUnitAI::AI_buildPirateCove`): a work boat turns an
 //!   empty coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and
 //!   a Pirate Port, 3/2/6 on coast). [`production`] trains a work boat for a city with a valid
-//!   cove plot it works; [`sea_worker`] takes it there and casts.
+//!   cove plot it works in its own water area; [`sea_worker`] takes it there and casts.
 //! - **Ljosalfar / Svartalfar**: nothing to do here. Their `MaintainFeatures` keeps the forest
 //!   under every improvement they build on their own land (`CvPlot::setImprovementType`
 //!   with FfH's check), and workers only build there, so they never clear forest.
@@ -92,15 +92,19 @@ fn settlement_settler(ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choic
     Some(Choice::Train(u, UnitAIType::UNITAI_SETTLE))
 }
 
-/// Lanun: a work boat for a city that works a plot where a Pirate Cove can go (C++
-/// `AI_neededSeaWorkers` adds one), one boat at a time.
+/// Lanun: a work boat for a city that works a plot where a Pirate Cove can go in the city's
+/// own water area, where its boat sails from (C++ `AI_neededSeaWorkers` adds one), one boat at
+/// a time.
 fn cove_boat(g: &Game, c: CityId, threat: i32) -> Option<Choice> {
     let p = g.cities[c].owner;
     if threat > 0 || g.cities[c].population < 3 || count_ai(g, p, UnitAIType::UNITAI_WORKER_SEA) > 0 {
         return None;
     }
     g.d.ty::<SpellType>("SPELL_PIRATE_COVE")?;
-    let has_site = (0..ffh_core::defs::NUM_CITY_PLOTS).any(|i| g.city_index_plot(c, i).is_some_and(|q| g.map.plots[q].working_city == Some(c) && cove_site(g, q, p)));
+    let water = g.city_water_area(c)?;
+    let has_site = (0..ffh_core::defs::NUM_CITY_PLOTS).any(|i| {
+        g.city_index_plot(c, i).is_some_and(|q| g.map.plots[q].working_city == Some(c) && g.map.plots[q].area == Some(water) && cove_site(g, q, p))
+    });
     if !has_site {
         return None;
     }
