@@ -75,20 +75,23 @@ const CITIES = [
   { x: 16, y: 4, owner: 'b', size: 6, name: 'Gloam', capital: true },
   { x: 7, y: 10, owner: 'c', size: 3, name: 'Kerrow' },
 ];
+// own stacks (owner a) say whether they can still move; foreign stacks do not (their moves are unknown)
 const STACKS = [
-  { x: 9, y: 4, unit: 'UNIT_SWORDSMAN', owner: 'a', count: 3, state: { selected: true, hp: 100, moves: true } },
-  { x: 10, y: 7, unit: 'UNIT_HORSEMAN', owner: 'a', count: 1, state: { hp: 60, moves: true } },
-  { x: 4, y: 5, unit: 'UNIT_ARCHER', owner: 'a', count: 1, state: { hp: 100, moves: false, mark: 'fortify' } },
-  { x: 11, y: 3, unit: 'UNIT_ADEPT', owner: 'a', count: 1, state: { hp: 100, moves: true, mark: 'sentry' } },
-  { x: 2, y: 8, unit: 'UNIT_TRIREME', owner: 'a', count: 2, state: { hp: 100, moves: true } },
+  { x: 9, y: 4, unit: 'UNIT_SWORDSMAN', owner: 'a', count: 3, state: { own: true, selected: true, hp: 100, moves: true, hero: true } },
+  { x: 10, y: 7, unit: 'UNIT_HORSEMAN', owner: 'a', count: 1, state: { own: true, hp: 60, moves: true } },
+  { x: 4, y: 5, unit: 'UNIT_ARCHER', owner: 'a', count: 1, state: { own: true, hp: 100, moves: false, mark: 'fortify' } },
+  { x: 6, y: 5, unit: 'UNIT_ARCHER', owner: 'a', count: 2, state: { own: true, hp: 100, moves: false, mark: 'fortify', inCity: true } },
+  { x: 11, y: 3, unit: 'UNIT_ADEPT', owner: 'a', count: 1, state: { own: true, hp: 100, moves: true, mark: 'sentry' } },
+  { x: 2, y: 8, unit: 'UNIT_TRIREME', owner: 'a', count: 2, state: { own: true, hp: 100, moves: true } },
   { x: 14, y: 5, unit: 'UNIT_IMP', owner: 'b', count: 2, state: { hp: 80, facing: 'left' } },
   { x: 15, y: 7, unit: 'UNIT_DISCIPLE_THE_ASHEN_VEIL', owner: 'b', count: 1, state: { hp: 100, facing: 'left', accent: 'C' } },
   { x: 12, y: 2, unit: 'UNIT_SKELETON', owner: 'barb', count: 1, state: { hp: 30, facing: 'left' } },
   { x: 13, y: 8, unit: 'UNIT_WOLF', owner: 'animal', count: 1, state: { hp: 100, facing: 'left' } },
-  { x: 8, y: 11, unit: 'UNIT_WORKER', owner: 'c', count: 1, state: { hp: 100, moves: true } },
-  { x: 9, y: 9, unit: 'UNIT_SCOUT', owner: 'c', count: 1, state: { hp: 100, moves: true, facing: 'left', mark: 'heal' } },
+  { x: 8, y: 11, unit: 'UNIT_WORKER', owner: 'c', count: 1, state: { hp: 100 } },
+  { x: 9, y: 9, unit: 'UNIT_SCOUT', owner: 'c', count: 1, state: { hp: 100, facing: 'left', mark: 'heal' } },
 ];
 // the selected stack's path: two turns of march, then an attack on the imps
+const ARMAGEDDON = Math.max(0, Math.min(100, Number(q.get('doom')) || 34)); // the counter shown in the top bar (?doom=N)
 const PATH = [{ x: 9, y: 4 }, { x: 10, y: 4, turn: 1 }, { x: 11, y: 5, turn: 1 }, { x: 12, y: 5, turn: 2 }, { x: 13, y: 5, turn: 2 }, { x: 14, y: 5, turn: 2 }];
 
 function buildMap() {
@@ -125,6 +128,9 @@ function owners(art) {
 
 const icon = (art, name, title, cls, remap) => UI.iconEl(art, name, { ...O, title, cls, remap });
 const vigil = (art, text, color = '7', extra = {}) => UI.textEl(art, text, { ...O, color, ...extra });
+// bitmap text whose colour follows CSS (ui.js textSpan): the body face, and Vigil small capitals
+const txt = (art, text, cls) => UI.textSpan(art, text, { ...O, cls });
+const caps = (art, text, cls) => UI.textSpan(art, text, { ...O, font: 'vigil', smallCaps: true, cls });
 const tally = (art, text, color = '7') => UI.textEl(art, text, { ...O, font: 'tally', color });
 
 function canvasEl(w, h) {
@@ -183,12 +189,12 @@ function topBar(art) {
   const sep = () => el('div', 'sep');
   // treasury and research
   bar.append(box(
-    item(icon(art, 'icon16/gold', 'Gold'), vigil(art, '214', '8'), span('small pos num', '+12')),
+    item(icon(art, 'icon16/gold', 'Gold'), vigil(art, '214', '8'), txt(art, '+12', 'pos')),
     item(slider(art, 40, 60), tally(art, '60%', '7')),
     sep(),
-    item(icon(art, 'icon16/research', 'Research'), span('tech', 'Way of the Wise'), bar_(art, 40, 0.62, 'research', 0.7), vigil(art, '4', '7')),
+    item(icon(art, 'icon16/research', 'Research'), txt(art, 'Way of the Wise'), bar_(art, 40, 0.62, 'research', 0.7), vigil(art, '4', '7')),
     sep(),
-    item(icon(art, 'icon16/culture', 'Culture'), vigil(art, '38', '7'), span('small dim num', '+3')),
+    item(icon(art, 'icon16/culture', 'Culture'), vigil(art, '38', '7'), txt(art, '+3', 'dim')),
   ));
   // mana and the Armageddon counter
   const mana = item(icon(art, 'icon16/mana', 'Mana'));
@@ -196,69 +202,83 @@ function topBar(art) {
     const name = UI.iconName('mana', sphere, 8);
     mana.append(art.hasSprite(name) ? icon(art, name, sphere) : icon(art, 'icon8/bullet', sphere), tally(art, String(n), '7'));
   }
-  bar.append(box(mana, sep(), item(icon(art, UI.iconName('armageddon', 34), 'Armageddon counter'), vigil(art, '34', '7'))));
+  bar.append(box(mana, sep(), item(icon(art, UI.iconName('armageddon', ARMAGEDDON), 'Armageddon counter'), vigil(art, String(ARMAGEDDON), '7'))));
   bar.append(el('div', 'grow'));
-  // warnings: golden age, AI-controlled units idle
+  // golden age, AI-controlled units idle
   bar.append(box(item(icon(art, 'icon16/golden_age', 'Golden age: 6 turns'), vigil(art, '6', '7')), sep(),
-    item(icon(art, 'icon16/ai_idle', 'AI-controlled units idle'), vigil(art, '2', 'l'))));
-  // turn and End Turn
-  bar.append(box(item(span('label', 'Turn'), vigil(art, '112', '8')), sep(), item(span('label', 'Year'), vigil(art, '274', '7'))));
-  const end = el('button', 'ui-button primary', icon(art, 'icon16/turn'), vigil(art, 'End Turn', '8'));
+    item(icon(art, 'icon16/ai_idle', 'AI-controlled units idle'), vigil(art, '2', '7'))));
+  // turn and End Turn (the one firelit control: the amber crescent)
+  bar.append(box(item(caps(art, 'Turn', 'dim'), vigil(art, '112', '8')), sep(), item(caps(art, 'Year', 'dim'), vigil(art, '274', '7'))));
+  const end = el('button', 'ui-button primary endturn', icon(art, 'icon16/turn'), caps(art, 'End Turn'));
   bar.append(end);
   return bar;
 }
 const bar_ = bar;
 
+/** A list row: an 8 px icon, the name, and what sits at the right. */
+function listRow(art, cls, ic, name, ...right) {
+  const i = ic ? icon(art, ic.name, null, null, ic.remap) : el('span', 'noicon');
+  return el('div', 'li ' + cls, i, txt(art, name), el('span', 'r row', ...right));
+}
+
 function cityPanel(art) {
   const p = el('div', 'panel ui-frame-panel side');
-  const title = el('div', 'title ui-frame-title', icon(art, 'icon16/civic_government', 'Capital'), vigil(art, 'Aldmere', '8'), span('sub', 'size 9'));
+  const title = el('div', 'title ui-frame-title', icon(art, 'icon16/civic_government', 'Capital'), vigil(art, 'Aldmere', '8'), txt(art, 'size 9', 'sub'));
   p.append(title);
   const row = (...kids) => el('div', 'row', ...kids);
-  p.append(row(icon(art, 'icon16/food'), span('small', 'Growth'), bar(art, 56, 0.55, 'food', 0.68), span('r small num', '6 turns')));
-  p.append(row(icon(art, 'icon16/production'), span('small', 'Swordsman'), bar(art, 52, 0.7, 'production', 0.85), span('r small num', '3 turns')));
+  p.append(row(icon(art, 'icon16/food'), txt(art, 'Growth'), bar(art, 56, 0.55, 'food', 0.68), txt(art, '6 turns', 'r dim')));
+  p.append(row(icon(art, 'icon16/production'), txt(art, 'Swordsman'), bar(art, 52, 0.7, 'production', 0.85), txt(art, '3 turns', 'r dim')));
   p.append(rule(art, 140));
   const y = el('div', 'yields');
   for (const [n, v] of [['food', '14'], ['production', '9'], ['commerce', '12']]) y.append(el('div', 'item', icon(art, 'icon16/' + n, n), vigil(art, v, '7')));
   p.append(y);
   const c = el('div', 'yields section');
-  for (const [n, v] of [['gold', '6'], ['research', '5'], ['culture', '3']]) c.append(el('div', 'item', icon(art, 'icon8/' + n, n), span('small num', v)));
+  for (const [n, v] of [['gold', '6'], ['research', '5'], ['culture', '3']]) c.append(el('div', 'item', icon(art, 'icon8/' + n, n), txt(art, v)));
   p.append(c);
   const h = el('div', 'yields section');
-  h.append(el('div', 'item', icon(art, 'icon8/happy'), span('small num', '7')), el('div', 'item', icon(art, 'icon8/unhappy'), span('small num', '5')),
-    el('div', 'item', icon(art, 'icon8/healthy'), span('small num', '6')), el('div', 'item', icon(art, 'icon8/unhealthy'), span('small num', '4')),
-    el('div', 'item', icon(art, 'icon8/defense'), span('small num', '40%')));
+  h.append(el('div', 'item', icon(art, 'icon8/happy'), txt(art, '7')), el('div', 'item', icon(art, 'icon8/unhappy'), txt(art, '5')),
+    el('div', 'item', icon(art, 'icon8/healthy'), txt(art, '6')), el('div', 'item', icon(art, 'icon8/unhealthy'), txt(art, '4')),
+    el('div', 'item', icon(art, 'icon8/defense'), txt(art, '40%')));
   p.append(h);
-  const rel = el('div', 'row section', span('cap', 'FAITHS'));
+  const rel = el('div', 'row section', caps(art, 'Faiths', 'cap'));
   for (const r of ['RELIGION_THE_ORDER', 'RELIGION_FELLOWSHIP_OF_LEAVES']) {
-    const name = art.resolve('religion', r)?.sprite.replace('icon16/', 'icon8/');
-    rel.append(icon(art, art.hasSprite(name) ? name : art.resolve('religion', r).sprite, r));
+    const ic = UI.iconFor(art, 'religion', r, 8);
+    rel.append(icon(art, ic.name, r, null, ic.remap));
   }
-  rel.append(span('r cap', 'GREAT PERSON'), bar(art, 30, 0.3, 'gp'));
+  rel.append(caps(art, 'Great person', 'r cap'), bar(art, 30, 0.3, 'gp'));
   p.append(rel);
-  const cit = el('div', 'row section', span('cap', 'CITIZENS'));
+  const cit = el('div', 'row section', caps(art, 'Citizens', 'cap'));
   for (const [sp, n] of [['SPECIALIST_CITIZEN', 2], ['SPECIALIST_PRIEST', 1], ['SPECIALIST_SCIENTIST', 1], ['SPECIALIST_GREAT_ENGINEER', 1]]) {
     const r = art.resolve('specialist', sp);
-    cit.append(icon(art, r.sprite, sp, null, r.opts.remap), span('small num', String(n)));
+    cit.append(icon(art, r.sprite, sp, null, r.opts.remap), txt(art, String(n)));
   }
   p.append(cit);
   p.append(rule(art, 140));
+  // the queue: units show their combat class, buildings their class
   const queue = el('div', 'list');
-  const qi = (cls, name, turns) => el('div', 'li ' + cls, icon(art, 'icon8/production'), span('', name), span('r num', turns));
-  queue.append(qi('sel', 'Swordsman', '3'), qi('', 'Temple of Kilmorph', '9'), qi('', 'Worker', '13'));
-  p.append(el('div', 'cap', 'QUEUE'), queue);
+  const unitIc = (u) => UI.iconFor(art, 'unitcombat', art.mapper.entry('unit', u)?.combat ? `UNITCOMBAT_${art.mapper.entry('unit', u).combat}` : null, 8) || { name: 'icon8/production' };
+  const bIc = (b) => UI.iconFor(art, 'building', b, 8);
+  queue.append(listRow(art, 'sel', unitIc('UNIT_SWORDSMAN'), 'Swordsman', txt(art, '3')),
+    listRow(art, '', bIc('BUILDING_TEMPLE_OF_KILMORPH'), 'Temple of Kilmorph', txt(art, '9')),
+    listRow(art, '', bIc('BUILDING_GREAT_LIBRARY'), 'The Great Library', txt(art, '31')),
+    listRow(art, '', unitIc('UNIT_WORKER'), 'Worker', txt(art, '13')));
+  p.append(caps(art, 'Queue', 'cap head'), queue);
   p.append(rule(art, 140));
-  p.append(el('div', 'cap', 'BUILDINGS'));
+  p.append(caps(art, 'Buildings', 'cap head'));
   const list = el('div', 'list ui-frame-inset');
-  const li = (cls, name, ...right) => el('div', 'li ' + cls, span('', name), el('span', 'r row', ...right));
-  list.append(li('', 'Palace', icon(art, 'icon8/research'), icon(art, 'icon8/gold')),
-    li('', 'Granary', icon(art, 'icon8/food')),
-    li('hover', 'Barracks', icon(art, 'icon8/strength')),
-    li('sel', 'Elder Council', icon(art, 'icon8/research')),
-    li('', 'Temple of the Order', icon(art, 'icon8/happy')),
-    li('', 'Walls', icon(art, 'icon8/defense')));
+  const eff = (...names) => names.map((n) => icon(art, 'icon8/' + n));
+  list.append(listRow(art, '', bIc('BUILDING_PALACE_BANNOR'), 'Palace', ...eff('research', 'gold')),
+    listRow(art, '', bIc('BUILDING_GRANARY'), 'Granary', ...eff('food')),
+    listRow(art, 'hover', bIc('BUILDING_TRAINING_YARD'), 'Training Yard', ...eff('experience')),
+    listRow(art, 'sel', bIc('BUILDING_ELDER_COUNCIL'), 'Elder Council', ...eff('research')),
+    listRow(art, '', bIc('BUILDING_MARKET'), 'Market', ...eff('gold', 'happy')),
+    listRow(art, '', bIc('BUILDING_TEMPLE_OF_THE_ORDER'), 'Temple of the Order', ...eff('happy', 'culture')),
+    listRow(art, '', bIc('BUILDING_MAGE_GUILD'), 'Mage Guild', ...eff('research')),
+    listRow(art, '', bIc('BUILDING_MONUMENT'), 'Monument', ...eff('culture')),
+    listRow(art, '', bIc('BUILDING_WALLS'), 'Walls', ...eff('defense')));
   p.append(list);
   const btns = el('div', 'buttons');
-  const b = (label, cls = '', disabled = false) => { const e = el('button', 'ui-button ' + cls, label); if (disabled) e.disabled = true; return e; };
+  const b = (label, cls = '', disabled = false) => { const e = el('button', 'ui-button ' + cls, caps(art, label)); if (disabled) e.disabled = true; return e; };
   btns.append(b('Hurry'), b('Queue', 'primary'), b('Conscript', '', true), b('Raze', 'danger'));
   p.append(btns);
   return p;
@@ -266,20 +286,20 @@ function cityPanel(art) {
 
 function unitPanel(art, own) {
   const p = el('div', 'overlay unitpanel panel ui-frame-panel');
-  p.append(el('div', 'title ui-frame-title', icon(art, 'icon8/strength'), vigil(art, 'Swordsman', '8'), span('sub', 'stack of 3')));
+  p.append(el('div', 'title ui-frame-title', icon(art, 'icon8/combat_melee'), vigil(art, 'Swordsman', '8'), txt(art, 'stack of 3', 'sub')));
   const cards = el('div', 'cards');
   cards.append(unitCard(art, 'UNIT_SWORDSMAN', own, true, 100), unitCard(art, 'UNIT_SWORDSMAN', own, false, 70), unitCard(art, 'UNIT_ARCHER', own, false, 20));
   const stats = el('div', '');
   const r = (...k) => el('div', 'row', ...k);
-  stats.append(r(icon(art, 'icon8/strength'), span('small num', '6'), icon(art, 'icon8/moves'), span('small num', '1/1'), icon(art, 'icon8/experience'), bar(art, 30, 0.6, 'xp'), span('small dim num', '6/10')));
+  stats.append(r(icon(art, 'icon8/strength'), txt(art, '6'), icon(art, 'icon8/moves'), txt(art, '1/1'), icon(art, 'icon8/experience'), bar(art, 30, 0.6, 'xp'), txt(art, '6/10', 'dim')));
   const seals = el('div', 'seals');
-  for (const t of ['PROMOTION_COMBAT1', 'PROMOTION_COMBAT2', 'PROMOTION_SHOCK', 'PROMOTION_DRILL1', 'PROMOTION_CITY_RAIDER1', 'PROMOTION_HERO', 'PROMOTION_FIRE2', 'PROMOTION_POISONED']) seals.append(UI.promotionEl(art, t, O));
+  for (const t of ['PROMOTION_COMBAT2', 'PROMOTION_SHOCK', 'PROMOTION_DRILL1', 'PROMOTION_CITY_RAIDER1', 'PROMOTION_HERO', 'PROMOTION_FIRE2', 'PROMOTION_BRONZE_WEAPONS', 'PROMOTION_POISONED']) seals.append(UI.promotionEl(art, t, O));
   stats.append(el('div', 'section', seals));
   const top = el('div', 'row', cards, stats);
   top.style.alignItems = 'flex-start';
   p.append(top);
   const btns = el('div', 'buttons');
-  const b = (label, cls = '', disabled = false, ic = null) => { const e = el('button', 'ui-button ' + cls, ic ? icon(art, ic) : null, ' ', label); if (disabled) e.disabled = true; return e; };
+  const b = (label, cls = '', disabled = false, ic = null) => { const e = el('button', 'ui-button ' + cls, ic ? icon(art, ic) : null, caps(art, label)); if (disabled) e.disabled = true; return e; };
   btns.append(b('Fortify', '', false, 'icon8/defense'), b('Sleep'), b('Pillage', '', true), b('Attack', 'primary', false, 'icon8/strength'), b('Delete', 'danger'));
   p.append(btns);
   return p;
@@ -288,11 +308,11 @@ function unitPanel(art, own) {
 function tooltip(art) {
   const t = el('div', 'overlay tip ui-frame-tooltip');
   const r = (...k) => el('div', 'row', ...k);
-  t.append(r(span('head', 'Imp'), span('r dim small', 'Sheaim')));
-  t.append(r(icon(art, 'icon8/strength'), span('num', '4 vs 6'), span('r', ''), icon(art, 'icon8/defense'), span('num dim', '+25%')));
-  t.append(r(span('dim', 'Odds'), span('em num', '73%'), span('r dim small', 'withdraw 0%')));
-  t.append(r(icon(art, 'icon8/bullet'), span('small', 'Shock: +25% vs melee'), span('r', '')));
-  t.append(r(icon(art, 'icon8/bullet'), span('small neg', 'Fortified: +25%'), span('r', '')));
+  t.append(r(vigil(art, 'Imp', '8'), txt(art, 'Sheaim', 'r dim')));
+  t.append(r(icon(art, 'icon8/strength'), txt(art, '4 vs 6'), el('span', 'r'), icon(art, 'icon8/defense'), txt(art, '+25%', 'dim')));
+  t.append(r(txt(art, 'Odds', 'dim'), txt(art, '73%', 'em'), txt(art, 'withdraw 0%', 'r dim')));
+  t.append(r(icon(art, 'icon8/bullet'), txt(art, 'Shock: +25% vs melee')));
+  t.append(r(icon(art, 'icon8/bullet'), txt(art, 'Fortified: +25%', 'neg')));
   return t;
 }
 
@@ -332,7 +352,7 @@ function modal(art) {
   m.append(body);
   const opts = el('div', 'opts');
   const opt = (label, effect, cls = '', disabled = false) => {
-    const b = el('button', 'ui-button ' + cls, label, el('div', 'effect', effect));
+    const b = el('button', 'ui-button ' + cls, txt(art, label), UI.textBlock(art, effect, 180, { ...O, cls: 'effect' }));
     if (disabled) b.disabled = true;
     return b;
   };
@@ -434,9 +454,9 @@ function kit(art) {
   }
   g = grid();
   const dom = el('div', 'buttons');
-  const b = (label, cls = '', disabled = false) => { const e = el('button', 'ui-button ' + cls, label); if (disabled) e.disabled = true; return e; };
-  dom.append(b('Fortify'), b('Queue', 'primary'), b('Disabled', '', true), b('Raze', 'danger'), el('button', 'ui-button primary', icon(art, 'icon16/turn'), ' ', vigil(art, 'End Turn', '8')));
-  g.append(cell('DOM: .ui-button, .primary, :disabled, .danger', dom));
+  const b = (label, cls = '', disabled = false) => { const e = el('button', 'ui-button ' + cls, caps(art, label)); if (disabled) e.disabled = true; return e; };
+  dom.append(b('Fortify'), b('Queue', 'primary'), b('Disabled', '', true), b('Raze', 'danger'), el('button', 'ui-button primary', icon(art, 'icon16/turn'), caps(art, 'End Turn')));
+  g.append(cell('DOM: .ui-button, .primary, :disabled, .danger (labels: textSpan, Vigil small capitals; hover to see them follow the state)', dom));
 
   h2('bars, slider, rule');
   g = grid();
@@ -460,14 +480,32 @@ function kit(art) {
       gg.append(cell(n.replace(/^icon(16|8)\//, ''), el('div', 'row', strip, coal)));
     }
   };
-  iconRow(icons('icon16/', (n) => !/religion_|alignment_|civic_|sphere_|promo_|specialist_|^icon16\/_/.test(n)), 'icons 16: yields, commerce, mood, health, stats, empire (1x, u, on coal)');
-  iconRow(icons('icon8/', (n) => !/religion_|alignment_|civic_|sphere_|combat_|^icon8\/_/.test(n)), 'icons 8: inline and on map tiles');
+  iconRow(icons('icon16/', (n) => !/religion_|alignment_|civic_|sphere_|promo_|specialist_|bclass_|^icon16\/_/.test(n)), 'icons 16: yields, commerce, mood, health, stats, empire (1x, u, on coal)');
+  iconRow(icons('icon8/', (n) => !/religion_|alignment_|civic_|sphere_|combat_|bclass_|^icon8\/_/.test(n)), 'icons 8: inline and on map tiles');
   iconRow([...icons('icon16/religion_'), ...icons('icon8/religion_'), ...icons('icon16/alignment_'), ...icons('icon8/alignment_')], 'religions and alignments');
   iconRow([...icons('icon16/civic_'), ...icons('icon8/civic_')], 'civic categories');
   if (icons('icon8/sphere_').length) iconRow([...icons('icon8/sphere_'), ...icons('icon16/sphere_')], 'mana spheres');
   if (icons('icon8/combat_').length) iconRow(icons('icon8/combat_'), 'unit combat classes');
   if (icons('icon16/specialist_').length) iconRow(icons('icon16/specialist_'), 'specialists');
 
+  if (icons('icon16/bclass_').length) {
+    h2('buildings: class icons (16 px at 1x and u, 8 px at u; how many of the 170 buildings take each)');
+    const gb = grid();
+    const byIcon = new Map();
+    for (const t of art.mapper.typeNames('building')) {
+      const r = art.mapper.resolve('building', t);
+      if (!byIcon.has(r.sprite)) byIcon.set(r.sprite, []);
+      byIcon.get(r.sprite).push(t);
+    }
+    for (const n of icons('icon16/bclass_')) {
+      const list = byIcon.get(n) || [];
+      const small = 'icon8/' + n.slice(7).replace(/^bclass_temple_/, 'religion_'); // as UI.iconFor(..., 8)
+      const strip = el('div', 'strip');
+      strip.append(UI.iconEl(art, n, { u: 1, dpr: DPR }), UI.iconEl(art, n, O), art.hasSprite(small) ? UI.iconEl(art, small, O) : null);
+      strip.title = list.join(' ');
+      gb.append(cell(`${n.replace('icon16/bclass_', '')} (${list.length})`, strip));
+    }
+  }
   h2('promotion seals (rim = family, pips = level)');
   g = grid();
   const seen = new Set();
@@ -526,12 +564,40 @@ function kit(art) {
   tb.style.flexDirection = 'column'; tb.style.alignItems = 'flex-start';
   for (const scale of [1, 2, 3]) tb.append(UI.textEl(art, '0123456789 +-/x %.', { u: scale, dpr: DPR, font: 'tally', color: '7', pad: 1 }));
   g.append(cell('Tally at 1x, 2x, 3x', tb));
+  g = grid();
+  const book = ['abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "0123456789 .,:;'\"-–()/+×!?&#%·=[]<>*", 'Temple of Kilmorph  9 turns', 'Shock: +25% vs melee', 'Ljósálfar, Bannor, the Order'];
+  for (const scale of [1, 2, 3]) {
+    const box = el('div', 'strip');
+    box.style.flexDirection = 'column'; box.style.alignItems = 'flex-start'; box.style.gap = `${3 * scale}px`;
+    box.style.color = 'var(--c-bone)';
+    for (const l of book) box.append(UI.textSpan(art, l, { u: scale, dpr: DPR }));
+    g.append(cell(`Vigil Book (font 'vigil/book') at ${scale}x: the body face for short UI text`, box));
+  }
+  {
+    const box = el('div', 'strip ui-frame-panel');
+    box.style.width = `${150 * U}px`; box.style.flexDirection = 'column'; box.style.alignItems = 'flex-start'; box.style.color = 'var(--c-bone)';
+    box.append(UI.textSpan(art, 'Elder Council', { ...O, cls: 'em' }),
+      UI.textBlock(art, 'A gathering of the oldest voices of the city. +2 research, and the first step on the Way of the Wise.', 140, { ...O }),
+      UI.textSpan(art, 'Requires: Writing', { ...O, cls: 'dim' }));
+    g.append(cell('textBlock wrapped to 140 art px (colours by CSS: .em, .dim)', box));
+  }
   for (const s of k.querySelectorAll('section')) if (!want(s.dataset.key)) s.remove();
+}
+
+/** Import a module of another set if it is there, and install it. */
+async function optional(path, install) {
+  try { install(await import(path)); } catch (e) { console.warn(`${path}: not installed (${e.message})`); }
 }
 
 async function main() {
   const art = await loadArt({ base: new URL('../', import.meta.url), lenient: true });
   if (art.lib.errors.length) throw new Error(art.lib.errors.join('\n'));
+  // the other sets' drawing modules, until the toolkit adopts them: the units set's stack standard
+  // (the gonfalon, ui/stack_banner: the only owner mark on a stack); with ?ground the terrain set's
+  // ground pass and with ?citylight the cities set's hearth pools (both from their second round)
+  await optional('../units/stack.js', (m) => m.installStackOverlay(art));
+  if (q.has('ground')) await optional('../terrain/ground.js', (m) => m.installTerrain(art));
+  if (q.has('citylight')) await optional('../cities/citylight.js', (m) => m.installCityLight(art));
   document.documentElement.style.setProperty('--u', `${U}px`);
   UI.installCSS(art, O);
   window.__art = art; window.__ui = UI; // for poking at the kit from the console or a test

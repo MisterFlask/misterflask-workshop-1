@@ -327,22 +327,22 @@
 .....######.....
 
 = icon16/promo_heroic 16x16 0,0
-: note heroic and divine: a crown
+: note heroic and divine: a vellum crown with ochre jewels inside a double gilt rim (the mapping makes the outer ring sand Y; the inner ring is ochre y), so it reads apart from the single ochre rim of equipment and from firelight
 .....######.....
-...##111111##...
-..#1111111111#..
-.#111111111111#.
-.#111111111111#.
-#11181181181111#
-#11188181881111#
-#11188888881111#
-#1118LL8LL81111#
-#11188888881111#
-#11111111111111#
-.#111111111111#.
-.#111111111111#.
-..#1111111111#..
-...##111111##...
+...##yyyyyy##...
+..#yy111111yy#..
+.#y1111111111y#.
+.#y1111111111y#.
+#y111811811811y#
+#y111881818811y#
+#y111888888811y#
+#y1118yy8yy811y#
+#y111888888811y#
+#y111111111111y#
+.#y1111111111y#.
+.#y1111111111y#.
+..#yy111111yy#..
+...##yyyyyy##...
 .....######.....
 
 = icon16/promo_star 16x16 0,0

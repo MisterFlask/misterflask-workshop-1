@@ -45,6 +45,23 @@ export function iconName(kind, key, size = 16) {
   }
 }
 
+/**
+ * The icon of a game type through the mapping (art.resolve), at 16 or 8 px: { name, remap }, or null
+ * when the type has none. size 8 takes the icon8/ twin of an icon16/ sprite when the set has one
+ * (religions, building classes; a temple's 8 px twin is its faith's glyph), else keeps the 16 px icon.
+ */
+export function iconFor(art, kind, type, size = 16) {
+  if (!type) return null;
+  const r = art.resolve(kind, type);
+  if (!r || r.sprite === 'none') return null;
+  let name = r.sprite;
+  if (size === 8 && name.startsWith('icon16/')) {
+    const small = 'icon8/' + name.slice(7).replace(/^bclass_temple_/, 'religion_');
+    if (art.hasSprite(small)) name = small;
+  }
+  return { name, remap: r.opts.remap };
+}
+
 // ------------------------------------------------------------------------------------ nine-slice
 
 /** Nine-slice insets of a frame sprite: { spr, L, T, R, B, fill } or null. */
@@ -155,6 +172,8 @@ export function iconEl(art, name, { u = 2, dpr = 1, remap, title, cls } = {}) {
  * shadow, smallCaps, u, dpr, pad, title }
  */
 export function textEl(art, text, { font = 'vigil', color = '7', shadow = false, smallCaps = false, u = 2, dpr = 1, pad = 0, cls } = {}) {
+  const label = text;
+  text = foldText(text);
   const k = Math.max(1, Math.round(u * dpr));
   const tw = art.measureText(text, font, smallCaps) + (shadow ? 1 : 0);
   const th = (font === 'tally' ? 5 : 7) + (shadow ? 1 : 0) + pad * 2;
@@ -163,8 +182,87 @@ export function textEl(art, text, { font = 'vigil', color = '7', shadow = false,
   c.style.width = `${Math.max(1, tw) * u}px`;
   c.style.height = `${th * u}px`;
   c.className = 'ui-px ui-text' + (cls ? ' ' + cls : '');
-  c.setAttribute('aria-label', text);
+  c.setAttribute('aria-label', label);
   return c;
+}
+
+/** The body face (Vigil Book, fonts.spr): lower case, x-height 5, on Vigil's 7-row cell. */
+export const BOOK = 'vigil/book';
+
+/**
+ * Text folded to the glyphs the bitmap fonts have: accents dropped (Ljósálfar -> Ljosalfar), curly
+ * quotes straightened, an ellipsis as three periods, a non-breaking space as a space.
+ */
+export function foldText(text) {
+  return String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2018\u2019\u02bc]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/\u2026/g, '...').replace(/\u00a0/g, ' ');
+}
+
+const maskCache = new WeakMap(); // art -> Map(key -> data URL)
+
+/**
+ * Bitmap text as a DOM span whose colour is CSS `color` (currentColor), so it follows :hover,
+ * :disabled, .sel and colour classes like ordinary text, while every glyph pixel stays on the art
+ * grid: the text is drawn once at u*dpr and used as the span's mask. The real text sits inside
+ * for screen readers and find-in-page. opts: { font ('vigil/book' default, 'vigil', 'tally'),
+ * smallCaps, u, dpr, cls, title }. Height: 7 art px (5 for Tally).
+ */
+export function textSpan(art, text, { font = BOOK, smallCaps = false, u = 2, dpr = 1, cls, title } = {}) {
+  const t = foldText(text);
+  const k = Math.max(1, Math.round(u * dpr));
+  const th = font === 'tally' ? 5 : 7;
+  const tw = Math.max(1, art.measureText(t, font, smallCaps));
+  if (!maskCache.has(art)) maskCache.set(art, new Map());
+  const cache = maskCache.get(art);
+  const key = `${font}|${smallCaps ? 1 : 0}|${k}|${t}`;
+  let url = cache.get(key);
+  if (!url) {
+    const c = makeCanvas(tw * k, th * k);
+    withScale(art, k, () => art.drawText(c.getContext('2d'), 0, (th - 1) * k, t, { font, color: '8', smallCaps }));
+    url = c.toDataURL();
+    cache.set(key, url);
+  }
+  const w = tw * u, h = th * u;
+  const span = document.createElement('span');
+  span.className = 'ui-ptext' + (cls ? ' ' + cls : '');
+  const m = `url(${url}) 0 0 / ${w}px ${h}px no-repeat`;
+  span.style.cssText = `width: ${w}px; height: ${h}px; -webkit-mask: ${m}; mask: ${m};`;
+  if (title) span.title = title;
+  const sr = document.createElement('span');
+  sr.className = 'ui-sr';
+  sr.textContent = text;
+  span.append(sr);
+  return span;
+}
+
+/**
+ * Greedy word wrap for the bitmap fonts: lines of at most `width` art px (a longer word gets a line
+ * of its own). Returns the lines as strings.
+ */
+export function wrapText(art, text, width, { font = BOOK, smallCaps = false } = {}) {
+  const lines = [];
+  for (const para of foldText(text).split('\n')) {
+    let line = '';
+    for (const word of para.split(/\s+/).filter(Boolean)) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && art.measureText(next, font, smallCaps) > width) { lines.push(line); line = word; } else line = next;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+/**
+ * A block of short bitmap text wrapped to `width` art px: a div of textSpans, one per line, `gap`
+ * art px apart (default 3: a 10 px line pitch). For tooltips, option effects and notes; long prose
+ * stays in the system serif.
+ */
+export function textBlock(art, text, width, { font = BOOK, smallCaps = false, u = 2, dpr = 1, gap = 3, cls } = {}) {
+  const div = document.createElement('div');
+  div.className = 'ui-ptext-block' + (cls ? ' ' + cls : '');
+  div.style.cssText = `display: flex; flex-direction: column; align-items: flex-start; gap: ${gap * u}px;`;
+  for (const line of wrapText(art, text, width, { font, smallCaps })) div.append(line ? textSpan(art, line, { font, smallCaps, u, dpr }) : document.createElement('br'));
+  return div;
 }
 
 /** A canvas element with a nine-slice frame, sized in CSS px. */
@@ -199,11 +297,13 @@ export function cssText(art, { u = 2, dpr = 1 } = {}) {
   const o = { u, dpr };
   const out = [paletteCSS(art)];
   out.push(`.ui-px { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; vertical-align: middle; }`);
+  out.push(`.ui-ptext { display: inline-block; vertical-align: middle; flex: none; position: relative; background-color: currentColor; }`);
+  out.push(`.ui-sr { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }`);
   for (const name of [...art.lib.sprites.keys()].filter((n) => n.startsWith('ui/frame_')).sort()) {
     out.push(`.ui-${name.slice(3).replace(/_/g, '-')} { ${nineCSS(art, name, o)} }`);
   }
   const btn = (n) => (art.sprite(n) ? nineCSS(art, n, o) : '');
-  out.push(`.ui-button { ${btn('ui/button')} background: none; color: var(--c-bone); font: inherit; cursor: pointer; padding: 0 ${3 * u}px; min-height: ${11 * u}px; position: relative; }`);
+  out.push(`.ui-button { ${btn('ui/button')} background: none; color: var(--c-bone); font: inherit; cursor: pointer; padding: 0 ${3 * u}px; min-height: ${11 * u}px; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: ${2 * u}px; }`);
   out.push(`.ui-button:hover { ${btn('ui/button_hover')} color: var(--c-vellum); }`);
   out.push(`.ui-button:active { ${btn('ui/button_pressed')} color: var(--c-vellum); padding-top: ${u}px; }`);
   out.push(`.ui-button:disabled, .ui-button.disabled { ${btn('ui/button_disabled')} color: var(--c-ash); cursor: default; padding-top: 0; }`);
@@ -240,16 +340,18 @@ const BUTTON = {
 
 /**
  * A button on a canvas: frame by kind ('normal' | 'primary' | 'danger') and state ('normal' |
- * 'hover' | 'pressed' | 'disabled'), a Vigil label centred, an optional 8x8 or 16x16 icon at the
- * left. (x, y) canvas position, w x h art px (h 11 for text, 13 with a 16 px icon...).
+ * 'hover' | 'pressed' | 'disabled'), a label centred (Vigil small capitals, or font: BOOK), an
+ * optional 8x8 or 16x16 icon at the left. (x, y) canvas position, w x h art px (h 11 for text, 13
+ * with a 16 px icon...).
  */
-export function drawButton(art, ctx, x, y, w, h, label, { kind = 'normal', state = 'normal', icon = null, focus = false, smallCaps = true } = {}) {
+export function drawButton(art, ctx, x, y, w, h, label, { kind = 'normal', state = 'normal', icon = null, focus = false, smallCaps = true, font = 'vigil' } = {}) {
   const s = art.scale;
   const [frame, color] = (BUTTON[kind] || BUTTON.normal)[state] || BUTTON.normal.normal;
   drawNine(art, ctx, x, y, w, h, frame);
   const push = state === 'pressed' ? 1 : 0;
   const ic = icon ? art.pick(icon) : null;
-  const tw = label ? art.measureText(label, 'vigil', smallCaps) : 0;
+  if (label) label = foldText(label);
+  const tw = label ? art.measureText(label, font, smallCaps) : 0;
   const total = tw + (ic ? ic.w + (label ? 2 : 0) : 0);
   let cx = Math.round((w - total) / 2) + push;
   if (ic) {
@@ -257,7 +359,7 @@ export function drawButton(art, ctx, x, y, w, h, label, { kind = 'normal', state
       state === 'disabled' ? { remap: disabledRemap(art, ic) } : {});
     cx += ic.w + 2;
   }
-  if (label) art.drawText(ctx, x + cx * s, y + (Math.round((h - 7) / 2) + 6 + push) * s, label, { font: 'vigil', color, smallCaps });
+  if (label) art.drawText(ctx, x + cx * s, y + (Math.round((h - 7) / 2) + 6 + push) * s, label, { font, color, smallCaps });
   if (focus) drawNine(art, ctx, x - 2 * s, y - 2 * s, w + 4, h + 4, 'ui/focus');
 }
 

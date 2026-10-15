@@ -1,6 +1,7 @@
 ; ui set (docs/ART.md 7, 11): heraldry, the Vigil and Tally fonts, icons, realm icons (religions,
 ; alignments, civic categories, mana spheres), promotion seals, unit classes and specialists, chrome
-; (frames, buttons, bars) and map marks (cursors, path, odds). ui.js draws them; preview.html shows them.
+; (frames, buttons, bars), map marks (cursors, path, odds) and building class icons. ui.js draws them;
+; preview.html shows them.
 set ui
 source heraldry.spr
 source fonts.spr
@@ -10,6 +11,7 @@ source chrome.spr
 source marks.spr
 source promotions.spr
 source kinds.spr
+source buildings.spr
 
 ; ---- civilizations (7.3): sigil sprite and tincture (Argent Or Gules Azure Vert Purpure Tenne
 ; Celeste Sable Cendree). Every civilization has its own 5x5 charge; the lozenge is for unknown ones.
@@ -46,9 +48,10 @@ map religion * -> icon16/_religion
 ; kind of line. ui.js drawPromotion adds the level (I-V) as pips. Afflictions and the heroic or divine
 ; first (named), then races, equipment and the 18 spheres, then lines by kind; anything else is a
 ; stone star. Rims: combat lines stone, arcane lilac, races bone, equipment and weapons ochre,
-; afflictions crimson, heroic amber, spheres the sphere colour.
+; afflictions crimson, heroic and divine a double gilt ring (sand Y over ochre y: firelight stays
+; for happiness, warnings and End Turn), spheres the sphere colour.
 map promotion PROMOTION_POISONED|PROMOTION_PLAGUED|PROMOTION_DISEASED|PROMOTION_WITHERED|PROMOTION_RUSTED|PROMOTION_ENRAGED|PROMOTION_CRAZED|PROMOTION_FATIGUED|PROMOTION_WEAK|PROMOTION_SLOW|PROMOTION_HELD|PROMOTION_CHARMED|PROMOTION_BURNING_BLOOD|PROMOTION_VULNERABLE_TO_FIRE|PROMOTION_UNHOLY_TAINT|PROMOTION_MUTATED|PROMOTION_SUNDERED -> icon16/promo_affliction remap=#C
-map promotion PROMOTION_HERO|PROMOTION_DIVINE|PROMOTION_AVATAR|PROMOTION_HEROIC_DEFENSE|PROMOTION_HEROIC_DEFENSE2|PROMOTION_HEROIC_STRENGTH|PROMOTION_HEROIC_STRENGTH2|PROMOTION_BLESSED|PROMOTION_GREAT_COMMANDER|PROMOTION_IMMORTAL|PROMOTION_STIGMATA|PROMOTION_AERONS_CHOSEN|PROMOTION_PROPHECY_MARK -> icon16/promo_heroic remap=#l
+map promotion PROMOTION_HERO|PROMOTION_DIVINE|PROMOTION_AVATAR|PROMOTION_HEROIC_DEFENSE|PROMOTION_HEROIC_DEFENSE2|PROMOTION_HEROIC_STRENGTH|PROMOTION_HEROIC_STRENGTH2|PROMOTION_BLESSED|PROMOTION_GREAT_COMMANDER|PROMOTION_IMMORTAL|PROMOTION_STIGMATA|PROMOTION_AERONS_CHOSEN|PROMOTION_PROPHECY_MARK -> icon16/promo_heroic remap=#Y
 map promotion race=1 -> icon16/promo_race remap=#7
 map promotion line=VAMPIRE|WEREWOLF -> icon16/promo_race remap=#7
 map promotion equipment=1 -> icon16/promo_equipment remap=#y
@@ -86,8 +89,32 @@ map promotion line=BOARDING|EXPANDED_HULL|BUCCANEERS|LONGSHOREMEN|SKELETON_CREW 
 map promotion line=BRONZE_WEAPONS|IRON_WEAPONS|MITHRIL_WEAPONS|POISONED_BLADE -> icon16/promo_weapons remap=#y
 map promotion * -> icon16/promo_star remap=#6
 
-; ---- buildings: no art in the MVP (11.5); category icons so lists can show something
-map building wonder=WORLD -> icon16/_wonder
+; ---- buildings (buildings.spr): a class icon per building, so lists scan by kind. World wonders take
+; the gilt star (prio, over a faith or defence); buildings of a faith its temple; walls and other
+; defence=1 buildings the curtain wall; the rest are named by class below. New types fall back to
+; the plain hall (icon16/_building).
+map building wonder=WORLD -> icon16/bclass_wonder prio=5
+map building religion=RELIGION_FELLOWSHIP_OF_LEAVES -> icon16/bclass_temple_fellowship_of_leaves
+map building religion=RELIGION_THE_ORDER -> icon16/bclass_temple_the_order
+map building religion=RELIGION_OCTOPUS_OVERLORDS -> icon16/bclass_temple_octopus_overlords
+map building religion=RELIGION_RUNES_OF_KILMORPH -> icon16/bclass_temple_runes_of_kilmorph
+map building religion=RELIGION_THE_ASHEN_VEIL -> icon16/bclass_temple_the_ashen_veil
+map building religion=RELIGION_THE_EMPYREAN -> icon16/bclass_temple_the_empyrean
+map building religion=RELIGION_COUNCIL_OF_ESUS -> icon16/bclass_temple_council_of_esus
+map building cls=BUILDINGCLASS_PALACE|BUILDINGCLASS_COURTHOUSE|BUILDINGCLASS_FORBIDDEN_PALACE|BUILDINGCLASS_WINTER_PALACE|BUILDINGCLASS_DUNGEON -> icon16/bclass_government prio=1
+map building cls=BUILDINGCLASS_TRAINING_YARD -> icon16/bclass_military prio=1
+map building defense=1 -> icon16/bclass_defense
+map building BUILDING_PAGAN_TEMPLE|BUILDING_DESERT_SHRINE|BUILDING_TEMPLE_OF_THE_HAND|BUILDING_RELIQUARY|BUILDING_ALTAR_OF_THE_LUONNOTAR|BUILDING_ALTAR_OF_THE_LUONNOTAR_ANOINTED|BUILDING_ALTAR_OF_THE_LUONNOTAR_BLESSED|BUILDING_ALTAR_OF_THE_LUONNOTAR_CONSECRATED|BUILDING_ALTAR_OF_THE_LUONNOTAR_DIVINE|BUILDING_ALTAR_OF_THE_LUONNOTAR_EXALTED|BUILDING_ALTAR_OF_THE_LUONNOTAR_FINAL -> icon16/bclass_shrine
+map building BUILDING_PALACE_INFERNAL -> icon16/bclass_government
+map building BUILDING_ARCHERY_RANGE|BUILDING_STABLE|BUILDING_SIEGE_WORKSHOP|BUILDING_COMMAND_POST|BUILDING_HUNTING_LODGE|BUILDING_HEROIC_EPIC|BUILDING_SHRINE_OF_THE_CHAMPION|BUILDING_ADVENTURERS_GUILD|BUILDING_WARRENS|BUILDING_WOLF_PEN|BUILDING_SPIDER_PEN -> icon16/bclass_military
+map building BUILDING_MARKET|BUILDING_MONEYCHANGER|BUILDING_TAX_OFFICE|BUILDING_GAMBLING_HOUSE|BUILDING_BAZAAR_OF_MAMMON|BUILDING_JEWELER|BUILDING_TAILOR|BUILDING_BREWERY|BUILDING_TAVERN|BUILDING_TAVERN_GRIGORI|BUILDING_INN|BUILDING_DWARVEN_VAULT|BUILDING_DWARVEN_VAULT_EMPTY|BUILDING_DWARVEN_VAULT_LOW|BUILDING_DWARVEN_VAULT_STOCKED|BUILDING_DWARVEN_VAULT_ABUNDANT|BUILDING_DWARVEN_VAULT_FULL|BUILDING_DWARVEN_VAULT_OVERFLOWING -> icon16/bclass_economy
+map building BUILDING_GRANARY|BUILDING_SMOKEHOUSE|BUILDING_GROVE|BUILDING_BREEDING_PIT -> icon16/bclass_provision
+map building BUILDING_AQUEDUCT|BUILDING_PUBLIC_BATHS|BUILDING_HERBALIST|BUILDING_INFIRMARY -> icon16/bclass_health
+map building BUILDING_HARBOR|BUILDING_HARBOR_LANUN|BUILDING_LIGHTHOUSE|BUILDING_SHIPYARD|BUILDING_SMUGGLERS_PORT -> icon16/bclass_harbour
+map building BUILDING_LIBRARY|BUILDING_ACADEMY|BUILDING_ELDER_COUNCIL|BUILDING_ALCHEMY_LAB -> icon16/bclass_learning
+map building BUILDING_MONUMENT|BUILDING_THEATRE|BUILDING_CARNIVAL|BUILDING_NATIONAL_EPIC|BUILDING_DANCING_BEAR|BUILDING_FREAK_SHOW|BUILDING_HOPE|BUILDING_INSPIRATION|BUILDING_UNYIELDING_ORDER|BUILDING_DWARF_CAGE|BUILDING_ELF_CAGE|BUILDING_GORILLA_CAGE|BUILDING_HUMAN_CAGE|BUILDING_LION_CAGE|BUILDING_ORC_CAGE|BUILDING_TIGER_CAGE -> icon16/bclass_culture
+map building BUILDING_MAGE_GUILD|BUILDING_TOWER_OF_ALTERATION|BUILDING_TOWER_OF_DIVINATION|BUILDING_TOWER_OF_MASTERY|BUILDING_TOWER_OF_NECROMANCY|BUILDING_TOWER_OF_THE_ELEMENTS|BUILDING_CAVE_OF_ANCESTORS|BUILDING_PLANAR_GATE|BUILDING_HALL_OF_MIRRORS|BUILDING_OBSIDIAN_GATE|BUILDING_DEMONIC_CITIZENS -> icon16/bclass_arcane
+map building BUILDING_FORGE|BUILDING_DWARVEN_SMITHY|BUILDING_PALLENS_ENGINE|BUILDING_BLASTING_WORKSHOP|BUILDING_ADULARIA_CHAMBER -> icon16/bclass_forge
 map building * -> icon16/_building
 
 ; ---- unit combat classes (icon8/combat_<x>) and specialists (icon16/specialist_<x>) are found by
