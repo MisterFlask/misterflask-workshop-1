@@ -1,4 +1,5 @@
-//! Staged situations for testing the clients (`ffh-play stage capture|attack|automoves|load|trade DIR`,
+//! Staged situations for testing the clients (`ffh-play stage
+//! capture|attack|automoves|load|trade|automate|election|settlement DIR`,
 //! and the transports' tests): a saved game at a human control point arranged with rules calls,
 //! so that a client can be tried on a situation a fresh game reaches only by chance (a captured
 //! city's keep/raze decision, an attack, the AutoMoves rule between commands, the transport
@@ -9,7 +10,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use ffh_core::ids::{PlayerId, UnitId};
+use ffh_core::ids::{PlayerId, UnitId, VoteId};
 use ffh_core::path::{FinderKind, PathFinder};
 use ffh_core::structs::MissionData;
 use ffh_data::*;
@@ -65,10 +66,16 @@ impl StagedAutoMoves {
 
 /// A duel with the human's settler settled, played (forced end turns) to `turn`.
 fn duel_at(dir: &Path, seed: u32, turn: i32) -> Result<Session, String> {
+    duel_as(dir, seed, turn, None)
+}
+
+/// [`duel_at`] with the human's civilization (`None`: random).
+fn duel_as(dir: &Path, seed: u32, turn: i32, civ: Option<&str>) -> Result<Session, String> {
     let d = ffh_data::global();
     let mut ng = NewGame::new(d, seed);
     ng.opponents = 1;
     ng.world = d.t("WORLDSIZE_DUEL");
+    ng.civ = civ.map(|c| d.t::<CivilizationType>(c));
     // Only the staged save goes to `dir`: no journal, no autosave ring (which would overwrite and
     // prune the autosaves of a game kept there).
     let opts = SessionOptions { saves_dir: Some(dir.to_path_buf()), autosave_keep: 0, journal: false, ..Default::default() };
@@ -325,4 +332,146 @@ pub fn trade(dir: &Path) -> Result<StagedTrade, String> {
     g.players[with].gold = 100;
     let paths = s.save("trade").map_err(|e| format!("save: {e:?}"))?;
     Ok(StagedTrade { save: paths.save, with, turn: s.g.game_turn() })
+}
+
+/// Free land plots around the human's capital (nearest first), for staged units.
+fn free_plots_near_capital(g: &ffh_core::game::Game, h: PlayerId) -> Result<Vec<(i32, i32)>, String> {
+    let capital = *g.players[h].cities.first().ok_or("no city")?;
+    let (cx, cy) = (g.cities[capital].x, g.cities[capital].y);
+    let mut out = Vec::new();
+    for r in 1..4 {
+        for (dx, dy) in [(r, 0), (-r, 0), (0, r), (0, -r), (r, r), (-r, -r), (r, -r), (-r, r)] {
+            let Some(p) = g.plot_xy(cx, cy, dx, dy) else { continue };
+            if !g.plot_is_water(p) && !g.plot_is_impassable(p) && g.map.plots[p].units.is_empty() && g.map.plots[p].plot_city.is_none() {
+                out.push((g.map.plots[p].x, g.map.plots[p].y));
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// A saved game at a human control point (turn 4 of a duel, seed 11, the Bannor) where a new
+/// worker `worker` and a new scout `scout` of the human wait for orders on free plots near the
+/// capital, and the human knows the techs for roads, farms and mines: the unit panel offers
+/// their automate buttons (P7).
+pub struct StagedAutomate {
+    pub save: PathBuf,
+    pub worker: UnitId,
+    pub scout: UnitId,
+    pub turn: i32,
+}
+
+impl StagedAutomate {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "automate", "save" => self.save.display().to_string(), "worker" => self.worker, "scout" => self.scout, "turn" => self.turn }
+    }
+}
+
+/// Writes a [`StagedAutomate`] into `dir` (a game directory).
+pub fn automate(dir: &Path) -> Result<StagedAutomate, String> {
+    let d = ffh_data::global();
+    let mut s = duel_as(dir, 11, 4, Some("CIVILIZATION_BANNOR"))?;
+    let h = s.human;
+    let g = &mut s.g;
+    let team = g.players[h].team;
+    for t in ["TECH_EXPLORATION", "TECH_AGRICULTURE", "TECH_MINING"] {
+        g.team_set_has_tech(team, d.t::<TechType>(t), true, Some(h), false, false);
+    }
+    let plots = free_plots_near_capital(g, h)?;
+    let (&(wx, wy), &(sx, sy)) = (plots.first().ok_or("no free plot")?, plots.get(1).ok_or("no second free plot")?);
+    let worker = g.player_init_unit(h, d.t::<UnitType>("UNIT_WORKER"), wx, wy, None, None);
+    let scout = g.player_init_unit(h, d.t::<UnitType>("UNIT_SCOUT"), sx, sy, None, None);
+    let paths = s.save("automate").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedAutomate { save: paths.save, worker, scout, turn: s.g.game_turn() })
+}
+
+/// A saved game at a human control point (turn 3 of a duel, seed 15) where both players run a
+/// council's civic, the human's team is its secretary general, and the secretary's election
+/// (BUTTONPOPUP_CHOOSEELECTION) waits for the human: `pending.elections` holds `selection` (P7).
+pub struct StagedElection {
+    pub save: PathBuf,
+    pub selection: VoteId,
+    pub turn: i32,
+}
+
+impl StagedElection {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "election", "save" => self.save.display().to_string(), "selection" => self.selection, "turn" => self.turn }
+    }
+}
+
+/// Writes a [`StagedElection`] into `dir` (a game directory).
+pub fn election(dir: &Path) -> Result<StagedElection, String> {
+    let d = ffh_data::global();
+    let mut s = duel_at(dir, 15, 3)?;
+    let h = s.human;
+    let g = &mut s.g;
+    let team = g.players[h].team;
+    let mut council = None;
+    for name in ["DIPLOVOTE_OVERCOUNCIL", "DIPLOVOTE_UNDERCOUNCIL"] {
+        let vs = d.t::<VoteSourceType>(name);
+        let Some(civic) = d.vote_sources[vs].civic else { continue };
+        if let Some(t) = d.civics[civic].tech_prereq {
+            g.team_set_has_tech(team, t, true, Some(h), false, false);
+        }
+        if g.player_can_do_civics(h, Some(civic)) {
+            council = Some((vs, civic));
+            break;
+        }
+    }
+    let (vs, civic) = council.ok_or("no council the human can join")?;
+    let option = d.civics[civic].civic_option_type.ok_or("a civic without an option")?;
+    for p in g.civ_player_ids().collect::<Vec<_>>() {
+        if g.players[p].alive {
+            g.player_set_civics(p, option, Some(civic));
+        }
+    }
+    let sg = d.votes.keys().find(|&v| d.votes[v].secretary_general && d.votes[v].vote_source_type[vs]).ok_or("no secretary general vote")?;
+    g.vote_outcome[sg] = ffh_core::structs::PlayerVote(team.0 as i32);
+    g.vote_timer[vs] = 0;
+    g.secretary_general_timer[vs] = 5;
+    let before: Vec<VoteId> = g.vote_selections.iter().map(|v| v.id).collect();
+    g.do_vote_selection();
+    let selection = g.vote_selections.iter().map(|v| v.id).find(|id| !before.contains(id)).ok_or("no election to hold")?;
+    let paths = s.save("election").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedElection { save: paths.save, selection, turn: s.g.game_turn() })
+}
+
+/// A saved game at a human control point (turn 2 of a duel, seed 12, the Kuriotates) where a
+/// new settler `settler` of the human stands on a city site at (`x`, `y`): founding there asks
+/// city or settlement (BUTTONPOPUP_CONFIRMSETTLEMENT, P7).
+pub struct StagedSettlement {
+    pub save: PathBuf,
+    pub settler: UnitId,
+    pub x: i32,
+    pub y: i32,
+    pub turn: i32,
+}
+
+impl StagedSettlement {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "settlement", "save" => self.save.display().to_string(), "settler" => self.settler, "x" => self.x, "y" => self.y, "turn" => self.turn }
+    }
+}
+
+/// Writes a [`StagedSettlement`] into `dir` (a game directory).
+pub fn settlement(dir: &Path) -> Result<StagedSettlement, String> {
+    let d = ffh_data::global();
+    let mut s = duel_as(dir, 12, 2, Some("CIVILIZATION_KURIOTATES"))?;
+    let h = s.human;
+    let g = &mut s.g;
+    let capital = *g.players[h].cities.first().ok_or("no city")?;
+    let (cx, cy) = (g.cities[capital].x, g.cities[capital].y);
+    let mut site = None;
+    for q in g.map.plot_ids() {
+        let (x, y) = g.map.xy(q);
+        let dist = g.plot_distance(x, y, cx, cy);
+        if (4..=6).contains(&dist) && g.player_can_found(h, x, y, false) && g.map.plots[q].units.is_empty() && site.map_or(true, |(b, _, _)| dist < b) {
+            site = Some((dist, x, y));
+        }
+    }
+    let (_, x, y) = site.ok_or("no city site near the capital")?;
+    let settler = g.player_init_unit(h, d.t::<UnitType>("UNIT_SETTLER"), x, y, None, None);
+    let paths = s.save("settlement").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedSettlement { save: paths.save, settler, x, y, turn: s.g.game_turn() })
 }
