@@ -169,6 +169,33 @@ fn the_staged_attack_shows_odds() {
     assert_eq!(json.req_str("stage"), Ok("attack"));
 }
 
+/// `stage trade` (P6): a civilization met at peace, gold both ways in the trade tables, and a gift
+/// of gold accepted (the browser smoke test's trade screen).
+#[test]
+fn the_staged_trade_has_gold_both_ways() {
+    let tmp = TempDir::new("web-stage-trade");
+    let st = ffh_play::stage::trade(&tmp.0).expect("staged trade");
+    assert_eq!(files_under(&tmp.0), ["trade.ffhsave", "trade.ffhsess"]);
+    let (bytes, sidecar) = ffh_play::save::read_bundle(&st.save).unwrap();
+    let mut s = Session::load(&bytes, sidecar.as_ref(), Arc::new(ffh_play::human::AdvisorAnswerer), SessionOptions { journal: false, ..SessionOptions::default() }).unwrap();
+    let t = s.query_json(&ffh_play::jobj! { "q" => "trade", "with" => st.with }).unwrap();
+    let gold_item = ffh_data::TradeableItem::TRADE_GOLD.0 as i64;
+    let gold = |side: &str| t.req_arr(side).unwrap().iter().find(|i| i.req::<i64>("item") == Ok(gold_item)).cloned();
+    let ours = gold("we_give").expect("our gold in the table");
+    assert!(gold("they_give").is_some(), "{t}");
+    assert_eq!(ours.req::<i64>("max"), Ok(100), "{ours}");
+    let before = s.g.players[s.human].gold;
+    let item = ffh_play::jobj! { "item" => gold_item, "data" => 7 };
+    let deal = ffh_play::jobj! { "c" => "propose_deal", "to" => st.with, "give" => Json::Arr(vec![item]), "get" => Json::Arr(Vec::new()) };
+    let c = ffh_play::command::Command::from_json(s.g.d, &deal).unwrap();
+    match s.execute(&c) {
+        Ok(ffh_play::command::CmdOk::Applied { accepted, .. }) => assert_eq!(accepted, Some(true)),
+        other => panic!("the gift: {other:?}"),
+    }
+    assert_eq!(s.g.players[s.human].gold, before - 7);
+    assert_eq!(st.to_json().req_str("stage"), Ok("trade"));
+}
+
 /// The files a directory holds, relative, sorted.
 fn files_under(dir: &Path) -> Vec<String> {
     let mut out = Vec::new();

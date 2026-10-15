@@ -12,7 +12,8 @@
 // researches), civics (F3, a pick, the revolution), religion (F7), the sliders (F2 and the top
 // bar), diplomacy (F4, the trade screen when a player was met), the cities list (F1), the keys
 // (?), the go-to mode (G, Esc), the map layers, the inspector, debug reveal, AI autoplay and the
-// spectator mode (play, pause, step, stop). It fails on any console error, page error, failed
+// spectator mode (play, pause, step, stop), and the trade screen (`stage trade`: gold offered and
+// accepted). It fails on any console error, page error, failed
 // request or HTTP error, and saves screenshots for review.
 //
 //   node tools/web-smoke.mjs [--bin PATH] [--out DIR] [--turns 4] [--seed 5] [--cdp] [--headed]
@@ -268,10 +269,17 @@ async function waitHuman(what = "the player's turn", ms = 60000) {
 /** Answers what the turn start shows: the deferred popups (first enabled choice) and the
  *  blocking decision (keep / first option). */
 async function answerPopups(log = true) {
-  for (let k = 0; k < 12; k++) {
+  // Done once no dialog shows twice in a row (the next popup comes after the last answer's
+  // command and view refresh).
+  let calm = 0;
+  for (let k = 0; k < 16; k++) {
     await new Promise((r) => setTimeout(r, 300));
     const titles = await modalTitles();
-    if (!titles.length) return;
+    if (!titles.length) {
+      if (++calm >= 2) return;
+      continue;
+    }
+    calm = 0;
     const has = (sel) => b.eval(`!!document.querySelector(${JSON.stringify(`#modals .backdrop:not(.under) ${sel}`)})`);
     if (await has(".modal.decision")) await click("#modals .modal.decision button.option:not([disabled])");
     else if (await has("button.build[data-tech]")) await click("#modals .backdrop:not(.under) button.build[data-tech]");
@@ -744,6 +752,29 @@ async function stagedCapture(bin, saves) {
   await answerPopups();
 }
 
+/** The trade screen (P6, `stage trade`: a civilization met at peace, gold trading): F4, Trade…,
+ *  the tables, 7 gold put into the deal, Propose: accepted, the gold gone. */
+async function stagedTrade(bin, saves) {
+  await loadStaged(bin, saves, "trade");
+  const gold = await S("S.view.me.gold");
+  await b.key("F4");
+  await dialog("Foreign affairs");
+  await until2(`!!document.querySelector(${q(`${TOP} button[data-trade]`)})`, "the Trade button");
+  await click(`${TOP} button[data-trade]`);
+  await dialog(/^Trade with/);
+  await until2(`document.querySelectorAll(${q(`${TOP} .trade .trade-side`)}).length === 2`, "the trade tables");
+  const ours = `${TOP} .trade .trade-side:first-child .trade-item[data-item="TRADE_GOLD"]`;
+  await click(`${ours} button`);
+  await until2(`!!document.querySelector(${q(`${ours}.on input.amount`)})`, "the gold amount");
+  await b.eval(`(() => { const i = document.querySelector(${q(`${ours} input.amount`)}); i.value = "7"; i.dispatchEvent(new Event("input")); })()`);
+  await shot("trade");
+  await click(`${TOP} .modal-buttons button.primary`);
+  await until(async () => !(await modalTitles()).some((t) => t.startsWith("Trade with")), "the deal accepted (the trade screen closes)");
+  await until2(`window.ffh.S.view.me.gold === ${gold - 7}`, "7 gold given");
+  await closeDialog("Foreign affairs");
+  steps.push("trade screen (stage trade): 7 gold offered and accepted");
+}
+
 /** Shift-right-click waypoints (P5 review), on the staged AutoMoves situation (the warrior
  *  `ready` is the only group waiting; another has orders): while Shift is held nothing is sent
  *  and the warrior stays selected; on release both legs are sent for the warrior, appended,
@@ -910,6 +941,7 @@ async function main() {
     await saveAndLoad();
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);
+    await stagedTrade(bin, saves);
     await stagedLoad(bin, saves);
     await shiftWaypoints(bin, saves);
     await newGameElsewhere(bin);

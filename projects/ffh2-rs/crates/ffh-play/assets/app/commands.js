@@ -9,6 +9,8 @@ import { ask } from "./modals.js";
 import { toast, busy } from "./dom.js";
 
 let inFlight = false;
+/** The automatic (`quiet`) command on its way, if any: AutoMoves, a spectated turn, grouping. */
+let automatic = null;
 
 /** Whether a command is being sent (another one waits: the exe sends one at a time). */
 export function sending() {
@@ -17,14 +19,21 @@ export function sending() {
 
 /** Sends command `c` (`{c: "move", ...}`), asks the confirmations, and returns the reply of
  *  the command that was applied, or null (refused, cancelled, or another command in flight).
- *  Messages the command produced are shown; `applied` is emitted with the reply. */
+ *  Messages the command produced are shown; `applied` is emitted with the reply. A command of
+ *  the player's own while an automatic one is on its way (P6: the AutoMoves the group cycle
+ *  sends when it comes round) waits for it rather than being dropped; a second click while the
+ *  player's own command is on its way is still dropped (one request per click). */
 export async function run(c, { quiet = false } = {}) {
+  if (inFlight && automatic && !quiet) await automatic.catch(() => {});
   if (inFlight) return null;
   inFlight = true;
+  const sent = busy(() => loop(c, quiet));
+  if (quiet) automatic = sent;
   try {
-    return await busy(() => loop(c, quiet));
+    return await sent;
   } finally {
     inFlight = false;
+    if (automatic === sent) automatic = null;
   }
 }
 

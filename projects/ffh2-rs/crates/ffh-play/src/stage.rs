@@ -1,15 +1,15 @@
-//! Staged situations for testing the clients (`ffh-play stage capture|attack|automoves|load DIR`,
+//! Staged situations for testing the clients (`ffh-play stage capture|attack|automoves|load|trade DIR`,
 //! and the transports' tests): a saved game at a human control point arranged with rules calls,
 //! so that a client can be tried on a situation a fresh game reaches only by chance (a captured
 //! city's keep/raze decision, an attack, the AutoMoves rule between commands, the transport
-//! picker). Each writes only `DIR/KIND.ffhsave` and its sidecar: the staged game is played with
+//! picker, a trade with a civilization met). Each writes only `DIR/KIND.ffhsave` and its sidecar: the staged game is played with
 //! no journal and no autosaves, so a `DIR` that is also a game's directory keeps its journal and
 //! autosaves (P5 review). Nothing here is used in play.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use ffh_core::ids::UnitId;
+use ffh_core::ids::{PlayerId, UnitId};
 use ffh_core::path::{FinderKind, PathFinder};
 use ffh_core::structs::MissionData;
 use ffh_data::*;
@@ -291,4 +291,38 @@ pub fn load(dir: &Path) -> Result<StagedLoad, String> {
         return Ok(StagedLoad { save: paths.save, unit, transports, x, y, turn: s.g.game_turn() });
     }
     Err("no seed with a coastal capital".into())
+}
+
+/// A saved game at a human control point (turn 4 of a duel, seed 11) where the human has met the
+/// AI player `with` and is at peace with it, knows Currency (gold trading) and both have 100
+/// gold: the diplomacy screen offers a trade whose tables hold gold both ways (a gift of gold is
+/// accepted).
+pub struct StagedTrade {
+    pub save: PathBuf,
+    pub with: PlayerId,
+    pub turn: i32,
+}
+
+impl StagedTrade {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "trade", "save" => self.save.display().to_string(), "with" => self.with, "turn" => self.turn }
+    }
+}
+
+/// Writes a [`StagedTrade`] into `dir` (a game directory).
+pub fn trade(dir: &Path) -> Result<StagedTrade, String> {
+    let mut s = duel_at(dir, 11, 4)?;
+    let h = s.human;
+    let with = s.g.civ_player_ids().find(|&p| p != h && s.g.players[p].alive).ok_or("no AI player")?;
+    let g = &mut s.g;
+    let (my, their) = (g.players[h].team, g.players[with].team);
+    g.team_meet(my, their, false);
+    // Gold trading (`CvTeam::isGoldTrading`: either side's tech with bGoldTrading, Currency).
+    let currency = g.d.techs.keys().find(|&t| g.d.techs[t].gold_trading).ok_or("no gold-trading tech")?;
+    g.team_set_has_tech(my, currency, true, Some(h), false, false);
+    // Gold to trade (C++ `CvPlayer::setGold` is a plain setter).
+    g.players[h].gold = 100;
+    g.players[with].gold = 100;
+    let paths = s.save("trade").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedTrade { save: paths.save, with, turn: s.g.game_turn() })
 }
