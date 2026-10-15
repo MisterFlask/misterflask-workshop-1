@@ -265,10 +265,57 @@ commerce; cottages at two thirds of their grown yield), plus the value of connec
 resource; worked plots count fully, others at 60%; existing improvements are replaced only
 for a clear gain and never one that connects a resource. Roads come from a per-turn plan:
 the next missing plot between two of our cities on the same landmass, and links from improved
-resources. Score / (travel + build time). Workers flee when enemies can reach them and skip
-plots under danger. FfH's AI-only build bans (`CvGameUtils.canBuild`) are respected: no forts,
-no farms for Fallow civs, no workshops before Guilds, no cottages under Aristocracy, no
-windmills under Arete.
+resources. Score / (travel + build time). Workers skip plots under danger and flee (below).
+FfH's AI-only build bans (`CvGameUtils.canBuild`) are respected: no forts, no farms for Fallow
+civs, no workshops before Guilds, no cottages under Aristocracy, no windmills under Arete.
+
+**Workers and barbarians** (`security.rs`, the worker part of round 3's barbarian-security
+branch). The barbarians captured about 125 workers per game (6 civs, 300 turns), most of them
+taken back by the civs a few turns later, and kept the rest as units. Two causes:
+- *Fleeing failed.* A worker an enemy can reach next turn goes to the nearest city. For an AI
+  group that cannot fight, the rules' path finder refuses any destination an enemy can reach
+  (C++ `pathDestValid` with `AI_getPlotDanger`), and the city next to the raider is such a
+  destination, so the worker stayed where it was taken. The flee now moves with
+  `MOVE_IGNORE_DANGER`. A worker on a plot our fighters hold (at least as strong as what can
+  reach it) stays.
+- *Trips past the raider.* A worker in its city chose a safe job a few plots away and stopped
+  for the night next to the raider. Once per view, `security.rs` builds a secure-zone map: the
+  attack power of visible hostile units that can reach each plot within two turns (2 x moves + 1
+  plots, animals only outside borders, a nominal threat near revealed lairs and enemy cities),
+  and the plots within one step of our fighters (garrisoned cities included); a plot is secure
+  when nothing reaches it within two turns or it is that close to a refuge. While an enemy can
+  reach a plot the worker could step on this turn, a job it does not reach this turn is taken
+  only if its overnight stop (the plot reached this turn nearest the job) is out of the enemy's
+  reach and secure.
+
+`ffh stats`, 6 civs, standard map, 300 turns, per game or per civ at turn 300; t is the paired
+t-statistic over seeds; cities lost = civ cities the barbarians took or razed
+(`captured_or_razed_by_barb`, equal to the game log's count):
+
+| | seeds 1-24: before | + flee | + overnight rule | fresh seeds 25-48: before -> after | all 48: t |
+|---|---|---|---|---|---|
+| workers captured by barbarians | 114.6 | 12.3 | 5.7 | 134.3 -> 5.4 | -15.8 |
+| civ cities lost to barbarians | 3.88 | 3.29 | 1.96 | 2.54 -> 2.54 | -1.5 |
+| barbarian units / cities | 106 / 7.1 | 86 / 6.3 | 70 / 5.3 | 112 / 7.3 -> 79 / 6.2 | -4.3 / -3.0 |
+| improvements (turn 200 / 300) | 22.3 / 49.0 | 23.0 / 47.6 | 24.5 / 49.8 | 23.4 / 46.4 -> 23.8 / 49.2 | 1.7 / 0.9 |
+| legacy score (alive civs) | 899 | 908 | 917 | 865 -> 897 | 1.2 |
+| techs / population | 22.1 / 42.4 | 22.5 / 41.7 | 22.7 / 43.0 | 21.6 / 39.7 -> 22.3 / 42.0 | 1.5 / 1.1 |
+| research / commerce | 92 / 126 | 86 / 121 | 93 / 123 | 81 / 111 -> 90 / 122 | 1.0 / 0.7 |
+
+CPU per turn (seeds 1-6, process time): 44.2 -> 42.0 ms; the map costs visible enemy units x
+11^2 plots + our fighters x 9 + one pass over the plots for lairs, and fewer captured workers
+mean fewer barbarian units to move. What is left (about 6 a game): workers sheltering in a city
+that falls, settlers (captured as workers), and workers that leave a city on a several-turn trip
+just after the raider has gone back into the fog.
+
+Tried and not kept: applying the overnight rule whenever an enemy can reach a plot the worker
+could step on within two turns, not one (seeds 1-24: captures 5.7 -> 5.9, techs at turn 300
+-0.8, t -2.2). Round 3 (48 seeds each, no gain or worse): jobs only on secure plots, leaving a
+plot threatened within two turns, fleeing to the least threatened reachable plot instead of the
+nearest city. Not ported from that branch: its defender choice for an overwhelmed garrison of
+two or more (a counterattack unit, a stronger defender, Palisade/Walls, Archery Range): it
+fired rarely, also ran for barbarian cities, skipped `building_allowed`, and did not measurably
+reduce the cities lost.
 
 ## Field armies (`military.rs`, `campaign.rs`)
 
@@ -470,7 +517,8 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 - **City sites** (`sites.rs`): scored at most once per `update()` per player, only within 7
   plots of our cities (overseas: coastal plots within 14 of our coastal cities, only when
   the home landmasses are full), greedily picked with city spacing.
-- Targets, peril and the road plan are computed once per turn per player.
+- Targets, peril, the road plan and the workers' secure-zone map are computed with each view
+  (one per AI call of a turn, plus one after diplomacy on the first).
 - Measured with `ffh stats` (6 civs, standard map, 300 turns, 20 seeds): about 24 ms per
   turn on average (four games in parallel on four cores), two thirds of it inside the
   controller (including the moves it orders).
