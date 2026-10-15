@@ -235,6 +235,7 @@ pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
             return;
         }
     }
+    if sea && crate::civs::sea_worker(g, v, grp, u) { return; } // civ-mechanics
     let ut = g.units[u].unit_type;
     let work_rate = g.d.units[ut].work_rate.max(1);
     let reach = v.flood.run(g, u, 8, false);
