@@ -404,7 +404,7 @@ impl Session {
         match action {
             Action::Event { triggered, .. } => self.shared.pending_events.lock().unwrap().retain(|e| (e.player, e.triggered) != (h, *triggered)),
             // C++: closing an event popup without a choice does nothing; the popup is gone.
-            Action::EndTurn { drop_events: true } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
+            Action::EndTurn { drop_events: true, .. } => self.shared.pending_events.lock().unwrap().retain(|e| e.player != h),
             _ => {}
         }
         if let Action::EndTurn { .. } = action {

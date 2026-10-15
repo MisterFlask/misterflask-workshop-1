@@ -1,11 +1,13 @@
 //! Decisions and pending items (design §2.3).
 //!
 //! * A [`Decision`] is a **blocking** question a rules call asks the human (the C++ popups whose
-//!   "no answer" would lose information): free tech, keep/abandon a city, election, offer,
-//!   religion. It is answered inside the rules call through the session's `Answerer`.
+//!   "no answer" would lose information): free tech, keep/raze/gift a conquered city, keep or
+//!   disband an acquired city, city or settlement (Kuriotates), take control of a new
+//!   civilization, offer, religion. It is answered inside the rules call through the session's
+//!   `Answerer`.
 //! * [`Pending`] lists what the human answers at a control point with a journaled command: the
-//!   **deferred** popups (events, votes, research, idle cities), plus promotions and ready
-//!   groups. Everything but the deferred event ids is derived from `Game`.
+//!   **deferred** popups (events, votes, elections, research, idle cities), plus promotions and
+//!   ready groups. Everything but the deferred event ids is derived from `Game`.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -14,17 +16,25 @@ use ffh_data::*;
 
 use crate::json::Json;
 use crate::names;
+use ffh_core::controller::ConqueredCityChoice;
 
 /// What a blocking decision is about.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecisionKind {
     /// C++ BUTTONPOPUP_CHOOSETECH with `iDiscover > 0`: the options are techs.
     FreeTech,
-    /// C++ BUTTONPOPUP_RAZECITY / DISBANDCITY: option 0 keeps the city, 1 abandons it (raze,
-    /// or disband when `can_raze` is false or the city came by culture or a spell).
-    KeepCity { city: CityId, can_raze: bool },
-    /// C++ BUTTONPOPUP_CHOOSEELECTION: one option per resolution, then "none".
-    Election { selection: VoteId },
+    /// C++ BUTTONPOPUP_RAZECITY (a human's conquest): keep, then raze when `can_raze`, then
+    /// give to `gift_to` (the liberation player) when it is offered.
+    KeepCity { city: CityId, can_raze: bool, gift_to: Option<PlayerId> },
+    /// C++ BUTTONPOPUP_DISBANDCITY (a city that came by culture, a spell or an event): option 0
+    /// keeps it, 1 disbands it.
+    DisbandCity { city: CityId },
+    /// FfH BUTTONPOPUP_CONFIRMSETTLEMENT (a Kuriotates city below the limit): option 0 makes a
+    /// city (radius 3), 1 a settlement.
+    Settlement { city: CityId },
+    /// FfH's "take control" popup after the Infernal Pact or the Mercurian Gate: option 0 plays
+    /// `player` from now on, 1 keeps the human's civilization.
+    TakeControl { player: PlayerId },
     /// A deal offered to the human (C++ diplomacy screen): option 0 accepts, 1 refuses.
     Offer { from: PlayerId },
     /// C++ BUTTONPOPUP_FOUND_RELIGION: the options are religions.
@@ -37,7 +47,9 @@ impl DecisionKind {
         match self {
             DecisionKind::FreeTech => "free_tech",
             DecisionKind::KeepCity { .. } => "keep_city",
-            DecisionKind::Election { .. } => "election",
+            DecisionKind::DisbandCity { .. } => "disband_city",
+            DecisionKind::Settlement { .. } => "settlement",
+            DecisionKind::TakeControl { .. } => "take_control",
             DecisionKind::Offer { .. } => "offer",
             DecisionKind::Religion => "religion",
         }
@@ -47,7 +59,8 @@ impl DecisionKind {
 /// One button of a decision.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DecisionOption {
-    /// Stable key: a type name (`TECH_X`), or `keep` / `abandon` / `accept` / `refuse` / `none`.
+    /// Stable key: a type name (`TECH_X`), or `keep` / `raze` / `gift` / `disband` / `city` /
+    /// `settlement` / `yes` / `no` / `accept` / `refuse`.
     pub key: String,
     pub label: String,
     pub help: String,
@@ -158,50 +171,112 @@ pub fn free_tech(g: &Game, p: PlayerId, techs: &[TechType], advisor: Option<Tech
     }
 }
 
-/// Keep or abandon an acquired city (F10: the conquest and culture/spell popups ask the same
-/// controller question, so one neutral modal serves both).
-pub fn keep_city(g: &Game, p: PlayerId, c: CityId, advisor_razes: bool) -> Decision {
+fn city_context(g: &Game, c: CityId, other: Option<PlayerId>) -> DecisionContext {
     let city = &g.cities[c];
-    let can_raze = g.player_can_raze(p, c);
-    let (title, abandon, help) = if can_raze {
-        ("Raze or keep?", "Raze", "Raze: the city is destroyed. (Also asked when a city joins you by culture or a spell; then abandoning disbands it.)")
-    } else {
-        ("Disband?", "Disband", "Disband: the city is removed.")
+    DecisionContext { plot: Some((city.x, city.y)), city: Some(c), unit: None, other_player: other }
+}
+
+/// BUTTONPOPUP_RAZECITY (`launchRazeCityPopup`): keep (button 0), raze (button 1, when
+/// `canRaze`), return the city to its liberation player (button 2, when offered). The options
+/// are the buttons offered, in that order ([`keep_city_choice`] maps an answer back).
+pub fn keep_city(g: &Game, p: PlayerId, c: CityId, can_raze: bool, gift_to: Option<PlayerId>, advisor: ConqueredCityChoice) -> Decision {
+    let city = &g.cities[c];
+    let mut options = vec![DecisionOption::new("keep", "Keep")];
+    if can_raze {
+        let mut o = DecisionOption::new("raze", "Raze");
+        o.help = "The city is destroyed.".into();
+        options.push(o);
+    }
+    if let Some(to) = gift_to {
+        let mut o = DecisionOption::new("gift", format!("Return it to {}", crate::view::player_name(g, to)));
+        o.help = "The city goes back to the civilization with the most culture in it, a teammate, vassal or open-borders partner of yours.".into();
+        options.push(o);
+    }
+    let key = match advisor {
+        ConqueredCityChoice::Keep => "keep",
+        ConqueredCityChoice::Raze => "raze",
+        ConqueredCityChoice::Gift => "gift",
     };
-    let mut abandon_opt = DecisionOption::new("abandon", abandon);
-    abandon_opt.help = help.into();
     Decision {
         id: 0,
         player: p,
-        kind: DecisionKind::KeepCity { city: c, can_raze },
-        title: title.into(),
-        text: format!("{} (size {}) is now yours.", city.name, city.population),
-        options: vec![DecisionOption::new("keep", "Keep"), abandon_opt],
-        advisor: Some(advisor_razes as usize),
-        context: DecisionContext { plot: Some((city.x, city.y)), city: Some(c), unit: None, other_player: city.previous_owner },
+        kind: DecisionKind::KeepCity { city: c, can_raze, gift_to },
+        title: if can_raze { "Raze or keep?".into() } else { "Keep the city?".into() },
+        text: format!("You have captured {} (size {}).", city.name, city.population),
+        advisor: options.iter().position(|o| o.key == key),
+        options,
+        context: city_context(g, c, city.previous_owner),
     }
 }
 
-/// Election: one option per resolution of the selection, then "none" (the popup's
-/// TXT_KEY_NONE button). The answer `None` = no election (C++ sends nothing).
-pub fn election(g: &Game, p: PlayerId, vs: &VoteSelectionData, advisor: Option<usize>) -> Decision {
-    let d = g.d;
-    let mut options: Vec<DecisionOption> = vs
-        .vote_options
-        .iter()
-        .map(|o| DecisionOption::new(names::name(d, o.vote), if o.text.is_empty() { names::display(d, o.vote).into_owned() } else { o.text.clone() }))
-        .collect();
-    options.push(DecisionOption::new("none", "None"));
-    let none = options.len() - 1;
+/// The popup button chosen in a [`keep_city`] decision.
+pub fn keep_city_choice(d: &Decision, option: usize) -> ConqueredCityChoice {
+    match d.options.get(option).map(|o| o.key.as_str()) {
+        Some("raze") => ConqueredCityChoice::Raze,
+        Some("gift") => ConqueredCityChoice::Gift,
+        _ => ConqueredCityChoice::Keep,
+    }
+}
+
+/// BUTTONPOPUP_DISBANDCITY (`launchDisbandCityPopup`): keep (button 0) or disband (button 1).
+pub fn disband_city(g: &Game, p: PlayerId, c: CityId, advisor_disbands: bool) -> Decision {
+    let city = &g.cities[c];
+    let mut disband = DecisionOption::new("disband", "Disband");
+    disband.help = "The city is removed.".into();
     Decision {
         id: 0,
         player: p,
-        kind: DecisionKind::Election { selection: vs.id },
-        title: names::display(d, vs.vote_source).into_owned(),
-        text: "As secretary general, choose the resolution to put to the vote.".into(),
-        options,
-        advisor: Some(advisor.filter(|&i| i < none).unwrap_or(none)),
-        context: DecisionContext::default(),
+        kind: DecisionKind::DisbandCity { city: c },
+        title: "Keep the city?".into(),
+        text: format!("{} (size {}) has joined your civilization. Keep it or disband it?", city.name, city.population),
+        options: vec![DecisionOption::new("keep", "Keep"), disband],
+        advisor: Some(advisor_disbands as usize),
+        context: city_context(g, c, city.previous_owner),
+    }
+}
+
+/// BUTTONPOPUP_CONFIRMSETTLEMENT (`launchConfirmSettlementPopup`): a city (button 0: radius 3)
+/// or a settlement (button 1).
+pub fn settlement(g: &Game, p: PlayerId, c: CityId, advisor_settlement: bool) -> Decision {
+    let city = &g.cities[c];
+    let mut as_city = DecisionOption::new("city", "City");
+    as_city.help = format!("A full city that also works the outer ring of plots (radius 3); you may have {} cities.", g.players[p].max_cities);
+    let mut as_settlement = DecisionOption::new("settlement", "Settlement");
+    as_settlement.help = "Settlements produce no gold, research or culture, nothing can be built in them, and they cost no maintenance (they do not count against the city limit).".into();
+    Decision {
+        id: 0,
+        player: p,
+        kind: DecisionKind::Settlement { city: c },
+        title: format!("{}: city or settlement?", city.name),
+        text: names::text(g.d, "TXT_KEY_POPUP_SETTLEMENT_OR_CITY").to_string(),
+        options: vec![as_city, as_settlement],
+        advisor: Some(advisor_settlement as usize),
+        context: city_context(g, c, None),
+    }
+}
+
+/// FfH's take-control popup (TXT_KEY_POPUP_CONTROL_INFERNAL / _MERCURIANS): yes (button 0) or
+/// no (button 1).
+pub fn take_control(g: &Game, p: PlayerId, new: PlayerId, advisor_takes: bool) -> Decision {
+    let name = crate::view::player_name(g, new);
+    let mut yes = DecisionOption::new("yes", "Yes");
+    yes.help = format!("You play {name} from now on; the AI plays your current civilization.");
+    // The popup's text by the civilization that appeared (CvEventManager.py).
+    let civ = g.player_get_civilization_type(new).map(|c| g.d.type_name(c));
+    let text = match civ {
+        Some("CIVILIZATION_INFERNAL") => names::text(g.d, "TXT_KEY_POPUP_CONTROL_INFERNAL").to_string(),
+        Some("CIVILIZATION_MERCURIANS") => names::text(g.d, "TXT_KEY_POPUP_CONTROL_MERCURIANS").to_string(),
+        _ => format!("{name} have entered the world. Would you like to abandon your civilization and play as them instead?"),
+    };
+    Decision {
+        id: 0,
+        player: p,
+        kind: DecisionKind::TakeControl { player: new },
+        title: "Take control?".into(),
+        text,
+        options: vec![yes, DecisionOption::new("no", "No")],
+        advisor: Some(if advisor_takes { 0 } else { 1 }),
+        context: DecisionContext { other_player: Some(new), ..Default::default() },
     }
 }
 
@@ -396,19 +471,21 @@ pub struct PendingVote {
 pub struct Pending {
     pub events: Vec<PendingEvent>,
     pub votes: Vec<PendingVote>,
+    /// The secretary general's elections waiting for the human (BUTTONPOPUP_CHOOSEELECTION).
+    pub elections: Vec<PendingElection>,
     pub research_needed: bool,
     pub idle_cities: Vec<CityId>,
     pub promotions_ready: Vec<UnitId>,
     pub ready_groups: Vec<GroupId>,
-    /// Groups the human cannot order that wait for AI moves (automated or FfH AI-controlled;
-    /// they idle until ffh-ai implements `update_automated_group`, F15).
+    /// Groups the human cannot order that the AI moves (automated or FfH AI-controlled) and that
+    /// have moves left: the human's next `update()` moves them (`update_automated_group`).
     pub ai_groups_idle: Vec<GroupId>,
 }
 
 impl Pending {
-    /// Deferred popups still open (the end-turn gate's events, votes and research).
+    /// Deferred popups still open (the end-turn gate's events, votes, elections and research).
     pub fn popups(&self) -> usize {
-        self.events.len() + self.votes.len() + self.research_needed as usize
+        self.events.len() + self.votes.len() + self.elections.len() + self.research_needed as usize
     }
 
     pub fn to_json(&self) -> Json {
@@ -432,6 +509,14 @@ impl Pending {
                 "text" => v.text.as_str(),
                 "choices" => Json::Arr(v.choices.iter().map(|c| Json::Int(c.0 as i64)).collect()),
                 "last_turn" => v.last_turn,
+            }).collect()),
+            "elections" => Json::Arr(self.elections.iter().map(|e| crate::jobj! {
+                "selection" => e.selection,
+                "source" => Json::idx(e.source),
+                "options" => Json::Arr(e.options.iter().map(|o| crate::jobj! {
+                    "vote" => Json::idx(o.vote),
+                    "text" => o.text.as_str(),
+                }).collect()),
             }).collect()),
             "research_needed" => self.research_needed,
             "idle_cities" => self.idle_cities.clone(),
@@ -524,6 +609,46 @@ pub fn pending_votes(g: &Game, p: PlayerId) -> Vec<PendingVote> {
     out
 }
 
+/// An election waiting for the human secretary general (C++ BUTTONPOPUP_CHOOSEELECTION,
+/// `launchChooseElectionPopup`): one button per resolution of the selection, then "none".
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingElection {
+    pub selection: VoteId,
+    pub source: VoteSourceType,
+    /// The resolutions (`aVoteOptions`): the answer is an index, or none.
+    pub options: Vec<ElectionOption>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ElectionOption {
+    pub vote: VoteType,
+    /// The option's text as the popup shows it (`szText`: the resolution, the votes needed).
+    pub text: String,
+}
+
+/// The elections waiting for the human `p`: the vote selections ffh-core keeps because a human
+/// secretary general's controller deferred them (an AI secretary's selection is decided and
+/// deleted at once, and an empty one is never kept), while `p` is a human (FfH can move the
+/// human to another slot; the popup goes with the human).
+pub fn pending_elections(g: &Game, p: PlayerId) -> Vec<PendingElection> {
+    if !g.players[p].human {
+        return Vec::new();
+    }
+    let d = g.d;
+    g.vote_selections
+        .iter()
+        .map(|vs| PendingElection {
+            selection: vs.id,
+            source: vs.vote_source,
+            options: vs
+                .vote_options
+                .iter()
+                .map(|o| ElectionOption { vote: o.vote, text: if o.text.is_empty() { names::display(d, o.vote).into_owned() } else { o.text.clone() } })
+                .collect(),
+        })
+        .collect()
+}
+
 /// The research popup is due: no current research and something can be researched.
 pub fn research_needed(g: &Game, p: PlayerId) -> bool {
     g.game_state != GameStateType::GAMESTATE_OVER
@@ -557,6 +682,7 @@ pub fn pending(g: &Game, p: PlayerId, events: &[TriggeredId]) -> Pending {
     Pending {
         events: events.iter().filter_map(|&id| pending_event(g, p, id)).collect(),
         votes: pending_votes(g, p),
+        elections: pending_elections(g, p),
         research_needed: research_needed(g, p),
         idle_cities: pl.cities.iter().copied().filter(|&c| !g.city_is_production(c) && !g.cities[c].production_automated).collect(),
         promotions_ready: pl.units.iter().copied().filter(|&u| g.units[u].promotion_ready).collect(),

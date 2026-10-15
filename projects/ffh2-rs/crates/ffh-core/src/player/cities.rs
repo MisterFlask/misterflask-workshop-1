@@ -15,6 +15,7 @@
 #![allow(unused_imports)]
 
 use crate::city::City;
+use crate::controller::ConqueredCityChoice;
 use crate::defs::NUM_CITY_PLOTS;
 use crate::game::Game;
 use crate::ids::*;
@@ -61,10 +62,12 @@ fn ai_conquer_city(g: &mut Game, p: PlayerId, c: CityId) {
 }
 
 /// The human player's BUTTONPOPUP_RAZECITY popup (CvDLLButtonPopup `launchRazeCityPopup` +
-/// `OnOkClicked`) as a controller decision: raze (button 1, offered when `raze`) or keep
-/// (button 0: choose production, `cityAcquiredAndKept`). The gift button (2: return the city to
-/// its liberation player via TASK_GIFT) has no controller decision, so the city is kept.
-fn raze_city_popup(g: &mut Game, p: PlayerId, c: CityId, raze: bool) {
+/// `OnOkClicked`) as the controller's `conquered_city_choice`: keep (button 0: choose
+/// production, `cityAcquiredAndKept`), raze (button 1, offered when `raze`: TASK_RAZE) or give
+/// the city to its liberation player (button 2, offered when `gift_to` is set:
+/// `cityAcquiredAndKept`, then TASK_GIFT). Button 3 ("let me see the city first") shows the
+/// city and asks again: interface only. An answer whose button is not offered keeps the city.
+fn raze_city_popup(g: &mut Game, p: PlayerId, c: CityId, raze: bool, gift_to: Option<PlayerId>) {
     // launchRazeCityPopup: PLAYER_ALWAYS_RAZES_CITIES (0 in FFH2) razes without asking.
     if g.d.defines.player_always_razes_cities != 0 {
         g.player_raze(p, c);
@@ -72,21 +75,32 @@ fn raze_city_popup(g: &mut Game, p: PlayerId, c: CityId, raze: bool) {
     }
 
     let controller = g.controller(p);
-    if raze && controller.raze_conquered_city(g, p, c) {
-        g.city_do_task(c, TaskType::TASK_RAZE, -1, -1, false, false, false, false);
-    } else {
-        g.city_choose_production(c, None, None, None, false, false);
-        g.ev_city_acquired_and_kept(p, c);
+    match controller.conquered_city_choice(g, p, c, raze, gift_to) {
+        ConqueredCityChoice::Raze if raze => {
+            g.city_do_task(c, TaskType::TASK_RAZE, -1, -1, false, false, false, false);
+        }
+        ConqueredCityChoice::Gift if gift_to.is_some() => {
+            // CvMessageControl::sendDoTask(TASK_GIFT, eHighestCulturePlayer): CvNetDoTask finds
+            // the city among the (human) owner's cities.
+            let to = gift_to.expect("gift offered");
+            g.ev_city_acquired_and_kept(p, c);
+            if g.cities.contains(c) && g.cities[c].owner == p {
+                g.city_do_task(c, TaskType::TASK_GIFT, to.i(), -1, false, false, false, false);
+            }
+        }
+        _ => {
+            g.city_choose_production(c, None, None, None, false, false);
+            g.ev_city_acquired_and_kept(p, c);
+        }
     }
 }
 
 /// The human player's BUTTONPOPUP_DISBANDCITY popup for a city acquired without conquest or
-/// trade (culture flip, FFH spells): disband (button 1, TASK_DISBAND) or keep (button 0:
-/// choose production, `cityAcquiredAndKept`). Popup choice -> controller decision; its "do not
-/// keep this city" answer is `raze_conquered_city`.
+/// trade (culture flip, FFH spells): disband (button 1, TASK_DISBAND) or keep (button 0: choose
+/// production, `cityAcquiredAndKept`), the controller's `disband_acquired_city`.
 fn disband_city_popup(g: &mut Game, p: PlayerId, c: CityId) {
     let controller = g.controller(p);
-    if controller.raze_conquered_city(g, p, c) {
+    if controller.disband_acquired_city(g, p, c) {
         g.city_do_task(c, TaskType::TASK_DISBAND, -1, -1, false, false, false, false);
     } else {
         g.city_choose_production(c, None, None, None, false, false);
@@ -547,7 +561,7 @@ impl Game {
                     });
 
                     if raze || gift {
-                        raze_city_popup(self, p, new_city, raze);
+                        raze_city_popup(self, p, new_city, raze, liberation_player.filter(|_| gift));
                     } else {
                         self.city_choose_production(new_city, None, None, None, false, false);
                         self.ev_city_acquired_and_kept(p, new_city);

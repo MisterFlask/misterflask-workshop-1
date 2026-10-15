@@ -47,6 +47,9 @@ pub enum Command {
     ProposeDeal { to: PlayerId, give: Vec<TradeData>, get: Vec<TradeData> },
     Event { triggered: TriggeredId, event: EventType },
     Vote { vote: VoteId, choice: PlayerVote },
+    /// The secretary general's election (BUTTONPOPUP_CHOOSEELECTION): `option` indexes the
+    /// selection's resolutions; `None` is the popup's "none" button (no resolution).
+    Election { selection: VoteId, option: Option<usize> },
     SetOption { option: PlayerOptionType, value: bool },
     AutoMoves,
     EndTurn { force: bool },
@@ -70,7 +73,7 @@ pub enum Confirm {
     /// owner and `data2` = its id.
     LoadUnit { transports: Vec<UnitId> },
     /// The end-turn gate (§2.3): resend with `force: true`.
-    EndTurn { events: usize, votes: usize, research: bool, ready_units: usize },
+    EndTurn { events: usize, votes: usize, elections: usize, research: bool, ready_units: usize },
 }
 
 impl Confirm {
@@ -81,8 +84,8 @@ impl Confirm {
             Confirm::CastGlobal { spell } => crate::jobj! { "kind" => "cast_global", "spell" => Json::idx(*spell) },
             Confirm::CastWar { spell, team } => crate::jobj! { "kind" => "cast_war", "spell" => Json::idx(*spell), "team" => *team },
             Confirm::LoadUnit { transports } => crate::jobj! { "kind" => "load_unit", "transports" => transports.clone() },
-            Confirm::EndTurn { events, votes, research, ready_units } => crate::jobj! {
-                "kind" => "end_turn", "events" => *events, "votes" => *votes, "research" => *research, "ready_units" => *ready_units,
+            Confirm::EndTurn { events, votes, elections, research, ready_units } => crate::jobj! {
+                "kind" => "end_turn", "events" => *events, "votes" => *votes, "elections" => *elections, "research" => *research, "ready_units" => *ready_units,
             },
         }
     }
@@ -176,6 +179,7 @@ pub const COMMAND_NAMES: &[&str] = &[
     "propose_deal",
     "event",
     "vote",
+    "election",
     "set_option",
     "auto_moves",
     "end_turn",
@@ -202,6 +206,7 @@ pub const COMMAND_FIELDS: &[(&str, &[&str])] = &[
     ("propose_deal", &["to", "give", "get"]),
     ("event", &["triggered", "event"]),
     ("vote", &["vote", "choice"]),
+    ("election", &["selection", "option"]),
     ("set_option", &["option", "value"]),
     ("auto_moves", &[]),
     ("end_turn", &["force"]),
@@ -287,6 +292,7 @@ impl Command {
             Command::ProposeDeal { .. } => "propose_deal",
             Command::Event { .. } => "event",
             Command::Vote { .. } => "vote",
+            Command::Election { .. } => "election",
             Command::SetOption { .. } => "set_option",
             Command::AutoMoves => "auto_moves",
             Command::EndTurn { .. } => "end_turn",
@@ -363,6 +369,7 @@ impl Command {
                 vote: j.req("vote")?,
                 choice: names::decode_player_vote(j.req_value("choice")?).map_err(|e| FieldError::new("choice", e))?,
             },
+            "election" => Command::Election { selection: j.req("selection")?, option: j.opt("option")? },
             "set_option" => Command::SetOption { option: names::field(d, j, "option")?, value: j.req("value")? },
             "auto_moves" => Command::AutoMoves,
             "end_turn" => Command::EndTurn { force: flag("force")? },
@@ -430,6 +437,7 @@ impl Command {
             }
             Command::Event { triggered, event } => j.with("triggered", *triggered).with("event", Json::idx(*event)),
             Command::Vote { vote, choice } => j.with("vote", *vote).with("choice", choice.0),
+            Command::Election { selection, option } => j.with("selection", *selection).with("option", *option),
             Command::SetOption { option, value } => j.with("option", Json::idx(*option)).with("value", *value),
             Command::AutoMoves => j,
             Command::EndTurn { force } => j.with("force", *force),
@@ -459,6 +467,9 @@ impl Command {
             Command::UpdateCivics { civics } => format!("civics {}", civics.iter().map(|&c| names::name(d, c)).collect::<Vec<_>>().join(", ")),
             Command::Event { triggered, event } => format!("event {} for triggered {}", names::name(d, *event), triggered.0),
             Command::Vote { vote, choice } => format!("vote {} on {}", names::player_vote_name(*choice).map_or_else(|| format!("team {}", choice.0), str::to_string), vote.0),
+            Command::Election { selection, option } => {
+                format!("election {}: {}", selection.0, option.map_or_else(|| "none".to_string(), |i| format!("resolution {i}")))
+            }
             Command::SetOption { option, value } => format!("{} = {value}", names::name(d, *option)),
             Command::Convert { religion } => format!("convert to {}", religion.map_or("no religion".to_string(), |r| names::name(d, r).to_string())),
             Command::PercentChange { commerce, change } => format!("{} {change:+}%", names::name(d, *commerce)),
@@ -533,10 +544,13 @@ pub enum Action {
     ImplementDeal { to: PlayerId, give: Vec<TradeData>, get: Vec<TradeData> },
     Event { triggered: TriggeredId, event: EventType },
     Vote { vote: VoteId, choice: PlayerVote },
+    /// CvNetChooseElection: `setVoteChosen(option, selection)`.
+    Election { selection: VoteId, option: Option<usize> },
     SetOption { option: PlayerOptionType, value: bool },
     AutoMoves,
-    /// `drop_events`: the forced end turn closes the open event popups.
-    EndTurn { drop_events: bool },
+    /// `drop_events`: the forced end turn closes the open event popups; `close_elections`: and
+    /// the open election popups (no resolution, as the popup's "none").
+    EndTurn { drop_events: bool, close_elections: Vec<VoteId> },
     AutoPlay { turns: i32 },
 }
 
@@ -964,6 +978,19 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             Plan::Apply(Action::Vote { vote: *vote, choice: *choice })
         }
 
+        Command::Election { selection, option } => {
+            // The human's open election popups are the selections ffh-core kept for it.
+            let Some(e) = decision::pending_elections(g, h).into_iter().find(|e| e.selection == *selection) else {
+                return Err(CmdErr::Gone);
+            };
+            if let Some(i) = option {
+                if *i >= e.options.len() {
+                    return Err(invalid(format!("field `option`: the election has {} resolutions (0..{}), or none", e.options.len(), e.options.len())));
+                }
+            }
+            Plan::Apply(Action::Election { selection: *selection, option: *option })
+        }
+
         Command::SetOption { option, value } => {
             const ALLOWED: [PlayerOptionType; 5] = [
                 PlayerOptionType::PLAYEROPTION_STACK_ATTACK,
@@ -984,9 +1011,15 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             let p = decision::pending(g, h, ctx.events);
             let ready = p.ready_groups.len();
             if !force && (p.popups() > 0 || ready > 0) {
-                return Ok(Plan::Confirm(Confirm::EndTurn { events: p.events.len(), votes: p.votes.len(), research: p.research_needed, ready_units: ready }));
+                return Ok(Plan::Confirm(Confirm::EndTurn {
+                    events: p.events.len(),
+                    votes: p.votes.len(),
+                    elections: p.elections.len(),
+                    research: p.research_needed,
+                    ready_units: ready,
+                }));
             }
-            Plan::Apply(Action::EndTurn { drop_events: !p.events.is_empty() })
+            Plan::Apply(Action::EndTurn { drop_events: !p.events.is_empty(), close_elections: p.elections.iter().map(|e| e.selection).collect() })
         }
 
         Command::AutoPlay { turns } => {
@@ -1150,9 +1183,17 @@ pub fn apply(g: &mut Game, h: PlayerId, action: &Action) {
         Action::ImplementDeal { to, give, get } => g.implement_deal(h, *to, give, get, false),
         Action::Event { triggered, event } => g.player_apply_event(h, *event, *triggered, true),
         Action::Vote { vote, choice } => g.cast_vote(h, *vote, *choice),
+        // CvNetChooseElection::Execute: setVoteChosen(iSelection, iVoteId). The popup's "none"
+        // sends nothing in C++ and leaves the selection unused; deleting it here is the same.
+        Action::Election { selection, option } => g.set_vote_chosen(*option, *selection),
         Action::SetOption { option, value } => g.players[h].options[*option] = *value,
         Action::AutoMoves => g.player_set_auto_moves(h, true),
-        Action::EndTurn { .. } => g.player_set_end_turn(h, true),
+        Action::EndTurn { close_elections, .. } => {
+            for &selection in close_elections {
+                g.set_vote_chosen(None, selection);
+            }
+            g.player_set_end_turn(h, true)
+        }
         Action::AutoPlay { turns } => g.set_ai_auto_play(*turns),
     }
 }
@@ -1191,6 +1232,8 @@ mod tests {
             Command::Event { triggered: TriggeredId(4), event: EventType(10) },
             Command::Vote { vote: VoteId(1), choice: PlayerVote::PLAYER_VOTE_NEVER },
             Command::Vote { vote: VoteId(1), choice: PlayerVote(3) },
+            Command::Election { selection: VoteId(2), option: Some(1) },
+            Command::Election { selection: VoteId(2), option: None },
             Command::SetOption { option: PlayerOptionType::PLAYEROPTION_QUICK_MOVES, value: false },
             Command::AutoMoves,
             Command::EndTurn { force: true },

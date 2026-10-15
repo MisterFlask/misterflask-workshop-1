@@ -42,6 +42,7 @@ pub struct BotStats {
     pub confirms: usize,
     pub events_answered: usize,
     pub votes_answered: usize,
+    pub elections_answered: usize,
     pub research_chosen: usize,
     pub productions: usize,
     pub found_orders: usize,
@@ -431,7 +432,7 @@ impl Bot {
         }
     }
 
-    /// Events, votes, research.
+    /// Events, votes, elections, research.
     fn popups(&mut self, s: &mut Session, p: &Json) {
         for e in arr(p, "events") {
             let options: Vec<i64> = arr(e, "options").iter().filter(|o| flag(o, "enabled")).map(|o| int(o, "event")).collect();
@@ -448,6 +449,15 @@ impl Bot {
             let choice = ffh_core::structs::PlayerVote(choices[self.rand(choices.len())] as i32);
             if self.ok(s, Command::Vote { vote: VoteId(int(v, "vote") as u32), choice }) {
                 self.stats.votes_answered += 1;
+            }
+        }
+        for e in arr(p, "elections") {
+            // One of the resolutions, or none.
+            let n = arr(e, "options").len();
+            let pick = self.rand(n + 1);
+            let option = (pick < n).then_some(pick);
+            if self.ok(s, Command::Election { selection: VoteId(int(e, "selection") as u32), option }) {
+                self.stats.elections_answered += 1;
             }
         }
         if flag(p, "research_needed") {

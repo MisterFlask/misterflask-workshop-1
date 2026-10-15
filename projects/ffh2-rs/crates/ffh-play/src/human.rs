@@ -2,12 +2,14 @@
 //! human, following what the C++ does for a human (popups) rather than the AI.
 //!
 //! * **Deferred** (C++ queues a popup and the port's "no answer" equals an unanswered popup):
-//!   production, events, diplomatic votes, the research popup. The human answers at the next
-//!   control point with the C++ net message's port (`command.rs`).
-//! * **Blocking** (no answer would lose information): free tech, keep/raze/disband, election,
-//!   offer, religion. The [`Answerer`] answers inside the rules call.
-//! * **Advisor**: AI work the C++ also does for humans (`AI_getAttitude`, automated groups) goes
-//!   to a private `ffh_ai::Ai` (never the AI players' instance).
+//!   production, events, diplomatic votes, elections, the research popup. The human answers at
+//!   the next control point with the C++ net message's port (`command.rs`).
+//! * **Blocking** (no answer would lose information): free tech, keep/raze/gift a conquered
+//!   city, keep/disband an acquired city, city or settlement, take control, offer, religion. The
+//!   [`Answerer`] answers inside the rules call.
+//! * **Advisor**: AI work the C++ also does for humans (`AI_getAttitude`, `doResearch`'s
+//!   `AI_chooseResearch`, automated groups) goes to a private `ffh_ai::Ai` (never the AI
+//!   players' instance).
 //! * **Fixed**: humans keep captured units and accept gifts without being asked.
 //!
 //! When the slot is not human (FfH AI autoplay: `setDisableHuman`), every method delegates to
@@ -17,7 +19,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use ffh_ai::Ai;
-use ffh_core::controller::Controller;
+use ffh_core::controller::{ConqueredCityChoice, Controller};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_core::structs::*;
@@ -48,16 +50,21 @@ pub const POLICIES: &[(&str, Policy)] = &[
     ("play_turn", Policy::Advisor),
     ("choose_production", Policy::Deferred),
     ("choose_research", Policy::Deferred),
+    ("ai_choose_research", Policy::Advisor),
     ("choose_free_tech", Policy::Blocking),
     ("raze_conquered_city", Policy::Blocking),
+    ("conquered_city_choice", Policy::Blocking),
+    ("disband_acquired_city", Policy::Blocking),
+    ("confirm_settlement", Policy::Blocking),
     ("choose_event", Policy::Deferred),
-    ("choose_election", Policy::Blocking),
+    ("choose_election", Policy::Deferred),
     ("diplo_vote", Policy::Deferred),
     ("keep_captured_unit", Policy::Fixed),
     ("accept_unit", Policy::Fixed),
     ("consider_offer", Policy::Blocking),
     ("choose_religion", Policy::Blocking),
     ("attitude", Policy::Advisor),
+    ("take_control", Policy::Blocking),
     ("update_automated_group", Policy::Advisor),
 ];
 
@@ -148,7 +155,8 @@ pub struct Stats {
     pub decisions: Vec<(&'static str, usize)>,
     /// Event popups deferred.
     pub events_deferred: usize,
-    /// The research rule's advisor picks (the C++ `AI_chooseResearch` call of `doResearch`).
+    /// The advisor's picks for the human at `doResearch`'s `AI_chooseResearch` call
+    /// (`ai_choose_research`).
     pub research_ai_picks: usize,
     /// Times the rules moved the human to another slot (`reassignPlayerAdvanced`).
     pub reassigned: usize,
@@ -161,32 +169,6 @@ impl Stats {
 
     pub fn decisions_of(&self, kind: &str) -> usize {
         self.decisions.iter().find(|(k, _)| *k == kind).map_or(0, |(_, n)| *n)
-    }
-}
-
-/// Where and in what state the first research call of `doResearch` was deferred. Nothing changes
-/// between that call and the `AI_chooseResearch` call that follows it, so a later call in the same
-/// slice that finds another state (a tech was acquired meanwhile) is not taken for it.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ResearchMark {
-    pub turn: i32,
-    pub slice: i32,
-    pub player: PlayerId,
-    /// Techs the player's team has.
-    pub techs: usize,
-    pub overflow: i32,
-}
-
-impl ResearchMark {
-    fn of(g: &Game, p: PlayerId) -> ResearchMark {
-        let team = g.players[p].team;
-        ResearchMark {
-            turn: g.game_turn(),
-            slice: g.turn_slice,
-            player: p,
-            techs: g.teams[team].has_tech.iter().filter(|&&b| b).count(),
-            overflow: g.players[p].overflow_research,
-        }
     }
 }
 
@@ -206,8 +188,6 @@ pub struct SessionShared {
     /// Deferred event popups in trigger order (C++ the player's popup queue; saved in the
     /// sidecar).
     pub pending_events: Mutex<Vec<DeferredEvent>>,
-    /// The research-site rule's mark (see `HumanController::choose_research`).
-    pub research_mark: Mutex<Option<ResearchMark>>,
     pub next_decision: AtomicU32,
     /// The decision being asked, if any (saving is refused meanwhile).
     pub open_decision: Mutex<Option<Decision>>,
@@ -223,7 +203,6 @@ impl SessionShared {
     pub fn new(journal: Journal) -> SessionShared {
         SessionShared {
             pending_events: Mutex::new(Vec::new()),
-            research_mark: Mutex::new(None),
             next_decision: AtomicU32::new(1),
             open_decision: Mutex::new(None),
             journal: Mutex::new(journal),
@@ -342,30 +321,22 @@ impl Controller for HumanController {
         }
     }
 
-    /// The research-site rule (design §2.3, F5). `CvPlayer::doResearch` asks twice in one slice
-    /// while research is empty: `chooseTech` (the human's CHOOSETECH popup, deferred) and then,
-    /// after turn 4, `AI_chooseResearch` (which C++ runs silently for humans too). The first call
-    /// sets a [`ResearchMark`] and defers; a second call in the same slice and state is the AI
-    /// pick (the next `update` is a new slice, so the mark never outlives its slice).
-    /// Calls during the human's own turn (a tech from a great person or a trade) defer.
+    /// C++ BUTTONPOPUP_CHOOSETECH (research, `chooseTech(0)`): deferred, the empty research is
+    /// `pending.research_needed` and the human answers with `research` (CvNetResearch).
     fn choose_research(&self, g: &Game, p: PlayerId) -> Option<TechType> {
         if !g.players[p].human {
             return self.advisor.choose_research(g, p);
         }
-        if g.players[p].turn_active || g.player_get_current_research(p).is_some() {
-            return None;
-        }
-        let here = ResearchMark::of(g, p);
-        let mut mark = self.shared.research_mark.lock().unwrap();
-        if *mark == Some(here) {
-            *mark = None;
-            drop(mark);
+        None
+    }
+
+    /// `doResearch`'s `AI_chooseResearch` call, which C++ runs for humans too (empty research
+    /// after turn 4: this turn's beakers go to the AI's pick, and the queue is cleared after).
+    fn ai_choose_research(&self, g: &Game, p: PlayerId) -> Option<TechType> {
+        if g.players[p].human {
             self.shared.stats.lock().unwrap().research_ai_picks += 1;
-            self.advisor.choose_research(g, p)
-        } else {
-            *mark = Some(here);
-            None
         }
+        self.advisor.ai_choose_research(g, p)
     }
 
     /// C++ CHOOSETECH popup with free techs: blocking (no answer = the tech is lost).
@@ -382,13 +353,47 @@ impl Controller for HumanController {
         Some(techs[i])
     }
 
-    /// C++ RAZECITY / DISBANDCITY: blocking keep (0) or abandon (1).
+    /// `AI_conquerCity`, which rules code asks only for AI conquerors (a human conqueror gets
+    /// `conquered_city_choice`): for a human, the same keep/raze modal without a gift button.
     fn raze_conquered_city(&self, g: &Game, p: PlayerId, c: CityId) -> bool {
         if !g.players[p].human {
             return self.advisor.raze_conquered_city(g, p, c);
         }
-        let advice = self.suggest(g, |g| self.advisor.raze_conquered_city(g, p, c));
-        self.block(g, decision::keep_city(g, p, c, advice)) == 1
+        let can_raze = g.player_can_raze(p, c);
+        let advice = self.suggest(g, |g| self.advisor.conquered_city_choice(g, p, c, can_raze, None));
+        let d = decision::keep_city(g, p, c, can_raze, None, advice);
+        let i = self.block(g, d.clone());
+        decision::keep_city_choice(&d, i) == ConqueredCityChoice::Raze
+    }
+
+    /// C++ BUTTONPOPUP_RAZECITY: blocking keep / raze / gift (the buttons offered).
+    fn conquered_city_choice(&self, g: &Game, p: PlayerId, c: CityId, can_raze: bool, gift_to: Option<PlayerId>) -> ConqueredCityChoice {
+        if !g.players[p].human {
+            return self.advisor.conquered_city_choice(g, p, c, can_raze, gift_to);
+        }
+        let advice = self.suggest(g, |g| self.advisor.conquered_city_choice(g, p, c, can_raze, gift_to));
+        let d = decision::keep_city(g, p, c, can_raze, gift_to, advice);
+        let i = self.block(g, d.clone());
+        decision::keep_city_choice(&d, i)
+    }
+
+    /// C++ BUTTONPOPUP_DISBANDCITY: blocking keep (0) / disband (1).
+    fn disband_acquired_city(&self, g: &Game, p: PlayerId, c: CityId) -> bool {
+        if !g.players[p].human {
+            return self.advisor.disband_acquired_city(g, p, c);
+        }
+        let advice = self.suggest(g, |g| self.advisor.disband_acquired_city(g, p, c));
+        self.block(g, decision::disband_city(g, p, c, advice)) == 1
+    }
+
+    /// FfH BUTTONPOPUP_CONFIRMSETTLEMENT: blocking city (0) / settlement (1). The advisor
+    /// suggests what C++ gives an AI player: a city.
+    fn confirm_settlement(&self, g: &Game, p: PlayerId, c: CityId) -> Option<bool> {
+        if !g.players[p].human {
+            return self.advisor.confirm_settlement(g, p, c);
+        }
+        let advice = self.suggest(g, |g| self.advisor.confirm_settlement(g, p, c)).unwrap_or(false);
+        Some(self.block(g, decision::settlement(g, p, c, advice)) == 1)
     }
 
     /// C++ `CvPlayer::trigger` for a human queues BUTTONPOPUP_EVENT: deferred (F7), the
@@ -405,14 +410,14 @@ impl Controller for HumanController {
         None
     }
 
-    /// C++ BUTTONPOPUP_CHOOSEELECTION: blocking (no answer deletes the selection, F9).
+    /// C++ BUTTONPOPUP_CHOOSEELECTION: deferred. ffh-core keeps the selection while a human's
+    /// answer is `None`; it is `pending.elections` until the human answers with `election`
+    /// (CvNetChooseElection).
     fn choose_election(&self, g: &Game, p: PlayerId, vs: &VoteSelectionData) -> Option<usize> {
         if !g.players[p].human {
             return self.advisor.choose_election(g, p, vs);
         }
-        let advice = self.suggest(g, |g| self.advisor.choose_election(g, p, vs));
-        let i = self.block(g, decision::election(g, p, vs, advice));
-        (i < vs.vote_options.len()).then_some(i)
+        None
     }
 
     /// C++ BUTTONPOPUP_DIPLOVOTE: deferred (F8); the vote is pending until `vote`.
@@ -463,6 +468,15 @@ impl Controller for HumanController {
     /// C++ computes `AI_getAttitude` for humans too: a function of the game state.
     fn attitude(&self, g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
         self.advisor.attitude(g, p, towards)
+    }
+
+    /// FfH's take-control popup (Infernal Pact, Mercurian Gate): blocking yes (0) / no (1).
+    fn take_control(&self, g: &Game, p: PlayerId, new: PlayerId) -> bool {
+        if !g.players[p].human {
+            return self.advisor.take_control(g, p, new);
+        }
+        let advice = self.suggest(g, |g| self.advisor.take_control(g, p, new));
+        self.block(g, decision::take_control(g, p, new, advice)) == 0
     }
 
     fn update_automated_group(&self, g: &mut Game, grp: GroupId) -> bool {

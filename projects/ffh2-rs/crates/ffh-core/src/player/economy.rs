@@ -1251,15 +1251,16 @@ impl Game {
                 }
 
                 if self.elapsed_game_turns > 4 {
-                    // AI_chooseResearch() (for every player, humans included): the controller
-                    // decides and its tech is pushed (C++ `pushResearch(eBestTech)`).
+                    // AI_chooseResearch() (for every player, humans included, with no popup):
+                    // the controller's `ai_choose_research` decides and its tech is pushed (C++
+                    // `pushResearch(eBestTech)`).
                     // AI: AI_chooseResearch also returns early while getDisableResearch() > 0,
                     // clears the (empty) queue and first tries a teammate's current research
                     // and Python AI_chooseTech -- choice policy, left to the controller.
                     // AI_chooseResearch returns at once while research is disabled (FfH Stasis,
                     // CvPlayerAI.cpp:5241), keeping the stored research for later.
                     if self.players[p].disable_research == 0 {
-                        if let Some(tech) = self.controller(p).choose_research(self, p) {
+                        if let Some(tech) = self.controller(p).ai_choose_research(self, p) {
                             self.player_push_research(p, tech, false);
                         }
                     }

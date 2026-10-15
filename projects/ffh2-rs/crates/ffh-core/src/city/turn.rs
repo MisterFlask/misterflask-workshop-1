@@ -138,10 +138,16 @@ impl Game {
             } else if !self.players[owner].human || num_cities == 1 || self.is_game_multi_player() {
                 self.city_set_plot_radius(c, 3);
             } else if self.players[owner].human && num_cities != 1 {
-                // C++ asks the human with the BUTTONPOPUP_CONFIRMSETTLEMENT popup: "city"
-                // (setPlotRadius(3)) or "settlement" (setSettlement(true)). The answer arrives
-                // later; there is no controller decision for it yet, so the city stays as it
-                // is (radius 2, not a settlement), as with an unanswered popup.
+                // BUTTONPOPUP_CONFIRMSETTLEMENT (`OnOkClicked`): "city" (button 0,
+                // setPlotRadius(3)) or "settlement" (button 1, setSettlement(true)), the
+                // controller's `confirm_settlement`. C++ applies the answer when the human clicks,
+                // after the city is founded; here it is applied where the AI gets radius 3. No
+                // answer: the city stays as it is (radius 2, not a settlement).
+                match self.controller(owner).confirm_settlement(self, owner, c) {
+                    Some(false) => self.city_set_plot_radius(c, 3),
+                    Some(true) => self.cities[c].settlement = true,
+                    None => {}
+                }
             }
         }
         self.cities[c].civ = self.player_get_civilization_type(owner);
