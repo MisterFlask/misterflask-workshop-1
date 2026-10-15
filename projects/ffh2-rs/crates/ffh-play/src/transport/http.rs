@@ -4,6 +4,7 @@
 //! | Request | Answer |
 //! |---|---|
 //! | `GET /`, `/app/..` | the client's files (embedded; `--assets DIR` serves them from disk) |
+//! | `GET /art/..` | the art toolkit's modules and `/art/art.bundle.txt`, the sprite data (embedded by `build.rs`; with `--assets DIR`, from `DIR/../web/art` when it exists) |
 //! | `GET /api/status` | the status ([`Shared`]) |
 //! | `GET /api/wait?since=V&timeout_ms=T` | the status once its version is above `V` (long-poll) |
 //! | `GET /api/view`, `/api/map` | the cached view and map of the last control point (409 without a game) |
@@ -43,6 +44,7 @@ const DRAIN_TIME: Duration = Duration::from_millis(250);
 const HTML: &str = "text/html; charset=utf-8";
 const JS: &str = "text/javascript; charset=utf-8";
 const CSS: &str = "text/css; charset=utf-8";
+const TEXT: &str = "text/plain; charset=utf-8";
 
 /// The client files compiled into the binary: `(path, content type, content)`, served at
 /// `/<path>` (`/` is `index.html`). The layout of `assets/` is the URL layout, so that
@@ -68,7 +70,23 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/empire.js", JS, include_str!("../../assets/app/empire.js")),
     ("app/diplo.js", JS, include_str!("../../assets/app/diplo.js")),
     ("app/tools.js", JS, include_str!("../../assets/app/tools.js")),
+    ("app/look.js", JS, include_str!("../../assets/app/look.js")),
+    ("app/artmap.js", JS, include_str!("../../assets/app/artmap.js")),
+    ("app/stacks.js", JS, include_str!("../../assets/app/stacks.js")),
+    ("app/chunks.js", JS, include_str!("../../assets/app/chunks.js")),
+    ("app/artworker.js", JS, include_str!("../../assets/app/artworker.js")),
 ];
+
+// `ART_MODULES`: the art toolkit's modules (`web/art`, docs/ART.md 15-16), embedded by `build.rs`
+// from the list `art_files::art_modules` makes; served at `/art/<path>` with the JS type.
+include!(concat!(env!("OUT_DIR"), "/art_assets.rs"));
+
+/// The art's sprite data in one text (`web/art/tools/bundle.mjs`'s format, made by
+/// `art_files::art_bundle` in `build.rs`), served at `/art/art.bundle.txt`.
+pub const ART_BUNDLE: &str = include_str!(concat!(env!("OUT_DIR"), "/art.bundle.txt"));
+
+/// The URL path of the art bundle (without the leading `/`).
+pub const ART_BUNDLE_PATH: &str = "art/art.bundle.txt";
 
 /// A parsed request.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -415,7 +433,7 @@ pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
         }
     }
     let path = req.path.as_str();
-    let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| path.starts_with("/app/").then_some("GET"));
+    let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| (path.starts_with("/app/") || path.starts_with("/art/")).then_some("GET"));
     match known {
         None => return Response::error(404, "not_found", format!("no {path}")),
         Some(m) if m != req.method => return Response::error(405, "method", format!("{path} answers {m} only")).with("Allow", m),
@@ -474,12 +492,18 @@ fn post_api(req: &HttpRequest, ctx: &HttpCtx) -> Response {
 }
 
 /// A client file: embedded, or from `--assets DIR`. Paths are 1-4 parts of `[A-Za-z0-9_.-]`
-/// not starting with a dot, so a request cannot leave the directory.
+/// not starting with a dot, so a request cannot leave the directory. The art (`art/..`) comes
+/// from `DIR/../web/art` with `--assets DIR` when that directory exists (the repository's
+/// layout: `crates/ffh-play/assets` and `crates/ffh-play/web/art`), else from the binary; only
+/// the art's modules and its bundle are served, not its tools or previews.
 fn asset(path: &str, ctx: &HttpCtx) -> Response {
     let parts: Vec<&str> = path.split('/').collect();
     let ok = (1..=4).contains(&parts.len()) && parts.iter().all(|p| crate::save::sanitize_name(p).is_ok());
     if !ok {
         return Response::error(404, "not_found", format!("no /{path}"));
+    }
+    if let Some(rest) = path.strip_prefix("art/") {
+        return art_asset(path, rest, ctx);
     }
     let content_type = content_type(path);
     match &ctx.assets {
@@ -489,6 +513,35 @@ fn asset(path: &str, ctx: &HttpCtx) -> Response {
         },
         None => match ASSETS.iter().find(|(p, _, _)| *p == path) {
             Some((_, ct, body)) => Response { status: 200, content_type: ct, headers: Vec::new(), body: Body::Static(body) },
+            None => Response::error(404, "not_found", format!("no /{path}")),
+        },
+    }
+}
+
+/// The art directory on disk for `--assets DIR`: `DIR/../web/art`, when it exists.
+fn art_dir(ctx: &HttpCtx) -> Option<PathBuf> {
+    let dir = ctx.assets.as_ref()?.join("..").join("web").join("art");
+    dir.join("art.js").is_file().then_some(dir)
+}
+
+/// `/art/<rest>`: a module of [`ART_MODULES`] or the bundle ([`ART_BUNDLE_PATH`]).
+fn art_asset(path: &str, rest: &str, ctx: &HttpCtx) -> Response {
+    let ok = |content_type, body| Response { status: 200, content_type, headers: vec![("Cache-Control", "no-cache".to_string())], body };
+    match art_dir(ctx) {
+        Some(dir) if path == ART_BUNDLE_PATH => match super::art_files::art_bundle(&dir) {
+            Ok(text) => ok(TEXT, Body::Bytes(text.into_bytes())),
+            Err(e) => Response::error(500, "art", format!("the art bundle of {}: {e}", dir.display())),
+        },
+        Some(dir) => {
+            let listed = super::art_files::art_modules(&dir).unwrap_or_default();
+            match listed.iter().any(|m| m == rest).then(|| std::fs::read(dir.join(rest))) {
+                Some(Ok(bytes)) => ok(JS, Body::Bytes(bytes)),
+                _ => Response::error(404, "not_found", format!("no /{path} in {}", dir.display())),
+            }
+        }
+        None if path == ART_BUNDLE_PATH => ok(TEXT, Body::Static(ART_BUNDLE)),
+        None => match ART_MODULES.iter().find(|(p, _)| *p == path) {
+            Some((_, body)) => ok(JS, Body::Static(body)),
             None => Response::error(404, "not_found", format!("no /{path}")),
         },
     }

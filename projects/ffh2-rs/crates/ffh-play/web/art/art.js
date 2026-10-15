@@ -133,7 +133,11 @@ export class Art {
   css(key) { return this.palette.colors[this.K(key)].hex; }
 
   setWorld({ width, height, wrapX }) {
-    this.world = { width: width | 0, height: height | 0, wrapX: !!wrapX };
+    const w = { width: width | 0, height: height | 0, wrapX: !!wrapX };
+    // renderMap sets the world on every call (a client draws its view in chunks): the ground
+    // cache is kept while the world stays the same.
+    if (w.width === this.world.width && w.height === this.world.height && w.wrapX === this.world.wrapX) return;
+    this.world = w;
     this._ground.clear();
   }
 
@@ -971,6 +975,8 @@ export class Art {
         const key = this.keys[owner.tincture.field];
         this._px(ctx, x + (16 - g.ax) * s, y + (30 - g.ay) * s, [[fx, fy, key], [fx, fy - 1, key]]);
       }
+      if (city.walls) this._cityWalls(ctx, x, y, g);
+      if (city.disorder) this._citySmoke(ctx, x, y, g);
     }
     if (layer === 'sprite') return;
     if (owner && this.hasSprite('ui/banner') && city.banner !== false) {
@@ -979,6 +985,42 @@ export class Art {
     }
     const mode = city.plaque === undefined ? (s >= 2 ? 'full' : 'chip') : city.plaque;
     if (mode) this._plaque(ctx, x, y, city, owner, mode);
+  }
+
+  /**
+   * Walls (docs/ART.md 9.3): a low curtain wall in front of the city, 3 px tall on the ground
+   * line (tile rows 25-27) a pixel wider than the sprite on each side, merlons on top, a dark
+   * gate in the middle, void-outlined. `g` is the city sprite (its width and anchor).
+   */
+  _cityWalls(ctx, x, y, g) {
+    const x0 = Math.max(1, 16 - g.ax - 1), x1 = Math.min(30, 16 - g.ax + g.w);
+    const px = [];
+    for (let i = x0; i <= x1; i++) {
+      const edge = i === x0 || i === x1;
+      const gate = i === 15 || i === 16;
+      px.push([i, 24, (i - x0) % 2 === 0 || edge ? '0' : '6'], [i, 28, '0']);
+      if (edge) { px.push([i, 25, '0'], [i, 26, '0'], [i, 27, '0']); continue; }
+      px.push([i, 25, gate ? '5' : '6'], [i, 26, gate ? '1' : '4'], [i, 27, gate ? '1' : '3']);
+    }
+    for (let i = x0 + 1; i < x1; i += 2) px.push([i, 23, '0']);
+    this._px(ctx, x, y, px);
+  }
+
+  /** Disorder (docs/ART.md 9.3): an ash smoke column rising from the city's roofs. */
+  _citySmoke(ctx, x, y, g) {
+    const top = 30 - g.ay;
+    const cx = 16 - g.ax + Math.round(g.w * 0.65);
+    const wave = [0, 0, 1, 1, 1, 0, -1, -1, -1, 0];
+    const px = [];
+    for (let k = 1; k <= wave.length; k++) {
+      const j = top - k;
+      if (j < -12) break;
+      const i = cx + wave[k - 1];
+      px.push([i, j, k <= 4 ? '5' : '4']);
+      if (k <= 3) px.push([i + 1, j, '4']);
+      if (k % 3 === 0) px.push([i - 1, j, '3']);
+    }
+    this._px(ctx, x, y, px);
   }
 
   _plaque(ctx, x, y, city, owner, mode) {

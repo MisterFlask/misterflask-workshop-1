@@ -13,6 +13,7 @@ This is the design of `crates/ffh-play`, implemented phase by phase (§7); the s
 | P4 transports | done | `transport/{mod,stdio,http,server,shared}.rs`, `assets/index.html` (a placeholder page); `ffh-play agent` (JSONL) and `ffh-play serve` (HTTP, long-poll); T11, T12. After P4 a script or an LLM can play a whole game headless. See "As built" and "P4 review fixes" under P4 in §7. |
 | P5 browser MVP | done | `assets/index.html`, `assets/app/*.js` and `style.css` (vanilla ES modules, canvas map), embedded in the binary; `src/stage.rs` (`ffh-play stage`); `tools/web-check.sh`, `tools/web-api-smoke.mjs`, `tools/web-smoke.mjs` (headless Chromium), `assets/test/*.test.mjs`, `tests/web.rs`; the manual checklist in docs/HUMAN.md. A human can play a whole game in a browser. See "As built" and "P5 review fixes" under P5 in §7. |
 | P6 browser complete | done | `assets/app/{city,empire,diplo,hotkeys,tools}.js` and the rest of the client (city screen, tech tree, civics, religion, sliders, diplomacy and trade, Civ4's hotkeys and group cycle, the political and yield layers, inspector, debug reveal, autoplay, take-over, the spectator mode); map tile deltas (`view/map.rs` `MapTracker`); `view/hotkeys.rs`; `src/bench.rs` (`ffh-play bench`, T13). See "As built" and "P6 review fixes" under P6 in §7. |
+| Art client | done | The browser client draws with the original pixel art of `web/art` (docs/ART.md): `build.rs` and `src/transport/art_files.rs` embed its modules and sprite bundle, served at `/art/`; `assets/app/look.js` (loading, the ui set's chrome, bitmap type, icons, heraldry), `artmap.js` (the map: a 1x chunk cache drawn by `artworker.js`, blown up to the zoom's integer scale, units, cities, marks, path, layers, minimap), `chunks.js`, `stacks.js` (tested); cities in the view carry `walls`; `?renderer=flat` (or Tools → Options) keeps the P5 renderer. See "The look" and "The map" in docs/HUMAN.md. |
 | P7 | not started | Each item needs another crate's owner (§7 P7). |
 
 **Starting point.** The design starts from the **web** design, which had the highest total score: 8.5 + 7.5 + 7 = 23, against 21.5 for tui and 21.5 for engine-first. It grafts on the ideas the judges recommended (§11 lists every disagreement and how it was resolved).
@@ -506,7 +507,7 @@ At EOF of stdin: answer open decisions with the advisor and either quit (default
  "players":[{"id":1,"leader":5,"civ":3,"team":1,"met":true,"war":true,"attitude":1,"open_borders":false,
              "defensive_pact":false,"score":290,"alive":true,"contact":true}],
  "cities":[{"id":3,"owner":0,"x":12,"y":30,"name":"Taranis","size":5,"capital":true,"visible":true,
-            "production":{"order":0,"type":312,"turns":3},"idle":false,"defense":20}],
+            "production":{"order":0,"type":312,"turns":3},"idle":false,"defense":20,"walls":false}],
  "units":[{"id":881,"owner":0,"visual_owner":0,"type":312,"x":12,"y":31,"group":402,"hp":100,"moves":60,"max_moves":120,
            "level":2,"xp":7,"promo_ready":false,"activity":2}],
  "groups":[{"id":402,"head":881,"units":[881,890],"ready":true,"missions":[{"m":0,"d1":15,"d2":33}],"automated":false}],
@@ -517,7 +518,7 @@ At EOF of stdin: answer open decisions with the advisor and either quit (default
 **Fog rules:**
 * Own units are always shown.
 * Foreign units are shown only on plots with `plot_is_visible(p, team)` and `!unit_is_invisible(u, team, true)` (C++'s default `bCheckCargo`: the cargo of a foreign transport is hidden; P3 as built); their owner is the `visual_owner`, which respects hidden nationality (a foreign unit's reply has no separate true owner, no group, moves or experience).
-* For foreign cities, name and owner are shown when `city_is_revealed`; size and defence only when the plot is visible.
+* For foreign cities, name and owner are shown when `city_is_revealed`; size, defence and walls (a Walls or Palisade building, which the city art draws) only when the plot is visible.
 * Unmet players are omitted.
 * Log entries tagged with a player go to that player only. An untagged entry (`player == None`) stands for C++ messages sent to several players under a condition the log does not record, so it is shown only under that condition, evaluated when the log is drained (`view/fog.rs`, `LogFog`, which recognizes the ffh-core formats): war, peace and vassal changes when h's team is one of the two teams or has met both; a city captured, razed or liberated when h's team revealed the city (at that drain or the previous one); circumnavigation by an unmet team as "an unknown civilization"; vote results to voting members; vote-source religions, special buildings and nukes to everyone. Unrecognized untagged entries (event world news, whose sender the text does not name, and new log sites) are held back. A P7 core hook (recipients per log entry) replaces the text matching.
 

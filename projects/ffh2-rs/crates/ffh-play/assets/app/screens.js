@@ -8,6 +8,7 @@ import { h, toast } from "./dom.js";
 import { openModal } from "./modals.js";
 import { run } from "./commands.js";
 import { render as markup, plain } from "./markup.js";
+import { illuminate } from "./look.js";
 
 // ---------------------------------------------------------------------------------------------
 // Research (the CHOOSETECH popup and the research button).
@@ -98,7 +99,7 @@ export async function openEvent(ev) {
   const where = ev.plot ? h("button.link", { onclick: () => emit("center", ev.plot[0], ev.plot[1]) }, "Show on the map") : null;
   const m = openModal({
     title: dname("EventTriggerType", ev.trigger),
-    body: [h("p", markup(ev.text)), where, options, err],
+    body: [h("p.page-text", illuminate(markup(ev.text))), where, options, err],
     buttons: [{ label: "Later", value: "later", title: "Answer later (ending the turn without an answer drops the event)" }],
     tag: "event",
     className: "event",
@@ -131,9 +132,10 @@ export async function openVote(v) {
   );
   const m = openModal({
     title: dname("VoteType", v.resolution),
-    body: [h("p.dim", dname("VoteSourceType", v.source)), h("p", markup(v.text)), choices],
+    body: [h("p.dim", dname("VoteSourceType", v.source)), h("p.page-text", illuminate(markup(v.text))), choices],
     buttons: [{ label: "Later", value: "later", title: "Unanswered votes get one more turn, then abstain" }],
     tag: "vote",
+    className: "event",
   });
   const r = await m.done;
   return result ?? r;

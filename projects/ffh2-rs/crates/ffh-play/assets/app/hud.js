@@ -4,6 +4,7 @@
 
 import { S, dname, tname, turns, playerName, me, emit, endTurnMessage } from "./state.js";
 import { h, fill } from "./dom.js";
+import { look, pix, pixable, iconEl, uiIcon, barEl } from "./look.js";
 import { openCount } from "./commands.js";
 import { spectatorBar, autoplayBar } from "./tools.js";
 
@@ -23,6 +24,23 @@ const PHASES = {
   crashed: "Crashed",
 };
 
+/** An icon of the ui set (look.js), or the plain glyph before the art loaded. */
+function ic(name, glyph, title, cls = "") {
+  return iconEl(name, { title }) ?? h(`span.icon${cls}`, { title }, glyph);
+}
+
+/** A number in the top bar: Vigil (docs/ART.md 11.6: big numbers in the top bar). */
+function big(text, cls = "") {
+  return h(`span.num${cls}`, pix(String(text), { font: "vigil" }));
+}
+
+/** Short text in the top bar: Vigil Book. */
+function small(text, cls = "") {
+  return h(`span${cls}`, pix(String(text)));
+}
+
+const sep = () => h("span.sep");
+
 /** Redraws the top bar's empire summary and phase line. */
 export function renderTop() {
   const st = S.status ?? {};
@@ -36,12 +54,15 @@ export function renderTop() {
     if (active.length) line = `Moving: ${active.join(", ")}`;
     if (st.ms_in_phase !== undefined) line += ` · ${(st.ms_in_phase / 1000).toFixed(1)} s`;
   }
+  // The crescent is amber on your turn (the active-turn mark), else the waiting moon.
+  const yours = st.phase === "human";
   fill(
     phase,
     h("span.phase-dot", { "data-phase": st.phase ?? "" }),
-    st.turn !== undefined ? h("b", `Turn ${st.turn}`) : null,
-    st.year !== undefined ? h("span.dim", ` ${yearText(st.year)} · `) : null,
-    h("span#phase-text", line),
+    look.art ? ic(yours ? "icon16/turn" : "icon16/turn_wait", "", yours ? "Your turn" : line) : null,
+    st.turn !== undefined ? h("b.turn", small("Turn", ".dim"), " ", big(st.turn)) : null,
+    st.year !== undefined ? h("span.dim.year", " ", small(yearText(st.year)), " ") : null,
+    h("span#phase-text", pixable(line) ? pix(line) : line),
     st.reveal ? h("span.badge.reveal", "DEBUG REVEAL") : null,
     spectatorBar(),
     autoplayBar(),
@@ -51,7 +72,11 @@ export function renderTop() {
   if (end) {
     end.disabled = st.phase !== "human";
     const n = openCount();
-    end.textContent = n ? `End turn (${n} open)` : "End turn";
+    const label = n ? `End turn (${n} open)` : "End turn";
+    if (end.dataset.label !== `${label}|${!!look.art}`) {
+      end.dataset.label = `${label}|${!!look.art}`;
+      fill(end, look.art ? iconEl("icon16/turn") : null, look.art ? pix(label, { font: "vigil", smallCaps: true }) : label);
+    }
     // Civ4's end-turn message: no group waits, so Enter (or Space) ends the turn; else Enter
     // selects the next group.
     const msg = endTurnMessage();
@@ -63,38 +88,46 @@ export function renderTop() {
     return;
   }
   const r = m.research;
+  const pct = r ? Math.min(1, r.progress / Math.max(1, r.cost)) : 0;
+  const next = r ? Math.min(1, (r.progress + (r.rate ?? 0)) / Math.max(1, r.cost)) : null;
   const items = [
-    h("span.stat", { title: "Gold (per turn)" }, h("span.icon.gold", "¤"), ` ${m.gold} `, h("span.dim", `(${m.gold_rate >= 0 ? "+" : ""}${m.gold_rate})`)),
+    h("span.stat.gold", { title: `Gold ${m.gold} (${m.gold_rate >= 0 ? "+" : ""}${m.gold_rate} a turn)` }, ic("icon16/gold", "¤", "Gold", ".gold"), big(m.gold), small(`${m.gold_rate >= 0 ? "+" : ""}${m.gold_rate}`, m.gold_rate < 0 ? ".warn" : ".dim")),
+    sep(),
     h(
       "button.stat.research",
       { id: "research-button", title: "Research (the tech tree: F6)", onclick: () => document.dispatchEvent(new CustomEvent("ffh-research")) },
-      h("span.icon", "⚗"),
-      r ? ` ${dname("TechType", r.tech)} (${turns(r.turns)})` : h("span.warn", " choose research"),
-      r ? h("span.bar", h("span.fill", { style: { width: `${Math.min(100, Math.round((100 * r.progress) / Math.max(1, r.cost)))}%` } })) : null,
+      ic(r ? "icon16/research" : "icon16/research_needed", "⚗", "Research"),
+      r ? small(dname("TechType", r.tech)) : h("span.warn", pix("choose research")),
+      r ? barEl(pct, "research", { w: 30, next, title: `${r.progress}/${r.cost}` }) : null,
+      r ? small(turns(r.turns), ".dim") : null,
     ),
+    sep(),
     h(
       "button.stat.sliders",
       { id: "sliders-button", title: "Commerce sliders: click to change them [F2]", onclick: () => emit("open-screen", "finance") },
       m.commerce_percent
         .map((p, i) => [p, i])
         .filter(([p, i]) => p > 0 || m.flexible[i])
-        .map(([p, i]) => `${dname("CommerceType", i).slice(0, 3)} ${p}%`)
-        .join(" · "),
+        .map(([p, i]) => h("span.slider-item", look.art ? uiIcon("commerce", i, 8, { title: dname("CommerceType", i) }) : `${dname("CommerceType", i).slice(0, 3)} `, small(`${p}%`))),
     ),
-    h("span.stat.armageddon", { title: "Armageddon counter" }, h("span.icon", "☄"), ` ${m.armageddon}`),
+    sep(),
+    h("span.stat.armageddon", { title: `Armageddon counter ${m.armageddon}` }, look.art ? uiIcon("armageddon", m.armageddon, 16) : h("span.icon", "☄"), big(m.armageddon)),
   ];
   const mana = m.mana.filter((x) => x.count > 0);
   if (mana.length) {
     const list = mana.map((x) => `${dname("BonusType", x.bonus).replace(/ Mana$/, "")} ${x.count}`).join(", ");
-    items.push(h("span.stat", { title: `Mana: ${list}` }, h("span.icon", "✦"), ` ${mana.reduce((n, x) => n + x.count, 0)} mana`));
+    const spheres = look.art
+      ? mana.map((x) => h("span.sphere", uiIcon("mana", tname("BonusType", x.bonus) ?? "", 8, { title: dname("BonusType", x.bonus) }) ?? null, small(String(x.count))))
+      : [` ${mana.reduce((n, x) => n + x.count, 0)} mana`];
+    items.push(h("span.stat.mana", { title: `Mana: ${list}` }, ic("icon16/mana", "✦", "Mana"), ...spheres));
   }
-  if (m.anarchy > 0) items.push(h("span.stat.warn", `Anarchy ${m.anarchy}`));
-  if (m.golden_age > 0) items.push(h("span.stat.good", `Golden age ${m.golden_age}`));
+  if (m.anarchy > 0) items.push(sep(), h("span.stat.warn", { title: `Anarchy: ${m.anarchy} turns` }, ic("icon16/anarchy", "", "Anarchy"), small(`Anarchy ${m.anarchy}`)));
+  if (m.golden_age > 0) items.push(sep(), h("span.stat.good", { title: `Golden age: ${m.golden_age} turns` }, ic("icon16/golden_age", "", "Golden age"), small(`Golden age ${m.golden_age}`)));
   const stasis = Object.entries(m.stasis ?? {}).filter(([, n]) => n > 0);
-  if (stasis.length) items.push(h("span.stat.warn", `Stasis: ${stasis.map(([k, n]) => `${k} ${n}`).join(", ")}`));
+  if (stasis.length) items.push(sep(), h("span.stat.warn", ic("icon16/stasis", "", "Stasis"), small(`Stasis: ${stasis.map(([k, n]) => `${k} ${n}`).join(", ")}`)));
   const idle = v.pending?.ai_groups_idle?.length ?? 0;
-  if (idle) items.push(h("span.stat.warn", { title: "Automated and AI-controlled units wait for the AI automation (not ported yet)" }, `${idle} AI-controlled group${idle > 1 ? "s" : ""} idle`));
-  items.push(h("span.stat.dim", `Score ${m.score}`));
+  if (idle) items.push(sep(), h("span.stat", { title: "Automated and AI-controlled units wait for the AI automation (not ported yet)" }, ic("icon16/ai_idle", "", "AI-controlled groups idle"), small(`${idle} AI-controlled group${idle > 1 ? "s" : ""} idle`)));
+  items.push(sep(), h("span.stat.dim", { title: "Score" }, small("Score"), big(m.score)));
   fill(info, items);
 }
 

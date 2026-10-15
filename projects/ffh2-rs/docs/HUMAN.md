@@ -29,31 +29,64 @@ game…" lists the saves). Each game gets a directory in `./saves` (`--saves DIR
 `--load saves/game-3/auto/T0040.ffhsave` resumes one). Use a current Chrome, Firefox or Safari;
 nothing is fetched from the internet.
 
-**The screen.** The top bar: turn and year, what is happening (your turn; "Moving: …" with the
-players and the seconds while the AIs play), gold and rate, research (click it to choose),
-the commerce split (click it for the sliders), the Armageddon counter, mana, anarchy, golden
-age, Stasis, idle AI-controlled groups, score, and the menu (Research, Techs, Cities, Civics,
-Religion, Diplomacy, Tools, Save, Load, New, keys `?`, a raw request box `⌘` for testing, End
-turn). The map fills the middle (minimap bottom right, zoom and the map layers bottom left), the
-selection panel is on the right, and the bottom panel has the turn report, the messages by turn
-and the game's files (directory, journal, last autosave).
+**The look.** The client draws with the game's own pixel art (docs/ART.md, "Monastic Pixel
+Noir", embedded in the binary like the rest of the page): the map is a night-time manuscript and
+the interface a scriptorium at night: soot panels with double rules and gilt nails, the Vigil
+bitmap capitals for titles and numbers, the Vigil Book face for buttons and short labels (long
+texts, such as events and help, stay in the system serif), the game's yield, commerce, mana and
+Armageddon icons (and in the screens those of promotions, unit classes, buildings, specialists,
+religions and civic categories), and an illuminated initial on events, votes and decisions. Until the art has
+loaded (a moment after the page) the page shows the plain look of P5, and keeps it if the art
+cannot load.
 
-**The map** is north up and wraps east-west like the game: unexplored plots are black, fogged
-ones dimmed. Hills are hatched, peaks drawn, forests and other features marked; rivers run on
-plot edges, roads and railroads join their neighbours; resources (only those your techs reveal,
-purple for mana) show as a lettered dot at the top right, improvements as a lettered box at the
-bottom left (☠ lairs and other barbarian spawns, ✦ mana nodes, ? goody huts); borders are drawn
-in the owner's colour. Cities are a box with their size, the name above (★ capital) and, for
-yours, what they build and in how many turns ("idle!" in red). A unit stack is a box in its
-owner's colour with the top unit's abbreviation, a health bar when hurt, a number when several
-units share the plot, and for your units a dot: green with moves left, red without, grey asleep
-or fortified. Hovering a plot shows a tooltip (terrain, resource, improvement, owner, yields and
-defence while you see it, the city and units there), and with units selected the path (a line
-with the turn of arrival at each turn's end; orange when it declares war, red when it attacks)
-and, over an enemy, the odds of winning and retreating with both strengths and their modifiers.
-The layers (buttons bottom left, `Ctrl+1/2/3`): **Terrain**; **Political** (each plot in its
-owner's colour, unowned land grey: who owns what at a glance); **Yields** (food, production and
-commerce of the plots in sight; fogged plots show none).
+**The screen.** The top bar: the turn crescent (amber on your turn), turn and year, what is
+happening (your turn; "Moving: …" with the players and the seconds while the AIs play); gold and
+rate, research (click it to choose) with its progress bar and turns, the commerce split by its
+icons (click it for the sliders), the Armageddon eclipse (its corona reddens at 50, 75 and 100)
+with the counter, mana by sphere, anarchy, golden age, Stasis, idle AI-controlled groups, score;
+below them the menu (Research, Techs, Cities, Civics, Religion, Diplomacy, Tools, Save, Load,
+New, keys `?`, a raw request box `⌘` for testing) and End turn. The map fills the middle (minimap
+bottom right, zoom and the map layers bottom left), the selection panel is on the right, and the
+bottom panel has the turn report, the messages by turn and the game's files (directory, journal,
+last autosave).
+
+**The map** is north up and wraps east-west like the game. The ground is drawn flat (colour
+fields with sparse marks, inked coasts, rivers and roads); hills, peaks, forests, improvements,
+landmarks and cities stand upright; resources (only those your techs reveal) are seals at a
+plot's bottom right; borders are stitched ribbons in the owner's colours. Each civilization has a
+tincture and a sigil (docs/ART.md 7: two civilizations of one tincture get a divided field), on
+its borders, city banners and unit standards. Fogged plots are darkened and hatched and show
+what you last saw (dark windows, no foreign units), unexplored ones are black with ragged edges,
+and the view's corners fade. **Cities** are drawn in their civilization's style and by size
+(five tiers), in a pool of their light; the capital's spire carries a finial in the owner's
+colour, walls (Walls or a palisade) show as a curtain wall, a city in disorder goes dark under a
+smoke column; the plaque under it has the size, the name and, for yours, the turns of what it
+builds. A **unit stack** shows its head unit (the selected one, else your unit that can move,
+else the strongest), up to two shadows behind it for more units, and its owner's standard at the
+top left (top right in a city): bright for your stacks that can move or are selected, quiet for
+others, with a vellum pip when it can move and a gilt one with a hero in the stack; the count
+hangs under the standard, a health bar shows when the head unit is hurt (or selected), and a
+mark at the top right says fortified, asleep, sentry, healing, automated or promotion ready.
+Units face east, and west after a move west. Zoom (`+` `-`, the wheel) goes by whole art pixels:
+32, 64 (the default), 96 and 128 screen pixels a plot, and two chart steps, 16 and 8 (flat
+colours, owners' washes, city dots, units as small squares). Hovering a plot shows a tooltip
+(terrain, resource, improvement, owner, yields and defence while you see it, the city and units
+there; with the art, the yields, defence and move cost by their icons), and with units selected
+the path: dots from plot to plot that march, a roundel with the
+turn of arrival at each turn's end, the part beyond this turn's moves dimmer, ochre for a route
+to build; an attack ends in crimson brackets with the odds of winning on a chip, and the tooltip
+gives the odds of winning and retreating with both strengths and their modifiers. The layers
+(buttons bottom left, `Ctrl+1/2/3`): **Terrain**; **Political** (each owner's land washed with
+its colour); **Yields** (the ground dimmed, and the food, production and commerce of the plots in
+sight with their icons; fogged plots show none). The minimap is a pixel a plot in the same
+colours, owned land in its owner's colour, cities as light dots.
+
+The art is drawn in the background (a worker) a few plots at a time, the part in view first: a
+part of the map you have not looked at yet shows flat colours for a moment. **The flat
+renderer** of P5 (colours, glyphs and labels: lettered dots for resources, boxes for
+improvements, units and cities) is kept for debugging: open the page as
+`http://127.0.0.1:8642/?renderer=flat`, or untick Tools → Options → "Draw the map with the pixel
+art" (this browser remembers it).
 
 **Mouse and keys** (also under `?`). The keys are Civ4's: the orders' keys come from the game's
 XML (each button shows its key), and the global keys are Civ4's controls
@@ -96,6 +129,9 @@ promotions; upgrades with their price; load, unload, wake, cancel, delete. The s
 Civ4's button order (Orders, Build, Great person, Religion, Cargo, Spells, Promotions,
 Upgrades). "Promote…" lists the promotions with their help, "details" by Spells lists every
 spell with its help and whether it can be cast now. Units in a transport are listed under it.
+With the art, the panel's head shows the lead unit's figure in its owner's colours, each row its
+combat class, strength, health bar, moves and level, the lead unit's promotions are seals under
+the list (and each promotion button carries its seal).
 When a group is done, the next one waiting for orders on the plot it left, then on its plot,
 then the next in Civ4's group cycle is selected, as in Civ4 (not with the player option "No
 unit cycling", Tools → Options). As in Civ4, the cycle (`W`, `Enter`, the next group after an
@@ -168,7 +204,10 @@ finish (the watchdog), load an autosave. If the page loses the server it says so
 a reload is always safe, also in the middle of a decision.
 
 **For testers.** `ffh-play serve --assets crates/ffh-play/assets` serves the client from disk,
-so an edit shows on reload. `ffh-play stage capture|attack|automoves|load|trade DIR` writes a save at a
+so an edit shows on reload; the art then comes from `crates/ffh-play/web/art` too (the
+directory beside the assets: its modules, and the sprite bundle made on each request), so an
+edit to a sprite file shows on reload as well. `window.ffh.mapView.art.stats` has the last
+frame's times by phase and the chunks drawn. `ffh-play stage capture|attack|automoves|load|trade DIR` writes a save at a
 staged situation into `DIR` (put it under the saves directory, e.g. `saves/staged`, then load
 `staged/capture`): `capture`, a warrior next to an undefended enemy city (moving in raises the
 keep/raze dialog); `attack`, a warrior next to a barbarian warrior (the odds tooltip, an attack);
@@ -578,8 +617,24 @@ node tools/web-smoke.mjs                 # headless Chromium plays through the p
   (`F7`), the sliders (top bar and `F2`), diplomacy (`F4`; the trade screen when a player was
   met), the cities list (`F1`), the keys (`?`), the go-to mode (`G`, `Esc`), the map layers, the
   inspector, debug reveal, an AI autoplay turn and a 5,000-turn one stopped from the top bar, the spectator mode (play, pause, step, stop),
-  and the trade screen (`stage trade`: 7 gold offered and accepted). Any console error, page error, failed request or HTTP error fails it. The screenshots
-  (`target/web-smoke/*.png`) are for review, not committed.
+  and the trade screen (`stage trade`: 7 gold offered and accepted); and the art client: the art
+  loads and draws the map (by its worker), the view is drawn in full and is not blank, a frame
+  takes under 60 ms (median of 15), the zoom goes through the chart (8, 16) and the art's steps
+  (32-128) with `+` and `-`, the interface has its bitmap type and icons, Tools → Options switches
+  to the flat renderer and back, and `?renderer=flat` keeps the flat one. Any console error, page
+  error, failed request or HTTP error fails it. The screenshots (`target/web-smoke/*.png`: the art
+  map, the survey zoom and the chart, the flat renderer and every screen above) are for review,
+  not committed.
+* Frame times of the art map (headless Chromium 141, software rendering, 1280x800, a 4-core host
+  shared with other work; `window.ffh.mapView.art.stats`): on a standard map at 2x a frame with
+  everything drawn takes 3-5 ms (the vignette 2-4 ms of it, the units about 1 ms) and a frame of a
+  slow pan 4-9 ms; on a huge map (128x80) with debug reveal, so that every plot is drawn, a frame
+  takes 2.6-4 ms still, 3-8 ms panning (14-20 at most), and a sweep at two plots a frame 3-4 ms
+  (16-36 at most: the worker draws the chunks, the page shows their chart meanwhile); the chart
+  steps take under 1 ms a frame. A jump to an undrawn part of the map is drawn in full within
+  about half a second on a quiet host, 1-2 s with the host's 4 cores loaded 11 deep (single frames
+  of 40-100 ms then show up in any phase). A chunk of 4x4 plots takes the worker 15-100 ms (up to
+  250 ms for the first ones, which fill the sprite atlas).
 
 **Manual checklist** (a human tester, `ffh-play serve` and a real browser; also try a narrow
 window):
@@ -587,10 +642,15 @@ window):
 1. New game: change the civilization (the leader list follows), world size, difficulty, a game
    option and a victory condition; start. The map centres on your units; the top bar shows the
    turn, gold and "choose research".
-2. Map: drag to pan across the east-west seam, zoom with the wheel and `+`/`-`, click and drag the
-   minimap. Hover plots: the tooltip names the terrain, feature, resource, improvement, owner, and
-   yields while visible. Check hills, peaks, forests, rivers on edges, lairs (☠), goody huts (?),
-   fog (dimmed) and unexplored (black) plots.
+2. Map: drag to pan across the east-west seam (no seam in the ground, borders or rivers), zoom
+   with the wheel and `+`/`-` through every step (the chart at 8 and 16, then 32 to 128: the art
+   stays crisp, never blurred), click and drag the minimap; pan fast to a part you have not seen
+   (flat colours for a moment, then the art). Hover plots: the tooltip names the terrain,
+   feature, resource, improvement, owner, and yields while visible. Check hills, peaks, forests,
+   rivers on edges, roads, lairs and goody huts, resource seals, borders, fog (darkened and
+   hatched) and unexplored (black, ragged) plots, a city's light, plaque and banner, the stack
+   standards (bright on your units that can move), and the political and yield layers. Reload
+   with `?renderer=flat`: the flat map of P5 comes back (and Tools → Options toggles it).
 3. Select the settler (click), found a city (`B` or the Found button): the research popup comes
    first, then the production chooser; choose with a click, try Shift-click (queue) and "Later".
 4. Select a warrior: the path preview follows the mouse with turn numbers; right-click moves;
@@ -640,6 +700,14 @@ did.
 
 ## Known gaps
 
+* The art map: two civilizations of one tincture are told apart by a divided field given in the
+  order this page met them (docs/ART.md 7.2 gives it in slot order at the start, which needs every
+  civilization, also those you have not met); it holds while the page is open, and a reload may
+  give the divisions the other way round. Units face west after a move west this page saw (a
+  reload faces them all east). A holy city's glyph is not on its plaque (the view has no holy-city
+  flag for foreign cities), disorder shows only on your own cities (the view gives it only for
+  them). Animations are limited to the marching path: fire and water frames are drawn once into
+  the cached terrain.
 * Shift-right-click waypoints are sent when Shift is released, not one by one as Civ4 does (it
   holds the automatic moves while Shift is down instead): the end result is the same.
 * The spectator mode is the AI autoplay of one turn at a time (FfH's "AI autoplay" for your slot,

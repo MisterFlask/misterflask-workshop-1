@@ -4,7 +4,8 @@
 //! * [`stdio`]: `ffh-play agent`, JSONL over stdin/stdout on the game thread (no extra thread).
 //! * [`http`], [`server`], [`shared`]: `ffh-play serve`, HTTP/1.1 on 127.0.0.1 with a game
 //!   thread, an acceptor and a thread per connection; GETs are served from [`shared::Shared`]
-//!   (never waiting for the game thread), `POST /api` carries the envelope to the game thread.
+//!   (never waiting for the game thread), `POST /api` carries the envelope to the game thread;
+//!   [`art_files`] lists the art the browser client loads (embedded by `build.rs`).
 //!
 //! The envelope (§4.1) is the same for both: a request is an object with `k` (`cmd`, `q`,
 //! `answer`, `session`) and an optional `id` that the reply echoes; a reply is
@@ -17,6 +18,7 @@
 //! next requests itself ([`decision_reply`]): queries are answered from the decision's side,
 //! commands and session operations get `decision_pending`, an `answer` closes it.
 
+pub mod art_files;
 pub mod http;
 pub mod server;
 pub mod shared;

@@ -12,11 +12,12 @@
 
 import * as api from "./api.js";
 import { S, dname, orderName, info, turns, me, emit, tidx, ORDER_KINDS } from "./state.js";
-import { h, signed } from "./dom.js";
+import { h, signed, setText } from "./dom.js";
 import { openModal } from "./modals.js";
 import { run } from "./commands.js";
 import { render as markup, plain } from "./markup.js";
 import { YIELD_COLORS } from "./tiles.js";
+import { look, uiIcon, typeIcon, barEl, pix } from "./look.js";
 
 const GROUPS = [
   [0, "Units"],
@@ -81,7 +82,7 @@ export async function openCity(id, { popup = false } = {}) {
     const i = list.findIndex((c) => c.id === cityId);
     if (list.length < 2 || i < 0) return;
     cityId = list[(i + step + list.length) % list.length].id;
-    m.el.querySelector(".modal-head h2").textContent = title();
+    setText(m.el.querySelector(".modal-head h2"), title());
     emit("center", S.cities.get(cityId).x, S.cities.get(cityId).y);
     load();
   };
@@ -119,6 +120,8 @@ export async function openCity(id, { popup = false } = {}) {
 
 function yieldNumbers(y) {
   if (!y) return h("span.dim", "?");
+  // With the art: each yield's 8 px icon and its number (docs/ART.md 11.5).
+  if (look.art) return h("span.yields", y.map((v, j) => (v > 0 ? h("span.yield-n", { title: dname("YieldType", j) }, uiIcon("yield", j, 8), pix(String(v))) : null)));
   return h("span.yields", y.map((v, j) => (v > 0 ? h("span", { style: { color: YIELD_COLORS[j] } }, String(v)) : null)));
 }
 
@@ -191,6 +194,7 @@ function specialistsView(c, task) {
       h(
         "div.spec",
         { "data-specialist": s.specialist },
+        typeIcon("specialist", s.specialist, 16),
         h("span.spec-name", dname("SpecialistType", s.specialist)),
         h("span.dim", `${s.count}${s.forced ? ` (${s.forced} set)` : ""}${s.free ? `, ${s.free} free` : ""}${s.max ? ` / ${s.max}` : ""}`),
         h("button.small.minus", { disabled: !s.minus, title: "One less", onclick: () => task("TASK_CHANGE_SPECIALIST", s.specialist, -1) }, "−"),
@@ -252,8 +256,8 @@ function statsView(c) {
 }
 
 function buildingsView(c) {
-  const b = c.buildings.map((x) => h("span.chip", { title: plain(info("BuildingType", x.building)?.help ?? "") }, dname("BuildingType", x.building), x.free && !x.real ? h("span.dim", " (free)") : null));
-  const r = c.religions.map((x) => h("span.chip", dname("ReligionType", x.religion), x.holy ? h("span.good", " ★ holy city") : null));
+  const b = c.buildings.map((x) => h("span.chip", { title: plain(info("BuildingType", x.building)?.help ?? "") }, typeIcon("building", x.building, 8), dname("BuildingType", x.building), x.free && !x.real ? h("span.dim", " (free)") : null));
+  const r = c.religions.map((x) => h("span.chip", typeIcon("religion", x.religion, 8), dname("ReligionType", x.religion), x.holy ? h("span.good", " ★ holy city") : null));
   const units = c.garrison.map((u) => h("span.chip", `${dname("UnitType", u.type)}${u.owner !== me()?.player ? ` (${u.owner})` : ""}`));
   return [
     h("div.section", h("h4", `Buildings (${b.length})`), b.length ? h("div.chips", b) : h("p.dim", "None.")),
@@ -335,7 +339,12 @@ function productionView(c, choose, remove) {
     h(
       "div.section",
       h("h4", "Production"),
-      h("div", prod.current ? `${prod.stored}/${prod.needed ?? "-"} (+${prod.rate} per turn)` : h("span.warn", "Nothing is being built.")),
+      h(
+        "div.prod-line",
+        prod.current && look.art ? uiIcon("yield", 1, 16) : null,
+        prod.current ? `${prod.stored}/${prod.needed ?? "-"} (+${prod.rate} per turn)` : h("span.warn", "Nothing is being built."),
+        prod.current && prod.needed ? barEl(prod.stored / prod.needed, "production", { w: 50, next: (prod.stored + prod.rate) / prod.needed }) : null,
+      ),
       queue,
     ),
     ...lists,
@@ -343,6 +352,7 @@ function productionView(c, choose, remove) {
 }
 
 function screen(c, { task, choose, remove, popup }) {
+  const f = c.food;
   const head = h(
     "div.city-summary",
     h("b", `Size ${c.size}`),
@@ -350,6 +360,7 @@ function screen(c, { task, choose, remove, popup }) {
     c.disorder ? h("span.warn", " · in disorder") : "",
     c.occupation ? h("span.warn", ` · occupied ${c.occupation}`) : "",
     ` · food ${signed(c.food.difference)} · production ${c.production.rate}`,
+    look.art && f.threshold > 0 ? h("span.growth", uiIcon("yield", 0, 8), barEl(f.stored / f.threshold, "food", { w: 40, next: (f.stored + f.difference) / f.threshold, title: `${f.stored}/${f.threshold}` })) : null,
   );
   const left = h("div.city-col", plotGrid(c, task), specialistsView(c, task), statsView(c), buildingsView(c));
   const right = h("div.city-col", manageView(c, task), productionView(c, choose, remove));
