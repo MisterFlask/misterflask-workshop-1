@@ -835,24 +835,11 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
                     // The city screen's specialist +/- buttons (WIDGET_CHANGE_SPECIALIST with
                     // iData2 = 1 or -1, CvMainInterface.py), shown as updateCitizenButtons does.
                     let s = SpecialistType::from_usize(in_range("specialist", *data1, d.specialists.len())?);
-                    let city = &g.cities[c];
-                    let count = if city.citizens_automated {
-                        city.specialist_count[s].max(city.force_specialist_count[s])
-                    } else {
-                        city.specialist_count[s]
-                    };
+                    let (plus, minus) = specialist_buttons(g, c, s);
                     match *data2 {
-                        1 => {
-                            let room = city.citizens_automated || count < city.population + g.city_total_free_specialists(c);
-                            if !(g.city_is_specialist_valid(c, s, 1) && room) {
-                                return Err(cannot(format!("no more {} possible", names::name(d, s))));
-                            }
-                        }
-                        -1 => {
-                            if count <= 0 {
-                                return Err(cannot(format!("no {} to remove", names::name(d, s))));
-                            }
-                        }
+                        1 if !plus => return Err(cannot(format!("no more {} possible", names::name(d, s)))),
+                        -1 if !minus => return Err(cannot(format!("no {} to remove", names::name(d, s)))),
+                        1 | -1 => {}
                         other => return Err(invalid(format!("field `data2`: the change is 1 or -1 (the +/- buttons), got {other}"))),
                     }
                 }
@@ -1009,6 +996,19 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             Plan::Apply(Action::AutoPlay { turns: *turns })
         }
     })
+}
+
+/// The city screen's specialist buttons for `s` in city `c` (CvMainInterface.py
+/// `updateCitizenButtons`): `(plus, minus)`, whether the + and - buttons are shown, which is
+/// what `do_task TASK_CHANGE_SPECIALIST` with `data2` 1 / -1 accepts. + needs
+/// `isSpecialistValid(s, 1)` and room (automated citizens, or fewer than the population plus
+/// the free specialists); - a specialist to remove (with automated citizens the larger of the
+/// count and the forced count).
+pub fn specialist_buttons(g: &Game, c: CityId, s: SpecialistType) -> (bool, bool) {
+    let city = &g.cities[c];
+    let count = if city.citizens_automated { city.specialist_count[s].max(city.force_specialist_count[s]) } else { city.specialist_count[s] };
+    let room = city.citizens_automated || count < city.population + g.city_total_free_specialists(c);
+    (g.city_is_specialist_valid(c, s, 1) && room, count > 0)
 }
 
 /// `handleAction`'s war check for a `bCausesWar` spell (FfH, Sephi's area rule): a unit of

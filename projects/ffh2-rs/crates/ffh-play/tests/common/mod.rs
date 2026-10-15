@@ -47,6 +47,35 @@ impl Drop for TempDir {
     }
 }
 
+/// A `map` reply applied to the map a client holds (the client's `applyMapDelta`, tiles.js): a
+/// full reply replaces it, a delta (`full: false`) sets each listed tile's values.
+pub fn apply_map(client: &ffh_play::Json, reply: &ffh_play::Json) -> ffh_play::Json {
+    use ffh_play::Json;
+    if reply.get("full").and_then(Json::as_bool) != Some(false) {
+        return reply.clone();
+    }
+    let tiles: Vec<usize> = reply.req_arr("tiles").unwrap().iter().map(|t| t.as_i64().unwrap() as usize).collect();
+    let mut out = reply.clone();
+    for name in ffh_play::view::map::LAYERS {
+        let mut a = client.req_arr(name).unwrap().to_vec();
+        let values = reply.req_arr(name).unwrap();
+        assert_eq!(values.len(), tiles.len(), "{name}");
+        for (k, &i) in tiles.iter().enumerate() {
+            a[i] = values[k].clone();
+        }
+        out.set(name, Json::Arr(a));
+    }
+    out.set("full", true);
+    out
+}
+
+/// Two maps have the same arrays, revision and hash.
+pub fn assert_same_map(a: &ffh_play::Json, b: &ffh_play::Json, what: &str) {
+    for k in ffh_play::view::map::LAYERS.iter().chain(&["w", "h", "map_rev", "epoch", "rev", "reveal"]) {
+        assert_eq!(a.get(k), b.get(k), "{what}: `{k}` differs");
+    }
+}
+
 /// `(game turn, sync checksum)` at a control point.
 pub fn checkpoint(s: &Session) -> (i32, i32) {
     (s.g.game_turn(), s.g.calculate_sync_checksum())

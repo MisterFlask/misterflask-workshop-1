@@ -121,7 +121,7 @@ struct Seen {
 impl Seen {
     fn read(s: &Session) -> Seen {
         let view = s.query(&Query::View).expect("view");
-        let map = s.query(&Query::Map { since: None }).expect("map");
+        let map = s.query(&Query::Map { since: None, epoch: None }).expect("map");
         let me = int(view.get("me").unwrap(), "player");
         let war: BTreeSet<i64> = arr(&view, "players").iter().filter(|p| flag(p, "war")).map(|p| int(p, "id")).collect();
         let mut cities = Vec::new();
@@ -524,7 +524,7 @@ impl Bot {
     /// Civics, war, peace.
     fn empire(&mut self, s: &mut Session) {
         // Revolt when a civic unlocks (once per civic; the first ones are what we start with).
-        let civics = s.query(&Query::Civics).expect("civics");
+        let civics = s.query(&Query::Civics { with: Vec::new() }).expect("civics");
         let mut available: Vec<(i64, bool)> = Vec::new();
         for o in arr(&civics, "options") {
             for c in arr(o, "civics") {
@@ -725,7 +725,7 @@ pub fn noise_with(mut query: impl FnMut(&Query) -> Result<Json, QueryErr>) -> us
         }
     };
     let Some(view) = ask(Query::View, false) else { return 1 };
-    ask(Query::Map { since: None }, false);
+    ask(Query::Map { since: None, epoch: None }, false);
     let me = int(view.get("me").unwrap(), "player");
     let mut previews = 0;
     for grp in arr(&view, "groups") {
@@ -745,7 +745,7 @@ pub fn noise_with(mut query: impl FnMut(&Query) -> Result<Json, QueryErr>) -> us
     for c in arr(&view, "cities").iter().filter(|c| int(c, "owner") == me) {
         ask(Query::City { city: CityId(int(c, "id") as u32) }, false);
     }
-    for q in [Query::Techs, Query::Civics, Query::Religions, Query::Text] {
+    for q in [Query::Techs, Query::Civics { with: Vec::new() }, Query::Religions, Query::Text] {
         ask(q, false);
     }
     if let Some(players) = ask(Query::Players, false) {

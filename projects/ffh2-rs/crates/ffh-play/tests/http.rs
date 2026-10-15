@@ -10,7 +10,7 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
 
-use common::{staged_capture, TempDir};
+use common::{apply_map, assert_same_map, staged_capture, TempDir};
 use ffh_data::*;
 use ffh_play::json::Json;
 use ffh_play::transport::server::{ServeOptions, Server};
@@ -189,6 +189,9 @@ fn t12_http_end_to_end() {
     }
     assert!(founded, "the settler founds the capital");
     let mut researched = 0;
+    // The map as a client holds it, kept up to date with the tile deltas (phase 6).
+    let mut client_map = c.get("/api/map").json();
+    let mut deltas = 0;
     let mut trained = 0;
     for turn in 0..10 {
         assert_eq!(st.req::<i32>("turn"), Ok(turn));
@@ -210,8 +213,20 @@ fn t12_http_end_to_end() {
         // Served while the AI plays: status and view never wait for the game thread.
         assert_eq!(c.get("/api/view").status, 200);
         st = c.wait_for("the next control point", |st| phase(st) == "human" && st.req::<i32>("turn") == Ok(turn + 1));
+        let (rev, epoch) = (client_map.req::<i64>("rev").unwrap(), client_map.req_str("epoch").unwrap().to_string());
+        let delta = c.get(&format!("/api/map?since={rev}&epoch={epoch}")).json();
+        if delta.req::<bool>("full") == Ok(false) {
+            deltas += 1;
+            assert!(delta.req_arr("tiles").unwrap().len() < delta.req::<usize>("w").unwrap() * delta.req::<usize>("h").unwrap() / 3);
+        }
+        client_map = apply_map(&client_map, &delta);
+        assert_same_map(&client_map, &c.get("/api/map").json(), "the map after a delta");
+        assert_eq!(client_map.get("map_rev"), st.get("map_rev"));
     }
     assert!(researched >= 1 && trained >= 1, "research {researched}, trained {trained}");
+    assert!(deltas >= 5, "{deltas} tile deltas in 10 turns");
+    // A revision of another epoch (another server, another game) gets the full map.
+    assert_eq!(c.get("/api/map?since=1&epoch=0-0").json().req::<bool>("full"), Ok(true));
     let view = c.get("/api/view").json();
     assert_eq!(view.req::<i32>("turn"), Ok(10));
     assert_eq!(view.req::<i64>("view_version"), st.req::<i64>("view_version"));

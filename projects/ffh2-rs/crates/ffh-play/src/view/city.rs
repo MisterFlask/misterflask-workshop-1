@@ -96,12 +96,18 @@ pub fn city(v: &Viewer, c: CityId) -> Result<Json, QueryErr> {
             "revealed" => v.plot_revealed(p),
             "owner" => v.plot_owner(p),
             "worked" => g.city_is_working_plot(c, p),
+            // A click on it works it or stops working it (`alterWorkingPlot`); else, on our
+            // plot, it takes the plot from the city working it (the working override).
+            "can_work" => g.city_can_work(c, p),
             "worked_by" => pl.working_city.filter(|&w| w != c && v.city_revealed(w)),
             "override" => pl.working_city_override,
             "yields" => if v.plot_visible(p) { Json::from(pl.yields.to_vec()) } else { Json::Null },
         });
     }
     let specialists = d.specialists.keys().map(|s| {
+        // The +/- buttons as the city screen shows them (what `do_task CHANGE_SPECIALIST`
+        // accepts).
+        let (plus, minus) = crate::command::specialist_buttons(g, c, s);
         crate::jobj! {
             "specialist" => Json::idx(s),
             "count" => city.specialist_count[s],
@@ -109,8 +115,11 @@ pub fn city(v: &Viewer, c: CityId) -> Result<Json, QueryErr> {
             "free" => city.free_specialist_count[s],
             "max" => city.max_specialist_count[s],
             "can_add" => g.city_is_specialist_valid(c, s, 1),
+            "plus" => plus,
+            "minus" => minus,
         }
     });
+    let emphasize: Vec<bool> = d.emphasizes.keys().map(|e| city.ai_emphasize[e]).collect();
     let yields = all::<YieldType>(YieldType::NUM).map(|y| {
         crate::jobj! { "yield" => Json::idx(y), "rate" => g.city_yield_rate(c, y), "base" => city.base_yield_rate[y.idx()], "modifier" => city.yield_rate_modifier[y.idx()] }
     });
@@ -208,6 +217,8 @@ pub fn city(v: &Viewer, c: CityId) -> Result<Json, QueryErr> {
             "automated" => city.production_automated,
         },
         "citizens_automated" => city.citizens_automated,
+        "emphasize" => emphasize,
+        "extra_population" => g.city_extra_population(c),
         "yields" => Json::Arr(yields.collect()),
         "commerces" => Json::Arr(commerces.collect()),
         "happiness" => happiness,

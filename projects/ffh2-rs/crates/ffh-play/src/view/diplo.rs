@@ -108,6 +108,10 @@ fn item_json(g: &Game, from: PlayerId, to: PlayerId, t: &TradeData) -> Json {
         TradeableItem::TRADE_GOLD_PER_TURN => {
             j.set("max", max_gold_per_turn(g, from, to));
         }
+        // The diplomacy screen names the cities either side offers.
+        TradeableItem::TRADE_CITIES if t.data >= 0 && g.cities.contains(CityId(t.data as u32)) => {
+            j.set("name", crate::view::city_name(g, CityId(t.data as u32)));
+        }
         _ => {}
     }
     j

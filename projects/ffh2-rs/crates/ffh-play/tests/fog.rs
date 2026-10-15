@@ -85,7 +85,7 @@ fn check_fog(s: &Session, turn: i32) -> usize {
     }
     // Map: per plot, vis 0/1/2 as revealed/visible; nothing on unrevealed plots; bonuses the
     // team's techs reveal; owners, improvements and routes as the team last saw them.
-    let map = wire(s, Query::Map { since: None });
+    let map = wire(s, Query::Map { since: None, epoch: None });
     let col = |k: &str| -> Vec<i64> { arr(&map, k).iter().map(|v| v.as_i64().unwrap()).collect() };
     let (vis, bonus, owner, imp, route, city, terrain) = (col("vis"), col("bonus"), col("owner"), col("improvement"), col("route"), col("city"), col("terrain"));
     assert_eq!(vis.len(), g.map.num_plots());

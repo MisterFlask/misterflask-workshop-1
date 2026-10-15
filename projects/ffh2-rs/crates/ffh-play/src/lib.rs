@@ -26,6 +26,7 @@
 //!   which also serves the browser client (`assets/`, P5).
 //! * [`stage`]: saves at staged situations for testing the clients (`ffh-play stage`).
 
+pub mod bench;
 pub mod bot;
 pub mod command;
 pub mod decision;

@@ -14,6 +14,7 @@ pub mod city;
 pub mod data;
 pub mod diplo;
 pub mod fog;
+pub mod hotkeys;
 pub mod map;
 pub mod player;
 pub mod text;
@@ -154,6 +155,9 @@ pub fn me(v: &Viewer) -> Json {
             "research" => pl.disable_research, "production" => pl.disable_production, "spells" => pl.disable_spellcasting,
         },
         "alive" => pl.alive,
+        // Player options by PlayerOptionType index (`set_option` changes a few of them).
+        "options" => pl.options.iter().copied().collect::<Vec<bool>>(),
+        "ai_auto_play" => g.ai_auto_play,
     }
 }
 
@@ -310,6 +314,11 @@ pub fn view(v: &Viewer, ctx: &Ctx) -> Json {
         "cities" => cities(v),
         "units" => units(v),
         "groups" => groups(v),
+        // C++ `CvPlayer::m_groupCycle`: the order W cycles the waiting groups in
+        // (`cycleSelectionGroups`), and whether some group has orders to continue
+        // (`hasAutoUnit`: the cycle's wrap then sends AutoMoves).
+        "group_cycle" => g.players[v.h].group_cycle.iter().filter(|&&grp| g.groups.contains(grp)).copied().collect::<Vec<_>>(),
+        "has_auto_unit" => g.player_has_auto_unit(v.h),
         "pending" => crate::decision::pending(g, v.h, ctx.events).to_json(),
         "log_next" => ctx.messages.map(|m| m.total()),
     }

@@ -14,12 +14,14 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
+use ffh_data::CivicType;
 use ffh_core::path::{FinderKind, PathFinder};
 
 use crate::decision::Decision;
 use crate::guard::QueryGuard;
 use crate::json::{FieldError, Json};
 use crate::report::{MessageStore, Report};
+use crate::view::map::MapTracker;
 use crate::view::{self, Viewer};
 
 /// A query (design §3). Type-valued fields are typed; plots are `x, y`.
@@ -28,8 +30,9 @@ pub enum Query {
     Status,
     Pending,
     View,
-    /// The map arrays. `since` is accepted for the phase-6 deltas; the reply is always full.
-    Map { since: Option<i64> },
+    /// The map arrays; with `since` (a revision the client holds) and its `epoch`, only the
+    /// tiles changed since ([`crate::view::map::MapTracker`]), else the full map.
+    Map { since: Option<i64>, epoch: Option<String> },
     Plot { x: i32, y: i32 },
     /// Unit details and the actions the selection can take (C++ `canHandleAction`).
     Group { units: Vec<UnitId> },
@@ -40,7 +43,9 @@ pub enum Query {
     Combat { units: Vec<UnitId>, x: i32, y: i32 },
     City { city: CityId },
     Techs,
-    Civics,
+    /// The civics screen; `with`: civics to try (merged over the current ones), whose anarchy,
+    /// upkeep and validity the reply adds as `proposed`.
+    Civics { with: Vec<CivicType> },
     Religions,
     Players,
     /// What can be traded with `with`, both ways (C++ `buildTradeTable`), with denials.
@@ -161,7 +166,7 @@ impl Query {
             Query::Combat { .. } => "combat",
             Query::City { .. } => "city",
             Query::Techs => "techs",
-            Query::Civics => "civics",
+            Query::Civics { .. } => "civics",
             Query::Religions => "religions",
             Query::Players => "players",
             Query::Trade { .. } => "trade",
@@ -183,14 +188,16 @@ impl Query {
             "status" => Query::Status,
             "pending" => Query::Pending,
             "view" => Query::View,
-            "map" => Query::Map { since: j.opt("since")? },
+            "map" => Query::Map { since: j.opt("since")?, epoch: j.opt("epoch")? },
             "plot" => Query::Plot { x: j.req("x")?, y: j.req("y")? },
             "group" => Query::Group { units: j.req("units")? },
             "path" => Query::Path { units: j.req("units")?, x: j.req("x")?, y: j.req("y")?, flags: j.get_or("flags", 0)? },
             "combat" => Query::Combat { units: j.req("units")?, x: j.req("x")?, y: j.req("y")? },
             "city" => Query::City { city: j.req("city")? },
             "techs" => Query::Techs,
-            "civics" => Query::Civics,
+            "civics" => Query::Civics {
+                with: if j.opt_value("with")?.is_some_and(|w| !w.is_null()) { crate::names::list_field(ffh_data::global(), j, "with")? } else { Vec::new() },
+            },
             "religions" => Query::Religions,
             "players" => Query::Players,
             "trade" => Query::Trade { with: j.req("with")? },
@@ -217,7 +224,8 @@ impl Query {
         let ids = |v: &[UnitId]| Json::Arr(v.iter().map(|&u| Json::from(u)).collect());
         let j = crate::jobj! { "q" => self.name() };
         match self {
-            Query::Map { since } => j.with("since", *since),
+            Query::Map { since, epoch } => j.with("since", *since).with("epoch", epoch.as_deref()),
+            Query::Civics { with } => j.with("with", Json::Arr(with.iter().map(|&c| Json::idx(c)).collect())),
             Query::Plot { x, y } => j.with("x", *x).with("y", *y),
             Query::Group { units } => j.with("units", ids(units)),
             Query::Path { units, x, y, flags } => j.with("units", ids(units)).with("x", *x).with("y", *y).with("flags", *flags),
@@ -241,11 +249,13 @@ pub struct UiState {
     pub finder: PathFinder,
     /// Bumped whenever the game changed at a control point (a command, `advance`).
     pub view_version: u64,
+    /// The map as the `map` query last answered it, for the tile deltas (`map {since}`).
+    pub map: MapTracker,
 }
 
 impl Default for UiState {
     fn default() -> UiState {
-        UiState { reveal: false, finder: PathFinder::new(FinderKind::Path), view_version: 0 }
+        UiState { reveal: false, finder: PathFinder::new(FinderKind::Path), view_version: 0, map: MapTracker::default() }
     }
 }
 
@@ -288,7 +298,14 @@ pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
         Query::Status => view::status(&v, ctx),
         Query::Pending => crate::decision::pending(v.g, ctx.h, ctx.events).to_json(),
         Query::View => view::view(&v, ctx),
-        Query::Map { .. } => view::map::map(&v),
+        Query::Map { since, epoch } => {
+            // The tracker remembers what it answered, so that a later `since` gets the tiles
+            // changed after it.
+            let rows = view::map::rows(&v);
+            let mut ui = UiState::lock(ctx.ui);
+            ui.map.update(rows);
+            ui.map.reply(*since, epoch.as_deref())
+        }
         Query::Plot { x, y } => view::map::plot(&v, *x, *y)?,
         Query::Group { units } => {
             finders()?;
@@ -309,7 +326,7 @@ pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
         }
         Query::City { city } => view::city::city(&v, *city)?,
         Query::Techs => view::player::techs(&v),
-        Query::Civics => view::player::civics(&v),
+        Query::Civics { with } => view::player::civics(&v, with),
         Query::Religions => view::player::religions(&v),
         Query::Players => view::player::players(&v),
         Query::Trade { with } => view::diplo::trade(&v, *with)?,
@@ -341,6 +358,7 @@ pub fn run(g: &Game, ctx: &Ctx, q: &Query) -> Result<Json, QueryErr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ffh_data::Idx;
 
     #[test]
     fn json_round_trip() {
@@ -348,15 +366,16 @@ mod tests {
             Query::Status,
             Query::Pending,
             Query::View,
-            Query::Map { since: None },
-            Query::Map { since: Some(7) },
+            Query::Map { since: None, epoch: None },
+            Query::Map { since: Some(7), epoch: Some("e-1".into()) },
             Query::Plot { x: 3, y: 4 },
             Query::Group { units: vec![UnitId(1), UnitId(2)] },
             Query::Path { units: vec![UnitId(1)], x: 5, y: 6, flags: 0 },
             Query::Combat { units: vec![UnitId(1)], x: 5, y: 6 },
             Query::City { city: CityId(3) },
             Query::Techs,
-            Query::Civics,
+            Query::Civics { with: Vec::new() },
+            Query::Civics { with: vec![CivicType::from_usize(2)] },
             Query::Religions,
             Query::Players,
             Query::Trade { with: PlayerId(2) },

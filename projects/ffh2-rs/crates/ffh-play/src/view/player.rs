@@ -69,8 +69,48 @@ pub fn techs(v: &Viewer) -> Json {
 }
 
 /// `civics`: each civic option with the current civic and every civic's availability, upkeep
-/// and the anarchy a switch to it alone would cost.
-pub fn civics(v: &Viewer) -> Json {
+/// and the anarchy a switch to it alone would cost. With `with` (civics to try, merged over the
+/// current ones as `update_civics` merges them) also `proposed`: the merged civics, whether
+/// `update_civics` would take them (every new civic `canDoCivics`, and `canRevolution` of the
+/// set), and the set's anarchy and upkeep (the civics screen's totals, CvCivicsScreen.py).
+pub fn civics(v: &Viewer, with: &[CivicType]) -> Json {
+    let mut j = civics_screen(v);
+    if !with.is_empty() {
+        let g = v.g;
+        let d = g.d;
+        let h = v.h;
+        let mut set = g.players[h].civics.clone();
+        let mut valid = true;
+        let mut seen = Vec::new();
+        for &c in with {
+            match d.civics[c].civic_option_type {
+                Some(o) => {
+                    if seen.contains(&o) || (set[o] != Some(c) && !g.player_can_do_civics(h, Some(c))) {
+                        valid = false;
+                    }
+                    seen.push(o);
+                    set[o] = Some(c);
+                }
+                None => valid = false,
+            }
+        }
+        let changed = set != g.players[h].civics;
+        valid = valid && changed && g.player_can_revolution(h, Some(&set));
+        j.set(
+            "proposed",
+            crate::jobj! {
+                "civics" => Json::Arr(set.iter().map(|&c| Json::opt_idx(c)).collect()),
+                "changed" => changed,
+                "valid" => valid,
+                "anarchy" => if changed { g.player_get_civic_anarchy_length(h, &set) } else { 0 },
+                "upkeep" => g.player_get_civic_upkeep(h, Some(&set), false),
+            },
+        );
+    }
+    j
+}
+
+fn civics_screen(v: &Viewer) -> Json {
     let g = v.g;
     let d = g.d;
     let h = v.h;

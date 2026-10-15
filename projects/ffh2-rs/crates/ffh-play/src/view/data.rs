@@ -125,22 +125,36 @@ fn fields(d: &GameData, kind: &str, i: usize, j: &mut Json) {
 }
 
 fn build(d: &GameData) -> Json {
+    let dir = ffh_data::default_data_dir();
     let mut tables = Json::obj();
     for k in KINDS {
+        // The action hotkeys and button order (`keys`, `order`) of missions, commands and builds.
+        let keys = crate::view::hotkeys::read(&dir, k.kind);
         let mut list = Vec::with_capacity((k.count)(d));
         for i in 0..(k.count)(d) {
-            let mut j = crate::jobj! { "type" => (k.name)(d, i), "name" => k.display(d, i).into_owned() };
+            let name = (k.name)(d, i);
+            let mut j = crate::jobj! { "type" => name, "name" => k.display(d, i).into_owned() };
             if let Some(base) = (k.base)(d, i) {
                 j.set("help", text(d, &base.help));
                 j.set("strategy", text(d, &base.strategy));
                 j.set("pedia", text(d, &base.civilopedia));
             }
             fields(d, k.kind, i, &mut j);
+            if let Some((_, a)) = keys.iter().find(|(t, _)| t == name) {
+                j.set("keys", Json::Arr(a.bindings.iter().map(crate::view::hotkeys::Binding::to_json).collect()));
+                j.set("order", a.order);
+            }
             list.push(j);
         }
         tables.set(k.kind, Json::Arr(list));
     }
-    crate::jobj! { "kinds" => Json::Arr(KINDS.iter().map(|k| Json::from(k.kind)).collect()), "tables" => tables }
+    crate::jobj! {
+        "kinds" => Json::Arr(KINDS.iter().map(|k| Json::from(k.kind)).collect()),
+        "tables" => tables,
+        "interface_modes" => crate::view::hotkeys::interface_modes_json(),
+        // The global defines the screens use (the sliders' step).
+        "defines" => crate::jobj! { "commerce_percent_change_increments" => d.defines.commerce_percent_change_increments },
+    }
 }
 
 /// The `data` reply (built once per process; the data is global).

@@ -1,6 +1,6 @@
 //! `ffh-play`: human play for ffh2-rs (docs/PLAY_DESIGN.md, docs/HUMAN.md).
 //!
-//! Commands (bench comes with a later phase):
+//! Commands:
 //!   ffh-play kinds                     list every named kind (info tables, GlobalTypes lists,
 //!                                      hard-coded C++ enums) with its source and count
 //!   ffh-play names [KIND] [--pretty]   JSON of the type names of one kind (`UnitType` or
@@ -48,6 +48,10 @@
 //!                                      AutoMoves rule), `load` (a warrior and two triremes in a
 //!                                      coastal city: the transport picker); prints the save and
 //!                                      ids as JSON; writes only DIR/KIND.ffhsave and its sidecar
+//!   ffh-play bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH] [--json]
+//!                                      T13 (design §8): the session overhead on the AI turns,
+//!                                      command latency, the view on a huge map, the QueryGuard;
+//!                                      exit code 1 when a budget is missed
 //!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
 //!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
 //!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
@@ -76,6 +80,7 @@ fn usage() -> ! {
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
          \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves|load DIR\n\
+         \x20      | bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH] [--json]\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -638,10 +643,53 @@ fn cmd_stage(args: &[String]) {
     }
 }
 
+/// `ffh-play bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH]
+/// [--json]`: T13 (design §8): the session overhead on the AI turns, command latency, the view
+/// build on a huge map, the QueryGuard. Exit code 1 when a budget is missed.
+fn cmd_bench(args: &[String]) {
+    let mut o = if args.iter().any(|a| a == "--quick") { ffh_play::bench::BenchOptions::quick() } else { ffh_play::bench::BenchOptions::default() };
+    // `ffh bench` for the reference figure: next to this binary unless --ffh says otherwise.
+    o.ffh = std::env::current_exe().ok().map(|p| p.with_file_name("ffh"));
+    o.verbose = true;
+    let mut json = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--quick" => {}
+            "--json" => json = true,
+            "--seed" => o.seed = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--turns" => o.turns = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--opponents" => o.opponents = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--world" => o.world = flag_value(args, &mut i).to_string(),
+            "--ffh" => o.ffh = Some(flag_value(args, &mut i).into()),
+            _ => usage(),
+        }
+        i += 1;
+    }
+    let d = ffh_data::global();
+    if d.ty::<ffh_data::WorldSizeType>(&o.world).is_none() || o.turns < 1 {
+        usage();
+    }
+    let r = ffh_play::bench::run(&o);
+    if json {
+        println!("{}", r.to_json());
+    } else {
+        print!("{}", ffh_play::bench::render(&o, &r));
+    }
+    let failures = r.failures();
+    for f in &failures {
+        eprintln!("bench: over budget: {f}");
+    }
+    if !failures.is_empty() {
+        std::process::exit(1);
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { usage() };
     match cmd.as_str() {
+        "bench" => cmd_bench(&args[1..]),
         "kinds" => cmd_kinds(),
         "names" => cmd_names(&args[1..]),
         "lookup" => cmd_lookup(&args[1..]),

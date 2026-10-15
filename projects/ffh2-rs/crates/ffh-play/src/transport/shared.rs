@@ -6,6 +6,7 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use crate::json::Json;
+use crate::view::map::{MapRows, MapTracker};
 
 /// The longest long-poll (`/api/wait?timeout_ms=`).
 pub const MAX_WAIT: Duration = Duration::from_secs(60);
@@ -17,10 +18,12 @@ struct State {
     base: Json,
     phase: String,
     phase_since: Instant,
-    /// The serialized view and map (served as they are).
+    /// The serialized view and full map (served as they are).
     view: Option<Arc<String>>,
     map: Option<Arc<String>>,
     map_rev: Option<String>,
+    /// The published maps, for the tile deltas of `GET /api/map?since=R&epoch=E` (phase 6).
+    tracker: MapTracker,
     /// The game's directory, journal and last autosave (`Host::game_info`).
     game: Json,
     /// The crash report while the status is `crashed`.
@@ -51,6 +54,7 @@ impl Shared {
                 view: None,
                 map: None,
                 map_rev: None,
+                tracker: MapTracker::default(),
                 game: Json::Null,
                 crash: None,
                 quit: false,
@@ -93,23 +97,29 @@ impl Shared {
     /// build, design §2.4).
     pub fn set_caches(&self, view: Option<Json>, map: Option<Json>) {
         let view = view.map(|v| Arc::new(v.to_string()));
-        let map = map.map(|m| (m.get("map_rev").and_then(Json::as_str).map(str::to_string), Arc::new(m.to_string())));
+        let rows = map.as_ref().and_then(MapRows::from_json);
         let mut st = self.lock();
         if let Some(v) = view {
             st.view = Some(v);
         }
-        if let Some((rev, m)) = map {
-            st.map_rev = rev;
-            st.map = Some(m);
+        if let Some(rows) = rows {
+            // The tracker's revision moves when a tile changed; the full map (with its epoch and
+            // revision) is serialized again then.
+            let changed = st.tracker.update(rows);
+            if st.map.is_none() || changed.is_none_or(|c| !c.is_empty()) {
+                st.map = Some(Arc::new(st.tracker.full().to_string()));
+                st.map_rev = st.tracker.map_rev();
+            }
         }
     }
 
-    /// No game: no view, no map.
+    /// No game: no view, no map (the next map starts a new epoch).
     pub fn clear_caches(&self) {
         let mut st = self.lock();
         st.view = None;
         st.map = None;
         st.map_rev = None;
+        st.tracker = MapTracker::default();
         st.game = Json::Null;
     }
 
@@ -117,8 +127,21 @@ impl Shared {
         self.lock().view.clone()
     }
 
+    /// The full map (with its `epoch` and `rev`).
     pub fn map(&self) -> Option<Arc<String>> {
         self.lock().map.clone()
+    }
+
+    /// `GET /api/map?since=R&epoch=E`: the tiles changed since revision `R` of epoch `E`, or the
+    /// full map (`MapTracker::reply`).
+    pub fn map_since(&self, since: Option<i64>, epoch: Option<&str>) -> Option<Arc<String>> {
+        let st = self.lock();
+        st.map.as_ref()?;
+        let reply = st.tracker.reply(since, epoch);
+        if reply.get("full").and_then(Json::as_bool) != Some(false) {
+            return st.map.clone();
+        }
+        Some(Arc::new(reply.to_string()))
     }
 
     fn status_of(st: &State) -> Json {
@@ -195,10 +218,22 @@ mod tests {
         // An older version answers at once.
         assert_eq!(s.wait(0, Duration::from_secs(20)).req::<i64>("version"), Ok(1));
         // Caches: a failed view (None) keeps the previous one.
-        s.set_caches(Some(crate::jobj! { "turn" => 3 }), Some(crate::jobj! { "map_rev" => "ab12" }));
+        let mut rows = MapRows { w: 2, h: 2, wrap_x: false, wrap_y: false, reveal: false, rows: vec![[1; 11]; 4] };
+        let rev = rows.map_rev();
+        s.set_caches(Some(crate::jobj! { "turn" => 3 }), Some(rows.to_json()));
         s.set_caches(None, None);
         assert_eq!(s.view().as_deref().map(String::as_str), Some(r#"{"turn":3}"#));
-        assert_eq!(s.status().req_str("map_rev"), Ok("ab12"));
+        assert_eq!(s.status().req_str("map_rev"), Ok(rev.as_str()));
+        // The map: full, then the changed tile since its revision.
+        let full = Json::parse(&s.map().unwrap()).unwrap();
+        let (epoch, r0) = (full.req_str("epoch").unwrap().to_string(), full.req::<i64>("rev").unwrap());
+        rows.rows[3][0] = 7;
+        s.set_caches(None, Some(rows.to_json()));
+        let delta = Json::parse(&s.map_since(Some(r0), Some(&epoch)).unwrap()).unwrap();
+        assert_eq!(delta.get("full").and_then(Json::as_bool), Some(false));
+        assert_eq!(delta.get("tiles").map(|t| t.to_string()), Some("[3]".to_string()));
+        let other = Json::parse(&s.map_since(Some(r0), Some("elsewhere")).unwrap()).unwrap();
+        assert_eq!(other.get("full").and_then(Json::as_bool), Some(true));
         s.set_crash(Some(crate::jobj! { "message" => "boom" }));
         assert_eq!(s.status().get("crash").and_then(|c| c.get("message")).and_then(Json::as_str), Some("boom"));
         // Quitting releases the waiters.

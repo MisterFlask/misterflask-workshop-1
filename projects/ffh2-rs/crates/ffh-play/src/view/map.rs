@@ -1,4 +1,9 @@
-//! The map arrays and the plot query (design §4.4, §4.6), from the human team's side.
+//! The map arrays and the plot query (design §4.4, §4.6), from the human team's side, and the
+//! map tile deltas ([`MapTracker`], phase 6).
+
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::OnceLock;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ffh_core::ids::*;
 use ffh_data::*;
@@ -47,17 +52,66 @@ fn opt<I: Idx>(v: Option<I>) -> i32 {
     v.map_or(-1, |i| i.idx() as i32)
 }
 
-/// `map`: flat arrays indexed by `y * w + x`, -1 = none; `vis` 0 = unrevealed (every other array
-/// is -1 there), 1 = fogged, 2 = visible.
-pub fn map(v: &Viewer) -> Json {
+/// The arrays of the `map` reply, in this order (one value per plot each).
+pub const LAYERS: [&str; 11] = ["vis", "plot_type", "terrain", "feature", "bonus", "improvement", "route", "owner", "river", "city", "yield"];
+
+/// One plot's values of the [`LAYERS`].
+pub type Row = [i32; 11];
+
+/// The map as the human sees it, one [`Row`] per plot (index `y * w + x`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MapRows {
+    pub w: i32,
+    pub h: i32,
+    pub wrap_x: bool,
+    pub wrap_y: bool,
+    pub reveal: bool,
+    pub rows: Vec<Row>,
+}
+
+impl MapRows {
+    /// `map_rev`: the FNV hash of the arrays, layer after layer (as they go over the wire).
+    pub fn map_rev(&self) -> String {
+        fnv((0..LAYERS.len()).flat_map(|l| self.rows.iter().map(move |r| r[l])))
+    }
+
+    /// The full `map` reply.
+    pub fn to_json(&self) -> Json {
+        let mut j = crate::jobj! { "w" => self.w, "h" => self.h, "wrap_x" => self.wrap_x, "wrap_y" => self.wrap_y, "map_rev" => self.map_rev(), "full" => true, "reveal" => self.reveal };
+        for (l, name) in LAYERS.iter().enumerate() {
+            j.set(name, self.rows.iter().map(|r| r[l]).collect::<Vec<i32>>());
+        }
+        j
+    }
+
+    /// The rows of a full `map` reply (`None` when it is not one).
+    pub fn from_json(j: &Json) -> Option<MapRows> {
+        let int = |k: &str| j.get(k).and_then(Json::as_i64);
+        let (w, h) = (int("w")? as i32, int("h")? as i32);
+        let n = (w.max(0) as usize) * (h.max(0) as usize);
+        let mut rows = vec![[0; 11]; n];
+        for (l, name) in LAYERS.iter().enumerate() {
+            let a = j.get(name)?.as_arr()?;
+            if a.len() != n {
+                return None;
+            }
+            for (r, v) in rows.iter_mut().zip(a) {
+                r[l] = v.as_i64()? as i32;
+            }
+        }
+        let flag = |k: &str| j.get(k).and_then(Json::as_bool).unwrap_or(false);
+        Some(MapRows { w, h, wrap_x: flag("wrap_x"), wrap_y: flag("wrap_y"), reveal: flag("reveal"), rows })
+    }
+}
+
+/// The map rows from the human team's side: `vis` 0 = unrevealed (every other value is -1
+/// there), 1 = fogged, 2 = visible.
+pub fn rows(v: &Viewer) -> MapRows {
     let g = v.g;
-    let (w, h) = (g.map.grid_width, g.map.grid_height);
-    let n = g.map.num_plots();
-    let names = ["vis", "plot_type", "terrain", "feature", "bonus", "improvement", "route", "owner", "river", "city", "yield"];
-    let mut arrays: Vec<Vec<i32>> = vec![Vec::with_capacity(n); names.len()];
+    let mut rows = Vec::with_capacity(g.map.num_plots());
     for p in g.map.plot_ids() {
         let pl = &g.map.plots[p];
-        let row: [i32; 11] = if !v.plot_revealed(p) {
+        rows.push(if !v.plot_revealed(p) {
             let mut r = [-1; 11];
             r[0] = UNREVEALED;
             r
@@ -75,22 +129,118 @@ pub fn map(v: &Viewer) -> Json {
                 pl.plot_city.filter(|&c| v.city_revealed(c)).map_or(-1, |c| c.0 as i32),
                 packed_yield(v, p),
             ]
-        };
-        for (a, x) in arrays.iter_mut().zip(row) {
-            a.push(x);
-        }
+        });
     }
-    let rev = fnv(arrays.iter().flatten().copied());
-    let mut j = crate::jobj! { "w" => w, "h" => h, "wrap_x" => g.map.wrap_x, "wrap_y" => g.map.wrap_y, "map_rev" => rev, "full" => true, "reveal" => v.reveal };
-    for (name, a) in names.iter().zip(arrays) {
-        j.set(name, a);
-    }
-    j
+    MapRows { w: g.map.grid_width, h: g.map.grid_height, wrap_x: g.map.wrap_x, wrap_y: g.map.wrap_y, reveal: v.reveal, rows }
+}
+
+/// `map`: flat arrays indexed by `y * w + x`, -1 = none (see [`rows`]).
+pub fn map(v: &Viewer) -> Json {
+    rows(v).to_json()
 }
 
 /// The map revision of [`map`] (an FNV hash of its arrays).
 pub fn map_rev(v: &Viewer) -> String {
-    map(v).get("map_rev").and_then(Json::as_str).unwrap_or_default().to_string()
+    rows(v).map_rev()
+}
+
+/// A tracker's identity: unique in the process and, through the start time, across processes
+/// (a client that kept a revision from a server that was restarted gets the full map).
+fn new_epoch() -> String {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    static START: OnceLock<u64> = OnceLock::new();
+    let start = *START.get_or_init(|| {
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos() as u64);
+        nanos ^ ((std::process::id() as u64) << 40)
+    });
+    format!("{start:x}-{}", NEXT.fetch_add(1, Ordering::Relaxed))
+}
+
+/// The map tile deltas (design §4.4, phase 6): the map as last read, with the revision at
+/// which each tile last changed (`tile_rev`), so that a client holding the map of revision `R`
+/// gets only the tiles changed since (`map {since: R, epoch}`, `GET /api/map?since=R&epoch=E`).
+/// Revisions count from 1 within an `epoch` (a tracker's identity); a `since` of another epoch
+/// (another tracker: a new game, the other transport's tracker, a restarted server) or out of
+/// range gets the full map, as does a delta that would not be much smaller.
+#[derive(Clone, Debug)]
+pub struct MapTracker {
+    epoch: String,
+    rev: i64,
+    cur: Option<MapRows>,
+    tile_rev: Vec<i64>,
+}
+
+impl Default for MapTracker {
+    fn default() -> MapTracker {
+        MapTracker { epoch: new_epoch(), rev: 0, cur: None, tile_rev: Vec::new() }
+    }
+}
+
+impl MapTracker {
+    /// Takes the current map. Returns the indices of the tiles that changed since the last one
+    /// (`None`: every tile, the first map or one of another shape, which starts a new epoch).
+    pub fn update(&mut self, m: MapRows) -> Option<Vec<usize>> {
+        let same_shape = self.cur.as_ref().is_some_and(|c| (c.w, c.h, c.wrap_x, c.wrap_y) == (m.w, m.h, m.wrap_x, m.wrap_y) && c.rows.len() == m.rows.len());
+        let Some(cur) = self.cur.as_mut().filter(|_| same_shape) else {
+            self.epoch = new_epoch();
+            self.rev = 1;
+            self.tile_rev = vec![1; m.rows.len()];
+            self.cur = Some(m);
+            return None;
+        };
+        let changed: Vec<usize> = (0..m.rows.len()).filter(|&i| cur.rows[i] != m.rows[i]).collect();
+        if !changed.is_empty() {
+            self.rev += 1;
+            for &i in &changed {
+                self.tile_rev[i] = self.rev;
+            }
+        }
+        *cur = m;
+        Some(changed)
+    }
+
+    pub fn epoch(&self) -> &str {
+        &self.epoch
+    }
+
+    /// The current revision (0 before the first map).
+    pub fn rev(&self) -> i64 {
+        self.rev
+    }
+
+    /// The current map's `map_rev`.
+    pub fn map_rev(&self) -> Option<String> {
+        self.cur.as_ref().map(MapRows::map_rev)
+    }
+
+    /// The full map of the current revision (with `epoch` and `rev`; `null` before the first).
+    pub fn full(&self) -> Json {
+        match &self.cur {
+            Some(m) => m.to_json().with("epoch", self.epoch.as_str()).with("rev", self.rev),
+            None => Json::Null,
+        }
+    }
+
+    /// The reply to a client holding revision `since` of `epoch`: the tiles changed since
+    /// (`full: false`, `since`, `tiles` = their indices, and each layer's values for those
+    /// tiles in the same order), or the full map.
+    pub fn reply(&self, since: Option<i64>, epoch: Option<&str>) -> Json {
+        let Some(m) = &self.cur else { return Json::Null };
+        let Some(since) = since.filter(|&s| epoch == Some(self.epoch.as_str()) && (1..=self.rev).contains(&s)) else { return self.full() };
+        let tiles: Vec<usize> = (0..m.rows.len()).filter(|&i| self.tile_rev[i] > since).collect();
+        if tiles.len() * 3 > m.rows.len() {
+            return self.full();
+        }
+        let mut j = crate::jobj! {
+            "w" => m.w, "h" => m.h, "wrap_x" => m.wrap_x, "wrap_y" => m.wrap_y, "map_rev" => m.map_rev(), "full" => false,
+            "reveal" => m.reveal, "epoch" => self.epoch.as_str(), "rev" => self.rev, "since" => since,
+        };
+        for (l, name) in LAYERS.iter().enumerate() {
+            j.set(name, tiles.iter().map(|&i| m.rows[i][l]).collect::<Vec<i32>>());
+        }
+        j.set("tiles", tiles);
+        j
+    }
 }
 
 /// A plot on the map, or `invalid`.
@@ -181,4 +331,82 @@ pub fn plot(v: &Viewer, x: i32, y: i32) -> Result<Json, QueryErr> {
         j.set("units", Json::Arr(units));
     }
     Ok(j)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rows(w: i32, h: i32, f: impl Fn(usize) -> i32) -> MapRows {
+        let n = (w * h) as usize;
+        MapRows { w, h, wrap_x: true, wrap_y: false, reveal: false, rows: (0..n).map(|i| [f(i); 11]).collect() }
+    }
+
+    /// Applies a reply to a client's map (the client's own logic, `tiles.js applyMapDelta`).
+    fn apply(client: &Json, reply: &Json) -> Json {
+        if reply.get("full").and_then(Json::as_bool) == Some(true) {
+            return reply.clone();
+        }
+        let mut out = reply.clone();
+        let tiles: Vec<usize> = reply.get("tiles").unwrap().as_arr().unwrap().iter().map(|t| t.as_i64().unwrap() as usize).collect();
+        for name in LAYERS {
+            let mut a: Vec<Json> = client.get(name).unwrap().as_arr().unwrap().to_vec();
+            for (k, &i) in tiles.iter().enumerate() {
+                a[i] = reply.get(name).unwrap().at(k).unwrap().clone();
+            }
+            out.set(name, Json::Arr(a));
+        }
+        out
+    }
+
+    fn same_map(a: &Json, b: &Json) {
+        for k in LAYERS.iter().chain(&["w", "h", "map_rev", "epoch", "rev"]) {
+            assert_eq!(a.get(k), b.get(k), "{k}");
+        }
+    }
+
+    #[test]
+    fn deltas_carry_the_tiles_changed_since_a_revision() {
+        let mut t = MapTracker::default();
+        assert!(t.reply(None, None).is_null());
+        assert_eq!(t.update(rows(8, 4, |_| 0)), None);
+        let r1 = t.full();
+        assert_eq!((r1.req::<i64>("rev"), r1.req::<bool>("full")), (Ok(1), Ok(true)));
+        let epoch = t.epoch().to_string();
+        // No change: no new revision, an empty delta.
+        assert_eq!(t.update(rows(8, 4, |_| 0)), Some(vec![]));
+        let d = t.reply(Some(1), Some(&epoch));
+        assert_eq!((d.req::<bool>("full"), d.req::<i64>("rev")), (Ok(false), Ok(1)));
+        assert_eq!(d.get("tiles").unwrap().as_arr().unwrap().len(), 0);
+        // Two tiles change, then one more.
+        assert_eq!(t.update(rows(8, 4, |i| (i == 3 || i == 17) as i32)), Some(vec![3, 17]));
+        let r2 = t.full();
+        assert_eq!(t.update(rows(8, 4, |i| (i == 3 || i == 17 || i == 30) as i32 * 2)), Some(vec![3, 17, 30]));
+        assert_eq!(t.update(rows(8, 4, |i| (i == 3 || i == 17 || i == 30) as i32 * 2 + (i == 5) as i32)), Some(vec![5]));
+        let now = t.full();
+        assert_eq!(now.req::<i64>("rev"), Ok(4));
+        // From revision 2 the tiles changed in 3 and 4; from 3 only tile 5.
+        let d2 = t.reply(Some(2), Some(&epoch));
+        assert_eq!(d2.get("tiles"), Some(&Json::from(vec![3usize, 5, 17, 30])));
+        same_map(&apply(&r2, &d2), &now);
+        let d3 = t.reply(Some(3), Some(&epoch));
+        assert_eq!(d3.get("tiles"), Some(&Json::from(vec![5usize])));
+        assert_eq!(d3.get("vis"), Some(&Json::from(vec![1])));
+        same_map(&apply(&r1, &t.reply(Some(1), Some(&epoch))), &now);
+        // Another epoch, an unknown revision or none: the full map.
+        for (since, ep) in [(Some(2), Some("other")), (Some(2), None), (Some(0), Some(epoch.as_str())), (Some(5), Some(epoch.as_str())), (None, Some(epoch.as_str()))] {
+            assert_eq!(t.reply(since, ep).req::<bool>("full"), Ok(true), "{since:?} {ep:?}");
+        }
+        // More than a third of the map changed: the full map.
+        t.update(rows(8, 4, |i| 7 + (i % 2) as i32));
+        assert_eq!(t.reply(Some(4), Some(&epoch)).req::<bool>("full"), Ok(true));
+        // Another shape: a new epoch.
+        assert_eq!(t.update(rows(4, 4, |_| 0)), None);
+        assert_ne!(t.epoch(), epoch);
+        assert_eq!(t.rev(), 1);
+        // The rows survive the full reply's JSON.
+        let full = t.full();
+        assert_eq!(MapRows::from_json(&full), Some(rows(4, 4, |_| 0)));
+        assert_eq!(t.map_rev().as_deref(), full.get("map_rev").and_then(Json::as_str));
+    }
 }

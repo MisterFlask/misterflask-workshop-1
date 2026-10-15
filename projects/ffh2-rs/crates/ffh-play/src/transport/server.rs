@@ -101,7 +101,7 @@ impl Answerer for ChannelAnswerer {
 
     fn ask_with(&self, r: &DecisionReader, d: &Decision) -> Answer {
         // `DecisionReader::query` catches a panic (a failed view keeps the previous one).
-        self.shared.set_caches(r.query(&Query::View).ok(), r.query(&Query::Map { since: None }).ok());
+        self.shared.set_caches(r.query(&Query::View).ok(), r.query(&Query::Map { since: None, epoch: None }).ok());
         let status = r.query(&Query::Status).unwrap_or_else(|_| crate::jobj! { "phase" => "decision", "decision" => d.to_json() });
         self.shared.publish(status.clone());
         loop {
@@ -150,7 +150,7 @@ impl GameThread {
         match self.host.session() {
             Some(s) => {
                 let view = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::View))).ok().and_then(Result::ok);
-                let map = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::Map { since: None }))).ok().and_then(Result::ok);
+                let map = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::Map { since: None, epoch: None }))).ok().and_then(Result::ok);
                 self.shared.set_caches(view, map);
                 self.shared.set_game(self.host.game_info());
                 self.shared.set_crash(None);

@@ -7,6 +7,7 @@
 //! | `GET /api/status` | the status ([`Shared`]) |
 //! | `GET /api/wait?since=V&timeout_ms=T` | the status once its version is above `V` (long-poll) |
 //! | `GET /api/view`, `/api/map` | the cached view and map of the last control point (409 without a game) |
+//! | `GET /api/map?since=R&epoch=E` | the tiles changed since revision `R` of the map (phase 6), or the full map |
 //! | `GET /api/data` | the static tables, with an ETag |
 //! | `GET /api/setup` | the new-game lists |
 //! | `POST /api` | the envelope, answered by the game thread; needs the header `X-FFH: 1` |
@@ -425,7 +426,12 @@ pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
             Response::json(200, &ctx.shared.wait(since, Duration::from_millis(ms)))
         }
         "/api/view" => ctx.shared.view().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
-        "/api/map" => ctx.shared.map().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
+        "/api/map" => {
+            // `?since=R&epoch=E`: the tile deltas (an epoch is hex digits and `-`, a revision a
+            // number: nothing to decode).
+            let since = req.param("since").and_then(|v| v.parse::<i64>().ok());
+            ctx.shared.map_since(since, req.param("epoch")).map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json)
+        }
         "/api/data" => {
             let (data, etag) = data_json();
             if req.header("if-none-match") == Some(etag.as_str()) {
