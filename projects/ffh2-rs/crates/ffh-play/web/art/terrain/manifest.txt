@@ -6,6 +6,13 @@
 ; one, else its peak's or hill's, else its terrain's; owned land takes the owner's field colour,
 ; fogged tiles pass through FOG, cities are vellum `8`, unrevealed tiles void `0`. Read it with
 ; art.resolve(kind, type).opts.mini.
+;
+; Notes on the set (against docs/ART.md 5): ground mottling is drawn as sparse 1-3 px flecks in
+; noise-shaped regions rather than 25%/50% lattices (the lattices read as perforation at 2x);
+; desert is ash `5` with sand flecks and dune arcs so large deserts stay inside the value budget;
+; hills leave their ground-level body open; peaks are massifs of two or three peaks whose outline
+; stops above the foot, which dissolves into the ground, so ranges merge instead of stacking in
+; rows; the unique features (landmarks) are drawn here and claim their IMPROVEMENT_* types.
 set terrain
 source textures.spr
 source relief.spr
@@ -51,6 +58,7 @@ map peak water=1 -> none
 map peak TERRAIN_SNOW|TERRAIN_TUNDRA -> peak/snow mini=7
 map peak TERRAIN_FIELDS_OF_PERDITION|TERRAIN_SHALLOWS -> peak/rock remap=7P,6p,5p,4v mini=p
 map peak TERRAIN_BROKEN_LANDS|TERRAIN_BURNING_SANDS -> peak/rock remap=76,65,54,43 mini=3
+map peak TERRAIN_GRASS|TERRAIN_PLAINS|TERRAIN_DESERT|TERRAIN_MARSH -> peak/rock mini=5
 map peak * -> peak/rock mini=5
 
 ; ---- features (5.5). `scatter=a-b` scatters a-b sprites per tile; otherwise one sprite at `: place`.
