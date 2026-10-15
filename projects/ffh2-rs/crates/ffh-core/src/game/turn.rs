@@ -1276,7 +1276,7 @@ impl Game {
                 for vote in d.votes.keys() {
                     if d.votes[vote].victory {
                         // Team votes store the elected team as a PlayerVoteTypes value.
-                        if self.vote_outcome[vote].0 == team.i() {
+                        if self.vote_outcome[vote].team() == Some(team) {
                             found = true;
                             break;
                         }

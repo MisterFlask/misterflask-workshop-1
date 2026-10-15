@@ -124,7 +124,11 @@ pub struct PlotExtraCost {
 /// C++ `BuildingChangeArray` = vector<pair<BuildingClassTypes, int>>.
 pub type BuildingChangeArray = Vec<(BuildingClassType, i32)>;
 
-/// C++ `PlayerVoteTypes`: negative sentinels, or a player id (vote for that player).
+/// C++ `PlayerVoteTypes`: the negative sentinels of CvEnums.h, or (team votes only: secretary
+/// general and diplomatic victory, `CvGame::isTeamVote`) a `TeamTypes` value, the team voted
+/// for. C++ casts both ways (`(PlayerVoteTypes)eTeam` in `doVoteResults` and `AI_diploVote`,
+/// `(TeamTypes)` in `castVote` and `getSecretaryGeneral`); a non-negative value is never a
+/// player.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlayerVote(pub i32);
 
@@ -136,12 +140,13 @@ impl PlayerVote {
     pub const PLAYER_VOTE_YES: PlayerVote = PlayerVote(-2);
     pub const NO_PLAYER_VOTE: PlayerVote = PlayerVote(-1);
 
-    pub fn for_player(p: PlayerId) -> PlayerVote {
-        PlayerVote(p.0 as i32)
+    /// C++ `(PlayerVoteTypes)eTeam`: a vote for team `t` (team votes).
+    pub fn for_team(t: TeamId) -> PlayerVote {
+        PlayerVote(t.0 as i32)
     }
 
-    /// The player voted for, if this is a vote for a player.
-    pub fn player(self) -> Option<PlayerId> {
-        (self.0 >= 0).then(|| PlayerId(self.0 as u8))
+    /// C++ `(TeamTypes)ePlayerVote`: the team voted for, `None` for a sentinel.
+    pub fn team(self) -> Option<TeamId> {
+        (self.0 >= 0).then(|| TeamId(self.0 as u8))
     }
 }

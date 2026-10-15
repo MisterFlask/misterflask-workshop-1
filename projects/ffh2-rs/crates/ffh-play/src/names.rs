@@ -578,13 +578,6 @@ pub fn player_vote_name(v: PlayerVote) -> Option<&'static str> {
     PLAYER_VOTE_NAMES.iter().find(|(_, x)| *x == v).map(|(n, _)| *n)
 }
 
-/// The team a vote is for (`None` for a sentinel). In C++ a non-negative `PlayerVoteTypes` is a
-/// `TeamTypes` (ffh-core's `PlayerVote::player()` reads it as a player id, which is the same
-/// number only when every player is alone on its team).
-pub fn voted_team(v: PlayerVote) -> Option<TeamId> {
-    u8::try_from(v.0).ok().map(TeamId)
-}
-
 /// Decodes a vote choice as the C++ `BUTTONPOPUP_DIPLOVOTE` popup can send it
 /// (`CvDLLButtonPopup::launchDiploVotePopup`): `YES`, `NO`, `NEVER` or `ABSTAIN` (C++ name
 /// `"PLAYER_VOTE_YES"`, short name `"YES"`, or the value: -2, -3, -5, -4), or, in a team vote, a team id
@@ -611,7 +604,7 @@ pub fn decode_player_vote(j: &Json) -> Result<PlayerVote, String> {
     }
     match j.as_i64() {
         Some(i @ -5..=-2) => Ok(PlayerVote(i as i32)),
-        Some(i) if i >= 0 && (i as u64) < MAX_CIV_TEAMS as u64 => Ok(PlayerVote(i as i32)),
+        Some(i) if i >= 0 && (i as u64) < MAX_CIV_TEAMS as u64 => Ok(PlayerVote::for_team(TeamId(i as u8))),
         Some(i @ (-1 | -6)) => {
             Err(format!("{i} ({}) is vote state, not a choice ({HINT})", player_vote_name(PlayerVote(i as i32)).unwrap_or("?")))
         }
@@ -629,7 +622,7 @@ mod tests {
         // The names are C++ CvEnums.h PlayerVoteTypes.
         for (n, v) in PLAYER_VOTE_NAMES {
             assert_eq!(player_vote_name(*v), Some(*n));
-            assert_eq!(voted_team(*v), None);
+            assert_eq!(v.team(), None);
         }
         assert_eq!(PLAYER_VOTE_NAMES[..4], *PLAYER_VOTE_CHOICES);
         // Every choice the DIPLOVOTE popup has: by C++ name, short name, value, integral float.
@@ -647,10 +640,10 @@ mod tests {
 
         // Team votes: a team id (C++ (PlayerVoteTypes)eTeam), barbarians excluded.
         assert_eq!(MAX_CIV_TEAMS, 35);
-        assert_eq!(decode_player_vote(&Json::Int(0)), Ok(PlayerVote(0)));
-        assert_eq!(decode_player_vote(&Json::Int(3)), Ok(PlayerVote(3)));
-        assert_eq!(decode_player_vote(&Json::Int(34)), Ok(PlayerVote(34)));
-        assert_eq!(voted_team(PlayerVote(3)), Some(TeamId(3)));
+        assert_eq!(decode_player_vote(&Json::Int(0)), Ok(PlayerVote::for_team(TeamId(0))));
+        assert_eq!(decode_player_vote(&Json::Int(3)), Ok(PlayerVote::for_team(TeamId(3))));
+        assert_eq!(decode_player_vote(&Json::Int(34)), Ok(PlayerVote::for_team(TeamId(34))));
+        assert_eq!(decode_player_vote(&Json::Int(3)).unwrap().team(), Some(TeamId(3)));
         assert_eq!(player_vote_name(PlayerVote(3)), None);
 
         // Internal sentinels are vote state, never a choice: -1 would reset the vote, -6 would
