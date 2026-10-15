@@ -348,6 +348,42 @@ fn t12_auto_moves_run_when_the_last_ready_unit_is_skipped() {
     server.shutdown();
 }
 
+/// A long AI autoplay can be stopped while it runs (P6 review: only killing the server did):
+/// `autoplay {turns: 0}` gets `stopping` while other commands get `not_your_turn` and session
+/// operations `busy`; the status counts the turns left; the human has control again at its next
+/// turn with the autoplay off, and the stop is in the journal. At a control point `turns: 0` is
+/// invalid.
+#[test]
+fn t12_a_running_autoplay_stops() {
+    let tmp = TempDir::new("t12-autoplay-stop");
+    let (server, c) = start(&tmp.0.join("saves"), None);
+    c.ok(ffh_play::jobj! { "k" => "session", "op" => "new", "setup" => ffh_play::jobj! { "seed" => 4, "world" => "WORLDSIZE_DUEL", "opponents" => 1 } });
+    let st = c.wait_for("the first turn", |st| phase(st) == "human");
+    let from: i32 = st.req("turn").unwrap();
+    assert_eq!(st.req::<i32>("ai_auto_play"), Ok(0));
+    let r = c.post(&cmd("autoplay").with("turns", 0));
+    assert_eq!(r.req_str("error"), Ok("invalid"), "{r}");
+    c.ok(cmd("autoplay").with("turns", 10000));
+    let st = c.wait_for("the autoplay under way", |st| phase(st) != "human" || st.req::<i32>("turn").unwrap() > from);
+    assert_eq!(phase(&st), "running", "{st}");
+    let r = c.post(&cmd("end_turn"));
+    assert_eq!(r.req_str("error"), Ok("not_your_turn"), "{r}");
+    let r = c.post(&ffh_play::jobj! { "k" => "session", "op" => "save", "name" => "x" });
+    assert_eq!(r.req_str("error"), Ok("busy"), "{r}");
+    let stop = c.ok(cmd("autoplay").with("turns", 0));
+    assert_eq!(stop.req::<bool>("stopping"), Ok(true), "{stop}");
+    assert!(stop.req::<i32>("turns_left").unwrap() > 9000, "{stop}");
+    let st = c.wait_for("control again", |st| phase(st) != "running");
+    assert_eq!(phase(&st), "human", "{st}");
+    assert_eq!(st.req::<i32>("ai_auto_play"), Ok(0));
+    let turn: i32 = st.req("turn").unwrap();
+    assert!(turn > from && turn < from + 200, "turn {turn} (from {from})");
+    let journal = st.get("game").and_then(|g| g.req_str("journal").ok()).map(std::path::PathBuf::from).expect("the journal");
+    let lines = ffh_play::journal::read_file(&journal).unwrap();
+    assert!(lines.iter().any(|l| matches!(l, ffh_play::journal::Line::Cmd { cmd, .. } if ffh_play::journal::is_running_cmd(cmd))), "the stop journaled");
+    server.shutdown();
+}
+
 /// Connection limits and hosts (P4 review): bound to another loopback address, requests naming
 /// that address are served; past `MAX_CONNECTIONS` open connections a new one gets a 503 that it
 /// can read (not a reset), and once they close the server answers again.

@@ -100,14 +100,15 @@ export function openInspector(kind = "unit", oid = null) {
 // Autoplay and the spectator mode.
 
 /** AI autoplay for N turns (`autoplay {turns}`, FfH `setAIAutoPlay`): the AI plays your slot
- *  meanwhile and gives it back at the start of the turn after the last. */
+ *  meanwhile and gives it back at the start of the turn after the last. While it runs the top
+ *  bar counts the turns left and offers Stop (`autoplayBar`). */
 export function openAutoplay() {
   const n = h("input#autoplay-turns", { type: "number", min: 1, max: 10000, value: 5 });
   const err = h("p.error");
   return openModal({
     title: "AI autoplay",
     tag: "autoplay",
-    body: [h("p", "The AI plays your civilization for these turns (popups and decisions included), then you have control again. The turns run without a pause; use Spectate to step through them."), h("label.field", h("span", "Turns"), n), err],
+    body: [h("p", "The AI plays your civilization for these turns (popups and decisions included), then you have control again. The turns run without a pause (Stop in the top bar ends them); use Spectate to step through them."), h("label.field", h("span", "Turns"), n), err],
     buttons: [
       {
         label: "Run",
@@ -292,6 +293,37 @@ export function openOptions() {
 }
 
 /** The spectator bar's buttons (the top bar shows them while spectating). */
+/** The top bar while an AI autoplay runs (not the spectator mode's own): the turns left and
+ *  Stop, which sends `autoplay {turns: 0}` (FfH `setAIAutoPlay(0)`; the server stops it before
+ *  its next turn slice and you have control at your next turn, or at once during yours). */
+export function autoplayBar() {
+  const st = S.status ?? {};
+  if (spect || st.phase !== "running" || !(st.ai_auto_play > 0)) return null;
+  const left = st.ai_auto_play;
+  return h(
+    "span.spectate",
+    h("b", "AI autoplay"),
+    h("span.dim", ` ${left} turn${left === 1 ? "" : "s"} left `),
+    h(
+      "button.small",
+      {
+        id: "autoplay-stop",
+        title: "Stop the AI autoplay: you have control again at your next turn",
+        onclick: async (ev) => {
+          ev.currentTarget.disabled = true;
+          try {
+            await api.cmd("autoplay", { turns: 0 });
+            toast("The AI autoplay stops.");
+          } catch (e) {
+            toast(e.detail ?? e.message ?? String(e), "error");
+          }
+        },
+      },
+      "■ Stop",
+    ),
+  );
+}
+
 export function spectatorBar() {
   if (!spect) return null;
   const st = S.status ?? {};

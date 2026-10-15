@@ -76,6 +76,46 @@ fn t4_replay_journal() {
     assert!(Path::new(&path).exists());
 }
 
+/// The AI autoplay stopped while it runs (`SessionShared::request_stop_autoplay`, what the HTTP
+/// transport does on `autoplay {turns: 0}`; P6 review): the human has control at its next turn,
+/// the stop is journaled at its turn slice, and the journal replays to the same game (the replay
+/// applies the stop at that slice).
+#[test]
+fn an_autoplay_stopped_while_it_runs_replays() {
+    use ffh_play::human::AdvisorAnswerer;
+    use ffh_play::{CmdOk, Command, NewGame};
+    let dir = TempDir::new("autoplay-stop");
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, 4);
+    ng.opponents = 1;
+    ng.world = d.t("WORLDSIZE_DUEL");
+    let opts = SessionOptions { saves_dir: Some(dir.0.clone()), ..SessionOptions::default() };
+    let mut s = Session::new_game(&ng, std::sync::Arc::new(AdvisorAnswerer), opts).unwrap();
+    assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+    let from = s.g.game_turn();
+    assert!(matches!(s.execute(&Command::AutoPlay { turns: 400 }), Ok(CmdOk::Applied { .. })));
+    let mut asked = None;
+    let stop = s.advance(&mut |s| {
+        if asked.is_none() && s.g.game_turn() >= from + 3 && !s.g.players[s.human].turn_active {
+            s.shared.request_stop_autoplay();
+            asked = Some(s.g.game_turn());
+        }
+    });
+    assert_eq!(stop, Stop::Human);
+    let asked = asked.expect("the stop asked");
+    assert_eq!(s.g.ai_auto_play, 0);
+    assert!(s.g.players[s.human].human);
+    assert_eq!(s.g.game_turn(), asked + 1, "control at the human's next turn");
+    let (final_save, _) = s.save_bytes().unwrap();
+    let lines = journal::read_file(&s.journal_path().unwrap()).unwrap();
+    let stops: Vec<_> = lines.iter().filter(|l| matches!(l, Line::Cmd { cmd, .. } if journal::is_running_cmd(cmd))).collect();
+    assert_eq!(stops.len(), 1, "{stops:?}");
+    drop(s);
+    let r = replay(lines, None, SessionOptions::default()).unwrap_or_else(|e| panic!("replay: {e}"));
+    assert!(r.g.save() == final_save, "the replay ends in a different game");
+    assert_eq!(r.g.ai_auto_play, 0);
+}
+
 /// A journal that starts with a `load` header replays from the save that header names (with its
 /// sidecar, as the session loaded it), and one that starts with `take_over` from the AI save it
 /// names; replaying either from its header alone asks for that save.

@@ -281,6 +281,28 @@ impl Journal {
     pub fn is_replay(&self) -> bool {
         matches!(self.sink, Sink::Replay(_))
     }
+
+    /// Replaying: the command the journal has at `stamp` while the game runs (between turn
+    /// slices), taken; only the AI autoplay's stop (`autoplay {turns: 0}`, the one command a
+    /// transport sends while the game runs) is such a command. None otherwise, and when not
+    /// replaying (a journal line at another stamp is then reported at the next control point).
+    pub fn take_running_cmd(&mut self, stamp: Stamp) -> Option<Json> {
+        let Sink::Replay(cursor) = &self.sink else { return None };
+        let mut c = cursor.lock().unwrap();
+        match c.peek() {
+            Some(Line::Cmd { stamp: s, cmd }) if *s == stamp && is_running_cmd(cmd) => {
+                let cmd = cmd.clone();
+                c.pos += 1;
+                Some(cmd)
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Whether a journaled command is one applied while the game runs: the AI autoplay's stop.
+pub fn is_running_cmd(cmd: &Json) -> bool {
+    cmd.get("c").and_then(Json::as_str) == Some("autoplay") && cmd.get("turns").and_then(Json::as_i64) == Some(0)
 }
 
 /// Reads a journal file.

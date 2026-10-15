@@ -147,7 +147,8 @@ sides when either side refuses them), "Propose": the AI accepts or declines at o
 **Tools** (the Tools menu): **Debug reveal** (the whole map and every unit and city; the top
 bar says DEBUG REVEAL); the **Inspector** (the rules engine's own data of your unit, group, city,
 player or team, and of anything under debug reveal, plots too; an info entry by kind and index);
-**AI autoplay** (the AI plays your civilization for N turns, then you have control again);
+**AI autoplay** (the AI plays your civilization for N turns, then you have control again; while
+it runs the top bar counts the turns left and "Stop" ends it: you have control at your next turn);
 **Spectate** (below); **Take over…** (play another slot of an AI-only save); **Options** (Civ4's
 player options); the raw request box.
 
@@ -198,7 +199,7 @@ cargo build --release
 ./target/release/ffh-play agent [GAME] [--on-eof quit|end-turn] [--progress]
 ./target/release/ffh-play serve [GAME] [--port 8642] [--bind ADDR] [--assets DIR]
 ./target/release/ffh-play stage capture|attack|automoves|load|trade DIR
-./target/release/ffh-play bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH] [--json]
+./target/release/ffh-play bench [--quick] [--seed N] [--turns T] [--runs R] [--world W] [--opponents N] [--ffh PATH] [--json]
     GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W]
           [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE]
           [--take-over SAVE --player P] [--panic-at T]
@@ -256,10 +257,13 @@ cargo build --release
   game keeps no journal and no autosaves). Nothing in play uses it.
 * `bench` measures the session's performance (design T13): the AI time per turn of a game the
   test bot plays against `ffh bench` (the `ffh` binary next to `ffh-play`, or `--ffh`), the
-  session's own cost on one AI-played trajectory (a bare update loop, the session, the session
-  with its autosaves; thread CPU time, the same game each time), command latency on a standard
-  map at turn 200, the view on a huge map and the QueryGuard; it prints each against its budget
-  (`--json`: the figures) and exits 1 when one is missed. `--quick` is a small variant (seconds).
+  session's own cost on one AI-played trajectory (its own work against the `update()` time
+  inside its runs, which is budgeted; and, reported only, a bare update loop, the session and the
+  session with its autosaves timed whole, `--runs` interleaved rounds, the same game each time:
+  separate runs differ by a quarter or more on a busy host, even in the thread's CPU time),
+  command latency on a standard map at turn 200, the view on a huge map and the QueryGuard; it
+  prints each against its budget (`--json`: the figures) and exits 1 when one is missed.
+  `--quick` is a small variant (seconds).
   The full run takes about a minute.
 * GAME flags: each game gets a directory in `--saves DIR` (default `./saves`), `game-<seed>`
   (`-2`, ... when taken), with its autosaves (`auto/`, `--autosaves N` kept, default 20), journal
@@ -366,7 +370,7 @@ Errors: `invalid`, `not_owner`, `gone`, `busy`.
 
 | `q` | Reply |
 |---|---|
-| `status` | phase (`human`, `running`, `decision`, `over`; over the transports also `stuck`, `no_game`, `crashed` with the report), turn, year, you, the active players, the open decision, the winner, `view_version` (changes whenever the view does: a command, a decision opening or closing, debug reveal), and over the transports `game {dir, journal, autosave}` |
+| `status` | phase (`human`, `running`, `decision`, `over`; over the transports also `stuck`, `no_game`, `crashed` with the report), turn, year, you, the active players, the open decision, the winner, `view_version` (changes whenever the view does: a command, a decision opening or closing, debug reveal), `ai_auto_play` (the AI autoplay's turns left, 0 when off), and over the transports `game {dir, journal, autosave}` |
 | `pending` | open events (with each option's effects), votes, research needed, idle cities, promotions, ready groups, idle AI-controlled groups |
 | `view` | `me` (gold and rate, research, sliders, civics, score, Armageddon counter, mana, Stasis, the player options, AI autoplay), the players you met, the cities you revealed, the units you see, your groups (`ready`: some unit can move, as `pending.ready_groups`; `selectable`: every unit can, what Civ4's cycle selects), `group_cycle` (your groups in Civ4's cycle order) and `has_auto_unit`, `pending`, `log_next` |
 | `map` | flat arrays `y * w + x`: `vis` (0 unrevealed, 1 fogged, 2 visible), `plot_type`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `owner`, `river` (bit 0 river on the south edge, bit 1 on the east edge, bits 2-4 north/south flow + 1, bits 5-7 west/east flow + 1), `city`, `yield` (`food \| production << 8 \| commerce << 16`, visible plots only), `map_rev`, and `epoch` and `rev`. `map {since: R, epoch: E}` answers only the tiles changed since revision `R` (`full: false`, `tiles` = their indices, each array the values of those tiles), or the full map (`full: true`) when `E` is not the current epoch, `R` is unknown or much of the map changed |
@@ -479,7 +483,7 @@ next `control` first.
 | Request | |
 |---|---|
 | `GET /`, `/app/*` | the browser client (`index.html`, `app/*.js` modules, `app/style.css`; embedded in the binary, or from `--assets DIR`) |
-| `GET /api/status` | the status: `version`, `phase` (`human`, `running`, `decision`, `over`, `stuck`, `no_game`, `crashed`), `turn`, `year`, `human`, `active_players`, `view_version`, `decision`, `over`, `reveal`, `ms_in_phase`, `map_rev`, `game {dir, journal, autosave}`, `crash` |
+| `GET /api/status` | the status: `version`, `phase` (`human`, `running`, `decision`, `over`, `stuck`, `no_game`, `crashed`), `turn`, `year`, `human`, `active_players`, `view_version`, `decision`, `over`, `reveal`, `ai_auto_play`, `ms_in_phase`, `map_rev`, `game {dir, journal, autosave}`, `crash` |
 | `GET /api/wait?since=V&timeout_ms=T` | the status as soon as its `version` is above `V` (long-poll, at most 60 s) |
 | `GET /api/view`, `/api/map` | the `view` and `map` of the last control point or decision (409 without a game); `/api/map?since=R&epoch=E` the tiles changed since (as the `map` query) |
 | `GET /api/data`, `/api/setup` | the static tables (with an ETag) and the new-game lists |
@@ -489,7 +493,13 @@ The server listens on 127.0.0.1 only (unless `--bind`), refuses requests whose `
 `127.0.0.1`, `localhost`, `[::1]` or the loopback address it is bound to, and refuses a `POST`
 without `X-FFH: 1`, so other web pages cannot drive it. A request must arrive whole within 15 s
 (408); at most 64 connections are served at once (more get 503). A command's request waits while a decision it raised is open: answer the
-decision on another connection (the status shows `phase: decision`). If the rules crash, the
+decision on another connection (the status shows `phase: decision`). While the game runs (the
+AI turns), queries are answered, session operations get `busy` and commands `not_your_turn`,
+except `autoplay {turns: 0}` while an AI autoplay runs: it answers `{"stopping": true,
+"turns_left": N}` and the autoplay stops before the next turn slice (FfH `setAIAutoPlay(0)`,
+journaled at that slice; your slot is human again at once, and you have control at your next
+turn, or at once during yours). The agent reads no input while the game runs, so there an
+autoplay runs all its turns. If the rules crash, the
 status becomes `crashed` with the report and the server stays up: load the autosave. Report the
 bug with the journal and that autosave (`ffh-play replay JOURNAL --from AUTOSAVE`; before a loaded
 game's first autosave, the report names the save it was loaded from).
@@ -567,7 +577,7 @@ node tools/web-smoke.mjs                 # headless Chromium plays through the p
   tech tree (`F6`, a click researches), civics (`F3`, a pick and the revolution), religion
   (`F7`), the sliders (top bar and `F2`), diplomacy (`F4`; the trade screen when a player was
   met), the cities list (`F1`), the keys (`?`), the go-to mode (`G`, `Esc`), the map layers, the
-  inspector, debug reveal, an AI autoplay turn, the spectator mode (play, pause, step, stop),
+  inspector, debug reveal, an AI autoplay turn and a 5,000-turn one stopped from the top bar, the spectator mode (play, pause, step, stop),
   and the trade screen (`stage trade`: 7 gold offered and accepted). Any console error, page error, failed request or HTTP error fails it. The screenshots
   (`target/web-smoke/*.png`) are for review, not committed.
 
@@ -640,8 +650,8 @@ did.
   ffh-play from Civ4's `CIV4InterfaceModeInfos.xml` (not vendored); the other orders' keys are read
   from the vendored XML.
 * The autosave at each turn boundary adds about half to the time of an AI turn on a standard
-  map (`ffh-play bench`: `Game::save` and the file write, about 7 ms a turn against 15 ms); it is
-  the session's largest cost.
+  map (`ffh-play bench`: `Game::save` and the file write, about 7-8 ms a turn against 17 ms of
+  `update()`); it is the session's largest cost (its other work is about 0.2%).
 * AI players never offer you deals or ask anything (ffh-ai); you propose. The trade screen shows
   an AI's whole gold and gold rate as what it can give (Civ4's AI caps it; that AI code is not
   ported), and Civ4's AI refusals ("we don't want to trade that") are mostly not ported either.

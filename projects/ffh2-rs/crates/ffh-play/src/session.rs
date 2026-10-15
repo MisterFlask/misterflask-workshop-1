@@ -5,6 +5,7 @@
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use ffh_ai::Ai;
 use ffh_core::controller::ControllerRef;
@@ -96,6 +97,20 @@ impl std::error::Error for PlayError {}
 /// Turn slices `advance` runs in one game turn before it gives up (as ffh-cli's run loop).
 pub const WATCHDOG_SLICES: u64 = 200_000;
 
+/// Where [`Session::advance`] spends its time while the game runs (T13, `bench.rs`): the rules'
+/// `update()` slices, and the session's own work around them in the same slices (the slot-move
+/// check, the log drain and its fog, the turn-boundary checkpoint and its checksum, the per-slice
+/// callback), the autosave counted apart. Both are wall time read around each part of each
+/// slice, so the two shares see the same host load: their ratio holds on a loaded host where
+/// two separate runs differ by a quarter (P6 review). Off unless `Session::profile` is set.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AdvanceProfile {
+    pub update: Duration,
+    pub own: Duration,
+    pub autosave: Duration,
+    pub slices: u64,
+}
+
 /// A game played by one human (design §3).
 pub struct Session {
     pub g: Game,
@@ -119,6 +134,8 @@ pub struct Session {
     last_autosave: Option<SavePaths>,
     /// A new game not yet at its first control point (see `advance`).
     start_pending: bool,
+    /// When set, `advance` adds up where its time goes ([`AdvanceProfile`]; the bench).
+    pub profile: Option<AdvanceProfile>,
 }
 
 impl Session {
@@ -145,6 +162,7 @@ impl Session {
             auto_moves_tried: false,
             last_autosave: None,
             start_pending: false,
+            profile: None,
         }
     }
 
@@ -252,7 +270,11 @@ impl Session {
     /// under a `QueryGuard`; plain fields of `s.g` may be read directly).
     pub fn advance(&mut self, on_slice: &mut dyn FnMut(&Session)) -> Stop {
         let mut slices: u64 = 0;
+        // A stop of the AI autoplay is asked while this `advance` runs (`on_slice`).
+        self.shared.stop_autoplay.store(false, std::sync::atomic::Ordering::SeqCst);
         loop {
+            // The phase predicate is the session's own work too (`AdvanceProfile`).
+            let tp = self.profile.is_some().then(Instant::now);
             match self.phase() {
                 Phase::Over => {
                     self.drain_log();
@@ -284,14 +306,29 @@ impl Session {
                     return Stop::Human;
                 }
                 Phase::Running => {
+                    if self.stop_autoplay_due() {
+                        // `setAIAutoPlay(0)`: the human's slot is human again at once (its turn,
+                        // if it is under way, goes on as the human's).
+                        self.journal(&Line::Cmd { stamp: Stamp::of(&self.g), cmd: Command::AutoPlay { turns: 0 }.to_json() });
+                        self.g.set_ai_auto_play(0);
+                        continue;
+                    }
+                    let t0 = tp.map(|_| Instant::now());
                     let log_mark = self.g.log.entries.len();
                     self.g.update();
+                    let t1 = t0.map(|_| Instant::now());
+                    let saved = self.profile.map_or(Duration::ZERO, |p| p.autosave);
                     self.follow_human(MovedIn::Update { log_mark });
                     if self.g.at_turn_boundary() {
                         self.boundary();
                         slices = 0;
                     }
                     on_slice(self);
+                    if let (Some(tp), Some(t0), Some(t1), Some(p)) = (tp, t0, t1, self.profile.as_mut()) {
+                        p.update += t1 - t0;
+                        p.own += (t0 - tp) + t1.elapsed().saturating_sub(p.autosave - saved);
+                        p.slices += 1;
+                    }
                     slices += 1;
                     if slices > WATCHDOG_SLICES {
                         return Stop::Stuck(diagnose(&self.g));
@@ -299,6 +336,15 @@ impl Session {
                 }
             }
         }
+    }
+
+    /// Before a turn slice: whether the AI autoplay stops now. Live, a transport asked for it
+    /// while the game ran (`SessionShared::request_stop_autoplay`; dropped when the autoplay
+    /// already ended); replaying, the journal has the stop at this slice's stamp.
+    fn stop_autoplay_due(&mut self) -> bool {
+        let asked = self.shared.stop_autoplay.swap(false, std::sync::atomic::Ordering::SeqCst);
+        let replayed = self.shared.journal.lock().unwrap().take_running_cmd(Stamp::of(&self.g)).is_some();
+        (asked || replayed) && self.g.ai_auto_play > 0
     }
 
     /// The AutoMoves rule of `updateTestEndTurn` for human `h` at a control point: nothing is
@@ -455,6 +501,7 @@ impl Session {
         let turn = self.g.game_turn();
         self.journal(&Line::Checkpoint { turn, checksum: self.g.calculate_sync_checksum() });
         if let (Some(dir), true) = (&self.opts.saves_dir, self.opts.autosave_keep > 0) {
+            let t0 = Instant::now();
             let sidecar = self.sidecar();
             let r = match start {
                 None => save::autosave(dir, turn, &self.g.save(), &sidecar, self.opts.autosave_keep),
@@ -463,6 +510,9 @@ impl Session {
             match r {
                 Ok(p) => self.last_autosave = Some(p),
                 Err(e) => eprintln!("ffh-play: autosave failed: {e}"),
+            }
+            if let Some(p) = self.profile.as_mut() {
+                p.autosave += t0.elapsed();
             }
         }
     }

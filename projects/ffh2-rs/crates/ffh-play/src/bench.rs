@@ -9,13 +9,18 @@
 //! * **Session overhead on one trajectory.** From a save at the human's first control point the
 //!   AI plays every slot for `turns` turns (`autoplay`: the human slot through its
 //!   `HumanController` and the advisor) three ways: as a bare `Game::update()` loop with the
-//!   same controllers; through `Session::advance` with the journal in memory and no autosave
-//!   (the session's own work: the log drain and its fog, the slot-move check, the turn-boundary
-//!   checkpoint and its checksum, a transport's per-slice callback; budget +10%); and with the
-//!   journal and the autosaves in a directory (the autosave, `Game::save` and the file write,
-//!   is reported, not budgeted: design §7 P6). All end with the same checksum. Times are the
-//!   thread's CPU time (`/proc/thread-self/schedstat`; wall time where that cannot be read),
-//!   the best of two runs each, so that other processes on the host do not count.
+//!   same controllers; through `Session::advance` with the journal in memory and no autosave;
+//!   and with the journal and the autosaves in a directory. All end with the same checksum.
+//!   The budget (+10%) is on the session's own work measured inside its runs
+//!   ([`AdvanceProfile`]: the phase predicate, the slot-move check, the log drain and its fog,
+//!   the turn-boundary checkpoint and its checksum, the per-slice callback) against the
+//!   `update()` slices of the same runs: both are read around each slice, so host load reaches
+//!   both alike (P6 review). The three ways are also timed whole, interleaved, `overhead_runs`
+//!   rounds, the best of each reported with the spread: separate runs of the same trajectory
+//!   differ by up to a third on a loaded host, even in the thread's CPU time
+//!   (`/proc/thread-self/schedstat`, which leaves out the time other processes run but not their
+//!   effect on caches, memory bandwidth and clock speed), so their ratio is reported, not
+//!   budgeted. The autosave (`Game::save` and the file write) is reported, not budgeted.
 //! * **Command latency**: `execute` (with its settle) plus the `view` query, for commands at a
 //!   control point of a standard map at turn 200 (reached by autoplay; budget 50 ms).
 //! * **View build** on a huge map (budget 10 ms), and the **QueryGuard** (budget 1 ms).
@@ -36,7 +41,7 @@ use crate::human::{AdvisorAnswerer, HumanController, SessionShared};
 use crate::journal::Journal;
 use crate::json::Json;
 use crate::query::{Query, UiState};
-use crate::session::{phase, Phase, Session, SessionOptions, Stop};
+use crate::session::{phase, AdvanceProfile, Phase, Session, SessionOptions, Stop};
 use crate::setup::{self, NewGame};
 
 /// What `bench` measures (the defaults are T13's).
@@ -47,6 +52,8 @@ pub struct BenchOptions {
     pub world: String,
     pub opponents: usize,
     pub turns: i32,
+    /// Rounds of the three overhead runs (raw, session, session with autosaves), interleaved.
+    pub overhead_runs: usize,
     /// Turns the test bot plays for the bot-human figure (0: skipped).
     pub bot_turns: i32,
     /// The command-latency game: a map of this size at this turn.
@@ -69,6 +76,7 @@ impl Default for BenchOptions {
             world: "WORLDSIZE_STANDARD".into(),
             opponents: 5,
             turns: 120,
+            overhead_runs: 5,
             bot_turns: 120,
             latency_world: "WORLDSIZE_STANDARD".into(),
             latency_turn: 200,
@@ -88,6 +96,7 @@ impl BenchOptions {
             world: "WORLDSIZE_SMALL".into(),
             opponents: 3,
             turns: 20,
+            overhead_runs: 2,
             bot_turns: 10,
             latency_world: "WORLDSIZE_SMALL".into(),
             latency_turn: 30,
@@ -106,13 +115,22 @@ pub struct BenchReport {
     pub bot_ai_ms_per_turn: Option<f64>,
     pub ffh_bench_ms_per_turn: Option<f64>,
     /// The same AI turns as a bare update loop, through `Session::advance` without autosaves,
-    /// and with them, per turn (best of two).
+    /// and with them, per turn: the best of `overhead_runs`, and the slowest (the spread).
     pub raw_ms_per_turn: f64,
     pub session_ms_per_turn: f64,
     pub session_saves_ms_per_turn: f64,
-    /// `session / raw` (budget 1.10), and with the autosaves.
+    pub raw_max_ms_per_turn: f64,
+    pub session_max_ms_per_turn: f64,
+    /// `session / raw` of the best runs, and with the autosaves (reported: host load moves it).
     pub overhead: f64,
     pub overhead_saves: f64,
+    /// Inside the session runs without autosaves (`AdvanceProfile`, wall time, median over the
+    /// runs): the `update()` slices and the session's own work, per turn, and `own / update`
+    /// (budget 0.10); the autosave per turn in the runs with autosaves.
+    pub update_ms_per_turn: f64,
+    pub own_ms_per_turn: f64,
+    pub own_share: f64,
+    pub autosave_ms_per_turn: f64,
     /// The times are CPU time (else wall time).
     pub cpu_time: bool,
     /// Every run ended with the same checksum (the same trajectory).
@@ -144,8 +162,14 @@ impl BenchReport {
             "raw_ms_per_turn" => self.raw_ms_per_turn,
             "session_ms_per_turn" => self.session_ms_per_turn,
             "session_saves_ms_per_turn" => self.session_saves_ms_per_turn,
+            "raw_max_ms_per_turn" => self.raw_max_ms_per_turn,
+            "session_max_ms_per_turn" => self.session_max_ms_per_turn,
             "overhead" => self.overhead,
             "overhead_saves" => self.overhead_saves,
+            "update_ms_per_turn" => self.update_ms_per_turn,
+            "own_ms_per_turn" => self.own_ms_per_turn,
+            "own_share" => self.own_share,
+            "autosave_ms_per_turn" => self.autosave_ms_per_turn,
             "cpu_time" => self.cpu_time,
             "same_game" => self.same_game,
             "latency_seed" => self.latency_seed,
@@ -174,8 +198,8 @@ impl BenchReport {
         if !self.same_game {
             out.push("the session and the bare loop played different games".to_string());
         }
-        if self.overhead > 1.10 {
-            out.push(format!("session overhead {:.1}% (budget 10%)", (self.overhead - 1.0) * 100.0));
+        if self.own_share > 0.10 {
+            out.push(format!("the session's own work {:.1}% of the update time (budget 10%)", self.own_share * 100.0));
         }
         if self.commands == 0 {
             out.push("no command was timed".to_string());
@@ -290,10 +314,12 @@ fn autoplay(s: &mut Session, turns: i32) -> Stop {
 
 /// `turns` of autoplay from save `start` through the session (a callback per slice, as a
 /// transport has; with `saves`, the journal and the autosaves in a scratch directory, else the
-/// journal in memory and no autosave). Returns the time, the final checksum and turn.
-fn session_run(start: &[u8], sidecar: &crate::save::Sidecar, turns: i32, saves: bool) -> (Duration, i32, i32) {
+/// journal in memory and no autosave). Returns the time, the final checksum and turn, and where
+/// `advance` spent its time.
+fn session_run(start: &[u8], sidecar: &crate::save::Sidecar, turns: i32, saves: bool) -> (Duration, i32, i32, AdvanceProfile) {
     let scratch = Scratch::new("overhead");
     let mut s = Session::load(start, Some(sidecar), Arc::new(AdvisorAnswerer), opts(saves.then_some(scratch.0.as_path()))).expect("load");
+    s.profile = Some(AdvanceProfile::default());
     let t0 = Watch::start();
     let ok = s.execute(&Command::AutoPlay { turns });
     assert!(matches!(ok, Ok(CmdOk::Applied { .. })), "autoplay: {ok:?}");
@@ -302,7 +328,7 @@ fn session_run(start: &[u8], sidecar: &crate::save::Sidecar, turns: i32, saves: 
     });
     let time = t0.elapsed();
     assert!(matches!(stop, Stop::Human | Stop::Over), "autoplay: {stop:?}");
-    (time, s.g.calculate_sync_checksum(), s.g.game_turn())
+    (time, s.g.calculate_sync_checksum(), s.g.game_turn(), s.profile.unwrap_or_default())
 }
 
 /// The same as a bare update loop: the same controllers (the human slot's HumanController
@@ -455,32 +481,47 @@ pub fn run(o: &BenchOptions) -> BenchReport {
         }
     }
 
-    // 2. The session overhead on one trajectory (best of two runs each).
-    say(&format!("session overhead: {} turns of autoplay", o.turns));
+    // 2. The session overhead on one trajectory: `overhead_runs` interleaved rounds of the three
+    // ways; the budget is on the session's own share inside its runs.
+    let rounds = o.overhead_runs.max(1);
+    say(&format!("session overhead: {} turns of autoplay, {rounds} rounds", o.turns));
     let (s, _) = session_at(&new_game(o.seed, &o.world, o.opponents), 0);
     let (start, sidecar) = s.save_bytes().expect("save at the first control point");
     let (human, from) = (s.human, s.g.game_turn());
     drop(s);
-    let (mut best_r, mut best_s, mut best_a) = (Duration::MAX, Duration::MAX, Duration::MAX);
+    let (mut raw, mut sess, mut saves) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut shares, mut updates, mut owns, mut autosaves) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
     let mut ends = Vec::new();
-    for _ in 0..2 {
+    for _ in 0..rounds {
         let (t, sum, end) = raw_run(&start, human, o.turns);
-        best_r = best_r.min(t);
+        raw.push(t);
         ends.push((sum, end));
-        let (t, sum, end) = session_run(&start, &sidecar, o.turns, false);
-        best_s = best_s.min(t);
+        let (t, sum, end, p) = session_run(&start, &sidecar, o.turns, false);
+        sess.push(t);
         ends.push((sum, end));
-        let (t, sum, end) = session_run(&start, &sidecar, o.turns, true);
-        best_a = best_a.min(t);
+        shares.push(p.own.as_secs_f64() / p.update.as_secs_f64().max(1e-9));
+        updates.push(ms(p.update));
+        owns.push(ms(p.own));
+        let (t, sum, end, p) = session_run(&start, &sidecar, o.turns, true);
+        saves.push(t);
         ends.push((sum, end));
+        autosaves.push(ms(p.autosave));
     }
     let turns = (ends[0].1 - from).max(1) as f64;
+    let best = |v: &[Duration]| v.iter().copied().min().unwrap_or_default();
+    let worst = |v: &[Duration]| v.iter().copied().max().unwrap_or_default();
     r.cpu_time = cpu_now().is_some();
-    r.raw_ms_per_turn = ms(best_r) / turns;
-    r.session_ms_per_turn = ms(best_s) / turns;
-    r.session_saves_ms_per_turn = ms(best_a) / turns;
-    r.overhead = best_s.as_secs_f64() / best_r.as_secs_f64().max(1e-9);
-    r.overhead_saves = best_a.as_secs_f64() / best_r.as_secs_f64().max(1e-9);
+    r.raw_ms_per_turn = ms(best(&raw)) / turns;
+    r.session_ms_per_turn = ms(best(&sess)) / turns;
+    r.session_saves_ms_per_turn = ms(best(&saves)) / turns;
+    r.raw_max_ms_per_turn = ms(worst(&raw)) / turns;
+    r.session_max_ms_per_turn = ms(worst(&sess)) / turns;
+    r.overhead = best(&sess).as_secs_f64() / best(&raw).as_secs_f64().max(1e-9);
+    r.overhead_saves = best(&saves).as_secs_f64() / best(&raw).as_secs_f64().max(1e-9);
+    r.own_share = median(&mut shares);
+    r.update_ms_per_turn = median(&mut updates) / turns;
+    r.own_ms_per_turn = median(&mut owns) / turns;
+    r.autosave_ms_per_turn = median(&mut autosaves) / turns;
     r.same_game = ends.iter().all(|e| *e == ends[0]);
 
     // 3. Command latency.
@@ -541,16 +582,26 @@ pub fn render(o: &BenchOptions, r: &BenchReport) -> String {
         opt(r.ffh_bench_ms_per_turn)
     );
     out += &format!(
-        "the same {} turns of autoplay ({} time): bare update loop {:.2} ms/turn; session {:.2} ms/turn ({:+.1}%, budget +10%); with autosaves {:.2} ms/turn ({:+.1}%: the autosave {:.2} ms/turn){}\n",
+        "the same {} turns of autoplay, inside the session's runs (wall time, median of {}): update {:.2} ms/turn, the session's own work {:.3} ms/turn ({:.1}% of it, budget 10%), the autosave {:.2} ms/turn{}\n",
         o.turns,
+        o.overhead_runs.max(1),
+        r.update_ms_per_turn,
+        r.own_ms_per_turn,
+        r.own_share * 100.0,
+        r.autosave_ms_per_turn,
+        if r.same_game { "; the same game each time" } else { "; DIFFERENT GAMES" }
+    );
+    out += &format!(
+        "  whole runs ({} time, best of {}, interleaved; not budgeted: host load moves them): bare update loop {:.2} ms/turn (slowest {:.2}); session {:.2} ms/turn ({:+.1}%; slowest {:.2}); with autosaves {:.2} ms/turn ({:+.1}%)\n",
         if r.cpu_time { "CPU" } else { "wall" },
+        o.overhead_runs.max(1),
         r.raw_ms_per_turn,
+        r.raw_max_ms_per_turn,
         r.session_ms_per_turn,
         (r.overhead - 1.0) * 100.0,
+        r.session_max_ms_per_turn,
         r.session_saves_ms_per_turn,
         (r.overhead_saves - 1.0) * 100.0,
-        r.session_saves_ms_per_turn - r.session_ms_per_turn,
-        if r.same_game { "; the same game each time" } else { "; DIFFERENT GAMES" }
     );
     out += &format!(
         "commands, {} seed {} at turn {}: {} timed (execute + settle + view), median {:.2} ms, slowest {:.2} ms ({}) (budget 50 ms)\n",

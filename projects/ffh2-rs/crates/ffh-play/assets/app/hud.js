@@ -5,7 +5,7 @@
 import { S, dname, tname, turns, playerName, me, emit, endTurnMessage } from "./state.js";
 import { h, fill } from "./dom.js";
 import { openCount } from "./commands.js";
-import { spectatorBar } from "./tools.js";
+import { spectatorBar, autoplayBar } from "./tools.js";
 
 /** Year for people: -4000 -> "4000 BC". */
 export function yearText(y) {
@@ -44,6 +44,7 @@ export function renderTop() {
     h("span#phase-text", line),
     st.reveal ? h("span.badge.reveal", "DEBUG REVEAL") : null,
     spectatorBar(),
+    autoplayBar(),
   );
   document.body.dataset.phase = st.phase ?? "";
   const end = document.getElementById("end-turn");

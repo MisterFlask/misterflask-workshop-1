@@ -663,6 +663,21 @@ async function toolsAndSpectate() {
   if (await S("S.view.me.ai_auto_play")) throw new Error("still on AI autoplay after its turn");
   await answerPopups();
   steps.push(`AI autoplay: turn ${turn} played by the AI`);
+  // A long AI autoplay stopped from the top bar (P6 review: nothing could stop it).
+  turn = await S("S.status.turn");
+  await tool("tool-autoplay", "AI autoplay");
+  await b.eval(`document.getElementById("autoplay-turns").value = "5000"`);
+  await click(`${TOP} .modal-buttons button.primary`);
+  await until2(`!!document.querySelector("#autoplay-stop")`, "the autoplay bar's Stop", 60000);
+  await shot("autoplay-running");
+  await click("#autoplay-stop");
+  await waitHuman("control after the stopped autoplay", 120000);
+  const stoppedAt = await S("S.status.turn");
+  if (await S("S.status.ai_auto_play")) throw new Error("the AI autoplay is still on after Stop");
+  if (stoppedAt > turn + 100) throw new Error(`Stop took ${stoppedAt - turn} turns`);
+  if (await S("!!document.querySelector('#autoplay-stop')")) throw new Error("the autoplay bar stays after Stop");
+  await answerPopups();
+  steps.push(`AI autoplay of 5000 turns from turn ${turn} stopped from the top bar: control at turn ${stoppedAt}`);
   // The spectator mode: plays, pauses, steps, stops.
   turn = await S("S.status.turn");
   await tool("tool-spectate");

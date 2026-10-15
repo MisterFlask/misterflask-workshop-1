@@ -236,8 +236,10 @@ pub fn decision_reply(r: &DecisionReader, d: &Decision, id: Json, req: Result<Re
 }
 
 /// The reply to a request while the game runs (the AI turns; the HTTP game thread answers the
-/// queued requests between turn slices): queries are answered, commands get `not_your_turn`,
-/// session operations `busy`. The status says `running` (with the game directory `dir`):
+/// queued requests between turn slices): queries are answered, commands get `not_your_turn`
+/// except `autoplay {turns: 0}` while the AI autoplay runs (FfH `setAIAutoPlay(0)`: it stops
+/// before the next turn slice, `{"stopping": true}`; P6 review: nothing could stop a long
+/// autoplay), session operations `busy`. The status says `running` (with the game directory `dir`):
 /// until `advance` returns the human has no control, whatever the predicate says in the slice
 /// that activates its turn (the AutoMoves rule may still run its missions).
 pub fn running_reply(s: &Session, dir: Option<&Path>, id: Json, req: Result<Request, ProtoErr>) -> Json {
@@ -250,7 +252,14 @@ pub fn running_reply(s: &Session, dir: Option<&Path>, id: Json, req: Result<Requ
             });
             reply_of(id, r.map_err(ProtoErr::from))
         }
-        Ok(Request::Cmd(_)) => err_reply(id, &ProtoErr::from(crate::command::CmdErr::NotYourTurn)),
+        Ok(Request::Cmd(j)) => match Command::from_json(s.g.d, &j) {
+            Err(e) => err_reply(id, &e.into()),
+            Ok(Command::AutoPlay { turns: 0 }) if s.g.ai_auto_play > 0 => {
+                s.shared.request_stop_autoplay();
+                ok_reply(id, crate::jobj! { "stopping" => true, "turns_left" => s.g.ai_auto_play })
+            }
+            Ok(_) => err_reply(id, &ProtoErr::from(crate::command::CmdErr::NotYourTurn)),
+        },
         Ok(Request::Answer { decision, .. }) => err_reply(id, &ProtoErr::new("gone", format!("decision {decision} is not open"))),
         Ok(Request::Session(_)) => err_reply(id, &ProtoErr::new("busy", "the game is running: session operations wait for the next control point")),
     }

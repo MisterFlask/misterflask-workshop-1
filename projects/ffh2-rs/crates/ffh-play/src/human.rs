@@ -13,7 +13,7 @@
 //! When the slot is not human (FfH AI autoplay: `setDisableHuman`), every method delegates to
 //! the advisor, as a non-human `CvPlayer` is a `CvPlayerAI`.
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use ffh_ai::Ai;
@@ -214,6 +214,9 @@ pub struct SessionShared {
     /// The journal (answers are written in the order they are asked).
     pub journal: Mutex<Journal>,
     pub stats: Mutex<Stats>,
+    /// A transport asked, while the game runs, to stop the AI autoplay (`autoplay {turns: 0}`,
+    /// FfH `setAIAutoPlay(0)`): `Session::advance` applies it before its next turn slice.
+    pub stop_autoplay: AtomicBool,
 }
 
 impl SessionShared {
@@ -225,7 +228,14 @@ impl SessionShared {
             open_decision: Mutex::new(None),
             journal: Mutex::new(journal),
             stats: Mutex::new(Stats::default()),
+            stop_autoplay: AtomicBool::new(false),
         }
+    }
+
+    /// Asks the running game to stop the AI autoplay before its next turn slice (a transport,
+    /// while `advance` runs: `Session::advance` journals and applies it).
+    pub fn request_stop_autoplay(&self) {
+        self.stop_autoplay.store(true, Ordering::SeqCst);
     }
 
     /// Deferred events of `p` (queued or open), in order.

@@ -108,6 +108,8 @@ pub fn status(v: &Viewer, ctx: &Ctx) -> Json {
         "decision" => ctx.decision.map(|d| d.to_json()),
         "over" => over,
         "reveal" => v.reveal,
+        // The AI autoplay's turns left (`autoplay`; the client offers to stop it while it runs).
+        "ai_auto_play" => g.ai_auto_play,
     }
 }
 

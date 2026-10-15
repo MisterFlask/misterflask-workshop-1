@@ -48,7 +48,7 @@
 //!                                      AutoMoves rule), `load` (a warrior and two triremes in a
 //!                                      coastal city: the transport picker); prints the save and
 //!                                      ids as JSON; writes only DIR/KIND.ffhsave and its sidecar
-//!   ffh-play bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH] [--json]
+//!   ffh-play bench [--quick] [--seed N] [--turns T] [--runs R] [--world W] [--opponents N] [--ffh PATH] [--json]
 //!                                      T13 (design §8): the session overhead on the AI turns,
 //!                                      command latency, the view on a huge map, the QueryGuard;
 //!                                      exit code 1 when a budget is missed
@@ -80,7 +80,7 @@ fn usage() -> ! {
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
          \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves|load|trade DIR\n\
-         \x20      | bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH] [--json]\n\
+         \x20      | bench [--quick] [--seed N] [--turns T] [--runs R] [--world W] [--opponents N] [--ffh PATH] [--json]\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -644,9 +644,10 @@ fn cmd_stage(args: &[String]) {
     }
 }
 
-/// `ffh-play bench [--quick] [--seed N] [--turns T] [--world W] [--opponents N] [--ffh PATH]
-/// [--json]`: T13 (design §8): the session overhead on the AI turns, command latency, the view
-/// build on a huge map, the QueryGuard. Exit code 1 when a budget is missed.
+/// `ffh-play bench [--quick] [--seed N] [--turns T] [--runs R] [--world W] [--opponents N]
+/// [--ffh PATH] [--json]`: T13 (design §8): the session overhead on the AI turns (`--runs`
+/// rounds of the three ways), command latency, the view build on a huge map, the QueryGuard.
+/// Exit code 1 when a budget is missed.
 fn cmd_bench(args: &[String]) {
     let mut o = if args.iter().any(|a| a == "--quick") { ffh_play::bench::BenchOptions::quick() } else { ffh_play::bench::BenchOptions::default() };
     // `ffh bench` for the reference figure: next to this binary unless --ffh says otherwise.
@@ -660,6 +661,7 @@ fn cmd_bench(args: &[String]) {
             "--json" => json = true,
             "--seed" => o.seed = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
             "--turns" => o.turns = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
+            "--runs" => o.overhead_runs = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
             "--opponents" => o.opponents = flag_value(args, &mut i).parse().unwrap_or_else(|_| usage()),
             "--world" => o.world = flag_value(args, &mut i).to_string(),
             "--ffh" => o.ffh = Some(flag_value(args, &mut i).into()),
@@ -668,7 +670,7 @@ fn cmd_bench(args: &[String]) {
         i += 1;
     }
     let d = ffh_data::global();
-    if d.ty::<ffh_data::WorldSizeType>(&o.world).is_none() || o.turns < 1 {
+    if d.ty::<ffh_data::WorldSizeType>(&o.world).is_none() || o.turns < 1 || o.overhead_runs < 1 {
         usage();
     }
     let r = ffh_play::bench::run(&o);

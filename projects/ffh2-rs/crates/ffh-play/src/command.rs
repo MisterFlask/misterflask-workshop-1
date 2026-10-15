@@ -991,7 +991,8 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
 
         Command::AutoPlay { turns } => {
             if !(1..=10_000).contains(turns) {
-                return Err(invalid("field `turns`: expected 1..=10000"));
+                // 0 is the stop, sent while the AI autoplay runs (transport `running_reply`).
+                return Err(invalid("field `turns`: expected 1..=10000 (0 stops a running autoplay)"));
             }
             Plan::Apply(Action::AutoPlay { turns: *turns })
         }

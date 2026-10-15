@@ -289,11 +289,48 @@ fn trade_tables_name_the_cities() {
     }
 }
 
-/// `ffh-play bench --quick`: the session and the bare update loop play the same game, commands
-/// are timed and the view is built (no timing budget here: `tests/bench.rs`, ignored, has T13's).
+/// `ffh-play bench --quick`: the session and the bare update loop play the same game (the
+/// session's profile on: it changes nothing), the session's own work and the autosave are
+/// measured inside its runs, commands are timed and the view is built (no timing budget here:
+/// `tests/bench.rs`, ignored, has T13's).
 #[test]
 fn the_quick_bench_plays_the_same_game_three_ways() {
     let r = ffh_play::bench::run(&ffh_play::bench::BenchOptions { bot_turns: 0, ..ffh_play::bench::BenchOptions::quick() });
     assert!(r.same_game, "{r:?}");
     assert!(r.commands > 0 && r.view_plots > 0 && r.raw_ms_per_turn > 0.0, "{r:?}");
+    assert!(r.update_ms_per_turn > 0.0 && r.own_ms_per_turn > 0.0 && r.autosave_ms_per_turn > 0.0, "{r:?}");
+    assert!(r.own_share > 0.0 && r.own_share.is_finite() && r.raw_max_ms_per_turn >= r.raw_ms_per_turn, "{r:?}");
+}
+
+/// `Session::profile`: `advance` adds up its `update()` slices, its own work and the autosave
+/// (only with a saves directory), and the profile does not change the game.
+#[test]
+fn the_advance_profile_splits_update_own_work_and_autosave() {
+    let dir = common::TempDir::new("profile");
+    let play = |saves: Option<std::path::PathBuf>, profile: bool| {
+        let d = ffh_data::global();
+        let mut ng = NewGame::new(d, 4);
+        ng.opponents = 1;
+        ng.world = d.t("WORLDSIZE_DUEL");
+        let opts = SessionOptions { saves_dir: saves, ..SessionOptions::default() };
+        let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), opts).unwrap();
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+        if profile {
+            s.profile = Some(Default::default());
+        }
+        applied(&mut s, Command::AutoPlay { turns: 3 });
+        assert_eq!(s.advance(&mut |_| {}), Stop::Human);
+        (s.g.calculate_sync_checksum(), s.g.game_turn(), s.profile)
+    };
+    let (sum, turn, none) = play(None, false);
+    assert_eq!(none, None);
+    let (sum2, turn2, p) = play(None, true);
+    assert_eq!((sum2, turn2), (sum, turn));
+    let p = p.unwrap();
+    assert!(p.slices > 0 && p.update > std::time::Duration::ZERO && p.own > std::time::Duration::ZERO, "{p:?}");
+    assert_eq!(p.autosave, std::time::Duration::ZERO, "no saves directory, no autosave: {p:?}");
+    let (sum3, turn3, p) = play(Some(dir.0.clone()), true);
+    assert_eq!((sum3, turn3), (sum, turn));
+    let p = p.unwrap();
+    assert!(p.autosave > std::time::Duration::ZERO, "three turn boundaries autosaved: {p:?}");
 }
