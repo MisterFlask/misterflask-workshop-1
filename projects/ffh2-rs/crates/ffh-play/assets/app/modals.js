@@ -56,11 +56,29 @@ export function openModal({ title, body = [], buttons = [], dismissible = true, 
         ...list.map((b) =>
           h(
             `button${b.primary ? ".primary" : ""}`,
-            { disabled: b.disabled, title: b.title, "data-value": b.value === undefined ? undefined : String(b.value), onclick: () => (b.onClick ? b.onClick(m) : m.close(b.value)) },
+            { disabled: b.disabled, title: b.title, "data-value": b.value === undefined ? undefined : String(b.value), onclick: () => (b.onClick ? m.run(b.onClick) : m.close(b.value)) },
             b.label,
           ),
         ),
       );
+    },
+    /** Runs a button's `onClick(m)`; while the promise it returns is pending (a session
+     *  request: start, load, save) the dialog's buttons are disabled and further clicks are
+     *  ignored, so a double click sends one request (P5 review). */
+    run(onClick) {
+      if (m.busy) return;
+      const r = onClick(m);
+      if (!r || typeof r.then !== "function") return;
+      m.busy = true;
+      const btns = [...btnRow.querySelectorAll("button")];
+      const was = btns.map((x) => x.disabled);
+      btns.forEach((x) => (x.disabled = true));
+      Promise.resolve(r)
+        .catch(() => {})
+        .then(() => {
+          m.busy = false;
+          if (!m.closed) btns.forEach((x, i) => (x.disabled = was[i]));
+        });
     },
   };
   m.setBody(body);

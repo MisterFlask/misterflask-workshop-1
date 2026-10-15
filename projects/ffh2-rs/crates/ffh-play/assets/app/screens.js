@@ -257,7 +257,13 @@ export async function loadScreen() {
     return m.done;
   }
   const err = h("p.error");
+  // One load at a time: a double click sends one request (P5 review).
+  let loading = false;
   const load = async (name) => {
+    if (loading) return;
+    loading = true;
+    const buttons = [...m.el.querySelectorAll("button.save")];
+    buttons.forEach((b) => (b.disabled = true));
     err.textContent = "";
     try {
       await api.session("load", { name });
@@ -265,6 +271,9 @@ export async function loadScreen() {
       emit("game-started");
     } catch (e) {
       err.textContent = e.detail ?? e.message;
+    } finally {
+      loading = false;
+      if (!m.closed) buttons.forEach((b) => (b.disabled = false));
     }
   };
   const games = [...r.games].sort((a, b) => (a.game === r.current ? -1 : b.game === r.current ? 1 : a.game.localeCompare(b.game)));
@@ -304,7 +313,8 @@ export function saveDialog() {
       { label: "Cancel", value: null },
     ],
   });
-  name.addEventListener("keydown", (ev) => ev.key === "Enter" && save(m));
+  // Enter is the Save button (one request at a time, as a click).
+  name.addEventListener("keydown", (ev) => ev.key === "Enter" && m.el.querySelector(".modal-buttons button.primary")?.click());
   name.select();
   return m;
 }

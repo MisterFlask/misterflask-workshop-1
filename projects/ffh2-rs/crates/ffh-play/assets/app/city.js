@@ -75,7 +75,9 @@ function body(c, choose, remove) {
             "li",
             h("span", orderName(o.order, o.type)),
             h("span.dim", o.turns !== null ? ` ${turns(o.turns)}` : ""),
-            h("button.small", { title: "Remove from the queue", "aria-label": "Remove", "data-index": i, onclick: () => remove(i) }, "✕"),
+            // The exe pops an order only while the queue holds more than one (CvGameInterface
+            // `getOrderQueueLength() > 1`); the only order is replaced by choosing another.
+            c.queue.length > 1 ? h("button.small", { title: "Remove from the queue", "aria-label": "Remove", "data-index": i, onclick: () => remove(i) }, "✕") : null,
           ),
         )
       : h("li.dim", "Nothing: choose below."),

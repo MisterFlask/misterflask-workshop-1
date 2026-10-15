@@ -73,6 +73,7 @@ async function playwrightBrowser(pw, problems) {
     goto: (url) => page.goto(url),
     eval: (expr) => page.evaluate(expr),
     mouse: async (x, y, button = "left") => page.mouse.click(x, y, { button }),
+    dblclick: (x, y) => page.mouse.dblclick(x, y),
     move: (x, y) => page.mouse.move(x, y),
     key: (key, shift = false) => page.keyboard.press(shift ? `Shift+${key}` : key),
     // A held key (Shift): the mouse events meanwhile carry it.
@@ -185,6 +186,13 @@ async function cdpBrowser(exe, problems) {
       await mouseEvent("mousePressed", x, y, button, 1);
       await mouseEvent("mouseReleased", x, y, button, 1);
     },
+    dblclick: async (x, y) => {
+      await mouseEvent("mouseMoved", x, y);
+      for (const n of [1, 2]) {
+        await mouseEvent("mousePressed", x, y, "left", n);
+        await mouseEvent("mouseReleased", x, y, "left", n);
+      }
+    },
     move: (x, y) => mouseEvent("mouseMoved", x, y),
     key: async (key, shift = false) => {
       const [code, text] = KEYS[key] ?? [key.toUpperCase().charCodeAt(0), key];
@@ -267,7 +275,7 @@ async function answerPopups(log = true) {
   }
 }
 
-async function newGame(url) {
+async function newGame(url, saves) {
   await b.goto(url);
   await until2("window.ffh && window.ffh.ready", "the client to boot");
   await until(async () => (await modalTitles()).includes("New game"), "the new-game screen");
@@ -276,9 +284,13 @@ async function newGame(url) {
     const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event("change")); };
     set("ng-world", "WORLDSIZE_TINY"); set("ng-seed", "${SEED}"); set("ng-opponents", "2");
   })()`);
-  await click("#modals .modal-buttons button.primary");
+  // A double click on Start starts one game (P5 review: it started two).
+  const start = await b.eval(`(() => { const r = document.querySelector("#modals .modal-buttons button.primary").getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  await b.dblclick(start.x, start.y);
   await waitHuman("the first turn");
-  steps.push(`new game: turn ${await S("S.status.turn")}`);
+  const games = fs.readdirSync(saves).filter((f) => fs.statSync(path.join(saves, f)).isDirectory());
+  if (games.length !== 1) throw new Error(`a double click on Start made ${games.length} games: ${games}`);
+  steps.push(`new game (Start double-clicked: one game): turn ${await S("S.status.turn")}`);
   await shot("first-turn");
 }
 
@@ -373,6 +385,25 @@ async function foundCity() {
   if (!research) throw new Error("no research chosen through the popup");
   const city = await S("S.view.cities.find((c) => c.owner === S.view.me.player)");
   if (!city.production) throw new Error("no production chosen through the popup");
+}
+
+/** The city's production queue: no ✕ on the only order (the exe pops only from a longer queue,
+ *  P5 review); Shift-click appends, then ✕ removes the appended order. */
+async function cityQueue() {
+  const city = await S("S.view.cities.find((c) => c.owner === S.view.me.player)");
+  await b.eval(`window.ffh.emit("open-city", ${city.id})`);
+  const count = (what) => `document.querySelectorAll("#modals .backdrop:not(.under) ol.queue ${what}").length`;
+  await until2(`${count("li")} === 1 && !document.querySelector("#modals ol.queue li.dim")`, "the city's queue of one order");
+  if (await b.eval(count("button"))) throw new Error("a remove button on the only order");
+  await b.keyDown("Shift");
+  await click("#modals .backdrop:not(.under) button.build[data-order]:not([disabled])");
+  await b.keyUp("Shift");
+  await until2(`${count("li")} === 2 && ${count("button")} === 2`, "the appended order with remove buttons");
+  await click('#modals .backdrop:not(.under) ol.queue button[data-index="1"]');
+  await until2(`${count("li")} === 1 && ${count("button")} === 0`, "the appended order removed");
+  await b.key("Escape");
+  await until(async () => !(await modalTitles()).length, "the city dialog closed");
+  steps.push("city queue: appended with Shift, removed with ✕, no ✕ on the only order");
 }
 
 async function moveUnit() {
@@ -663,10 +694,11 @@ async function main() {
     b = pw ? await playwrightBrowser(pw, problems) : await cdpBrowser(chrome, problems);
     console.log(`web-smoke: ${b.name}; server ${server.url}; screenshots in ${OUT}`);
     const t0 = Date.now();
-    await newGame(server.url);
+    await newGame(server.url, saves);
     await cycleAll();
     await staleSelection();
     await foundCity();
+    await cityQueue();
     await moveUnit();
     await endTurns(TURNS);
     await saveAndLoad();
