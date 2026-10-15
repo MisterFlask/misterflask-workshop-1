@@ -394,16 +394,14 @@ before (same checksums).
 
 - **Kuriotates**: past their city limit (3 on a standard map) a new city is a *settlement*
   (`CvCity::init`): radius 2, -75% yields, nothing to build, but no maintenance or civic
-  upkeep, and its borders claim land and resources. The settler step stops at the limit;
-  `civs::production`, asked right after it, builds one settler at a time for a settlement
-  site on the city's landmass: from a city of size 3+ at its happy cap, up to one settlement
-  per full city, at peace, not broke. The generic settler step counts full cities only, so an
-  empire that lost one founds a full city again (before, its settlements counted toward the
-  limit and it stayed below it: 6 of 40 games change, 3 of them get a full city back; legacy
-  score -1 +- 7). The sites are `sites.rs`'s: the ported `AI_foundValue`
-  already scores settlement-sized sites (9 plots) for a sprawling player at its limit and
-  favours sites more than 4 plots from its cities. See "Kuriotates settlements" below for
-  the measurements (the first version, from size 5 with no cap, cost a fifth of the research).
+  upkeep, and its borders claim land and resources. The settler step stops at the limit
+  (counting full cities only, so a lost one is replaced); `civs::production`, asked right
+  after it, builds one settler at a time for a settlement site on the city's landmass: from a
+  city of size 3+ at its happy cap, up to one settlement per full city, at peace, not broke.
+  Settlements do not count for the unit targets. The sites are `sites.rs`'s: the ported
+  `AI_foundValue` already scores settlement-sized sites (9 plots) for a sprawling player at its
+  limit and favours sites more than 4 plots from its cities. See "Kuriotates settlements"
+  below (the first version, from size 5 with no cap, cost a fifth of the research).
 - **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
   (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
   on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
@@ -436,21 +434,44 @@ worth its land (the legacy score's land share, resources, room the barbarians do
 it costs a settler (220 hammers on normal speed) plus the escort that stays as its garrison.
 The first version built settlers from any city of size 5+ with no cap: the capital, usually
 the best commerce city, went on building them at size 7-9 from turn 90 to the end (food goes
-into the settler, so it stopped growing), and 5-6 settlements with their garrisons raised
-unit support. Now a settler comes only from a city at its happy cap (it would not grow anyway)
-and only while the empire has fewer settlements than full cities.
+into the settler, so it stopped growing), and the 5-6 settlements counted as cities for the
+unit targets (army, mobile force, quota), so unit support rose by 60%: research -20%. Now:
 
-Measured on the 40 Kuriotates games among seeds 1-179 (6 civs, standard, 300 turns; the
-Kuriotates' original player at turn 300; t against "first version"):
+- a settlement settler comes only from a city of size 3+ at its happy cap (it would not grow
+  anyway), and only while the empire has fewer settlements than full cities (`civs.rs`);
+- the unit targets of `production::decide` count full cities only (`Ctx::n_cities`);
+- the generic settler step counts full cities against the limit, so an empire that lost one
+  founds a full city again (`expansion.rs`; 6 of 40 games change, legacy score -1 +- 7).
 
-| Kuriotates at turn 300 | no settlements | first version | now |
-|---|---|---|---|
-| legacy score | 881 | 930 | 963 (t 1.3) |
-| techs | 26.5 | 26.1 | 27.3 (t 2.7) |
-| research (beakers/turn) | 103 | 84 | 109 (t 3.5) |
-| commerce | 109 | 96 | 117 |
-| cities (settlements) | 3.8 (1.1) | 7.9 | 5.4 (3.0) |
-| unit support (gold) | 8.4 | 13.6 | 12.9 |
+80 Kuriotates games (the 40 among seeds 1-179 and the 40 among 184-384; 6 civs, standard,
+300 turns), the Kuriotates' original player at turn 300, +- the paired standard error:
+
+| Kuriotates at turn 300 | no settlements | first version | now | now - none | now - first |
+|---|---|---|---|---|---|
+| legacy score | 902 | 922 | 977 | +74 +- 16 | +54 +- 23 |
+| techs | 26.9 | 26.0 | 27.6 | +0.7 +- 0.4 | +1.6 +- 0.5 |
+| research (beakers/turn) | 113 | 90 | 119 | +7 +- 6 | +30 +- 5 |
+| commerce | 116 | 102 | 122 | +6 +- 5 | +20 +- 5 |
+| population | 33.4 | 32.8 | 34.6 | +1.2 +- 0.8 | +1.9 +- 0.9 |
+| cities (settlements) | 3.8 (1.2) | 7.8 (5.3) | 5.6 (3.0) | | |
+| unit support (gold) | 8.3 | 13.4 | 9.8 | +1.5 +- 0.8 | -3.6 +- 1.1 |
+
+Settlements without the new code come from cities taken past the limit. The other civs of
+the same games: legacy score 862 / 862 / 866, techs 21.9 / 22.1 / 22.2. The Lanun in these
+games (31 with Kuriotates or among seeds 1-24) are not worse: legacy score +28 +- 18 (seeds
+1-179) and +67 +- 50 (184-384), techs +0.8 and +1.6. Seeds 1-24, all civs: 4 games change,
+legacy score -3.8 +- 6.2, techs +0.0. No change in time per turn.
+
+Tried and not kept (the 40 games among seeds 1-179 unless noted; against the first version):
+the happy-cap trigger alone, no cap (legacy +28, research +10); the cap alone, from size 5
+(research back to no settlements, legacy +3); settlers only once the city has no commerce,
+research, gold or production building left to build within 15 turns (research +6, legacy +3);
+only sites that claim enough (10+ points: 1 per unowned land plot within 2, 4 more per
+resource; on top of the happy cap and the cap: legacy -10 +- 9, research +2); two per full city
+instead of one (80 games, with the rest kept: legacy +1 +- 8, research -10 +- 3); settlements
+counted as half a city for the unit targets (80 games, against not at all: legacy +6 +- 10,
+research -7 +- 4); settlements left out of the unit targets with no cap (legacy -25: with 5-6
+settlements to hold, two Kuriotates were eliminated).
 
 ## Measured together
 
