@@ -272,9 +272,9 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 
     // A city of ours in peril within a few turns: defend it (unless the stack is on its way to
     // a siege: campaign.rs).
-    if v.peril.iter().any(|&(q, _)| !crate::campaign::peril_ignored(g, v, grp, q)) {
+    if !v.peril.is_empty() && !crate::campaign::on_the_move(v, grp) {
         let reach = v.flood.run(g, u, 5, false);
-        if let Some(r) = v.peril.iter().filter(|&&(q, _)| !crate::campaign::peril_ignored(g, v, grp, q)).filter_map(|&(q, _)| reach.iter().find(|r| r.plot == q).copied()).min_by_key(|r| (r.turns, r.plot)) {
+        if let Some(r) = v.peril.iter().filter_map(|&(q, _)| reach.iter().find(|r| r.plot == q).copied()).min_by_key(|r| (r.turns, r.plot)) {
             crate::trace!(g, p, "stack {:?} defends city at {:?}", grp, g.map.xy(r.plot));
             if r.plot == here {
                 hold(g, grp);
