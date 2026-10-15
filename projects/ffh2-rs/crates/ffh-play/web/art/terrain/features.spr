@@ -196,50 +196,66 @@ ttkktkkkkkpk0
 ...0u2uu0u0..
 ...0u2uu0u0..
 
-= feature/jungle_a 11x10 5,9
-: note jungle: rounded canopy clumps, olive lit, moss body, moss-dk shade
-...00o00...
-..0ooomm0..
-.0ooommmm0.
-.0oommmmq0.
-0oommmoomm0
-oommmqommmq
-ommmqqmmmqq
-mmmqqqmmqqq
-0mqqqqmqqq0
-.0000u0000.
+= feature/jungle_a 13x15 6,13
+: note jungle: tall ragged crowns with lichen tips, drooping palm fronds and hanging vines over a void underside; moss body, moss-dk shade, umber trunks
+......0......
+.....0O0.0...
+...00OoO0o0..
+..0o0ommmo0..
+.0ooomqmmmo0.
+.0oomqqmmmq0.
+0oommqqmqmqq0
+0ommqqqqqqqq0
+0mmqqqqqqqqm0
+0mqq0qq0qqqm0
+0q0q0q00q00q0
+0q00.00q0.0q0
+.0...0u0...0.
+.....0u0.....
+......0......
 
-= feature/jungle_b 9x9 4,8
-..00o00..
-.0ooomm0.
-0ooommmm0
-0oommoom0
-0ommoommm
-0mmmommmq
-.0mmmmmqq
-..00qmqq0
-...0u000.
+= feature/jungle_b 15x13 7,11
+......0.0......
+....00O0O00....
+...0ooOmOoo0...
+..0om0mqm0mo0..
+.0om00qmq00mo0.
+.0m0.0qqq0.0m0.
+0q0...0u0...0q0
+.0....0u0....0.
+......0u0......
+.....0u0.......
+.....0u0.......
+.....0u0.......
+......0........
 
-= feature/jungle_c 12x9 6,8
-..0000oom0..
-.0oomoommm0.
-0oommmmmmmq0
-oommmmqmooq0
-ommmmqqoomm0
-mmmmqqoommmq
-0mmqqqommmqq
-.0qqq0ummqq0
-..0000u0qq0.
+= feature/jungle_c 15x9 7,7
+...0...0..0....
+..0O0.0O00o0...
+.0omo0omoomo00.
+0ommmommqqmo0o0
+0mmmqqqqqqqqmq0
+0q0qq0qq0qq0qq0
+0q00q00q00q00q0
+.0..0..0..0..0.
+...............
 
-= feature/jungle_d 8x8 4,7
-..0000..
-.0oomm0.
-0oommmm0
-0ommmmq0
-0mmmmqq0
-0mmmqqq0
-.0mqqq0.
-..00u0..
+= feature/jungle_d 11x15 5,13
+....0.0....
+...0O0o0...
+..0omOmo0..
+.0omomqm0..
+.0ommmqqm0.
+0oommmqqmq0
+0ommqqqqqq0
+0mqqqqqqqq0
+0mq0qq0qqq0
+0q00q0.0q0.
+0q0.000q0..
+.0.0uu00...
+....0u0....
+....0u0....
+.....0.....
 
 = feature/deadtree_a 10x10 5,9
 : note burnt forest: charred trunks coal 2 and iron 3, ash 5 tips; the fire is out

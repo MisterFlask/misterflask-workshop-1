@@ -10,9 +10,28 @@
 ; Notes on the set (against docs/ART.md 5): ground mottling is drawn as sparse 1-3 px flecks in
 ; noise-shaped regions rather than 25%/50% lattices (the lattices read as perforation at 2x);
 ; desert is ash `5` with sand flecks and dune arcs so large deserts stay inside the value budget;
-; hills leave their ground-level body open; peaks are massifs of two or three peaks whose outline
-; stops above the foot, which dissolves into the ground, so ranges merge instead of stacking in
-; rows; the unique features (landmarks) are drawn here and claim their IMPROVEMENT_* types.
+; snow is wind streaks of frost `f` and glint `g`, about half each, with rime `F` on rare crests
+; only (lit snow stays under the light of cities; remembered snow is a dark tide/glint weave);
+; burning sands is umber `u` with rust `x` clumps under ember dune crests (the fire comes from
+; FEATURE_FLAMES, not the ground); hills leave their lit body open and close their dark side with a
+; checkered flank and a void contour; peaks are massifs of two or three peaks whose outline stops
+; above the foot, which dissolves into the ground, so ranges merge instead of stacking in rows;
+; jungle is drooping fronds and hanging vines over a void underside, not round clumps; the unique
+; features (landmarks) are drawn here and claim their IMPROVEMENT_* types; the RITE and BLOOD
+; landmarks that are the map's focal glows (standing stones, Carcer) carry a wide pool, an inner
+; pass and three small pools round the ring, so the ground itself glows.
+;
+; ground.js (installTerrain(art), once after loadArt) is the set's ground pass over art.js's seed
+; drawing: a pixel takes the terrain class with the largest sum of Gaussian weights (sigma 13 px)
+; of the 3x3 tile centres, sampled through a three-octave warp (cells 44/22/7 px, |w| <= 10), so
+; single tiles become blobs, not rounded squares; a 3 px Bayer-dithered feather between land
+; textures; the fog and unrevealed edges classified the same way (full warp, feathered); river and
+; road verges (a 50% checker one step lighter); hills never mirrored; wooded hills with trees on the
+; crests and the mounds kept clear; a 1 px moonlit lichen rim on the north-west edge of every wood
+; mass. Until the toolkit installs it by default, only pages that call it show it (terrain/preview).
+; terrain/preview.html: plates for the set (?map=sample|mosaic|north|relief|woods|landmarks, ?pass=0
+; for the seed ground); ref/: the shared scene through ground.js at 2x (with the review sets) and the
+; relief plate at 3x (hills, wooded hills, flat woods, peaks on every land terrain).
 set terrain
 source textures.spr
 source relief.spr
@@ -39,7 +58,7 @@ map terrain TERRAIN_HILL -> terrain/grass mini=o
 map terrain water=1 -> terrain/coast mini=n
 map terrain * -> terrain/tundra mini=4
 
-; ---- hills (5.3): humps keyed in grass colours (crest O and o, flank q, hachure 1)
+; ---- hills (5.3): humps keyed in grass colours (crest O and o, flank q and 1; the contour is void)
 map hill water=1 -> none
 map hill TERRAIN_GRASS -> hill/hump mini=o
 map hill TERRAIN_PLAINS -> hill/hump remap=Oy,o5,qu,12 mini=y
@@ -49,7 +68,7 @@ map hill TERRAIN_SNOW -> hill/hump remap=OF,of,qN,1n mini=F
 map hill TERRAIN_MARSH -> hill/hump remap=Oo,om,qk,11 mini=o
 map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=O5,o3,q2,10 mini=3
 map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=OP,oP,qv,11 mini=P
-map hill TERRAIN_BURNING_SANDS -> hill/hump remap=OE,oe,qu,11 mini=e
+map hill TERRAIN_BURNING_SANDS -> hill/hump remap=Ox,oe,q1,10 mini=e
 map hill TERRAIN_SHALLOWS -> hill/hump remap=O4,o3,q1,10 mini=1
 map hill * -> hill/hump mini=o
 
