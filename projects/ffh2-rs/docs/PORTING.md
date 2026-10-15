@@ -193,6 +193,18 @@ and artefacts of C++ container order need not.
 - **Unspecified C++ evaluation order** (two RNG draws in one expression) follows MSVC x86:
   call arguments right to left, binary operands left to right (see CLAUDE.md).
 
+**Human play (ffh-play; docs/PLAY_DESIGN.md §10)**
+
+- Human popups whose rules answer can be deferred are answered at the next control point, as in
+  C++: production, events, diplomatic votes, the research popup.
+- Free tech, keep/raze/disband and elections are answered during the rules call that raises them
+  (C++ shows the free tech and election popups later; keep/raze is immediate there too).
+- The keep/raze and disband popups share one modal (the controller cannot tell them apart); there
+  is no gift button; Kuriotates settlements are still not offered to humans.
+- Commands are applied only when no human group is busy; the exe's automatic end of turn (when
+  nothing is left to move) is not ported: the human ends the turn.
+- Automated and FfH AI-controlled human units idle (no `update_automated_group` AI yet).
+
 ## Next steps
 
 1. **Save/load**: done (`crates/ffh-core/src/save/`, `Game::save` / `Game::load`; resume test in

@@ -13,6 +13,7 @@ crates/ffh-core  rules engine (port of CvGame/CvPlayer/CvTeam/CvCity/CvUnit/CvPl
 crates/ffh-ai    AI players (new design)
 crates/ffh-cli   `ffh` binary: autoplay, benchmarks, inspection
 crates/ffh-stress `ffh-stress` binary: AI games over a settings matrix, crashes caught per game
+crates/ffh-play  `ffh-play`: human play (docs/PLAY_DESIGN.md, docs/HUMAN.md)
 tools/           fetch-reference.sh, vendor_xml.py, gen_enums.py, gen_defines.py
 docs/            ARCHITECTURE.md, DATA.md, PORTING.md (status)
 ```

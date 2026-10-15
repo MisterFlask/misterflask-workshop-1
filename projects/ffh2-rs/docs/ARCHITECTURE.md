@@ -17,6 +17,7 @@ ffh-core   Rules engine. Owns all mutable game state (Game). Deterministic.
 ffh-ai     Controllers (the new AI). Reads state, issues the same calls a human UI would.
 ffh-cli    `ffh` binary: autoplay, benchmarks, inspection.
 ffh-stress `ffh-stress` binary: AI games over a matrix of game settings, crashes caught per game.
+ffh-play   Human play: a session that drives one human slot through ports of the C++ input paths.
 ```
 
 `ffh-core` must stay free of OS dependencies (no filesystem/threads/clock in the
@@ -58,6 +59,54 @@ The C++ rules code calls `AI_*` functions synchronously. In this port:
 - citizen assignment is a new governor (`governor.rs`) used by every player;
 - the AI proper (`ffh-ai`) plays turns via `Controller::play_turn`, using only public
   rules APIs (the same moves a player could make).
+
+## Human play (ffh-play)
+
+`crates/ffh-play` (design: `docs/PLAY_DESIGN.md`, use: `docs/HUMAN.md`) adds a human player
+without changing the rules engine:
+
+- **Game thread.** One `Session` owns the `Game` and drives it as the exe does: `advance` calls
+  `update()` until the human's control point; `execute` applies a command between `update()`
+  calls (ports of `CvNet*::Execute` and the exe helpers that send them), then lets the game
+  settle. Front-ends talk to that thread; the game is never shared.
+- **Decision policy.** The human slot's controller (`HumanController`) defers what C++ asks with
+  a popup whose "no answer" the rules already handle (production, events, votes, research) and
+  asks an `Answerer` synchronously where no answer would lose information (free tech, keep/raze,
+  election, offer, religion). AI work C++ also runs for humans goes to a private advisor `Ai`.
+- **Purity contract.** Every read of `&Game` outside a rules call goes through a `QueryGuard`,
+  which restores the interior-mutable caches (path finders, `ai_bonus_value`, city rank caches)
+  that `&self` rules functions fill, so reads never change later results or save bytes.
+- **Saves.** A save is `Game::save()` bytes plus a JSON sidecar with the session state the rules
+  need and `Game` lacks (the deferred event popups). Saves taken at a human control point resume
+  exactly (the human plays slot 0, before any AI acts that turn; ffh-ai caches are per turn).
+- **Journal.** One JSON line per input (command, decision answer) stamped with `(turn, slice)`,
+  plus a checksum checkpoint per turn; `ffh-play replay` re-plays it and stops at the first
+  difference.
+- **The human's slot can move.** FfH's `reassignPlayerAdvanced` (Impersonate Leader, the
+  "switch civilizations" event, the High to Low challenge) moves the human flag and controller to
+  another slot; the session follows after every rules call and moves the active player with it.
+- **Soak.** `ffh-play soak` lets `ffh_ai::Ai` play the human slot through the session over a
+  settings matrix (each game in a child process, ffh-stress's invariant checks every 5 turns), so
+  the rules' human-only branches run before people play; failures print a repro command.
+- **Views and queries.** Clients read the game only through protocol queries (`query.rs`,
+  `view/`), answered under a `QueryGuard` from the human team's side: `view/fog.rs` holds the
+  only visibility predicates (revealed and visible plots, invisible units, revealed cities, met
+  players). Path previews use a session-owned interface path finder, never the game's. A turn
+  report diffs a fog-filtered snapshot taken at the end of the human's turn against its next
+  control point. Queries can also be served inside a blocking decision (`Answerer::ask_with`).
+- **Transports.** One JSON envelope (`cmd`, `q`, `answer`, `session`) over two transports:
+  `ffh-play agent` reads JSON lines from stdin on the game thread itself; `ffh-play serve` runs a
+  std-only HTTP/1.1 server (127.0.0.1, a thread per connection) whose GET requests are served
+  from a published status and cached view and map, and whose `POST /api` envelopes go over a
+  channel to the game thread. A blocking decision raised inside a rules call reads the same
+  input (the next lines, the same channel), so it is answered while the command that raised it
+  waits. A panic on the game thread is caught and reported with the replay command.
+- **Browser client.** `crates/ffh-play/assets/` (embedded with `include_str!`, served by
+  `ffh-play serve`): vanilla ES modules and a `<canvas>` map, no build step and no external
+  code. It only renders what the server computes (fog, legal actions, odds, paths, turns) and
+  sends the same commands as the agent; the terrain is cached in offscreen chunks redrawn where
+  the map changed. Checked by `tests/web.rs` (files and imports), and with node by
+  `tools/web-check.sh`, `tools/web-api-smoke.mjs` and the headless-Chromium `tools/web-smoke.mjs`.
 
 ## Saved games
 

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ffh-play</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/app/style.css">
+<script type="module" src="/app/main.js"></script>
+</head>
+<body>
+<!-- The browser client (docs/PLAY_DESIGN.md §5.1, §7 P5-P6). Everything it shows comes from the
+     server (`ffh-play serve`): /api/status (long-poll), /api/view, /api/map (tile deltas),
+     /api/data and the POST /api envelope. -->
+<header id="top">
+  <div id="phase" aria-live="polite">connecting…</div>
+  <div id="empire"></div>
+  <nav id="menu">
+    <button id="btn-research" title="Choose research">Research</button>
+    <button id="btn-techs" title="The tech tree [F6]">Techs</button>
+    <button id="btn-cities" title="Your cities [F1]">Cities</button>
+    <button id="btn-civics" title="Civics [F3]">Civics</button>
+    <button id="btn-religion" title="Religion [F7]">Religion</button>
+    <button id="btn-diplo" title="Foreign affairs and trade [F4]">Diplomacy</button>
+    <button id="btn-tools" title="Inspector, debug reveal, autoplay, spectate, take over, options">Tools</button>
+    <button id="btn-save" title="Save the game [Ctrl+S]">Save</button>
+    <button id="btn-load" title="Load a game [Ctrl+L]">Load</button>
+    <button id="btn-new" title="Start a new game">New</button>
+    <button id="btn-keys" title="Keys [?]">?</button>
+    <button id="btn-raw" title="Send a raw protocol request (testing)">⌘</button>
+    <button id="end-turn" class="primary" title="End the turn [Enter when no unit waits]; Shift: without the checks" disabled>End turn</button>
+  </nav>
+</header>
+<main id="main">
+  <div id="mapwrap">
+    <canvas class="map" aria-label="The map"></canvas>
+    <canvas class="minimap" aria-label="Minimap"></canvas>
+    <div class="zoom">
+      <button id="zoom-in" title="Zoom in [+]" aria-label="Zoom in">+</button>
+      <button id="zoom-out" title="Zoom out [-]" aria-label="Zoom out">−</button>
+    </div>
+    <div class="layers" role="radiogroup" aria-label="Map layer">
+      <button data-layer="terrain" class="active" title="The terrain [Ctrl+1]">Terrain</button>
+      <button data-layer="political" title="Who owns what [Ctrl+2]">Political</button>
+      <button data-layer="yield" title="Food, production, commerce of the plots in sight [Ctrl+3]">Yields</button>
+    </div>
+    <div class="tooltip" hidden></div>
+  </div>
+  <aside id="side">
+    <section id="unit-panel" aria-label="Selection"></section>
+  </aside>
+</main>
+<footer id="bottom">
+  <div id="bottom-tabs" role="tablist">
+    <button data-tab="report" class="active">Turn report</button>
+    <button data-tab="messages">Messages</button>
+    <button data-tab="game">Game files</button>
+    <button id="bottom-toggle" title="Show or hide this panel" aria-label="Toggle the panel">▾</button>
+  </div>
+  <div id="bottom-body"></div>
+</footer>
+<div id="modals"></div>
+<div id="toasts" aria-live="polite"></div>
+</body>
+</html>
