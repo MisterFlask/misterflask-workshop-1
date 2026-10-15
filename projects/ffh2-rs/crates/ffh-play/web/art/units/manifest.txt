@@ -9,9 +9,24 @@
 ; robed.spr (arcane, divine, civilians, great people), siege_naval.spr, animals.spr (and beasts),
 ; natures.spr (demons, undead, angels, golems, elementals), heroes.spr, stack.spr.
 ; Stack presentation: units/stack.js (installStackOverlay(art) or drawStackOverlay) draws the
-; standard, count, health and moves; units/preview.html shows it and a muster of the set.
-; reference.png and reference-roster.png are small reference sheets of preview.html (regenerate
-; them from its screenshots when the set changes).
+; standard, count, health, moves and the lantern reflections on water; units/preview.html shows it,
+; every tincture in every state, the naval line and the weapon lines, a muster and the roster.
+;   standard  ui/stack_banner (stack.spr), 7x12: pole, crossbar, a 5x8 field with the 5x5 sigil;
+;             top-left at tile (1,1), mirrored to the top-right in cities. Quiet by default (the
+;             tincture's shade as the field); the full tincture only on your own movable or
+;             selected stack; the vellum finial pip says 'can move'. The ui namespace is the ui
+;             set's: the sprite moves to ui/heraldry.spr verbatim when that set adopts it
+;             (stack.js reads its geometry from `: flag` and `: finial`), then stack.spr goes.
+;   lanterns  ship and settler lanterns are a glow pixel over an amber one in a void frame,
+;             FIRE radius 6; on water stack.js adds the ART.md 5.4 reflection under each light
+;             (E E e e dashes, 2 px apart, from the waterline). A ship whose oars or hull dip
+;             below its waterline names it: `: tags waterline=<row>`.
+;   naval     one silhouette feature per line ship at 1x: galleon two masts and a stern castle,
+;             frigate three narrow sails and one gun-port row, man-o-war two rows, queen of the
+;             line three gun decks and a long owner pennant from the main truck.
+; reference.png (stacks, standards, naval line at 2x, the muster) and reference-roster.png are
+; small reference sheets of preview.html (regenerate them from its screenshots when the set
+; changes).
 set units
 source generic.spr
 source infantry.spr

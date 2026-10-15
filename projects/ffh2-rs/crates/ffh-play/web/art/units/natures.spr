@@ -1,7 +1,7 @@
 ; units/natures.spr: demons, undead, angels, golems and elementals (docs/ART.md 10.4).
 ; 24x24 box, feet at 11,21 (huge: 32x32, feet 15,29), facing east, moonlight from the upper left.
 ; Owner slots # % * on cloth, @ the accent (faith or sphere colour). Outlines are part of the sprite;
-; the renderer adds the moon rim, contact shadow, pennant and overlays.
+; the renderer adds the moon rim and contact shadow; units/stack.js the standard and the other overlays.
 
 = unit/imp 24x24 11,21
 : note imp: a small crouched devil with wings, a tail and scarlet eyes

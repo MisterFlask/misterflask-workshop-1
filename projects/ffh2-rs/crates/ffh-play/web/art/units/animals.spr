@@ -1,7 +1,7 @@
 ; units/animals.spr: animals (no owner slots) and beasts; huge sprites use the 32x32 box, feet 15,29.
 ; 24x24 box, feet at 11,21 (huge: 32x32, feet 15,29), facing east, moonlight from the upper left.
 ; Owner slots # % * on cloth, @ the accent (faith or sphere colour). Outlines are part of the sprite;
-; the renderer adds the moon rim, contact shadow, pennant and overlays.
+; the renderer adds the moon rim and contact shadow; units/stack.js the standard and the other overlays.
 
 = unit/wolf 24x24 11,21
 : note wolf: grey, low, ears up, a bone eye glint

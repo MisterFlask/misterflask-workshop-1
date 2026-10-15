@@ -1,14 +1,23 @@
-// units/preview.js: the units set at work. Three parts (?part=stacks|muster|roster, default all):
-//   stacks  the stack presentation (units/stack.js) case by case at 1x, 2x and 3x;
-//   muster  a 16x10 map with armies of four civilizations, barbarians and animals (?scale=N);
-//   roster  every bespoke unit sprite through drawUnit at 2x, grouped by combat class.
+// units/preview.js: the units set at work. Parts (?part=a,b,... from the list below, default all):
+//   stacks     the stack presentation (units/stack.js) case by case at 1x, 2x and 3x;
+//   standards  every tincture (rows) in every standard state (columns): movable, selected, spent,
+//              foreign, foreign with a hero, hurt, in a city; at 1x and 2x;
+//   lights     the naval line on coast and ocean (lanterns, reflections), the settler, the disciple,
+//              and the archer and melee lines side by side (weapon silhouettes); 1x to 3x;
+//   muster     a 16x10 map with armies of four civilizations, barbarians and animals (?scale=N;
+//              ?nostd=1 leaves the standards out, to measure what they add);
+//   roster     every bespoke unit sprite through drawUnit at 2x, grouped by combat class.
+// ?scales=1,2 limits the scales of stacks, standards and lights.
 // Sets window.__artReady = true when done (for screenshots).
 import { loadArt, TILE } from '../art.js';
 import { renderMap } from '../compose.js';
 import { installStackOverlay } from './stack.js';
 
 const q = new URLSearchParams(location.search);
-const part = q.get('part') || 'all';
+const parts = new Set((q.get('part') || 'all').split(','));
+const want = (p) => parts.has('all') || parts.has(p);
+const only = q.get('scales') ? q.get('scales').split(',').map(Number) : null;
+const scales = (list) => (only ? list.filter((s) => only.includes(s)) : list);
 const out = document.getElementById('out');
 
 function el(tag, attrs = {}, ...kids) {
@@ -53,7 +62,7 @@ const CASES = [
 function stacks(art, owners) {
   const sec = el('section');
   sec.append(el('h2', {}, 'stack presentation'));
-  for (const scale of [1, 2, 3]) {
+  for (const scale of scales([1, 2, 3])) {
     art.scale = scale;
     const s = scale;
     const gap = 6;
@@ -71,6 +80,103 @@ function stacks(art, owners) {
   const legend = el('div', { class: 'meta' });
   legend.textContent = CASES.map(([l], i) => `${i + 1}. ${l}`).join('   ');
   sec.append(legend);
+  return sec;
+}
+
+// ---------------------------------------------------------------- standards: every tincture in every state
+const STANDARD_OWNERS = [
+  ['Argent (Bannor)', 'CIVILIZATION_BANNOR'], ['Argent per pale', 'CIVILIZATION_BANNOR', 'pale'], ['Or (Khazad)', 'CIVILIZATION_KHAZAD'],
+  ['Gules (Sheaim)', 'CIVILIZATION_SHEAIM'], ['Azure (Lanun)', 'CIVILIZATION_LANUN'], ['Vert (Ljosalfar)', 'CIVILIZATION_LJOSALFAR'],
+  ['Purpure (Amurites)', 'CIVILIZATION_AMURITES'], ['Tenne (Hippus)', 'CIVILIZATION_HIPPUS'], ['Celeste (Illians)', 'CIVILIZATION_ILLIANS'],
+  ['Sable (Doviello)', 'CIVILIZATION_DOVIELLO'], ['Cendree (Luchuirp)', 'CIVILIZATION_LUCHUIRP'], ['barbarian', 'CIVILIZATION_BARBARIAN'],
+  ['Vert per pale', 'CIVILIZATION_LJOSALFAR', 'pale'], ['Or per bend', 'CIVILIZATION_KHAZAD', 'bend'], ['Sable quarterly', 'CIVILIZATION_DOVIELLO', 'quarterly'],
+];
+const STANDARD_STATES = [
+  ['movable', 'UNIT_SWORDSMAN', { hp: 100, moves: true }],
+  ['selected, 3', 'UNIT_SWORDSMAN', { hp: 100, moves: true, selected: true, count: 3 }],
+  ['spent', 'UNIT_SWORDSMAN', { hp: 100, moves: false }],
+  ['foreign', 'UNIT_AXEMAN', { hp: 100, facing: 'left' }],
+  ['foreign, 4, hero', 'UNIT_KNIGHT', { hp: 100, facing: 'left', count: 4, hero: true }],
+  ['foreign, hurt', 'UNIT_ARCHER', { hp: 40, facing: 'left' }],
+  ['in a city', 'UNIT_LONGBOWMAN', { hp: 100, count: 2, inCity: true, mark: 'fortify' }],
+];
+
+function standards(art) {
+  const sec = el('section');
+  sec.append(el('h2', {}, 'standards: tinctures (rows) by state (columns)'));
+  for (const scale of scales([1, 2])) {
+    art.scale = scale;
+    const s = scale;
+    const gap = 2;
+    const W = STANDARD_STATES.length * (TILE + gap) + gap, H = STANDARD_OWNERS.length * (TILE + gap) + gap;
+    const [c, ctx] = canvas(art, W * s, H * s, '0');
+    STANDARD_OWNERS.forEach(([, civ, division], row) => {
+      const owner = art.ownerStyle(civ, { id: `${civ}/${division || ''}`, division });
+      STANDARD_STATES.forEach(([, unit, state], col) => {
+        const x = (gap + col * (TILE + gap)) * s, y = (gap + row * (TILE + gap)) * s;
+        const t = (row + col) % 3 === 0 ? 'TERRAIN_PLAINS' : (row + col) % 3 === 1 ? 'TERRAIN_GRASS' : 'TERRAIN_TUNDRA';
+        art.drawTerrain(ctx, x, y, tile(t, { mx: col, my: row }));
+        if (state.inCity) art.drawCity(ctx, x, y, { size: 5, name: '', plaque: false }, owner);
+        art.drawUnit(ctx, x, y, unit, owner, state);
+      });
+    });
+    sec.append(el('h3', {}, `${scale}x`), c);
+  }
+  const legend = el('div', { class: 'meta' });
+  legend.textContent = `columns: ${STANDARD_STATES.map(([l]) => l).join(' | ')}. rows: ${STANDARD_OWNERS.map(([l]) => l).join(' | ')}`;
+  sec.append(legend);
+  return sec;
+}
+
+// ---------------------------------------------------------------- lights and lines: ships and lanterns at 1x-3x
+const NAVAL = ['UNIT_WORKBOAT', 'UNIT_TRIREME', 'UNIT_GALLEY', 'UNIT_CARAVEL', 'UNIT_GALLEON', 'UNIT_FRIGATE', 'UNIT_MAN_O_WAR',
+  'UNIT_QUEEN_OF_THE_LINE', 'UNIT_PRIVATEER', 'UNIT_BLACK_WIND', 'UNIT_SAILORS_DIRGE', 'UNIT_ARCANE_BARGE', 'UNIT_SEA_SERPENT'];
+const LAND_LIGHTS = ['UNIT_SETTLER', 'UNIT_DISCIPLE_THE_ORDER', 'UNIT_WORKER'];
+const LINES = [
+  ['archers', ['UNIT_ARCHER', 'UNIT_LONGBOWMAN', 'UNIT_CROSSBOWMAN', 'UNIT_MARKSMAN']],
+  ['melee', ['UNIT_WARRIOR', 'UNIT_AXEMAN', 'UNIT_SWORDSMAN', 'UNIT_CHAMPION', 'UNIT_IMMORTAL']],
+];
+
+function lights(art, owners) {
+  const sec = el('section');
+  sec.append(el('h2', {}, 'naval line and lanterns; weapon silhouettes within a class'));
+  const own = owners.get('a');
+  for (const scale of scales([1, 2, 3])) {
+    art.scale = scale;
+    const s = scale;
+    const n = NAVAL.length + LAND_LIGHTS.length;
+    const [c, ctx] = canvas(art, n * TILE * s, TILE * 2 * s, '0');
+    NAVAL.forEach((u, i) => {
+      for (const [row, t] of [[0, 'TERRAIN_COAST'], [1, 'TERRAIN_OCEAN']]) {
+        const x = i * TILE * s, y = row * TILE * s;
+        art.drawTerrain(ctx, x, y, tile(t, { mx: i, my: row, plotType: 'OCEAN' }));
+        art.drawUnit(ctx, x, y, u, row ? owners.get('b') : own, row ? { hp: 100, facing: 'left' } : { hp: 100, moves: true });
+      }
+    });
+    LAND_LIGHTS.forEach((u, k) => {
+      for (const [row, t] of [[0, 'TERRAIN_GRASS'], [1, 'TERRAIN_PLAINS']]) {
+        const i = NAVAL.length + k;
+        const x = i * TILE * s, y = row * TILE * s;
+        art.drawTerrain(ctx, x, y, tile(t, { mx: i, my: row }));
+        art.drawUnit(ctx, x, y, u, own, row ? { hp: 100, moves: false, facing: 'left' } : { hp: 100, moves: true });
+      }
+    });
+    sec.append(el('h3', {}, `${scale}x`), c);
+  }
+  for (const scale of scales([1, 2])) {
+    art.scale = scale;
+    const s = scale;
+    const w = Math.max(...LINES.map(([, l]) => l.length));
+    const [c, ctx] = canvas(art, (w * TILE + 8) * 2 * s, LINES.length * TILE * s, '0');
+    LINES.forEach(([, list], row) => list.forEach((u, i) => {
+      for (const [half, t] of [[0, 'TERRAIN_GRASS'], [1, 'TERRAIN_PLAINS']]) {
+        const x = (half * (w * TILE + 8) + i * TILE) * s, y = row * TILE * s;
+        art.drawTerrain(ctx, x, y, tile(t, { mx: i + half * 9, my: row }));
+        art.drawUnit(ctx, x, y, u, half ? owners.get('d') : own, half ? { hp: 100, facing: 'left' } : { hp: 100 });
+      }
+    }));
+    sec.append(el('h3', {}, `lines at ${scale}x: ${LINES.map(([k, l]) => `${k}: ${l.map((u) => u.slice(5).toLowerCase()).join(', ')}`).join('; ')}`), c);
+  }
   return sec;
 }
 
@@ -207,7 +313,9 @@ function muster(art, owners, scale) {
   const map = buildMuster();
   const s = scale;
   const [c, ctx] = canvas(art, map.width * TILE * s, map.height * TILE * s, '0');
-  const stacks = STACKS.map(([x, y, unit, owner, st]) => ({ x, y, unit, owner, count: st.count || 1, state: st }));
+  // ?nostd=1 leaves the standards out (to measure what they add to the map's values)
+  const nostd = q.get('nostd') === '1';
+  const stacks = STACKS.map(([x, y, unit, owner, st]) => ({ x, y, unit, owner, count: st.count || 1, state: nostd ? { ...st, noPennant: true } : st }));
   renderMap(art, ctx, map, { owners, cities: CITIES, stacks, vignette: false });
   const sec = el('section');
   sec.append(el('h2', {}, `muster at ${scale}x`), c);
@@ -261,12 +369,14 @@ async function main() {
     ['barb', art.ownerStyle('CIVILIZATION_BARBARIAN', { id: 'barb' })],
     ['animal', { ...art.ownerStyle('CIVILIZATION_BARBARIAN', { id: 'animal' }), animal: true }],
   ]);
-  if (part === 'all' || part === 'stacks') out.append(stacks(art, owners));
-  if (part === 'all' || part === 'muster') {
+  if (want('stacks')) out.append(stacks(art, owners));
+  if (want('standards')) out.append(standards(art));
+  if (want('lights')) out.append(lights(art, owners));
+  if (want('muster')) {
     const sc = Number(q.get('scale')) || 0;
     for (const scale of sc ? [sc] : [2, 1]) out.append(muster(art, owners, scale));
   }
-  if (part === 'all' || part === 'roster') out.append(roster(art, owners));
+  if (want('roster')) out.append(roster(art, owners));
 }
 
 try {
