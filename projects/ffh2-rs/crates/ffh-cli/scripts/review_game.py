@@ -71,11 +71,13 @@ def civ_flags(rows):
     # Military never grew past the starting warriors.
     if peak_mil <= 2 and end.get("alive"):
         flags.append(f"military never grew past {peak_mil} units")
-    # Never aimed at any victory by the end (planner idle).
-    if end.get("goal") in (None, "-", "") and num(end.get("cities")) >= 3:
-        flags.append("never aimed at a victory condition")
-    # Religion founded in the world but this civ ran none (weak for most leaders).
-    # (left as a soft note, not every civ wants one)
+    # Power stagnated: an alive civ whose power barely grew over the game is not increasing its
+    # power by the means available (the design goal). (We do NOT flag an idle victory planner:
+    # civs greedily grow power and let domination/conquest emerge, rather than chasing a victory.)
+    first_pow = num(rows[0].get("power"))
+    end_pow = num(end.get("power"))
+    if end.get("alive") and len(rows) >= 3 and end_pow <= max(first_pow * 3, 60):
+        flags.append(f"power barely grew ({first_pow} -> {end_pow}): not increasing power by the means available")
     return flags
 
 
