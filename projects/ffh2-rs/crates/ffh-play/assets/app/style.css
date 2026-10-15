@@ -274,8 +274,12 @@ textarea.raw { width: 100%; font: 12px var(--mono); }
    map glides across (map.js `glideTo`). Entrances only, short and quiet; prefers-reduced-motion
    turns them all off. */
 @keyframes toast-in { from { opacity: 0; transform: translateX(12px); } }
-@keyframes backdrop-in { from { opacity: 0; } }
-@keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(0.992); } }
+/* Fade the backdrop's DIM (its background), not its opacity — the modal is a child, so fading the
+   backdrop's opacity would fade the page too and ghost it over the map. */
+@keyframes backdrop-in { from { background-color: rgba(5, 8, 11, 0); } }
+/* The page settles in with a slight rise and scale; it stays opaque throughout (no fade) so a
+   large screen never ghosts over the map while the backdrop dims the surround. */
+@keyframes modal-in { from { transform: translateY(10px) scale(0.985); } }
 #toasts .toast { animation: toast-in 200ms ease-out; }
 #modals .backdrop { animation: backdrop-in 140ms ease-out; }
 .modal { animation: modal-in 190ms cubic-bezier(0.22, 1, 0.36, 1); }
