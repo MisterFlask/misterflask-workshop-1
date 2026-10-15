@@ -1164,42 +1164,41 @@ u....u....u....u......
 ...000055555555550000...
 .......0000000000.......
 
-= improvement/ring_of_carcer 27x15 13,14
+= improvement/ring_of_carcer 29x13 14,12
 : types IMPROVEMENT_RING_OF_CARCER
-: note a ring of black stones around a crimson centre
-: light 14,10 BLOOD 9
-...........00..............
-..........0320....00.......
-....00....03210..0320......
-...0320...03210..03210.00..
-...03210..03210..032100320.
-.0003210..03210..0321003210
-03203210..03210.00321003210
-032102100003210032021000210
-03210210320000c032100032010
-032100003210ccc03210.032100
-03210..03210CRC03210c03210.
-03210..03210CCC03210c03210.
-03210..03210ccc03210.03210.
-.000...03210ccc03210.03210.
-........000.....000...000..
+: note jagged black stones in a ring around a crimson pool
+: light 14,8 BLOOD 9
+...............0.............
+........0.....010..0.........
+.......020...0210.040........
+......0420..04210.0420.......
+...0..04210.04210.04210..0...
+..010.04210cc000cc04210.040..
+.0210..000CCCCCCCC0000..0420.
+04210.cc020RRRRRR040cc..04210
+04210..0420CCCCCC0420...04210
+04210..04210ccccc04210..04210
+.000...04210.....04210...000.
+.......04210.....04210.......
+........000.......000........
 
-= improvement/maelstrom 26x12 13,11
+= improvement/maelstrom 28x13 14,12
 : types IMPROVEMENT_MAELSTROM
 : flat
-: note a whirlpool spiral of tide and glint with rime foam
-g...........gN.g..........
-......gFFgNg....gFFgN.....
-....gg...............ggN..
-...g........gFFNg.......gg
-..g......FNg....ggFF.....F
-.gF.....dd.........Ng.....
-..N.....dd..00d.....g.....
-..g......dddddd.....g.....
-..gF...............NN.....
-....ggg..........Fg.......
-.......gNFFggNgNg.......Ng
-g.....................Ng..
+: note a two-armed whirlpool: tide and glint arms, rime foam on the crests, a void eye
+............................
+.......nnnFFFFFggN..........
+....n....NNNNNN....gNN......
+..n..NNggddddddFgNN..gN..n..
+.n.NNg.ddNNggNNNddgNd.gN..n.
+..NgF.dNgddddddgNdFNNdFNN.n.
+..Ng.dNgddNg0000ddgNddgN..n.
+..Ng.NNFdNgddNgggNNddgNN.Fn.
+...g..NgddNgFddddddggN..Fn..
+....g..NgFddNNNNNNNN..Fg....
+.....nF..NNggF....FggN......
+.......nn....NNNNN..........
+...........nnnnnn...........
 
 
 = improvement/camp 15x11 7,9
@@ -1345,18 +1344,23 @@ g.....................Ng..
 054444420
 .0000000.
 
-= improvement/smoke 7x10 3,9
+= improvement/smoke 7x15 3,14
 : types IMPROVEMENT_SMOKE
-: note an ash smoke column over a smouldering patch
-..56...
-.5665..
-..555..
-...45..
+: note an ash smoke column rising from a smouldering patch
+...56..
+..5665.
+.56665.
+..5655.
+...55..
 ..454..
-..44...
-...43..
+..445..
+...44..
+...44..
+..434..
+..43...
 ...33..
 ..333..
+.3333..
 .3e3e3.
 
 = improvement/hellfire 15x9 7,7
