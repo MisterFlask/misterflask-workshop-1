@@ -287,6 +287,39 @@ fn covers(g: &Game, c: CityId, tp: PlotIdx, defs: &[UnitId], units: &[UnitId], s
     s.used.is_some_and(|n| n + spare <= n_att) || s.best >= 850 && defs.len() == 1
 }
 
+/// Can the units left after the strike hold the city against the enemy units around it (within
+/// two plots, outside it)? A city taken by a lone unit next to a raiding party was lost the next
+/// turn, again and again (the barbarians kept the town and won the fights).
+fn holdable(g: &Game, team: TeamId, tp: PlotIdx, defs: &[UnitId], units: &[UnitId]) -> bool {
+    if exp("nohold") {
+        return true;
+    }
+    let (tx, ty) = g.map.xy(tp);
+    let mut threats = 0;
+    for dx in -2..=2 {
+        for dy in -2..=2 {
+            let Some(q) = g.plot_xy(tx, ty, dx, dy) else { continue };
+            if q == tp || !g.plot_is_visible(q, team) {
+                continue;
+            }
+            threats += g.map.plots[q]
+                .units
+                .iter()
+                .filter(|&&e| {
+                    let et = g.unit_get_team(e);
+                    et != team && g.at_war(team, et) && attack_power(g, e) > 0 && !g.d.units[g.units[e].unit_type].animal
+                })
+                .count();
+        }
+    }
+    if threats == 0 {
+        return true;
+    }
+    // Attackers used up (expected) leave the others to move in.
+    let used = simulate(g, tp, defs, units, 0).used.unwrap_or(units.len());
+    units.len().saturating_sub(used) >= threats.min(3)
+}
+
 // ----------------------------------------------------------------------------
 // Targets
 // ----------------------------------------------------------------------------
@@ -529,7 +562,7 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
     // stands near it or is on its way.
     let mut committed: Vec<GroupId> = Vec::new();
     let mut n_units = 0;
-    let enough = need * 2 + 2;
+    let enough = if exp("commit1") { need + 1 } else { need * 2 + 2 };
     for &(d, grp) in &groups {
         if !cand.civ && n_units >= enough && d > 3 && tagged(g, grp) != Some(tp) {
             continue;
@@ -554,7 +587,7 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
         (
             covers(g, cand.city, tp, &defs, &all, true, true),
             covers(g, cand.city, tp, &defs, &near, true, true),
-            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, true, false),
+            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, true, false) && holdable(g, team, tp, &defs, &adj),
         )
     } else {
         // Unseen: enough to go and look (two more than the defenders we assume).
@@ -771,11 +804,28 @@ fn bombard(g: &mut Game, grp: GroupId, op: &Op) {
     }
 }
 
-/// Is the group committed to an operation past gathering (marching, stepping in, striking)?
-/// Such a stack leaves our cities in peril to their garrisons: the threat usually comes from
-/// the city it marches on, and turning back each time it appears stalls the siege (measured).
-pub fn on_the_move(v: &View, grp: GroupId) -> bool {
-    v.campaign.op_of(grp).is_some_and(|i| v.campaign.ops[i].phase != Phase::Gather)
+/// Does the group leave our city at `q`, in peril, to its garrison? Yes when it is committed to
+/// a war operation past gathering (marching, stepping in, striking): turning back each time a
+/// threat appears stalled the sieges (measured: half the cities taken). A stack marching on a
+/// barbarian town only ignores the peril of our cities within 4 plots of it (the threat comes
+/// from there, and taking it is the defense).
+pub fn peril_ignored(g: &Game, v: &View, grp: GroupId, q: PlotIdx) -> bool {
+    let Some(op) = v.campaign.op_of(grp).map(|i| &v.campaign.ops[i]) else { return false };
+    if op.phase == Phase::Gather {
+        return false;
+    }
+    if op.civ || exp("perilall") {
+        return true;
+    }
+    let (qx, qy) = g.map.xy(q);
+    let (tx, ty) = g.map.xy(op.plot);
+    g.plot_distance(qx, qy, tx, ty) <= 4
+}
+
+/// TEMP experiment flags (FFH_SIEGE_EXP=a,b,...).
+pub fn exp(flag: &str) -> bool {
+    static F: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    F.get_or_init(|| std::env::var("FFH_SIEGE_EXP").map(|v| v.split(',').map(|s| s.to_string()).collect()).unwrap_or_default()).iter().any(|f| f == flag)
 }
 
 /// Is the group next to the target of an operation that strikes this turn?
@@ -804,9 +854,10 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
     let (x, y) = g.map.xy(here);
     let (tx, ty) = g.map.xy(op.plot);
     let dist = g.plot_distance(x, y, tx, ty);
-    // Against barbarians, a stack still gathering its force hunts first; once the force is
-    // there it marches (hunting would scatter it again).
-    if early && !op.civ && op.phase == Phase::Gather {
+    // Against barbarians, a stack still gathering its force hunts first (unless it stands next
+    // to the city: it steps back); once the force is there it marches (hunting would scatter
+    // it again).
+    if early && !op.civ && op.phase == Phase::Gather && dist > 1 {
         return false;
     }
     if dist <= 1 && crate::trace_on(v.p) {
@@ -866,10 +917,12 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
                     }
                 }
             }
-            let Some(r) = op.rally else { return false };
-            if early && !op.civ {
+            // Against barbarians the stacks wait where they are (in our cities, hunting
+            // raiders) until the force is there: gathering them in one city bared the others.
+            if !op.civ && dist > 1 && exp("nogather") {
                 return false;
             }
+            let Some(r) = op.rally else { return false };
             go(g, v, grp, u, r, op.plot);
         }
     }
@@ -923,7 +976,7 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
         // while the defenders are worn down to half their health and we outnumber them (they
         // heal if we stop).
         let go = if fights == 0 {
-            covers(g, op.city, tp, &defs, &units, true, false)
+            covers(g, op.city, tp, &defs, &units, true, false) && holdable(g, team, tp, &defs, &units)
         } else {
             let hp: i32 = defs.iter().map(|&d| g.unit_curr_hit_points(d)).sum();
             let max: i32 = defs.iter().map(|&d| g.unit_max_hit_points(d)).sum();

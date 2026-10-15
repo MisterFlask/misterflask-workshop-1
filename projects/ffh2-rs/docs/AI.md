@@ -112,11 +112,15 @@ counters, war success, war plans) that the diplomacy below reads.
 7. extra defenders up to the quota (capital, threat, nearby barbarians, war, leader);
 8. a small mobile force (1 + cities/2) for barbarians and animals; more workers as worked
    plots need improving; heroes (not at the cost of the first expansion);
-9. the army target (larger for military-minded leaders, doubled at war or while preparing
-   one; at war the attackers are chosen for strength against cities -- city attack bonus,
-   first strikes, collateral -- not mobility), a third of it siege engines at war, and a
-   couple of siege engines whenever a stack is camped at a city it cannot take; in peacetime
-   army and buildings alternate;
+9. the siege operation's force (`campaign::army_choice`, from `needed_force`: about two
+   attackers per defender of its target, siege engines -- or the Siege Workshop that trains
+   them -- for walls or 3+ defenders; city attackers only if they have at least half the
+   strength of the target's best defender; every other slot in peacetime); then the army
+   target (larger for military-minded leaders, doubled at war or while preparing one; at war
+   the attackers are chosen for strength against cities -- city attack bonus, first strikes,
+   collateral -- not mobility), a third of it siege engines at war, and a couple of siege
+   engines whenever a stack is camped at a city it cannot take; in peacetime army and
+   buildings alternate;
 10. buildings by marginal value per production turn (yields, commerce, culture for a new
     city, happiness and health when capped, maintenance savings, specialists, experience,
     ...); casters; missionaries; projects that do not need dedicated logic; a process.
@@ -264,29 +268,65 @@ plots under danger. FfH's AI-only build bans (`CvGameUtils.canBuild`) are respec
 no farms for Fallow civs, no workshops before Guilds, no cottages under Aristocracy, no
 windmills under Arete.
 
-## Field armies (`military.rs`)
+## Field armies (`military.rs`, `campaign.rs`)
 
 Each army group is a stack; per decision, in order:
 
 1. follow through a group attack the rules queued (`ai_group_attack`);
 2. become the garrison of an undefended city of ours it stands in;
 3. merge the army units on its plot (up to 8; only units with full moves);
-4. attack an adjacent target worth it (never a civ city outside a war plan);
-5. heal when hurt and safe;
-6. defend a city of ours in peril within 5 turns;
+4. attack an adjacent target worth it (never a civ city outside a war plan, nor the target of
+   our siege operation, which is left to its strike);
+5. heal when hurt and safe (not a stack about to strike);
+6. defend a city of ours in peril within 5 turns (not a stack marching on a siege);
 7. escort a settler that asks for one (single units);
-8. war: march on the target city (preparing: gather on the rally city -- the city nearest the
-   target -- without crossing the border; too small: gather there first), stage on the best
-   defensive plot next to it, bombard with siege engines, assault when the stack estimate
-   allows (at a city we mean to take, a stack that with our other stacks around the city
-   has three attackers per defender attacks even at poor odds: each lost fight still takes
-   about a third of a defender's health and defenders do not heal between the fights of a
-   turn), fall back to wait for siege engines when hopeless;
+8. its siege operation (below), if the stack is committed to one: at war (or while preparing
+   one) always; against a barbarian city once the force is gathered, or to step back from it;
 9. hunt the best barbarian/animal/lair target within 6 turns it can take (entering an empty
    lair destroys it);
-10. peacetime campaign: the nearest known barbarian city on our landmass (within 20 plots),
-    the same way as a war target;
+10. a barbarian operation still short of force: wait in its rally city;
 11. join a bigger stack within 3 turns, else hold in the nearest city.
+
+**Siege operations** (`campaign.rs`): one per player, rebuilt from the game state on the first
+army decision of each `play_turn` call (nothing outside `Game` is remembered).
+
+- *Target*: at war (or preparing one), a revealed enemy city within 20 plots of ours on a
+  shared landmass; in peacetime a barbarian city within 14 plots. The best value (400 + 100 per
+  population, wonders, holy city, resources, a barbarian town near our cities) for its cost
+  (the force it needs, the distance). Every order of an operation carries its target as the
+  group's mission AI (`MISSIONAI_ASSAULT` and the plot, as C++ `AI_setMissionAI`; saved with
+  the game), and a city our stacks are committed to keeps its place unless another is clearly
+  better: without that, stacks walked back and forth between two barbarian towns.
+- *Force*: the strike is played out in expected values with the rules' odds (fortification,
+  city defense, first strikes, the attacker's health): collateral attackers first, then the
+  strongest; a lost fight still wounds (the rounds won before dying), collateral damage hits
+  the other defenders, siege engines that can bring the walls down in three turns count as
+  having done so. The force covers the city when the defenders fall with a fifth of the
+  attackers (at least one) to spare. Unseen cities: 2 + population/5 defenders for a civ,
+  1 + age/25 for a barbarian town.
+- *Commitment*: at war every stack on the landmass within 24 plots; against barbarians the
+  nearest stacks until they hold twice the force needed (plus those already on their way).
+- *Phases*: **Gather** (the force falls short, or the war is not declared yet): stacks wait in
+  the rally city (ours nearest the target); a stack next to the city steps back, so single
+  units no longer camp next to towns they cannot take. **March**: to an assembly plot two
+  plots out (one that sees the city, then the best defense), and wait there. **StepIn**: the
+  force within two plots covers the city: everyone steps next to it. **Strike**: the force next
+  to it covers the city: every committed stack there attacks in the same turn -- siege engines
+  bombard, collateral attackers first while several defenders stand, then the best odds when
+  68%+, else the unit cheapest to lose for its strength (C++ `AI_getBestGroupSacrifice`) --
+  while the attackers left still cover the defenders left (or the defenders are down to half
+  their health and outnumbered). Up to three units follow the victor into the city.
+- Stacks past gathering do not turn back for our cities in peril (the threat usually comes
+  from the target; turning back halved the cities taken at war, measured).
+
+Measured on seeds 1-24 (6 civs, standard, 300 turns) against the stack-at-a-time `war_move`:
+cities taken from civs 21 -> 31 (per war declared 1.1 -> 1.4), from barbarians 34 -> 48, lost
+to barbarians 37 -> 40; turns with a lone unit next to a city of 3+ defenders 43 -> 14 (seeds
+1-12, `FFH_AI_TRACE` "next to" lines); same cost per turn. Barbarian cities at turn 300 do not
+drop (6.4): `CvGame::createBarbarianCities` founds a new one, in the fog, whenever an area holds
+fewer than its unowned tiles / `iUnownedTilesPerBarbarianCity`, so only owning the land
+lowers their number. `FFH_AI_TRACE` prints each turn's operation ("campaign vs ..."), every
+stack next to its target ("next to ...") and each strike ("strike on ...").
 
 **Assault estimate**: for each attacker, the rules' combat odds against the defender it would
 face; the stack's expected "kills" are the sum of the odds plus a third of the rest (a lost
@@ -375,9 +415,10 @@ never with the civ it prepares a war against.
   The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
   Cartography: only the settler gate (`finance::city_affordable`, not wired in) prevents that,
   and gating expansion costs cities (no better score by turn 300).
-- Wars rarely take civ cities: tier-1/2 attackers against fortified defenders in cities need
-  siege engines and casters; stacks act one at a time (a grinding assault counts the other
-  stacks around the city but does not wait for them).
+- Sieges: one operation at a time; armies are small (most civs field 0-8 attackers by turn
+  200), so a barbarian town of 5+ archers is out of reach and is left alone; casters do not
+  join the strike (they only follow the army); no pillaging while the force gathers; a city
+  emptied of defenders is entered even when a counterattack will retake it.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
