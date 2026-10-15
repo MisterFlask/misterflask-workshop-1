@@ -732,6 +732,18 @@ function actionButton(a) {
   return btn;
 }
 
+/** "automated" (the AI moves the unit's group: Stop automation gives it back) or "AI control"
+ *  (an FfH AI-controlled unit, e.g. enraged), else null. */
+function automationBadge(u) {
+  const grp = u.group !== null && u.group !== undefined ? S.groups.get(u.group) : null;
+  if (!grp) return null;
+  if (grp.automated !== null && grp.automated !== undefined) {
+    const label = AUTOMATE_LABELS[tname("AutomateType", grp.automated)] ?? "Automated";
+    return h("span.badge.auto", { title: `${label}: the AI moves this unit (Stop automation to take it back)` }, "automated");
+  }
+  return grp.ai_control ? h("span.badge.auto", { title: "AI-controlled (FfH): the AI moves this unit" }, "AI control") : null;
+}
+
 function unitRow(u, selected) {
   const busy = u.activity !== null && u.activity !== undefined && tname("ActivityType", u.activity) !== "ACTIVITY_AWAKE";
   const row = h(
@@ -756,6 +768,7 @@ function unitRow(u, selected) {
       u.unit_combat !== undefined && u.unit_combat !== null ? typeIcon("unitcombat", u.unit_combat, 8, { title: dname("UnitCombatType", u.unit_combat) }) : null,
       u.name ?? dname("UnitType", u.type),
       u.promo_ready ? h("span.badge.promo", "promote") : null,
+      automationBadge(u),
       u.summon_turns ? h("span.badge", { title: "A summoned unit: turns left" }, `${u.summon_turns}t`) : null,
       u.cargo?.length ? h("span.badge", { title: "Units on board" }, `${u.cargo.length} aboard`) : null,
     ),

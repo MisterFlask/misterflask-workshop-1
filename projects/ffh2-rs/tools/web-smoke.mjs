@@ -15,7 +15,10 @@
 // spectator mode (play, pause, step, stop), and the trade screen (`stage trade`: gold offered and
 // accepted). The art client: the map drawn with the original pixel art (its worker, the view
 // drawn in full, a frame's time, the zoom steps and the chart, the bitmap type), Tools → Options
-// and `?renderer=flat` for the flat renderer. It fails on any console error, page error, failed
+// and `?renderer=flat` for the flat renderer. Phase 7: the automate buttons (`stage automate`: a
+// worker automated with a click, a scout exploring by its hotkey), the secretary general's election
+// popup (`stage election`) and the Kuriotates city-or-settlement decision (`stage settlement`). It
+// fails on any console error, page error, failed
 // request or HTTP error, and saves screenshots for review.
 //
 //   node tools/web-smoke.mjs [--bin PATH] [--out DIR] [--turns 4] [--seed 5] [--cdp] [--headed]
@@ -896,6 +899,72 @@ async function stagedTrade(bin, saves) {
   steps.push("trade screen (stage trade): 7 gold offered and accepted");
 }
 
+/** Selects the group of unit `u` with a click on its plot. */
+async function selectUnit(u) {
+  const unit = await S(`S.units.get(${u})`);
+  const p = await plotPos(unit.x, unit.y);
+  await b.mouse(p.x, p.y);
+  await until2(`window.ffh.S.sel && window.ffh.S.sel.units.includes(${u})`, `unit ${u} selected`);
+}
+
+const automated = (u) => `(() => { const S = window.ffh.S; const u = S.units.get(${u}); const g = u && S.groups.get(u.group); return !!g && g.automated !== null && g.automated !== undefined; })()`;
+
+/** P7, `stage automate`: the worker's Automation section; a click automates it and the AI gives
+ *  it orders at once (it waits for none); the scout explores by the hotkey E; the unit panel
+ *  marks automated units. */
+async function stagedAutomate(bin, saves) {
+  const st = await loadStaged(bin, saves, "automate");
+  await selectUnit(st.worker);
+  const build = '#unit-panel button.action[data-kind="automate"][data-type="AUTOMATE_BUILD"]';
+  await until2(`!!document.querySelector(${q(build)})`, "the automate buttons");
+  await shot("automate-actions");
+  await click(build);
+  await until2(automated(st.worker), "the worker automated");
+  await until2(`(() => { const S = window.ffh.S; const u = S.units.get(${st.worker}); const g = u && S.groups.get(u.group); return !!g && (g.missions.length > 0 || !g.ready); })()`, "the automated worker's orders");
+  await selectUnit(st.scout);
+  await until2(`!!document.querySelector('#unit-panel button.action[data-kind="automate"][data-type="AUTOMATE_EXPLORE"]')`, "the scout's explore button");
+  await b.key("e");
+  await until2(automated(st.scout), "the scout exploring");
+  await selectUnit(st.worker);
+  await until2(`!!document.querySelector("#unit-panel .badge.auto")`, "the automated badge");
+  await shot("automated");
+  steps.push("automate buttons (stage automate): a worker automated with a click, a scout exploring with E");
+}
+
+/** P7, `stage election`: the human secretary general's election popup (deferred, like events
+ *  and votes): a resolution put to the vote. */
+async function stagedElection(bin, saves) {
+  const st = await loadStaged(bin, saves, "election", { answer: false });
+  const opt = `${TOP} .modal button.option[data-option="0"]`;
+  const shown = `!!document.querySelector(${q(opt)}) && /secretary general/.test(document.querySelector(${q(`${TOP} .modal`)}).textContent)`;
+  // The popups before it in C++ order (events, votes) are answered first.
+  for (let k = 0; k < 20 && !(await b.eval(shown)); k++) {
+    const other = `${TOP} .modal button.option:not([disabled])`;
+    if (await b.eval(`!!document.querySelector(${q(other)})`)) await click(other);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  await until2(shown, "the election popup", 30000);
+  await shot("election");
+  await click(opt);
+  await until2(`(window.ffh.S.view.pending.elections ?? []).every((e) => e.selection !== ${st.selection})`, "the election answered");
+  steps.push("election popup (stage election): a resolution put to the vote");
+  await answerPopups(false);
+}
+
+/** P7, `stage settlement`: a Kuriotates settler founds a city below the city limit: the
+ *  city-or-settlement decision (BUTTONPOPUP_CONFIRMSETTLEMENT), answered "settlement". */
+async function stagedSettlement(bin, saves) {
+  const st = await loadStaged(bin, saves, "settlement");
+  await selectUnit(st.settler);
+  await b.key("b");
+  await until(async () => (await modalTitles()).some((t) => /city or settlement/i.test(t)), "the city-or-settlement decision", 30000);
+  await shot("settlement");
+  await click('#modals .modal.decision button.option[data-option="1"]');
+  await until2(`(() => { const S = window.ffh.S; return !!(S.view && S.view.cities.find((c) => c.x === ${st.x} && c.y === ${st.y} && c.owner === S.view.me.player)); })()`, "the new settlement");
+  steps.push("city-or-settlement decision (stage settlement): a settlement founded");
+  await answerPopups(false);
+}
+
 /** Shift waypoints, on the staged AutoMoves situation (the warrior `ready` is the only group
  *  waiting; another has orders): with Shift-right-clicks (P5 review), or (`how` "goto") in the
  *  go-to mode, G then Shift-clicks (C++ `selectionListMove` with bShift: P6 review). While Shift
@@ -1075,6 +1144,9 @@ async function main() {
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);
     await stagedTrade(bin, saves);
+    await stagedAutomate(bin, saves);
+    await stagedElection(bin, saves);
+    await stagedSettlement(bin, saves);
     await stagedLoad(bin, saves);
     await shiftWaypoints(bin, saves);
     await shiftWaypoints(bin, saves, "goto");

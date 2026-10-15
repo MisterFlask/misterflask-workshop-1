@@ -95,6 +95,7 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .badge { display: inline-block; font-size: 11px; padding: 0 5px; margin-left: 6px; background: var(--c-coal); border: 1px solid var(--c-iron); color: var(--dim); vertical-align: 1px; }
 .badge.reveal { background: var(--c-blood); color: var(--c-vellum); border-color: var(--c-scarlet); }
 .badge.promo { color: var(--c-ochre); border-color: var(--c-ochre); }
+.badge.auto { color: var(--good); border-color: var(--good); border-style: dashed; }
 .icon { font-family: "DejaVu Sans", var(--font); }
 
 /* Top bar: a soot band over a double rule; groups of numbers with their icons. */
