@@ -129,6 +129,14 @@ test("vote choices, the end-turn gate, moves and turns", () => {
   assert.equal(St.turns(null), "-");
 });
 
+test("the transport picker's answer names the transport's owner and id (LOADUNIT OnOkClicked)", () => {
+  St.setData({ kinds: [], tables: { ...data.tables, CommandType: [{ type: "COMMAND_LOAD" }, { type: "COMMAND_LOAD_UNIT" }] } });
+  // Unit 20 is another player's (a teammate's transport): the owner comes from the view.
+  St.setView(view);
+  assert.deepEqual(St.loadUnitCommand([12], 20), { c: "do_command", units: [12], command: 1, data1: 1, data2: 20, alt: false, confirmed: false });
+  assert.deepEqual(St.loadUnitCommand([12], 11), { c: "do_command", units: [12], command: 1, data1: 0, data2: 11, alt: false, confirmed: false });
+});
+
 test("save names from paths", () => {
   assert.equal(St.saveNameOfPath("/x/saves/game-3/auto/T0012.ffhsave"), "game-3/auto/T0012");
   assert.equal(St.saveNameOfPath("C:\\saves\\game-3\\auto\\start.ffhsave"), "game-3/auto/start");

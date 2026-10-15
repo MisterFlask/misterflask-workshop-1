@@ -1,8 +1,10 @@
-//! Staged situations for testing the clients (`ffh-play stage capture|automoves DIR`, and the
-//! transports' tests): a saved game at a human control point arranged with rules calls, so
-//! that a client can be tried on a situation a fresh game reaches only by chance (a captured
-//! city's keep/raze decision, the AutoMoves rule between commands). Nothing here is used in
-//! play.
+//! Staged situations for testing the clients (`ffh-play stage capture|attack|automoves|load DIR`,
+//! and the transports' tests): a saved game at a human control point arranged with rules calls,
+//! so that a client can be tried on a situation a fresh game reaches only by chance (a captured
+//! city's keep/raze decision, an attack, the AutoMoves rule between commands, the transport
+//! picker). Each writes only `DIR/KIND.ffhsave` and its sidecar: the staged game is played with
+//! no journal and no autosaves, so a `DIR` that is also a game's directory keeps its journal and
+//! autosaves (P5 review). Nothing here is used in play.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -67,7 +69,9 @@ fn duel_at(dir: &Path, seed: u32, turn: i32) -> Result<Session, String> {
     let mut ng = NewGame::new(d, seed);
     ng.opponents = 1;
     ng.world = d.t("WORLDSIZE_DUEL");
-    let opts = SessionOptions { saves_dir: Some(dir.to_path_buf()), ..Default::default() };
+    // Only the staged save goes to `dir`: no journal, no autosave ring (which would overwrite and
+    // prune the autosaves of a game kept there).
+    let opts = SessionOptions { saves_dir: Some(dir.to_path_buf()), autosave_keep: 0, journal: false, ..Default::default() };
     let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), opts).map_err(|e| format!("new game: {e:?}"))?;
     let advance = |s: &mut Session| match s.advance(&mut |_| {}) {
         Stop::Human => Ok(()),
@@ -237,4 +241,54 @@ pub fn auto_moves(dir: &Path) -> Result<StagedAutoMoves, String> {
     let from = (g.units[mover].x, g.units[mover].y);
     let paths = s.save("automoves").map_err(|e| format!("save: {e:?}"))?;
     Ok(StagedAutoMoves { save: paths.save, ready, mover, from, turn })
+}
+
+/// A saved game at a human control point (a duel at turn 1 whose capital is on the coast)
+/// where a new warrior `unit` stands in the capital at (`x`, `y`) with two new triremes
+/// `transports` it can load into: the `load` action asks which one (the LOADUNIT picker,
+/// `confirm load_unit`), answered with `do_command COMMAND_LOAD_UNIT`, `data1` = the
+/// transport's owner and `data2` = its id (CvDLLButtonPopup LOADUNIT `OnOkClicked`).
+pub struct StagedLoad {
+    pub save: PathBuf,
+    pub unit: UnitId,
+    pub transports: Vec<UnitId>,
+    pub x: i32,
+    pub y: i32,
+    pub turn: i32,
+}
+
+impl StagedLoad {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! {
+            "stage" => "load", "save" => self.save.display().to_string(), "unit" => self.unit, "transports" => self.transports.clone(),
+            "x" => self.x, "y" => self.y, "turn" => self.turn,
+        }
+    }
+}
+
+/// Writes a [`StagedLoad`] into `dir` (a game directory): the first of a few fixed seeds whose
+/// capital is on the coast.
+pub fn load(dir: &Path) -> Result<StagedLoad, String> {
+    let d = ffh_data::global();
+    let trireme = d.t::<UnitType>("UNIT_TRIREME");
+    let warrior = d.t::<UnitType>("UNIT_WARRIOR");
+    for seed in [4, 1, 2, 3, 5, 6, 7, 8, 9, 10] {
+        let mut s = duel_at(dir, seed, 1)?;
+        let h = s.human;
+        let g = &mut s.g;
+        let capital = *g.players[h].cities.first().ok_or("no city")?;
+        if !g.city_is_coastal(capital, d.defines.min_water_size_for_ocean) {
+            continue;
+        }
+        let (x, y) = (g.cities[capital].x, g.cities[capital].y);
+        let transports = vec![g.player_init_unit(h, trireme, x, y, None, None), g.player_init_unit(h, trireme, x, y, None, None)];
+        let unit = g.player_init_unit(h, warrior, x, y, None, None);
+        let offered = crate::selection::load_targets(g, &[unit]);
+        if offered != transports {
+            return Err(format!("seed {seed}: the warrior can load into {offered:?}, not the two triremes {transports:?}"));
+        }
+        let paths = s.save("load").map_err(|e| format!("save: {e:?}"))?;
+        return Ok(StagedLoad { save: paths.save, unit, transports, x, y, turn: s.g.game_turn() });
+    }
+    Err("no seed with a coastal capital".into())
 }

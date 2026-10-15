@@ -4,7 +4,7 @@
 // command resent with the answer.
 
 import * as api from "./api.js";
-import { S, emit, dname, tidx, teamName, gateLines } from "./state.js";
+import { S, emit, dname, teamName, gateLines, loadUnitCommand } from "./state.js";
 import { ask } from "./modals.js";
 import { toast, busy } from "./dom.js";
 
@@ -109,7 +109,7 @@ async function answerConfirm(c, confirm) {
       choices.push({ label: "Cancel", value: null });
       const t = await ask("Load into which transport?", "Several transports have room.", choices);
       if (t === null || t === undefined) return null;
-      return { c: "do_command", units: c.units, command: tidx("CommandType", "COMMAND_LOAD_UNIT"), data1: t, data2: -1, alt: false, confirmed: false };
+      return loadUnitCommand(c.units, t);
     }
     case "end_turn": {
       const lines = gateLines(confirm);

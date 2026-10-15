@@ -409,6 +409,25 @@ async function stagedCapture(bin, saves) {
   await answerPopups();
 }
 
+/** A staged load: the warrior's Load action asks which of two triremes (the LOADUNIT picker);
+ *  the second one picked, the warrior is in it. */
+async function stagedLoad(bin, saves) {
+  const st = await loadStaged(bin, saves, "load");
+  const p = await plotPos(st.x, st.y);
+  await b.mouse(p.x, p.y);
+  await until2(`!!document.querySelector('#unit-panel .unit-row[data-unit="${st.unit}"]')`, "the warrior in the stack list");
+  await click(`#unit-panel .unit-row[data-unit="${st.unit}"]`);
+  await until2(`window.ffh.S.sel && window.ffh.S.sel.units.length === 1 && window.ffh.S.sel.units[0] === ${st.unit}`, "the warrior selected");
+  await until2(`!!document.querySelector('#unit-panel button.action[data-kind="load"]:not([disabled])')`, "the Load action");
+  await click('#unit-panel button.action[data-kind="load"]');
+  const pick = st.transports[1];
+  await until(async () => (await modalTitles()).includes("Load into which transport?"), "the transport picker");
+  await shot("transport-picker");
+  await click(`#modals .modal-buttons button[data-value="${pick}"]`);
+  await until2(`(() => { const u = window.ffh.S.units.get(${st.unit}); return u && u.transport === ${pick}; })()`, "the warrior in the picked trireme");
+  steps.push(`loaded the warrior into trireme ${pick} through the transport picker`);
+}
+
 async function crashScreen(bin) {
   const saves = tempDir("smoke-crash");
   const server = await startServer({ bin, saves, extra: [...ASSETS, "--new", "--world", "WORLDSIZE_DUEL", "--opponents", "1", "--seed", "2", "--panic-at", "1"] });
@@ -456,6 +475,7 @@ async function main() {
     await saveAndLoad();
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);
+    await stagedLoad(bin, saves);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   } catch (e) {

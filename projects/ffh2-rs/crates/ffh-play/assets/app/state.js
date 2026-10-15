@@ -260,6 +260,15 @@ export function voteChoiceLabel(choice, team = teamName) {
   }
 }
 
+/** The answer to the transport picker (`confirm load_unit`): `do_command COMMAND_LOAD_UNIT` with
+ *  `data1` = the transport's owner and `data2` = its id, as the LOADUNIT popup sends it
+ *  (CvDLLButtonPopup.cpp `OnOkClicked`). A transport may be a teammate's: its owner comes from
+ *  the view. */
+export function loadUnitCommand(units, transport) {
+  const owner = S.units.get(transport)?.owner ?? me()?.player ?? -1;
+  return { c: "do_command", units, command: tidx("CommandType", "COMMAND_LOAD_UNIT"), data1: owner, data2: transport, alt: false, confirmed: false };
+}
+
 /** The lines of the end-turn gate (`confirm end_turn`). */
 export function gateLines(c) {
   const out = [];

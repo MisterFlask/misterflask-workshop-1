@@ -168,3 +168,59 @@ fn the_staged_attack_shows_odds() {
     let json = st.to_json();
     assert_eq!(json.req_str("stage"), Ok("attack"));
 }
+
+/// The files a directory holds, relative, sorted.
+fn files_under(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(p.strip_prefix(dir).unwrap().to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// `ffh-play stage load`: the warrior's `load` action asks which of the two triremes (the
+/// LOADUNIT picker), and the answer the client sends (`do_command COMMAND_LOAD_UNIT`, `data1` =
+/// the transport's owner, `data2` = its id, P5 review) loads it. A stage writes only its save
+/// and sidecar into the directory (no journal, no autosaves: P5 review), so a game directory
+/// keeps its own.
+#[test]
+fn the_staged_load_asks_which_transport() {
+    let tmp = TempDir::new("web-stage-load");
+    let st = ffh_play::stage::load(&tmp.0).expect("staged load");
+    assert_eq!(files_under(&tmp.0), ["load.ffhsave", "load.ffhsess"]);
+    assert_eq!(st.transports.len(), 2);
+    let (bytes, sidecar) = ffh_play::save::read_bundle(&st.save).unwrap();
+    let mut s = Session::load(&bytes, sidecar.as_ref(), Arc::new(ffh_play::human::AdvisorAnswerer), SessionOptions { journal: false, ..SessionOptions::default() }).unwrap();
+    let g = s.query_json(&ffh_play::jobj! { "q" => "group", "units" => vec![st.unit] }).unwrap();
+    let load = g.req_arr("actions").unwrap().iter().find(|a| a.req_str("kind") == Ok("load")).cloned().expect("a load action");
+    assert_eq!(load.get("enabled").and_then(Json::as_bool), Some(true), "{load}");
+    let transports: Vec<i64> = load.req_arr("transports").unwrap().iter().map(|t| t.as_i64().unwrap()).collect();
+    assert_eq!(transports, st.transports.iter().map(|t| t.0 as i64).collect::<Vec<_>>());
+    let exec = |s: &mut Session, j: &Json| ffh_play::command::Command::from_json(s.g.d, j).and_then(|c| s.execute(&c));
+    match exec(&mut s, load.get("cmd").unwrap()) {
+        Ok(ffh_play::command::CmdOk::NeedsConfirm(c)) => assert_eq!(c.to_json().req_str("kind"), Ok("load_unit")),
+        other => panic!("load: {other:?}"),
+    }
+    let second = st.transports[1];
+    let owner = s.g.units[second].owner.0 as i64;
+    let load_unit = |data1: i64, data2: i64| {
+        ffh_play::jobj! { "c" => "do_command", "units" => vec![st.unit], "command" => "COMMAND_LOAD_UNIT", "data1" => data1, "data2" => data2, "alt" => false, "confirmed" => false }
+    };
+    // The id as `data1` (the P5 client's mistake) is refused.
+    assert!(exec(&mut s, &load_unit(second.0 as i64, -1)).is_err());
+    match exec(&mut s, &load_unit(owner, second.0 as i64)) {
+        Ok(ffh_play::command::CmdOk::Applied { .. }) => {}
+        other => panic!("load into {second:?}: {other:?}"),
+    }
+    assert_eq!(s.g.units[st.unit].transport_unit, Some(second));
+    assert_eq!(st.to_json().req_str("stage"), Ok("load"));
+}

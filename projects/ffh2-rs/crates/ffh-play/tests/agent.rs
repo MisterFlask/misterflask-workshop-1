@@ -148,7 +148,8 @@ fn t11_agent_transcript_with_a_decision_inside_a_command() {
     let ours = view.get("r").unwrap().req_arr("cities").unwrap().iter().filter(|c| c.req::<i32>("owner") == Ok(0)).count();
     assert_eq!(ours, 2, "the capital and the captured city");
     // The answer was journaled after the command.
-    let journal = root.join("staged/journal-1.jsonl");
+    // The stage writes no journal of its own (P5 review): the session's is the first.
+    let journal = root.join("staged/journal.jsonl");
     let lines = std::fs::read_to_string(&journal).unwrap();
     assert!(lines.lines().any(|l| l.contains("\"k\":\"answer\"") && l.contains("keep_city")), "{lines}");
 

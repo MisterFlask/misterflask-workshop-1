@@ -6,9 +6,10 @@
 // votes, research, idle cities) and blocking decisions, founds cities, gives orders from the
 // `group` query's actions, moves units along `path` previews, ends turns through the gate;
 // then saves, lists, loads, and plays a staged capture (`ffh-play stage capture`): the move's
-// request waits while the keep/raze decision is answered on another request; then quits.
-// Every refusal of something the server offered is a
-// failure, as are inconsistent views (units on unrevealed plots, a stale cached view).
+// request waits while the keep/raze decision is answered on another request; and a staged load
+// (`ffh-play stage load`): the transport picker answered with the command the page builds;
+// then quits. Every refusal of something the server offered is a failure, as are
+// inconsistent views (units on unrevealed plots, a stale cached view).
 //
 //   node tools/web-api-smoke.mjs [--bin PATH] [--url URL] [--turns 20] [--seed 5]
 //        [--world WORLDSIZE_TINY] [--opponents 2] [--keep] [--verbose]
@@ -19,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as api from "../crates/ffh-play/assets/app/api.js";
-import { popupQueue } from "../crates/ffh-play/assets/app/state.js";
+import { popupQueue, setData, setView, loadUnitCommand } from "../crates/ffh-play/assets/app/state.js";
 import { plotIndex, plotDistance } from "../crates/ffh-play/assets/app/tiles.js";
 import { parseArgs, findBin, tempDir, startServer, rng, stage, until } from "./web-lib.mjs";
 
@@ -278,6 +279,30 @@ async function stagedCapture() {
   log(`staged capture: kept ${city?.name}`);
 }
 
+/** The transport picker (`ffh-play stage load`): the warrior's `load` action asks which of two
+ *  triremes, and the command the page builds from the answer (state.js `loadUnitCommand`)
+ *  loads it into the one picked. */
+async function stagedLoad() {
+  const staged = await stage(bin, "load", path.join(saves, "staged-load"));
+  await api.session("load", { name: "staged-load/load" });
+  const st = await settle();
+  if (st.phase !== "human" || st.turn !== staged.turn) return fail(`staged load loaded in phase ${st.phase}, turn ${st.turn}`);
+  const group = await api.query("group", { units: [staged.unit] });
+  const load = group.actions.find((a) => a.kind === "load");
+  if (!load?.enabled || JSON.stringify(load.transports) !== JSON.stringify(staged.transports)) return fail(`the load action: ${JSON.stringify(load)}`);
+  const asked = await command(load.cmd);
+  if (asked?.r?.confirm?.kind !== "load_unit") return fail(`load: ${JSON.stringify(asked?.r)}`);
+  setData(data);
+  setView(await api.get("/api/view"));
+  const pick = asked.r.confirm.transports[1];
+  if (!(await command(loadUnitCommand([staged.unit], pick)))) return;
+  await settle();
+  const after = await api.get("/api/view");
+  const u = after.units.find((x) => x.id === staged.unit);
+  if (u?.transport !== pick) fail(`after the picker the warrior is in ${u?.transport}, not ${pick}`);
+  log(`staged load: into ${pick}`);
+}
+
 async function main() {
   let setup;
   if (args.url) {
@@ -340,6 +365,7 @@ async function main() {
   }
   const cities = (await api.get("/api/view"))?.cities.filter((c) => c.owner === st.human).length;
   if (server) await stagedCapture();
+  if (server) await stagedLoad();
   console.log(`web-api-smoke: turns ${start}-${st.turn} in ${(ms / 1000).toFixed(1)} s; ${cities} cities; ${JSON.stringify(stats)}`);
   if (server) {
     await api.session("quit");

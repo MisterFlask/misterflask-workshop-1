@@ -39,13 +39,15 @@
 //!                                      the HTTP server (design §4.2) on 127.0.0.1:8642 with the
 //!                                      browser client (P5); no game until the client starts
 //!                                      one, or GAME says so
-//!   ffh-play stage capture|attack|automoves DIR
+//!   ffh-play stage capture|attack|automoves|load DIR
 //!                                      write a save at a staged situation into DIR (testing the
 //!                                      clients): `capture` (a warrior next to an undefended
 //!                                      enemy city: moving in raises the keep/raze decision),
 //!                                      `attack` (a warrior next to a barbarian warrior: the
 //!                                      attack odds), `automoves` (skipping the one ready unit runs the
-//!                                      AutoMoves rule); prints the save and ids as JSON
+//!                                      AutoMoves rule), `load` (a warrior and two triremes in a
+//!                                      coastal city: the transport picker); prints the save and
+//!                                      ids as JSON; writes only DIR/KIND.ffhsave and its sidecar
 //!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
 //!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
 //!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
@@ -73,7 +75,7 @@ fn usage() -> ! {
          \x20      | soak [--seeds A..B] [--sizes ..] [--civs ..] [--options ..] [--speeds ..] [--turns N] [--jobs N] [--timeout SECS]\n\
          \x20             [--saves DIR] [--keep-saves] [--out FILE] [--filter TEXT] [--list]\n\
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
-         \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves DIR\n\
+         \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves|load DIR\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -616,7 +618,7 @@ fn cmd_lookup(args: &[String]) {
     }
 }
 
-/// `ffh-play stage capture|attack|automoves DIR`: a save at a staged situation (testing the clients).
+/// `ffh-play stage capture|attack|automoves|load DIR`: a save at a staged situation (testing the clients).
 fn cmd_stage(args: &[String]) {
     let [kind, dir] = args else { usage() };
     let dir = std::path::Path::new(dir);
@@ -624,6 +626,7 @@ fn cmd_stage(args: &[String]) {
         "capture" => ffh_play::stage::capture(dir).map(|s| s.to_json()),
         "attack" => ffh_play::stage::attack(dir).map(|s| s.to_json()),
         "automoves" => ffh_play::stage::auto_moves(dir).map(|s| s.to_json()),
+        "load" => ffh_play::stage::load(dir).map(|s| s.to_json()),
         _ => usage(),
     };
     match out {
