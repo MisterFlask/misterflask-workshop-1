@@ -49,9 +49,9 @@ echo "[worker $worker] binary dir: $B" >&2
 res="fanout-res/$job/w$worker"
 rm -rf "$res"; mkdir -p "$res"
 
-play() {                                        # $1 = seed; writes $res/<seed>.out on success
+play_one() {                                    # $1 = seed; writes $res/<seed>.out on success
     local s=$1 tmp="$res/.$1.tmp"
-    if "$B/ffh" stats --seed "$s" "${game_args[@]}" >"$tmp" 2>/dev/null \
+    if tools/agents/slot.sh -q "$B/ffh" stats --seed "$s" "${game_args[@]}" >"$tmp" 2>/dev/null \
        && grep -q '^{' "$tmp"; then
         mv "$tmp" "$res/$s.out"
     else
@@ -59,11 +59,15 @@ play() {                                        # $1 = seed; writes $res/<seed>.
         echo "[worker $worker] seed $s FAILED" >&2
     fi
 }
-export -f play
-export res B
-# Run games holding machine-wide CPU slots (nproc in this container), bounded parallelism.
-printf '%s\n' "${SEEDS[@]}" | xargs -P "$(nproc)" -I{} bash -c 'tools/agents/slot.sh bash -c "play {}"' 2>&1 \
-    | grep -v '^\[agents\] ' || true
+# Play the slice in parallel. slot.sh bounds concurrency to this container's CPU slots machine-wide;
+# the launcher caps background jobs at nproc so the two match. Backgrounded subshells see play_one
+# (no export needed, unlike xargs which execs a fresh shell).
+nj=$(nproc)
+for s in "${SEEDS[@]}"; do
+    play_one "$s" &
+    while [ "$(jobs -rp | wc -l)" -ge "$nj" ]; do wait -n; done
+done
+wait
 
 ok=(); for s in "${SEEDS[@]}"; do [ -f "$res/$s.out" ] && ok+=("$s"); done
 printf '{"job":"%s","worker":%s,"commit":"%s","seeds_requested":%d,"seeds_ok":%d,"ok":[%s]}\n' \
