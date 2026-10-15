@@ -1,50 +1,82 @@
-; terrain set: ground textures, hills, peaks, features, routes (docs/ART.md 5).
-; Rule syntax: map <kind> <conditions> -> <sprite|none> [options]   (see docs/ART.md, "Toolkit")
+; terrain set: ground textures, hills, peaks, features, landmarks (unique features), routes
+; (docs/ART.md 5, 6.2, 8.4). Rule syntax: map <kind> <conditions> -> <sprite|none> [options]
+;
+; Minimap colours: every terrain, hill, peak and feature rule carries `mini=K`, the palette key of
+; one minimap pixel (docs/ART.md 8.4). A tile's colour is its feature's `mini` if the feature has
+; one, else its peak's or hill's, else its terrain's; owned land takes the owner's field colour,
+; fogged tiles pass through FOG, cities are vellum `8`, unrevealed tiles void `0`. Read it with
+; art.resolve(kind, type).opts.mini.
 set terrain
 source textures.spr
 source relief.spr
 source features.spr
+source landmarks.spr
 source routes.spr
 
-; ---- ground textures: textures claim their TERRAIN_* with `: types`. Hell terrains are their
-; twin's texture recoloured (5.2), so a player can tell what the land used to be.
-map terrain TERRAIN_BROKEN_LANDS -> terrain/grass remap=mu,q3,oc,O5
-map terrain TERRAIN_FIELDS_OF_PERDITION -> terrain/plains remap=Qp,uv,yc,5P
-map terrain TERRAIN_BURNING_SANDS -> terrain/desert remap=Yx,6u,7E,ye
-map terrain TERRAIN_SHALLOWS -> terrain/marsh remap=qv,k1,nc,NC,o4,O5
-map terrain TERRAIN_OCEAN -> terrain/ocean deep
+; ---- ground textures (5.2). Hell terrains have their own textures: the twin's marks recoloured.
+map terrain TERRAIN_GRASS -> terrain/grass mini=m
+map terrain TERRAIN_PLAINS -> terrain/plains mini=Q
+map terrain TERRAIN_DESERT -> terrain/desert mini=6
+map terrain TERRAIN_TUNDRA -> terrain/tundra mini=4
+map terrain TERRAIN_SNOW -> terrain/snow mini=f
+map terrain TERRAIN_MARSH -> terrain/marsh mini=t
+map terrain TERRAIN_BROKEN_LANDS -> terrain/broken_lands mini=u
+map terrain TERRAIN_FIELDS_OF_PERDITION -> terrain/fields_of_perdition mini=p
+map terrain TERRAIN_BURNING_SANDS -> terrain/burning_sands mini=x
+map terrain TERRAIN_SHALLOWS -> terrain/shallows mini=v
+map terrain TERRAIN_COAST -> terrain/coast mini=n
+map terrain TERRAIN_OCEAN -> terrain/ocean deep mini=d
 ; graphics-only types in the XML (peaks and hills are plot types drawn over the real terrain)
-map terrain TERRAIN_PEAK -> terrain/tundra
-map terrain TERRAIN_HILL -> terrain/grass
-map terrain water=1 -> terrain/coast
-map terrain * -> terrain/tundra
+map terrain TERRAIN_PEAK -> terrain/tundra mini=5
+map terrain TERRAIN_HILL -> terrain/grass mini=o
+map terrain water=1 -> terrain/coast mini=n
+map terrain * -> terrain/tundra mini=4
 
-; ---- hills (5.3): humps keyed in grass colours (body q, shadow checker 1, crest O)
+; ---- hills (5.3): humps keyed in grass colours (crest O and o, flank q, hachure 1)
 map hill water=1 -> none
-map hill TERRAIN_PLAINS -> hill/hump remap=qu,O6
-map hill TERRAIN_DESERT -> hill/hump remap=q6,1y,O8
-map hill TERRAIN_TUNDRA -> hill/hump remap=q3,12,O5
-map hill TERRAIN_SNOW -> hill/hump remap=qg,1N,OF
-map hill TERRAIN_MARSH -> hill/hump remap=qk,Oo
-map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=q2,O5
-map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=qv,OP
-map hill TERRAIN_BURNING_SANDS -> hill/hump remap=qe,1u,OE
-map hill TERRAIN_SHALLOWS -> hill/hump remap=q1,10,O4
-map hill * -> hill/hump
+map hill TERRAIN_GRASS -> hill/hump mini=o
+map hill TERRAIN_PLAINS -> hill/hump remap=Oy,o5,qu,12 mini=y
+map hill TERRAIN_DESERT -> hill/hump remap=OY,o6,qQ,1u mini=Y
+map hill TERRAIN_TUNDRA -> hill/hump remap=O6,o5,q3,11 mini=5
+map hill TERRAIN_SNOW -> hill/hump remap=OF,of,qN,1n mini=F
+map hill TERRAIN_MARSH -> hill/hump remap=Oo,om,qk,11 mini=o
+map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=O5,o3,q2,10 mini=3
+map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=OP,oP,qv,11 mini=P
+map hill TERRAIN_BURNING_SANDS -> hill/hump remap=OE,oe,qu,11 mini=e
+map hill TERRAIN_SHALLOWS -> hill/hump remap=O4,o3,q1,10 mini=1
+map hill * -> hill/hump mini=o
 
-; ---- peaks (5.3): snow and tundra wear the tall cap
+; ---- peaks (5.3): snow and tundra wear the tall cap; hell peaks are scorched or dusk-lit
 map peak water=1 -> none
-map peak TERRAIN_SNOW|TERRAIN_TUNDRA -> peak/snow
-map peak * -> peak/rock
+map peak TERRAIN_SNOW|TERRAIN_TUNDRA -> peak/snow mini=7
+map peak TERRAIN_FIELDS_OF_PERDITION|TERRAIN_SHALLOWS -> peak/rock remap=7P,6p,5p,4v mini=p
+map peak TERRAIN_BROKEN_LANDS|TERRAIN_BURNING_SANDS -> peak/rock remap=76,65,54,43 mini=3
+map peak * -> peak/rock mini=5
 
 ; ---- features (5.5). `scatter=a-b` scatters a-b sprites per tile; otherwise one sprite at `: place`.
-map feature FEATURE_FOREST -> feature/conifer scatter=9-12
-map feature FEATURE_FOREST_NEW -> feature/conifer scatter=3-4
-map feature FEATURE_FOREST_ANCIENT -> feature/conifer scatter=7-9 remap=mT,tk,kv,oT,qv
-map feature FEATURE_FOREST_BURNT -> feature/conifer scatter=3-4 remap=m3,t2,k1,o3,q1,u2
-map feature FEATURE_JUNGLE -> feature/conifer scatter=8-9 remap=mo,tm,kq
-map feature FEATURE_FLAMES -> feature/flames
+map feature FEATURE_FOREST -> feature/conifer scatter=10-13 mini=k
+map feature FEATURE_FOREST_NEW -> feature/sapling scatter=5-7 mini=t
+map feature FEATURE_FOREST_ANCIENT -> feature/ancient scatter=5-6 mini=v
+map feature FEATURE_FOREST_BURNT -> feature/deadtree scatter=4-6 mini=2
+map feature FEATURE_JUNGLE -> feature/jungle scatter=10-12 mini=q
+map feature FEATURE_FLOOD_PLAINS -> feature/floodplain mini=o
+map feature FEATURE_OASIS -> feature/oasis mini=N
+map feature FEATURE_ICE -> feature/ice mini=F
+map feature FEATURE_SCRUB -> feature/scrub scatter=4-6 mini=y
+map feature FEATURE_FLAMES -> feature/flames mini=E
+map feature FEATURE_OBSIDIAN_PLAINS -> feature/shard scatter=4-6 mini=2
+map feature FEATURE_VOLCANO -> feature/volcano mini=C
+map feature FEATURE_BLIZZARD -> feature/blizzard mini=F
+map feature FEATURE_FALLOUT -> feature/fallout mini=s
+map feature FEATURE_TORMENTED_SOULS -> feature/wisp scatter=3-4 mini=S
+map feature FEATURE_DOOR_WEST_CLOSED -> feature/door_west_closed mini=1
+map feature FEATURE_DOOR_WEST_OPEN -> feature/door_west_open mini=4
+map feature FEATURE_DOOR_NORTH_CLOSED -> feature/door_north_closed mini=1
+map feature FEATURE_DOOR_NORTH_OPEN -> feature/door_north_open mini=4
+map feature FEATURE_WALLS -> feature/walls mini=5
 map feature * -> feature/_mark
+
+; ---- landmarks (6.2) live in landmarks.spr and are listed here once drawn.
 
 ; ---- routes (5.6)
 map route ROUTE_RAILROAD -> route/railroad double
