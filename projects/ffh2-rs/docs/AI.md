@@ -569,6 +569,10 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
   `team`.
   `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare
   old.json]` runs it over many seeds in parallel and summarizes.
+- `crates/ffh-cli/scripts/strike_metrics.py --seeds 1-24 [--out runs.json] [--compare old.json]`
+  runs the same games with `FFH_AI_TRACE=all` and summarizes the siege strikes: success, units
+  lost per city taken and in failed strikes, the strike estimate against the outcome, city
+  assaults outside the operations, cities captured or razed by civs, eliminations.
 - `ffh autoplay --report T` prints, per civ, costs, unit roles, improvements, civics and every
   city's yields, trade, happiness and production; `ffh inspect <player>` shows each city's
   plots (worked, yields, improvements).
