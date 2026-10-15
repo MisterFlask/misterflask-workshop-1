@@ -7,11 +7,113 @@ or a program (JSONL over stdio) play one slot while the AI plays the others. The
 ## Status
 
 Phases **P0** (skeleton: JSON, type names), **P1** (session core, in-process API), **P2**
-(the AI-as-human soak, `ffh-play soak`), **P3** (views and queries, the turn report, deals) and
-**P4** (transports) are done. A script or an LLM can play a whole game headless with
-`ffh-play agent` (JSON lines over stdin/stdout), and `ffh-play serve` serves the same protocol
-over HTTP with a placeholder page; the browser client is P5-P6. See the status table at the top
-of `docs/PLAY_DESIGN.md`.
+(the AI-as-human soak, `ffh-play soak`), **P3** (views and queries, the turn report, deals),
+**P4** (transports) and **P5** (the browser client's MVP) are done. You can play in a browser
+(`ffh-play serve`, below); a script or an LLM can play a whole game headless with
+`ffh-play agent` (JSON lines over stdin/stdout). The rest of the browser client (city screen,
+civics, diplomacy, tech tree, the other layers and tools) is P6. See the status table at the
+top of `docs/PLAY_DESIGN.md`.
+
+## Playing in the browser
+
+```
+cargo build --release
+./target/release/ffh-play serve            # then open http://127.0.0.1:8642/
+```
+
+The page starts with the new-game screen (civilization and leader or random, opponents, world
+size, speed, difficulty, era, climate, sea level, seed, game options, victory conditions; "Load a
+game…" lists the saves). Each game gets a directory in `./saves` (`--saves DIR` to change it).
+`serve` takes the GAME flags too (`--seed 3 --world WORLDSIZE_SMALL --new` starts a game at once,
+`--load saves/game-3/auto/T0040.ffhsave` resumes one). Use a current Chrome, Firefox or Safari;
+nothing is fetched from the internet.
+
+**The screen.** The top bar: turn and year, what is happening (your turn; "Moving: …" with the
+players and the seconds while the AIs play), gold and rate, research (click it to choose),
+the commerce split, the Armageddon counter, mana, anarchy, golden age, Stasis, idle
+AI-controlled groups, score, and the menu (Research, Cities, Save, Load, New, keys `?`, a raw
+request box `⌘` for testing, End turn). The map fills the middle (minimap bottom right, zoom
+bottom left), the selection panel is on the right, and the bottom panel has the turn report,
+the messages by turn and the game's files (directory, journal, last autosave).
+
+**The map** is north up and wraps east-west like the game: unexplored plots are black, fogged
+ones dimmed. Hills are hatched, peaks drawn, forests and other features marked; rivers run on
+plot edges, roads and railroads join their neighbours; resources (only those your techs reveal,
+purple for mana) show as a lettered dot at the top right, improvements as a lettered box at the
+bottom left (☠ lairs and other barbarian spawns, ✦ mana nodes, ? goody huts); borders are drawn
+in the owner's colour. Cities are a box with their size, the name above (★ capital) and, for
+yours, what they build and in how many turns ("idle!" in red). A unit stack is a box in its
+owner's colour with the top unit's abbreviation, a health bar when hurt, a number when several
+units share the plot, and for your units a dot: green with moves left, red without, grey asleep
+or fortified. Hovering a plot shows a tooltip (terrain, resource, improvement, owner, yields and
+defence while you see it, the city and units there), and with units selected the path (a line
+with the turn of arrival at each turn's end; orange when it declares war, red when it attacks)
+and, over an enemy, the odds of winning and retreating with both strengths and their modifiers.
+
+**Mouse and keys** (also under `?`):
+
+| | |
+|---|---|
+| left click | select your units on a plot (again: the next group there; Shift: all of them), open your city, or show a plot |
+| right click | move or attack with the selection; Shift adds a waypoint |
+| drag, wheel, arrows, `+` `-` | pan and zoom; click or drag the minimap to jump |
+| double click | open your city |
+| `Enter` / `Shift+Enter` | end the turn / end it without the checks |
+| `Space` `F` `S` `H` `B` | skip, fortify (or sleep), sleep, heal, found a city |
+| `M`, then click | move to a plot |
+| `W` or `Tab` | the next group waiting for orders |
+| `C` | centre on the selection |
+| `Del` | delete the selected units (asks first) |
+| `R` | research |
+| `Esc` | leave a plot pick, close a dialog, clear the selection |
+
+**Units.** The selection panel lists your units on the plot (click a row: its group;
+Ctrl-click: add or remove that unit), "All", "Group" (one group), "Split" (each unit its own
+group), "Next", the group's orders, and the actions the server says the selection can take now
+(greyed when not now): orders such as skip, sleep, fortify, sentry, heal, pillage, found, join,
+spread, the great-person missions; go-to and route-to and the other modes that need a plot (click
+it then; the valid targets are outlined); builds with their turns; spells with their help;
+promotions; upgrades with their price; load, unload, wake, cancel, delete. When a group is done,
+the next one waiting for orders is selected, as in Civ4. Moving into a rival's land asks whether
+to declare war; deleting, world spells and spells that start a war ask first; loading with more
+than one transport asks which.
+
+**Each turn.** When your turn starts the turn report fills the bottom panel (units and cities
+gained or lost, growth, starvation, disorder, buildings, techs, contacts, wars and peace,
+enemies near your cities, the Armageddon counter, borders, and the messages), the first unit
+waiting for orders is selected, and the open questions come up one at a time in Civ4's order:
+events (each choice with its effects; greyed when not possible now), votes, research (click:
+research it; Shift-click: add it to the queue), then each city with nothing to build (click:
+build it now; Shift-click: add to the queue; Ctrl-click: put it first). "Later" sets one aside
+for this turn. End turn (button or `Enter`) asks first when an event, a vote or the research is
+open or units wait for orders: answer them, select a unit, or end the turn anyway (Civ4's
+consequences: open events are dropped, votes get one more turn and then abstain, empty research
+takes the automatic pick). A question the rules must have answered at once (keep or raze a
+captured city, a free tech, an election) appears as a dialog that cannot be closed, with the
+choices, the advisor's pick marked, and "AI default".
+
+**Cities.** Double-click your city, use the button in the selection panel when your units
+stand in it, or the Cities list: size, food and growth, production, commerce, happiness and
+health, the queue (✕ removes an entry) and everything it can build with turns and cost. The full
+city screen (worked plots, specialists, hurry, emphasis, automation) is P6.
+
+**Saving.** Save asks for a name and writes it to the game's directory; the game also autosaves
+at every turn boundary (`auto/T0057` is the end of turn 57; the last 20 are kept). Load lists
+every game directory with its saves (yours first, then the autosaves, newest first).
+
+**When something breaks.** If the rules crash, the page shows the message and a bug report
+(the last autosave, the journal and the `ffh-play replay` command that reproduces it; Copy puts
+it on the clipboard) and offers to load the autosave: the server stays up. If a turn does not
+finish (the watchdog), load an autosave. If the page loses the server it says so and retries;
+a reload is always safe, also in the middle of a decision.
+
+**For testers.** `ffh-play serve --assets crates/ffh-play/assets` serves the client from disk,
+so an edit shows on reload. `ffh-play stage capture|attack|automoves DIR` writes a save at a
+staged situation into `DIR` (put it under the saves directory, e.g. `saves/staged`, then load
+`staged/capture`): `capture`, a warrior next to an undefended enemy city (moving in raises the
+keep/raze dialog); `attack`, a warrior next to a barbarian warrior (the odds tooltip, an attack);
+`automoves`, one unit waiting while another has a long move queued (skip the first: the second
+moves on, Civ4's AutoMoves). See "Testing the browser client" below for the checklist.
 
 ## Commands
 
@@ -33,6 +135,7 @@ cargo build --release
                               [--keep-saves] [--out results.tsv] [--filter TEXT] [--list] [--check-every N] [--save-check-every N]
 ./target/release/ffh-play agent [GAME] [--on-eof quit|end-turn] [--progress]
 ./target/release/ffh-play serve [GAME] [--port 8642] [--bind ADDR] [--assets DIR]
+./target/release/ffh-play stage capture|attack|automoves DIR
     GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W]
           [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE]
           [--take-over SAVE --player P] [--panic-at T]
@@ -74,11 +177,16 @@ cargo build --release
   defaults, or `--setup '{"seed":3,"world":"WORLDSIZE_DUEL","opponents":1}'`, or the flags
   `--seed`, `--world`, ... which set the same members) unless `--no-game`, `--load SAVE` or
   `--take-over SAVE --player P`. Example: `printf '%s\n' '{"k":"q","q":"text"}' | ffh-play agent --seed 3`.
-* `serve` starts the HTTP server on `http://127.0.0.1:8642/` (open it in a browser: a placeholder
-  page until P5 shows the status, the `text` summary, the ASCII map, popups and a box for raw
-  requests). No game is started unless the GAME flags say so; the page or a client starts one.
-  `--bind 0.0.0.0` listens on every interface (then the `Host` check below is off: only do this on
-  a network you trust). `--assets DIR` serves the client files from `DIR` (live editing).
+* `serve` starts the HTTP server on `http://127.0.0.1:8642/` with the browser client (open it in a
+  browser; "Playing in the browser" above). No game is started unless the GAME flags say so; the
+  page or a client starts one. `--port 0` picks a free port (the address is printed). `--bind
+  0.0.0.0` listens on every interface (then the `Host` check below is off: only do this on a
+  network you trust). `--assets DIR` serves the client files from `DIR` (`crates/ffh-play/assets`:
+  live editing).
+* `stage` writes a save at a staged situation into `DIR` for testing clients (`capture`: a warrior
+  next to an undefended enemy city, moving in raises the keep/raze decision; `attack`: a warrior
+  next to a barbarian warrior; `automoves`: skipping the one ready unit runs the AutoMoves rule),
+  and prints its path and the ids as JSON. Nothing in play uses it.
 * GAME flags: each game gets a directory in `--saves DIR` (default `./saves`), `game-<seed>`
   (`-2`, ... when taken), with its autosaves (`auto/`, `--autosaves N` kept, default 20), journal
   and manual saves; `--no-saves` writes nothing. `--panic-at T` panics once when the game reaches
@@ -296,7 +404,7 @@ next `control` first.
 
 | Request | |
 |---|---|
-| `GET /` | the page (placeholder until P5) |
+| `GET /`, `/app/*` | the browser client (`index.html`, `app/*.js` modules, `app/style.css`; embedded in the binary, or from `--assets DIR`) |
 | `GET /api/status` | the status: `version`, `phase` (`human`, `running`, `decision`, `over`, `stuck`, `no_game`, `crashed`), `turn`, `year`, `human`, `active_players`, `view_version`, `decision`, `over`, `reveal`, `ms_in_phase`, `map_rev`, `game {dir, journal, autosave}`, `crash` |
 | `GET /api/wait?since=V&timeout_ms=T` | the status as soon as its `version` is above `V` (long-poll, at most 60 s) |
 | `GET /api/view`, `/api/map` | the `view` and `map` of the last control point or decision (409 without a game) |
@@ -342,10 +450,81 @@ These hold for every request and reply of the protocol (design §4.1):
   those names are derived from the type name (`UNIT_WARRIOR` -> "Warrior"), as are descriptions
   with an unfilled placeholder (`MEMORY_SOMNIUM_POSITIVE` -> "Somnium Positive").
 
+## Testing the browser client
+
+Automated (none of these is part of `cargo test`; `tests/web.rs` there checks that every client
+file is embedded and every module import resolves):
+
+```
+tools/web-check.sh                       # node --check of every module, node --test of the pure modules
+tools/web-check.sh --smoke --browser     # also the two smoke tests below
+node tools/web-api-smoke.mjs             # 20 turns through the client's api.js against `ffh-play serve`
+node tools/web-smoke.mjs                 # headless Chromium plays through the page; screenshots in target/web-smoke
+```
+
+* `web-check.sh` needs node (it is skipped without it); the pure modules (map maths, markup, state,
+  the API layer against a fake `fetch`) are tested in `crates/ffh-play/assets/test/*.test.mjs`.
+* `web-api-smoke.mjs [--turns 20] [--seed 5] [--world WORLDSIZE_TINY] [--opponents 2] [--url URL]
+  [--keep] [--verbose]` starts `target/release/ffh-play serve --port 0` (or `--bin`), checks the
+  page and its modules are served, plays the turns as the page does (popups, research,
+  production, found, builds, moves along path previews, the end-turn gate), checks the cached
+  view and map against the status, saves, lists, loads, plays a staged capture whose decision is
+  answered while the move's request waits, and quits. A refusal of anything the server offered
+  fails it.
+* `web-smoke.mjs [--turns 4] [--seed 5] [--out DIR] [--assets DIR] [--cdp] [--headed]` drives the
+  page with the mouse and keyboard in headless Chromium (the `playwright` package if it resolves,
+  else Chromium over the DevTools protocol; skipped without a browser): new game, found a city
+  with `B`, the research and production popups, select a unit, the path preview, a right-click
+  move, end turns through the gate, the turn report, save and load through the dialogs, the odds
+  tooltip and an attack (`stage attack`), the keep/raze dialog (`stage capture`), and the crash
+  screen of a server started with `--panic-at`. Any console error, page error, failed request or
+  HTTP error fails it. The screenshots (`target/web-smoke/*.png`) are for review, not committed.
+
+**Manual checklist** (a human tester, `ffh-play serve` and a real browser; also try a narrow
+window):
+
+1. New game: change the civilization (the leader list follows), world size, difficulty, a game
+   option and a victory condition; start. The map centres on your units; the top bar shows the
+   turn, gold and "choose research".
+2. Map: drag to pan across the east-west seam, zoom with the wheel and `+`/`-`, click and drag the
+   minimap. Hover plots: the tooltip names the terrain, feature, resource, improvement, owner, and
+   yields while visible. Check hills, peaks, forests, rivers on edges, lairs (☠), goody huts (?),
+   fog (dimmed) and unexplored (black) plots.
+3. Select the settler (click), found a city (`B` or the Found button): the research popup comes
+   first, then the production chooser; choose with a click, try Shift-click (queue) and "Later".
+4. Select a warrior: the path preview follows the mouse with turn numbers; right-click moves;
+   Shift-right-click adds a waypoint; `M` then click moves; `Esc` cancels. A move into a rival's
+   land asks to declare war (try "Cancel").
+5. Group units on one plot (`All`, `Group`), split them, Ctrl-click rows; `W`/`Tab` cycles the
+   waiting groups; `Space`, `F`, `S` work on the selection; a worker's build buttons show turns.
+6. End the turn with units waiting: the gate lists them; "Select a unit" goes back, "End turn
+   anyway" ends it. During the AI turns the top bar says who is moving. The next turn's report
+   and messages appear in the bottom panel.
+7. Open a city (double-click, the Cities list, or the button when your units stand in it):
+   replace, append (Shift), insert first (Ctrl) and remove (✕) production.
+8. Save under a name, load it back (Load lists it and the autosaves); reload the page in the
+   middle of a turn and while a decision is open: the page comes back in the same state.
+9. `ffh-play stage attack saves/staged-attack`, load `staged-attack/attack`: hover the barbarian
+   with the warrior selected (odds, strengths, modifiers), right-click to attack, read the result.
+   `ffh-play stage capture saves/staged-capture`, load `staged-capture/capture`: move onto the
+   city; the "Raze or keep?" dialog cannot be closed; answer it (or "AI default").
+10. Play 20-50 turns of a normal game: events and votes when they come (each choice's effects,
+    "Later"), research done, cities growing, a war with an AI; note anything that looks wrong
+    with the turn, the autosave and the journal shown under "Game files".
+11. Crash: `ffh-play serve --new --panic-at 3`, end turns until it crashes: the crash screen shows
+    the replay command and loads the autosave.
+
+Report a bug with the save or autosave, the journal (`Game files` tab), a screenshot and what you
+did.
+
 ## Known gaps
 
-* No browser client yet (P5-P6): `ffh-play serve` shows a placeholder page; play with
-  `ffh-play agent` or a script.
+* The browser client is the P5 MVP: the full city screen (worked plots, specialists, hurry,
+  emphasis, automation), civics, religion, the commerce sliders, diplomacy and deals, the tech
+  tree, the yield and political layers, the inspector, debug reveal, autoplay and take-over have
+  no screen yet (P6; the raw request box `⌘` sends any request meanwhile). Cycling goes over the
+  waiting groups nearest first, not Civ4's group cycle order. The map is sent whole after every
+  change (P6: deltas).
 * AI players never offer you deals or ask anything (ffh-ai); you propose. The trade screen shows
   an AI's whole gold and gold rate as what it can give (Civ4's AI caps it; that AI code is not
   ported), and Civ4's AI refusals ("we don't want to trade that") are mostly not ported either.

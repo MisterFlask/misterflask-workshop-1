@@ -101,6 +101,12 @@ without changing the rules engine:
   channel to the game thread. A blocking decision raised inside a rules call reads the same
   input (the next lines, the same channel), so it is answered while the command that raised it
   waits. A panic on the game thread is caught and reported with the replay command.
+- **Browser client.** `crates/ffh-play/assets/` (embedded with `include_str!`, served by
+  `ffh-play serve`): vanilla ES modules and a `<canvas>` map, no build step and no external
+  code. It only renders what the server computes (fog, legal actions, odds, paths, turns) and
+  sends the same commands as the agent; the terrain is cached in offscreen chunks redrawn where
+  the map changed. Checked by `tests/web.rs` (files and imports), and with node by
+  `tools/web-check.sh`, `tools/web-api-smoke.mjs` and the headless-Chromium `tools/web-smoke.mjs`.
 
 ## Saved games
 
