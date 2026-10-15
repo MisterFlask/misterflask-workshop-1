@@ -398,12 +398,12 @@ export function stuckScreen(st) {
 export function keysHelp() {
   const keys = [
     ["Left click", "select units (again: the next group there), open your city, show a plot"],
-    ["Right click", "move or attack with the selection; Shift adds a waypoint"],
+    ["Right click", "move or attack with the selection; with Shift held, add waypoints (sent when Shift is released)"],
     ["Drag, wheel, arrows", "pan and zoom the map; the minimap centres"],
     ["Enter / Shift+Enter", "end the turn / end it without the checks"],
     ["Space, F, S, H, B", "skip, fortify, sleep, heal, found a city"],
     ["M then click", "move to a plot"],
-    ["W or Tab", "the next unit waiting for orders"],
+    ["W or Tab", "the next unit waiting for orders (again: through all of them)"],
     ["C", "centre on the selection"],
     ["Del", "delete the selected units (asks first)"],
     ["R", "research"],

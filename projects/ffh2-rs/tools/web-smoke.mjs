@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // The headless-Chromium smoke test of the browser client (docs/PLAY_DESIGN.md §7 P5, F21):
 // starts `ffh-play serve`, loads the page in headless Chromium and plays through the UI with the
-// mouse and keyboard: the new-game screen, founding a city, the research and production
-// popups, selecting a unit, the path preview, moving with a right-click, ending turns through
-// the end-turn gate, the turn report, saving and loading; then a staged capture (`ffh-play
-// stage capture`) for the attack odds and the keep/raze decision modal, and a server started
-// with `--panic-at` for the crash screen. It fails on any console error, page error, failed
-// request or HTTP error, and saves screenshots for review.
+// mouse and keyboard: the new-game screen (Start double-clicked), W over the waiting groups,
+// hotkeys right after a selection change, founding a city, the research and production popups,
+// the city queue, selecting a unit, the path preview, moving with a right-click, ending turns
+// through the end-turn gate, the turn report, saving and loading; then staged saves (`ffh-play
+// stage`): the attack odds and an attack, the keep/raze decision modal, popups set aside and
+// asked again after a load, the transport picker, Shift waypoints; a game started by another
+// client; and a server started with `--panic-at` for the crash screen. It fails on any console
+// error, page error, failed request or HTTP error, and saves screenshots for review.
 //
 //   node tools/web-smoke.mjs [--bin PATH] [--out DIR] [--turns 4] [--seed 5] [--cdp] [--headed]
 //        [--assets DIR]   (serve the client files from DIR: crates/ffh-play/assets, live edits)
