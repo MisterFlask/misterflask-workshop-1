@@ -72,7 +72,7 @@ fn disband(g: &mut Game, p: PlayerId) {
         return;
     }
     if crate::finance::disband(g, p) { return; } // bankruptcy-guard
-    let pct = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+    let pct = crate::economy::spend_pct(g, p);
     // Field units go first, as soon as research has dropped to a fifth.
     if pct > 10 && pct <= 20 {
         disband_field_units(g, p, 1);
@@ -210,7 +210,7 @@ pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     v += info.trade_routes * 25 * n;
     v += info.worker_speed_modifier / 2 + info.military_production_modifier / 2;
     v -= info.war_weariness_modifier / 4;
-    let broke = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 50;
+    let broke = crate::economy::spend_pct(g, p) < 50;
     let gold_w = if broke { 40 } else { 15 };
     let gold_w = gold_w.max(crate::finance::gold_value(&crate::finance::state(g, p))); // bankruptcy-guard
     v -= g.player_get_single_civic_upkeep(p, Some(civic), true) * gold_w;

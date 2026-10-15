@@ -329,7 +329,7 @@ fn civ_enemies_at_war(g: &Game, p: PlayerId) -> bool {
 
 /// The owner cannot pay for more: research slider pushed down to cover costs.
 pub fn financial_trouble(g: &Game, p: PlayerId) -> bool {
-    g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] < 40 && g.players[p].cities.len() > 1
+    g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH) && crate::economy::spend_pct(g, p) < 40 && g.players[p].cities.len() > 1
 }
 
 /// City state used by the decision.
@@ -517,6 +517,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     if !ctx.afford && ctx.threat == 0 {
         needed = needed.min(1 + i32::from(ctx.capital));
     }
+    needed += crate::victory::guard(g, c); // victory-pursuit
     if ctx.defenders < needed {
         if let Some(u) = best_unit(g, c, Role::Defense) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE));

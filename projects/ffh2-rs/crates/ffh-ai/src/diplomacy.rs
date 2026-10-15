@@ -216,7 +216,7 @@ pub fn manage(g: &mut Game, v: &View) {
     // A broke empire only picks on clearly weaker neighbours (a captured city pays for itself
     // in plunder and land); a bankrupt one not at all.
     let broke = crate::production::financial_trouble(g, p);
-    if broke && g.player_calculate_gold_rate(p) < 0 && g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] == 0 {
+    if broke && g.player_calculate_gold_rate(p) < 0 && crate::economy::spend_pct(g, p) == 0 {
         crate::trace!(g, p, "war roll passed but bankrupt");
         return;
     }

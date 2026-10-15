@@ -547,7 +547,19 @@ pub fn plan_ours(g: &Game, p: PlayerId) -> Plan {
     if !pl.alive || g.player_is_barbarian(p) || pl.cities.is_empty() || !active(g, p) {
         return Plan::default();
     }
-    Plan { ours: best_race(g, p).filter(|r| r.eta <= turns_left(g)), rival: None }
+    let left = turns_left(g);
+    let ours = races(g, p).into_iter().filter(|r| r.eta <= left && (r.goal != Goal::Culture || culture_front_runner(g, p, r.eta))).min_by_key(|r| (r.eta, r.goal));
+    Plan { ours, rival: None }
+}
+
+/// Is no other civ clearly ahead of us (an estimate under 4/5 of ours, 10 turns more) in the
+/// race for a cultural victory? Only one civ wins it: the others' culture is research lost.
+fn culture_front_runner(g: &Game, p: PlayerId, eta: i32) -> bool {
+    let team = g.players[p].team;
+    g.civ_player_ids().all(|q| {
+        let ql = &g.players[q];
+        q == p || !ql.alive || ql.team == team || g.player_is_barbarian(q) || ql.cities.is_empty() || culture_eta(g, q).map_or(true, |e| e * 5 >= (eta - 10) * 4)
+    })
 }
 
 /// The plan of player `p` now (see the module comment).
@@ -724,21 +736,88 @@ pub fn production(g: &Game, c: CityId, urgent_only: bool) -> Option<crate::produ
     }
 }
 
+/// A cultural victory aims to be won within this many turns (normal speed), or before the time
+/// limit if sooner.
+pub fn culture_horizon(g: &Game) -> i32 {
+    (start_turn(g) / 2).max(10)
+}
+
 /// The culture slider our goal wants: 0 unless a cultural victory (and the slider can move);
-/// then the lowest of [`CULTURE_SLIDERS`] that brings the cities there before the time limit
-/// (with 10 turns to spare), else all of it.
+/// then the lowest of [`CULTURE_SLIDERS`] that brings the cities there within
+/// [`culture_horizon`] turns (and 10 turns before the time limit), else all of it.
 pub fn culture_slider(g: &Game, p: PlayerId) -> i32 {
     if plan_ours(g, p).goal() != Some(Goal::Culture) || !g.player_is_commerce_flexible(p, CommerceType::COMMERCE_CULTURE) {
         return 0;
     }
     let Some(need) = culture_cities_needed(g) else { return 0 };
-    let left = turns_left(g) - 10;
+    let left = (turns_left(g) - 10).min(culture_horizon(g));
     for pct in CULTURE_SLIDERS {
         if culture_eta_at(g, p, need, pct).is_some_and(|e| e <= left) {
             return pct;
         }
     }
     100
+}
+
+/// Extra defenders city `c` keeps for our victory: once our goal is near enough for the other
+/// civs to come for it (within [`threat_horizon`] plus 30 turns), two in the cities that carry
+/// it -- those nearest legendary culture, those with or building a tower.
+pub fn guard(g: &Game, c: CityId) -> i32 {
+    let p = g.cities[c].owner;
+    let Some(race) = plan_ours(g, p).ours else { return 0 };
+    if race.eta > threat_horizon(g) + 30 {
+        return 0;
+    }
+    let d = g.d;
+    let carries = match race.goal {
+        Goal::Culture => {
+            let need = culture_cities_needed(g).unwrap_or(3);
+            culture_turns(g, p, 100).iter().take(need).any(|&(o, _, _)| o == c)
+        }
+        Goal::Tower => {
+            let civ = g.city_civilization_type(c);
+            statics(d).tower_classes.iter().any(|&(bc, _)| {
+                d.civ_building(civ, bc).is_some_and(|b| g.cities[c].num_real_building[b] > 0 || g.city_production_building(c) == Some(b))
+            })
+        }
+        _ => false,
+    };
+    if carries {
+        2
+    } else {
+        0
+    }
+}
+
+/// A great person with a great work (the Great Bard: 4000 culture) pursuing a cultural victory
+/// performs it in the city among those nearest legendary that is furthest from it. Returns
+/// whether it got orders.
+pub fn great_work(g: &mut Game, v: &mut crate::view::View, grp: GroupId, u: UnitId) -> bool {
+    use crate::units::{alive, move_to, push, skip};
+    let p = v.p;
+    if g.d.units[g.units[u].unit_type].great_work_culture <= 0 || plan_ours(g, p).goal() != Some(Goal::Culture) {
+        return false;
+    }
+    let Some(need) = culture_cities_needed(g) else { return false };
+    let top = culture_turns(g, p, 100);
+    let Some(&(c, _, _)) = top.iter().take(need).filter(|&&(_, _, t)| t > 0).max_by_key(|&&(c, _, t)| (t, std::cmp::Reverse(c))) else {
+        return false;
+    };
+    let tp = g.city_plot(c);
+    crate::trace!(g, p, "great work in {} for a cultural victory", g.cities[c].name);
+    if g.unit_plot(u) != tp {
+        move_to(g, grp, tp, ffh_core::defs::MOVE_SAFE_TERRITORY);
+        if !alive(g, grp) {
+            return true;
+        }
+        push(g, grp, MissionType::MISSION_GREAT_WORK, -1, -1, 0, true);
+    } else if g.unit_can_great_work(u, tp) {
+        push(g, grp, MissionType::MISSION_GREAT_WORK, -1, -1, 0, false);
+    }
+    if alive(g, grp) && g.group_ready_to_move(grp, false) {
+        skip(g, grp);
+    }
+    true
 }
 
 // ----------------------------------------------------------------------------

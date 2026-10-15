@@ -247,7 +247,7 @@ fn culture_near_legendary_is_pursued() {
     let legendary = g.culture_threshold(g.d.t::<CultureLevelType>("CULTURELEVEL_LEGENDARY"));
     let cities: Vec<CityId> = g.players[p].cities.iter().copied().take(3).collect();
     for &c in &cities {
-        g.city_set_culture(c, p, legendary * 99 / 100, false, false);
+        g.city_set_culture(c, p, legendary * 999 / 1000, false, false);
     }
     let plan = victory::plan(&g, p);
     assert_eq!(plan.goal(), Some(Goal::Culture), "{}", victory::describe(&g, p, &plan));
@@ -264,10 +264,22 @@ fn culture_near_legendary_is_pursued() {
             other => panic!("{other:?}"),
         }
     }
-    // The empire puts commerce into culture.
+    // They keep two more defenders: the other civs will come for them.
+    for &c in &cities {
+        assert_eq!(victory::guard(&g, c), 2, "{}", g.cities[c].name);
+    }
+    for &c in &g.players[p].cities {
+        if !cities.contains(&c) {
+            assert_eq!(victory::guard(&g, c), 0);
+        }
+    }
+    // The empire puts commerce into culture, and the culture slider is not taken for a
+    // shortfall (research and culture count together: nothing is disbanded for it).
     assert!(victory::culture_slider(&g, p) > 0);
     ffh_ai::empire::manage(&mut g, p);
-    assert!(g.players[p].commerce_percent[CommerceType::COMMERCE_CULTURE.idx()] > 0);
+    let culture = g.players[p].commerce_percent[CommerceType::COMMERCE_CULTURE.idx()];
+    assert!(culture > 0);
+    assert_eq!(ffh_ai::economy::spend_pct(&g, p), g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()] + culture);
     // Three legendary cities are the rules' victory.
     for &c in &cities {
         g.city_set_culture(c, p, legendary, false, false);

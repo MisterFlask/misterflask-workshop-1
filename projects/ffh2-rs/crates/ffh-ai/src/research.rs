@@ -241,7 +241,7 @@ fn builds_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
                 _ => break,
             }
         }
-        let research = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+        let research = crate::economy::spend_pct(g, p);
         let yw = [20, 15, if research < 50 { 9 * (200 - 2 * research) / 100 } else { 9 }];
         let mut gains: Vec<i32> = Vec::new();
         for &q in &ctx.plots {
