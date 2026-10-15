@@ -18,6 +18,7 @@ use ffh_core::structs::*;
 use ffh_data::*;
 
 pub mod advanced_start;
+pub mod campaign;
 pub mod casting;
 pub mod diplomacy;
 pub mod economy;

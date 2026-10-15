@@ -25,6 +25,8 @@ pub struct View {
     pub targets: Vec<crate::military::Target>,
     /// Targets already taken by a stack this turn.
     pub target_claims: Vec<(PlotIdx, GroupId)>,
+    /// This turn's siege operation (siege-campaigns; built on the first army decision).
+    pub campaign: crate::campaign::Plan,
     /// Our cities whose visible threat exceeds their garrison (city plot, shortfall).
     pub peril: Vec<(PlotIdx, i32)>,
     /// Roads to build this turn (see `workers::road_plan`).
@@ -100,6 +102,7 @@ impl View {
             peril: Vec::new(),
             targets: Vec::new(),
             target_claims: Vec::new(),
+            campaign: Default::default(),
             garrison: BTreeMap::new(),
             flood: Flood::default(),
         };

@@ -558,6 +558,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
     // At war (or preparing): a third of the army in siege engines. A stack camped next to a
     // city it cannot take (a barbarian town, say) asks for a couple as well.
     let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
+    if let Some(choice) = crate::campaign::army_choice(g, c, attackers - siege, siege, ctx.afford) { return Some(choice); } // siege-campaigns
     if (ctx.at_war && army_short && siege * 3 < attackers + 1) || (siege < 2 && besieging(g, p) && ctx.afford) {
         if let Some(u) = best_unit(g, c, Role::Siege) {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
