@@ -2,20 +2,28 @@
 
 mod common;
 
-use common::{bot_session, check, checkpoint, new_game};
+use common::{bot_session, check, checkpoint, new_game, peaceful_game};
 use ffh_play::bot;
-use ffh_play::Stop;
+use ffh_play::{NewGame, Stop};
 
 /// What one bot game produced.
 struct Played {
     stop: Stop,
     checkpoints: Vec<(i32, i32)>,
     save: Vec<u8>,
-    decisions: usize,
 }
 
 fn play(seed: u32, turns: i32, check_every: i32) -> Played {
-    let ng = new_game(seed);
+    play_game(new_game(seed), seed, turns, check_every)
+}
+
+/// Plays `ng` with a fresh bot for `turns` game turns, checking ffh-stress's invariants every
+/// `check_every` turns (0 = never) and, when `check_every > 0`, the breadth coverage of a long
+/// varied game: no stuck turn, invariants hold, and the bot founds cities, researches, answers a
+/// popup and produces. These are floors on activity that any full run clears, not golden numbers
+/// to hand-update, so they stay true as the AI and content change. Returns the stop, the
+/// per-control-point checksums and the final save (for the determinism test).
+fn play_game(ng: NewGame, seed: u32, turns: i32, check_every: i32) -> Played {
     let (mut s, mut b) = bot_session(&ng, None);
     let until = s.g.game_turn() + turns;
     let mut checkpoints = Vec::new();
@@ -42,25 +50,29 @@ fn play(seed: u32, turns: i32, check_every: i32) -> Played {
         assert!(b.stats.productions >= 5 && b.stats.end_turns >= 100, "seed {seed}: {:?}", b.stats);
     }
     let (save, _) = s.save_bytes().expect("save at the end");
-    Played { stop, checkpoints, save, decisions: st.decisions_total() }
+    Played { stop, checkpoints, save }
 }
 
 /// T1: three 150-turn games on a small map against 3 AIs, the human slot played by the bot only
-/// through the protocol's queries and commands. No panic, no stuck turn, invariants every 5
-/// turns, the bot founds cities, researches, answers popups; blocking decisions happen (seed 18
-/// captures a city). The design's seeds are 1-3: with the protocol-level bot (P3) seed 2's human
-/// dies to barbarians at turn 54 and none of 1-3 captures a city, so another seed replaces seed
-/// 2. Seed 50 did until the round-3 AI merge; since then the AIs conquer that human at turn 98,
-/// so seed 18 (survives 150 turns, captures a city) replaces it. The seeds depend on the AI: when
-/// a stronger AI kills the bot, pick another with `ffh-play bot --seed S --turns 150 --opponents 3
-/// --world WORLDSIZE_SMALL` (alive at turn 150, a `keep_city` decision).
+/// through the protocol's queries and commands. Made robust to AI and content change (the user's
+/// standing rule): the games use `GAMEOPTION_ALWAYS_PEACE` and `GAMEOPTION_NO_BARBARIANS`
+/// (`peaceful_game`), so no AI can attack or eliminate the bot and no victory can fire inside 150
+/// turns. The bot therefore reaches the full run with `Stop::Human` for ANY seed -- true by
+/// construction, not a property of a particular seed that a new AI or new content would break --
+/// so the seeds are free (1, 2, 3) and no seed-specific outcome is asserted. What is asserted is
+/// breadth coverage that holds for every full run: no panic, no stuck turn, ffh-stress's
+/// invariants every 5 turns, and the bot founds cities, researches, answers popups and produces
+/// (`play_game` with `check_every > 0`). City capture and the `keep_city` decision are covered
+/// deterministically by `decisions.rs` (`capture_asks_keep_or_raze_inside_the_command`, built
+/// with `common::construct_capture`) and by the purity/resume tests, so a blocking decision is no
+/// longer forced here -- the old `decisions >= 1` assertion depended on a seed producing a capture
+/// and is dropped.
 #[test]
 fn t1_scripted_bot_games() {
-    let mut decisions = 0;
-    for seed in [1, 3, 18] {
-        decisions += play(seed, 150, 5).decisions;
+    for seed in [1, 2, 3] {
+        let played = play_game(peaceful_game(seed), seed, 150, 5);
+        assert_eq!(played.stop, Stop::Human, "seed {seed}: a peaceful game cannot end early -- the bot must reach the full 150-turn run");
     }
-    assert!(decisions >= 1, "no blocking decision in three games");
 }
 
 /// T2: the same seed twice gives the same checksum at every control point and byte-identical

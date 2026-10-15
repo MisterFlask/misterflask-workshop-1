@@ -9,10 +9,10 @@ mod common;
 
 use std::sync::Arc;
 
-use common::{bot_session, checkpoint, new_game, TempDir};
+use common::{bot_session, checkpoint, construct_capture, peaceful_game, TempDir};
 use ffh_play::human::Answerer;
 use ffh_play::save::{read_bundle, Sidecar};
-use ffh_play::{Phase, Session, SessionOptions, Stop};
+use ffh_play::{CmdOk, Command, Phase, Session, SessionOptions, Stop};
 
 /// Saves `s` and replaces it with a session loaded from that save.
 fn reload(s: &mut Session, answerer: &Arc<dyn Answerer>, opts: &SessionOptions, why: &str, log: &mut Vec<String>) {
@@ -41,13 +41,17 @@ fn reload_boundary(s: &mut Session, answerer: &Arc<dyn Answerer>, opts: &Session
 }
 
 fn run(seed: u32, end: i32, swap: Option<&TempDir>) -> (Vec<(i32, i32)>, Vec<u8>, Vec<String>) {
-    let ng = new_game(seed);
+    // Always-peace, barbarian-free: no AI can declare war on or eliminate the human and no victory
+    // can fire, so the bot game runs the full `end` turns and every control point is reached for
+    // ANY seed and under any AI/content change (the reload kinds that just need a long varied game:
+    // before acting, a deferred event pending, the autosave boundary, mid-turn).
+    let ng = peaceful_game(seed);
     let (mut s, mut bot) = bot_session(&ng, swap.map(|d| d.0.clone()));
     let opts = SessionOptions { saves_dir: swap.map(|d| d.0.clone()), ..Default::default() };
     let answerer = bot.answerer();
     let mut checkpoints = Vec::new();
     let mut log = Vec::new();
-    let (mut event_done, mut decision_done, mut boundary_done) = (false, false, false);
+    let (mut event_done, mut boundary_done, mut captured) = (false, false, false);
     loop {
         let stop = s.advance(&mut |_| {});
         if stop != Stop::Human || s.g.game_turn() >= end {
@@ -55,6 +59,33 @@ fn run(seed: u32, end: i32, swap: Option<&TempDir>) -> (Vec<(i32, i32)>, Vec<u8>
         }
         checkpoints.push(checkpoint(&s));
         let turn = s.g.game_turn();
+        // For the "after a blocking decision" reload: construct a city capture at a known control
+        // point so a `keep_city` decision is raised and answered deterministically, with no reliance
+        // on the AI/content producing a capture or any other decision. Done identically in BOTH runs
+        // (so they stay in lockstep); peace is restored at once so the always-peace game still runs
+        // the full length. The reload happens right here, straight after the decision (a reload
+        // recreates the session's stats, so this cannot lean on a `decisions_total()` check at a
+        // later control point -- an intervening reload would have zeroed it).
+        if !captured && turn >= 30 {
+            captured = true;
+            let h = s.human;
+            let (warrior, cx, cy) = construct_capture(&mut s);
+            let before = s.stats().decisions_total();
+            match s.execute(&Command::Move { units: vec![warrior], x: cx, y: cy, append: false, declare_war: None }) {
+                Ok(CmdOk::Applied { .. }) => {}
+                other => panic!("capture move: {other:?}"),
+            }
+            assert!(s.stats().decisions_total() > before, "the constructed capture raised no blocking decision");
+            let my = s.g.players[h].team;
+            for t in s.g.civ_team_ids().collect::<Vec<_>>() {
+                if t != my && s.g.at_war(my, t) {
+                    s.g.team_make_peace(my, t, false);
+                }
+            }
+            if swap.is_some() {
+                reload(&mut s, &answerer, &opts, "after a blocking decision", &mut log);
+            }
+        }
         if swap.is_some() {
             if turn == 10 {
                 reload(&mut s, &answerer, &opts, "control point, before acting", &mut log);
@@ -62,10 +93,6 @@ fn run(seed: u32, end: i32, swap: Option<&TempDir>) -> (Vec<(i32, i32)>, Vec<u8>
             if !event_done && turn > 10 && !s.pending().events.is_empty() {
                 event_done = true;
                 reload(&mut s, &answerer, &opts, "deferred event pending", &mut log);
-            }
-            if !decision_done && s.stats().decisions_total() > 0 {
-                decision_done = true;
-                reload(&mut s, &answerer, &opts, "after a blocking decision", &mut log);
             }
             if !boundary_done && turn >= 75 {
                 boundary_done = true;
@@ -87,12 +114,15 @@ fn run(seed: u32, end: i32, swap: Option<&TempDir>) -> (Vec<(i32, i32)>, Vec<u8>
 
 #[test]
 fn t3_save_and_resume_mid_turn() {
-    // Seed 18: the bot captures a city (a keep/raze decision) at turn 90. (Seed 50 did at turn 85
-    // until the round-3 AI merge; its human is now conquered at turn 98.)
+    // The base game is made peaceful (see `run`) so it runs the full 150 turns for any seed, and a
+    // city capture is constructed at a known control point so the keep/raze decision occurs
+    // deterministically -- no reliance on a seed producing a particular emergent game. The two runs
+    // (straight through, and with saves/reloads) must still agree at every control point and in the
+    // final save, and `save(load(save)) == save` must hold at every reload.
     let end = 150;
-    let (a, a_save, _) = run(18, end, None);
+    let (a, a_save, _) = run(22, end, None);
     let dir = TempDir::new("resume");
-    let (b, b_save, log) = run(18, end, Some(&dir));
+    let (b, b_save, log) = run(22, end, Some(&dir));
     eprintln!("reloads: {log:#?}");
     for what in ["before acting", "deferred event", "blocking decision", "autosave", "mid-turn"] {
         assert!(log.iter().any(|l| l.contains(what)), "no reload {what:?}: {log:?}");
