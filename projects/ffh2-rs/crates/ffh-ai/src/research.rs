@@ -12,7 +12,11 @@
 //!   happiness;
 //! - the leader's FfH hints (favorite techs, early religion, flavors).
 //!
-//! The score is value per turn of research, plus a quarter of what the tech leads to.
+//! The score is value per turn of research, plus a quarter of what the tech leads to, plus
+//! the share of the plan's first two goals (`tech_plan`) that falls on the tech's path
+//! (`goal_bonus`). Under military pressure without an archer-level city defender, the tech
+//! that brings one comes first (`defense_goal`). The finance module's deficit escape
+//! (`finance::escape_research`) runs before this choice and replaces it while it applies.
 
 use ffh_core::defs::NUM_CITY_PLOTS;
 use ffh_core::game::Game;
@@ -219,17 +223,58 @@ const PLAN_FLOOR_PER_TURN: i64 = 150;
 const PLAN_GOALS: usize = 2;
 const SECOND_GOAL_PCT: i64 = 50;
 
+/// City defense before the plan: under this military pressure or more (barbarians near our
+/// cities after turn 60, or a war)...
+const DEFENSE_PRESSURE: i64 = 4;
+/// ... while the best city defender we could train is below this (`unit_defense`: an archer,
+/// 5 defense +25% in cities, is 625; warriors 375, axemen 400) ...
+const DEFENSE_MIN: i64 = 600;
+/// ... the cheapest researchable tech that brings one gets this score whatever its cost (plan
+/// steps score a few hundred thousand), so it is researched next.
+const DEFENSE_SCORE: i64 = 3_000_000;
+
+/// The tech to research first for city defense ([`DEFENSE_PRESSURE`], [`DEFENSE_MIN`]): usually
+/// Archery. The plan's tier-2 military goal can be satisfied without a city defender (Bronze
+/// Working without copper, Hunting, Horseback Riding; some leaders' favorite is Festivals), and
+/// measured, established civs without archers were then lost to the barbarians mid-game.
+fn defense_goal(g: &Game, p: PlayerId, ctx: &Ctx) -> Option<TechType> {
+    if ctx.pressure < DEFENSE_PRESSURE || ctx.best_defense >= DEFENSE_MIN {
+        return None;
+    }
+    let mut best: Option<(TechType, i32)> = None;
+    for t in g.d.techs.keys() {
+        if g.team_is_has_tech(ctx.team, Some(t)) || !g.player_can_research(p, t, false) {
+            continue;
+        }
+        if best_military(g, p, ctx, &[t]).0 < DEFENSE_MIN {
+            continue;
+        }
+        let left = g.team_get_research_left(ctx.team, t).max(1);
+        if best.map_or(true, |(_, l)| left < l) {
+            best = Some((t, left));
+        }
+    }
+    best.map(|(t, _)| t)
+}
+
 /// Goal-directed research (`tech_plan`): the researchable techs on the path to the first two
 /// unmet goals share the goal's value (its own value plus [`PLAN_VALUE`]) by their share of the
 /// path's research time (turns + 4, as in the score), so each step scores as researching the
 /// whole path would; a cheap gateway (Ancient Chants before Education) inherits the goal's value
 /// per turn. The plan's part is at least [`PLAN_FLOOR_PER_TURN`] per turn of the step. The
 /// situational terms of `tech_value` (military pressure, transports, processes) are not scaled
-/// down: they still win when they are large.
+/// down: they still win when they are large. A [`defense_goal`] comes first.
 fn goal_bonus(g: &Game, p: PlayerId, ctx: &Ctx, trace: bool) -> Vec<(TechType, i64)> {
     let team = ctx.team;
     let rate = ctx.rate as i64;
     let mut out: Vec<(TechType, i64)> = Vec::new();
+    if let Some(t) = defense_goal(g, p, ctx) {
+        let turns = g.team_get_research_left(team, t).max(1) as i64 / rate;
+        out.push((t, DEFENSE_SCORE * (turns + 4) / 1000));
+        if trace {
+            crate::trace!(g, p, "  defense goal {} (pressure {}, best defender {})", g.d.techs[t].base.type_, ctx.pressure, ctx.best_defense);
+        }
+    }
     let mut n = 0;
     for goal in crate::tech_plan::goals(g, p) {
         if n >= PLAN_GOALS {
@@ -499,4 +544,63 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
         }
     }
     value.max(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ffh_core::setup::GameSetup;
+
+    #[test]
+    fn defense_goal_under_pressure_without_archers() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 6, "WORLDSIZE_SMALL", 7));
+        g.map_script = std::sync::Arc::new(ffh_core::mapscript::FractalMapScript::default());
+        let ai = crate::ai_controller();
+        for p in g.player_ids() {
+            g.controllers[p] = ai.clone();
+        }
+        g.autorun = true;
+        g.game_init();
+        // A few turns, so that the civs have cities (and research).
+        while g.game_turn() < 4 {
+            for _ in 0..200_000 {
+                g.update();
+                if g.at_turn_boundary() {
+                    break;
+                }
+            }
+        }
+        let archery = d.t::<TechType>("TECH_ARCHERY");
+        // A civ whose archer is an archer-level city defender and who has none yet.
+        let p = g
+            .player_ids()
+            .filter(|&p| g.players[p].alive && !g.player_is_barbarian(p))
+            .find(|&p| {
+                let ctx = make_ctx(&g, p);
+                ctx.best_defense < DEFENSE_MIN && best_military(&g, p, &ctx, &[archery]).0 >= DEFENSE_MIN
+            })
+            .expect("a civ without archers whose archers defend cities");
+        let team = g.players[p].team;
+        for name in ["TECH_HUNTING", "TECH_MINING"] {
+            let t = d.t::<TechType>(name);
+            if !g.team_is_has_tech(team, Some(t)) {
+                g.team_set_has_tech(team, t, true, Some(p), false, false);
+            }
+        }
+        assert!(g.player_can_research(p, archery, false));
+        let mut ctx = make_ctx(&g, p);
+        ctx.pressure = DEFENSE_PRESSURE - 1;
+        assert_eq!(defense_goal(&g, p, &ctx), None, "no defense goal at low pressure");
+        ctx.pressure = DEFENSE_PRESSURE;
+        assert_eq!(defense_goal(&g, p, &ctx), Some(archery));
+        // It leads the research choice whatever its cost.
+        assert!(goal_bonus(&g, p, &ctx, false).iter().any(|&(t, v)| t == archery && v >= DEFENSE_SCORE * 4 / 1000));
+        // Archers known: no defense goal.
+        g.team_set_has_tech(team, archery, true, Some(p), false, false);
+        let mut ctx = make_ctx(&g, p);
+        ctx.pressure = 6;
+        assert!(ctx.best_defense >= DEFENSE_MIN);
+        assert_eq!(defense_goal(&g, p, &ctx), None);
+    }
 }
