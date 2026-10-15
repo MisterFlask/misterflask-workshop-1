@@ -1,26 +1,39 @@
-//! Goal-directed research: the ordered tech beelines of FfH's own AI
-//! (`CvGameUtils.AI_chooseTech`), as goals for the research scorer (`research::choose`).
+//! Goal-directed research: an ordered list of research goals adapted from the tech beelines
+//! of FfH's own AI (`CvGameUtils.AI_chooseTech`), for the research scorer (`research::choose`,
+//! which gives the first two a bonus along their prerequisite paths).
 //!
-//! [`goals`] lists the techs this player should be heading for, most urgent first ([`ORDER`]):
+//! [`goals`] lists the techs this player should be heading for, most urgent first ([`ORDER`]),
+//! leaving out the techs we know and those we can never research:
 //! 1. an early tier-2 military tech until one of Bronze Working, Archery, Hunting or Horseback
 //!    Riding is known: the first we do not know and can ever research of the leader's favorite
 //!    early military tech, the civ's (Hunting for the elves, Construction for the Luchuirp)
 //!    and Bronze Working;
 //! 2. the early economy: Exploration, Mining, Calendar, Ancient Chants, Education;
-//! 3. an early religion (Way of the Earthmother / of the Forests / Message from the Deep by
-//!    alignment, favorite religion and favorite early religion; only one nobody has founded),
-//!    unless we have one or are agnostic (agnostics take Sanitation);
+//! 3. an early religion nobody has founded yet, unless we know one of the three early religion
+//!    techs or have a holy city ([`religion_preferences`]: the Khazad and elves' own, the
+//!    leader's favorite early religion, the favorite religion, the alignment, then a fixed
+//!    fallback order); agnostics take Sanitation instead;
 //! 4. Code of Laws once the empire has 4+ cities or maintenance eats a fifth of its commerce,
 //!    and Writing (not for TRAIT_BARBARIAN leaders);
 //! 5. Mysticism, Festivals, Cartography (City States), Sailing for coastal empires;
-//! 6. economy tier 2: Trade, Sanitation, Currency, Construction, Taxation (after the civ
-//!    beelines once `AI_chooseTech`'s "economy tier 2" is reached);
+//! 6. economy tier 2: Trade, Sanitation, Currency, Construction, Taxation, while fewer are known
+//!    than `AI_chooseTech`'s "economy tier 2" needs (the rest come after step 7);
 //! 7. the per-civ beelines of `AI_chooseTech`;
-//! 8. the magic techs once tier 3 military and economy tier 2 are reached.
+//! 8. the magic spheres (Necromancy, Elementalism, Divination, Alteration) once tier 3 military
+//!    and economy tier 2 are reached.
 //!
-//! The religion comes before Code of Laws and Writing (`AI_chooseTech` has it right after the
-//! early economy too): measured, it founds a religion by turn 150 in most games at no cost in
-//! techs by turn 300.
+//! This is not `AI_chooseTech`'s exact order. That function returns a single tech: blocks gated
+//! by its tiers assign it in turn and the last assignment wins, which makes its precedence the
+//! tier-2 military tech, the early economy, the early religion (once tier 2 and the early
+//! economy are known), Cartography, Festivals, Mysticism, Writing, Animal Husbandry, Code of
+//! Laws (TRAIT_FINANCIAL with 6+ cities), Archery, Sailing, the civ's early beelines, the leader's
+//! favorite early techs and early wonder, then economy tier 2 (Trade, Sanitation, Construction,
+//! Currency, Taxation), the civ beelines, and the tier-3 block (magic, victory techs, favorite
+//! wonders and heroes). The list keeps the main precedences (military, early economy, religion,
+//! the other early techs, economy tier 2, civ beelines, magic) but has no tier gates (every
+//! unmet goal is listed), adds Ancient Chants and a Code of Laws condition of its own, takes
+//! Writing to Cartography in the reverse order, and leaves out Archery and Animal Husbandry,
+//! the leader's early techs and wonders, the starting-resource techs and the tier-3 extras.
 //!
 //! A pure function of the game state, recomputed on every call (no cache); techs are resolved
 //! by name once per call.
