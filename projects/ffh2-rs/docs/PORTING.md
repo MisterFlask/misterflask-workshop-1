@@ -72,8 +72,10 @@ victories), also on a build with debug assertions and overflow checks, with book
 cross-checks (cities, units, groups, areas, teams) every 5 turns. Debug assertions that the C++
 itself violates became `// C++ quirk:` notes, the values kept as in C++: plot city-radius counts
 that go negative when a radius-3 city dies, war symmetry for players added mid-game, shared
-(`bTeamShare`) building counts for team members added mid-game, and blockade and
-specialist-commerce counts that can go negative.
+(`bTeamShare`) building counts for team members added mid-game, blockade and
+specialist-commerce counts that can go negative, and world wonder created counts above
+`iMaxGlobalInstances` (FfH's equipment wonder Syliven's Perfect Lyre is counted as created again
+each time a unit drops it in a city; found by the `ffh-play soak` human games).
 
 ## Not ported (by design)
 
