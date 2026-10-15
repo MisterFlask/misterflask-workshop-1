@@ -106,6 +106,8 @@ counters, war success, war plans) that the diplomacy below reads.
    transport; while growing toward a settler the city builds only short items (warriors
    that explore and escort); a settler 3 turns from done (or waiting in the city) with no
    fighter to spare gets the cheapest adequate escort queued behind it (`expansion.rs`);
+   then civilization-specific items (Kuriotates settlement settlers, Lanun cove boats; see
+   Civilization-specific below);
 6. FfH tier-2 units need a building in the training city (Archery Range for archers,
    Training Yard for axemen, ...): when one would open a defender or attacker a third
    stronger, about half the cities build it;
@@ -382,6 +384,33 @@ technologies one for one at similar cost (once `TECH_TRADE` allows it) and signs
 with civs it likes; `consider_offer` accepts tech swaps worth at least 80% of what it gives,
 never with the civ it prepares a war against.
 
+## Civilization-specific (`civs.rs`)
+
+Rules a few civilizations have that the generic logic does not see. Each branch checks the
+player's civilization (by type name), so games without these civilizations play exactly as
+before (same checksums).
+
+- **Kuriotates**: past their city limit (3 on a standard map) a new city is a *settlement*
+  (`CvCity::init`): radius 2, -75% yields, nothing to build, but no maintenance or civic
+  upkeep, and its borders claim land and resources. The settler step stops at the limit;
+  `civs::production`, asked right after it, builds one settler at a time for a settlement
+  site on the city's landmass (from a city of size 5+ or at its happy cap, at peace, not
+  broke). The sites are `sites.rs`'s: the ported `AI_foundValue` already scores
+  settlement-sized sites (9 plots) for a sprawling player at its limit and favours sites more
+  than 4 plots from its cities. 14 games: cities and settlements at turn 300 3.2 -> 9.1,
+  score +19%.
+- **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
+  (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
+  on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
+  `AI_buildPirateCove`, a city that works a plot where one can go trains a work boat (one at a
+  time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
+  (worked plots of big cities first) and casts there. 19 games: score at turn 300 +22%, pop
+  +24%, techs +19% (Lanun that never research Fishing are unchanged).
+- **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
+  every improvement they build on their own plots (FfH's check in `setImprovementType`), and
+  workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
+  logs are other civilizations').
+
 ## Cost control
 
 - **Reachability**: `reach.rs` floods once from a unit (Dijkstra on movement points, bounded
@@ -439,5 +468,5 @@ never with the civ it prepares a war against.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
-  terraforming, and no dedicated logic for civ-specific mechanics (Sheaim planar gates,
-  Infernal and Mercurian projects, Kuriotates settlements, Armageddon rituals).
+  terraforming, and no dedicated logic for most civ-specific mechanics (Sheaim planar gates,
+  Infernal and Mercurian projects, Armageddon rituals; see `civs.rs` for the ones handled).
