@@ -7,8 +7,13 @@
 // through the end-turn gate, the turn report, saving and loading; then staged saves (`ffh-play
 // stage`): the attack odds and an attack, the keep/raze decision modal, popups set aside and
 // asked again after a load, the transport picker, Shift waypoints; a game started by another
-// client; and a server started with `--panic-at` for the crash screen. It fails on any console
-// error, page error, failed request or HTTP error, and saves screenshots for review.
+// client; and a server started with `--panic-at` for the crash screen. Phase 6: the city screen
+// (a worked plot clicked off and on, the citizens' automation), the tech tree (F6, a click
+// researches), civics (F3, a pick, the revolution), religion (F7), the sliders (F2 and the top
+// bar), diplomacy (F4, the trade screen when a player was met), the cities list (F1), the keys
+// (?), the go-to mode (G, Esc), the map layers, the inspector, debug reveal, AI autoplay and the
+// spectator mode (play, pause, step, stop). It fails on any console error, page error, failed
+// request or HTTP error, and saves screenshots for review.
 //
 //   node tools/web-smoke.mjs [--bin PATH] [--out DIR] [--turns 4] [--seed 5] [--cdp] [--headed]
 //        [--assets DIR]   (serve the client files from DIR: crates/ffh-play/assets, live edits)
@@ -173,7 +178,7 @@ async function cdpBrowser(exe, problems) {
   // Modifiers held with keyDown (8 = Shift), carried by the mouse events meanwhile.
   let held = 0;
   const mouseEvent = (type, x, y, button = "none", clickCount = 0) => send("Input.dispatchMouseEvent", { type, x, y, button, clickCount, modifiers: held, buttons: button === "left" ? 1 : button === "right" ? 2 : 0 });
-  const KEYS = { Enter: [13, "\r"], Escape: [27, ""], Tab: [9, ""], Delete: [46, ""] };
+  const KEYS = { Enter: [13, "\r"], Escape: [27, ""], Tab: [9, ""], Delete: [46, ""], Home: [36, ""], F1: [112, ""], F2: [113, ""], F3: [114, ""], F4: [115, ""], F6: [117, ""], F7: [118, ""] };
   const MODIFIERS = { Shift: [16, 8, "ShiftLeft"] };
   return {
     name: `Chromium over the DevTools protocol (${exe})`,
@@ -459,6 +464,201 @@ async function endTurns(n) {
   if (!report) throw new Error("no turn report");
 }
 
+const TOP = "#modals .backdrop:not(.under)";
+const q = (sel) => JSON.stringify(sel);
+/** Waits for the dialog titled `title`, or one matching the regex. */
+const dialog = (title) => until(async () => (await modalTitles()).some((t) => (title instanceof RegExp ? title.test(t) : t === title)), `the dialog ${title}`);
+async function closeDialog(title) {
+  await b.key("Escape");
+  await until(async () => !(await modalTitles()).includes(title), `the dialog ${title} closed`);
+}
+
+/** The city screen (P6): a worked plot clicked stops being worked (a specialist instead, the
+ *  citizens' automation off), clicked again it is worked; the automation back on. */
+async function cityScreen() {
+  const city = await S("S.view.cities.find((c) => c.owner === S.view.me.player) || null");
+  if (!city) return steps.push("no city for the city screen");
+  const p = await plotPos(city.x, city.y);
+  await b.dblclick(p.x, p.y);
+  await dialog(city.name);
+  const screen = `${TOP} .modal.city-screen`;
+  await until2(`!!document.querySelector(${q(`${screen} .cgrid .cplot.centre`)})`, "the city screen's plots");
+  await shot("city-screen");
+  const worked = await b.eval(`(() => { const e = document.querySelector(${q(`${screen} .cplot.worked:not(.centre)`)}); return e ? e.dataset.i : null; })()`);
+  if (worked === null) {
+    steps.push("city screen: no worked plot to click");
+  } else {
+    const sel = `${screen} .cplot[data-i="${worked}"]`;
+    await click(sel);
+    await until2(`(() => { const e = document.querySelector(${q(sel)}); return e && !e.classList.contains("worked"); })()`, "the plot no longer worked");
+    await until2(`!!document.querySelector(${q(`${screen} .spec`)}) && !document.querySelector("#city-auto-citizens").checked`, "a specialist and the automation off");
+    await shot("city-specialist");
+    await click(sel);
+    await until2(`(() => { const e = document.querySelector(${q(sel)}); return e && e.classList.contains("worked"); })()`, "the plot worked again");
+    await click("#city-auto-citizens");
+    await until2(`document.querySelector("#city-auto-citizens").checked`, "the automation back on");
+    steps.push(`city screen: plot ${worked} clicked off (a specialist) and on, the automation off and on`);
+  }
+  await closeDialog(city.name);
+}
+
+/** The empire screens (P6) through their keys: the tech tree, civics, religion, the sliders,
+ *  diplomacy, the cities list. */
+async function empireScreens() {
+  // F6: the tech tree; a click researches a tech.
+  await b.key("F6");
+  await dialog("Technology");
+  await until2(`document.querySelectorAll(${q(`${TOP} button.tech`)}).length > 10`, "the techs");
+  await shot("tech-tree");
+  const tech = await b.eval(`(() => { const e = [...document.querySelectorAll(${q(`${TOP} button.tech.can`)})].find((x) => !x.classList.contains("researching")); return e ? Number(e.dataset.tech) : null; })()`);
+  if (tech !== null) {
+    await click(`${TOP} button.tech[data-tech="${tech}"]`);
+    await until2(`(() => { const r = window.ffh.S.view.me.research; return !!r && r.tech === ${tech}; })()`, "the research picked in the tech tree");
+    await until2(`!!document.querySelector(${q(`${TOP} button.tech.researching[data-tech="${tech}"]`)})`, "the tree showing it");
+    steps.push(`tech tree (F6): researching ${tech}`);
+  }
+  await closeDialog("Technology");
+  // F3: civics: a pick shows the change, the revolution when it is possible.
+  await b.key("F3");
+  await dialog("Civics");
+  await until2(`!!document.querySelector(${q(`${TOP} button.civic`)})`, "the civics");
+  const civic = await b.eval(`(() => { const e = document.querySelector(${q(`${TOP} button.civic:not(.current):not([disabled])`)}); return e ? Number(e.dataset.civic) : null; })()`);
+  if (civic === null) steps.push("civics (F3): no civic available");
+  else {
+    await click(`${TOP} button.civic[data-civic="${civic}"]`);
+    await until2(`(() => { const e = document.querySelector(${q(`${TOP} button.civic[data-civic="${civic}"]`)}); return !!e && e.classList.contains("chosen") && !document.querySelector(${q(`${TOP} .civic-summary.dim`)}); })()`, "the proposed change");
+    await shot("civics");
+    if (await b.eval(`!document.querySelector(${q(`${TOP} .modal-buttons button.primary`)}).disabled`)) {
+      await click(`${TOP} .modal-buttons button.primary`);
+      await until(async () => !(await modalTitles()).includes("Civics"), "the revolution");
+      const now = await b.eval(`window.ffh.api.query("civics").then((c) => c.options.some((o) => o.civics.some((x) => x.civic === ${civic} && x.current)) || c.anarchy > 0)`);
+      if (!now) throw new Error(`the revolution to civic ${civic} did not happen`);
+      steps.push(`civics (F3): revolution to civic ${civic}`);
+    } else steps.push(`civics (F3): civic ${civic} proposed, no revolution possible`);
+  }
+  if ((await modalTitles()).includes("Civics")) await closeDialog("Civics");
+  // F7: religion.
+  await b.key("F7");
+  await dialog("Religion");
+  await until2(`!!document.querySelector(${q(`${TOP} table.scores tr[data-religion]`)})`, "the religions");
+  await closeDialog("Religion");
+  // The sliders (the top bar's button; F2): research down a step and back.
+  await click("#sliders-button");
+  await dialog("Finances");
+  const row = await b.eval(`(() => { const r = [...document.querySelectorAll(${q(`${TOP} table.sliders tr`)})].find((tr) => tr.querySelector("button.minus:not([disabled])")); return r ? Number(r.dataset.commerce) : null; })()`);
+  if (row !== null) {
+    const before = await S(`S.view.me.commerce_percent[${row}]`);
+    await click(`${TOP} table.sliders tr[data-commerce="${row}"] button.minus`);
+    await until2(`window.ffh.S.view.me.commerce_percent[${row}] < ${before}`, "the slider down");
+    await until2(`!!document.querySelector(${q(`${TOP} table.sliders tr[data-commerce="${row}"] button.plus:not([disabled])`)})`, "the + button");
+    await shot("sliders");
+    await click(`${TOP} table.sliders tr[data-commerce="${row}"] button.plus`);
+    await until2(`window.ffh.S.view.me.commerce_percent[${row}] === ${before}`, "the slider back");
+    steps.push(`sliders: commerce ${row} ${before}% down a step and back`);
+  }
+  await closeDialog("Finances");
+  await b.key("F2");
+  await dialog("Finances");
+  await closeDialog("Finances");
+  // F4: diplomacy; the trade screen with a player met.
+  await b.key("F4");
+  await dialog("Foreign affairs");
+  await until2(`!document.querySelector(${q(`${TOP} .modal-body p.dim`)}) || document.querySelector(${q(`${TOP} .modal-body p.dim`)}).textContent !== "…"`, "the players");
+  if (await b.eval(`!!document.querySelector(${q(`${TOP} button[data-trade]`)})`)) {
+    await click(`${TOP} button[data-trade]`);
+    await dialog(/^Trade/);
+    await until2(`!!document.querySelector(${q(`${TOP} .trade .trade-side`)})`, "the trade tables");
+    await shot("trade");
+    await b.key("Escape");
+    steps.push("diplomacy (F4): the trade screen");
+  } else steps.push("diplomacy (F4): nobody met yet");
+  await until(async () => (await modalTitles()).includes("Foreign affairs"), "back to foreign affairs");
+  await closeDialog("Foreign affairs");
+  // F1: the cities.
+  await b.key("F1");
+  await dialog("Your cities");
+  await closeDialog("Your cities");
+  steps.push("empire screens: F6 tech tree, F3 civics, F7 religion, F2 sliders, F4 diplomacy, F1 cities");
+}
+
+/** The keys list (?), the go-to mode (G, then Esc), the map layers. */
+async function keysAndLayers() {
+  await b.key("?");
+  await dialog("Keys");
+  await closeDialog("Keys");
+  if (!(await S("!!S.sel"))) await b.key("w");
+  if (await S("!!S.sel")) {
+    await until2(`window.ffh.units.currentActions().length > 0`, "the selection's actions");
+    if (await b.eval(`window.ffh.units.currentActions().some((a) => a.kind === "target" && a.mode === "INTERFACEMODE_GO_TO" && a.enabled)`)) {
+      await b.key("g");
+      await until2(`(() => { const m = window.ffh.units.currentMode(); return !!m && m.kind === "target" && m.action.mode === "INTERFACEMODE_GO_TO"; })()`, "the go-to mode (G)");
+      await b.key("Escape");
+      await until2(`!window.ffh.units.currentMode()`, "the go-to mode left (Esc)");
+      steps.push("G: the go-to mode, Esc leaves it");
+    }
+  }
+  for (const layer of ["political", "yield", "terrain"]) {
+    await click(`#mapwrap .layers button[data-layer="${layer}"]`);
+    await until2(`window.ffh.mapView.layer === "${layer}" && document.querySelector('#mapwrap .layers button[data-layer="${layer}"]').classList.contains("active")`, `the ${layer} layer`);
+    if (layer !== "terrain") await shot(`layer-${layer}`);
+  }
+  steps.push("map layers: political, yields, terrain");
+}
+
+/** The tools (P6): the inspector, debug reveal, AI autoplay, the spectator mode. */
+async function toolsAndSpectate() {
+  const tool = async (id, title) => {
+    await click("#btn-tools");
+    await dialog("Tools");
+    await click(`#${id}`);
+    if (title) await dialog(title);
+  };
+  // The inspector: our player.
+  await tool("tool-inspect", "Inspector");
+  await b.eval(`[...document.querySelectorAll(${q(`${TOP} .modal-body .row button.small`)})].find((x) => x.textContent === "your player").click()`);
+  await until2(`/^Player \{/.test(document.querySelector(${q(`${TOP} pre.inspect`)}).textContent)`, "the player inspected");
+  await shot("inspector");
+  await closeDialog("Inspector");
+  steps.push("inspector: the player's rules data");
+  // Debug reveal on and off.
+  await tool("tool-reveal");
+  await until2(`window.ffh.S.status.reveal === true && !!document.querySelector("#phase .badge.reveal")`, "debug reveal on");
+  await shot("debug-reveal");
+  await tool("tool-reveal");
+  await until2(`window.ffh.S.status.reveal === false && !document.querySelector("#phase .badge.reveal")`, "debug reveal off");
+  steps.push("debug reveal on and off");
+  // AI autoplay for one turn.
+  let turn = await S("S.status.turn");
+  await tool("tool-autoplay", "AI autoplay");
+  await b.eval(`document.getElementById("autoplay-turns").value = "1"`);
+  await click(`${TOP} .modal-buttons button.primary`);
+  await until2(`window.ffh.S.status.turn > ${turn}`, "the autoplay turn", 90000);
+  await waitHuman("control after the autoplay");
+  if (await S("S.view.me.ai_auto_play")) throw new Error("still on AI autoplay after its turn");
+  await answerPopups();
+  steps.push(`AI autoplay: turn ${turn} played by the AI`);
+  // The spectator mode: plays, pauses, steps, stops.
+  turn = await S("S.status.turn");
+  await tool("tool-spectate");
+  await until2(`!!document.querySelector("#phase .spectate") && window.ffh.S.status.reveal === true`, "the spectator bar and the reveal");
+  await until2(`window.ffh.S.status.turn >= ${turn + 2}`, "two spectated turns", 120000);
+  await shot("spectating");
+  if ((await modalTitles()).length) throw new Error(`dialogs while spectating: ${await modalTitles()}`);
+  await click("#spectate-pause");
+  await until2(`!!document.querySelector("#spectate-play") && !window.ffh.tools.spectatorBusy()`, "the spectator mode paused", 60000);
+  await waitHuman("the paused spectator mode");
+  const paused = await S("S.status.turn");
+  await new Promise((r) => setTimeout(r, 600));
+  if ((await S("S.status.turn")) !== paused) throw new Error("turns went on after the pause");
+  await click("#spectate-step");
+  await until2(`window.ffh.S.status.turn === ${paused + 1} && !window.ffh.tools.spectatorBusy()`, "one stepped turn", 60000);
+  await click("#spectate-stop");
+  await until2(`!document.querySelector("#phase .spectate") && window.ffh.S.status.reveal === false`, "the spectator mode stopped (reveal off)");
+  await waitHuman("control after spectating");
+  await answerPopups();
+  steps.push(`spectator mode: turns ${turn}-${paused} played, paused, one step, stopped`);
+}
+
 async function saveAndLoad() {
   await click("#btn-save");
   await until(async () => (await modalTitles()).includes("Save the game"), "the save dialog");
@@ -703,6 +903,10 @@ async function main() {
     await cityQueue();
     await moveUnit();
     await endTurns(TURNS);
+    await cityScreen();
+    await empireScreens();
+    await keysAndLayers();
+    await toolsAndSpectate();
     await saveAndLoad();
     await stagedAttack(bin, saves);
     await stagedCapture(bin, saves);

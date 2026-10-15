@@ -187,6 +187,7 @@ export function newGame({ dismissible = true } = {}) {
     "div.checks",
     st.victories.map((v) => h("label", h("input", { type: "checkbox", value: v.type, checked: !d.disabled_victories.includes(v.id) }), ` ${v.name}`)),
   );
+  const spectate = h("input", { type: "checkbox", id: "ng-spectate" });
   const err = h("p.error");
   const field = (label, el, extra = null) => h("label.field", h("span", label), el, extra);
   const form = h(
@@ -207,6 +208,12 @@ export function newGame({ dismissible = true } = {}) {
     ),
     h("details", h("summary", "Game options"), options),
     h("details", h("summary", "Victory conditions"), victories),
+    h(
+      "label.check",
+      { title: "The AI plays every civilization (yours too), one turn at a time, with the whole map shown; pause, step or stop it from the top bar" },
+      spectate,
+      " Spectate: watch the AI play",
+    ),
     err,
   );
   const start = async (m) => {
@@ -228,7 +235,7 @@ export function newGame({ dismissible = true } = {}) {
     try {
       await api.session("new", name.value ? { setup, name: name.value } : { setup });
       m.close("started");
-      emit("game-started");
+      emit("game-started", { spectate: spectate.checked });
     } catch (e) {
       err.textContent = e.detail ?? e.message;
     }
@@ -395,21 +402,40 @@ export function stuckScreen(st) {
 // ---------------------------------------------------------------------------------------------
 // Help and testing tools.
 
+/** The keys: Civ4's (the action hotkeys come from the game's XML, as each button's tooltip shows). */
 export function keysHelp() {
   const keys = [
+    ["Mouse", ""],
     ["Left click", "select units (again: the next group there), open your city, show a plot"],
     ["Right click", "move or attack with the selection; with Shift held, add waypoints (sent when Shift is released)"],
-    ["Drag, wheel, arrows", "pan and zoom the map; the minimap centres"],
+    ["Drag, wheel, arrows, + −", "pan and zoom the map; the minimap centres"],
+    ["Turn and selection", ""],
     ["Enter / Shift+Enter", "end the turn / end it without the checks"],
-    ["Space, F, S, H, B", "skip, fortify, sleep, heal, found a city"],
-    ["M then click", "move to a plot"],
-    ["W or Tab", "the next unit waiting for orders (again: through all of them)"],
-    ["C", "centre on the selection"],
-    ["Del", "delete the selected units (asks first)"],
-    ["R", "research"],
-    ["Esc", "cancel a plot pick, close a dialog"],
+    ["W or Tab / Shift+Tab", "the next / previous unit waiting for orders (Civ4's cycle; when it wraps, the automated units move)"],
+    ["C / Home", "centre on the selection / the capital"],
+    ["Esc", "cancel a plot pick, close a dialog, deselect"],
+    ["Orders (Civ4's hotkeys)", ""],
+    ["Space", "skip the turn"],
+    ["F / S / H", "fortify (sleep for units that cannot) / sentry / heal"],
+    ["B", "found a city (bombard for siege units)"],
+    ["G then click, Alt+R", "go to a plot / build a route to it"],
+    ["R, I, M, …", "the worker's builds: road, farm, mine, … (each button shows its key)"],
+    ["L / U / Shift+U", "load / unload / unload all"],
+    ["Shift+P", "pillage"],
+    ["Del / Backspace", "delete the units (asks first) / cancel the orders"],
+    ["Screens", ""],
+    ["F1 / F2 / F3 / F4", "cities / finances (the sliders) / civics / diplomacy and trade"],
+    ["F6 / F7", "the tech tree / religion"],
+    ["Ctrl+S / Ctrl+L", "save / load"],
+    ["Ctrl+1 / 2 / 3", "map layer: terrain / political / yields"],
+    ["?", "this list"],
   ];
-  return openModal({ title: "Keys", tag: "keys", body: [h("table.kv", keys.map(([k, v]) => h("tr", h("th", k), h("td", v))))], buttons: [{ label: "Close", value: null }] });
+  return openModal({
+    title: "Keys",
+    tag: "keys",
+    body: [h("table.kv", keys.map(([k, v]) => (v ? h("tr", h("th", k), h("td", v)) : h("tr", h("th.group", { colspan: 2 }, k)))))],
+    buttons: [{ label: "Close", value: null }],
+  });
 }
 
 /** A box for raw protocol requests (design §5.1 "Rules-testing tools"). */

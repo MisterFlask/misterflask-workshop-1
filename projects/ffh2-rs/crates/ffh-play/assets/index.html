@@ -9,17 +9,22 @@
 <script type="module" src="/app/main.js"></script>
 </head>
 <body>
-<!-- The browser client (docs/PLAY_DESIGN.md §5.1, §7 P5). Everything it shows comes from the
-     server (`ffh-play serve`): /api/status (long-poll), /api/view, /api/map, /api/data and the
-     POST /api envelope. -->
+<!-- The browser client (docs/PLAY_DESIGN.md §5.1, §7 P5-P6). Everything it shows comes from the
+     server (`ffh-play serve`): /api/status (long-poll), /api/view, /api/map (tile deltas),
+     /api/data and the POST /api envelope. -->
 <header id="top">
   <div id="phase" aria-live="polite">connecting…</div>
   <div id="empire"></div>
   <nav id="menu">
-    <button id="btn-research" title="Research [R]">Research</button>
-    <button id="btn-cities" title="Your cities">Cities</button>
-    <button id="btn-save" title="Save the game">Save</button>
-    <button id="btn-load" title="Load a game">Load</button>
+    <button id="btn-research" title="Choose research">Research</button>
+    <button id="btn-techs" title="The tech tree [F6]">Techs</button>
+    <button id="btn-cities" title="Your cities [F1]">Cities</button>
+    <button id="btn-civics" title="Civics [F3]">Civics</button>
+    <button id="btn-religion" title="Religion [F7]">Religion</button>
+    <button id="btn-diplo" title="Foreign affairs and trade [F4]">Diplomacy</button>
+    <button id="btn-tools" title="Inspector, debug reveal, autoplay, spectate, take over, options">Tools</button>
+    <button id="btn-save" title="Save the game [Ctrl+S]">Save</button>
+    <button id="btn-load" title="Load a game [Ctrl+L]">Load</button>
     <button id="btn-new" title="Start a new game">New</button>
     <button id="btn-keys" title="Keys [?]">?</button>
     <button id="btn-raw" title="Send a raw protocol request (testing)">⌘</button>
@@ -33,6 +38,11 @@
     <div class="zoom">
       <button id="zoom-in" title="Zoom in [+]" aria-label="Zoom in">+</button>
       <button id="zoom-out" title="Zoom out [-]" aria-label="Zoom out">−</button>
+    </div>
+    <div class="layers" role="radiogroup" aria-label="Map layer">
+      <button data-layer="terrain" class="active" title="The terrain [Ctrl+1]">Terrain</button>
+      <button data-layer="political" title="Who owns what [Ctrl+2]">Political</button>
+      <button data-layer="yield" title="Food, production, commerce of the plots in sight [Ctrl+3]">Yields</button>
     </div>
     <div class="tooltip" hidden></div>
   </div>

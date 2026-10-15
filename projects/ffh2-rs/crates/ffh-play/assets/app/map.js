@@ -72,6 +72,9 @@ export class MapView {
      *  `sel` ({x, y}), `units` (selected unit ids), `waypoints` ([[x, y]] held while Shift is
      *  down). */
     this.overlay = { path: null, targets: null, hover: null, sel: null, units: [], waypoints: null };
+    /** The map's layer (design §5.1 "Layers"): "terrain", "political" (owners' colours) or
+     *  "yield" (the visible plots' food, production and commerce). */
+    this.layer = "terrain";
     this.queued = false;
     this.listen();
     new ResizeObserver(() => this.resize()).observe(wrap);
@@ -212,6 +215,12 @@ export class MapView {
     this.request();
   }
 
+  /** The plot at the centre of the view (C++ `getLookAtPlot`), or null without a map. */
+  center() {
+    if (!this.map) return null;
+    return { x: T.wrapCoord(Math.floor(this.cam.cx), this.map.w, true), y: Math.min(this.map.h - 1, Math.max(0, Math.floor(this.cam.cy))) };
+  }
+
   /** Centres on (x, y) unless it is well inside the viewport. */
   reveal(x, y) {
     const s = this.screenOf(x, y);
@@ -229,10 +238,11 @@ export class MapView {
   // ------------------------------------------------------------------------------------------
   // Data
 
-  /** A new map (the `map` reply): redraws the chunks that changed. */
-  setMap(map) {
+  /** A new map (the `map` reply, or the map a delta brought up to date): redraws the chunks
+   *  that changed (`changed`: the tile indices a delta listed; else found by comparing). */
+  setMap(map, changed = null) {
     const first = !this.map || this.map.w !== map.w || this.map.h !== map.h;
-    const dirty = T.dirtyChunks(this.map, map);
+    const dirty = Array.isArray(changed) && !first ? T.chunksOfTiles(map, changed) : T.dirtyChunks(this.map, map);
     this.map = map;
     PLOT = null;
     if (dirty === "all") {
@@ -260,6 +270,13 @@ export class MapView {
 
   setOverlay(o) {
     Object.assign(this.overlay, o);
+    this.request();
+  }
+
+  /** Switches the map's layer (the terrain cache is kept per layer). */
+  setLayer(layer) {
+    if (!T.LAYERS.includes(layer) || layer === this.layer) return;
+    this.layer = layer;
     this.request();
   }
 
@@ -319,7 +336,7 @@ export class MapView {
 
   chunk(cx, cy, cw, ch) {
     const ts = this.cam.ts;
-    const key = `${ts}@${this.dpr}:${cx},${cy}`;
+    const key = `${this.layer}|${ts}@${this.dpr}:${cx},${cy}`;
     let c = this.chunks.get(key);
     if (!c) {
       const canvas = document.createElement("canvas");
@@ -514,6 +531,33 @@ export class MapView {
         if (dx === -1) (g.moveTo(px + inset, py), g.lineTo(px + inset, py + ts));
       }
       g.stroke();
+    }
+    // The political layer: each owner's colour over its plots, unowned land grey.
+    if (this.layer === "political") {
+      if (owner >= 0) {
+        g.fillStyle = withAlpha(ownerColor(owner), 0.62);
+        g.fillRect(px, py, ts, ts);
+      } else if (pt !== P.ocean) {
+        g.fillStyle = "rgba(170,170,170,0.45)";
+        g.fillRect(px, py, ts, ts);
+      }
+    }
+    // The yield layer: the terrain darkened, the food, production and commerce of the plots in
+    // sight (fogged plots show none: design §4.4).
+    if (this.layer === "yield") {
+      g.fillStyle = "rgba(0,0,0,0.5)";
+      g.fillRect(px, py, ts, ts);
+      const y = T.unpackYield(m.yield[k]);
+      if (y && ts >= 16) {
+        g.font = `bold ${Math.max(8, Math.round(ts * 0.3))}px ${FONT}`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        y.forEach((v, j) => {
+          if (v <= 0) return;
+          g.fillStyle = T.YIELD_COLORS[j];
+          g.fillText(String(v), px + ts * (0.22 + 0.28 * j), py + ts * (j === 1 ? 0.62 : 0.4));
+        });
+      }
     }
     if (vis === 1) {
       g.fillStyle = "rgba(0,0,0,0.42)";

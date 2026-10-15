@@ -204,23 +204,57 @@ export function nextReadyGroup(current, near = null, dist = null, skip = []) {
   return best ?? ready[0];
 }
 
-/** W, Tab and "Next": the next waiting group in a cycle that selects every ready group before
- *  any one again (P5 review: nearest-first alone went back and forth between the two groups
- *  nearest each other). `visited` (a Set, updated here) holds the groups this cycle selected;
- *  the nearest (`dist`) ready group to `near` not yet visited is chosen, and when every ready
- *  group was, a new cycle starts from `current`. Returns the group, or null when no other
- *  group waits. */
-export function cycleNext(current, visited, near = null, dist = null) {
-  const cur = current ?? -1;
-  if (cur >= 0) visited.add(cur);
-  let g = nextReadyGroup(cur, near, dist, [...visited]);
-  if (g === null) {
-    visited.clear();
-    if (cur >= 0) visited.add(cur);
-    g = nextReadyGroup(cur, near, dist);
+/** C++ `CvPlayer::cycleSelectionGroups(pUnit, bForward)` (P6: Civ4's group cycle): the first
+ *  group waiting for orders (`ready`, a Set: `readyToSelect`) after `current`'s place in the
+ *  player's group cycle (`cycle`, the view's `group_cycle`), going round. `wrapped` when the
+ *  search went past the end of the cycle (or started there, `current` being last or not in
+ *  it) or came back to `current`: the exe then sends AutoMoves when a group has orders to
+ *  continue (CvGame::cycleSelectionGroups). Returns `{group, wrapped}` (`group` null when none
+ *  waits). */
+export function cycleGroups(cycle, ready, current, forward = true) {
+  const n = cycle.length;
+  if (n === 0) return { group: null, wrapped: true };
+  const at = current === null || current === undefined ? -1 : cycle.indexOf(current);
+  let wrapped = false;
+  let start;
+  if (at < 0) {
+    // No selection, or a group not in the cycle: from the head (C++: the node is NULL).
+    start = forward ? 0 : n - 1;
+    wrapped = current !== null && current !== undefined;
+  } else {
+    start = forward ? at + 1 : at - 1;
+    if (start >= n || start < 0) {
+      start = forward ? 0 : n - 1;
+      wrapped = true;
+    }
   }
-  if (g !== null) visited.add(g);
-  return g;
+  for (let k = 0; k < n; k++) {
+    const raw = forward ? start + k : start - k;
+    if (raw >= n || raw < 0) wrapped = true;
+    const g = cycle[((raw % n) + n) % n];
+    if (ready.has(g)) {
+      if (g === current) wrapped = true;
+      return { group: g, wrapped };
+    }
+  }
+  return { group: null, wrapped: true };
+}
+
+/** The groups waiting for orders on plot (x, y), in the plot's unit order (C++
+ *  `cyclePlotUnits(.., bAuto)`): the own units' groups there that are ready, without `skip`. */
+export function readyGroupsOnPlot(x, y, skip = null) {
+  const ready = new Set(readyGroups());
+  const out = [];
+  for (const u of ownUnitsAt(x, y)) {
+    if (u.group !== skip && ready.has(u.group) && !out.includes(u.group)) out.push(u.group);
+  }
+  return out;
+}
+
+/** The PlayerOptionType index of an option, and whether the human has it on (`me.options`). */
+export function option(name) {
+  const i = tidx("PlayerOptionType", name);
+  return i >= 0 && !!me()?.options?.[i];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -294,6 +328,41 @@ export function loadUnitCommand(units, transport) {
   const owner = S.units.get(transport)?.owner ?? me()?.player ?? -1;
   return { c: "do_command", units, command: tidx("CommandType", "COMMAND_LOAD_UNIT"), data1: owner, data2: transport, alt: false, confirmed: false };
 }
+
+/** A trade item for people (`{item, data, name?}` of the `trade` query, design §4.6): the
+ *  tech, resource, city (by its name), team, civic or religion it names, or the item's own
+ *  name; gold with its amount. */
+export function tradeItemLabel(it) {
+  const type = tname("TradeableItem", it.item) ?? "";
+  const n = it.data ?? 0;
+  switch (type) {
+    case "TRADE_GOLD":
+      return n > 0 ? `${n} gold` : "Gold";
+    case "TRADE_GOLD_PER_TURN":
+      return n > 0 ? `${n} gold per turn` : "Gold per turn";
+    case "TRADE_TECHNOLOGIES":
+      return dname("TechType", n);
+    case "TRADE_RESOURCES":
+      return dname("BonusType", n);
+    case "TRADE_CITIES":
+      return it.name ?? S.cities.get(n)?.name ?? `City ${n}`;
+    case "TRADE_CIVIC":
+      return dname("CivicType", n);
+    case "TRADE_RELIGION":
+      return dname("ReligionType", n);
+    case "TRADE_PEACE":
+      return `Make peace with ${teamName(n)}`;
+    case "TRADE_WAR":
+      return `Declare war on ${teamName(n)}`;
+    case "TRADE_EMBARGO":
+      return `Stop trading with ${teamName(n)}`;
+  }
+  return dname("TradeableItem", it.item);
+}
+
+/** Trade items that go on both sides of a deal (C++ `CvDeal::isDual`): peace treaty, open
+ *  borders, defensive pact, permanent alliance. */
+export const DUAL_ITEMS = ["TRADE_PEACE_TREATY", "TRADE_OPEN_BORDERS", "TRADE_DEFENSIVE_PACT", "TRADE_PERMANENT_ALLIANCE"];
 
 /** The lines of the end-turn gate (`confirm end_turn`). */
 export function gateLines(c) {

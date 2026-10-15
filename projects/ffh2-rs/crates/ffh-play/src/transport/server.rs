@@ -46,6 +46,9 @@ pub const PUBLISH_EVERY: Duration = Duration::from_millis(20);
 /// get 503.
 pub const MAX_CONNECTIONS: usize = 64;
 
+/// On quitting, how long the acceptor waits for the connections still answering.
+const QUIT_DRAIN: Duration = Duration::from_secs(2);
+
 /// `ffh-play serve`'s settings.
 #[derive(Clone, Debug)]
 pub struct ServeOptions {
@@ -319,6 +322,14 @@ impl Server {
                     if spawned.is_err() {
                         open.fetch_sub(1, Ordering::Relaxed);
                     }
+                }
+                // Quitting: the answers in flight (the `quit` request's own among them) are
+                // written before the acceptor ends, and with it `Server::wait` and the process
+                // (P6: the quit's answer was sometimes lost). Bounded: a connection whose request
+                // never comes is not waited for.
+                let t0 = Instant::now();
+                while open.load(Ordering::Relaxed) > 0 && t0.elapsed() < QUIT_DRAIN {
+                    std::thread::sleep(Duration::from_millis(5));
                 }
             })
             .map_err(|e| e.to_string())?;

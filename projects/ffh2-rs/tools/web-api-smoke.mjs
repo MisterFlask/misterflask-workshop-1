@@ -9,7 +9,12 @@
 // request waits while the keep/raze decision is answered on another request; and a staged load
 // (`ffh-play stage load`): the transport picker answered with the command the page builds;
 // then quits. Every refusal of something the server offered is a failure, as are
-// inconsistent views (units on unrevealed plots, a stale cached view).
+// inconsistent views (units on unrevealed plots, a stale cached view). Phase 6: the map is also
+// followed by tile deltas (`/api/map?since=&epoch=`, tiles.js `applyMapDelta`) and checked
+// against the full map at every check; the screens' queries and commands are exercised (the city
+// screen's specialist buttons, the civics screen's proposal and revolution, the sliders, the
+// trade tables, the inspector), and the AI plays one turn for the player (`autoplay`, the
+// spectator mode's step).
 //
 //   node tools/web-api-smoke.mjs [--bin PATH] [--url URL] [--turns 20] [--seed 5]
 //        [--world WORLDSIZE_TINY] [--opponents 2] [--keep] [--verbose]
@@ -21,7 +26,7 @@ import fs from "node:fs";
 import path from "node:path";
 import * as api from "../crates/ffh-play/assets/app/api.js";
 import { popupQueue, setData, setView, loadUnitCommand } from "../crates/ffh-play/assets/app/state.js";
-import { plotIndex, plotDistance } from "../crates/ffh-play/assets/app/tiles.js";
+import { plotIndex, plotDistance, applyMapDelta, MAP_LAYERS } from "../crates/ffh-play/assets/app/tiles.js";
 import { parseArgs, findBin, tempDir, startServer, rng, stage, until } from "./web-lib.mjs";
 
 let args;
@@ -37,7 +42,7 @@ const verbose = !!args.verbose;
 const log = (...a) => verbose && console.log(...a);
 const random = rng(SEED * 7919 + 1);
 
-const stats = { turns: 0, commands: 0, refused: 0, confirms: 0, popups: 0, decisions: 0, moves: 0, founded: 0, polls: 0 };
+const stats = { turns: 0, commands: 0, refused: 0, confirms: 0, popups: 0, decisions: 0, moves: 0, founded: 0, polls: 0, map_deltas: 0, map_fulls: 0, screens: 0 };
 const failures = [];
 function fail(msg) {
   failures.push(msg);
@@ -126,6 +131,7 @@ async function checkView(st) {
   }
   if (view.view_version !== st.view_version) fail(`cached view_version ${view.view_version} != status ${st.view_version}`);
   if (map.map_rev !== st.map_rev) fail(`cached map_rev ${map.map_rev} != status ${st.map_rev}`);
+  followMap(map);
   const n = map.w * map.h;
   for (const k of ["vis", "terrain", "owner", "city", "yield"]) if (map[k].length !== n) fail(`map.${k} has ${map[k].length} values, not ${n}`);
   const me = view.me.player;
@@ -140,6 +146,97 @@ async function checkView(st) {
     if (i < 0 || map.city[i] !== c.id) fail(`city ${c.id} at (${c.x}, ${c.y}) not in the map's city array`);
   }
   return { view, map };
+}
+
+/** The map as a client following the deltas holds it (P6): `/api/map?since=R&epoch=E` applied
+ *  to the map held must be the full map. */
+let clientMap = null;
+async function followMap(full) {
+  if (clientMap) {
+    const reply = await api.get(`/api/map?since=${clientMap.rev}&epoch=${encodeURIComponent(clientMap.epoch)}`);
+    try {
+      const { map, changed } = applyMapDelta(clientMap, reply);
+      if (changed === "all") stats.map_fulls++;
+      else stats.map_deltas++;
+      clientMap = map;
+    } catch (e) {
+      fail(`map delta: ${e.message}`);
+      clientMap = null;
+    }
+  }
+  if (clientMap && clientMap.rev === full.rev) {
+    for (const k of MAP_LAYERS) {
+      const i = full[k].findIndex((v, j) => clientMap[k][j] !== v);
+      if (i >= 0) {
+        fail(`the map from deltas differs from the full map: ${k}[${i}] ${clientMap[k][i]} != ${full[k][i]} (rev ${full.rev})`);
+        break;
+      }
+    }
+    if (clientMap.map_rev !== full.map_rev) fail(`map_rev from deltas ${clientMap.map_rev} != ${full.map_rev}`);
+  }
+  if (!clientMap || clientMap.rev !== full.rev) clientMap = full;
+}
+
+/** The screens' queries and commands (P6), as the page sends them: each answer offered by the
+ *  server must be accepted. */
+async function screens(st) {
+  stats.screens++;
+  const view = await api.get("/api/view");
+  const me = view.me;
+  // The city screen: a specialist's + then − (the buttons the city query enables).
+  const mine = view.cities.filter((c) => c.owner === me.player);
+  const task = idx("TaskType", "TASK_CHANGE_SPECIALIST");
+  for (const city of mine.slice(0, 2)) {
+    const c = await api.query("city", { city: city.id });
+    if (c.plots.some((p) => p.can_work === undefined)) fail("city plots without can_work");
+    const s = c.specialists.find((x) => x.plus);
+    if (!s) continue;
+    const cmd = (n) => ({ c: "do_task", city: city.id, task, data1: s.specialist, data2: n, option: false, alt: false, shift: false, ctrl: false });
+    if (!(await command(cmd(1)))) continue;
+    await settle();
+    const after = await api.query("city", { city: city.id });
+    const t = after.specialists.find((x) => x.specialist === s.specialist);
+    if (t.forced <= s.forced && t.count <= s.count) fail(`the specialist ${s.specialist} did not grow in ${city.name}`);
+    if (t.minus) await command(cmd(-1));
+    await settle();
+  }
+  // The civics screen: the proposal of one available civic, then the revolution when valid.
+  const civics = await api.query("civics");
+  const pick = civics.options.flatMap((o) => o.civics).find((x) => x.available && !x.current);
+  if (pick) {
+    const p = (await api.query("civics", { with: [pick.civic] })).proposed;
+    if (!p?.changed) fail(`civics {with: [${pick.civic}]}: ${JSON.stringify(p)}`);
+    else if (p.valid) {
+      if (await command({ c: "update_civics", civics: [pick.civic] })) {
+        await settle();
+        const now = await api.query("civics");
+        const inAnarchy = (await api.get("/api/view")).me.anarchy > 0;
+        if (!inAnarchy && !now.options.some((o) => o.civics.some((x) => x.civic === pick.civic && x.current))) fail(`the revolution to ${pick.civic} did not happen`);
+      }
+    }
+  }
+  // The sliders: the research rate down and back up by the step.
+  const step = data.defines?.commerce_percent_change_increments ?? 10;
+  const research = idx("CommerceType", "COMMERCE_RESEARCH");
+  const m = (await api.get("/api/view")).me;
+  if (m.flexible[research] && m.commerce_percent[research] >= step) {
+    if (await command({ c: "percent_change", commerce: research, change: -step })) {
+      await settle();
+      const after = (await api.get("/api/view")).me.commerce_percent[research];
+      if (after !== m.commerce_percent[research] - step) fail(`research ${m.commerce_percent[research]}% - ${step} = ${after}%`);
+      await command({ c: "percent_change", commerce: research, change: step });
+      await settle();
+    }
+  }
+  // Diplomacy: the trade tables with every player met; the inspector on our player.
+  const players = await api.query("players");
+  for (const p of players.players.filter((x) => x.alive && !x.barbarian)) {
+    const t = await api.query("trade", { with: p.id });
+    if (!Array.isArray(t.we_give) || !Array.isArray(t.they_give)) fail(`trade with ${p.id}: ${JSON.stringify(t).slice(0, 200)}`);
+  }
+  const ins = await api.query("inspect", { kind: "player", oid: me.player });
+  if (typeof ins.debug !== "string" || ins.debug.length < 100) fail(`inspect player: ${JSON.stringify(ins).slice(0, 200)}`);
+  log(`screens at turn ${st.turn}: ok`);
 }
 
 async function answerPopups(view, turn) {
@@ -333,6 +430,11 @@ async function main() {
       await api.answer(st.decision.id, null);
     } else if (st.phase === "human") {
       const before = st.turn;
+      if (stats.turns === 8 && stats.screens === 0) {
+        await screens(st);
+        st = await settle();
+        if (st.phase !== "human") continue;
+      }
       await playTurn(st);
       st = await settle();
       if (st.turn > before) stats.turns++;
@@ -349,6 +451,25 @@ async function main() {
     st = await settle();
   }
   const ms = Date.now() - t0;
+  // The AI plays a turn for the player (the spectator mode's step), then the screens again.
+  if (st.phase === "human") {
+    const before = st.turn;
+    if (await command({ c: "autoplay", turns: 1 })) {
+      st = await settle();
+      while (st.phase === "decision") {
+        stats.decisions++;
+        await api.answer(st.decision.id, null);
+        st = await settle();
+      }
+      if (st.phase === "human" && st.turn !== before + 1) fail(`autoplay of 1 turn: turn ${before} -> ${st.turn}`);
+      const v = await api.get("/api/view");
+      if (v?.me?.ai_auto_play) fail(`after the autoplay turn the player is still on AI autoplay (${v.me.ai_auto_play})`);
+    }
+    if (st.phase === "human") {
+      await checkView(st);
+      await screens(st);
+    }
+  }
   // Save, list, load.
   if (st.phase === "human") {
     const saved = await api.session("save", { name: "smoke" });

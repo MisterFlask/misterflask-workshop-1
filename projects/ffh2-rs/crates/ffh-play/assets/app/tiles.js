@@ -132,8 +132,11 @@ function chunksAround(map, x, y, out) {
   }
 }
 
-/** The map arrays the terrain cache draws from. */
-export const STATIC_LAYERS = ["vis", "plot_type", "terrain", "feature", "bonus", "improvement", "route", "owner", "river", "city"];
+/** The map arrays of a `map` reply (design §4.4), in the server's order. */
+export const MAP_LAYERS = ["vis", "plot_type", "terrain", "feature", "bonus", "improvement", "route", "owner", "river", "city", "yield"];
+
+/** The map arrays the terrain cache draws from (every layer: the yield layer draws `yield`). */
+export const STATIC_LAYERS = MAP_LAYERS;
 
 /** The chunks to redraw between two maps (`"all"` for another map or none before), as a Set
  *  of `"cx,cy"`. */
@@ -149,6 +152,46 @@ export function dirtyChunks(prev, next) {
   }
   return out;
 }
+
+/** The chunks to redraw for the tiles `tiles` (indices) that changed, as a Set of `"cx,cy"`. */
+export function chunksOfTiles(map, tiles) {
+  const out = new Set();
+  for (const i of tiles) {
+    const { x, y } = plotXY(map, i);
+    chunksAround(map, x, y, out);
+  }
+  return out;
+}
+
+/** A `map` reply applied to the map the client holds (design §4.4, phase 6 deltas): a full
+ *  reply (`full: true`) is the new map; a delta (`full: false`, `tiles` = the indices of the
+ *  changed tiles, each layer the values for them in that order) is applied to a copy of
+ *  `prev`, which must be the map of revision `since` of the same `epoch`. Returns `{map,
+ *  changed}`: `changed` is the tile indices, or "all". Throws when a delta does not fit. */
+export function applyMapDelta(prev, reply) {
+  if (reply.full !== false) return { map: reply, changed: "all" };
+  if (!prev || prev.epoch !== reply.epoch || prev.rev !== reply.since || prev.w !== reply.w || prev.h !== reply.h) {
+    throw new Error(`map delta since ${reply.since} (${reply.epoch}) does not fit the map held (${prev?.rev}, ${prev?.epoch})`);
+  }
+  const tiles = reply.tiles ?? [];
+  const map = { ...reply, full: true };
+  delete map.tiles;
+  delete map.since;
+  for (const k of MAP_LAYERS) {
+    const a = prev[k].slice();
+    const v = reply[k];
+    if (!Array.isArray(v) || v.length !== tiles.length) throw new Error(`map delta: layer ${k} has ${v?.length} values for ${tiles.length} tiles`);
+    for (let j = 0; j < tiles.length; j++) a[tiles[j]] = v[j];
+    map[k] = a;
+  }
+  return { map, changed: tiles };
+}
+
+/** The yield colours (food, production, commerce) of the yield layer. */
+export const YIELD_COLORS = ["#8fe07a", "#e0a050", "#f2dc5a"];
+
+/** The map's layers (the map's own drawing modes, design §5.1 "Layers"). */
+export const LAYERS = ["terrain", "political", "yield"];
 
 /** A stable colour for any string. */
 export function hashColor(s, sat = 40, light = 45) {

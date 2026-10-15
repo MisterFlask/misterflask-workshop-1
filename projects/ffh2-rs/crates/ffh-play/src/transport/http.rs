@@ -64,6 +64,10 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/city.js", JS, include_str!("../../assets/app/city.js")),
     ("app/screens.js", JS, include_str!("../../assets/app/screens.js")),
     ("app/hud.js", JS, include_str!("../../assets/app/hud.js")),
+    ("app/hotkeys.js", JS, include_str!("../../assets/app/hotkeys.js")),
+    ("app/empire.js", JS, include_str!("../../assets/app/empire.js")),
+    ("app/diplo.js", JS, include_str!("../../assets/app/diplo.js")),
+    ("app/tools.js", JS, include_str!("../../assets/app/tools.js")),
 ];
 
 /// A parsed request.

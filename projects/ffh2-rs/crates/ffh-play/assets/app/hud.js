@@ -2,9 +2,10 @@
 // counter, mana, anarchy, golden age, Stasis) with the phase and the progress line during the
 // AI turns, and the bottom panel: the turn report, the messages by turn, the game's files.
 
-import { S, dname, tname, turns, playerName, me } from "./state.js";
+import { S, dname, tname, turns, playerName, me, emit } from "./state.js";
 import { h, fill } from "./dom.js";
 import { openCount } from "./commands.js";
+import { spectatorBar } from "./tools.js";
 
 /** Year for people: -4000 -> "4000 BC". */
 export function yearText(y) {
@@ -42,6 +43,7 @@ export function renderTop() {
     st.year !== undefined ? h("span.dim", ` ${yearText(st.year)} · `) : null,
     h("span#phase-text", line),
     st.reveal ? h("span.badge.reveal", "DEBUG REVEAL") : null,
+    spectatorBar(),
   );
   document.body.dataset.phase = st.phase ?? "";
   const end = document.getElementById("end-turn");
@@ -65,8 +67,8 @@ export function renderTop() {
       r ? h("span.bar", h("span.fill", { style: { width: `${Math.min(100, Math.round((100 * r.progress) / Math.max(1, r.cost)))}%` } })) : null,
     ),
     h(
-      "span.stat",
-      { title: "Commerce sliders" },
+      "button.stat.sliders",
+      { id: "sliders-button", title: "Commerce sliders: click to change them [F2]", onclick: () => emit("open-screen", "finance") },
       m.commerce_percent
         .map((p, i) => [p, i])
         .filter(([p, i]) => p > 0 || m.flexible[i])

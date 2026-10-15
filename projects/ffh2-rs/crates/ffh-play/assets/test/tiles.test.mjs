@@ -108,10 +108,10 @@ test("dirty chunks: the changed plot's chunk and its neighbours'", () => {
   const d = structuredClone(a);
   d.vis[0] = 1;
   assert.ok(T.dirtyChunks(a, d).has("2,0"));
-  // The yield layer is not drawn in the cache.
+  // The yields are drawn in the cache too (the yield map layer, P6).
   const e = structuredClone(a);
   e.yield[5] = 7;
-  assert.equal(T.dirtyChunks(a, e).size, 0);
+  assert.ok(T.dirtyChunks(a, e).has("0,0"));
 });
 
 test("labels, colours and the top unit", () => {
@@ -154,4 +154,36 @@ test("turn markers along a path", () => {
     { i: 4, turn: 3, last: true },
   ]);
   assert.deepEqual(T.pathTurnMarks([nodes[0]]), []);
+});
+
+test("map deltas: the changed tiles on a copy, or the whole map", () => {
+  const layers = T.MAP_LAYERS;
+  const full = (rev, f) => {
+    const m = { w: 4, h: 3, wrap_x: true, wrap_y: false, full: true, epoch: "e1", rev, map_rev: `r${rev}`, reveal: false };
+    for (const k of layers) m[k] = Array.from({ length: 12 }, (_, i) => f(k, i));
+    return m;
+  };
+  const prev = full(5, () => 0);
+  // A full reply is the map.
+  const f = full(9, () => 1);
+  assert.deepEqual(T.applyMapDelta(prev, f), { map: f, changed: "all" });
+  // A delta: tiles 2 and 11 changed.
+  const delta = { w: 4, h: 3, wrap_x: true, wrap_y: false, full: false, since: 5, tiles: [2, 11], epoch: "e1", rev: 7, map_rev: "r7", reveal: false };
+  for (const k of layers) delta[k] = k === "owner" ? [3, 4] : [0, 0];
+  const { map, changed } = T.applyMapDelta(prev, delta);
+  assert.deepEqual(changed, [2, 11]);
+  assert.equal(map.full, true);
+  assert.equal(map.rev, 7);
+  assert.equal(map.since, undefined);
+  assert.equal(map.tiles, undefined);
+  assert.deepEqual(map.owner, [0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 4]);
+  assert.deepEqual(prev.owner, Array(12).fill(0), "the map held is not changed");
+  // A delta that does not fit the map held: another epoch, another revision, a short layer.
+  assert.throws(() => T.applyMapDelta({ ...prev, epoch: "e0" }, delta));
+  assert.throws(() => T.applyMapDelta({ ...prev, rev: 6 }, delta));
+  assert.throws(() => T.applyMapDelta(null, delta));
+  assert.throws(() => T.applyMapDelta(prev, { ...delta, owner: [3] }));
+  // The chunks to redraw: the changed tiles' and their neighbours'.
+  const chunks = T.chunksOfTiles(map, [2]);
+  assert.ok(chunks.has("0,0"));
 });

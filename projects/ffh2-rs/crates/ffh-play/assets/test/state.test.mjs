@@ -1,6 +1,6 @@
 // node --test: the client state's lookups and the pure helpers (app/state.js): names from the
 // data tables, the view's indices, the deferred popups' order, vote labels, the end-turn gate,
-// cycling, save names.
+// Civ4's group cycle, the waiting groups on a plot, options, trade items, save names.
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as St from "../app/state.js";
@@ -83,42 +83,66 @@ test("cycling over the ready groups: next in order, or the nearest", () => {
   assert.equal(St.nextReadyGroup(100), null);
 });
 
-test("W cycles over every waiting group, not between the two nearest (P5 review)", () => {
-  // The review's game: settler g0 at (13,10), scout g1 at (13,12), warrior g2 at (15,10);
-  // settler-scout 2, settler-warrior 2, scout-warrior 3 (Civ4's plot distance).
-  const units = [
-    { id: 0, owner: 0, type: 1, x: 13, y: 10, group: 0 },
-    { id: 1, owner: 0, type: 0, x: 13, y: 12, group: 1 },
-    { id: 2, owner: 0, type: 0, x: 15, y: 10, group: 2 },
-  ];
-  St.setView({
-    ...view,
-    units,
-    groups: units.map((u) => ({ id: u.group, head: u.id, units: [u.id] })),
-    pending: { ...view.pending, ready_groups: [0, 1, 2] },
-  });
-  const dist = (ax, ay, bx, by) => {
-    const dx = Math.abs(ax - bx);
-    const dy = Math.abs(ay - by);
-    return Math.max(dx, dy) + Math.floor(Math.min(dx, dy) / 2);
-  };
-  const visited = new Set();
-  let cur = 0;
-  const seen = [cur];
-  for (let k = 0; k < 8; k++) {
-    const u = St.S.units.get(St.S.groups.get(cur).head);
-    const next = St.cycleNext(cur, visited, { x: u.x, y: u.y }, dist);
-    assert.notEqual(next, cur, "a press always moves on");
-    cur = next;
+test("Civ4's group cycle: the next waiting group after the selection's place, going round (CvPlayer::cycleSelectionGroups)", () => {
+  const cycle = [5, 1, 9, 3];
+  const ready = new Set([1, 3, 9]);
+  assert.deepEqual(St.cycleGroups(cycle, ready, 1), { group: 9, wrapped: false });
+  assert.deepEqual(St.cycleGroups(cycle, ready, 9), { group: 3, wrapped: false });
+  assert.deepEqual(St.cycleGroups(cycle, ready, 3), { group: 1, wrapped: true });
+  assert.deepEqual(St.cycleGroups(cycle, ready, 1, false), { group: 3, wrapped: true });
+  assert.deepEqual(St.cycleGroups(cycle, ready, 3, false), { group: 9, wrapped: false });
+  // A selected group that does not wait (5) still has its place in the cycle.
+  assert.deepEqual(St.cycleGroups(cycle, ready, 5), { group: 1, wrapped: false });
+  // No selection: from the head, no wrap; a group not in the cycle: from the head, a wrap.
+  assert.deepEqual(St.cycleGroups(cycle, ready, null), { group: 1, wrapped: false });
+  assert.deepEqual(St.cycleGroups(cycle, ready, 42), { group: 1, wrapped: true });
+  // Only the selected group waits: it again (a wrap); none waits: nothing.
+  assert.deepEqual(St.cycleGroups(cycle, new Set([9]), 9), { group: 9, wrapped: true });
+  assert.deepEqual(St.cycleGroups(cycle, new Set(), 9), { group: null, wrapped: true });
+  assert.deepEqual(St.cycleGroups([], ready, null), { group: null, wrapped: true });
+  // W again and again visits every waiting group before any one again (the P5 review's case:
+  // never back and forth between the two nearest).
+  let cur = 1;
+  const seen = [];
+  for (let k = 0; k < 6; k++) {
+    cur = St.cycleGroups(cycle, ready, cur).group;
     seen.push(cur);
   }
-  // Every group within each press cycle: the first three presses reach all of them, and over
-  // eight presses each one comes up at least twice.
-  assert.deepEqual(new Set(seen.slice(0, 3)), new Set([0, 1, 2]), `${seen}`);
-  for (const g of [0, 1, 2]) assert.ok(seen.filter((s) => s === g).length >= 2, `${seen}`);
-  // One waiting group (the current one): nothing else to select.
-  St.setView({ ...view, units, groups: units.map((u) => ({ id: u.group, head: u.id, units: [u.id] })), pending: { ...view.pending, ready_groups: [2] } });
-  assert.equal(St.cycleNext(2, new Set()), null);
+  assert.deepEqual(seen, [9, 3, 1, 9, 3, 1]);
+});
+
+test("the waiting groups on a plot (updateSelectionList), player options", () => {
+  St.setData({ ...data, tables: { ...data.tables, PlayerOptionType: [{ type: "PLAYEROPTION_ADVISOR_POPUPS" }, { type: "PLAYEROPTION_NO_UNIT_CYCLING" }] } });
+  St.setView({ ...view, me: { ...view.me, options: [false, true] } });
+  assert.deepEqual(St.readyGroupsOnPlot(3, 3), [100]); // 101 does not wait
+  assert.deepEqual(St.readyGroupsOnPlot(3, 3, 100), []);
+  assert.deepEqual(St.readyGroupsOnPlot(4, 4), [103]);
+  assert.deepEqual(St.readyGroupsOnPlot(0, 0), []);
+  assert.ok(St.option("PLAYEROPTION_NO_UNIT_CYCLING"));
+  assert.ok(!St.option("PLAYEROPTION_ADVISOR_POPUPS"));
+  assert.ok(!St.option("PLAYEROPTION_NOT_THERE"));
+  St.setData(data);
+});
+
+test("trade items for people", () => {
+  St.setData({
+    ...data,
+    tables: {
+      ...data.tables,
+      TradeableItem: ["TRADE_GOLD", "TRADE_GOLD_PER_TURN", "TRADE_MAPS", "TRADE_TECHNOLOGIES", "TRADE_CITIES", "TRADE_PEACE", "TRADE_OPEN_BORDERS"].map((type) => ({ type })),
+    },
+  });
+  St.setView(view);
+  assert.equal(St.tradeItemLabel({ item: 0, data: 120 }), "120 gold");
+  assert.equal(St.tradeItemLabel({ item: 0, data: 0 }), "Gold");
+  assert.equal(St.tradeItemLabel({ item: 1, data: 3 }), "3 gold per turn");
+  assert.equal(St.tradeItemLabel({ item: 2, data: 0 }), "Maps");
+  assert.equal(St.tradeItemLabel({ item: 3, data: 0 }), "Ex");
+  assert.equal(St.tradeItemLabel({ item: 4, data: 4 }), "Home");
+  assert.equal(St.tradeItemLabel({ item: 4, data: 9, name: "Their city" }), "Their city");
+  assert.equal(St.tradeItemLabel({ item: 5, data: 1 }), "Make peace with Basium & Hyborem");
+  assert.ok(St.DUAL_ITEMS.includes("TRADE_OPEN_BORDERS"));
+  St.setData(data);
 });
 
 test("deferred popups in C++ order, and set aside per turn", () => {

@@ -3,8 +3,10 @@
 // modes (go-to, route-to, range attack: pick a plot), grouping, and cycling over the ready groups.
 
 import * as api from "./api.js";
-import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, nextReadyGroup, cycleNext, moves, turns, info } from "./state.js";
+import { S, emit, on, dname, tname, tidx, me, unitsAt, ownUnitsAt, cityAt, playerName, readyGroups, nextReadyGroup, cycleGroups, readyGroupsOnPlot, option, moves, turns, info } from "./state.js";
+import * as K from "./hotkeys.js";
 import { h, fill, toast } from "./dom.js";
+import { openModal } from "./modals.js";
 import { run, actionCommand, sending } from "./commands.js";
 import { plotDistance, plotIndex, humanize } from "./tiles.js";
 import { render as markup } from "./markup.js";
@@ -21,10 +23,9 @@ let groupKey = "";
 let groupPending = null;
 /** An interface mode: `{kind: "move"}` or `{kind: "target", action}`. */
 let mode = null;
-/** After a command on the selection, move on to the next ready group once it is done. */
-let advance = false;
-/** W/Tab/Next: the groups this cycle selected, and the game turn they belong to. */
-let cycle = { key: "", visited: new Set() };
+/** After a command on the selection: the plot the selection was on (C++ `getOriginalPlot`),
+ *  to move on from once the group no longer waits for orders (`updateSelection`); else null. */
+let advance = null;
 /** Shift-right-click waypoints, held while Shift is down and sent when it is released
  *  (`flushWaypoints`): `{units, points: [[x, y]]}` or null. The exe sends each one at once but
  *  no AutoMoves while Shift is down (CvGame::updateTestEndTurn `if (!gDLL->shiftKey())`), and
@@ -50,7 +51,7 @@ export function initUnits(view, panelEl) {
   mapView = view;
   panel = panelEl;
   on("applied", (c) => {
-    if (c.units && S.sel && c.units.some((u) => S.sel.units.includes(u))) advance = true;
+    if (c.units && S.sel && c.units.some((u) => S.sel.units.includes(u))) advance = { x: S.sel.x, y: S.sel.y };
   });
 }
 
@@ -70,7 +71,7 @@ export function select(ids, { center = false } = {}) {
     if (center) mapView.reveal(x, y);
   }
   setMode(null);
-  advance = false;
+  advance = null;
   clearPreview();
   syncOverlay();
   refreshGroup();
@@ -87,26 +88,76 @@ export function clearSelection() {
   select([]);
 }
 
-/** Selects the next ready group: the nearest to the selection (after a command, at a new turn);
- *  with `cycle` (W, Tab, "Next") the nearest not yet selected in this cycle, so that pressing
- *  it again reaches every waiting group (`cycleNext`). */
-export function selectNext({ skipCurrent = false, cycle: cycling = false } = {}) {
+/** The groups waiting for orders (`readyToSelect`), as a Set. */
+function readySet() {
+  return new Set(readyGroups().filter((g) => S.groups.has(g)));
+}
+
+/** C++ `CvGame::cycleSelectionGroups(bClear, bForward)` (W, Tab, Next; P6): the next group in
+ *  the player's group cycle (`view.group_cycle`, C++ `m_groupCycle`) after the selection's that
+ *  waits for orders, going round; with no selection, the waiting group nearest the centre of the
+ *  map view (`findSelectionGroup` at the look-at plot). When the search went round and a group
+ *  has orders to continue, the exe sends AutoMoves (they move now). */
+export function selectNext({ forward = true } = {}) {
   const cur = currentGroup();
-  const near = S.sel ? { x: S.sel.x, y: S.sel.y } : null;
-  const dist = near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
-  let g;
-  if (cycling) {
-    const key = `${S.status?.game?.journal ?? ""}|${S.view?.turn}`;
-    if (cycle.key !== key) cycle = { key, visited: new Set() };
-    g = cycleNext(cur, cycle.visited, near, dist);
-  } else {
-    g = nextReadyGroup(skipCurrent ? cur : -1, near, dist, skipCurrent && cur !== null ? [cur] : []);
-  }
-  if (g !== null && g !== undefined) {
+  if (cur === null) {
+    const near = mapView?.center?.() ?? null;
+    const dist = near && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
+    const g = nextReadyGroup(-1, near, dist);
+    if (g === null || g === undefined) return false;
     selectGroup(g, { center: true });
     return true;
   }
-  return false;
+  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? readyGroups(), readySet(), cur, forward);
+  if (wrapped && S.view?.has_auto_unit) autoMoves();
+  if (group === null) return false;
+  selectGroup(group, { center: true });
+  return true;
+}
+
+/** C++ `CvGame::updateSelectionList` (after a command, P6): once the selected group no longer
+ *  waits for orders, the next waiting group on the plot it started from, then on its plot,
+ *  then the next in the group cycle (`cycleSelectionGroups`, AutoMoves on a wrap); nothing when
+ *  the player turned unit cycling off (PLAYEROPTION_NO_UNIT_CYCLING). */
+function updateSelection(origin) {
+  if (option("PLAYEROPTION_NO_UNIT_CYCLING")) return false;
+  const cur = currentGroup();
+  for (const p of [origin, S.sel ? { x: S.sel.x, y: S.sel.y } : null]) {
+    if (!p) continue;
+    const g = readyGroupsOnPlot(p.x, p.y, cur)[0];
+    if (g !== undefined) {
+      selectGroup(g, { center: true });
+      return true;
+    }
+  }
+  if (cur === null) {
+    // The selected units are gone (killed, joined a city): the waiting group nearest the plot
+    // they were on (C++ `findSelectionGroup` at the look-at plot).
+    const dist = origin && S.map ? (ax, ay, bx, by) => plotDistance(S.map, ax, ay, bx, by) : null;
+    const g = nextReadyGroup(-1, origin, dist);
+    if (g === null || g === undefined) return false;
+    selectGroup(g, { center: true });
+    return true;
+  }
+  const { group, wrapped } = cycleGroups(S.view?.group_cycle ?? readyGroups(), readySet(), cur);
+  if (wrapped && S.view?.has_auto_unit) autoMoves();
+  if (group === null || group === cur) {
+    S.sel = null;
+    syncOverlay();
+    refreshGroup();
+    emit("selection");
+    return false;
+  }
+  selectGroup(group, { center: true });
+  return true;
+}
+
+/** CvMessageControl::sendAutoMoves (a cycle that went round with orders waiting). */
+function autoMoves() {
+  setTimeout(async () => {
+    for (let i = 0; sending() && i < 200; i++) await new Promise((r) => setTimeout(r, 20));
+    if (S.status?.phase === "human") run({ c: "auto_moves" }, { quiet: true });
+  }, 0);
 }
 
 /** The group the selection is (its first unit's). */
@@ -128,9 +179,10 @@ export function viewChanged() {
     }
   }
   if (advance) {
-    advance = false;
+    const origin = advance;
+    advance = null;
     const g = currentGroup();
-    if (!S.sel || g === null || !readyGroups().includes(g)) selectNext({ skipCurrent: true }) || (S.sel && refreshGroup());
+    if (!S.sel || g === null || !readyGroups().includes(g)) updateSelection(origin) || (S.sel && refreshGroup());
     else refreshGroup();
   } else {
     refreshGroup();
@@ -268,22 +320,24 @@ export async function doAction(a) {
   await run(a.cmd);
 }
 
-/** Runs the first enabled action of a kind the hotkey names (`MISSION_FORTIFY`, ...) for the
- *  selection: pressed just after the selection changed, it waits for the selection's own
- *  actions (P5 review: not the previous selection's). */
-export async function hotkey(type) {
+/** A key press for the selection's actions (P6: Civ4's hotkeys, from the XML through
+ *  `/api/data`): pressed just after the selection changed, it waits for the selection's own
+ *  actions (P5 review: not the previous selection's), then runs the enabled action bound to the
+ *  key with the highest hotkey priority (`hotkeys.js`). Resolves with whether one ran. */
+export async function hotkeyEvent(ev) {
+  const e = { code: ev.code, key: ev.key, shiftKey: ev.shiftKey, altKey: ev.altKey, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey };
   for (let i = 0; i < 3 && S.sel && !reply() && groupPending; i++) await groupPending;
-  const a = findAction(type);
-  if (a) await doAction(a);
-  return !!a;
+  const r = reply();
+  if (!r?.actions) return false;
+  const a = K.actionForKey(r.actions, e, S.data);
+  if (!a) return false;
+  await doAction(a);
+  return true;
 }
 
-function findAction(type) {
-  const r = reply();
-  if (!r?.actions) return null;
-  const m = tidx("MissionType", type);
-  const c = tidx("CommandType", type);
-  return r.actions.find((a) => a.enabled && ((m >= 0 && a.mission === m && a.kind === "mission") || (c >= 0 && a.command === c))) ?? null;
+/** The selection's actions (the `group` reply held; none while it is on its way). */
+export function currentActions() {
+  return reply()?.actions ?? [];
 }
 
 /** Enters an interface mode: `{kind: "move"}` (move to the plot clicked) or `{kind: "target",
@@ -549,6 +603,11 @@ function actionLabel(a) {
       if (m === "MISSION_JOIN") return `Join as ${dname("SpecialistType", a.data1)}`;
       if (m === "MISSION_CONSTRUCT") return `Build ${dname("BuildingType", a.data1)}`;
       if (m === "MISSION_LEAD") return `Lead ${dname("UnitType", S.units.get(a.data1)?.type)}`;
+      if (m === "MISSION_DISCOVER") return "Discover a technology";
+      if (m === "MISSION_HURRY") return "Hurry production";
+      if (m === "MISSION_TRADE") return "Trade mission";
+      if (m === "MISSION_GREAT_WORK") return "Great work";
+      if (m === "MISSION_GOLDEN_AGE") return "Start a golden age";
       return dname("MissionType", a.mission);
     }
     case "target":
@@ -561,33 +620,31 @@ function actionLabel(a) {
       return dname("SpellType", a.spell);
     case "promotion":
       return dname("PromotionType", a.promotion);
-    case "upgrade":
-      return `Upgrade: ${dname("UnitType", a.unit)} (${a.price} gold)`;
+    case "upgrade": {
+      const u = info("UnitType", a.unit);
+      return `Upgrade: ${dname("UnitType", a.unit)} (${a.price} gold${u ? `; ${u.combat}/${u.combat_defense} strength, ${u.moves} moves` : ""})`;
+    }
   }
   return a.kind;
 }
 
-const HOTKEYS = {
-  MISSION_FORTIFY: "F",
-  MISSION_SLEEP: "S",
-  MISSION_SKIP: "Space",
-  MISSION_FOUND: "B",
-  MISSION_HEAL: "H",
-  MISSION_SENTRY: "",
-  INTERFACEMODE_GO_TO: "M",
-  COMMAND_DELETE: "Del",
-};
-
 function hotkeyOf(a) {
-  if (a.kind === "mission") return HOTKEYS[tname("MissionType", a.mission)] ?? "";
-  if (a.kind === "target") return HOTKEYS[a.mode] ?? "";
-  if (a.kind === "command") return HOTKEYS[tname("CommandType", a.command)] ?? "";
-  return "";
+  return K.label(K.bindings(a, S.data)[0]);
 }
 
+const typeOf = (a) => (a.kind === "mission" ? tname("MissionType", a.mission) : a.kind === "command" || a.kind === "load" ? tname("CommandType", a.command) : "");
+const GREAT_PERSON = ["MISSION_JOIN", "MISSION_CONSTRUCT", "MISSION_DISCOVER", "MISSION_HURRY", "MISSION_TRADE", "MISSION_GREAT_WORK", "MISSION_GOLDEN_AGE", "MISSION_LEAD", "MISSION_INFILTRATE"];
+const RELIGION = ["MISSION_SPREAD", "MISSION_SPREAD_CORPORATION"];
+const CARGO = ["COMMAND_LOAD", "COMMAND_LOAD_UNIT", "COMMAND_UNLOAD", "COMMAND_UNLOAD_ALL"];
+
+/** The actions panel's sections; each lists its actions in the action list's order
+ *  (`iOrderPriority`, C++ `SetGlobalActionInfo`). */
 const SECTIONS = [
-  ["Orders", (a) => (a.kind === "mission" && tname("MissionType", a.mission) !== "MISSION_BUILD") || a.kind === "target" || a.kind === "command" || a.kind === "load"],
-  ["Build", (a) => a.kind === "mission" && tname("MissionType", a.mission) === "MISSION_BUILD"],
+  ["Orders", (a) => (a.kind === "mission" && ![...GREAT_PERSON, ...RELIGION, "MISSION_BUILD"].includes(typeOf(a))) || a.kind === "target" || (a.kind === "command" && !CARGO.includes(typeOf(a)))],
+  ["Build", (a) => typeOf(a) === "MISSION_BUILD"],
+  ["Great person", (a) => GREAT_PERSON.includes(typeOf(a))],
+  ["Religion", (a) => RELIGION.includes(typeOf(a))],
+  ["Cargo", (a) => a.kind === "load" || CARGO.includes(typeOf(a))],
   ["Spells", (a) => a.kind === "spell"],
   ["Promotions", (a) => a.kind === "promotion"],
   ["Upgrades", (a) => a.kind === "upgrade"],
@@ -602,7 +659,7 @@ function actionButton(a) {
     {
       disabled: !a.enabled,
       "data-kind": a.kind,
-      "data-type": a.kind === "mission" ? tname("MissionType", a.mission) : a.kind === "target" ? a.mode : a.kind === "command" ? tname("CommandType", a.command) : a.kind === "spell" ? tname("SpellType", a.spell) : "",
+      "data-type": a.kind === "mission" ? tname("MissionType", a.mission) : a.kind === "target" ? a.mode : a.kind === "command" || a.kind === "load" ? tname("CommandType", a.command) : a.kind === "spell" ? tname("SpellType", a.spell) : a.kind === "promotion" ? tname("PromotionType", a.promotion) : a.kind === "upgrade" ? tname("UnitType", a.unit) : "",
       title: [key ? `[${key}]` : "", help ? markup(help).textContent : ""].filter(Boolean).join(" "),
       onclick: () => doAction(a),
     },
@@ -618,7 +675,7 @@ function unitRow(u, selected) {
     "div.unit-row",
     {
       "data-unit": u.id,
-      class: selected ? "selected" : "",
+      class: [selected ? "selected" : "", u.transport !== null && u.transport !== undefined ? "cargo" : ""].filter(Boolean).join(" "),
       title: "Click: select its group. Ctrl-click: add or remove this unit.",
       onclick: (ev) => {
         if (ev.ctrlKey || ev.metaKey) {
@@ -630,7 +687,14 @@ function unitRow(u, selected) {
         }
       },
     },
-    h("span.unit-name", dname("UnitType", u.type), u.promo_ready ? h("span.badge.promo", "promote") : null),
+    h(
+      "span.unit-name",
+      u.transport !== null && u.transport !== undefined ? h("span.dim", "↳ ") : null,
+      u.name ?? dname("UnitType", u.type),
+      u.promo_ready ? h("span.badge.promo", "promote") : null,
+      u.summon_turns ? h("span.badge", { title: "A summoned unit: turns left" }, `${u.summon_turns}t`) : null,
+      u.cargo?.length ? h("span.badge", { title: "Units on board" }, `${u.cargo.length} aboard`) : null,
+    ),
     h(
       "span.unit-stats",
       `${u.strength ?? ""}${u.strength !== undefined ? "⚔ " : ""}`,
@@ -665,14 +729,24 @@ export function renderPanel() {
     h("h3", own.length === 1 ? dname("UnitType", own[0].type) : `${S.sel.units.length} of ${own.length} units`),
     h("span.dim", ` (${x}, ${y})`),
   );
-  const list = h("div.unit-list", own.map((u) => unitRow({ ...u, ...(details.get(u.id) ?? {}) }, S.sel.units.includes(u.id))));
+  // Transports with their cargo under them (the units in a transport are listed after it).
+  const ids = new Set(own.map((u) => u.id));
+  const ordered = [];
+  for (const u of own.filter((u) => u.transport === null || u.transport === undefined || !ids.has(u.transport))) {
+    ordered.push(u);
+    for (const c of own.filter((c) => c.transport === u.id)) ordered.push(c);
+  }
+  const list = h("div.unit-list", ordered.map((u) => unitRow({ ...u, ...(details.get(u.id) ?? {}) }, S.sel.units.includes(u.id))));
   const tools = h(
     "div.row",
     h("button", { onclick: () => select(own.map((u) => u.id)), disabled: own.length < 2, title: "Select every unit here" }, "All"),
     h("button", { onclick: groupAll, disabled: own.length < 2, title: "Join the units here into one group" }, "Group"),
     h("button", { onclick: splitAll, disabled: S.sel.units.length < 2, title: "Each selected unit its own group" }, "Split"),
-    h("button", { onclick: () => selectNext({ cycle: true }), title: "Next unit waiting for orders [W]" }, "Next ⟳"),
+    h("button", { onclick: () => selectNext(), title: "Next unit waiting for orders [W]" }, "Next ⟳"),
   );
+  if (r?.actions?.some((a) => a.kind === "promotion" && a.enabled)) {
+    tools.append(h("button.promote", { onclick: () => openPromotions(), title: "Choose a promotion" }, "Promote…"));
+  }
   const city = cityAt(x, y);
   if (city && city.owner === me()?.player) {
     tools.append(h("button", { onclick: () => emit("open-city", city.id), title: "Open the city (or double-click it)" }, `${city.name} ▸`));
@@ -685,8 +759,10 @@ export function renderPanel() {
   else if (!r?.actions) actions.push(h("p.dim", "…"));
   else {
     for (const [title, test] of SECTIONS) {
-      const list = r.actions.filter(test);
-      if (list.length) actions.push(h("div.section", h("h4", title), h("div.actions", list.map(actionButton))));
+      const list = K.sortActions(r.actions.filter(test), S.data);
+      if (!list.length) continue;
+      const more = title === "Spells" ? h("button.link.small", { onclick: () => openSpells(), title: "Every spell with its description" }, "details") : null;
+      actions.push(h("div.section", h("h4", title, more ? " " : null, more), h("div.actions", list.map(actionButton))));
     }
   }
   const others = foreign.length ? h("div.section", h("h4", "Others here"), foreign.map((u) => h("div.dim", `${dname("UnitType", u.type)} (${playerName(u.owner)})`))) : null;
@@ -695,6 +771,64 @@ export function renderPanel() {
     ? h("p.mode-hint", `${waypoints.points.length === 1 ? "1 waypoint" : `${waypoints.points.length} waypoints`}: release Shift to send (Esc drops them).`)
     : null;
   fill(panel, head, hint, way, list, tools, status, actions, others);
+}
+
+/** The promotions the selection can take, with their descriptions: a click promotes (every
+ *  selected unit that can, as `CvNetDoCommand` with COMMAND_PROMOTION). */
+export function openPromotions() {
+  const r = reply();
+  const list = K.sortActions((r?.actions ?? []).filter((a) => a.kind === "promotion"), S.data);
+  const m = openModal({
+    title: "Promotions",
+    tag: "promotions",
+    wide: true,
+    body: [
+      list.length
+        ? h(
+            "div.options",
+            list.map((a) =>
+              h(
+                "button.option",
+                { disabled: !a.enabled, "data-promotion": a.promotion, onclick: async () => (await doAction(a), m.close("promoted")) },
+                h("span", dname("PromotionType", a.promotion)),
+                info("PromotionType", a.promotion)?.help ? h("small", markup(info("PromotionType", a.promotion).help)) : null,
+              ),
+            ),
+          )
+        : h("p.dim", "No promotion now."),
+    ],
+    buttons: [{ label: "Close", value: null }],
+  });
+  return m;
+}
+
+/** The selection's spells with their help (the spell's XML help, as the button's tooltip has
+ *  it): castable ones cast on a click. */
+export function openSpells() {
+  const r = reply();
+  const list = K.sortActions((r?.actions ?? []).filter((a) => a.kind === "spell"), S.data);
+  const m = openModal({
+    title: "Spells",
+    tag: "spells",
+    wide: true,
+    body: [
+      h(
+        "div.options",
+        list.map((a) => {
+          const e = info("SpellType", a.spell);
+          const notes = [a.global ? "world spell (once per game)" : null, a.causes_war ? "may declare war" : null, e?.range ? `range ${e.range}` : null].filter(Boolean).join(", ");
+          return h(
+            "button.option",
+            { disabled: !a.enabled, "data-spell": a.spell, onclick: async () => (m.close("cast"), await doAction(a)) },
+            h("span", dname("SpellType", a.spell), notes ? h("span.dim", ` (${notes})`) : null, a.enabled ? null : h("span.dim", " — not now")),
+            a.help || e?.help ? h("small", markup(a.help || e.help)) : null,
+          );
+        }),
+      ),
+    ],
+    buttons: [{ label: "Close", value: null }],
+  });
+  return m;
 }
 
 /** The side panel for a plot without units of ours. */

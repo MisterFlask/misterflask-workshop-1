@@ -194,10 +194,99 @@ textarea.raw { width: 100%; font: 12px var(--mono); }
 .toast.error { border-color: #b04040; color: var(--warn); }
 .toast.log { border-color: #4f6f8f; }
 
+/* Phase 6: the map layers, the spectator bar, the sliders button. */
+#mapwrap .layers { position: absolute; left: 48px; bottom: 10px; display: flex; gap: 2px; }
+#mapwrap .layers button { background: rgba(27,29,34,0.85); padding: 2px 8px; font-size: 12px; }
+#mapwrap .layers button.active { border-color: var(--accent); color: var(--accent); }
+.spectate { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 1px 6px; border: 1px solid #4fb3ff; border-radius: 5px; }
+.spectate b { color: #4fb3ff; font-weight: 600; margin-right: 2px; }
+button.stat.sliders { background: none; border: 1px dashed var(--line); padding: 0 6px; }
+th.group { text-align: left; padding-top: 8px; color: var(--accent); font-weight: 600; }
+
+/* Chips, toggles, small lists. */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); font-size: 12px; }
+label.toggle, label.check { display: flex; align-items: center; gap: 4px; margin: 4px 0; cursor: pointer; }
+.checks.single { display: flex; flex-direction: column; gap: 2px; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bar.wide { width: 160px; }
+
+/* The city screen: the plots, the specialists, the production. */
+.modal.city-screen { width: min(1100px, 100%); }
+.city-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.city-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cgrid { display: grid; gap: 2px; max-width: 360px; }
+.cplot { aspect-ratio: 1; padding: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; line-height: 1.1; background: #20242a; border-radius: 3px; }
+.cplot.none { visibility: hidden; }
+.cplot.worked { background: #2d3a24; border-color: var(--good); }
+.cplot.other { background: #2a2532; border-style: dashed; }
+.cplot.foreign { opacity: 0.55; }
+.cplot.hidden { background: #0d0e10; }
+.cplot.centre { background: #3a3220; border-color: var(--accent); }
+.cplot[disabled] { opacity: 0.6; }
+.cplot.worked[disabled], .cplot.centre[disabled] { opacity: 0.85; }
+.ccity { color: var(--accent); font-size: 12px; }
+.yields { display: inline-flex; gap: 3px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.specs { display: flex; flex-direction: column; gap: 2px; }
+.specs > div, .spec { display: flex; align-items: center; gap: 6px; }
+.spec-name { flex: 1; }
+
+/* The tech tree. */
+.modal { min-width: 0; }
+.modal.techtree { width: min(1400px, 100%); height: calc(100vh - 32px); }
+.techtree .modal-body { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1; }
+.tree-scroll { overflow: auto; flex: 1; min-height: 240px; border: 1px solid var(--line); border-radius: 4px; background: #15171b; }
+.tree { position: relative; }
+.tree-lines { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.tree-lines path { fill: none; stroke: #4a4f59; stroke-width: 1.2; }
+.tree-lines path.have { stroke: #4f7a4f; }
+button.tech { position: absolute; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; padding: 2px 6px; text-align: left; font-size: 11px; line-height: 1.15; overflow: hidden; }
+button.tech .tech-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+button.tech .tech-sub { color: var(--dim); font-size: 10px; white-space: nowrap; }
+button.tech .tech-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #2a2d33; }
+button.tech .tech-bar span { display: block; height: 100%; background: #4fb3ff; }
+button.tech.has { background: #213021; border-color: #3f6a3f; opacity: 0.75; }
+button.tech.researching { border-color: #4fb3ff; background: #1d2a38; }
+button.tech.queued { border-color: #4fb3ff; border-style: dashed; }
+button.tech.can { border-color: var(--accent); }
+button.tech.later { opacity: 0.75; }
+
+/* Civics, religion, finances. */
+.civics { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.civic-option { display: flex; flex-direction: column; gap: 3px; }
+.civic-option h4 { margin-top: 0; }
+button.civic { display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: left; }
+button.civic.current { border-color: #3f6a3f; background: #213021; }
+button.civic.chosen { border-color: var(--accent); background: #2d2a1d; }
+.civic-summary { margin-top: 10px; }
+table.scores tr.state td { color: var(--accent); }
+table.kv.sliders td { vertical-align: middle; }
+table.kv.sliders button { margin-left: 4px; }
+
+/* Diplomacy and trade. */
+table.scores.diplo td { vertical-align: top; }
+.trade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.trade-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trade-item { display: flex; align-items: center; gap: 6px; padding: 1px 4px; border: 1px solid transparent; border-radius: 4px; }
+.trade-item.on { border-color: var(--accent); background: #2d2a1d; }
+.trade-item > button { width: 26px; padding: 0; }
+input.amount { width: 80px; }
+
+/* Tools, inspector. */
+.tools { display: flex; flex-direction: column; gap: 4px; }
+button.tool { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 1px; padding: 5px 10px; }
+pre.report.inspect { max-height: 60vh; overflow: auto; font-size: 11px; }
+
+/* The unit panel: cargo under its transport, the promote button. */
+.unit-row.cargo { margin-left: 14px; }
+button.promote { border-color: var(--accent); color: var(--accent); }
+button.small.danger { border-color: #b04040; color: var(--warn); }
+
 /* Narrow screens: the side panel goes under the map. */
 @media (max-width: 760px) {
   #main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 40%; }
   #side { border-left: none; border-top: 1px solid var(--line); }
   #mapwrap canvas.minimap { width: 120px; height: 75px; }
   #bottom { height: 120px; }
+  .city-cols, .trade { grid-template-columns: minmax(0, 1fr); }
 }

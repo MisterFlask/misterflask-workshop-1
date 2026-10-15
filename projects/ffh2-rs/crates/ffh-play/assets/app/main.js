@@ -1,7 +1,9 @@
-// The browser client (design §5.1 MVP, §7 P5): boots, follows the server's status (long-poll),
-// refreshes the view and the map when they change, and runs what the phase asks for: the map
-// and the deferred popups on the player's turn, the blocking decision, the progress line during
-// the AI turns, and the new-game, game-over, crash and stuck screens.
+// The browser client (design §5.1, §7 P5-P6): boots, follows the server's status (long-poll),
+// refreshes the view and the map when they change (the map by tile deltas), and runs what the
+// phase asks for: the map and the deferred popups on the player's turn, the blocking decision,
+// the progress line during the AI turns, and the new-game, game-over, crash and stuck screens;
+// the keys (Civ4's controls here, the selection's action hotkeys in units.js) and the menu's
+// screens (city, techs, civics, religion, diplomacy, finances, tools).
 //
 // The server computes everything (legal actions, odds, turns, fog); the client renders it and
 // sends commands (commands.js). `window.ffh` exposes the state for the headless smoke test.
@@ -10,7 +12,12 @@ import * as api from "./api.js";
 import { S, setData, setView, setMap, on, emit, resetDismissed, clearDismissed, popupQueue } from "./state.js";
 import { MapView } from "./map.js";
 import * as units from "./units.js";
-import { openCity } from "./city.js";
+import { openCity, ownCities } from "./city.js";
+import * as empire from "./empire.js";
+import { openDiplomacy } from "./diplo.js";
+import * as tools from "./tools.js";
+import { applyMapDelta } from "./tiles.js";
+import * as K from "./hotkeys.js";
 import * as screens from "./screens.js";
 import { showDecision, modalOpen, closeTag, closeAll, onEscape, openTags, openModal } from "./modals.js";
 import { renderTop, renderBottom, setTab, currentTab } from "./hud.js";
@@ -168,10 +175,25 @@ async function refreshView(st) {
   }
   setView(view);
   if (newGame || !S.map || st.map_rev !== S.map.map_rev) {
-    const map = await api.get("/api/map");
+    // The tiles changed since the map held (`/api/map?since=R&epoch=E`, phase 6); the whole
+    // map for a new game or when the delta does not fit (another epoch: a restarted server).
+    let map = null;
+    let changed = "all";
+    if (!newGame && S.map?.epoch && S.map.rev) {
+      const reply = await api.get(`/api/map?since=${S.map.rev}&epoch=${encodeURIComponent(S.map.epoch)}`);
+      if (reply) {
+        try {
+          ({ map, changed } = applyMapDelta(S.map, reply));
+        } catch (e) {
+          console.warn("map delta:", e.message);
+          map = null;
+        }
+      }
+    }
+    if (!map) map = await api.get("/api/map");
     if (map) {
       setMap(map);
-      mapView.setMap(map);
+      mapView.setMap(map, changed);
       if (newGame) centerOnStart();
     }
   }
@@ -179,6 +201,7 @@ async function refreshView(st) {
   viewKey = vk;
   await refreshLog();
   units.viewChanged();
+  empire.viewChanged();
   renderTop();
   renderBottom();
   mapView.request();
@@ -224,9 +247,9 @@ async function onControl(st) {
     }
     if (S.report && ((S.report.lines?.length ?? 0) > 0 || (S.report.messages?.length ?? 0) > 0)) setTab("report");
     else renderBottom();
-    // Civ4 starts a turn on the first unit waiting for orders.
+    // Civ4 starts a turn on the first unit waiting for orders (not while spectating).
     const g = S.sel ? S.units.get(S.sel.units[0])?.group : null;
-    if (!S.sel || !S.view.pending.ready_groups.includes(g)) units.selectNext();
+    if (!tools.spectating() && (!S.sel || !S.view.pending.ready_groups.includes(g))) units.selectNext();
   }
   runPopups();
 }
@@ -238,7 +261,8 @@ async function runPopups() {
   popupsRunning = true;
   try {
     for (;;) {
-      if (S.status?.phase !== "human" || modalOpen() || sending()) break;
+      // The spectator mode leaves the questions to the AI (it plays every turn).
+      if (S.status?.phase !== "human" || modalOpen() || sending() || tools.spectating()) break;
       const q = popupQueue(S.view?.pending, S.dismissed, S.status.turn);
       if (!q.length) break;
       const p = q[0];
@@ -256,14 +280,14 @@ async function runPopups() {
   } finally {
     popupsRunning = false;
   }
-  if (!S.sel && S.status?.phase === "human" && !modalOpen()) units.selectNext();
+  if (!S.sel && S.status?.phase === "human" && !modalOpen() && !tools.spectating()) units.selectNext();
 }
 
 // ---------------------------------------------------------------------------------------------
 // Cities list
 
 function citiesList() {
-  const mine = [...S.cities.values()].filter((c) => c.owner === me()?.player);
+  const mine = ownCities();
   return openModal({
     title: "Your cities",
     tag: "cities",
@@ -293,6 +317,39 @@ function citiesList() {
 // ---------------------------------------------------------------------------------------------
 // Keys
 
+/** The screens of the menu and the F keys (Civ4's advisors: F1 cities, F2 finances, F3 civics,
+ *  F4 diplomacy, F6 technology, F7 religion). */
+function openScreen(name) {
+  if (!S.view) return;
+  switch (name) {
+    case "cities":
+      return citiesList();
+    case "finance":
+      return empire.openFinance();
+    case "civics":
+      return empire.openCivics();
+    case "diplomacy":
+      return openDiplomacy();
+    case "techs":
+      return empire.openTechTree();
+    case "religion":
+      return empire.openReligion();
+    case "research":
+      return screens.openResearch();
+  }
+}
+
+const F_KEYS = { F1: "cities", F2: "finance", F3: "civics", F4: "diplomacy", F6: "techs", F7: "religion" };
+
+function setLayer(layer) {
+  mapView.setLayer(layer);
+  for (const b of document.querySelectorAll("#mapwrap .layers button")) b.classList.toggle("active", b.dataset.layer === layer);
+}
+
+/** The keys (also under `?`): Civ4's controls (end turn, cycle, centre, capital, the advisors,
+ *  save and load, the layers), then the selection's action hotkeys from the XML
+ *  (`units.hotkeyEvent`: F fortify or sleep, S sentry, Space skip, B found, G go to, R road,
+ *  Del delete, Backspace cancel, L load, U unload, Shift+P pillage, ...). */
 function onKey(ev) {
   const t = ev.target;
   const typing = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement;
@@ -302,53 +359,55 @@ function onKey(ev) {
     else if (!onEscape() && !modalOpen()) units.clearSelection();
     return;
   }
-  if (typing || modalOpen() || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  if (typing || modalOpen()) return;
   const human = S.status?.phase === "human";
   const k = ev.key;
   const handled = () => ev.preventDefault();
+  const ctrl = ev.ctrlKey || ev.metaKey;
+  if (ctrl && !ev.altKey) {
+    const lower = k.toLowerCase();
+    if (lower === "s" && !ev.shiftKey) return handled(), S.view && screens.saveDialog();
+    if (lower === "l" && !ev.shiftKey) return handled(), screens.loadScreen();
+    const layer = { 1: "terrain", 2: "political", 3: "yield" }[k];
+    if (layer) return handled(), setLayer(layer);
+  }
+  if (F_KEYS[k] && !ctrl && !ev.altKey) {
+    handled();
+    return openScreen(F_KEYS[k]);
+  }
+  const plain = !ctrl && !ev.altKey && !ev.shiftKey;
   switch (k) {
     case "Enter":
-      if (human) endTurn(ev.shiftKey);
-      return handled();
-    case " ":
-      units.hotkey("MISSION_SKIP");
-      return handled();
-    case "f":
-    case "F":
-      units.hotkey("MISSION_FORTIFY").then((ok) => ok || units.hotkey("MISSION_SLEEP"));
-      return handled();
-    case "s":
-    case "S":
-      units.hotkey("MISSION_SLEEP");
-      return handled();
-    case "h":
-    case "H":
-      units.hotkey("MISSION_HEAL");
-      return handled();
-    case "b":
-    case "B":
-      units.hotkey("MISSION_FOUND");
-      return handled();
-    case "Delete":
-      units.hotkey("COMMAND_DELETE");
-      return handled();
-    case "m":
-    case "M":
-      if (S.sel) units.setMode({ kind: "move" });
-      return handled();
+      if (!ctrl && !ev.altKey) {
+        if (human) endTurn(ev.shiftKey);
+        return handled();
+      }
+      break;
+    case "Tab":
+      if (!ctrl && !ev.altKey) {
+        units.selectNext({ forward: !ev.shiftKey });
+        return handled();
+      }
+      break;
     case "w":
     case "W":
-    case "Tab":
-      units.selectNext({ cycle: true });
-      return handled();
+      if (plain) {
+        units.selectNext();
+        return handled();
+      }
+      break;
     case "c":
     case "C":
-      if (S.sel) mapView.centerOn(S.sel.x, S.sel.y);
+      if (plain) {
+        if (S.sel) mapView.centerOn(S.sel.x, S.sel.y);
+        return handled();
+      }
+      break;
+    case "Home": {
+      const cap = ownCities().find((c) => c.capital);
+      if (cap) mapView.centerOn(cap.x, cap.y);
       return handled();
-    case "r":
-    case "R":
-      if (S.view) screens.openResearch();
-      return handled();
+    }
     case "?":
       screens.keysHelp();
       return handled();
@@ -366,11 +425,24 @@ function onKey(ev) {
       return handled();
     case "+":
     case "=":
-      mapView.zoom(1);
-      return handled();
+      if (!ctrl) {
+        mapView.zoom(1);
+        return handled();
+      }
+      break;
     case "-":
-      mapView.zoom(-1);
-      return handled();
+      if (!ctrl) {
+        mapView.zoom(-1);
+        return handled();
+      }
+      break;
+  }
+  // The selection's action hotkeys (Civ4's, from the XML). With Ctrl only a key the selection's
+  // actions use (the browser keeps Ctrl+C, Ctrl+R, ...).
+  if (!S.sel || ["Shift", "Control", "Alt", "Meta"].includes(k)) return;
+  if (ctrl ? K.boundTo(units.currentActions(), ev, S.data) : k.length === 1 || ["Delete", "Backspace"].includes(k) || /^(Numpad|Key|Digit)/.test(ev.code ?? "")) {
+    handled();
+    units.hotkeyEvent(ev);
   }
 }
 
@@ -380,8 +452,13 @@ function onKey(ev) {
 function wire() {
   const click = (id, f) => document.getElementById(id)?.addEventListener("click", f);
   click("end-turn", (ev) => endTurn(ev.shiftKey));
-  click("btn-research", () => S.view && screens.openResearch());
-  click("btn-cities", () => S.view && citiesList());
+  click("btn-research", () => openScreen("research"));
+  click("btn-techs", () => openScreen("techs"));
+  click("btn-cities", () => openScreen("cities"));
+  click("btn-civics", () => openScreen("civics"));
+  click("btn-religion", () => openScreen("religion"));
+  click("btn-diplo", () => openScreen("diplomacy"));
+  click("btn-tools", () => tools.openTools());
   click("btn-save", () => S.view && screens.saveDialog());
   click("btn-load", () => screens.loadScreen());
   click("btn-new", () => screens.newGame());
@@ -389,6 +466,7 @@ function wire() {
   click("btn-raw", () => screens.rawRequest());
   click("zoom-in", () => mapView.zoom(1));
   click("zoom-out", () => mapView.zoom(-1));
+  for (const b of document.querySelectorAll("#mapwrap .layers button")) b.addEventListener("click", () => setLayer(b.dataset.layer));
   for (const b of document.querySelectorAll("#bottom-tabs button")) b.addEventListener("click", () => setTab(b.dataset.tab));
   click("bottom-toggle", () => document.body.classList.toggle("bottom-closed"));
   document.addEventListener("ffh-research", () => S.view && screens.openResearch());
@@ -399,7 +477,11 @@ function wire() {
   on("applied", () => refreshStatus());
   on("refused", () => refreshStatus());
   on("kick", () => refreshStatus());
-  on("game-started", () => {
+  on("open-screen", (name) => openScreen(name));
+  on("spectate", () => renderTop());
+  on("game-started", (opts) => {
+    if (opts?.spectate) tools.startSpectating({ newGame: true });
+    else if (tools.spectating()) tools.stopSpectating();
     closeAll();
     units.clearWaypoints();
     S.sel = null;
@@ -445,5 +527,5 @@ async function boot() {
   window.ffh.ready = true;
 }
 
-window.ffh = { S, get mapView() { return mapView; }, units, screens, api, emit, ready: false, tab: currentTab };
+window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen };
 boot();
