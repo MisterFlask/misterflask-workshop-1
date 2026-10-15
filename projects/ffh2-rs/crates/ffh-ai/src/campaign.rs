@@ -8,9 +8,9 @@
 //!   barbarian city within 14 plots of ours; the best value (population, wonders, holy city,
 //!   resources, a barbarian town near our cities) for its cost (the force it needs against what
 //!   we see of its defenders, the distance). Every order of an operation carries its target as
-//!   the group's mission AI (`MISSIONAI_ASSAULT`, saved with the game), and a city our stacks
-//!   are already committed to keeps its place unless another is clearly better: without that,
-//!   stacks walked back and forth between two targets.
+//!   the group's mission AI (`MISSIONAI_ASSAULT`, saved with the game), and the city our stacks
+//!   are committed to keeps its place while its force stays within reach: without that, stacks
+//!   walked back and forth between two targets.
 //! - **Commitment**: at war every stack on the landmass within 24 plots; against barbarians the
 //!   nearest stacks until they hold twice the force the city needs.
 //! - **Force** ([`simulate`]): the strike played out in expected values with the rules' combat
@@ -20,10 +20,11 @@
 //!   defenders fall with an attacker to spare; siege engines that can bring the walls down
 //!   within a few turns count as having done so.
 //! - **Phases** ([`Phase`]): while the committed force falls short, stacks gather in the rally
-//!   city (our city nearest the target) and production builds what is missing
-//!   ([`army_choice`]); once it covers the city, stacks march to an assembly plot two plots
-//!   out (the best defensive ground), step next to the city together when the force there
-//!   covers it, and strike when the force next to it does: every committed stack there attacks
+//!   city (our city nearest the target; against barbarians they stay where they are) and
+//!   production builds what is missing ([`army_choice`]); once it covers the city, stacks march
+//!   to an assembly plot two plots out (the best defensive ground), one turn at a time, step
+//!   next to the city together from there when the force there covers it, and strike when the
+//!   force next to it does: every committed stack there attacks
 //!   in the same turn (`strike`), siege engines bombarding first, then collateral attackers,
 //!   then the best odds (or the cheapest unit to lose), while the remaining force still covers
 //!   the remaining defenders. The victor does not stay alone in the city: up to three more
@@ -838,7 +839,13 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
         let a = crate::military::assess(g, grp, op.plot);
         let ours: Vec<String> = g.groups[grp].units.iter().map(|&o| g.d.units[g.units[o].unit_type].base.type_.trim_start_matches("UNIT_").to_string()).collect();
         let theirs: Vec<String> = g.map.plots[op.plot].units.iter().map(|&o| format!("{}({}%)", g.d.units[g.units[o].unit_type].base.type_.trim_start_matches("UNIT_"), 100 - g.units[o].damage)).collect();
-        crate::trace!(g, v.p, "stack {:?} ({} units) next to {} (defense {}%, {:?}): {:?} ours {:?} theirs {:?}", grp, g.groups[grp].units.len(), g.cities[op.city].name, g.city_defense_modifier(op.city, false), op.phase, a, ours, theirs);
+        // (Our army units on the plots around the city: a single-unit stack with others around
+        // is part of a joint strike, not a lone camp.)
+        let around: usize = (0..DirectionType::NUM)
+            .filter_map(|dir| g.plot_direction(tx, ty, DirectionType::from_usize(dir)))
+            .map(|q| g.map.plots[q].units.iter().filter(|&&o| g.units[o].owner == v.p && is_army_unit(g, o)).count())
+            .sum();
+        crate::trace!(g, v.p, "stack {:?} ({} units) next to {} (defense {}%, {:?}, {} of ours around): {:?} ours {:?} theirs {:?}", grp, g.groups[grp].units.len(), g.cities[op.city].name, g.city_defense_modifier(op.city, false), op.phase, around, a, ours, theirs);
     }
     match op.phase {
         Phase::Strike if dist <= 1 => {
