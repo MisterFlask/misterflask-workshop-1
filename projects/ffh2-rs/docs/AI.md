@@ -806,6 +806,17 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   (see Naval), but there is no naval combat, no escorts and no blockades (the transport sails
   undefended), and one trip lands only the ship's cargo capacity, so invasions are small until
   good transports arrive late in the tech tree. Overseas settling still sends one settler at a time.
+  Conversion against *defended* overseas cities is weak: traced water-isolated civs (e.g. Doviello,
+  Malakim, Elohim, each fielding 60-160 units) land troops repeatedly yet rarely strike -- one
+  game showed 18 landings and 0 assaults -- because only `need` (= defenders x2 + 1) attackers are
+  committed, ferried a few per trip, and a trickle of that size rarely masses enough to clear a
+  strong garrison (and `assault_landed` rightly holds rather than feeding it in piecemeal). A fix
+  needs more landed force (a larger committed cap and/or a fleet sized to the force), not just
+  concentration: forcing every trip onto one rally plot was measured to *regress* (it broke the
+  land-on-any-reachable-plot fallback, dropping that game's landings to 0 and cutting aggregate
+  captures and held overseas cities), so it was reverted. Shipping more force must not bankrupt the
+  economy (a traced civ declared war at an even power ratio and had to disband units), so the war
+  trigger's offensive floor and the assault production cap want revisiting together.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
