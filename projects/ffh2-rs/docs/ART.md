@@ -293,68 +293,77 @@ falloff is needed (section 4.4). The tables are derived from the colours, not dr
   amber), corruption (redder, a little darker), ritual (toward the pale teal-green) and the arcane
   (toward violet). Used by the light pass (4.4) and by mana nodes, landmarks and lairs.
 
-The ground pass and the light pass add tables of their own, written in their modules: `MOON`,
-`GRAIN`, `SHADE`, `VERGE` and `REMEMBER` (`terrain/ground.js`, 5.1, 8.2) and the light pass's ring
-tables (`cities/citylight.js`, 4.4).
+The passes' own tables follow them as further columns, written by hand in `build_palette.py`
+(pairs over identity, or a row per key) rather than derived, and read from `art.tables` like the
+rest:
+
+- **`VERGE`**, **`MOON`**, **`GRAIN`**, **`SHADE`**: the ground pass (5.1): one step lighter for
+  path and river verges, the sunlit step of a clearing, its brightest grain one step further, and
+  the cloud-shade step down. Snow, water, hell purples and lights keep their colour.
+- **`REMEMBER`**: `FOG` with snow and ice sent to pale greys rather than blue, so remembered snow
+  still reads as snow (the fog pass and the vignette, 8.2, 8.3).
+- **`WARM`**, **`HEARTH`**, **`EMBER`**, **`SMOULDER`**, **`GORE`**, **`AURA`**, **`HALLOW`**,
+  **`HAZE`**: the light pass's rings (4.4): the outer, inner and core tables of each pool family
+  that the derived tables do not give (`RINGS` in `cities/citylight.js` names each family's three).
 
 ```remap
-key  FOG   FIRE  BLOOD RITE  ARC  
-0    0     0     0     0     0    
-1    1     u     c     k     v    
-2    2     u     c     k     v    
-3    3     i     c     s     d    
-4    B     i     c     s     p    
-5    4     b     r     s     P    
-6    5     a     b     S     P    
-7    G     L     b     S     P    
-8    H     Y     a     W     P    
-d    d     B     c     k     p    
-n    d     D     c     s     J    
-N    n     G     D     s     J    
-g    N     a     G     S     P    
-f    g     7     G     S     P    
-F    f     a     a     W     P    
-k    k     u     c     t     v    
-t    k     z     u     s     v    
-T    t     A     r     T     4    
-q    w     A     r     T     4    
-m    z     K     i     T     5    
-o    A     K     b     S     5    
-O    A     K     b     S     6    
-u    h     i     c     t     v    
-Q    j     y     x     S     P    
-x    r     E     I     z     P    
-y    j     l     x     S     5    
-Y    G     K     b     S     6    
-v    1     c     c     k     p    
-p    v     c     c     3     p    
-P    4     G     I     5     P    
-e    u     x     I     t     v    
-E    i     E     C     z     P    
-l    j     l     x     S     6    
-L    a     K     b     S     H    
-c    h     e     c     k     v    
-C    r     E     I     D     p    
-R    r     E     C     G     P    
-s    k     j     u     s     n    
-S    s     L     a     S     g    
-W    H     Y     a     S     g    
-a    G     l     b     S     P    
-b    j     y     x     s     P    
-h    h     r     c     k     v    
-r    u     x     I     t     v    
-i    u     x     I     s     p    
-j    D     y     x     s     P    
-w    k     i     c     t     v    
-z    w     j     r     s     4    
-A    z     y     i     T     4    
-B    B     i     c     s     v    
-D    B     b     I     s     P    
-G    D     a     r     s     P    
-H    G     a     b     S     P    
-I    c     x     I     t     p    
-J    d     D     v     s     p    
-K    Q     l     x     S     6    
+key  FOG      FIRE     BLOOD    RITE     ARC      VERGE    MOON     GRAIN    SHADE    REMEMBER WARM     HEARTH   EMBER    SMOULDER GORE     AURA     HALLOW   HAZE
+0    0        0        0        0        0        0        0        0        0        0        u        e        e        c        c        v        k        k
+1    1        u        c        k        v        2        1        1        1        1        u        e        e        c        c        v        s        k
+2    2        u        c        k        v        3        2        2        2        2        u        e        E        c        c        v        s        t
+3    3        i        c        s        d        4        4        4        3        3        x        e        E        c        C        p        s        t
+4    B        i        c        s        p        5        5        5        3        B        x        x        E        x        C        p        s        t
+5    4        b        r        s        P        6        6        6        4        4        y        E        l        x        C        P        S        T
+6    5        a        b        S        P        7        7        6        5        5        Y        E        l        C        R        P        S        S
+7    G        L        b        S        P        7        7        7        7        G        8        l        L        C        R        8        W        W
+8    H        Y        a        W        P        8        8        8        8        H        8        l        L        C        R        8        W        W
+d    d        B        c        k        p        d        d        d        d        d        d        d        d        d        d        d        d        d
+n    d        D        c        s        J        n        n        n        n        d        n        n        n        n        n        n        n        n
+N    n        G        D        s        J        N        N        N        N        n        N        e        E        c        C        p        s        t
+g    N        a        G        S        P        f        g        g        g        5        g        E        l        x        C        P        S        T
+f    g        7        G        S        P        f        f        f        f        6        Y        E        l        x        C        P        S        S
+F    f        a        a        W        P        F        F        F        F        H        7        l        L        C        R        8        W        W
+k    k        u        c        t        v        t        t        t        k        k        u        e        E        c        c        v        s        t
+t    k        z        u        s        v        T        T        T        k        k        x        x        E        c        C        p        s        T
+T    t        A        r        T        4        T        T        T        t        t        y        E        l        x        C        P        S        S
+q    w        A        r        T        4        m        m        o        q        w        x        x        E        c        c        p        s        t
+m    z        K        i        T        5        o        o        o        q        z        y        E        l        x        C        p        S        T
+o    A        K        b        S        5        O        O        O        m        A        Y        E        l        x        C        P        S        T
+O    A        K        b        S        6        O        O        O        o        A        Y        l        L        x        C        P        S        S
+u    h        i        c        t        v        i        i        i        u        h        x        x        E        c        C        p        s        t
+Q    j        y        x        S        P        Y        Y        Y        j        j        y        E        l        x        C        p        S        T
+x    r        E        I        z        P        y        y        y        x        r        y        E        l        C        C        P        S        T
+y    j        l        x        S        5        Y        Y        Y        j        j        Y        l        L        x        C        P        S        S
+Y    G        K        b        S        6        7        Y        Y        Q        G        7        l        L        C        R        P        W        S
+v    1        c        c        k        p        p        v        v        v        1        x        x        E        c        c        p        s        t
+p    v        c        c        3        p        p        p        p        p        v        x        E        l        x        C        P        S        T
+P    4        G        I        5        P        P        P        P        P        4        Y        l        L        C        R        8        W        S
+e    u        x        I        t        v        e        e        e        e        u        E        E        l        C        C        p        s        t
+E    i        E        C        z        P        E        E        E        E        i        l        l        L        C        R        P        S        S
+l    j        l        x        S        6        l        l        l        l        j        L        L        L        R        R        P        W        W
+L    a        K        b        S        H        L        L        L        L        a        L        L        L        R        R        8        W        W
+c    h        e        c        k        v        c        c        c        c        h        x        x        E        C        C        p        s        t
+C    r        E        I        D        p        C        C        C        C        r        E        E        l        C        R        P        S        T
+R    r        E        C        G        P        R        R        R        R        r        l        l        L        R        R        P        W        S
+s    k        j        u        s        n        s        s        s        s        k        x        x        E        c        C        p        S        T
+S    s        L        a        S        g        S        S        S        S        s        y        E        l        x        C        P        W        W
+W    H        Y        a        S        g        W        W        W        W        H        8        l        L        C        R        8        W        W
+a    G        l        b        S        P        a        a        a        a        G        a        a        a        a        a        a        a        a
+b    j        y        x        s        P        b        b        b        b        j        b        b        b        b        b        b        b        b
+h    h        r        c        k        v        u        h        h        h        h        h        h        h        h        h        h        h        h
+r    u        x        I        t        v        x        r        r        r        u        r        r        r        r        r        r        r        r
+i    u        x        I        s        p        j        j        j        u        u        i        i        i        i        i        i        i        i
+j    D        y        x        s        P        Q        Q        Y        i        D        j        j        j        j        j        j        j        j
+w    k        i        c        t        v        z        z        z        w        k        w        w        w        w        w        w        w        w
+z    w        j        r        s        4        A        A        A        w        w        z        z        z        z        z        z        z        z
+A    z        y        i        T        4        O        O        O        z        z        A        A        A        A        A        A        A        A
+B    B        i        c        s        v        B        B        B        B        B        B        B        B        B        B        B        B        B
+D    B        b        I        s        P        G        G        G        D        B        D        D        D        D        D        D        D        D
+G    D        a        r        s        P        H        H        H        D        D        G        G        G        G        G        G        G        G
+H    G        a        b        S        P        H        H        H        G        G        H        H        H        H        H        H        H        H
+I    c        x        I        t        p        I        I        I        I        c        I        I        I        I        I        I        I        I
+J    d        D        v        s        p        J        J        J        J        d        J        J        J        J        J        J        J        J
+K    Q        l        x        S        6        K        K        K        K        Q        K        K        K        K        K        K        K        K
 ```
 
 ---
@@ -1513,7 +1522,5 @@ renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 
 
 ### 16.4 Open points
 
-- **The pass tables** (`MOON`, `GRAIN`, `SHADE`, `VERGE`, `REMEMBER` in `terrain/ground.js` and the
-  light pass's rings in `cities/citylight.js`) still live in their modules; moving them into
-  `palette.txt` as remap columns is a code-organisation change carried over from the first guide,
-  with no effect on the look.
+None. The last one carried over from the first guide, the pass tables living in their modules, is
+closed: they are `palette.txt` remap columns (2.4).

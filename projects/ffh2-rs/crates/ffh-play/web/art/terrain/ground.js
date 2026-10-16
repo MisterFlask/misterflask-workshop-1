@@ -25,7 +25,7 @@
 //           1.5 px ordered-dither vector, which left the squares readable). Shorelines and the depth
 //           contour stay crisp.
 //  moon     moonlit clearings and cloud shade: a low-frequency field (cells 88 and 30 px) lifts the
-//           land one step (MOON) by a Bayer share up to 60% where it is high, adds a cold grain
+//           land one step (MOON) by a Bayer share up to 60% where it is high, adds a warm grain
 //           (GRAIN, up to 30%) at its brightest, and lowers it one step (SHADE, up to 25%) where it
 //           is low: the board's lighter open ground between dark woods, instead of flat mid-value
 //           fields. Water, shoreline ink and unrevealed void are left alone.
@@ -46,6 +46,8 @@
 //  woods    the north-west rim of every wood mass gets a 1 px moonlit edge (lichen O) where open
 //           ground lies above or to the left; the mass is the trees of this tile and the tiles drawn
 //           before it, closed over gaps up to about 6 px, so tile rows leave no seams.
+//
+// Its tables (VERGE, MOON, GRAIN, SHADE, REMEMBER) are palette.txt remap columns (docs/ART.md 2.4).
 import { TILE, PLOT, hash3 } from '../art.js';
 import { TRANSPARENT } from '../spritefmt.js';
 
@@ -79,19 +81,6 @@ export const GROUND = {
   crestGap: 6, // their least spacing
 };
 
-// one step lighter within the family, for ground colours only (water, ink and lights unchanged)
-const VERGE = 'q:m m:o o:O k:t t:T u:i i:j j:Q Q:Y x:y y:Y Y:7 1:2 2:3 3:4 4:5 5:6 6:7 g:f v:p w:z z:A A:O D:G G:H h:u r:x';
-// the sunlit step of a ground colour (clearings): one step lighter within its own family -- grass
-// to olive and lichen, wheat to sand, greys up the ladder; snow, water, hell purples and lights unchanged
-const MOON = 'q:m m:o o:O u:i i:j j:Q Q:Y y:Y 3:4 4:5 5:6 6:7 k:t t:T x:y w:z z:A A:O D:G G:H';
-// the sunlit grain: in the brightest clearings a share of the ground catches the sun one step further
-// (grass to lichen, wheat to sand) -- warm, never the old cold grey wash
-const GRAIN = 'q:o m:o o:O u:i i:j j:Y Q:Y y:Y 3:4 4:5 5:6 k:t t:T x:y w:z z:A A:O D:G G:H';
-// the shaded step (cloud shade): one step darker in the family
-const SHADE = 'm:q o:m O:o Q:j y:j Y:Q j:i i:u 5:4 6:5 4:3 t:k T:t G:D H:G A:z z:w';
-// remembered ground (the fog): docs/ART.md 2.4 FOG (dimmer and greyer, never black), but snow and ice
-// go to pale greys rather than blue, so remembered snow still reads as snow
-const REMEMBER = 'f:6 F:H g:5';
 // scattered features whose wood masses take the moonlit rim
 const RIMMED = new Set(['feature/conifer', 'feature/ancient', 'feature/jungle', 'feature/sapling']);
 
@@ -99,14 +88,9 @@ export function installTerrain(art, opts = {}) {
   if (art._terrainPass) return art;
   const G = { ...GROUND, ...opts };
   const orig = { drawRoad: art.drawRoad.bind(art), drawFeature: art.drawFeature.bind(art), drawRelief: art.drawRelief.bind(art) };
-  const table = (spec, base = null) => {
-    const t = base ? Uint8Array.from(base) : new Uint8Array(64).map((_, i) => i);
-    for (const p of spec.split(' ')) { const [a, b] = p.split(':'); t[art.K(a)] = art.K(b); }
-    return t;
-  };
-  const verge = table(VERGE), moonT = table(MOON), grainT = table(GRAIN), shadeT = table(SHADE);
-  const remember = table(REMEMBER, art.tables.FOG);
-  art.tables.REMEMBER = remember;
+  // the pass's tables are palette.txt remap columns (docs/ART.md 2.4)
+  const { VERGE: verge, MOON: moonT, GRAIN: grainT, SHADE: shadeT, REMEMBER: remember } = art.tables;
+  for (const n of ['VERGE', 'MOON', 'GRAIN', 'SHADE', 'REMEMBER']) if (!art.tables[n]) throw new Error(`terrain: palette.txt lacks remap table ${n}`);
   const kO = art.K(G.rimKey), k0 = art.K('0'), ku = art.K('u'), k2 = art.K('2'), kUnseen = art.K(G.unseenKey);
   const spotCache = new Map();
   const rimCache = new Map();
