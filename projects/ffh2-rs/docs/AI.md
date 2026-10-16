@@ -812,16 +812,22 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   (see Naval), but there is no naval combat, no escorts and no blockades (the transport sails
   undefended), and one trip lands only the ship's cargo capacity, so invasions are small until
   good transports arrive late in the tech tree. Overseas settling still sends one settler at a time.
-  Conversion against a *strong* garrison is still limited by force size: only `need` (= defenders
-  x2 + 1) attackers are committed, ferried a few per trip, so a garrison that out-defends that
-  landed force is never taken (`assault_landed` rightly holds rather than feeding units in
-  piecemeal). A larger committed cap, or a fleet sized to the garrison, would help -- but must not
-  bankrupt the economy (a traced civ declared war at an even power ratio and had to disband units),
-  so the war trigger's offensive floor and the assault production cap want revisiting together.
-  (The trickle no longer *scatters*: each trip now lands on the reachable plot already holding the
-  most of our army, so the landed units pile onto one plot and strike -- traced water-isolated
-  civs that previously landed repeatedly without ever assaulting now take overseas cities, and held
-  overseas cities rose about a quarter in an 8-game A/B. See Naval / amphibious invasion.)
+  The trickle no longer scatters and no longer under-ships: each trip lands on the reachable plot
+  already holding the most of our army (they pile onto one plot and strike), and the staging port
+  builds a fleet big enough to carry the force in one wave. Traced water-isolated civs that used to
+  land repeatedly without ever assaulting now take overseas cities; 4 of 5 such civs convert and
+  held overseas cities rose ~20% at a fixed turn (8-game A/B), economy flat.
+  The remaining hard case is a civ whose *main army is on a different landmass from the staging
+  port* -- an isolated civ (e.g. Doviello, seed 5) whose only target sits beyond its home coast's
+  sea-range, reachable only from a small forward colony that cannot build transports and holds
+  little army. `committed` only musters army already on the staging landmass, so the home army
+  (3000+ idle stack-turns) never joins. A tempting shortcut -- let *any* coastal city build the
+  assault transports so the fleet gets built and the colony's few units cross -- was measured to
+  *regress* (civs then start more overseas wars they still cannot convert: captures -8/-9%,
+  economy -7% at t690 over the fleet baseline), so it was reverted. The real fix is the original
+  DLL's approach: classify the home landmass `AREAAI_ASSAULT_MASSING`, commit the home army, and
+  ferry it to a forward staging area before assaulting (a multi-hop logistics feature), sized so
+  the landed force can actually take the city and gated so it does not bankrupt the economy.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
