@@ -821,13 +821,19 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   port* -- an isolated civ (e.g. Doviello, seed 5) whose only target sits beyond its home coast's
   sea-range, reachable only from a small forward colony that cannot build transports and holds
   little army. `committed` only musters army already on the staging landmass, so the home army
-  (3000+ idle stack-turns) never joins. A tempting shortcut -- let *any* coastal city build the
-  assault transports so the fleet gets built and the colony's few units cross -- was measured to
-  *regress* (civs then start more overseas wars they still cannot convert: captures -8/-9%,
-  economy -7% at t690 over the fleet baseline), so it was reverted. The real fix is the original
-  DLL's approach: classify the home landmass `AREAAI_ASSAULT_MASSING`, commit the home army, and
-  ferry it to a forward staging area before assaulting (a multi-hop logistics feature), sized so
-  the landed force can actually take the city and gated so it does not bankrupt the economy.
+  (3000+ idle stack-turns) never joins. Two simple fixes were tried and both measured worse, so
+  both were reverted: (a) letting *any* coastal city build the assault transports (so the fleet is
+  built and the colony's few units cross) made civs start more overseas wars they still cannot
+  convert -- captures -8/-9%, economy -7% at t690; (b) staging from the port on the landmass that
+  holds the most of our army (ship the home army directly, however far) got the home army aboard
+  (boards 1->11) but the home->target journey was so long the transports sailed all game and
+  delivered almost nothing (333 sail-actions, 3 landings, 0 assaults) -- the target is simply too
+  far from home for direct shipping, which is why the forward colony exists. The real fix is the
+  original DLL's approach: classify the home landmass `AREAAI_ASSAULT_MASSING`, commit the home
+  army, and ferry it in *two hops* (home -> forward colony, then a short colony -> target assault),
+  massing at the colony before striking, sized so the landed force can take the city and gated so
+  it does not bankrupt the economy. That is a multi-hop logistics pipeline (a new transport mode
+  plus cross-landmass `committed`), a dedicated feature rather than a staging tweak.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
