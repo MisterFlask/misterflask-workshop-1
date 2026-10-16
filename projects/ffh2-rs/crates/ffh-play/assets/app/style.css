@@ -10,13 +10,13 @@
    Without the art the same elements fall back to plain double rules. */
 
 :root {
-  --c-void: #05080b; --c-soot: #0c1115; --c-coal: #161c21; --c-iron: #252b2f; --c-slate: #373a3b; --c-ash: #56524c;
-  --c-stone: #7d7366; --c-bone: #b3a28c; --c-vellum: #ddcfb4; --c-deep: #071219; --c-navy: #0d1d2b; --c-tide: #193249;
-  --c-glint: #3d5868; --c-frost: #717f86; --c-rime: #aab5b6; --c-teal-dk: #0f2224; --c-teal: #1c383d; --c-patina: #3d6364;
-  --c-moss-dk: #1f251c; --c-moss: #363d31; --c-olive: #4d5537; --c-lichen: #6c724a; --c-umber: #2e2620; --c-dun: #4f483e;
-  --c-rust: #5f3a2a; --c-ochre: #76663f; --c-sand: #8c8068; --c-bruise: #1b1622; --c-dusk: #382d45; --c-lilac: #6e5b80;
-  --c-ember: #5a2412; --c-flame: #ad501d; --c-amber: #e2913c; --c-glow: #f7d47e; --c-blood: #3a1216; --c-crimson: #77252b;
-  --c-scarlet: #b33a3a; --c-barrow: #22463a; --c-ritual: #6aab88; --c-wisp: #c4efc4;
+  --c-void: #05080b; --c-soot: #110f10; --c-coal: #1c1816; --c-iron: #2b2621; --c-slate: #3d3832; --c-ash: #5a5349;
+  --c-stone: #7d7366; --c-bone: #b8a78e; --c-vellum: #e3d3b5; --c-deep: #04131f; --c-navy: #0d2a46; --c-tide: #1f4e7a;
+  --c-glint: #3a6480; --c-frost: #6c8a98; --c-rime: #a6bcc2; --c-teal-dk: #0a2a2f; --c-teal: #164c56; --c-patina: #35828a;
+  --c-moss-dk: #223d1e; --c-moss: #3f6130; --c-olive: #637b34; --c-lichen: #8fa050; --c-umber: #3a2b20; --c-dun: #655537;
+  --c-rust: #7c4327; --c-ochre: #9c7e3f; --c-sand: #a79065; --c-bruise: #24142f; --c-dusk: #45295e; --c-lilac: #8a63a8;
+  --c-ember: #6b2912; --c-flame: #d2611c; --c-amber: #f5a63f; --c-glow: #fbdd8a; --c-blood: #42131a; --c-crimson: #9c2e34;
+  --c-scarlet: #d24646; --c-barrow: #235244; --c-ritual: #6fd49e; --c-wisp: #c4efc4;
 
   --u: 2px;
   --bg: var(--c-soot);

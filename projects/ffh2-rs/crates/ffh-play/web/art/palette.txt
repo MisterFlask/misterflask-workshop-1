@@ -4,44 +4,44 @@
 ; palette: index key name hex family. Keys are the characters used in sprite grids.
 palette
  0 0 void    #05080b neutral
- 1 1 soot    #0c1115 neutral
- 2 2 coal    #161c21 neutral
- 3 3 iron    #252b2f neutral
- 4 4 slate   #373a3b neutral
- 5 5 ash     #56524c neutral
+ 1 1 soot    #110f10 neutral
+ 2 2 coal    #1c1816 neutral
+ 3 3 iron    #2b2621 neutral
+ 4 4 slate   #3d3832 neutral
+ 5 5 ash     #5a5349 neutral
  6 6 stone   #7d7366 neutral
- 7 7 bone    #b3a28c neutral
- 8 8 vellum  #ddcfb4 neutral
- 9 d deep    #071219 navy
-10 n navy    #0d1d2b navy
-11 N tide    #193249 navy
-12 g glint   #3d5868 frost
-13 f frost   #717f86 frost
-14 F rime    #aab5b6 frost
-15 k teal-dk #0f2224 teal
-16 t teal    #1c383d teal
-17 T patina  #3d6364 teal
-18 q moss-dk #1f251c moss
-19 m moss    #363d31 moss
-20 o olive   #4d5537 moss
-21 O lichen  #6c724a moss
-22 u umber   #2e2620 earth
-23 Q dun     #4f483e earth
-24 x rust    #5f3a2a earth
-25 y ochre   #76663f earth
-26 Y sand    #8c8068 earth
-27 v bruise  #1b1622 purple
-28 p dusk    #382d45 purple
-29 P lilac   #6e5b80 purple
-30 e ember   #5a2412 fire
-31 E flame   #ad501d fire
-32 l amber   #e2913c fire
-33 L glow    #f7d47e fire
-34 c blood   #3a1216 crimson
-35 C crimson #77252b crimson
-36 R scarlet #b33a3a crimson
-37 s barrow  #22463a ritual
-38 S ritual  #6aab88 ritual
+ 7 7 bone    #b8a78e neutral
+ 8 8 vellum  #e3d3b5 neutral
+ 9 d deep    #04131f navy
+10 n navy    #0d2a46 navy
+11 N tide    #1f4e7a navy
+12 g glint   #3a6480 frost
+13 f frost   #6c8a98 frost
+14 F rime    #a6bcc2 frost
+15 k teal-dk #0a2a2f teal
+16 t teal    #164c56 teal
+17 T patina  #35828a teal
+18 q moss-dk #223d1e moss
+19 m moss    #3f6130 moss
+20 o olive   #637b34 moss
+21 O lichen  #8fa050 moss
+22 u umber   #3a2b20 earth
+23 Q dun     #655537 earth
+24 x rust    #7c4327 earth
+25 y ochre   #9c7e3f earth
+26 Y sand    #a79065 earth
+27 v bruise  #24142f purple
+28 p dusk    #45295e purple
+29 P lilac   #8a63a8 purple
+30 e ember   #6b2912 fire
+31 E flame   #d2611c fire
+32 l amber   #f5a63f fire
+33 L glow    #fbdd8a fire
+34 c blood   #42131a crimson
+35 C crimson #9c2e34 crimson
+36 R scarlet #d24646 crimson
+37 s barrow  #235244 ritual
+38 S ritual  #6fd49e ritual
 39 W wisp    #c4efc4 ritual
 
 ; remap: index remaps (section 2.4). FOG darkens about two steps and puts every light out; FIRE,

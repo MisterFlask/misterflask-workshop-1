@@ -25,12 +25,15 @@ Five principles, in priority order:
 
 1. **Silhouette first.** Every unit, city and landmark must read as a dark shape with a lit edge at
    1x. If a sprite needs colour to be recognised, the sprite is wrong.
-2. **Quiet ground.** Terrain is low-chroma colour fields with sparse marks. Emptiness and shadow
-   carry the depth. No busy tile textures, no visible tile grid.
-3. **Colour is earned.** The world is soot, ash, bone, midnight navy, weathered teal and moss. More
-   saturated hues are reserved and mean something:
+2. **Quiet ground.** Terrain is colour fields with sparse marks. Emptiness and shadow carry the
+   depth. No busy tile textures, no visible tile grid.
+3. **A living, moody world — with meaning on top.** The ground carries real colour: mossy greens,
+   deep blue water, weathered teal, warm earth, a cool moon over it. It is dark and moody, never
+   grey — a fallen world, not a drab one. (This supersedes the earlier "colour is earned" rule: the
+   base need not be near-grey for the accents to read; raise the chroma and keep the value dark.)
+   Saturation still carries meaning where it matters, layered over that living ground:
    - **firelight** (amber) is life: windows, torches, lanterns, campfires;
-   - **muted crimson** is blood and corruption: hell terrain, demons, war, Armageddon;
+   - **crimson** is blood and corruption: hell terrain, demons, war, Armageddon;
    - **pale green** is ritual and the unnatural: sacred sites, undead eyes, world spells;
    - **dusky purple** is the arcane: mana, spells, mages.
 4. **Light is local.** The moon lights everything faintly from the upper left. Warm light comes
@@ -59,128 +62,128 @@ L* is CIE lightness (0 to 100).
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
 | 0 | `0` | void | `#05080b` | 2 | outlines, unrevealed tiles, deepest shadow |
-| 1 | `1` | soot | `#0c1115` | 5 | panel ground, ink shadows, fog hatching |
-| 2 | `2` | coal | `#161c21` | 10 | shadow faces, dark cloth and metal |
-| 3 | `3` | iron | `#252b2f` | 17 | armour, rock in shadow, dark stone |
-| 4 | `4` | slate | `#373a3b` | 24 | tundra ground, rock, lit dark stone |
-| 5 | `5` | ash | `#56524c` | 35 | moon rim on sprites, lit stone, borders of panels |
+| 1 | `1` | soot | `#110f10` | 5 | panel ground, ink shadows, fog hatching |
+| 2 | `2` | coal | `#1c1816` | 10 | shadow faces, dark cloth and metal |
+| 3 | `3` | iron | `#2b2621` | 17 | armour, rock in shadow, dark stone |
+| 4 | `4` | slate | `#3d3832` | 24 | tundra ground, rock, lit dark stone |
+| 5 | `5` | ash | `#5a5349` | 35 | moon rim on sprites, lit stone, borders of panels |
 | 6 | `6` | stone | `#7d7366` | 49 | stone highlights, secondary text, road shadows |
-| 7 | `7` | bone | `#b3a28c` | 68 | ink lines (coast, roads), body text, bone and cloth highlights |
-| 8 | `8` | vellum | `#ddcfb4` | 84 | brightest neutral: selection, titles, specular dots |
+| 7 | `7` | bone | `#b8a78e` | 68 | ink lines (coast, roads), body text, bone and cloth highlights |
+| 8 | `8` | vellum | `#e3d3b5` | 84 | brightest neutral: selection, titles, specular dots |
 
 **Midnight navy and frost.** Water, night, cold.
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 9 | `d` | deep | `#071219` | 5 | ocean ground |
-| 10 | `n` | navy | `#0d1d2b` | 10 | coast ground, river ink |
-| 11 | `N` | tide | `#193249` | 20 | ripples, foam line |
-| 12 | `g` | glint | `#3d5868` | 36 | depth contour dots, river glints, ice and snow shadow |
-| 13 | `f` | frost | `#717f86` | 52 | snow ground, ice |
-| 14 | `F` | rime | `#aab5b6` | 73 | snow crests, ice edges, cold light |
+| 9 | `d` | deep | `#04131f` | 5 | ocean ground |
+| 10 | `n` | navy | `#0d2a46` | 10 | coast ground, river ink |
+| 11 | `N` | tide | `#1f4e7a` | 20 | ripples, foam line |
+| 12 | `g` | glint | `#3a6480` | 36 | depth contour dots, river glints, ice and snow shadow |
+| 13 | `f` | frost | `#6c8a98` | 52 | snow ground, ice |
+| 14 | `F` | rime | `#a6bcc2` | 73 | snow crests, ice edges, cold light |
 
 **Weathered teal.** Conifers, marsh shadow, verdigris, faith and depths.
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 15 | `k` | teal-dk | `#0f2224` | 12 | conifer shadow side, ancient forest mass |
-| 16 | `t` | teal | `#1c383d` | 22 | conifer body, marsh pools, priestly cloth |
-| 17 | `T` | patina | `#3d6364` | 39 | verdigris, canopy highlight, Overlords accent |
+| 15 | `k` | teal-dk | `#0a2a2f` | 12 | conifer shadow side, ancient forest mass |
+| 16 | `t` | teal | `#164c56` | 22 | conifer body, marsh pools, priestly cloth |
+| 17 | `T` | patina | `#35828a` | 39 | verdigris, canopy highlight, Overlords accent |
 
 **Moss and olive.** Living land.
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 18 | `q` | moss-dk | `#1f251c` | 14 | grass mottling, marsh ground, jungle shade |
-| 19 | `m` | moss | `#363d31` | 25 | grassland ground |
-| 20 | `o` | olive | `#4d5537` | 35 | grass tufts, reeds, jungle canopy |
-| 21 | `O` | lichen | `#6c724a` | 47 | tuft tips, tundra lichen, the Vert tincture |
+| 18 | `q` | moss-dk | `#223d1e` | 14 | grass mottling, marsh ground, jungle shade |
+| 19 | `m` | moss | `#3f6130` | 25 | grassland ground |
+| 20 | `o` | olive | `#637b34` | 35 | grass tufts, reeds, jungle canopy |
+| 21 | `O` | lichen | `#8fa050` | 47 | tuft tips, tundra lichen, the Vert tincture |
 
 **Earth.** Plains, desert, wood and leather. Rust is the corrupted earth tone.
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 22 | `u` | umber | `#2e2620` | 16 | wood, leather, soil, broken lands ground |
-| 23 | `Q` | dun | `#4f483e` | 31 | plains ground |
-| 24 | `x` | rust | `#5f3a2a` | 28 | burning sands ground, rust, the Tenné tincture |
-| 25 | `y` | ochre | `#76663f` | 44 | stubble, gilt, the Or tincture |
-| 26 | `Y` | sand | `#8c8068` | 54 | desert ground |
+| 22 | `u` | umber | `#3a2b20` | 16 | wood, leather, soil, broken lands ground |
+| 23 | `Q` | dun | `#655537` | 31 | plains ground |
+| 24 | `x` | rust | `#7c4327` | 28 | burning sands ground, rust, the Tenné tincture |
+| 25 | `y` | ochre | `#9c7e3f` | 44 | stubble, gilt, the Or tincture |
+| 26 | `Y` | sand | `#a79065` | 54 | desert ground |
 
 **Dusky purple.** The arcane.
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 27 | `v` | bruise | `#1b1622` | 8 | shallows ground, arcane shadow |
-| 28 | `p` | dusk | `#382d45` | 21 | fields of perdition ground, mage robes |
-| 29 | `P` | lilac | `#6e5b80` | 42 | mana, spell light, the Purpure tincture |
+| 27 | `v` | bruise | `#24142f` | 8 | shallows ground, arcane shadow |
+| 28 | `p` | dusk | `#45295e` | 21 | fields of perdition ground, mage robes |
+| 29 | `P` | lilac | `#8a63a8` | 42 | mana, spell light, the Purpure tincture |
 
 **Firelight** (reserved).
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 30 | `e` | ember | `#5a2412` | 22 | outer glow ring, embers, burnt glints |
-| 31 | `E` | flame | `#ad501d` | 45 | flame body, inner glow ring |
-| 32 | `l` | amber | `#e2913c` | 67 | lit window, lantern |
-| 33 | `L` | glow | `#f7d47e` | 86 | light core (1 to 2 px only) |
+| 30 | `e` | ember | `#6b2912` | 22 | outer glow ring, embers, burnt glints |
+| 31 | `E` | flame | `#d2611c` | 45 | flame body, inner glow ring |
+| 32 | `l` | amber | `#f5a63f` | 67 | lit window, lantern |
+| 33 | `L` | glow | `#fbdd8a` | 86 | light core (1 to 2 px only) |
 
 **Muted crimson** (reserved).
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 34 | `c` | blood | `#3a1216` | 12 | hell fissures, corruption haze |
-| 35 | `C` | crimson | `#77252b` | 28 | demons, the Gules tincture, war, damage |
-| 36 | `R` | scarlet | `#b33a3a` | 43 | corruption light core, demon eyes |
+| 34 | `c` | blood | `#42131a` | 12 | hell fissures, corruption haze |
+| 35 | `C` | crimson | `#9c2e34` | 28 | demons, the Gules tincture, war, damage |
+| 36 | `R` | scarlet | `#d24646` | 43 | corruption light core, demon eyes |
 
 **Pale green** (reserved).
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 37 | `s` | barrow | `#22463a` | 27 | ritual haze |
-| 38 | `S` | ritual | `#6aab88` | 65 | ritual circles, undead eyes |
+| 37 | `s` | barrow | `#235244` | 27 | ritual haze |
+| 38 | `S` | ritual | `#6fd49e` | 65 | ritual circles, undead eyes |
 | 39 | `W` | wisp | `#c4efc4` | 91 | ritual light core (1 to 2 px only) |
 
 The same palette in machine-readable form (`index key name hex family`):
 
 ```palette
  0 0 void    #05080b neutral
- 1 1 soot    #0c1115 neutral
- 2 2 coal    #161c21 neutral
- 3 3 iron    #252b2f neutral
- 4 4 slate   #373a3b neutral
- 5 5 ash     #56524c neutral
+ 1 1 soot    #110f10 neutral
+ 2 2 coal    #1c1816 neutral
+ 3 3 iron    #2b2621 neutral
+ 4 4 slate   #3d3832 neutral
+ 5 5 ash     #5a5349 neutral
  6 6 stone   #7d7366 neutral
- 7 7 bone    #b3a28c neutral
- 8 8 vellum  #ddcfb4 neutral
- 9 d deep    #071219 navy
-10 n navy    #0d1d2b navy
-11 N tide    #193249 navy
-12 g glint   #3d5868 frost
-13 f frost   #717f86 frost
-14 F rime    #aab5b6 frost
-15 k teal-dk #0f2224 teal
-16 t teal    #1c383d teal
-17 T patina  #3d6364 teal
-18 q moss-dk #1f251c moss
-19 m moss    #363d31 moss
-20 o olive   #4d5537 moss
-21 O lichen  #6c724a moss
-22 u umber   #2e2620 earth
-23 Q dun     #4f483e earth
-24 x rust    #5f3a2a earth
-25 y ochre   #76663f earth
-26 Y sand    #8c8068 earth
-27 v bruise  #1b1622 purple
-28 p dusk    #382d45 purple
-29 P lilac   #6e5b80 purple
-30 e ember   #5a2412 fire
-31 E flame   #ad501d fire
-32 l amber   #e2913c fire
-33 L glow    #f7d47e fire
-34 c blood   #3a1216 crimson
-35 C crimson #77252b crimson
-36 R scarlet #b33a3a crimson
-37 s barrow  #22463a ritual
-38 S ritual  #6aab88 ritual
+ 7 7 bone    #b8a78e neutral
+ 8 8 vellum  #e3d3b5 neutral
+ 9 d deep    #04131f navy
+10 n navy    #0d2a46 navy
+11 N tide    #1f4e7a navy
+12 g glint   #3a6480 frost
+13 f frost   #6c8a98 frost
+14 F rime    #a6bcc2 frost
+15 k teal-dk #0a2a2f teal
+16 t teal    #164c56 teal
+17 T patina  #35828a teal
+18 q moss-dk #223d1e moss
+19 m moss    #3f6130 moss
+20 o olive   #637b34 moss
+21 O lichen  #8fa050 moss
+22 u umber   #3a2b20 earth
+23 Q dun     #655537 earth
+24 x rust    #7c4327 earth
+25 y ochre   #9c7e3f earth
+26 Y sand    #a79065 earth
+27 v bruise  #24142f purple
+28 p dusk    #45295e purple
+29 P lilac   #8a63a8 purple
+30 e ember   #6b2912 fire
+31 E flame   #d2611c fire
+32 l amber   #f5a63f fire
+33 L glow    #fbdd8a fire
+34 c blood   #42131a crimson
+35 C crimson #9c2e34 crimson
+36 R scarlet #d24646 crimson
+37 s barrow  #235244 ritual
+38 S ritual  #6fd49e ritual
 39 W wisp    #c4efc4 ritual
 ```
 
