@@ -652,6 +652,20 @@ export class ArtMap {
     return out;
   }
 
+  /** The ease-out pixel offset of unit `id`'s slide (from its new tile back toward the old one),
+   *  snapped to whole art pixels; ZERO_OFF when it is not sliding. Pure — expiry is handled by the
+   *  time prune in draw() — so the sprite (drawUnits) and the selection mark (drawOverlays) read
+   *  the same value and stay locked together. */
+  slideOffset(id, f, now) {
+    const s = this.slides.get(id);
+    if (!s) return ZERO_OFF;
+    const t = (now - s.t0) / s.dur;
+    if (t >= 1) return ZERO_OFF;
+    const e = 1 - Math.pow(1 - t, 3);
+    const snap = (v) => Math.round(v / f.s) * f.s;
+    return { ox: snap(-s.dx * f.tp * (1 - e)), oy: snap(s.dy * f.tp * (1 - e)) };
+  }
+
   /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the city
    *  banners and plaques, then the stacks' standards, counts, health and marks. */
   drawUnits(g, f) {
@@ -661,26 +675,13 @@ export class ArtMap {
     const owner = (p) => this.owners.get(p);
     const zoom = f.s / f.dpr;
     // The slide offset of each moving stack (docs/ART.md 4.5): from its old tile to its new one,
-    // ease-out, snapped to whole art pixels so the sprite stays on the grid. Computed once per
-    // head unit (a slide self-expires on its own clock), and used for both the sprite and the
-    // overlay pass so the standard, count and health ride with the figure.
+    // used for both the sprite and the overlay pass so the standard, count and health ride with
+    // the figure (and, in drawOverlays, the selection mark rides with it too).
     const now = performance.now();
     const offsets = new Map();
     const offOf = (id) => {
-      if (offsets.has(id)) return offsets.get(id);
-      let off = ZERO_OFF;
-      const s = this.slides.get(id);
-      if (s) {
-        const t = (now - s.t0) / s.dur;
-        if (t >= 1) this.slides.delete(id);
-        else {
-          const e = 1 - Math.pow(1 - t, 3);
-          const snap = (v) => Math.round(v / f.s) * f.s;
-          off = { ox: snap(-s.dx * f.tp * (1 - e)), oy: snap(s.dy * f.tp * (1 - e)) };
-        }
-      }
-      offsets.set(id, off);
-      return off;
+      if (!offsets.has(id)) offsets.set(id, this.slideOffset(id, f, now));
+      return offsets.get(id);
     };
     for (const st of stacks) {
       const off = offOf(st.head.id);
@@ -714,7 +715,13 @@ export class ArtMap {
       for (const ux of this.copies(f, x)) fn(f.ox + ux * f.tp, f.oy + row * f.tp, ux, row);
     };
     if (Array.isArray(o.targets)) for (const [x, y] of o.targets) at(x, y, (X, Y, ux, row) => UI.drawTileMark(art, g, X, Y, "target", { mx: ux, my: row }));
-    if (o.sel) at(o.sel.x, o.sel.y, (X, Y) => UI.drawTileMark(art, g, X, Y, "select"));
+    // The selection mark rides with the selected unit while it slides, so the bracket does not sit
+    // at the destination waiting for the sprite to catch up.
+    if (o.sel) {
+      const selId = (o.units ?? [])[0];
+      const off = selId !== undefined && selId !== null ? this.slideOffset(selId, f, performance.now()) : ZERO_OFF;
+      at(o.sel.x, o.sel.y, (X, Y) => UI.drawTileMark(art, g, X + off.ox, Y + off.oy, "select"));
+    }
     if (o.hover && !(o.sel && o.sel.x === o.hover.x && o.sel.y === o.hover.y)) at(o.hover.x, o.hover.y, (X, Y) => UI.drawTileMark(art, g, X, Y, o.targets ? "route" : "hover"));
     if (Array.isArray(o.waypoints)) {
       o.waypoints.forEach(([x, y], i) => at(x, y, (X, Y) => {
