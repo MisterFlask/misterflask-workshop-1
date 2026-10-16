@@ -77,8 +77,14 @@ fn the_art_is_embedded_as_it_is_on_disk() {
     assert_eq!(&files[..3], ["palette.txt", "sets.txt", "types.json"]);
     for set in ["terrain", "units", "cities", "ui"] {
         assert!(files.contains(&format!("{set}/manifest.txt").as_str()), "{files:?}");
+        // every sprite source the set's manifest names travels in the bundle
+        let manifest = std::fs::read_to_string(art_dir().join(set).join("manifest.txt")).unwrap();
+        let sources: Vec<&str> = manifest.lines().filter_map(|l| l.trim().strip_prefix("source ")).map(str::trim).collect();
+        assert!(!sources.is_empty(), "{set}/manifest.txt names no sources");
+        for src in sources {
+            assert!(files.contains(&format!("{set}/{src}").as_str()), "{set}/{src} is not in the bundle: {files:?}");
+        }
     }
-    assert!(files.iter().filter(|f| f.ends_with(".spr")).count() >= 20, "{files:?}");
 }
 
 /// The module specifiers a module imports: `import ... from "x"`, `export ... from "x"`, the

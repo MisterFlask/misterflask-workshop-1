@@ -30,6 +30,25 @@ to fill `unit_mapping.json`. Options per sprite: `slots` (`auto`, `none`, `red`,
 for the atlas figures' keys; re-running it on an already integrated tree only reports the rules it
 has already changed.
 
+## Composed units (docs/ART.md 10.4)
+
+The units the sheets lack are composed from atlas crops and painted shapes at atlas 2's scale, then
+quantized like the cut figures:
+
+```sh
+python3 cut_missed.py WORK                           # figures the extraction missed (hand-given boxes)
+python3 compose_units.py WORK [NAME...]              # WORK/crops/comp/NAME.png, one per recipe
+python3 quantize.py WORK composed_mapping.json units_composed   # WORK/out/units_composed.spr + preview
+python3 integrate_composed.py WORK ../..             # units/composed.spr (+ lights), manifest rules
+sh ../check.sh
+```
+
+`composelib.py` holds the tools: `Layer` (recolour along a palette ramp by lightness rank, erase,
+patch, scale, mirror, composite), `Shape` (ellipses, polygons, tapered strokes, supersampled) and
+`paint` (a shape shaded as a lit dome, posterized to a ramp, dark rim). A recipe in
+`compose_units.py` is a function returning a `Canvas` with the figure's feet on its anchor;
+`composed_mapping.json` gives each its quantize options (`frame`, `slots`, `size`, `feet`, `ship`).
+
 ## The palette (docs/ART.md 2)
 
 ```sh
