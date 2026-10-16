@@ -893,6 +893,22 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
   Cartography: only the settler gate (`finance::city_affordable`, not wired in) prevents that,
   and gating expansion costs cities (no better score by turn 300).
+  A diagnosis (instrumented Finance + per-city builds) found research is cost-limited, not
+  slider-limited (`empire::sliders` already maxes research subject to solvency), and the dominant
+  cost is unit support (35-48% of costs at t300), while research-multiplier buildings are starved:
+  at war + army-short the production ladder returned a military unit every turn and never reached
+  the building step, so libraries were built in ~1 of 6-8 cities and beakers = commerce x slider
+  with no multiplier. Fix (`production.rs` decide(), the "economy-before-the-army-tail" gate): a
+  high-value economy building (identified data-drivenly by its gold/research commerce + specialist/
+  GP/trade value, `is_economy_building`) now preempts the surplus-army *interleave* -- but only for
+  a civ whose finances are actually strained by upkeep (`Finance::support_heavy` or `structural`),
+  so the research-suppressed laggards get relief while healthy conquerors keep their army. It is
+  strictly downstream of `army_choice` (the operation's real needed force) and every garrison, so
+  only the non-converting attacker tail is deferred; nothing is disbanded. Measured (16-seed A/B):
+  research@t300 +4%, final power +12%, biggest empire +3% and top-power share +10% (domination up),
+  net territory and eliminations flat. A broader variant (gate on any economy building, no finance
+  condition) gave more research (+12%) but cut captures ~25% and shrank the top empire -- it
+  dampened healthy conquerors, so the upkeep-strained condition was kept.
 - Sieges: one operation at a time; armies are small (at war the operation spends half its turns
   gathering, typically 2-3 units against a need of 4-6), so a barbarian town of 5+ archers is
   out of reach and is left alone; casters do not join the strike (they only follow the army); a
