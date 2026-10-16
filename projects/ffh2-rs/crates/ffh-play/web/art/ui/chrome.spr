@@ -6,100 +6,100 @@
 ; ui/ui.js draws them on a canvas (drawNine) and turns them into CSS border-images (nineCSS).
 
 = ui/frame_panel 9x9 0,0
-: note panel: a double rule, ash outside and iron inside with soot between; gilt nails at the corners
+: note panel: navy, a gold rule outside and a bronze one inside; pale gilt nails at the corners
 : tags nine=4,4,4,4
-.7.....7.
-7y75557y7
-.7111117.
-.5133315.
-.5131315.
-.5133315.
-.7111117.
-7y75557y7
-.7.....7.
+.K.....K.
+KLKjjjKLK
+.K11111K.
+.j12221j.
+.j12121j.
+.j12221j.
+.K11111K.
+KLKjjjKLK
+.K.....K.
 
 = ui/frame_page 13x13 0,0
 : note map page: the panel's double rule around the map viewport (the centre is left open)
 : tags nine=6,6,6,6
-.7.........7.
-7y755555557y7
-.71111111117.
-.51333333315.
-.513.....315.
-.513.....315.
-.513.....315.
-.513.....315.
-.513.....315.
-.51333333315.
-.71111111117.
-7y755555557y7
-.7.........7.
+.K.........K.
+KLKjjjjjjjKLK
+.K111111111K.
+.j122222221j.
+.j12.....21j.
+.j12.....21j.
+.j12.....21j.
+.j12.....21j.
+.j12.....21j.
+.j122222221j.
+.K111111111K.
+KLKjjjjjjjKLK
+.K.........K.
 
 = ui/frame_modal 21x21 0,0
 : note modal page: three rules (ash, iron, ash) with a gilt lozenge at each corner and nails on the inner rule
 : tags nine=10,10,10,10
 ...0.............0...
-..070...........070..
-.07y70.........07y70.
-07yLy70555555507yLy70
-.07y7011111111107y70.
-..07033333333333070..
-...013111111111310...
-...5131y55555y1315...
-...513151111151315...
-...513151111151315...
-...513151111151315...
-...513151111151315...
-...513151111151315...
-...5131y55555y1315...
-...013111111111310...
-..07033333333333070..
-.07y7011111111107y70.
-07yLy70555555507yLy70
-.07y70.........07y70.
-..070...........070..
+..0K0...........0K0..
+.0KLK0.........0KLK0.
+0KL8LK0jjjjjjj0KL8LK0
+.0KLK01111111110KLK0.
+..0K0222222222220K0..
+...012111111111210...
+...j121LjjjjjL121j...
+...j121j11111j121j...
+...j121j11111j121j...
+...j121j11111j121j...
+...j121j11111j121j...
+...j121j11111j121j...
+...j121LjjjjjL121j...
+...012111111111210...
+..0K0222222222220K0..
+.0KLK01111111110KLK0.
+0KL8LK0jjjjjjj0KL8LK0
+.0KLK0.........0KLK0.
+..0K0...........0K0..
 ...0.............0...
 
 = ui/frame_title 5x5 0,0
-: note panel title band: coal, with a 1 px ash rule beneath
+: note panel title band: a maroon ribbon with a 1 px gold rule beneath
 : tags nine=2,1,2,2
-22222
-22222
-22222
-55555
+ccccc
+ccccc
+ccccc
+KKKKK
 .....
 
 = ui/frame_raised 7x7 0,0
 : note raised panel or card: coal with an iron rim, lit along the top
 : tags nine=2,2,2,2
-.33333.
-3444443
-3422223
-3422223
-3422223
-3222223
-.33333.
+.jjjjj.
+jyyyyyj
+jy2222j
+jy2222j
+jy2222j
+j22222j
+.jjjjj.
 
 = ui/frame_card_selected 7x7 0,0
 : note the selected card (a unit in the stack list): bone rim, vellum along the top
 : tags nine=2,2,2,2
-.77777.
-7888887
-7822227
-7822227
-7822227
-7222227
-.66666.
+.KKKKK.
+KLLLLLK
+KL2222K
+KL2222K
+KL2222K
+K22222K
+.yyyyy.
 
 = ui/frame_tooltip 7x7 0,0
 : note hover tooltip: soot, 1 px stone border (ash at the corners), void outline for the map
 : tags nine=3,3,3,3
 .00000.
-0566650
-0611160
-0611160
-0611160
-0566650
+0yKKKy0
+0K111K0
+0K111K0
+0K111K0
+0yKKKy0
 .00000.
 
 = ui/frame_inset 5x5 0,0
@@ -115,81 +115,81 @@
 : note a small plate for values (like the city plaque): soot with an ash rule
 : tags nine=2,2,2,2
 .00000.
-0555550
-0511150
-0511150
-0511150
-0555550
+0yyyyy0
+0y111y0
+0y111y0
+0y111y0
+0yyyyy0
 .00000.
 
 = ui/button 7x7 0,0
-: note button, normal: coal, ash border, iron light along the top and left; text in bone
+: note button, normal: navy, an ochre border, light along the top and left; text in cream
 : tags nine=3,3,3,3
 .00000.
-0555550
-0533350
-0532150
-0532150
-0511150
+0yyyyy0
+0y444y0
+0y421y0
+0y421y0
+0y111y0
 .00000.
 
 = ui/button_hover 7x7 0,0
 : note button, hover: stone border; text in vellum
 : tags nine=3,3,3,3
 .00000.
-0666660
-0644460
-0643260
-0643260
-0622260
+0KKKKK0
+0K555K0
+0K542K0
+0K542K0
+0K222K0
 .00000.
 
 = ui/button_pressed 7x7 0,0
 : note button, pressed: soot with a void inset at the top and left, stone border; text in vellum
 : tags nine=3,3,3,3
 .00000.
-0666660
-0600060
-0601160
-0601160
-0611160
+0KKKKK0
+0K000K0
+0K011K0
+0K011K0
+0K111K0
 .00000.
 
 = ui/button_disabled 7x7 0,0
 : note button, disabled: soot, iron border, no light; text in ash
 : tags nine=3,3,3,3
 .00000.
-0333330
-0311130
-0311130
-0311130
-0311130
+0BBBBB0
+0B111B0
+0B111B0
+0B111B0
+0B111B0
 .00000.
 
 = ui/button_primary 9x9 0,0
 : note primary button (End Turn, Confirm): bone border with gilt nails inside the corners; vellum text
 : tags nine=4,4,4,4
 .0000000.
-077777770
-07y333y70
-073222170
-073222170
-073222170
-07y111y70
-077777770
+0KKKKKKK0
+0KL444LK0
+0K42221K0
+0K42221K0
+0K42221K0
+0KL111LK0
+0KKKKKKK0
 .0000000.
 
 = ui/button_primary_hover 9x9 0,0
 : note primary button, hover: vellum border, lit nails
 : tags nine=4,4,4,4
 .0000000.
-088888880
-08L444L80
-084222180
-084222180
-084222180
-08L111L80
-088888880
+0LLLLLLL0
+0L85558L0
+0L52221L0
+0L52221L0
+0L52221L0
+0L81118L0
+0LLLLLLL0
 .0000000.
 
 = ui/button_danger 7x7 0,0

@@ -1,104 +1,136 @@
-; palette.txt: the closed 40-colour palette of docs/ART.md section 2.
+; palette.txt: the closed 56-colour palette of docs/ART.md section 2 ("cheerful readability").
 ; Keep in sync with the guide: tools/validate.mjs compares this file with its `palette` and `remap` blocks.
 ;
 ; palette: index key name hex family. Keys are the characters used in sprite grids.
 palette
- 0 0 void    #05080b neutral
- 1 1 soot    #110f10 neutral
- 2 2 coal    #1c1816 neutral
- 3 3 iron    #2b2621 neutral
- 4 4 slate   #3d3832 neutral
- 5 5 ash     #5a5349 neutral
- 6 6 stone   #7d7366 neutral
- 7 7 bone    #b8a78e neutral
- 8 8 vellum  #e3d3b5 neutral
- 9 d deep    #04131f navy
-10 n navy    #0d2a46 navy
-11 N tide    #1f4e7a navy
-12 g glint   #3a6480 frost
-13 f frost   #6c8a98 frost
-14 F rime    #a6bcc2 frost
-15 k teal-dk #0a2a2f teal
-16 t teal    #164c56 teal
-17 T patina  #35828a teal
-18 q moss-dk #223d1e moss
-19 m moss    #3f6130 moss
-20 o olive   #637b34 moss
-21 O lichen  #8fa050 moss
-22 u umber   #3a2b20 earth
-23 Q dun     #655537 earth
-24 x rust    #7c4327 earth
-25 y ochre   #9c7e3f earth
-26 Y sand    #a79065 earth
-27 v bruise  #24142f purple
-28 p dusk    #45295e purple
-29 P lilac   #8a63a8 purple
-30 e ember   #6b2912 fire
-31 E flame   #d2611c fire
-32 l amber   #f5a63f fire
-33 L glow    #fbdd8a fire
-34 c blood   #42131a crimson
-35 C crimson #9c2e34 crimson
-36 R scarlet #d24646 crimson
-37 s barrow  #235244 ritual
-38 S ritual  #6fd49e ritual
-39 W wisp    #c4efc4 ritual
+ 0 0 void     #140d0c neutral
+ 1 1 soot     #14223e neutral
+ 2 2 coal     #26334f neutral
+ 3 3 iron     #424858 neutral
+ 4 4 slate    #5f6676 neutral
+ 5 5 ash      #848b98 neutral
+ 6 6 stone    #adb3bd neutral
+ 7 7 bone     #e9dbb3 neutral
+ 8 8 vellum   #fffaec neutral
+ 9 d deep     #0b4290 navy
+10 n navy     #1765b2 navy
+11 N tide     #3f8cd2 navy
+12 g glint    #80b7e3 frost
+13 f frost    #c6ddec frost
+14 F rime     #f2f8fc frost
+15 k pine-dk  #163c2f teal
+16 t pine     #215e3e teal
+17 T needle   #3c8b4f teal
+18 q moss-dk  #4a6f22 moss
+19 m moss     #6fa534 moss
+20 o olive    #91c03d moss
+21 O lichen   #bddb5d moss
+22 u umber    #5b3a1f earth
+23 Q dun      #c2a95f earth
+24 x rust     #b9582a earth
+25 y ochre    #dba63b earth
+26 Y sand     #ecd18c earth
+27 v bruise   #2f1b4b purple
+28 p dusk     #5c3393 purple
+29 P lilac    #a276da purple
+30 e ember    #8d2f10 fire
+31 E flame    #ef6b1b fire
+32 l amber    #ffb63b fire
+33 L glow     #ffe78c fire
+34 c blood    #561417 crimson
+35 C crimson  #c8272b crimson
+36 R scarlet  #f15b47 crimson
+37 s barrow   #2a7a63 ritual
+38 S ritual   #70e0b1 ritual
+39 W wisp     #d9fbe9 ritual
+40 a skin-lt  #e8bd90 skin
+41 b skin     #c58b58 skin
+42 h bark     #3a2314 wood
+43 r auburn   #7a3b1c wood
+44 i leather  #96612f wood
+45 j khaki    #a9874f wood
+46 w olive-dk #2c4117 olive
+47 z fern-dk  #5c6c2c olive
+48 A fern     #7f9134 olive
+49 B pewter   #4f4a4c grey
+50 D flint    #77716f grey
+51 G ash-lt   #a8a09a grey
+52 H silver   #cdcacc grey
+53 I maroon   #8f1e1f crimson
+54 J royal    #3356b6 royal
+55 K gold     #f2c74b gold
 
-; remap: index remaps (section 2.4). FOG darkens about two steps and puts every light out; FIRE,
-; BLOOD, RITE and ARC pull the ground toward firelight, corruption, ritual and the arcane (pools).
+; remap: index remaps (section 2.4). FOG dims and greys (remembered ground, never black) and
+; puts the lights out; FIRE, BLOOD, RITE and ARC pull toward firelight, corruption, ritual and the arcane.
 remap
-key  FOG FIRE BLOOD RITE ARC
-0    0   u    c     s    v
-1    0   u    c     s    v
-2    1   u    c     s    v
-3    2   u    c     s    p
-4    2   Q    c     s    p
-5    3   6    C     S    p
-6    4   7    C     S    P
-7    5   8    C     S    P
-8    6   8    R     W    8
-d    0   n    c     s    v
-n    d   N    c     s    v
-N    n   g    c     s    p
-g    N   f    C     S    p
-f    g   7    C     S    P
-F    f   8    C     S    P
-k    1   u    c     s    v
-t    k   Q    c     s    p
-T    t   y    C     S    P
-q    1   u    c     s    v
-m    q   Q    c     s    p
-o    m   y    C     S    p
-O    o   Y    C     S    P
-u    1   Q    c     s    v
-Q    u   y    c     s    p
-x    u   E    C     s    p
-y    Q   Y    C     S    P
-Y    5   7    C     S    P
-v    1   u    c     s    p
-p    v   Q    c     s    P
-P    p   6    C     S    8
-e    u   E    C     s    p
-E    u   l    R     S    P
-l    x   L    R     W    P
-L    y   L    R     W    8
-c    v   x    C     s    v
-C    c   E    R     S    p
-R    C   l    R     W    P
-s    k   Q    c     S    p
-S    s   y    C     W    P
-W    T   8    R     W    8
+key  FOG   FIRE  BLOOD RITE  ARC  
+0    0     0     0     0     0    
+1    1     u     c     k     v    
+2    2     u     c     k     v    
+3    3     i     c     s     d    
+4    B     i     c     s     p    
+5    4     b     r     s     P    
+6    5     a     b     S     P    
+7    G     L     b     S     P    
+8    H     Y     a     W     P    
+d    d     B     c     k     p    
+n    d     D     c     s     J    
+N    n     G     D     s     J    
+g    N     a     G     S     P    
+f    g     7     G     S     P    
+F    f     a     a     W     P    
+k    k     u     c     t     v    
+t    k     z     u     s     v    
+T    t     A     r     T     4    
+q    w     A     r     T     4    
+m    z     K     i     T     5    
+o    A     K     b     S     5    
+O    A     K     b     S     6    
+u    h     i     c     t     v    
+Q    j     y     x     S     P    
+x    r     E     I     z     P    
+y    j     l     x     S     5    
+Y    G     K     b     S     6    
+v    1     c     c     k     p    
+p    v     c     c     3     p    
+P    4     G     I     5     P    
+e    u     x     I     t     v    
+E    i     E     C     z     P    
+l    j     l     x     S     6    
+L    a     K     b     S     H    
+c    h     e     c     k     v    
+C    r     E     I     D     p    
+R    r     E     C     G     P    
+s    k     j     u     s     n    
+S    s     L     a     S     g    
+W    H     Y     a     S     g    
+a    G     l     b     S     P    
+b    j     y     x     s     P    
+h    h     r     c     k     v    
+r    u     x     I     t     v    
+i    u     x     I     s     p    
+j    D     y     x     s     P    
+w    k     i     c     t     v    
+z    w     j     r     s     4    
+A    z     y     i     T     4    
+B    B     i     c     s     v    
+D    B     b     I     s     P    
+G    D     a     r     s     P    
+H    G     a     b     S     P    
+I    c     x     I     t     p    
+J    d     D     v     s     p    
+K    Q     l     x     S     6    
 
 ; tinctures (section 7.1): name field shade charge stitch stitch-under [tick]
 ; A border stitches with `stitch` over `under`; Sable adds a bone tick on every dash.
 tinctures
-Argent  7 6 1 7 6
-Or      y u 1 y u
-Gules   C c 8 C c
-Azure   g n 8 g n
-Vert    O o 1 O o
+Argent  H D 1 H D
+Or      K j 1 K j
+Gules   C I 8 C I
+Azure   J d 8 J d
+Vert    T t 8 T t
 Purpure P p 8 P p
-Tenne   x u 7 x u
-Celeste f g 1 f g
+Tenne   E x 1 E x
+Celeste g N 1 g N
 Sable   2 1 7 2 1 7
-Cendree T t 8 T t
+Cendree D B 8 D B

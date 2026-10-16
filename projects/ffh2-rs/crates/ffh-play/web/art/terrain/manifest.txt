@@ -64,16 +64,16 @@ map terrain * -> terrain/tundra mini=4
 
 ; ---- hills (5.3): humps keyed in grass colours (crest O and o, flank q and 1; the contour is void)
 map hill water=1 -> none
-map hill TERRAIN_GRASS -> hill/hump mini=o
-map hill TERRAIN_PLAINS -> hill/hump remap=Oy,o5,qu,12 mini=y
-map hill TERRAIN_DESERT -> hill/hump remap=OY,o6,qQ,1u mini=Y
-map hill TERRAIN_TUNDRA -> hill/hump remap=O6,o5,q3,11 mini=5
-map hill TERRAIN_SNOW -> hill/hump remap=OF,of,qN,1n mini=F
-map hill TERRAIN_MARSH -> hill/hump remap=Oo,om,qk,11 mini=o
-map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=O5,o3,q2,10 mini=3
-map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=OP,oP,qv,11 mini=P
-map hill TERRAIN_BURNING_SANDS -> hill/hump remap=Ox,oe,q1,10 mini=e
-map hill TERRAIN_SHALLOWS -> hill/hump remap=O4,o3,q1,10 mini=1
+map hill TERRAIN_GRASS -> hill/hump mini=m
+map hill TERRAIN_PLAINS -> hill/hump remap=O7,oY,mQ,qj,wi mini=Q
+map hill TERRAIN_DESERT -> hill/hump remap=O8,o7,mY,qQ,wj mini=Y
+map hill TERRAIN_TUNDRA -> hill/hump remap=OH,o6,mG,qD,wB mini=G
+map hill TERRAIN_SNOW -> hill/hump remap=O8,oF,mF,qf,wg mini=F
+map hill TERRAIN_MARSH -> hill/hump remap=Oo,om,mq,qw,wk mini=q
+map hill TERRAIN_BROKEN_LANDS -> hill/hump remap=Ox,or,mu,qh,w0 mini=u
+map hill TERRAIN_FIELDS_OF_PERDITION -> hill/hump remap=OP,oP,mp,qv,w1 mini=p
+map hill TERRAIN_BURNING_SANDS -> hill/hump remap=Ol,oE,mx,qr,we mini=x
+map hill TERRAIN_SHALLOWS -> hill/hump remap=Op,op,mv,q1,w0 mini=v
 map hill * -> hill/hump mini=o
 
 ; ---- peaks (5.3): snow and tundra wear the tall cap; hell peaks are scorched or dusk-lit

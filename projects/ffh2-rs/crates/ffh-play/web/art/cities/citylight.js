@@ -168,8 +168,18 @@ export function drawRings(art, ctx, cx, cy, table, radii, shares = SHARE) {
  * pool (FIRE, BLOOD, ARC; any other table falls back to a single ring of itself).
  */
 export function drawCityPool(art, ctx, cx, cy, table, tier) {
-  drawRings(art, ctx, cx, cy, table, poolRadii(tier, table));
+  const k = DAYLIGHT[table] ?? 1;
+  if (k <= 0) return;
+  drawRings(art, ctx, cx, cy, table, poolRadii(tier, table).map((r) => Math.round(r * k)));
 }
+
+/**
+ * Daylight (docs/ART.md 4.4): the map is lit by the sun, so firelight barely shows. City pools are
+ * scaled per family -- firelight none, while corruption, the arcane and ritual auras stay as faction
+ * identity, closer to the walls -- firelight point lights (lanterns, campfires) are halved, and the
+ * night's wall glow and facade light are off.
+ */
+export const DAYLIGHT = { FIRE: 0, BLOOD: 0.55, ARC: 0.55, RITE: 0.7, firePoint: 0.5, glow: false };
 
 // a ritual light is mostly its teal haze, with a sparse heart of ritual green (so a drawn ring of
 // ritual pixels still reads against it)
@@ -180,6 +190,8 @@ const RITE_SHARE = { outer: 0.8, inner: 0.6, core: 0.85 };
  * (ritual lights: r, 0.5 r, 0.22 r, the inner ring sparser).
  */
 export function drawPointLight(art, ctx, cx, cy, table, r) {
+  if (table === 'FIRE') r *= DAYLIGHT.firePoint;
+  if (r < 1) return;
   if (table === 'RITE') drawRings(art, ctx, cx, cy, table, [r, r * 0.5, r * 0.22], RITE_SHARE);
   else drawRings(art, ctx, cx, cy, table, [r, r * 0.55, r >= 6 ? r * 0.25 : 0]);
 }
@@ -291,9 +303,10 @@ export function installCityLight(art) {
     const tier = tierOfSize(city.size | 0 || 1);
     if (pool !== 'none' && city.pool !== false) drawCityPool(art, ctx, x + 16 * s, y + 28 * s, pool, tier);
     for (const l of spr?.meta.lights || []) drawPointLight(art, ctx, x + (16 - spr.ax + l.x) * s, y + (30 - spr.ay + l.y) * s, l.table, l.radius);
-    if (pool !== 'none' && city.glow !== false) drawWallGlow(art, ctx, x, y, spr, pool);
+    const glow = DAYLIGHT.glow && pool !== 'none' && city.glow !== false;
+    if (glow) drawWallGlow(art, ctx, x, y, spr, pool);
     baseCity(ctx, x, y, { ...city, layer: 'sprite', pool: false }, owner);
-    if (pool !== 'none' && city.glow !== false) drawFacadeLight(art, ctx, x, y, spr, pool, tier);
+    if (glow) drawFacadeLight(art, ctx, x, y, spr, pool, tier);
     if (layer === 'all') baseCity(ctx, x, y, { ...city, layer: 'overlay' }, owner);
   };
   art._cityLight = true;

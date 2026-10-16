@@ -679,16 +679,22 @@ function frost(t) {
 // table: the halo table that pre-lights the stone around windows (null: none); light: a ground
 // light of the sprite itself ([table, radius], placed under its glow core), e.g. the tribal bonfire.
 
+/** Daylight towns (the cheerful revamp): windows are not pre-lit through the halo tables, and the
+ * hand-drawn stamps' dark noir neutrals are lifted two steps (doors, gates, crags, frames) except in
+ * the styles meant to be dark or faded (lift: false). */
+const DAYLIGHT = true;
+const DAY_LIFT = { 1: '3', 2: '4', 3: '5', 4: '6', 5: 'H' };
+
 const STYLES = [
   { name: 'cloister', note: 'gothic stone: steep dark roofs with a moonlit edge, a chapel spire, a nave, a cathedral front from tier IV', make: (t) => cloister(t), table: 'FIRE' },
   { name: 'amurite', note: 'cloister with a mage tower crowned by a lilac crystal; lilac windows', make: (t) => cloister(t, { mage: true, m: { ...M.stone, t: '5' } }), table: 'ARC' },
-  { name: 'calabim', note: 'cloister in dark stone', make: (t) => cloister(t, { m: M.dark }), table: 'FIRE' },
+  { name: 'calabim', note: 'cloister in dark stone', make: (t) => cloister(t, { m: M.dark }), table: 'FIRE', lift: false },
   {
-    name: 'sidar', note: 'faded cloister in ash; no lit windows above tier II', make: (t) => cloister(t, { m: M.faded }), table: null,
+    name: 'sidar', note: 'faded cloister in ash; no lit windows above tier II', make: (t) => cloister(t, { m: M.faded }), table: null, lift: false,
     post: (g, t) => (t >= 3 ? g.remap({ l: '3', L: '3' }) : g),
   },
   { name: 'sundomes', note: 'sand stone, flat roofs, low domes and a minaret', make: sundomes, table: 'FIRE' },
-  { name: 'elven', note: 'great trees with lit hollows, platforms and pods', make: (t) => elven(t), table: 'FIRE' },
+  { name: 'elven', note: 'great trees with lit hollows, platforms and pods', make: (t) => elven(t), table: 'FIRE', post: (g) => g.remap({ k: 't', t: 'T', T: 'o' }) },
   { name: 'svartalfar', note: 'elven trees in dusk and bruise, lilac hollows', make: (t) => elven(t, { dark: true }), table: 'ARC' },
   { name: 'dwarven', note: 'halls cut into a crag: a carved gate between pillars, doors, lit windows, ember chimneys', make: (t) => dwarven(t), table: null },
   { name: 'luchuirp', note: 'dwarven halls with a gear wheel and a golem forge', make: (t) => dwarven(t, { luchuirp: true }), table: null },
@@ -696,7 +702,7 @@ const STYLES = [
   { name: 'barbarian', note: 'dark pelt tents, a skull-topped palisade, a lookout, a bonfire (FIRE pool, radius 8)', make: (t) => tribal(t, { barb: true }), table: 'EMBER', light: ['FIRE', 8] },
   { name: 'harbour', note: 'stilt houses, moored ships with square sails and stern lanterns, a pier, a lighthouse from tier IV', make: harbour, table: 'FIRE', post: (g) => g.remap({ y: 'Q', x: 'e' }) },
   { name: 'carnival', note: 'striped pavilions in the owner colours (# %), a big top, pennants and lantern strings', make: carnival, table: 'FIRE' },
-  { name: 'infernal', note: 'black thorn spires with a moonlit edge, crimson cracks, scarlet windows', make: infernal, table: 'BLOOD' },
+  { name: 'infernal', note: 'black thorn spires with a moonlit edge, crimson cracks, scarlet windows', make: infernal, table: 'BLOOD', lift: false },
   { name: 'celestial', note: 'pale slender towers, needle spires and domes, vellum light', make: celestial, table: null },
   { name: 'frost', note: 'rime-capped stone and an ice spire, rime windows', make: frost, table: 'COLD' },
 ];
@@ -728,8 +734,10 @@ export function build() {
   for (const st of STYLES) {
     for (let t = 1; t <= 5; t++) {
       let g = st.make(t);
-      g = halo(g, TABLES[st.table]);
+      // daylight: no firelight halo around the windows (night only)
+      if (!DAYLIGHT) g = halo(g, TABLES[st.table]);
       if (st.post) g = st.post(g, t);
+      if (DAYLIGHT && st.lift !== false) g = g.remap(DAY_LIFT);
       g = trim(g, 0);
       const [fx, fy] = finialOf(g);
       const meta = [`finial ${fx},${fy}`];

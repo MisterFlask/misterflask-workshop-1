@@ -42,7 +42,7 @@
 
 const BANNER = 'ui/stack_banner';
 const SIGIL = 5; // sigils on the standard are the 5x5 charges
-const TRANSPARENT = 255, NUM_COLORS = 40; // as in spritefmt.js
+const TRANSPARENT = 255, NUM_COLORS = 56; // as in spritefmt.js
 
 /** Paint art pixels [x, y, key] relative to the tile corner (x, y). */
 function px(art, ctx, x, y, list) {

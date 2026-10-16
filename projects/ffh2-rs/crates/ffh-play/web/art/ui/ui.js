@@ -275,7 +275,7 @@ export function nineEl(art, name, w, h, { u = 2, dpr = 1 } = {}) {
   return c;
 }
 
-/** CSS custom properties for the 40 palette colours: --c-void ... --c-wisp (docs/ART.md 11.2). */
+/** CSS custom properties for the palette colours: --c-void ... --c-gold (docs/ART.md 11.2). */
 export function paletteCSS(art) {
   return ':root {\n' + art.palette.colors.map((c) => `  --c-${c.name}: ${c.hex};`).join('\n') + '\n}\n';
 }
@@ -366,7 +366,7 @@ export function drawButton(art, ctx, x, y, w, h, label, { kind = 'normal', state
 /** Remap that greys a sprite out (every colour to iron/ash by value), for disabled controls. */
 export function disabledRemap(art, spr) {
   const used = new Set();
-  for (const v of spr.data) if (v < 40 && v !== 0) used.add(v);
+  for (const v of spr.data) if (v < art.palette.colors.length && v !== 0) used.add(v);
   return [...used].map((i) => {
     const L = art.palette.colors[i];
     const lum = 0.3 * L.rgb[0] + 0.59 * L.rgb[1] + 0.11 * L.rgb[2];

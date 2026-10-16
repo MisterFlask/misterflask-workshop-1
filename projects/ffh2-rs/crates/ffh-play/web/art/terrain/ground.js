@@ -70,27 +70,28 @@ export const GROUND = {
   // moonlit clearings and cloud shade: low-frequency noise (cells in px, weights) lifting the ground
   // one step where it is above `lit`, lowering it below `shade`, by a Bayer share rising over `ramp`
   // to `max` (`shadeMax`); `grain` above `lit` a share up to `grainMax` takes the pale mark colour
-  moon: { cells: [[88, 0.65], [30, 0.35]], lit: -0.06, shade: -0.38, ramp: 0.35, max: 0.6, shadeMax: 0.25, grain: 0.16, grainMax: 0.3 },
-  rimKey: 'O', // the moonlit rim of woods
+  moon: { cells: [[88, 0.65], [30, 0.35]], lit: -0.06, shade: -0.38, ramp: 0.35, max: 0.4, shadeMax: 0.15, grain: 0.16, grainMax: 0.15 },
+  rimKey: 'O', // the sunlit rim of woods
+  unseenKey: '1', // unrevealed ground: the interface's navy, not a black hole
+  vignette: false, // daylight: no candle-lit page edge
   massGap: 3, // gaps narrower than about twice this between trees still count as one wood
   crestTrees: 3, // trees standing on one hump's crest (wooded hills)
   crestGap: 6, // their least spacing
 };
 
 // one step lighter within the family, for ground colours only (water, ink and lights unchanged)
-const VERGE = 'q:m m:o o:O k:t t:T u:Q Q:y x:y y:Y Y:7 1:2 2:3 3:4 4:5 5:6 6:7 g:f v:p';
-// the moonlit step of a ground colour (clearings): grass to olive and lichen, plains to ash, ash to
-// stone; snow, water, hell purples and lights unchanged
-const MOON = 'q:m m:o o:O u:Q Q:5 5:6 6:7 y:Y 3:4 4:5 k:t t:T x:y';
-// the moonlit grain: in the brightest clearings a share of the ground takes a pale, cold-washed
-// colour (moonlight greys what it lights: grass and plains to stone 6, tufts to lichen O, slate to ash)
-const GRAIN = 'q:5 m:6 o:O u:Q Q:6 5:6 3:4 4:5 y:Y k:t t:T x:y';
+const VERGE = 'q:m m:o o:O k:t t:T u:i i:j j:Q Q:Y x:y y:Y Y:7 1:2 2:3 3:4 4:5 5:6 6:7 g:f v:p w:z z:A A:O D:G G:H h:u r:x';
+// the sunlit step of a ground colour (clearings): one step lighter within its own family -- grass
+// to olive and lichen, wheat to sand, greys up the ladder; snow, water, hell purples and lights unchanged
+const MOON = 'q:m m:o o:O u:i i:j j:Q Q:Y y:Y 3:4 4:5 5:6 6:7 k:t t:T x:y w:z z:A A:O D:G G:H';
+// the sunlit grain: in the brightest clearings a share of the ground catches the sun one step further
+// (grass to lichen, wheat to sand) -- warm, never the old cold grey wash
+const GRAIN = 'q:o m:o o:O u:i i:j j:Y Q:Y y:Y 3:4 4:5 5:6 k:t t:T x:y w:z z:A A:O D:G G:H';
 // the shaded step (cloud shade): one step darker in the family
-const SHADE = 'm:q o:m O:o Q:u 5:4 6:5 4:3 y:Q Y:6 t:k T:t';
-// remembered ground (the fog): docs/ART.md 2.4 FOG, but the frost family goes grey rather than
-// steel-blue (frost f to slate, rime F to ash, glint g to iron), so remembered snow and ice are grey,
-// not a vivid blue field; water's own navies keep FOG's steps
-const REMEMBER = 'f:4 F:5 g:3';
+const SHADE = 'm:q o:m O:o Q:j y:j Y:Q j:i i:u 5:4 6:5 4:3 t:k T:t G:D H:G A:z z:w';
+// remembered ground (the fog): docs/ART.md 2.4 FOG (dimmer and greyer, never black), but snow and ice
+// go to pale greys rather than blue, so remembered snow still reads as snow
+const REMEMBER = 'f:6 F:H g:5';
 // scattered features whose wood masses take the moonlit rim
 const RIMMED = new Set(['feature/conifer', 'feature/ancient', 'feature/jungle', 'feature/sapling']);
 
@@ -106,7 +107,7 @@ export function installTerrain(art, opts = {}) {
   const verge = table(VERGE), moonT = table(MOON), grainT = table(GRAIN), shadeT = table(SHADE);
   const remember = table(REMEMBER, art.tables.FOG);
   art.tables.REMEMBER = remember;
-  const kO = art.K(G.rimKey), k0 = art.K('0'), ku = art.K('u'), k2 = art.K('2');
+  const kO = art.K(G.rimKey), k0 = art.K('0'), ku = art.K('u'), k2 = art.K('2'), kUnseen = art.K(G.unseenKey);
   const spotCache = new Map();
   const rimCache = new Map();
   const fogCache = new Map();
@@ -350,7 +351,7 @@ export function installTerrain(art, opts = {}) {
     const X0 = plot.x * TILE, Y0 = plot.y * TILE;
     this.remapRegion(ctx, x, y, TILE, TILE, (i, j, c) => {
       const k = j * TILE + i;
-      if (vis[fc.rev[k]] === 0) return k0;
+      if (vis[fc.rev[k]] === 0) return kUnseen;
       if (vis[fc.fog[k]] === 1) {
         const v = FOG[c];
         return (X0 + i + Y0 + j) % 4 === 0 ? FOG[v] : v;
@@ -378,7 +379,7 @@ export function installTerrain(art, opts = {}) {
     const still = new Uint8Array(TILE * TILE);
     for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) {
       const k = j * TILE + i;
-      if (!vis[rev[k]] || !vis[soft[k]]) { out[k] = k0; still[k] = 1; continue; }
+      if (!vis[rev[k]] || !vis[soft[k]]) { out[k] = kUnseen; still[k] = 1; continue; }
       if (water[soft[k]]) still[k] = 1;
       const t = infos[soft[k]].tex, X = plot.x * TILE + i, Y = plot.y * TILE + j;
       out[k] = t.data[(((Y % t.h) + t.h) % t.h) * t.w + (((X % t.w) + t.w) % t.w)];
@@ -687,6 +688,7 @@ export function installTerrain(art, opts = {}) {
 
   /** Viewport vignette (docs/ART.md 8.3) through REMEMBER, as the fog: grey snow at the corners. */
   art.drawVignette = function (ctx, x, y, w, h) {
+    if (!G.vignette) return;
     const s = this.scale;
     const W = Math.floor(w / s), H = Math.floor(h / s);
     const cx = W / 2, cy = H / 2, R = Math.hypot(cx, cy);

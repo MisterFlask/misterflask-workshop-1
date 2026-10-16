@@ -53,7 +53,8 @@ if (Object.keys(lib.palette.tinctures).length !== 10) err(`palette.txt: expected
 // ---- sprite sizes and colour budgets per namespace (docs/ART.md 3.3, 4.3)
 const RULES = [
   [/^terrain\//, (s) => s.w === 64 && s.h === 64, '64x64 seamless texture', 5],
-  [/^unit\//, (s) => (s.w === 24 && s.h === 24 && s.ax === 11 && s.ay === 21) || (s.w === 32 && s.h === 32 && s.ax === 15 && s.ay === 29), '24x24 feet 11,21 or 32x32 feet 15,29', 8],
+  [/^unit\//, (s) => (s.w === 24 && s.h === 24 && s.ax === 11 && s.ay === 21) || (s.w === 32 && s.h === 32 && s.ax === 15 && s.ay === 29)
+    || (s.w === 40 && s.h === 40 && s.ax === 19 && s.ay === 37), '24x24 feet 11,21, 32x32 feet 15,29 or 40x40 feet 19,37', 20],
   [/^res\/_disc$/, (s) => s.w === 11 && s.h === 11, '11x11 disc', 2],
   [/^res\//, (s) => s.w === 7 && s.h === 7 && s.ax === 3 && s.ay === 3, '7x7 glyph centred at 3,3', 4],
   [/^icon16\//, (s) => s.w === 16 && s.h === 16, '16x16', 4],

@@ -685,9 +685,13 @@ export class ArtMap {
     };
     for (const st of stacks) {
       const off = offOf(st.head.id);
+      const inCity = cityAt.has(`${st.x},${st.row}`);
+      // A garrison would hide its city (units fill the tile): in a city the figure shows only while
+      // it is selected or sliding; the standard and count (overlay pass) still mark the garrison.
+      if (inCity && !st.state.selected && !off.ox && !off.oy) continue;
       const X = f.ox + st.ux * f.tp + off.ox;
       const Y = f.oy + st.row * f.tp + off.oy;
-      art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity: cityAt.has(`${st.x},${st.row}`), layer: "sprite" });
+      art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity, layer: "sprite" });
     }
     for (const c of this.ccities) {
       if (c.y < f.r0 - 1 || c.y > f.r1 + 1) continue;

@@ -6,14 +6,14 @@
 //   <set>/manifest.txt   `set`, `source` and `map` lines
 //   <set>/*.spr          sprites: `= name WxH ax,ay`, `: key value` metadata, then H rows of W chars
 
-/** Index values used inside a parsed sprite grid besides the 40 palette indices. */
+/** The palette's size, and the index values used inside a parsed sprite grid besides its colours. */
+export const NUM_COLORS = 56;
 export const TRANSPARENT = 255;
-export const SLOT_FIELD = 40; // '#': owner tincture field
-export const SLOT_SHADE = 41; // '%': owner tincture shade
-export const SLOT_CHARGE = 42; // '*': owner tincture charge
-export const SLOT_ACCENT = 43; // '@': per-unit accent (religion or sphere colour)
+export const SLOT_FIELD = NUM_COLORS; // '#': owner tincture field
+export const SLOT_SHADE = NUM_COLORS + 1; // '%': owner tincture shade
+export const SLOT_CHARGE = NUM_COLORS + 2; // '*': owner tincture charge
+export const SLOT_ACCENT = NUM_COLORS + 3; // '@': per-unit accent (religion or sphere colour)
 export const SLOT_CHARS = { '#': SLOT_FIELD, '%': SLOT_SHADE, '*': SLOT_CHARGE, '@': SLOT_ACCENT };
-export const NUM_COLORS = 40;
 
 /** Metadata keys the toolkit understands. Others are kept and reported as warnings by the validator. */
 export const META_KEYS = new Set(['types', 'tags', 'light', 'place', 'flag', 'finial', 'gate', 'note', 'accent', 'flat']);
@@ -30,7 +30,7 @@ function stripComment(line) {
 /**
  * Parse palette.txt.
  * Returns { colors: [{index,key,name,hex,rgb,family}], keyIndex: Map<char,int>,
- *           remaps: {FOG: Uint8Array(40), ...}, tinctures: {name: {...}}, errors: [] }.
+ *           remaps: {FOG: Uint8Array(NUM_COLORS), ...}, tinctures: {name: {...}}, errors: [] }.
  */
 export function parsePalette(text, file = 'palette.txt') {
   const colors = [];

@@ -1,5 +1,5 @@
-/* The browser client's styles: the "Monastic Pixel Noir" interface of docs/ART.md 11 (soot
-   panels, double rules, bone text, gilt nails). Every colour is a palette entry (--c-*, the 40
+/* The browser client's styles: the "cheerful readability" interface of docs/ART.md 11 (navy
+   panels, gold rules, cream text, gilt nails). Every colour is a palette entry (--c-*, the 40
    colours of web/art/palette.txt, defined here so the page looks right before the art loads;
    look.js's ui stylesheet sets the same values). Lengths in the chrome are multiples of the UI
    scale --u (CSS px per art px, docs/ART.md 3.2).
@@ -10,30 +10,33 @@
    Without the art the same elements fall back to plain double rules. */
 
 :root {
-  --c-void: #05080b; --c-soot: #110f10; --c-coal: #1c1816; --c-iron: #2b2621; --c-slate: #3d3832; --c-ash: #5a5349;
-  --c-stone: #7d7366; --c-bone: #b8a78e; --c-vellum: #e3d3b5; --c-deep: #04131f; --c-navy: #0d2a46; --c-tide: #1f4e7a;
-  --c-glint: #3a6480; --c-frost: #6c8a98; --c-rime: #a6bcc2; --c-teal-dk: #0a2a2f; --c-teal: #164c56; --c-patina: #35828a;
-  --c-moss-dk: #223d1e; --c-moss: #3f6130; --c-olive: #637b34; --c-lichen: #8fa050; --c-umber: #3a2b20; --c-dun: #655537;
-  --c-rust: #7c4327; --c-ochre: #9c7e3f; --c-sand: #a79065; --c-bruise: #24142f; --c-dusk: #45295e; --c-lilac: #8a63a8;
-  --c-ember: #6b2912; --c-flame: #d2611c; --c-amber: #f5a63f; --c-glow: #fbdd8a; --c-blood: #42131a; --c-crimson: #9c2e34;
-  --c-scarlet: #d24646; --c-barrow: #235244; --c-ritual: #6fd49e; --c-wisp: #c4efc4;
+  --c-void: #140d0c; --c-soot: #14223e; --c-coal: #26334f; --c-iron: #424858; --c-slate: #5f6676; --c-ash: #848b98;
+  --c-stone: #adb3bd; --c-bone: #e9dbb3; --c-vellum: #fffaec; --c-deep: #0b4290; --c-navy: #1765b2; --c-tide: #3f8cd2;
+  --c-glint: #80b7e3; --c-frost: #c6ddec; --c-rime: #f2f8fc; --c-pine-dk: #163c2f; --c-pine: #215e3e; --c-needle: #3c8b4f;
+  --c-moss-dk: #4a6f22; --c-moss: #6fa534; --c-olive: #91c03d; --c-lichen: #bddb5d; --c-umber: #5b3a1f; --c-dun: #c2a95f;
+  --c-rust: #b9582a; --c-ochre: #dba63b; --c-sand: #ecd18c; --c-bruise: #2f1b4b; --c-dusk: #5c3393; --c-lilac: #a276da;
+  --c-ember: #8d2f10; --c-flame: #ef6b1b; --c-amber: #ffb63b; --c-glow: #ffe78c; --c-blood: #561417; --c-crimson: #c8272b;
+  --c-scarlet: #f15b47; --c-barrow: #2a7a63; --c-ritual: #70e0b1; --c-wisp: #d9fbe9; --c-skin-lt: #e8bd90; --c-skin: #c58b58;
+  --c-bark: #3a2314; --c-auburn: #7a3b1c; --c-leather: #96612f; --c-khaki: #a9874f; --c-olive-dk: #2c4117; --c-fern-dk: #5c6c2c;
+  --c-fern: #7f9134; --c-pewter: #4f4a4c; --c-flint: #77716f; --c-ash-lt: #a8a09a; --c-silver: #cdcacc; --c-maroon: #8f1e1f;
+  --c-royal: #3356b6; --c-gold: #f2c74b;
 
   --u: 2px;
   --bg: var(--c-soot);
   --panel: var(--c-soot);
   --panel-2: var(--c-coal);
   --line: var(--c-iron);
-  --frame: var(--c-ash);
+  --frame: var(--c-ochre);
   --fg: var(--c-bone);
   --dim: var(--c-stone);
   --em: var(--c-vellum);
-  --accent: var(--c-sand);
+  --accent: var(--c-gold);
   --accent-fg: var(--c-soot);
   --fire: var(--c-amber);
   --good: var(--c-lichen);
   --warn: var(--c-scarlet);
   --caution: var(--c-amber);
-  --link: var(--c-sand);
+  --link: var(--c-gold);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, serif;
   --font: var(--serif);
   --mono: ui-monospace, "DejaVu Sans Mono", Menlo, monospace;
@@ -167,7 +170,7 @@ html.art #top .sep { display: block; }
 
 /* Map and side panel: the map is a page in an ash frame; the side panel a soot panel. */
 #main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
-#mapwrap { position: relative; overflow: hidden; background: var(--c-void); min-height: 200px; }
+#mapwrap { position: relative; overflow: hidden; background: var(--c-soot); min-height: 200px; }
 #mapwrap canvas.map { position: absolute; inset: 0; display: block; touch-action: none; }
 #mapwrap canvas.minimap {
   position: absolute; right: 10px; bottom: 10px; width: 220px; height: 136px;
@@ -397,13 +400,13 @@ button.promote { border-color: var(--c-ochre); color: var(--c-vellum); }
 html.art #top { border-bottom: none; box-shadow: none; padding-bottom: calc(var(--u) * 2); }
 html.art #top::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * 3);
-  background: linear-gradient(var(--c-ash) 0 var(--u), var(--c-soot) var(--u) calc(var(--u) * 2), var(--c-iron) calc(var(--u) * 2) calc(var(--u) * 3));
+  background: linear-gradient(var(--c-gold) 0 var(--u), var(--c-soot) var(--u) calc(var(--u) * 2), var(--c-khaki) calc(var(--u) * 2) calc(var(--u) * 3));
 }
 html.art #top .group {
   border-style: solid; border-width: var(--nine-frame-panel-w); border-image: var(--nine-frame-panel);
   padding: 0 calc(var(--u) * 2); min-height: calc(var(--u) * 17); display: flex; align-items: center; gap: calc(var(--u) * 4);
 }
-html.art .group .sep { width: var(--u); align-self: stretch; margin: calc(var(--u) * 1) 0; background: var(--c-iron); }
+html.art .group .sep { width: var(--u); align-self: stretch; margin: calc(var(--u) * 1) 0; background: var(--c-khaki); }
 html.art #side, html.art #bottom {
   box-shadow: none;
   border-style: solid; border-width: var(--nine-frame-panel-w); border-image: var(--nine-frame-panel);

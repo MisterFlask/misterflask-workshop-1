@@ -60,18 +60,19 @@ const P = (text) => G.of(text);
 // d (dark half), t (tip); door: an unlit doorway. The roof rim r is the moon rim (ART.md 4.2).
 
 const M = {
-  stone: { e: '5', b: '4', s: '3', r: '6', l: '2', d: '1', t: '6', door: '1' },
-  dark: { e: '4', b: '3', s: '2', r: '6', l: '1', d: '1', t: '6', door: '0' },
-  faded: { e: '6', b: '5', s: '4', r: '7', l: '4', d: '3', t: '7', door: '3' },
-  rime: { e: '5', b: '4', s: '3', r: 'F', l: 'f', d: 'g', t: 'F', door: '1' },
-  sand: { e: '6', b: 'Q', s: 'u', r: 'Y', l: '6', d: 'Q', t: 'Y', door: '2' },
-  wood: { e: 'Q', b: 'u', s: '2', r: '6', l: '3', d: '2', t: '6', door: '1' },
-  hide: { e: 'Y', b: 'u', s: '2', r: 'Y', l: 'y', d: 'u', t: 'u', door: '2' },
-  pelt: { e: '6', b: '3', s: '2', r: '6', l: '4', d: '2', t: 'u', door: '2' },
-  thatch: { e: 'Q', b: 'u', s: '2', r: 'y', l: 'Q', d: 'u', t: 'y', door: '1' },
-  pale: { e: '7', b: '6', s: '5', r: '8', l: '7', d: '5', t: '8', door: '4' },
-  thorn: { e: '3', b: '1', s: '1', r: '4', l: '2', d: '1', t: '4', door: '0' },
-  rock: { e: '5', b: '3', s: '2', r: '6', l: '4', d: '2', t: '6', door: '0' },
+  // daylight towns (the revamp): warm cream and stone walls under red, gold or straw roofs
+  stone: { e: '8', b: '7', s: 'G', r: 'R', l: 'C', d: 'I', t: 'K', door: 'h' },
+  dark: { e: '6', b: '5', s: '4', r: 'C', l: 'I', d: 'c', t: '6', door: '0' },
+  faded: { e: '7', b: 'G', s: 'D', r: 'H', l: 'D', d: 'B', t: 'H', door: '4' },
+  rime: { e: 'F', b: 'f', s: 'g', r: '8', l: 'F', d: 'g', t: '8', door: '1' },
+  sand: { e: '8', b: '7', s: 'Q', r: 'K', l: 'y', d: 'j', t: 'K', door: 'h' },
+  wood: { e: 'j', b: 'i', s: 'r', r: 'Q', l: 'j', d: 'i', t: 'Q', door: 'h' },
+  hide: { e: '8', b: '7', s: 'j', r: '8', l: '7', d: 'j', t: 'i', door: 'h' },
+  pelt: { e: 'G', b: 'D', s: 'B', r: 'H', l: 'G', d: 'D', t: 'i', door: 'h' },
+  thatch: { e: 'Y', b: 'j', s: 'i', r: 'K', l: 'y', d: 'j', t: 'y', door: 'h' },
+  pale: { e: '8', b: '7', s: '6', r: '8', l: 'F', d: 'f', t: 'K', door: '5' },
+  thorn: { e: 'I', b: 'c', s: 'c', r: 'R', l: 'C', d: 'c', t: 'R', door: '0' },
+  rock: { e: '6', b: '5', s: '4', r: '7', l: '5', d: '4', t: '7', door: 'h' },
 };
 
 // ------------------------------------------------------------------------------ primitives

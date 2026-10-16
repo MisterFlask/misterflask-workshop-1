@@ -28,6 +28,7 @@
 ; small reference sheets of preview.html (regenerate them from its screenshots when the set
 ; changes).
 set units
+source atlas.spr
 source generic.spr
 source infantry.spr
 source mounted.spr
@@ -86,7 +87,7 @@ map unit UNIT_LIGHTNING_ELEMENTAL -> unit/air_elemental remap=F8 ghost
 map unit UNIT_AIR_ELEMENTAL|UNIT_DJINN -> unit/air_elemental ghost
 map unit UNIT_MISTFORM -> unit/air_elemental remap=Ff ghost
 map unit UNIT_TREANT -> unit/earth_elemental remap=4u,5o
-map unit UNIT_SAND_LION -> unit/lion remap=yY,uy
+map unit UNIT_SAND_LION -> unit/lion remap=ij,ui,yY,hu
 map unit UNIT_FIREBALL|UNIT_METEOR -> unit/_spell remap=pe,PE,Wl
 map unit UNIT_SEVERED_SOUL -> unit/_spell remap=ps,PS ghost
 map unit UNIT_EYE -> unit/_spell remap=pv,Pp
@@ -96,7 +97,7 @@ map unit UNIT_SPECTRE -> unit/spectre ghost
 map unit UNIT_WRAITH -> unit/wraith ghost
 map unit UNIT_SAILORS_DIRGE -> unit/sailors_dirge ghost
 map unit UNIT_GHOST -> unit/assassin ghost
-map unit UNIT_SHADE -> unit/spectre remap=42,53 ghost
+map unit UNIT_SHADE -> unit/spectre remap=53,64,f5,HD,42 ghost
 map unit UNIT_DIVIDED_SOUL -> unit/hunter ghost
 map unit UNIT_PUPPET|UNIT_PUPPET_LOKI -> unit/_adept ghost
 map unit UNIT_MIMIC -> unit/champion ghost
@@ -110,52 +111,49 @@ map unit UNIT_BALOR -> unit/balor
 map unit UNIT_IMP -> unit/imp
 map unit UNIT_HELLHOUND -> unit/hellhound
 map unit UNIT_OGRE_WARCHIEF|UNIT_STONESKIN_OGRE -> unit/ogre
-map unit UNIT_POLAR_BEAR -> unit/bear remap=uF,Q8,2g
+map unit UNIT_POLAR_BEAR -> unit/bear remap=uG,hD,iH,j8,rD
 map unit UNIT_GARGOYLE -> unit/gargoyle
-map unit UNIT_BLOODPET -> unit/warrior remap=QQ,uc
+map unit UNIT_BLOODPET -> unit/warrior remap=hc,uc,rI,jr,iI
 map unit UNIT_BEASTMAN -> unit/werewolf remap=4u,3u,5Q
-map unit UNIT_LIZARDMAN|UNIT_LIZARDMAN_RANGER|UNIT_LIZARDMAN_ASSASSIN -> unit/scout remap=Qo,uq
-map unit UNIT_LIZARDMAN_BEASTMASTER -> unit/beastmaster remap=Qo,uq
+map unit UNIT_LIZARDMAN|UNIT_LIZARDMAN_RANGER|UNIT_LIZARDMAN_ASSASSIN -> unit/scout remap=ao,bm,Bw,Dz,GA
+map unit UNIT_LIZARDMAN_BEASTMASTER -> unit/beastmaster remap=ao,bm,Bw,Dz,GA
 map unit UNIT_GOBLIN_SCORPION_CLAN -> unit/goblin
 map unit UNIT_WOLF_RIDER_SCORPION_CLAN -> unit/wolf_rider
 map unit UNIT_STEPHANOS|UNIT_BUBOES|UNIT_YERSINIA|UNIT_ARS -> unit/death_knight
 map unit UNIT_CENTAUR_ARCHER -> unit/herne
-map unit UNIT_CENTAUR_CHARGER|UNIT_CENTAUR_LANCER -> unit/centaur
+map unit UNIT_CENTAUR_CHARGER -> unit/centaur
 map unit UNIT_CHARIOT_SCORPION_CLAN -> unit/chariot
-map unit UNIT_ARCHER_SCORPION_CLAN -> unit/archer remap=Qo
-map unit UNIT_FROSTLING_ARCHER -> unit/archer remap=4f,3g,Qf
-map unit UNIT_FROSTLING -> unit/scout remap=Qf,ug
-map unit UNIT_FROSTLING_WOLF_RIDER -> unit/wolf_rider remap=of,Of,mg
+map unit UNIT_ARCHER_SCORPION_CLAN -> unit/archer remap=uz,jA,iz
+map unit UNIT_FROSTLING_ARCHER -> unit/archer remap=aF,bf,ug,ig,jf,rN
+map unit UNIT_FROSTLING -> unit/scout remap=aF,bf,ug,hN,Bg,Df,GF
+map unit UNIT_FROSTLING_WOLF_RIDER -> unit/wolf_rider remap=aF,bf,Dg,Bg,3N,4g
 map unit UNIT_MOKKA -> unit/shaman remap=Qf,ug
 map unit UNIT_DWARVEN_DRUID -> unit/druid
 map unit UNIT_LIZARDMAN_DRUID -> unit/druid
-map unit UNIT_BISON_RIDER|UNIT_HORNGUARD -> unit/boar_rider
+map unit UNIT_HORNGUARD -> unit/boar_rider
 map unit UNIT_DEATH_KNIGHT -> unit/death_knight
 map unit UNIT_BRIGIT|UNIT_BRIGIT_HELD -> unit/valkyrie
 map unit UNIT_REPENTANT_ANGEL|UNIT_ANGEL_OF_DEATH -> unit/angel remap=73,85,62
-map unit UNIT_OPHANIM -> unit/knight remap=36,47,25
 map unit UNIT_YVAIN -> unit/earth_elemental remap=4u,5o
 map unit UNIT_DUIN|UNIT_GREATER_WEREWOLF|UNIT_RAVENOUS_WEREWOLF -> unit/werewolf
 map unit UNIT_TAR_DEMON -> unit/manes remap=2u,c1
 map unit UNIT_MESHABBER -> unit/balor remap=2u
-map unit UNIT_EIDOLON -> unit/spectre remap=4p,5P ghost
+map unit UNIT_EIDOLON -> unit/spectre remap=4p,5P,6P,fP ghost
 map unit UNIT_SUPPLIES -> unit/supplies
 map unit UNIT_BOARDING_PARTY -> unit/guybrush
 map unit UNIT_DISCIPLE_OF_ACHERON -> unit/_adept accent=E
 map unit UNIT_AURIC_ASCENDED -> unit/hyborem remap=2g,cf,3F,EF,lF,L8,R8
 map unit UNIT_BEAST_OF_AGARES -> unit/pit_beast
-map unit UNIT_IRA|UNIT_STYGIAN_GUARD -> unit/chaos_marauder
-map unit UNIT_SAVEROUS -> unit/chaos_marauder remap=CT,cT
+map unit UNIT_IRA -> unit/chaos_marauder
+map unit UNIT_SAVEROUS -> unit/chaos_marauder remap=It,ck,CT,RS
 map unit UNIT_MINOTAUR -> unit/berserker
 map unit UNIT_MUIRIN -> unit/drown
-map unit UNIT_SHADOWRIDER -> unit/knight remap=43,54,65
-map unit UNIT_ROSIER|UNIT_ROSIER_OATHTAKER -> unit/knight remap=*C
+map unit UNIT_ROSIER|UNIT_ROSIER_OATHTAKER -> unit/knight remap=BI,DC,GR
 map unit UNIT_HEMAH -> unit/archmage accent=T
 map unit UNIT_GAELAN -> unit/mage accent=R
 map unit UNIT_GIBBON -> unit/mage accent=p ghost
 map unit UNIT_MOBIUS_WITCH -> unit/mage accent=C
 map unit UNIT_PARAMANDER -> unit/priest accent=L
-map unit UNIT_FIREBOW -> unit/longbowman
 map unit UNIT_GURID|UNIT_MARGALARD -> unit/hill_giant remap=Qo,uu,2q
 map unit UNIT_SON_OF_THE_INFERNO -> unit/archmage accent=E
 
