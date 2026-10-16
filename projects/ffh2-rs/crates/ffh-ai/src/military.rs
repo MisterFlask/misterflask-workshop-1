@@ -299,6 +299,13 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         }
     }
 
+    // An amphibious invasion (naval.rs): a committed stack boards the transport in port to
+    // cross the water; a stack already landed on the enemy's landmass takes the overseas city
+    // (which `campaign.rs` cannot, as it only targets landmasses where we hold a city).
+    if crate::naval::amphibious(g, v, grp, u) {
+        return;
+    }
+
     // War (or its preparation): the operation against the chosen enemy city; stacks close to
     // a barbarian target act on its operation before hunting (campaign.rs).
     if crate::campaign::act(g, v, grp, u, true) {

@@ -468,6 +468,12 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         return Some(choice);
     }
     if let Some(choice) = crate::civs::production(ai, g, c, ctx.threat) { return Some(choice); } // civ-mechanics
+    // An assault fleet (transport + attackers) for an overseas enemy city we can take.
+    if safe && crate::naval::is_coastal_city(g, c) {
+        if let Some(choice) = crate::naval::assault_production(g, c) {
+            return Some(choice);
+        }
+    }
     // A ship for a settler waiting in port; a sea explorer while our land is full and
     // nothing is known across the water.
     if safe && crate::naval::is_coastal_city(g, c) {

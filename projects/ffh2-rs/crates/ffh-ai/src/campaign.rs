@@ -110,7 +110,7 @@ impl Plan {
 
 /// Visible enemy units able to defend city plot `tp` (what we can see of the garrison; the
 /// city owner's units count before the war is declared too).
-fn visible_defenders(g: &Game, team: TeamId, tp: PlotIdx) -> Vec<UnitId> {
+pub(crate) fn visible_defenders(g: &Game, team: TeamId, tp: PlotIdx) -> Vec<UnitId> {
     if !g.plot_is_visible(tp, team) {
         return Vec::new();
     }
@@ -307,7 +307,7 @@ struct Cand {
 }
 
 /// Units a city of `n_def` defenders needs before we have seen a fight (rough).
-fn rough_need(n_def: i32) -> i32 {
+pub(crate) fn rough_need(n_def: i32) -> i32 {
     n_def * 2 + 1
 }
 

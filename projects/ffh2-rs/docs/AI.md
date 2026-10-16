@@ -470,6 +470,22 @@ plot falls or the odds turn bad, and moves in.
   transport.
 - **Work boats** improve sea resources in our borders (one per unimproved resource, at most
   one per city at a time).
+- **Amphibious invasion** (`amphibious_target`, `UNITAI_ASSAULT_SEA`): a civ can ship an army
+  across water to take an enemy city on a landmass where it has no city (the siege campaigns
+  only target landmasses we already hold a city on). The target is the best overseas enemy (or
+  barbarian) city -- revealed, coastal, on a landmass with no city of ours, within 24 plots of
+  one of our coastal cities, whose weakest defender our best trainable attacker can beat
+  (`can_take_city`) -- by value (population, wonders) for its cost (force needed, distance);
+  deterministic ordering, recomputed each turn. *Production* (the coastal city nearest the
+  target, the staging port): an assault transport while we have none, then attackers up to what
+  one assault needs (`need` = defenders x2 + 1, capped). *Execution* reuses the overseas-settling
+  machinery: the nearest army stacks (up to `need`) walk to the staging port and board the
+  transport there (as a settler and its escort board); the transport, carrying an army rather
+  than a settler, sails to a water plot beside the target city and lands the army on a land plot
+  next to it; the landed stack then takes the city with `military::assault` (which holds rather
+  than throwing the stack away if the revealed defenders are too strong). One transport trip
+  carries the ship's cargo capacity, so with early, small transports the force landed is small;
+  bigger invasions wait for better ships.
 
 ## Diplomacy (`diplomacy.rs`)
 
@@ -485,8 +501,10 @@ parity (an eager warmonger accepts a slight underdog as acceptable risk) up to c
 superiority for a cautious leader, who also spares civs it likes; the greediest leaders strike
 any profitable, reachable target. A broke empire wants a bigger edge; a bankrupt one does not
 start wars. (This replaces the earlier port of `AI_doWar`'s three odds-gated kinds, which left
-strong civs idle for want of a grudge or a lucky roll; a continentally isolated civ still can
-not expand -- it has no land-reachable target and there are no amphibious invasions yet.) The
+strong civs idle for want of a grudge or a lucky roll.) Reachable means by land (a shared
+landmass within 16 plots) or, failing that, by sea: a civ whose takeable city is within
+sea-reach of one of our coastal cities (`naval::amphibious_city`) is a valid target too, so an
+isolated or across-the-water rival can now be invaded (see Naval / amphibious invasion). The
 war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
 stacks gather on the rally city) and is declared when the army is ready (or after 40 turns).
 Peace is sought when the war goes badly (war success and power), or drags on without gains;
@@ -784,9 +802,10 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
 
 ## Known gaps (future work)
 
-- Naval: no amphibious invasions (wars only target cities on landmasses we share; good
-  transports come late in the tech tree), no naval combat, escorts or blockades; ships only
-  settle, explore and fish. Overseas settling sends one settler at a time.
+- Naval: amphibious invasions now ship an army across water to take an overseas enemy city
+  (see Naval), but there is no naval combat, no escorts and no blockades (the transport sails
+  undefended), and one trip lands only the ship's cargo capacity, so invasions are small until
+  good transports arrive late in the tech tree. Overseas settling still sends one settler at a time.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
