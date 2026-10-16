@@ -510,7 +510,13 @@ start wars. (This replaces the earlier port of `AI_doWar`'s three odds-gated kin
 strong civs idle for want of a grudge or a lucky roll.) Reachable means by land (a shared
 landmass within 16 plots) or, failing that, by sea: a civ whose takeable city is within
 sea-reach of one of our coastal cities (`naval::amphibious_city`) is a valid target too, so an
-isolated or across-the-water rival can now be invaded (see Naval / amphibious invasion). The
+isolated or across-the-water rival can now be invaded (see Naval / amphibious invasion). Among
+the targets we can reach and take, a flavour nudge prefers one of the opposed alignment (good vs
+evil, the core FFH conflict): a small bonus added to the target score, after the reachability
+gate, so it only re-ranks viable targets and never sends a civ at a rival it cannot reach. In an
+8-game A/B it lifted good-vs-evil wars from 35% to 59% of a civ's wars where opposed rivals were
+reachable (inert where they are across the water), with captures and economy slightly up, not
+traded -- a secondary bias that does not cost the primary. The
 war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
 stacks gather on the rally city) and is declared when the army is ready (or after 40 turns).
 Peace is sought when the war goes badly (war success and power), or drags on without gains;

@@ -248,8 +248,19 @@ pub fn manage(g: &mut Game, v: &View) {
                 None => continue,
             },
         };
-        // Greedy gain: a bigger edge, more and closer cities; minus how much we like them.
-        let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10;
+        // Flavor bias (secondary): prefer striking a rival of the opposed alignment -- the
+        // good/evil conflict at the heart of FFH. Added only to the score, so it re-ranks targets
+        // we can already reach and take (the reachability/takeability gate above has run); it never
+        // makes us attack an unreachable civ, so it cannot trade away the greedy territory-grab.
+        let flavor = {
+            let good = g.d.ty::<AlignmentType>("ALIGNMENT_GOOD");
+            let evil = g.d.ty::<AlignmentType>("ALIGNMENT_EVIL");
+            let (us, them) = (g.players[p].alignment, op.alignment);
+            if (us == good && them == evil) || (us == evil && them == good) { 30 } else { 0 }
+        };
+        // Greedy gain: a bigger edge, more and closer cities; minus how much we like them; a
+        // flavor nudge toward alignment-opposites.
+        let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10 + flavor;
         let total = ratio >= 140;
         if best.map_or(true, |(_, s, _)| score > s) {
             best = Some((ot, score, total));
