@@ -313,23 +313,23 @@
 .....000000.....
 ................
 = icon8/food 8x8 0,0
-...00...
-.00KK00.
-.0l00K0.
-..yyyy..
-..y00y..
-..0ii0..
-...yy...
-...00...
+...LK...
+.L.Ky.K.
+..LKyK..
+.L.Ky.K.
+..LKyK..
+...Ky...
+...Ky...
+...yi...
 = icon8/production 8x8 0,0
-........
-.....00.
-....r.0.
-...r....
 .000000.
-.055440.
-..0430..
-..4000..
+05666650
+04444440
+.00ri00.
+..0ri0..
+..0ri0..
+..0ri0..
+..0000..
 = icon8/commerce 8x8 0,0
 ...00...
 ..8LLK0.
@@ -340,13 +340,13 @@
 .0llyy0.
 ...00...
 = icon8/gold 8x8 0,0
-....00..
-...0LKK.
-..0KKyy.
-..0yyy0.
-.0ylly0.
-.KyyKyl.
-0KKKKKl0
+.000000.
+0LLKKKy0
+0yyyyyx0
+0LKKKKy0
+0yyyyyx0
+0LKKKKy0
+0yyyyyx0
 .000000.
 = icon8/research 8x8 0,0
 ........
@@ -369,59 +369,59 @@
 = icon8/espionage 8x8 0,0
 ........
 ........
-.0P000p.
-0P0pp0p0
-.pp00pv.
-........
-........
+.000000.
+0PPPPPP0
+0P0PP0P0
+0pp00pp0
+.00..00.
 ........
 = icon8/happy 8x8 0,0
-........
-...LL...
-...ee...
-...el...
-...87...
-...77...
-..0860..
-..76660.
+...00...
+..0LL0..
+..0Ll0..
+..0870..
+..0870..
+..0870..
+07766660
+.000000.
 = icon8/unhappy 8x8 0,0
 ....5...
-....5...
 ...5....
-...00...
-...87...
-...77...
-..0860..
-..76660.
+....0...
+..0760..
+..0760..
+..0760..
+07766660
+.000000.
 = icon8/angrypop 8x8 0,0
 : note ANGRYPOP: a clenched fist over a crimson cuff
 ........
-..0000..
-.0arra0.
-.aaaaaa.
-.aaaaaa.
-.aaaaab.
-.0bbbb0.
+.000000.
+0aabaab0
+0aaaaab0
+0bbbbab0
+.0aaab0.
+.0CCCC0.
 ..0000..
 
 = icon8/healthy 8x8 0,0
-........
-....0o0.
-....00..
-....Oo..
-...000..
-..oO0...
-..q00...
-........
+....0000
+...0OOq0
+..0OOqm0
+.0OOqmm0
+.0Oqmm0.
+.0qmm0..
+0q000...
+q0......
 = icon8/unhealthy 8x8 0,0
-........
-.000P0..
-.00Ppp..
-..Pvv0..
-.Ppp0P0.
-.ppvPpp.
-..v.0p0.
-........
+.....00.
+....0Pp0
+....0pv0
+.000.00.
+08Pp000.
+0Ppv0Pp0
+0pvv0pv0
+.000.00.
 = icon8/greatpeople 8x8 0,0
 ........
 .O....O.
@@ -627,14 +627,14 @@ LL.08LLLLLLL0.LL
 
 = icon8/turn 8x8 0,0
 : note turn (your turn): the amber crescent with one glow pixel
-...0....
-..L0....
-.LL.....
-0LL.....
-0LL.....
-.Ll0....
-..llE0..
-...00...
+..000...
+.0LL0...
+0LL0....
+0Ll0....
+0Ll0....
+0Lll00..
+.0llll0.
+..0000..
 
 = icon8/golden_age 8x8 0,0
 : note golden age: the gilt sun on the horizon
@@ -650,13 +650,13 @@ LKKKKKKl
 = icon8/anarchy 8x8 0,0
 : note anarchy: a broken crown
 ........
-..0.....
-L.K0....
-0LKl..0.
-0Kl0K0y0
-0Kl00Ky0
-.00.0yi0
-.....00.
+.0.0....
+0L0K0.0.
+0LKK00K0
+0yKy0KK0
+0yyy0Ky0
+.0000yy0
+....000.
 
 = icon8/idle_city 8x8 0,0
 : note idle city: an empty anvil, amber warning

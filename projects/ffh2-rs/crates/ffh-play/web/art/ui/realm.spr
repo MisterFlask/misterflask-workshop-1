@@ -280,25 +280,25 @@
 
 = icon8/alignment_good 8x8 0,0
 : note good: a vellum sun
-........
-........
-..08L0..
-..LLLL..
-..LLLl..
-..0Ll0..
-........
-........
+...LL...
+.L0000L.
+.0LLKK0.
+L0LKKK0L
+L0KKKl0L
+.0KKll0.
+.L0000L.
+...LL...
 
 = icon8/alignment_neutral 8x8 0,0
 : note neutral: stone scales
-........
-.770077.
-...00...
-...77...
-.7.77.8.
-.6.77.6.
-...77...
-..777...
+...87...
+87777776
+7..76..6
+7..76..6
+77.76.66
+...76...
+..7766..
+.677665.
 
 = icon8/alignment_evil 8x8 0,0
 : note evil: a crimson crescent
@@ -335,14 +335,14 @@
 
 = icon8/civic_labor 8x8 0,0
 : note civic category: labor (pick and spade)
-.0...6..
-050...54
-.03..r..
+566...66
+6r....66
+..r..r..
 ...rr...
 ...rr...
-..0000..
-.00..00.
-00....00
+..r..r..
+.r....r.
+r......r
 
 = icon8/civic_economy 8x8 0,0
 : note civic category: economy (a purse)

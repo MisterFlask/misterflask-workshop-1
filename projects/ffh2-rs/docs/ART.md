@@ -998,7 +998,11 @@ active) and thin dark scrollbars follow the same colours.
 overlays, yields on tiles) by `tools/atlas/compose_icons.py`: each is painted once on the 16 grid
 like the map sprites (4.3: lit shapes posterized to palette ramps, up to 8 colours, one void
 outline), and its 8x8 version is the finished 16x16 icon reduced by 2x2 blocks (the majority
-colour, the outline kept), redrawn by hand where the reduction loses the subject (the open codex).
+colour, the outline kept), redrawn by hand where the reduction loses the subject: the open codex,
+and the inline yields and states that blur at that size (the wheat ear for food, the mallet for
+production, a coin stack for gold, the domino mask, the lit and snuffed candles, the fist, the leaf
+and the sickly bubbles, the crescent, the broken crown, the sun and scales of the alignments, the
+crossed pick and spade).
 Promotion seals keep their family rim (the `#` slot, recoloured by the mapping) around a shaded
 navy face with the painted glyph. The mana runes are a notation, like the font, and keep their
 shapes.
