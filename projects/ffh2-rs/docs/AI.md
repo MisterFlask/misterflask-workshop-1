@@ -858,9 +858,27 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   bar turns out to select for *decisive* wars; the near-parity fights it filters out grind and
   mutually destroy power (seed 3: the relaxed gate flipped the winner and left the victor with half
   the base winner's power), an arms race rather than domination -- and over-militarization is a BTS
-  pathology this AI otherwise avoids. A real fix must unlock only wars won *decisively* (compare our
-  deployable attack stack to the target city's total defense, not gross team power to a single-unit
-  bar), not lower the parity bar for everyone.
+  pathology this AI otherwise avoids.
+  A second attempt (v2) built the "decisive-force" gate that reasoning implied: SELECTION loosened
+  to per-unit parity PLUS a numbers requirement (the force we will field overwhelms the softest
+  revealed city's defender *count* with a reserve, via the campaign's own `rough_need`/`margin`),
+  and a new DECLARE backstop that commits a prepared war only when the *real gathered army*
+  decisively covers a visible target city -- reusing `campaign::covers`/`force_on`, the exact
+  predicate the march logic uses, so a declared war is one the army would actually march on. This is
+  the numbers-aware, truthfully-computed gate v1 lacked. It also measured net-negative (16-seed A/B):
+  wars +15% but captures-per-war -19% (wars LESS decisive, not more), economy -8% at t300 worsening
+  to -9.3% at t450 (a *growing*, sustained drag -- not one-time war-prep cost -- so an affordability
+  pre-gate would not recover it), games longer (7 vs 4 reaching t690), eliminations +30%. The only
+  gain was domination *concentration* (biggest empire +10%, top-power share +14%), but it came from
+  a more war-torn world that suppressed everyone's research. Reverted.
+  Conclusion from both attempts: the war-DECLARATION gate is not the lever. Wars are dynamic -- the
+  enemy mobilizes and reinforces once war is declared -- so any declaration-time snapshot (per-unit,
+  numbers, or real-army-covers-the-opening) cannot guarantee the *whole* war is decisive; the
+  opening advantage erodes into a grind. The baseline's standing gross-power-ratio + per-unit bar is
+  a near-optimal heuristic for a declaration gate precisely because it demands a *persistent* edge.
+  If this pathology is pursued again, the lever is the campaign/prosecution layer (sustain local
+  force superiority through a war, concentrate faster, pick targets that stay takeable) or the
+  one-war-at-a-time constraint (diplomacy.rs) -- not the decision to declare.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
