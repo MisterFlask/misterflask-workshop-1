@@ -76,7 +76,7 @@ export function buildTypes(xmlDir = XML_DIR) {
     const y = (kid(e, 'YieldChanges')?.children || []).map((c) => parseInt(c.text, 10) || 0);
     const cls = short(val(e, 'BonusClassType'), 'BONUSCLASS_');
     const health = num(e, 'iHealth'), happy = num(e, 'iHappiness');
-    // heuristic class for the medallion rim (docs/ART.md 6.1); manifests may override per type
+    // heuristic resource class (docs/ART.md 6.1: food, strategic, luxury, mana); manifests may override per type
     let cat = 'luxury';
     if (cls === 'MANA' || cls === 'RAWMANA') cat = 'mana';
     else if (cls === 'RUSH' || cls === 'WONDER' || cls === 'MODERN') cat = 'strategic';

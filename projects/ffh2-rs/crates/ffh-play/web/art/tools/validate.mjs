@@ -55,8 +55,7 @@ const RULES = [
   [/^terrain\//, (s) => s.w === 64 && s.h === 64, '64x64 seamless texture', 5],
   [/^unit\//, (s) => (s.w === 24 && s.h === 24 && s.ax === 11 && s.ay === 21) || (s.w === 32 && s.h === 32 && s.ax === 15 && s.ay === 29)
     || (s.w === 40 && s.h === 40 && s.ax === 19 && s.ay === 37), '24x24 feet 11,21, 32x32 feet 15,29 or 40x40 feet 19,37', 20],
-  [/^res\/_disc$/, (s) => s.w === 11 && s.h === 11, '11x11 disc', 2],
-  [/^res\//, (s) => s.w === 7 && s.h === 7 && s.ax === 3 && s.ay === 3, '7x7 glyph centred at 3,3', 4],
+  [/^res\//, (s) => s.w === 13 && s.h === 13 && s.ax === 6 && s.ay === 12, '13x13 object, feet at 6,12', 8],
   [/^icon16\//, (s) => s.w === 16 && s.h === 16, '16x16', 4],
   [/^icon8\//, (s) => s.w === 8 && s.h === 8, '8x8', 4],
   [/^ui\/mark_/, (s) => s.w === 8 && s.h === 8, '8x8', 4],
@@ -66,8 +65,8 @@ const RULES = [
   [/^font\/vigil\//, (s) => s.h === 7 && s.w <= 6, 'capital or digit, 7 tall', 1],
   [/^city\/[a-z]+_[1-5]$/, (s) => s.w <= 34 && s.h <= 34 && s.ay >= s.h - 2, 'at most 34x34 with the base at the bottom', 10],
   [/^city\//, () => false, "named city/<style>_<tier 1-5>", 10],
-  [/^improvement\//, (s) => s.w <= 34 && s.h <= 34, 'at most 34x34', 6],
-  [/^feature\//, (s) => s.w <= 34 && s.h <= 40, 'at most 34x40', 6],
+  [/^improvement\//, (s) => s.w <= 34 && s.h <= 34, 'at most 34x34', 8],
+  [/^feature\//, (s) => s.w <= 34 && s.h <= 40, 'at most 34x40', 8],
   // peaks: 5.3 itself names 4/5, 6, 3/2, 1 and a 7/f snow cap
   [/^(hill|peak)\//, (s) => s.w <= 34 && s.h <= 42, 'at most 34x42', 8],
   [/^route\//, (s) => s.w <= 4 && s.h <= 4, 'a dot of at most 4x4', 3],

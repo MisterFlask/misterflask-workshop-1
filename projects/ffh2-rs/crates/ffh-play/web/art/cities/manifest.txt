@@ -57,10 +57,10 @@ map improvement permanent=1 -> improvement/_lair
 map improvement water=1 -> improvement/_boat
 map improvement * -> improvement/_mark
 
-; ---- resources (6.1): the medallion rim gives the class; every bonus has its own glyph, these
-; rules give the rim (and the glyph for bonuses added to the data later). WHALE is food on the map.
-map bonus cat=food -> res/_food rim=o
-map bonus cat=strategic -> res/_strategic rim=6
-map bonus cat=luxury -> res/_luxury rim=y
-map bonus cat=mana -> res/_mana rim=P
-map bonus BONUS_WHALE -> res/whale rim=o
+; ---- resources (6.1): every bonus has its own object (res/<name>); these rules give the glyph for
+; bonuses added to the data later. WHALE is food on the map.
+map bonus cat=food -> res/_food
+map bonus cat=strategic -> res/_strategic
+map bonus cat=luxury -> res/_luxury
+map bonus cat=mana -> res/_mana
+map bonus BONUS_WHALE -> res/whale

@@ -820,15 +820,15 @@ export class Art {
 
   // ---------------------------------------------------------------- map objects
 
-  /** Resource medallion (docs/ART.md 6.1): a soot disc with a class-coloured rim, glyph inside. */
+  /** Resource (docs/ART.md 6.1): a small object standing in the tile's lower right, on a soft shadow. */
   drawResource(ctx, x, y, bonusType) {
     const r = this.resolve('bonus', bonusType);
     if (!r || r.sprite === 'none') return;
     const s = this.scale;
-    const rim = r.opts.rim || 'o';
-    if (this.hasSprite('res/_disc')) this.drawSprite(ctx, x + 25 * s, y + 25 * s, this.pick('res/_disc').name, { remap: `#${rim}` });
     const g = this.pick(r.sprite, 0);
-    if (g) this.drawSprite(ctx, x + 25 * s, y + 25 * s, g.name, { remap: r.opts.remap });
+    if (!g) return;
+    this._contactShadow(ctx, x + 25 * s, y + 30 * s, 10, 2);
+    this.drawSprite(ctx, x + 25 * s, y + 30 * s, g.name, { remap: r.opts.remap });
   }
 
   /** Improvement (docs/ART.md 5.7-5.8, 6.2): placed at `: place` (default tile 16,29), with its pools. */
@@ -917,16 +917,18 @@ export class Art {
   }
 
   /** The contact shadow (4.1): a 14x3 50% checker ellipse of void centred on (x, y). */
-  _contactShadow(ctx, x, y) {
-    if (!this.lib.sprites.has('_shadow')) {
-      const w = 14, h = 3, data = new Uint8Array(w * h).fill(TRANSPARENT);
+  _contactShadow(ctx, x, y, w = 14, h = 3) {
+    const name = w === 14 && h === 3 ? '_shadow' : `_shadow${w}x${h}`;
+    if (!this.lib.sprites.has(name)) {
+      const data = new Uint8Array(w * h).fill(TRANSPARENT);
+      const cx = (w - 1) / 2, cy = (h - 1) / 2;
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-        const u = (i - 6.5) / 7, v = (j - 1) / 1.6;
+        const u = (i - cx) / (w / 2), v = (j - cy) / (h / 2 + 0.1);
         if (u * u + v * v <= 1 && ((i + j) & 1) === 0) data[j * w + i] = 0;
       }
-      this.lib.sprites.set('_shadow', { name: '_shadow', w, h, ax: 7, ay: 1, data, meta: { lights: [], types: [], tags: [] } });
+      this.lib.sprites.set(name, { name, w, h, ax: Math.floor(w / 2), ay: h - 1, data, meta: { lights: [], types: [], tags: [] } });
     }
-    this.drawSprite(ctx, x, y, '_shadow');
+    this.drawSprite(ctx, x, y, name);
   }
 
   /**
