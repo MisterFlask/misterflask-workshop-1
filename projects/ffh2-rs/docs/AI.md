@@ -483,9 +483,13 @@ plot falls or the odds turn bad, and moves in.
   transport there (as a settler and its escort board); the transport, carrying an army rather
   than a settler, sails to a water plot beside the target city and lands the army on a land plot
   next to it; the landed stack then takes the city with `military::assault` (which holds rather
-  than throwing the stack away if the revealed defenders are too strong). One transport trip
-  carries the ship's cargo capacity, so with early, small transports the force landed is small;
-  bigger invasions wait for better ships.
+  than throwing the stack away if the revealed defenders are too strong). Every trip lands on the
+  *same* plot -- the reachable land plot beside the city already holding the most of our army (then
+  the soonest-reachable, then the strongest ground) -- so a trickle of small landings piles onto
+  one plot and merges (`military::army` merges army units sharing a plot) into a stack that can
+  strike, instead of scattering across the city's approaches and never massing. One transport trip
+  still carries only the ship's cargo capacity, so with early, small transports the force builds up
+  over several trips; bigger invasions wait for better ships.
 
 ## Diplomacy (`diplomacy.rs`)
 
@@ -806,17 +810,16 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   (see Naval), but there is no naval combat, no escorts and no blockades (the transport sails
   undefended), and one trip lands only the ship's cargo capacity, so invasions are small until
   good transports arrive late in the tech tree. Overseas settling still sends one settler at a time.
-  Conversion against *defended* overseas cities is weak: traced water-isolated civs (e.g. Doviello,
-  Malakim, Elohim, each fielding 60-160 units) land troops repeatedly yet rarely strike -- one
-  game showed 18 landings and 0 assaults -- because only `need` (= defenders x2 + 1) attackers are
-  committed, ferried a few per trip, and a trickle of that size rarely masses enough to clear a
-  strong garrison (and `assault_landed` rightly holds rather than feeding it in piecemeal). A fix
-  needs more landed force (a larger committed cap and/or a fleet sized to the force), not just
-  concentration: forcing every trip onto one rally plot was measured to *regress* (it broke the
-  land-on-any-reachable-plot fallback, dropping that game's landings to 0 and cutting aggregate
-  captures and held overseas cities), so it was reverted. Shipping more force must not bankrupt the
-  economy (a traced civ declared war at an even power ratio and had to disband units), so the war
-  trigger's offensive floor and the assault production cap want revisiting together.
+  Conversion against a *strong* garrison is still limited by force size: only `need` (= defenders
+  x2 + 1) attackers are committed, ferried a few per trip, so a garrison that out-defends that
+  landed force is never taken (`assault_landed` rightly holds rather than feeding units in
+  piecemeal). A larger committed cap, or a fleet sized to the garrison, would help -- but must not
+  bankrupt the economy (a traced civ declared war at an even power ratio and had to disband units),
+  so the war trigger's offensive floor and the assault production cap want revisiting together.
+  (The trickle no longer *scatters*: each trip now lands on the reachable plot already holding the
+  most of our army, so the landed units pile onto one plot and strike -- traced water-isolated
+  civs that previously landed repeatedly without ever assaulting now take overseas cities, and held
+  overseas cities rose about a quarter in an 8-game A/B. See Naval / amphibious invasion.)
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians

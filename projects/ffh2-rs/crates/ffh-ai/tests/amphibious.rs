@@ -163,3 +163,71 @@ fn no_amphibious_target_without_a_coastal_city_or_an_enemy() {
     // No cities founded, no war: nothing to invade.
     assert!(naval::amphibious_target(&g, PlayerId(0)).is_none());
 }
+
+/// A small transport (least cargo) against a garrison bigger than one load: the invasion must
+/// ferry several loads, and they must land on the *same* plot beside the city and pile into a
+/// stack that can strike (`transport_assault` lands on the reachable plot already holding the most
+/// of our army). If each trip chose a fresh plot the force would scatter and the city would never
+/// fall. Robust to content: it fixes no stats, only that one small load < the garrison < the
+/// attackers provided, and asserts the overseas city is taken.
+#[test]
+fn ai_takes_a_defended_overseas_city_with_a_small_transport() {
+    let d = ffh_data::global();
+    let mut g = two_landmass_game(7);
+    let (attacker, enemy) = (PlayerId(0), PlayerId(1));
+    let (at, et) = (g.players[attacker].team, g.players[enemy].team);
+
+    g.player_found(attacker, 7, 5);
+    g.player_found(enemy, 12, 5);
+    let capital = g.players[attacker].capital_city.expect("attacker founded a capital");
+    let target = g.players[enemy].capital_city.expect("enemy founded a city");
+    assert_ne!(g.map.plots[g.city_plot(capital)].area, g.map.plots[g.city_plot(target)].area, "cities on different landmasses");
+
+    for tech in d.techs.keys() {
+        g.team_set_has_tech(at, tech, true, Some(attacker), false, false);
+    }
+
+    // The least-cargo transport, so each trip lands only a few units.
+    let transport = d
+        .units
+        .keys()
+        .filter(|&u| naval::is_transport_type(&d.units[u]) && d.units[u].cargo_space > 0)
+        .min_by_key(|&u| (d.units[u].cargo_space, u))
+        .expect("a land-cargo transport exists");
+    let cargo = d.units[transport].cargo_space.max(1);
+    let attacker_unit = best_unit(&g, capital, Role::CityAttack).or_else(|| best_unit(&g, capital, Role::Attack)).unwrap_or_else(|| d.t::<UnitType>("UNIT_CHAMPION"));
+
+    // A garrison larger than one load, and attackers enough for several loads.
+    let defenders = cargo + 2;
+    let attackers = (cargo + 2) * 3;
+    g.player_init_unit(attacker, d.t::<UnitType>("UNIT_WARRIOR"), 7, 5, Some(UnitAIType::UNITAI_CITY_DEFENSE), None);
+    g.player_init_unit(attacker, transport, 7, 5, Some(UnitAIType::UNITAI_ASSAULT_SEA), None);
+    for _ in 0..attackers {
+        g.player_init_unit(attacker, attacker_unit, 7, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+    }
+    for _ in 0..defenders {
+        g.player_init_unit(enemy, d.t::<UnitType>("UNIT_WARRIOR"), 12, 5, Some(UnitAIType::UNITAI_CITY_DEFENSE), None);
+    }
+
+    g.team_declare_war(at, et, true, None);
+    assert_eq!(naval::amphibious_target(&g, attacker).map(|a| a.city), Some(target), "the overseas enemy city is the target");
+
+    let mut captured = false;
+    for _ in 0..90 {
+        play_turn(&mut g);
+        if (g.cities.contains(target) && g.cities[target].owner == attacker) || !g.players[enemy].alive {
+            captured = true;
+            break;
+        }
+        if g.game_state != GameStateType::GAMESTATE_ON {
+            break;
+        }
+    }
+    assert!(
+        captured,
+        "the attacker took the defended overseas city by turn {} (cargo {cargo}, {defenders} defenders); enemy city owner {:?}, alive {}",
+        g.game_turn(),
+        g.cities.contains(target).then(|| g.cities[target].owner),
+        g.players[enemy].alive,
+    );
+}

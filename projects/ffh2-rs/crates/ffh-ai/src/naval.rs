@@ -608,9 +608,16 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
     let (hx, hy) = g.map.xy(here);
     let tp = amph.plot;
     let (tx, ty) = g.map.xy(tp);
-    // Land plots beside the city a land unit can disembark onto (best defensive ground first).
+    // Land plots beside the city a land unit can disembark onto.
     let sample = cargo.iter().copied().find(|&c| g.unit_get_domain_type(c) == DomainType::DOMAIN_LAND);
-    let mut sites: Vec<PlotIdx> = Vec::new();
+    let army_on = |l: PlotIdx| g.map.plots[l].units.iter().filter(|&&o| g.units[o].owner == p && crate::military::is_army_unit(g, o)).count() as i32;
+    let reach = v.flood.run(g, u, 25, false);
+    // The landing site to disembark onto: whichever reachable land plot beside the city already
+    // holds the most of our army (so successive landings pile onto one plot and merge into a stack
+    // that can strike, the way `assault_landed` already rallies them), then the soonest reachable,
+    // then the strongest ground. We still land whenever any plot is reachable -- only if none is do
+    // we sail on toward the city -- so a trickle concentrates without ever failing to get ashore.
+    let mut best: Option<(PlotIdx, PlotIdx, i32, i32)> = None; // (land site, water plot, our army, turns)
     for dir in 0..DirectionType::NUM {
         let Some(l) = g.plot_direction(tx, ty, DirectionType::from_usize(dir)) else { continue };
         if g.plot_is_water(l) || g.plot_is_impassable(l) || g.map.plots[l].plot_city.is_some() {
@@ -619,33 +626,31 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
         if sample.is_some_and(|c| !g.unit_can_move_into(c, l, false, false, false)) {
             continue;
         }
-        sites.push(l);
-    }
-    sites.sort_by_key(|&l| (std::cmp::Reverse(g.plot_defense_modifier(l, Some(v.team), true)), l));
-    let reach = v.flood.run(g, u, 25, false);
-    // The landing site whose adjacent water we can reach soonest (or that we already sit beside).
-    let mut best: Option<(PlotIdx, PlotIdx, i32)> = None; // (land site, water plot, turns)
-    for &l in &sites {
         let (lx, ly) = g.map.xy(l);
-        if g.plot_is_water(here) && g.plot_distance(hx, hy, lx, ly) == 1 {
-            best = Some((l, here, -1));
-            break;
-        }
-        let Some(r) = reach
-            .iter()
-            .filter(|r| g.plot_is_water(r.plot) && g.map.plots[r.plot].revealed[v.team] && {
-                let (rx, ry) = g.map.xy(r.plot);
-                g.plot_distance(rx, ry, lx, ly) == 1
-            })
-            .min_by_key(|r| (r.turns, r.plot))
-        else {
-            continue;
+        let (water, turns) = if g.plot_is_water(here) && g.plot_distance(hx, hy, lx, ly) == 1 {
+            (here, -1)
+        } else {
+            match reach
+                .iter()
+                .filter(|r| g.plot_is_water(r.plot) && g.map.plots[r.plot].revealed[v.team] && {
+                    let (rx, ry) = g.map.xy(r.plot);
+                    g.plot_distance(rx, ry, lx, ly) == 1
+                })
+                .min_by_key(|r| (r.turns, r.plot))
+            {
+                Some(r) => (r.plot, r.turns),
+                None => continue,
+            }
         };
-        if best.map_or(true, |(_, _, t)| r.turns < t) {
-            best = Some((l, r.plot, r.turns));
+        let a = army_on(l);
+        let def = g.plot_defense_modifier(l, Some(v.team), true);
+        let key = (a, std::cmp::Reverse(turns), def, std::cmp::Reverse(l));
+        let better = best.map_or(true, |(bl, _, ba, bt)| key > (ba, std::cmp::Reverse(bt), g.plot_defense_modifier(bl, Some(v.team), true), std::cmp::Reverse(bl)));
+        if better {
+            best = Some((l, water, a, turns));
         }
     }
-    let Some((site, water, _)) = best else {
+    let Some((site, water, _, _)) = best else {
         // No reachable coast yet: sail toward the city (the reached water plot nearest it).
         if let Some(r) = reach.iter().filter(|r| g.plot_is_water(r.plot) && r.turns > 0).min_by_key(|r| {
             let (rx, ry) = g.map.xy(r.plot);
