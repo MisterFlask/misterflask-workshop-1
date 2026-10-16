@@ -840,6 +840,27 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   massing at the colony before striking, sized so the landed force can take the city and gated so
   it does not bankrupt the economy. That is a multi-hop logistics pipeline (a new transport mode
   plus cross-landmass `committed`), a dedicated feature rather than a staging tweak.
+- War conversion vs. decisive wars: civs with a real army but no reachable *takeable* target sit
+  idle (traced `big army / took=0` civs, e.g. Sheaim seed 1: ~71 power of army, exactly one war
+  prepared all game, 2283 unit-turns "0 targets"). The dominant land-war gate is `can_take_cities`
+  (diplomacy.rs): it clears a war only when our best *trainable* attacker reaches the enemy's
+  weakest city defender x1.2 (the fortification margin). Tracing the greedy war loop across seeds
+  1-3 (all civs) found this gate rejects ~700 land-reachable (<=16 plots), already-power-parity
+  targets -- ~8x the wars that pass -- and none of those rejections are catastrophic per-unit gaps
+  (worst ~0.6x; 44% are cases where our unit already *beats* their defender, blocked only by the
+  x1.2 margin). Hypothesis: the x1.2 "solo the fortress" bar is wrong because a war is declared
+  only after massing `army_needed_for_war` (4-14) attackers, so a stack should take a fortified
+  city at per-unit parity. Dropping the no-siege multiplier 120->100 (attacker >= defender) was
+  measured (16-seed A/B, full 690-turn games): wars_declared +47%, but net territory flat (final
+  cities 838->816), biggest empire flat (avg 22.8->22.1), economy 2-8% behind at *every* fixed
+  checkpoint t200/t300/t450, and the +16% final "power" was standing military that never converted
+  (NEW games ran *longer*, 6 vs 4 reaching t690 -- grinding, not decisive). Reverted: the per-unit
+  bar turns out to select for *decisive* wars; the near-parity fights it filters out grind and
+  mutually destroy power (seed 3: the relaxed gate flipped the winner and left the victor with half
+  the base winner's power), an arms race rather than domination -- and over-militarization is a BTS
+  pathology this AI otherwise avoids. A real fix must unlock only wars won *decisively* (compare our
+  deployable attack stack to the target city's total defense, not gross team power to a single-unit
+  bar), not lower the parity bar for everyone.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
