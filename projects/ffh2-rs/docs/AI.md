@@ -917,6 +917,19 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   gathers, a "can we hold it" check before the strike, every unit following the victor into the
   city, stacks marching on a barbarian town turning back for cities in peril (fewer towns
   taken, no fewer cities lost), barbarian targets out to 20 plots, a larger strike margin.
+  One prosecution defect WAS fixed: the Strike gate fired off the adjacent ring alone
+  (`ok_adj = covers(adj, spare=false)`) while a committed stack one plot out (dist 2) was not yet
+  in the fight (`strike()` pools only units a single plot from the city), so the adjacent force
+  struck at acceptable odds and bounced, then re-mustered (16 "steps back" for one civ in seed 3).
+  `build_op` now defers a MARGINAL strike one turn (Strike->StepIn) when a committed dist-2 stack
+  can reach an adjacent plot that turn and the combined force would then take the city with a
+  reserve -- strictly one-turn-bounded (a stack that cannot close now is not counted, so a
+  hardening city is still struck at acceptable odds), and it only ever downgrades Strike to StepIn
+  so it can never make a strike weaker. Measured (16-seed A/B): "steps back" ~23->5 and razed
+  cities -29% (captures kept intact, not destroyed), final power +4.6%, eliminations -5.7%,
+  research flat; but gross captures-per-war was flat (-1.9%), so this is a coherence/retention
+  improvement (the army stops striking piecemeal and keeps more of what it takes), NOT a
+  conversion win -- the outcome deltas other than razing are within 16-seed noise.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Victories: nearly every decided game is a cultural victory. The Tower of Mastery needs 16

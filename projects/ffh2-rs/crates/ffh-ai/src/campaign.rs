@@ -513,7 +513,7 @@ pub fn plan(g: &Game, v: &mut View) {
     }
 }
 
-fn build_op(g: &Game, v: &View) -> Option<Op> {
+fn build_op(g: &Game, v: &mut View) -> Option<Op> {
     let p = v.p;
     let team = v.team;
     let (cand, need, _feasible) = choose_target(g, p)?;
@@ -591,9 +591,47 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
         let n = ((cand.n_def + 2) as usize).min(4);
         (all.len() >= n, near.len() >= n, false)
     };
+    // Concentrate before a MARGINAL strike. The adjacent ring may clear the city at acceptable
+    // odds (`ok_adj`, no reserve) yet bounce; `strike()` only pools units a single plot away, so a
+    // committed stack one plot out is left out of the fight (measured: a city struck by 8 while
+    // another 8 stood one plot back). If that farther stack can reach an adjacent plot THIS turn
+    // and the combined force would then take the city decisively (with a reserve), hold the
+    // adjacent stacks and step the farther one in (StepIn) instead of striking piecemeal -- they
+    // strike together next turn. Strictly one turn: a stack that cannot close this turn is not
+    // counted, so a city that only hardens is still struck now at acceptable odds, and a ring that
+    // already wins with a reserve (`adj_decisive`) strikes now regardless.
+    let adj_decisive = ok_adj && covers(g, cand.city, tp, &defs, &adj, true, false);
+    let concentrate = ok_adj
+        && !adj_decisive
+        && {
+            let mut strikeable = adj.clone();
+            for &(d, grp) in &groups {
+                if d != 2 || !committed.contains(&grp) {
+                    continue;
+                }
+                let Some(h) = g.group_get_head_unit(grp) else { continue };
+                let closes = v.flood.run(g, h, 2, false).into_iter().any(|r| {
+                    if r.turns != 0 || g.map.plots[r.plot].plot_city.is_some() {
+                        return false;
+                    }
+                    let (rx, ry) = g.map.xy(r.plot);
+                    g.plot_distance(rx, ry, tx, ty) == 1
+                        && !g.plot_is_visible_enemy_unit_for_unit(r.plot, h)
+                        && g.unit_can_move_into(h, r.plot, false, false, false)
+                });
+                if closes {
+                    strikeable.extend(g.groups[grp].units.iter().copied());
+                }
+            }
+            strikeable.len() > adj.len() && covers(g, cand.city, tp, &defs, &strikeable, true, true)
+        };
+    // Strike when the adjacent ring is decisive, or when no one-turn concentration would improve
+    // it; otherwise defer one turn to concentrate. `concentrate` implies `ok_near` and `ok_all`
+    // (strikeable is a subset of near and all), so a deferred strike lands on StepIn, never Gather.
+    let strike_now = ok_adj && (adj_decisive || !concentrate);
     let phase = if !at_war {
         Phase::Gather
-    } else if ok_adj {
+    } else if strike_now {
         Phase::Strike
     } else if !ok_all {
         Phase::Gather
