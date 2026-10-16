@@ -407,9 +407,9 @@ K    Q     l     x     S     6
 | equipment | 24x24 | feet at (11, 21), placed at tile offset (6, 7): items lying on the tile (10.4) |
 | team ring | 24x8 (30x9 under giants) | drawn by the renderer under the feet (7.4) |
 | city | up to 34x34 | base on the bottom row; tiers in section 9 |
-| improvement | up to 24x20 | quiet marks; towers and castles may rise 8 px |
+| improvement | up to 24x20 | small painted objects; towers and castles may rise 8 px |
 | landmark | 32x32, plus overhang | may glow (6.2) |
-| resource medallion | 11x11 seal, 7x7 glyph | bottom-right of the tile, centred at (25, 25) |
+| resource | 13x13, feet at (6, 12) | an object standing in the tile's lower right, feet at (25, 30), on a soft shadow |
 | stack count chip | up to 13x9 | top-left corner of the tile (top-right in a city) |
 | UI icon | 16x16 (8x8 inline and on the map) | section 11.5 |
 | cursor | 16x16 | section 11.7 |
@@ -442,9 +442,17 @@ K    Q     l     x     S     6
 
 - Two to four tones per material, plus outline; hue-shift along the ramp (skin to auburn, gold to
   khaki) rather than blending families; no pillow shading.
-- Colour limits (outline and owner slots excluded): unit 18; city 12; terrain texture 6; feature 6;
-  icon 4 (one of them an accent). An atlas unit is quantized to the palette and then reduced to
-  its 18 most used colours (the rarest merged into their nearest kept colour).
+- Colour limits (outline and owner slots excluded): unit 18; city 12; terrain texture 6; feature,
+  improvement and resource 8; peak and hill 8; icon 8 (16x16) and 6 (8x8). An atlas or composed
+  unit is quantized to the palette and then reduced to its 18 most used colours (the rarest merged
+  into their nearest kept colour); map sprites and icons are reduced the same way to their budget.
+- **Painted at the sprite's own resolution** (map sprites and icons, `tools/atlas/maplib.Px`): each
+  part is a crisp shape (at least half a pixel covered), shaded per pixel by the lit-dome normal of
+  its blurred mask and posterized to its ramp; where a part lies over an earlier one its lower and
+  right edge takes its darkest tone; one void outline closes the whole silhouette, except on thin
+  strokes (fronds, twigs, staves) and flat ground marks. Small regular things (pines, palms, dead
+  trees, bushes, motes) follow pixel rules instead: a lit edge pixel on the west, base, shade,
+  a dark underside.
 - No anti-aliasing against the background; sprites have 1-bit alpha.
 
 ### 4.4 Dithering, glows and daylight
@@ -539,10 +547,12 @@ types** drawn over the plot's terrain (5.3).
   (`terrain/manifest.txt`), so a hill is its terrain raised: golden on plains (`O7,oY,mQ,qj,wi`),
   cream on desert, pale grey on tundra, white on snow, ember on burning sands. Never mirrored.
   Forests stand on top of them.
-- **Peaks** (`PLOT_PEAK`): jagged masses 20 to 32 px wide rising up to 8 px into the tile above:
-  lit west faces in steel `4`/`5`/`6` with a `7` ridge, shadow faces `3`/`2` with `1` hatching, an
-  outline, white `8` and cream `7` snow caps (taller on snow and tundra). They are the tallest,
-  darkest shapes on the map after cities.
+- **Peaks** (`PLOT_PEAK`): faceted massifs 29 to 32 px wide rising up to 8 px into the tile above,
+  two or three peaks each: a lit west face (`4`-`7`, bone where the sun strikes) and a shaded east
+  face (`2`-`5`) split at the ridge, a few ledges, a void outline, and caps of rime `F`/vellum `8`
+  in the light and frost `f`/glint `g` in shadow, jagged at the snow line: small on `rock_*`, deep
+  on `snow_*` (snow and tundra). As in the references, peaks are the grey-and-white crests of the
+  map.
 
 ### 5.4 Water edges
 
@@ -554,11 +564,23 @@ types** drawn over the plot's terrain (5.3).
 
 ### 5.5 Features
 
-The feature sprites (conifers, ancient forest, saplings, burnt forest, jungle, flood plains, oasis,
-ice, scrub, flames, obsidian, volcano, blizzard) keep their drawings and read in the new palette:
-conifers are blue-green pine (`k t T`) with an umber trunk, jungle rounded `m`/`q`/`o` clumps,
-flames `E e l L` with a small firelight pool. The north-west rim of every wood mass catches the sun
-(a 1 px `O` edge where open ground lies above or to the left).
+The feature sprites are painted by `tools/atlas/compose_map.py` (4.3):
+
+- **Forest**: pines by pixel rules, two to four tiers widening a pixel a row, a lit `m`/`O` west edge,
+  needle `T` body, pine `t` shade and a dark `k` underside with drooping tips, an umber trunk;
+  seven shapes (one in the mossy ramp) scattered per tile. **New forest**: saplings by the same
+  rules. **Ancient forest**: broad canopies of overlapping lit domes in deep greens over a thick
+  rooted trunk, rising into the tile above.
+- **Jungle**: palms (a ringed trunk, two-row fronds lit above and dark beneath, no outline on the
+  leaves), a bright round canopy and a low row of bushes. **Burnt forest**: charred trunks.
+- **Flood plains**: lush tufts, silt dashes and water glints, a flat ground mark. **Oasis**: a blue
+  pool in a green bank under a leaning palm. **Ice**: floes of rime and frost with glint shade
+  beneath. **Scrub**: small dry bushes. **Burning sands**: three fires (two frames) with firelight
+  pools. **Obsidian**: black glass shards with a lilac glint. **Volcano**: a faceted cone with lava
+  runs from a glowing crater and a smoke plume. **Blizzard**: driven snow streaks. **Fallout**:
+  glowing pools among dead trees.
+- The north-west rim of every wood mass catches the sun (a 1 px `O` edge where open ground lies
+  above or to the left, the ground pass).
 
 ### 5.6 Rivers and routes
 
@@ -570,28 +592,39 @@ flames `E e l L` with a small firelight pool. The north-west rim of every wood m
 
 ### 5.7 Improvements and 5.8 Lairs
 
-Improvements (farms, pastures, cottages to towns, mines, quarries, forts, towers, castles, mana
-nodes, the FfH works) and lairs keep their pre-revamp drawings, re-tinted by the palette: quiet
-marks at the tile's lower half, at most 4 colours plus outline. Homes grow from cottage to town
-(1, 2, 3, then 5 huts with lit windows); a goody hut is a small cairn with one lit candle; lairs are
-small and ominous (a barrow door, a cave mouth, a spiked palisade). Their redraw in the new style is
-an open point (16.4).
+Improvements and lairs are small painted objects in the tile's lower half (`compose_map.py`): a
+farm is a golden field of ripe ears in green rows (a flat ground mark), a pasture a rail fence
+round two sheep, plantations and vineyards rows of shrubs and vines; homes grow from cottage to
+town (one hut, then two, three and a little town round a spire, thatch and red tile, lit windows);
+mines are an adit in a hillock beside a spoil heap with a gold fleck; forts, towers, castles and
+citadels are stone keeps and timber; each mana node is a slate obelisk carved with its sphere's
+rune. Lairs read at a glance: cave mouths in rock or sandstone, a barrow door, a goblin palisade
+round a campfire, a ribcage, ruins wrapped in vine, a dungeon stair, a portal's lilac swirl. A
+goody hut is a small cairn with a flickering candle.
 
 ---
 
 ## 6. Resources and landmarks
 
-### 6.1 Resource medallions
+### 6.1 Resources
 
-A revealed resource (`BONUS_*`) is a **seal**: an 11x11 navy disc with a 1 px rim at the tile's
-lower right and a 7x7 glyph inside. The rim gives the class at a glance (food olive `o`,
-strategic stone `6`, luxury ochre `y`, mana lilac `P`); the glyph names the resource (sheaf, horse
-head, ingot, nugget, grapes, crystal...). The 62 glyphs keep their drawings, re-tinted.
+A revealed resource (`BONUS_*`) is a **small object** standing in the tile's lower right, as in the
+references: a 13x13 painted sprite with its feet at (6, 12), drawn with its feet at tile (25, 30)
+on a soft checker shadow. The object names the resource: a golden sheaf, a cob of corn, a bowl of
+rice, a cow, a pig, a sheep, a deer, a toad, a banana bunch, a fish, a clam, a crab, a whale's back
+and spout; copper, iron and mithril ingots; a horse and the nightmare; a keg, a vial of reagents, a
+veined sheut stone, a marble block, a dye pot, a pelt, cut gems, gold nuggets, a censer, a tusk, a
+bolt of silk, sugar cane, grapes, a pearl in its shell, cotton, a tankard of ale, folded fine
+clothes, a jewelled ring, razorweed, a sealed jar, the Fruit of Yggdrasil. **Mana** is a standing
+stone carved with its sphere's rune (colour the family, shape the sphere, 11.5). The category
+objects (`res/_food`, `_strategic`, `_luxury`, `_mana`) are the fallbacks for bonuses added later.
 
 ### 6.2 Landmarks (unique improvements)
 
 The 17 unique improvements (Standing Stones, Yggdrasil, Pool of Tears, Ring of Carcer, Broken
-Sepulcher, Maelstrom...) are drawn once each, 32 px wide with up to 8-12 px of overhang, and are
+Sepulcher, Maelstrom...) are painted once each (`compose_map.py`: Yggdrasil's vast crown of lit
+domes over a buttressed trunk, seven pines by the forest's rules, the menhir ring round a
+glowing circle, the Maelstrom's spiral), 32 px wide with up to 8-12 px of overhang, and are
 the only map objects besides lights, volcanoes and mana nodes allowed a full glow: sacred sites a
 `RITE` haze with a ritual heart, the corrupted ones `BLOOD`, the pyre `FIRE` (halved by day).
 
@@ -953,9 +986,13 @@ active) and thin dark scrollbars follow the same colours.
 ### 11.5 Icons
 
 **Grid.** Icons are drawn on a 16x16 grid (panel icons) and an 8x8 grid (inline in text, map
-overlays, yields on tiles). They are 1 px line-and-mass glyphs in cream `7` and stone `6`, with
-**one** accent colour and a void outline when placed over the map. (The icon set predates the
-revamp; it was re-tinted by the palette, not redrawn: section 16.4.)
+overlays, yields on tiles) by `tools/atlas/compose_icons.py`: each is painted once on the 16 grid
+like the map sprites (4.3: lit shapes posterized to palette ramps, up to 8 colours, one void
+outline), and its 8x8 version is the finished 16x16 icon reduced by 2x2 blocks (the majority
+colour, the outline kept), redrawn by hand where the reduction loses the subject (the open codex).
+Promotion seals keep their family rim (the `#` slot, recoloured by the mapping) around a shaded
+navy face with the painted glyph. The mana runes are a notation, like the font, and keep their
+shapes.
 
 **Yields and commerce** (also the `[ICON_*]` set used by the game text):
 
@@ -963,16 +1000,16 @@ revamp; it was re-tinted by the palette, not redrawn: section 16.4.)
 |---|---|---|
 | FOOD | a bound sheaf | ochre `y` |
 | PRODUCTION | a hammer over an anvil | iron, with an `E` spark |
-| COMMERCE / TRADE | a coin on an open palm | ochre `y` |
-| GOLD | a stack of coins | ochre `y` / `Y` |
+| COMMERCE / TRADE | a coin with a square hole | ochre `y`, gold `K` |
+| GOLD | stacked coins and one standing | ochre `y`, gold `K` |
 | RESEARCH | an open codex | vellum pages |
-| CULTURE | an illuminated letter on a square | ochre `y` with a `P` square |
-| ESPIONAGE | an eye (drawn for completeness; espionage is locked off) | stone |
+| CULTURE | a gilt letter on a lilac plaque | gold on `p`/`P` |
+| ESPIONAGE | a lilac mask (drawn for completeness; espionage is locked off) | dusk `p` |
 | HAPPY | a lit candle | amber `l` flame |
 | UNHAPPY | a snuffed candle with smoke | ash smoke, `C` wick |
 | HEALTHY | a green sprig | olive `o` / lichen `O` |
-| UNHEALTHY | a bubble of miasma | dusk `p` |
-| GREATPEOPLE | a ring of vellum dots | vellum |
+| UNHEALTHY | boils of miasma | dusk `p`, lilac `P` |
+| GREATPEOPLE | a laurel round a gold star | olive, gold |
 | BULLET | a 3x3 lozenge | stone |
 | STRENGTH | a raised shield | (none) |
 | MOVES | a boot | (none) |
@@ -1393,32 +1430,37 @@ redraw only changed tiles (3.1).
 
 ## 16. Status
 
-The revamp (October 2026) replaced the night look with this one in a single pass: the palette
-(40 colours recoloured, 16 added), the terrain textures and hills, the ground and light passes
-(daylight), the borders, the unit figures and the team ring, the city kit and the UI chrome.
-`tools/check.sh` passes (every module parses, the unit tests pass, every sprite and rule validates,
-every game type resolves); the client's `tools/web-check.sh` and the headless `tools/web-smoke.mjs`
-pass with it.
+The revamp (October 2026) replaced the night look with this one: the palette (40 colours
+recoloured, 16 added), the terrain textures and hills, the ground and light passes (daylight), the
+borders, the unit figures (cut from the atlases and composed) on their team rings, the stack marks,
+the city kit, every map object (features, peaks, landmarks, improvements, lairs, resources), the
+icons and the UI chrome. `tools/check.sh` passes (every module parses, the unit tests pass, every
+sprite and rule validates, every game type resolves); the client's `tools/web-check.sh` and the
+headless `tools/web-smoke.mjs` pass with it, and so does the Rust suite (the art is embedded at
+build time).
 
 ### 16.1 Coverage
 
-981 sprites (946 groups) in 26 source files. Units: 325 types, 295 exact (81 of them atlas
-figures and their variants), 20 by their base unit, 10 by a category rule. The other kinds are as
-before: terrains 14/14, hills and peaks 10 each (4 deliberately none), features 20/20, bonuses
-58/58, improvements 79 exact (2 none), civilizations 23/23, city styles 22 (+1 category),
-religions 7/7, buildings 90 exact (80 by class icon), promotions 30 exact (231 by category), unit
-combats 10/10, specialists 11/11.
+1013 sprites (978 groups) in 19 source files. Units: 325 types, 298 exact (81 atlas figures and
+161 composed ones, some with variant remaps), 20 by their base unit, 7 by a category rule, all of
+them figures in the new look. Terrains 14/14, hills and peaks 10 each (4 deliberately none),
+features 20/20, bonuses 58/58, improvements 79 exact (2 none), civilizations 23/23, city styles 22
+(+1 category), religions 7/7, buildings 90 exact (80 by class icon), promotions 30 exact (231 by
+category), unit combats 10/10, specialists 11/11.
 
-### 16.2 What is new, what is re-tinted
+### 16.2 What is new, what is kept
 
 - **New in the revamp**: the palette and its remap tables; the 12 terrain textures; the hill
-  mounds and their remaps; the 81 atlas units (`units/atlas.spr`) and their variant remaps; the
-  team ring; solid borders; daylight fog, navy unrevealed ground, no vignette; the daylight light
-  pass; the city kit's materials (and the regenerated `cities.spr`); the gold-on-navy chrome
-  (`ui/chrome.spr`, `style.css`).
-- **Re-tinted only** (same drawings, new colours): features, peaks, landmarks, improvements, lairs,
-  resource glyphs, icons, fonts, sigils, the standard and banner, and the legacy units (lifted,
-  10.4).
+  mounds and their remaps; the 81 atlas units (`units/atlas.spr`) and the 161 composed ones
+  (`units/composed.spr`, 10.4); the team ring and the corner stack marks; solid borders; daylight
+  fog, navy unrevealed ground, no vignette; the daylight light pass; the city kit's materials (and
+  the regenerated `cities.spr`); the features, peaks, landmarks, improvements and lairs
+  (`compose_map.py`); the resource objects; the icons (`compose_icons.py`); the gold-on-navy chrome
+  (`ui/chrome.spr`, `style.css`); the reference sheets.
+- **Kept as designs** (re-tinted by the palette, not redrawn, on purpose): the two fonts; the
+  heraldic sigils and the gonfalon and city banner shapes; the mana runes (a notation, stamped on
+  the new mana stones, obelisks and seals); the chrome primitives of `ui/marks.spr` (path dots and
+  turn roundels, tile brackets, odds chips, the pointer, move and invalid cursors); the road dots.
 
 ### 16.3 How the client calls the toolkit
 
@@ -1471,15 +1513,7 @@ renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 
 
 ### 16.4 Open points
 
-- **Units, atlas parts 2-4**: about 120 legacy figures (10.4) wait for the remaining atlas sheets
-  (magic and religion, heroes, monsters); the pipeline takes them as they are (add crops to
-  `unit_mapping.json`).
-- **Improvements, lairs, resource glyphs and icons** keep their pre-revamp drawings; a redraw in the
-  new style (brighter fields, chunkier huts, coloured resource icons like the references') would
-  finish the map.
-- **The stack standard** over a tile-filling figure: it still overlaps the figure's upper left; a
-  smaller marker or one beside the ring may read better now that the ring carries ownership.
-- **The pass tables** (`MOON`, `GRAIN`, `SHADE`, `VERGE`, `REMEMBER` and the light pass's rings)
-  still live in their modules; moving them into `palette.txt` as columns is unchanged from before.
-- **Reference shots**: `docs/art/toolkit-scene.png` and the sets' `ref/` sheets show the night look
-  and should be retaken (`node tools/screenshot.mjs`).
+- **The pass tables** (`MOON`, `GRAIN`, `SHADE`, `VERGE`, `REMEMBER` in `terrain/ground.js` and the
+  light pass's rings in `cities/citylight.js`) still live in their modules; moving them into
+  `palette.txt` as remap columns is a code-organisation change carried over from the first guide,
+  with no effect on the look.

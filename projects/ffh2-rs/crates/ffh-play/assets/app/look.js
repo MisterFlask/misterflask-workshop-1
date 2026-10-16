@@ -1,4 +1,4 @@
-// The client's look (docs/ART.md, "Monastic Pixel Noir"): loads the original pixel art the server
+// The client's look (docs/ART.md, "cheerful readability"): loads the original pixel art the server
 // embeds (`/art/`: the toolkit's modules and `/art/art.bundle.txt`, the sprites), installs the
 // ui set's stylesheet (palette properties, nine-slice frames, buttons, cursors), and gives the
 // screens bitmap text (Vigil for titles, Vigil Book for short labels, Tally for numbers) and

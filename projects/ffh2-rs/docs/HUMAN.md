@@ -29,9 +29,10 @@ game…" lists the saves). Each game gets a directory in `./saves` (`--saves DIR
 `--load saves/game-3/auto/T0040.ffhsave` resumes one). Use a current Chrome, Firefox or Safari;
 nothing is fetched from the internet.
 
-**The look.** The client draws with the game's own pixel art (docs/ART.md, "Monastic Pixel
-Noir", embedded in the binary like the rest of the page): the map is a night-time manuscript and
-the interface a scriptorium at night: soot panels with double rules and gilt nails, the Vigil
+**The look.** The client draws with the game's own pixel art (docs/ART.md, "cheerful
+readability", embedded in the binary like the rest of the page): a bright daylight map in the
+spirit of the old Shining Force games, figures standing on team-coloured rings, and an interface of
+navy panels with gold rules, gilt nails and maroon title ribbons, the Vigil
 bitmap capitals for titles and numbers, the Vigil Book face for buttons and short labels (long
 texts, such as events and help, stay in the system serif), the game's yield, commerce, mana and
 Armageddon icons (and in the screens those of promotions, unit classes, buildings, specialists,

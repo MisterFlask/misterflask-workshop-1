@@ -1,7 +1,7 @@
 # ui set
 
-The interface art of the ffh-play client in the "Monastic Pixel Noir" manner (docs/ART.md 7 and 11):
-soot panels with double rules and gilt nails, bone glyphs with one accent each, the Vigil, Vigil Book
+The interface art of the ffh-play client in the "cheerful readability" manner (docs/ART.md 7 and 11):
+navy panels with gold rules and gilt nails, maroon title ribbons, painted icons (tools/atlas/compose_icons.py), the Vigil, Vigil Book
 and Tally bitmap fonts, the owner marks, and the marks drawn over the map. Sources are sprite text
 (`*.spr`); `manifest.txt` lists them and maps game types to sprites. `ui.js` draws the pieces;
 `preview.html` shows them.

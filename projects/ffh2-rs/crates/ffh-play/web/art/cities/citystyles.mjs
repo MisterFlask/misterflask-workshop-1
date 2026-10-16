@@ -680,7 +680,7 @@ function frost(t) {
 // light of the sprite itself ([table, radius], placed under its glow core), e.g. the tribal bonfire.
 
 /** Daylight towns (the cheerful revamp): windows are not pre-lit through the halo tables, and the
- * hand-drawn stamps' dark noir neutrals are lifted two steps (doors, gates, crags, frames) except in
+ * hand-drawn stamps' dark night-look neutrals are lifted two steps (doors, gates, crags, frames) except in
  * the styles meant to be dark or faded (lift: false). */
 const DAYLIGHT = true;
 const DAY_LIFT = { 1: '3', 2: '4', 3: '5', 4: '6', 5: 'H' };
