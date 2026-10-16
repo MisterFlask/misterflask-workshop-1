@@ -103,6 +103,9 @@ impl Controller for Ai {
         let seen = self.played.lock().unwrap().insert(p, turn) == Some(turn);
         let first_call = !seen && !g.players[p].units.iter().any(|&u| g.units.contains(u) && g.unit_has_moved(u));
         let mut v = view::View::new(g, p);
+        if first_call && !v.barbarian {
+            military::report_exposure(g, &v, p);
+        }
         if !first_call {
             // Called again in the same turn: only groups that still need orders.
             units::play(self, g, &mut v);

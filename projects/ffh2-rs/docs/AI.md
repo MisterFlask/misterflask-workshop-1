@@ -977,6 +977,28 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   research flat; but gross captures-per-war was flat (-1.9%), so this is a coherence/retention
   improvement (the army stops striking piecemeal and keeps more of what it takes), NOT a
   conversion win -- the outcome deltas other than razing are within 16-seed noise.
+- Loose stacks exposed to a stronger enemy (the classic Civ4 "a stack parked in front of
+  something that one-shots it"). Measured with a gated diagnostic (`FFH_AI_EXPOSURE`, which flags
+  army stacks standing where a single visible enemy can reach and out-fight their best defender
+  next turn): 230-450 *distinct* such stacks a game (4 games x 690t), ~90% with enough attackers
+  to wipe the stack, a tail at 3-7x strength, concentrated in the mid/late war era (t250+), not
+  early-game barbarian noise. It is entirely *loose* stacks -- stacks in an operation are never
+  exposed, because `campaign.rs` keeps them concentrated -- so the gross cases (a lone unit next
+  to a death stack, attacking into a stronger defender) are already handled by the odds-gated
+  attack logic and the idle-retreat-to-city fallback; this is the residue. It looks bad but is
+  not costing the AI: making an outclassed loose stack fall back to the safest plot it can reach
+  (a city, or a plot where it is not outclassed with terrain credited), strictly after every
+  attack/garrison/heal/city-defence/escort/operation/hunt step so offence is untouched, measured
+  clearly NET-NEGATIVE on the primary goal (16-seed, 690t A/B): final power -8.1%, biggest empire
+  -9.2%, top-power share -10.8%, techs@450 -7.3%, games longer (5 vs 3 reaching t690, i.e.
+  grinding), for only +4% captures per war; and it barely moved the exposure itself (-18% over
+  four games, worse in two of them -- the stack retreats toward a safe haven it cannot reach in
+  one turn, so it ends the turn on another exposed plot and churns). The exposed stacks apparently
+  do useful work -- pressure, map presence, attrition -- that retreating removes, so pulling them
+  back makes the AI timid, the same over-caution the war-declaration and strike-hold experiments
+  hit. Reverted; the `FFH_AI_EXPOSURE` counter is kept as observation tooling. A fix that helped
+  would have to avoid *creating* the exposure -- danger-aware movement that ends each turn on a
+  safe plot -- without making stacks passive, which is a pathfinding change, not a retreat rule.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Victories: nearly every decided game is a cultural victory. The Tower of Mastery needs 16
