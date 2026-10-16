@@ -477,8 +477,10 @@ plot falls or the odds turn bad, and moves in.
   one of our coastal cities, whose weakest defender our best trainable attacker can beat
   (`can_take_city`) -- by value (population, wonders) for its cost (force needed, distance);
   deterministic ordering, recomputed each turn. *Production* (the coastal city nearest the
-  target, the staging port): an assault transport while we have none, then attackers up to what
-  one assault needs (`need` = defenders x2 + 1, capped). *Execution* reuses the overseas-settling
+  target, the staging port): a fleet of assault transports big enough to carry the whole force in
+  one wave (`ceil(need / cargo per ship)` of them -- one transport only trickles a few units per
+  trip, which rarely masses enough to take a defended city), then attackers up to what one assault
+  needs (`need` = defenders x2 + 1, capped). *Execution* reuses the overseas-settling
   machinery: the nearest army stacks (up to `need`) walk to the staging port and board the
   transport there (as a settler and its escort board); the transport, carrying an army rather
   than a settler, sails to a water plot beside the target city and lands the army on a land plot

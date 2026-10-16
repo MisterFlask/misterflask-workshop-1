@@ -467,10 +467,15 @@ pub fn assault_production(g: &Game, c: CityId) -> Option<Choice> {
     if c != amph.staging {
         return None;
     }
-    // A transport dedicated to the assault (a settler's transport is often busy ferrying
-    // settlers and never free to carry the army, so the assault wants its own).
-    if assault_ships(g, p) == 0 {
-        if let Some(u) = best_unit(g, c, Role::Transport) {
+    // Transports dedicated to the assault (settlers' transports are often busy ferrying settlers
+    // and never free to carry the army, so the assault wants its own). Build enough to carry the
+    // whole assault force in one wave -- a single transport only trickles a few units per trip,
+    // which rarely masses enough on the beach to take a defended city; a fleet lands the force
+    // fast enough to strike. Capped by what one assault needs (ceil(need / cargo per ship)).
+    if let Some(u) = best_unit(g, c, Role::Transport) {
+        let cargo_each = g.d.units[u].cargo_space.max(1);
+        let want = (amph.need + cargo_each - 1) / cargo_each;
+        if assault_ships(g, p) < want {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ASSAULT_SEA));
         }
     }
