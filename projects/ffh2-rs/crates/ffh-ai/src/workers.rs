@@ -165,7 +165,7 @@ fn build_value(g: &Game, v: &View, p: PlayerId, plot: PlotIdx, build: BuildType)
             }
         }
         // Commerce matters more to an empire that cannot afford its research.
-        let research = g.players[p].commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()];
+        let research = crate::economy::spend_pct(g, p);
         let commerce_w = if research < 50 { 11 * (200 - 2 * research) / 100 } else { 11 };
         let weights = [food_w, prod_w, commerce_w];
         let mut value = 0;

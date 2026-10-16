@@ -122,27 +122,58 @@ fn spawned_civilizations_are_taken_over() {
 /// update), the rest of that update is not the human's: C++ moves the active player at once
 /// (CvInitCore.cpp:474-482), so the old slot's messages from its AI turn reach nobody. The
 /// session drains such an update for the new slot.
+/// (Which slot leads at turn 50, and so whether High to Low fires, is emergent and drifts with
+/// the AI and content, so the test scans seeds for a game that triggers the move rather than
+/// pinning one -- see the rationale in the body.)
 #[test]
 fn a_slot_move_inside_an_update_drains_for_the_new_slot() {
     let d = ffh_data::global();
-    let mut g = game(2, "WORLDSIZE_TINY", 52);
-    g.ng.civ = Some(d.t("CIVILIZATION_BANNOR"));
-    g.ng.options = soak::parse_options(d, "challenges").unwrap();
-    let mut prev = None;
-    let mut moved = None;
-    let o = soak::run(&g, &RunOptions::default(), &mut |s| {
-        let (h, turn) = (s.human, s.g.game_turn());
-        if let Some(old) = prev.filter(|&p| p != h) {
-            moved = Some((old, h, turn));
+    // High to Low only reassigns the human when its slot leads the standings at turn 50
+    // (`player_rank == 0`, CvGame::doTurn), which is emergent from how the game plays out: the AI
+    // and any added content both shift the standings, and adding content also reshuffles the RNG
+    // so a pinned seed reproduces a different game. So no fixed seed reliably reproduces the move
+    // (seed 12 happens to today; seed 2 did before the round-3b AI merge). The driver callback is
+    // read-only, so the move cannot be forced mid-run either. Instead, scan a bounded range of
+    // seeds for any game whose standings put the human slot on top at turn 50 -- the seed only
+    // shapes a believable board -- exercise the drain invariant on every game that moves the
+    // human, and take the first game where High to Low moves the human off slot 0 at turn 50 and
+    // leaves it there. If NONE in range does, fail loudly: that means High to Low has stopped
+    // picking the human slot at all (a regression in `reassignPlayerAdvanced` or in the standings
+    // that pick the leader), not that a golden seed drifted.
+    for seed in 1..=200 {
+        let mut g = game(seed, "WORLDSIZE_TINY", 52);
+        g.ng.civ = Some(d.t("CIVILIZATION_BANNOR"));
+        g.ng.options = soak::parse_options(d, "challenges").unwrap();
+        let mut prev = None;
+        let mut moved = None;
+        let o = soak::run(&g, &RunOptions::default(), &mut |s| {
+            let (h, turn) = (s.human, s.g.game_turn());
+            if let Some(old) = prev.filter(|&p| p != h) {
+                moved = Some((old, h, turn));
+            }
+            prev = Some(h);
+            // The drain invariant (the real subject), checked on every game that moves the human:
+            // once the human has been reassigned, none of the old slot's messages from its AI
+            // turns after the move reach the (new) human slot. True for any seed and any move
+            // turn, so it is not a seed-specific outcome.
+            if let Some((old, _, at)) = moved {
+                let leaked: Vec<String> = s.messages().iter().filter(|m| m.player == Some(old.0) && m.turn >= at).map(|m| format!("t{} {}", m.turn, m.text)).collect();
+                assert!(leaked.is_empty(), "seed {seed}: the old slot's messages after the move reached the human: {leaked:?}");
+            }
+        })
+        .unwrap();
+        // The scenario this test is about: High to Low moved the human off slot 0 at turn 50 and
+        // the human stayed there (a single clean move, so `o.human` is the new slot). Take the
+        // first such game; the drain was already asserted above as it ran.
+        if moved == Some((ffh_core::ids::PlayerId(0), o.human, 50)) {
+            let (old, new, at) = moved.unwrap();
+            eprintln!("seed {seed}: High to Low moved {old:?} -> {new:?} at turn {at}");
+            assert_eq!((old, o.human, at), (ffh_core::ids::PlayerId(0), new, 50));
+            return;
         }
-        prev = Some(h);
-        if let Some((old, _, at)) = moved {
-            let leaked: Vec<String> = s.messages().iter().filter(|m| m.player == Some(old.0) && m.turn >= at).map(|m| format!("t{} {}", m.turn, m.text)).collect();
-            assert!(leaked.is_empty(), "the old slot's messages after the move reached the human: {leaked:?}");
-        }
-    })
-    .unwrap();
-    let (old, new, at) = moved.expect("High to Low moves the human in this game");
-    eprintln!("moved {old:?} -> {new:?} at turn {at}");
-    assert_eq!((old, o.human, at), (ffh_core::ids::PlayerId(0), new, 50));
+    }
+    panic!(
+        "no seed in 1..=200 (challenges, Bannor, TINY, 52 turns) had High to Low move the human \
+         from slot 0 at turn 50: the mechanism has stopped picking the human slot entirely"
+    );
 }

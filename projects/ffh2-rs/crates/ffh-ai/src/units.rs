@@ -527,6 +527,7 @@ pub(crate) fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 
 fn great_person(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
+    if crate::victory::great_work(g, v, grp, u) { return; } // victory-pursuit
     let here = g.unit_plot(u);
     let Some(capital) = g.players[p].capital_city else {
         hold(g, grp);
@@ -603,6 +604,7 @@ pub(crate) fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let here = g.unit_plot(u);
+    if crate::victory::mana_node(g, v, grp, u) { return; } // victory-pursuit
     if let Some(target) = crate::military::war_target(g, v) {
         let tp = g.city_plot(target);
         let (tx, ty) = g.map.xy(tp);

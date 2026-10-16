@@ -72,7 +72,8 @@ pub fn to_humans(g: &mut Game, v: &View) {
 
 fn offer_peace(g: &mut Game, p: PlayerId, human: PlayerId) {
     let (team, their) = (g.players[p].team, g.players[human].team);
-    if g.teams[team].ai_at_war_counter[their] <= 10 || !crate::diplomacy::want_peace(g, team, their) || !contact_due(g, p, human, "CONTACT_PEACE_TREATY") {
+    let plan = crate::victory::plan_ours(g, p);
+    if g.teams[team].ai_at_war_counter[their] <= 10 || !crate::diplomacy::want_peace(g, team, their, &plan) || !contact_due(g, p, human, "CONTACT_PEACE_TREATY") {
         return;
     }
     let item = peace_item();

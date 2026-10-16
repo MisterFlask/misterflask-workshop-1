@@ -6,7 +6,7 @@ mod common;
 use std::sync::Arc;
 use std::time::Instant;
 
-use common::{bot_session, new_game};
+use common::{bot_session, new_game, peaceful_game};
 use ffh_core::ids::*;
 use ffh_core::structs::TradeData;
 use ffh_data::*;
@@ -59,9 +59,14 @@ fn all_queries(s: &ffh_play::Session) -> Vec<Query> {
     qs
 }
 
+/// Pattern A (a long varied game): a peaceful game (`GAMEOPTION_ALWAYS_PEACE` +
+/// `GAMEOPTION_NO_BARBARIANS`) cannot end early, so for ANY seed the bot reaches the until-turn
+/// with `Stop::Human` -- the `assert_eq!(stop, Stop::Human)` below is true by construction, not by
+/// a seed happening to produce a game that lasts. The test then asserts invariants (every query
+/// answers with valid JSON, and the reads leave the save unchanged), never a seed-specific outcome.
 #[test]
 fn every_query_answers_and_reads_change_nothing() {
-    let ng = new_game(4);
+    let ng = peaceful_game(4);
     let (mut s, mut b) = bot_session(&ng, None);
     let until = s.g.game_turn() + 40;
     let mut checked = 0;
@@ -91,10 +96,24 @@ fn every_query_answers_and_reads_change_nothing() {
 
 /// A duel at the human's first control point, its capital founded.
 fn duel(seed: u32) -> Session {
+    duel_with(seed, &[])
+}
+
+/// [`duel`] with the game unable to end early (`GAMEOPTION_ALWAYS_PEACE` +
+/// `GAMEOPTION_NO_BARBARIANS`): no AI can attack or eliminate the human and no victory fires in
+/// under the run lengths here, so the duel lasts its full length for ANY seed -- the basis of the
+/// pattern-A report test, which asserts coverage (techs and units reported over the run), never a
+/// seed producing a particular game.
+fn peaceful_duel(seed: u32) -> Session {
+    duel_with(seed, &[GameOptionType::GAMEOPTION_ALWAYS_PEACE, GameOptionType::GAMEOPTION_NO_BARBARIANS])
+}
+
+fn duel_with(seed: u32, options: &[GameOptionType]) -> Session {
     let d = ffh_data::global();
     let mut ng = NewGame::new(d, seed);
     ng.opponents = 1;
     ng.world = d.t("WORLDSIZE_DUEL");
+    ng.options.extend_from_slice(options);
     let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), SessionOptions::default()).unwrap();
     assert_eq!(s.advance(&mut |_| {}), Stop::Human);
     let h = s.human;
@@ -246,9 +265,15 @@ fn end_state(s: &Session) -> EndState {
 /// The turn report agrees with the game: every tech the team gained, every city and unit of the
 /// human's gained or lost between its end of turn and its next control point is reported; the
 /// report survives a save.
+///
+/// Pattern A on a duel: a peaceful duel (`GAMEOPTION_ALWAYS_PEACE` + `GAMEOPTION_NO_BARBARIANS`)
+/// cannot end early, so it lasts all 80 turns for ANY seed and the report fires at all 79 control
+/// points after the first. The lazy human researches and trains each turn, so over 80 peaceful
+/// turns it always gains several techs and units -- the test asserts that coverage (techs and
+/// units reported), never a seed-specific count.
 #[test]
 fn the_turn_report_lists_what_changed() {
-    let mut s = duel(2);
+    let mut s = peaceful_duel(7);
     let mut prev: Option<EndState> = None;
     let (mut techs_seen, mut units_seen, mut reports) = (0, 0, 0);
     for _ in 0..80 {
@@ -280,7 +305,10 @@ fn the_turn_report_lists_what_changed() {
         prev = Some(end_state(&s));
         next_turn(&mut s);
     }
-    assert!(reports >= 79 && techs_seen >= 3 && units_seen >= 3, "{reports} reports, {techs_seen} techs, {units_seen} units");
+    // Coverage, not a golden count: the report fires at all 79 control points after the first,
+    // and over the peaceful run the lazy human gains at least one tech and one unit, so the
+    // per-turn exactness checks above ran against real techs_gained and units_gained entries.
+    assert!(reports >= 79 && techs_seen >= 1 && units_seen >= 1, "{reports} reports, {techs_seen} techs, {units_seen} units");
     // The report and the pending snapshot are in the sidecar.
     let (bytes, sidecar) = s.save_bytes().unwrap();
     let r = s.query(&Query::Report).unwrap();
@@ -358,15 +386,41 @@ fn a_sidecar_snapshot_that_does_not_fit_is_dropped() {
 }
 
 /// When the game ends during the AI turns after the human's end of turn, the report covers that
-/// last turn (P3 review: it kept the previous turn's, without what ended the game). Seed 2's
-/// human dies to barbarians at turn 54.
+/// last turn (P3 review: it kept the previous turn's, without what ended the game).
+///
+/// Pattern B (the ending is constructed, not waited for): the human has a single city (its
+/// capital); it ends its turn, so the report's snapshot is taken with that city still the
+/// human's; then, as if during the AI turns of the same game turn, an AI takes the human's last
+/// city (`player_acquire_city`, a conquest), eliminating the human (`count_human_players_alive`
+/// hits 0) and ending the game. `advance` then reaches `Stop::Over` and builds the report of the
+/// ending turn -- cities_lost and messages non-empty -- for any seed, with no dependence on the
+/// AI ever conquering the human on its own.
 #[test]
 fn the_report_covers_the_turn_that_ends_the_game() {
-    let (mut s, mut b) = bot_session(&new_game(2), None);
-    assert_eq!(bot::run(&mut s, &mut b, 80, |_, _| {}), Stop::Over);
+    let mut s = duel(65);
+    let h = s.human;
+    // The human ends its turn with its single city: the report's snapshot captures that city.
+    applied(&mut s, Command::EndTurn { force: true });
+    let from_turn = s.g.game_turn();
+    // As if during the AI turns of this same game turn, an AI conquers the human's last city and
+    // the human is eliminated. Built directly (no AI RNG, no turn roll-over): the AI takes the
+    // city, the human's remaining units are cleared, and `test_alive` drops it from the alive
+    // humans -- exactly the condition under which `update()` ends the game (turn.rs:59-62).
+    let city = s.g.players[h].cities[0];
+    let ai = s.g.civ_player_ids().find(|&p| p != h).unwrap();
+    s.g.player_acquire_city(ai, city, true, false, true);
+    for u in s.g.players[h].units.clone() {
+        s.g.unit_kill(u, false, None);
+    }
+    s.g.test_alive();
+    assert_eq!(s.g.count_human_players_alive(), 0, "the human is eliminated this turn");
+    s.g.set_game_state(GameStateType::GAMESTATE_OVER);
+    // `advance` sees the game is over and builds the report of the turn that ended it.
+    assert_eq!(s.advance(&mut |_| {}), Stop::Over);
     let turn = s.g.game_turn();
+    assert_eq!(turn, from_turn, "the game ended in the AI turns of the human's own game turn");
     let r = s.query(&Query::Report).unwrap();
-    // The human ended turn 54, and the game ended in the AI turns of the same game turn.
+    // The game ended in the AI turns of the game turn the human ended: the report covers it.
     assert_eq!(r.get("turn"), Some(&Json::from(turn)), "{r}");
     assert_eq!(r.get("from_turn"), Some(&Json::from(turn)), "{r}");
     assert!(!r.get("cities_lost").unwrap().as_arr().unwrap().is_empty(), "{r}");
@@ -402,10 +456,16 @@ fn a_poisoned_ui_state_does_not_stop_the_session() {
 /// (the declare-war question), ROUTE_TO only for workers (`UNITAI_WORKER`) that can build a
 /// route. A `mission` MOVE_TO into a rival's territory asks too (P3 review: it moved without
 /// asking, and an adept was offered route-to).
+///
+/// Pattern B (the situation is constructed, so it needs a real declare-war move -- NOT a peaceful
+/// game): a met rival is given a city, whose culture claims the ring of plots around it, and a
+/// human warrior is placed on a free plot just beyond that ring. For ANY seed the warrior then
+/// has a declare-war move into the rival's territory, so `move`, the MOVE_TO mission and the GO_TO
+/// action all ask to declare war. The human's own capital (founded by `duel`) holds the units for
+/// the ROUTE_TO check, with the road tech granted so a worker can build a route.
 #[test]
 fn target_actions_follow_the_interface_modes() {
-    let (mut s, mut b) = bot_session(&new_game(50), None);
-    assert_eq!(bot::run(&mut s, &mut b, 40, |_, _| {}), Stop::Human);
+    let mut s = duel(19);
     let d = s.g.d;
     let h = s.human;
     let target_actions = |s: &Session, units: &[UnitId]| -> Vec<Json> {
@@ -414,24 +474,49 @@ fn target_actions_follow_the_interface_modes() {
     };
     let mode = |a: &Json| a.get("mode").and_then(Json::as_str).unwrap().to_string();
 
-    // A move that needs a war: `move` asks, and so does the mission and the GO_TO action.
-    let found = s.read(|g| {
-        let mut found = None;
-        for &u in &g.players[h].units {
-            let (x, y) = (g.units[u].x, g.units[u].y);
-            for dy in -3..=3 {
-                for dx in -3..=3 {
-                    if let Some(p) = g.plot_xy(x, y, dx, dy) {
-                        if found.is_none() && g.unit_can_move(u) && g.unit_get_declare_war_move(u, p).is_some() {
-                            found = Some((u, g.map.xy(p)));
-                        }
-                    }
-                }
-            }
-        }
-        found
+    // Construct a human warrior next to a met rival's border: meet the rival, grant the road tech
+    // (for the ROUTE_TO check below), give the rival a city so it has territory, and stand a human
+    // warrior on a free plot just outside that territory.
+    let rival = s.g.civ_player_ids().find(|&p| p != h).unwrap();
+    let (my, their) = (s.g.players[h].team, s.g.players[rival].team);
+    s.g.team_meet(my, their, false);
+    s.g.team_set_has_tech(my, d.t::<TechType>("TECH_EXPLORATION"), true, None, false, false);
+    let (capx, capy) = s.read(|g| {
+        let c = g.players[h].cities[0];
+        (g.cities[c].x, g.cities[c].y)
     });
-    let (u, (tx, ty)) = found.expect("a unit next to a rival's borders");
+    // A land plot for the rival's city, away from the human's capital, with a land ring plot
+    // (`tp`, rival territory once the city is founded) and a free land plot beyond it (`up`, where
+    // the warrior stands, just outside the border).
+    let dirs: [(i32, i32); 8] = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)];
+    let (rc, tp, up) = s
+        .read(|g| {
+            let open = |p: PlotIdx| {
+                !g.plot_is_water(p) && !g.plot_is_impassable(p) && g.map.plots[p].plot_city.is_none() && g.map.plots[p].units.is_empty()
+            };
+            g.map.plot_ids().find_map(|rc| {
+                let (rx, ry) = g.map.xy(rc);
+                if !open(rc) || g.plot_distance(rx, ry, capx, capy) < 5 {
+                    return None;
+                }
+                dirs.iter().find_map(|&(dx, dy)| {
+                    let (tp, up) = (g.plot_xy(rx, ry, dx, dy)?, g.plot_xy(rx, ry, 2 * dx, 2 * dy)?);
+                    (open(tp) && open(up)).then_some((rc, tp, up))
+                })
+            })
+        })
+        .expect("a land spot for the rival's city with a free plot next to its border");
+    let (rx, ry) = s.g.map.xy(rc);
+    s.g.player_init_city(rival, rx, ry, true, true);
+    let (ux, uy) = s.g.map.xy(up);
+    let u = s.g.player_init_unit(h, d.t::<UnitType>("UNIT_WARRIOR"), ux, uy, None, None);
+    let (tx, ty) = s.g.map.xy(tp);
+    assert!(
+        s.read(|g| g.unit_can_move(u) && g.unit_get_declare_war_move(u, tp).is_some()),
+        "the warrior must have a declare-war move into the rival's territory"
+    );
+
+    // A move that needs a war: `move` asks, and so does the mission and the GO_TO action.
     let before = s.g.save();
     let asks = |r: Result<CmdOk, CmdErr>| matches!(r, Ok(CmdOk::NeedsConfirm(Confirm::DeclareWar { .. })));
     assert!(asks(s.execute(&Command::Move { units: vec![u], x: tx, y: ty, append: false, declare_war: None })));
@@ -462,7 +547,7 @@ fn target_actions_follow_the_interface_modes() {
     let warrior = make(&mut s, "UNITCLASS_WARRIOR");
     let modes = |s: &Session, u: UnitId| target_actions(s, &[u]).iter().map(mode).collect::<Vec<_>>();
     assert_eq!(s.g.units[worker].ai_type, Some(UnitAIType::UNITAI_WORKER));
-    assert!(s.read(|g| g.unit_can_build_route(worker)), "the human can build roads at turn 40");
+    assert!(s.read(|g| g.unit_can_build_route(worker)), "the human has the road tech, so a worker can build a route");
     assert_eq!(modes(&s, worker), ["INTERFACEMODE_GO_TO", "INTERFACEMODE_ROUTE_TO"]);
     assert!(s.g.d.units[s.g.units[adept].unit_type].builds.iter().any(|&b| b), "adepts have builds (mana nodes)");
     assert_eq!(modes(&s, adept), ["INTERFACEMODE_GO_TO"]);

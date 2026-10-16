@@ -132,7 +132,7 @@ pub fn state(g: &Game, p: PlayerId) -> Finance {
         gold_at_target: crate::economy::gold_at_research(g, p, target),
         rate: g.player_calculate_gold_rate(p),
         gold: pl.gold,
-        research_pct: pl.commerce_percent[CommerceType::COMMERCE_RESEARCH.idx()],
+        research_pct: crate::economy::spend_pct(g, p),
         flexible: g.player_is_commerce_flexible(p, CommerceType::COMMERCE_RESEARCH),
         at_war: war,
     }

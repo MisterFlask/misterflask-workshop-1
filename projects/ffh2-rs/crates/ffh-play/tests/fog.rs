@@ -7,7 +7,7 @@
 
 mod common;
 
-use common::{bot_session, new_game};
+use common::{bot_session, new_game, peaceful_game};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
@@ -132,11 +132,16 @@ fn check_fog(s: &Session, turn: i32) -> usize {
     foreign
 }
 
-/// T8 over a bot game: every control point of 120 turns. (Seed 18: the bot survives 150 turns
-/// against the current AI; seed 50's human is conquered at turn 98 since the round-3 AI merge.)
+/// T8 over a bot game: the fog rules hold at every control point of a long, varied game. The game
+/// is built with [`peaceful_game`] (`GAMEOPTION_ALWAYS_PEACE` + `GAMEOPTION_NO_BARBARIANS`) so no
+/// AI can declare war on or eliminate the human and no victory can fire inside 120 turns -- the
+/// bot then runs the full length and reaches the until-turn with `Stop::Human` for ANY seed and
+/// under any AI/content change. We assert only invariants and coverage: the fog rules at every
+/// control point (`check_fog`), a full run's worth of control points, and that foreign units were
+/// seen (peaceful civs are still met and their units visible) -- never a seed-specific outcome.
 #[test]
 fn t8_views_keep_the_fog() {
-    let ng = new_game(18);
+    let ng = peaceful_game(22);
     let (mut s, mut b) = bot_session(&ng, None);
     let until = s.g.game_turn() + 120;
     let mut foreign = 0;
@@ -145,6 +150,7 @@ fn t8_views_keep_the_fog() {
         foreign += check_fog(s, s.g.game_turn());
         points += 1;
     });
+    // True by construction: an always-peace, barbarian-free game cannot end before the until-turn.
     assert_eq!(stop, Stop::Human);
     assert!(points >= 100 && foreign > 0, "{points} control points, {foreign} foreign units seen");
 }

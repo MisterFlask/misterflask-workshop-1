@@ -116,6 +116,17 @@ def leader_stats(ok, key):
     return out
 
 
+def goal_counts(alive):
+    """Victory planner goals of the alive civs ('-' = none), e.g. 'Tower 9, Culture 2, - 30'."""
+    if not any('goal' in c for c in alive):
+        return '-'
+    n = {}
+    for c in alive:
+        g = c.get('goal', '-')
+        n[g] = n.get(g, 0) + 1
+    return ', '.join('%s %d' % kv for kv in sorted(n.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
 def summarize(results, at):
     rows = []
     ok = [r for r in results if 'error' not in r]
@@ -140,6 +151,7 @@ def summarize(results, at):
             return (fmt + ' [' + fmt + '-' + fmt + ']') % (sum(v) / len(v), min(v), max(v))
         lead = leader_stats(ok, key)
         legacy = [legacy_score(r, c) for r in ok for c in r['snapshots'].get(key, []) if not c['barb'] and c['alive']]
+        religions = [r['world_at'][key]['religions'] for r in ok if 'religions' in r.get('world_at', {}).get(key, {})]
         rows.append((t, {
             'cities': stat('cities'), 'pop': stat('pop'), 'techs': stat('techs'), 'mil': stat('mil'),
             'workers': stat('workers'), 'impr': stat('impr'), 'research': stat('research'), 'prod': stat('prod'),
@@ -151,8 +163,11 @@ def summarize(results, at):
             'civ_upkeep': stat('civ_upkeep'), 'commerce': stat('commerce'), 'gold': stat('gold'), 'overseas': stat('overseas'), 'ships': stat('ships'),
             'alone': stat('cities', [c for c in alive if c.get('area_civs') == 0]),
             'shared': stat('cities', [c for c in alive if c.get('area_civs', 0) > 0]),
+            'goals': goal_counts(alive),
+            'towers': stat('towers'), 'legend3': stat('legend3_pm'), 'culture_pct': stat('culture_pct'),
             'barb_units': '%.0f' % (sum(b['units'] for b in barbs) / max(1, len(barbs))),
             'barb_cities': '%.1f' % (sum(b['cities'] for b in barbs) / max(1, len(barbs))),
+            'religions': mean_range(religions, '%.1f'),
         }))
     return rows
 
@@ -180,7 +195,11 @@ def print_report(results, at, label='', cached=()):
             row['lead_share'], row['fair_share'], row['lead_ratio'], row['legacy']))
         print('          slider %s | commerce %s | maint %s | units %s | civics %s | gold %s' % (
             row['pct'], row['commerce'], row['maint'], row['ucost'], row['civ_upkeep'], row['gold']))
-        print('          overseas %s | ships %s | cities alone %s, shared %s' % (row['overseas'], row['ships'], row['alone'], row['shared']))
+        print('          overseas %s | ships %s | cities alone %s, shared %s | religions founded %s' % (
+            row['overseas'], row['ships'], row['alone'], row['shared'], row['religions']))
+        if row['goals'] != '-':
+            print('          victory goals: %s | towers %s | 3rd city culture %s per mille of legendary | culture slider %s' % (
+                row['goals'], row['towers'], row['legend3'], row['culture_pct']))
     tot = totals(results)
     print('events: captured civ<-civ %(captured_civ)d, civ<-barb %(captured_from_barb)d, barb<-civ %(captured_by_barb)d, '
           'destroyed %(destroyed)d, founded %(founded)d, wars %(wars_declared)d, peace %(peace_made)d, eliminated %(eliminated)d' % tot)
@@ -200,6 +219,12 @@ def print_report(results, at, label='', cached=()):
             len(decided), len(outs),
             (', decision turn avg %.0f [%d-%d]' % (sum(turns) / len(turns), min(turns), max(turns))) if turns else '',
             (' | ' + ', '.join('%s %d' % kv for kv in sorted(kinds.items()))) if kinds else ''))
+        # Rules victories other than the time limit (a time end reports victory 'time').
+        wins = [o for o in outs if o['kind'] == 'victory' and o.get('victory', 'time') not in ('time', 'VICTORY_TIME')]
+        wturns = [o['turn'] for o in wins]
+        print('victories before the time limit: %d/%d (%.0f%%)%s' % (
+            len(wins), len(outs), 100.0 * len(wins) / len(outs),
+            (', turn avg %.0f [%d-%d]' % (sum(wturns) / len(wturns), min(wturns), max(wturns))) if wturns else ''))
     for r in results:
         if 'error' in r:
             continue

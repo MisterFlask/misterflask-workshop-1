@@ -312,10 +312,11 @@ fn rough_need(n_def: i32) -> i32 {
 }
 
 /// What taking city `c` is worth to us (`dist`: from our nearest city).
-fn city_value(g: &Game, p: PlayerId, c: CityId, dist: i32) -> i32 {
+fn city_value(g: &Game, p: PlayerId, c: CityId, dist: i32, plan: &crate::victory::Plan) -> i32 {
     let city = &g.cities[c];
     let team = g.players[p].team;
     let mut v = 400 + city.population * 100 + city.num_world_wonders * 300;
+    v += crate::victory::rival_city_bonus(g, plan, c); // victory-pursuit
     if g.d.religions.keys().any(|r| g.get_holy_city(r) == Some(c)) {
         v += 400;
     }
@@ -347,6 +348,7 @@ fn candidates(g: &Game, p: PlayerId) -> (Vec<Cand>, bool) {
     let war: Vec<TeamId> = g.teams.keys().filter(|&t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t)).collect();
     let preparing = if war.is_empty() { crate::diplomacy::preparing_target(g, team) } else { None };
     let civ = !war.is_empty() || preparing.is_some();
+    let plan = if civ { crate::victory::plan(g, p) } else { crate::victory::Plan::default() }; // victory-pursuit
     let ours: Vec<(i32, i32, Option<AreaId>)> = g.players[p].cities.iter().map(|&c| (g.cities[c].x, g.cities[c].y, g.map.plots[g.city_plot(c)].area)).collect();
     let mut out = Vec::new();
     for pl in g.players.iter() {
@@ -379,7 +381,7 @@ fn candidates(g: &Game, p: PlayerId) -> (Vec<Cand>, bool) {
             } else {
                 (1 + (g.game_turn() - g.cities[c].game_turn_acquired) / 25).clamp(1, 6)
             };
-            out.push(Cand { city: c, plot: cp, civ, n_def, visible, value: city_value(g, p, c, dist), dist });
+            out.push(Cand { city: c, plot: cp, civ, n_def, visible, value: city_value(g, p, c, dist, &plan), dist });
         }
     }
     (out, civ)
@@ -568,15 +570,25 @@ fn build_op(g: &Game, v: &View) -> Option<Op> {
     let near = units_of(&|d, _| d <= 2);
     let adj: Vec<UnitId> = units_of(&|d, _| d <= 1).into_iter().filter(|&u| g.unit_moves_left(u) > 0).collect();
     let defs = visible_defenders(g, team, tp);
+    // We commit to marching only with a confident force (a reserve to spare: `spare = true`), so
+    // stacks do not advance understrength; but once a committed force is positioned next to or
+    // beside the city it strikes at ACCEPTABLE odds (`spare = false`: it expects to clear the
+    // defenders, without insisting on keeping a reserve) rather than retreating to muster an
+    // overwhelming force against a target that only hardens while it waits. Taking territory at
+    // acceptable risk is the point; a lone unit still never qualifies (it cannot clear a city).
     let (ok_all, ok_near, ok_adj) = if cand.visible {
         (
             covers(g, cand.city, tp, &defs, &all, true, true),
-            covers(g, cand.city, tp, &defs, &near, true, true),
-            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, true, false),
+            covers(g, cand.city, tp, &defs, &near, false, true),
+            !adj.is_empty() && covers(g, cand.city, tp, &defs, &adj, false, false),
         )
     } else {
-        // Unseen: enough to go and look (two more than the defenders we assume).
-        let n = (cand.n_def + 2) as usize;
+        // Unseen: a scouting-sized force goes to look. Capped (not the assumed defender count,
+        // which grows as a barb town arms with age -- that made the needed force climb out of
+        // reach so the army mustered forever and never marched to reveal the town). Once the
+        // stack reaches the assembly ring and the real defenders show, the visible branch above
+        // decides: strike at acceptable odds, or step back if it turns out too strong.
+        let n = ((cand.n_def + 2) as usize).min(4);
         (all.len() >= n, near.len() >= n, false)
     };
     let phase = if !at_war {

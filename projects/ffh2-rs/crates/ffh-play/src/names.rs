@@ -697,9 +697,11 @@ mod tests {
     fn text_keys_in_messages_resolve() {
         let d = ffh_data::global();
         assert_eq!(resolve_keys(d, "The borders of TXT_KEY_CITY_SHEAIM_1 have expanded"), "The borders of Galveholm have expanded");
-        // No text (a BtS key): the type it describes, else its words.
+        // Keys FfH2 inherits from BtS now resolve to their vendored stock text (tools/vendor_xml.py):
+        // the unit names and the goody-hut message used to fall back to humanized words.
         assert_eq!(resolve_keys(d, "TXT_KEY_UNIT_WARRIOR died attacking TXT_KEY_UNIT_ARCHER."), "Warrior died attacking Archer.");
-        assert_eq!(resolve_keys(d, "TXT_KEY_GOODY_MAP"), "Map");
+        assert_eq!(resolve_keys(d, "TXT_KEY_GOODY_MAP"), "The villagers have provided you with a map!");
+        // A key with no text anywhere: its humanized words.
         assert_eq!(resolve_keys(d, "(TXT_KEY_NOT_A_REAL_KEY)"), "(Not A Real Key)");
         // Not keys.
         for s in ["", "plain", "TXT_KEY_", "TXT_KEY_ x", "a TXT_KEY", "TXT_KEY__"] {

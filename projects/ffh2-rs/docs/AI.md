@@ -28,7 +28,7 @@ searches, Python callbacks). `ffh-ai` is a new design with three hard requiremen
 |---|---|---|
 | `CvPlayerAI::AI_unitUpdate` (from `CvGame::updateMoves`) | `play_turn` | `lib.rs` |
 | `CvCityAI::AI_chooseProduction` (from `CvCity::doProduction`) | `choose_production` | `production.rs` |
-| `CvPlayerAI::AI_chooseResearch` / `AI_chooseFreeTech` | `choose_research` | `research.rs` |
+| `CvPlayerAI::AI_chooseResearch` / `AI_chooseFreeTech` | `choose_research` | `research.rs`, `tech_plan.rs` |
 | `CvPlayerAI::AI_conquerCity` | `raze_conquered_city` | `diplomacy.rs` |
 | `CvPlayerAI::AI_considerOffer` | `consider_offer` | `diplomacy.rs` |
 | `CvPlayerAI::AI_doAdvancedStart` (from `CvPlayer::setTurnActive`) | `play_turn` while start points remain | `advanced_start.rs` |
@@ -51,9 +51,10 @@ counters, war success, war plans) that the diplomacy below reads.
    them, technologies (research's pick; a quarter of the city points while placing cities),
    an explorer and buildings by value per point; then `ADVANCEDSTARTACTION_EXIT`.
 1. **Empire** (`empire.rs`): research when the queue is empty (a broke empire first
-   researches its way out, see Finance); civics every 10 turns when the gain beats the
-   anarchy (sooner under a structural deficit); state religion; the highest research slider
-   that keeps the treasury from running dry; unit support that holds research below its
+   researches its way out, see Finance; the victory goal's techs beeline, see Victory pursuit);
+   civics every 10 turns when the gain beats the anarchy (sooner under a structural deficit);
+   state religion; the culture slider a cultural victory wants, then the highest research
+   slider that keeps the treasury from running dry; unit support that holds research below its
    target is cut first (see Finance); a bankrupt empire (slider at the bottom, still losing
    gold) scraps surplus garrison units, never below what production wants in that city; an
    empire paying unit support with research at a fifth or less disbands its weakest field
@@ -113,7 +114,9 @@ counters, war success, war plans) that the diplomacy below reads.
    stronger, about half the cities build it;
 7. extra defenders up to the quota (capital, threat, nearby barbarians, war, leader);
 8. a small mobile force (1 + cities/2) for barbarians and animals; more workers as worked
-   plots need improving; heroes (not at the cost of the first expansion);
+   plots need improving; the victory goal's items (`victory::production`: towers, culture in
+   the cities nearest legendary; before expansion, item 4, when the goal is 30 turns away);
+   heroes (not at the cost of the first expansion);
 9. the siege operation's force (`campaign::army_choice`, from `needed_force`: about two
    attackers per defender of its target, siege engines -- or the Siege Workshop that trains
    them -- for walls or 3+ defenders; city attackers only if they have at least half the
@@ -172,7 +175,8 @@ single hook tagged `bankruptcy-guard`:
   unlocks a civic we would adopt that costs 3+ gold a turn less than ours, or a building that
   cuts maintenance by as much (Courthouse, counted at half). The current research keeps its
   beakers. This is the decisive response: without it the others leave twice as many civs at
-  20% research or less.
+  20% research or less. It overrides the research plan (`tech_plan.rs`; see Research for the
+  combinations measured).
 - **Civics** (`empire::civic_value`, `empire::civics`): upkeep and maintenance are valued at
   the broke rate (40 points per gold) as soon as the deficit is structural, maintenance from
   the cities' actual distance and number-of-cities parts; Aristocracy is charged for the
@@ -203,22 +207,113 @@ build that prefers a worker with work waiting or a garrison upgrade over the str
 (the fallback is only reached by cities that know no process: `decide` picks a process
 whenever one is available); capping optional units at 12% of the commerce.
 
-## Research (`research.rs`)
+## Research (`research.rs`, `tech_plan.rs`)
 
 Score = value / (turns to research + 4), with one level of lookahead (children at a quarter of
-their static value). Value terms: the leader's favorite early techs and religion, flavors,
-AI weights; buildings the civ can use (a static value, plus production's marginal value of
-the building in the six cities that gain most: libraries where there is research to multiply,
-markets where there is gold); land improvements counted on our cities' plots (growing
-improvements such as cottages at two thirds of their grown yield, commerce worth more when
-broke); a better defender or attacker weighted by the military pressure we see (barbarians
-near our cities, war, time), with an early "get past warriors" bonus, also through the next
-tech (Mining -> Bronze Working); the first arcane unit; happiness buildings when cities are
-capped; better civics than the ones we run (City States and Aristocracy cut maintenance);
-technology and open-borders trading with the civs we know; the first transport when our
-landmass is full or a settler waits in port (and the tech before it); processes (Writing,
-Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1` with
-`FFH_AI_TRACE` lists every candidate's value and score.
+their static value and of the improvements they bring: cottages behind Education). Value terms:
+the leader's favorite early techs and religion, an unfounded religion (1500, the leader's
+favorite 1200 more), flavors, AI weights; buildings the civ can use (a static value, plus
+production's marginal value of the building in the six cities that gain most: libraries where
+there is research to multiply, markets where there is gold); land improvements counted on our
+cities' plots (growing improvements such as cottages at two thirds of their grown yield,
+commerce worth more when broke); a better defender or attacker weighted by the military
+pressure we see (barbarians near our cities, war, time), with an early "get past warriors"
+bonus, also through the next tech (Mining -> Bronze Working); the first arcane unit; happiness
+buildings when cities are capped; better civics than the ones we run (City States and
+Aristocracy cut maintenance); technology and open-borders trading with the civs we know; the
+first transport when our landmass is full or a settler waits in port (and the tech before it);
+processes (Writing, Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1`
+with `FFH_AI_TRACE` lists every candidate's value and score, and the goals below.
+
+**Goals (`tech_plan.rs`).** On top of the score, research follows an ordered list of goals
+adapted from FfH's own AI (`CvGameUtils.AI_chooseTech`), recomputed at every choice (no
+cache): a tier-2 military tech until one of Bronze Working, Archery, Hunting or Horseback
+Riding is known (the first we can ever research of the leader's favorite early military tech,
+the civ's default, Hunting for the elves and Construction for the Luchuirp, and Bronze
+Working); Exploration, Mining, Calendar, Ancient Chants, Education; an early religion nobody
+has founded yet, unless we know one of the three early religion techs or have a holy city
+(Sanitation for agnostics); Code of Laws once there are 4+ cities or maintenance takes a fifth
+of the commerce; Writing (not for `TRAIT_BARBARIAN`); Mysticism, Festivals, Cartography,
+Sailing for coastal empires; Trade, Sanitation, Currency, Construction, Taxation; the per-civ
+beelines (Amurites Bowyers/Sorcery, Bannor Fanaticism, Calabim Feudalism, Hippus and
+Kuriotates Stirrups, Sheaim Corruption of Spirit/Necromancy/Sorcery, Sidar and Svartalfar
+Poisons, Luchuirp Construction then Elementalism/Sorcery, Elohim and Malakim Priesthood, Iron
+Working for the Khazad, Clan of Embers, Doviello, Lanun, Grigori, Illians and Balseraphs, then
+Medicine for the Grigori); the magic spheres once tier 3 and economy tier 2 are reached. The
+religion is the first unfounded one of the player's preferences, most preferred first: the
+civ's own (Runes of Kilmorph for the Khazad, Fellowship of Leaves for the elves), the leader's
+favorite early and favorite religions (data; FfH leaves these unset), then -- data-driven from
+each religion's own `<Alignment>` -- the religions whose alignment (or best alignment) fits the
+player's, cheapest to found first, so a good civ still grabs the cheap Runes of Kilmorph early
+while the deeper aligned faiths (The Order, the Ashen Veil) follow as fallbacks; then the three
+early religions as a last resort. Reading the alignment from the data (rather than a hardcoded
+good->Earthmother / evil->Message-from-the-Deep map) keeps the choice correct and makes the
+later religions reachable as content changes; measured economy-neutral (identical through turn
+150) with the later religions now founded where before only the early three appeared.
+This is not `AI_chooseTech`'s order: that function returns one tech from tier-gated blocks in
+which the last assignment wins (the tier-2 military tech, then the early economy, then once
+both are known the religion, Cartography, Festivals, Mysticism, Writing, Animal Husbandry,
+Code of Laws for financial leaders with 6+ cities, Archery, Sailing, the leader's early techs
+and wonder, then economy tier 2, the civ beelines and the tier-3 block). The list keeps those
+main precedences without the tier gates, takes Writing to Cartography in the reverse order,
+and leaves out Archery, Animal Husbandry, the leader's early techs and wonders, the
+starting-resource techs (the score's improvement terms cover them) and the tier-3 extras
+(victory techs, favorite wonders, religion heroes). The barbarians have no goals. The
+researchable techs on the prerequisite path (cheapest OR branch) of the first two unmet goals,
+the second at half weight, get the goal's own value plus 6000, shared by each step's part of
+the path's turns (+4), and at least 150 per turn of the step: every step then scores like
+researching the whole path, so a cheap gateway (Ancient Chants) inherits Education's value.
+The situational terms are not scaled down and still win when large (military pressure,
+transports, processes).
+
+**City defense first (`research::defense_goal`).** Under military pressure 4+ (barbarians
+near our cities past turn 60, or a war) while the best city defender we could train is below
+an archer's (5 defense, +25% in cities), the cheapest researchable tech that brings one
+(Archery) is researched next, whatever the plan says. Without it, civs that met the tier-2
+goal without a city defender (Bronze Working without copper, Hunting, Horseback Riding, or a
+leader whose "military" favorite is Festivals) never researched Archery, and established civs
+fell to the barbarians mid-game (seeds 25-72: 9 civs with cities at turn 200 eliminated by
+turn 300, 2 before the plan, 0 with the defense goal).
+
+**Finance first.** The deficit escape of `finance.rs` runs before the choice and replaces it
+while it applies (research at 30% or less, or a structural deficit). Measured on seeds 1-24
+against that order, before the defense goal (civs at 20% research or less at turn 200, techs
+at turn 300): the escape
+tech as the plan's first goal instead of an override 7 -> 11, +0.1; an override only at 30%
+research or less, a goal otherwise, 7 -> 13, -0.6; no escape at all 7 -> 16, +0.1.
+
+Measured (6 civs, standard map, 300 turns, `ffh stats`; seeds 1-72, the AI before the plan
+against the plan with the religion fix and the defense goal; t is the paired t-statistic over
+seeds):
+
+| at turn 300 | before | after |
+|---|---|---|
+| techs | 21.5 | 28.7 (t 13.2) |
+| research (beakers a turn) | 85 | 144 (t 12.3) |
+| legacy score (alive civs / dead as 0) | 874 / 819 | 1090 / 1033 (t 11.9 / 8.7) |
+| cities / population | 7.1 / 41.4 | 7.6 / 50.1 |
+| religions founded per game (turn 200 / 300) | 0.1 / 1.2 | 2.2 / 3.7 |
+| civs at 20% research or less | 37 | 25 |
+| cities lost to barbarians / to civs | 215 / 82 | 149 / 97 |
+| civs eliminated (with cities at turn 200) | 27 (4) | 23 (4) |
+| ms per turn (`ffh bench`, seeds 1-8, one game at a time on a shared machine) | 48.1 | 51.8 |
+
+The time per turn follows the larger empires (more cities, people and units; per seed -16% to
++47%, the games being different, on a machine shared with other jobs).
+
+The religion fix: before it, every civ headed for Way of the Earthmother while Runes of
+Kilmorph was unfounded, then Way of the Forests, then Message from the Deep (the fallbacks
+were searched first), so the leaders' preferences were never used; the totals barely moved
+(seeds 1-24: techs 30.9 -> 30.5, religions per game 3.9 either way), but the civs now head
+for their own (seeds 1-8: the Octopus Overlords founded by evil Balseraphs, Calabim and
+Doviello, where the first-come order gave it to whoever was left). Without the defense goal the
+plan reached 30.0 techs and 1135 legacy score (alive civs) but lost 378 cities (236 to
+barbarians, 142 to civs) and 37 civs (12 with cities at turn 200).
+
+Tried and not kept (seeds 25-72, against the plan without the defense goal: civs eliminated,
+techs): Archery as a fixed goal right after the tier-2 goal (23 -> 19, 29.8 -> 26.8), after the
+early religion (24, 29.0), after Cartography (25, 29.5); the plan's bonus scaled down by
+military pressure, to 75% / 50% / 35% at pressure 4 / 5 / 6 (16, 27.4).
 
 ## Settlers and escorts (`expansion.rs`)
 
@@ -304,9 +399,18 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   city defense, first strikes, the attacker's health): collateral attackers first, then the
   strongest; a lost fight still wounds (the rounds won before dying), collateral damage hits
   the other defenders, siege engines that can bring the walls down in three turns count as
-  having done so. The force covers the city when the defenders fall with a fifth of the
-  attackers (at least one) to spare. Unseen cities: 2 + population/5 defenders for a civ,
-  1 + age/25 for a barbarian town.
+  having done so. The force covers the city when the defenders fall; committing to *march* wants
+  a fifth of the attackers (at least one) to spare (so stacks do not advance understrength), but a
+  committed force already positioned next to or beside the city *strikes at acceptable odds* -- it
+  expects to clear the defenders without keeping that reserve -- rather than retreating to muster
+  an overwhelming force against a target that only hardens while it waits (a lone unit still never
+  qualifies: it cannot clear a city). Unseen cities: 2 + population/5 defenders for a civ,
+  1 + age/25 for a barbarian town -- but the force needed to *approach and reveal* an unseen
+  target is capped at a scouting-sized stack (not that growing assumption, which otherwise made
+  a hardening barb town need an ever-larger force so the army mustered forever and never marched
+  to look). Once the stack reaches the assembly ring and the real defenders show, the strike /
+  step-back decision above applies. Measured (seeds 1-8, turn 300): barb towns taken 5 -> 8 with
+  losses to barbarians flat (8 -> 9) and the economy unchanged.
 - *Commitment*: at war every stack on the landmass within 24 plots; against barbarians the
   nearest stacks until they hold twice the force needed (plus those already on their way).
 - *Phases*: **Gather** (the force falls short, or the war is not declared yet): at war the
@@ -370,13 +474,20 @@ plot falls or the odds turn bad, and moves in.
 ## Diplomacy (`diplomacy.rs`)
 
 Relations come from alignment, state religion, war history and open borders. One war at a
-time; wars follow C++ `AI_doWar`'s three kinds, each with the leader's own odds (a
-deterministic roll every 5 turns): total war (their defensive power x 2/3 below ours x
-`iMaxWarNearbyPowerRatio`), limited war (`iLimitedWarRand`, `iLimitedWarPowerRatio`) and
-dogpiling on a civ already at war (`iDogpileWarRand`), only against a civ we have met, do not
-like, can reach over land within 16 plots, and whose weakest known city our best attacker can
-take (siege engines lower the bar). A broke empire needs a quarter more margin; a bankrupt one
-does not start wars. The war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
+time; war is **greedy expansion**, not a dice roll: when free to start one (checked every 5
+turns from turn 50, with 2+ cities), a civ prepares war on the met, land-reachable (within 16
+plots) rival whose weakest known city its best trainable attacker can take (siege engines
+lower the bar, `can_take_cities`), when our power is a sufficient edge over their defensive
+power. The territory is the point -- domination and conquest are this rule run to its
+conclusion -- so there is no grudge requirement and no roll. Flavour biases the bar, not the
+drive: the leader's `iMaxWarRand` (low = war-eager) sets the required power edge, from near
+parity (an eager warmonger accepts a slight underdog as acceptable risk) up to clear
+superiority for a cautious leader, who also spares civs it likes; the greediest leaders strike
+any profitable, reachable target. A broke empire wants a bigger edge; a bankrupt one does not
+start wars. (This replaces the earlier port of `AI_doWar`'s three odds-gated kinds, which left
+strong civs idle for want of a grudge or a lucky roll; a continentally isolated civ still can
+not expand -- it has no land-reachable target and there are no amphibious invasions yet.) The
+war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
 stacks gather on the rally city) and is declared when the army is ready (or after 40 turns).
 Peace is sought when the war goes badly (war success and power), or drags on without gains;
 it is offered as a real peace-treaty deal the other AI must accept. Every 5 turns an AI swaps
@@ -462,6 +573,130 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 41-52: score (dead as 0) +15 (t 2.0), 16% fewer civ cities lost to barbarians; seeds 379-426:
 -7, 4% more lost; all 120 seeds: +6 (t 1.2), techs +0.2 (t 1.7), eliminations unchanged.
 
+### Round 3b: goal-directed research + victory pursuit together
+
+Re-measured on fresh seeds (601-648 at 300 turns, 601-624 at full 690-turn games with
+`--until-supremacy`) against master, both verified to survive and to be synergistic, so both were
+merged:
+- **beelines-fixed** alone (601-648, 300 turns): techs 22.1 -> 30.3, research 83.7 -> 147.9,
+  legacy score 876 -> 1115, cities 6.9 -> 7.6, civs eliminated 16 -> 8; CPU flat.
+- **victory-pursuit** alone (601-624, full games): actual cultural victories 1/24 -> 10/24, games
+  decided ~31 turns earlier, at a late cost (research -17% at t500, legacy -2% at t690); early
+  game (turn 300) unchanged.
+- **Together** (601-624, full games): cultural victories **13/24**, decided earliest (avg 509 vs
+  master 562, victory-pursuit 531), and the research victory-pursuit spent on the culture slider
+  is restored by beelines (research at t500 251 vs victory-pursuit's 204, master's 245; legacy at
+  t690 3073 vs 2907). Leave-one-out (cultural victories per 24 full games): master 1, beelines
+  alone 8 (its stronger economy reaches the culture threshold by itself), victory-pursuit alone
+  10, together 13 -- so beelines adds +3 over victory-pursuit alone and the planner adds +5 over
+  beelines alone; each contributes. The goal-directed economy reaches the (achievable)
+  cultural victory faster, so the two reinforce rather than fight. The combined research now
+  weighs the plan's goal_bonus against the victory goal-tech bonus, so the AI no longer always
+  beelines a single expensive victory tech (e.g. a rare Tower run); that is judged by the win rate
+  above, not by a unit test (`tower_victory_makes_the_last_tower_tech_the_goal`).
+
+## Victory pursuit (`victory.rs`)
+
+Without it the AI never aimed at a victory: 19 of 24 full games (seeds 1-24, 6 civs, standard
+map, normal speed, played to the rules' end at turn 690) ended on the time limit, the other five
+were won by civs that got there by accident (3 cultural, 2 domination).
+
+**Estimates** (pure functions of the game state, nothing cached; O(cities + techs) per civ): the
+turns each civ needs for each condition of `CvGame::testVictory` (`CIV4VictoryInfo.xml`).
+- *Cultural*: three cities at legendary culture (50000 at normal speed). Per city, the culture
+  missing at its culture rate with the slider all in and the culture process (production to
+  culture at 50%); the third city's turns. Before Drama frees the culture slider, Drama's
+  research is added.
+- *Tower of Mastery*: the Towers of Alteration, Divination, Necromancy and the Elements (800
+  hammers each) and the Tower of Mastery (4000, Strength of Will): the missing techs'
+  research (prerequisites included, the lesser towers built meanwhile in the four best cities),
+  then the Tower of Mastery in the best city. FfH makes a building's `PrereqBonuses` AND
+  requirements (`CvCity::canConstruct`): each lesser tower needs all four of its manas, 16 in
+  all. The estimate is out of reach while the raw mana nodes in our cities' radius cannot supply
+  the manas we lack (the AI does not trade for mana).
+- *Domination*: land at 78% - 2 per civ team ever alive (66% with 6 civs) and people 25 points
+  above the runner-up's share; once we hold half the land needed, the cities still to take at
+  30 turns each. *Conquest*: when our power is twice all the rivals' together, their cities at
+  30 turns each. *Altar of the Luonnotar*: only once the Exalted altar (six Great Prophet
+  stages) stands, the final altar's research and hammers.
+- Religious, score (no target score) and time victories are not pursued.
+
+**Plan** (`plan`, `plan_ours`): from turn 200 (scaled to the game's length; from 100 when the team
+holds 1.5x the next team's share of the world) the condition with the fewest turns that fits
+before the time limit; a cultural victory only for the front-runner (no other civ's estimate
+under 4/5 of ours: only one civ wins it, the others' culture is research lost). A *rival* is
+another civ whose own best estimate is within 60 turns and shorter than ours.
+
+**Pursuit** (each hook tagged `victory-pursuit`):
+- research: the goal's techs (the towers', Drama, the final altar's) count double plus 4000 and
+  are charged at most 15 turns of research (a beeline);
+- production (`victory::production`, after the garrison, the first army and the workers; before
+  expansion when the goal is 30 turns away): the towers in the best cities (the Tower of Mastery
+  in the best one; the rules let one city build each) and a caster when the towers' mana nodes
+  need one; for a cultural victory, in the three cities nearest legendary, culture buildings and
+  wonders by culture per turn of production, else `PROCESS_CULTURE`; the final altar where the
+  Exalted altar stands;
+- culture slider (`empire::sliders`): the lowest of 40/60/80/100% that brings the cities to
+  legendary within 100 turns (and 10 turns before the time limit), else 100%, lowered in steps
+  only when the treasury runs short. The finance logic reads research and culture together
+  (`economy::spend_pct`): counting research alone, a civ going for culture took itself for
+  bankrupt and disbanded its army;
+- a Great Bard (great work, 4000 culture) goes to the one of those cities furthest from
+  legendary; casters build the mana nodes the towers lack;
+- defense (`victory::guard`): once the goal is within 90 turns (the others will come for it), the
+  cities that carry it keep two more defenders;
+- wars (`diplomacy::victory_war`): against a rival about to win (defensive power below 1.5x ours,
+  reachable over land within 20 plots, a city we can take), and for a domination or conquest
+  goal against the weakest civ we can reach, prepared without the leader's roll or grudge; the
+  rival's victory cities (those nearest legendary, those with towers) are worth 3000 more to the
+  siege campaign; these wars end only when lost (or after 80 turns).
+
+Measured on full games (seeds 1-24, 6 civs, standard map, normal speed, to the rules' end;
+`victory_check.py`); economy per alive civ, at turns 400 / 500 (one game was over by 500):
+
+| | before | after |
+|---|---|---|
+| games decided before the time limit | 5 / 24 (21%) | 19 / 24 (79%) |
+| by victory | cultural 3, domination 2 | cultural 18, domination 1 |
+| decision turn (decided games) | 651 [608-679] | 603 [494-684] |
+| games still on at turn 600 | 24 | 16 |
+| legacy score | 1361 / 1911 | 1352 / 1877 |
+| techs | 37.9 / 51.4 | 37.4 / 50.7 |
+| cities / population | 7.2 / 8.0, 55.3 / 77.2 | 7.2 / 8.0, 55.3 / 75.9 |
+| research (beakers/turn) | 158 / 249 | 145 / 197 (the culture slider: 70% -> 61% research) |
+| civs eliminated; wars declared; civ cities taken by civs | 48; 175; 497 | 45; 175; 534 |
+
+300-turn games (seeds 1-24) are unchanged but one (23 identical checksums: the planner rarely
+acts before turn 300); CPU time per 300-turn game 13.9 -> 14.1 s (seeds 1, 2, 3, 5; about 47 ms
+per turn, measured alternately on a shared machine).
+
+How it got there (same 24 full games; decided / cultural + domination / mean decision turn):
+
+| version | decided | by victory | turn |
+|---|---|---|---|
+| no planner | 5 | 3 + 2 | 651 |
+| planner; culture slider the lowest that finishes before the time limit | 19 | 17 + 2 | 660 |
+| + front-runner only, slider for a win within 100 turns, great works | 17 | 16 + 1 | 607 |
+| + finance reads research and culture together, guard (kept) | 19 | 18 + 1 | 603 |
+| kept, without the front-runner rule | 19 | 18 + 1 | 596 |
+| kept, without the guard | 18 | 17 + 1 | 604 |
+| kept, without the victory wars | 21 | 21 + 0 | 597 |
+
+- The first version won at the deadline (turn ~680): the lowest slider that finishes in time.
+- Pushing harder made the culture front-runner an easy target: a culture slider of 60%+ left
+  research under 40%, which the finance logic took for bankruptcy (garrisons capped, field units
+  disbanded, no new army), and the other civs' rival wars took its culture cities (seeds 14, 23,
+  24). Reading research and culture together and guarding the victory cities fixed it.
+- The front-runner rule is neutral on decisions (19 either way, 7 turns later with it) and keeps
+  research: 21 instead of 26 civs on culture at turn 500, research +3%.
+- The victory wars cost two decisions (seeds 9, 10: the culture front-runner was stopped, as
+  intended) and turn one cultural game into a domination: 175 wars instead of 157, civ cities
+  taken by civs 534 instead of 458. Kept: stopping a rival is the point.
+- Before FfH's AND reading of `PrereqBonuses` was found, the Tower of Mastery looked reachable:
+  the Balseraphs of seed 3 beelined every tower tech by turn 363 and then could build no tower
+  for want of most of the 16 manas. The estimate now requires the manas, so no civ beelines
+  the arcane techs for nothing.
+
 ## Cost control
 
 - **Reachability**: `reach.rs` floods once from a unit (Dijkstra on movement points, bounded
@@ -519,14 +754,26 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
     vanished with this player's units on the ruins), `lost_civ`, `lost_barb` (taken or razed by
     them), `lost_other`, `founded`, `cities_lost_rule` (Civ4 `getCitiesLost`), `players_killed`.
   Game-wide (`world_at`): `game_turn`, `alive_civs`, `war_pairs`, `armageddon` (counter %),
-  `land_plots`, `estimate_end_turn`, and the legacy score's `max_*`/`init_*` (population, land,
-  tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
+  `religions` (founded so far), `land_plots`, `estimate_end_turn`, and the legacy score's
+  `max_*`/`init_*` (population, land, tech, wonders). Players can appear mid-game (the Mercurians join the team of the civ that built the
   Mercurian Gate; the Infernals and empires formed by events get a new team), so aggregate by
   `team`.
+  - victory progress (alive civs): `towers` (Tower of Mastery classes owned), `tower_eta`,
+    `culture_eta`, `domination_eta`, `conquest_eta` (the planner's estimates, null when out of
+    reach), `legend3_pm` (the third-best city's culture, per mille of legendary), `altar_stage`,
+    `mana_raw` (raw mana nodes in our cities' radius), `mana_types`, `culture_pct` (culture
+    slider), `goal` and `goal_eta` (the planner's pick), `rival` (the player it would stop).
   `crates/ffh-cli/scripts/ai_metrics.py --seeds 1-12 [--every 10] [--out runs.json] [--compare
-  old.json]` runs it over many seeds in parallel and summarizes. With the agents' cache present
-  it replays games already played from the shared run cache and takes a machine-wide CPU slot
-  per game; `tools/agents/ab.sh` runs it on a base and on your worktree (docs/AGENTS.md).
+  old.json]` runs it over many seeds in parallel and summarizes (with the planner's goals and the
+  victories before the time limit). With the agents' cache present it replays games already played
+  from the shared run cache and takes a machine-wide CPU slot per game; `tools/agents/ab.sh` runs
+  it on a base and on your worktree (docs/AGENTS.md).
+- `crates/ffh-cli/scripts/victory_check.py --seeds 1-24 [--out games.json | --load games.json]
+  [--compare base.json] [--min-share 0.5]` plays full games (to turn 690 or an earlier
+  victory) and reports the share decided before the time limit, per victory type, the decision
+  turn, and the economy at turns 300-600; `--min-share` makes it a pass/fail check. A short
+  version is the ignored test `run::tests::full_games_end_in_victories` (`cargo test --release
+  -p ffh-cli -- --ignored`).
 - `ffh autoplay --report T` prints, per civ, costs, unit roles, improvements, civics and every
   city's yields, trade, happiness and production; `ffh inspect <player>` shows each city's
   plots (worked, yields, improvements).
@@ -548,8 +795,9 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
   turn 70, third at 110): settlers cost 220 hammers on normal speed (120 + the new-city
   production value) and cities wait for size 3-4 and for the barbarians to leave. Faster
   openings were measured and cost research by turn 300 (see "Settlers and escorts").
-- Economy: research at about 60% of the commerce by turn 300; cottages need
-  Education, libraries Writing; maintenance and civic upkeep take a quarter of the commerce.
+- Economy: research at about two thirds of the commerce by turn 300 (145 beakers a turn, 29
+  techs); maintenance and civic upkeep take a quarter of the commerce. The first 100 turns are
+  slow whatever the research order (6-7 techs at turn 100 with two cities).
   The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
   Cartography: only the settler gate (`finance::city_affordable`, not wired in) prevents that,
   and gating expansion costs cities (no better score by turn 300).
@@ -563,6 +811,11 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
   taken, no fewer cities lost), barbarian targets out to 20 plots, a larger strike margin.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
+- Victories: nearly every decided game is a cultural victory. The Tower of Mastery needs 16
+  manas and the AI neither trades resources nor conquers for mana, so the estimate is out of
+  reach in every measured game; Great Prophets lightbulb instead of building the six altar
+  stages; domination needs two thirds of the land and the siege operations take about one city
+  per war; the religious victory (80% of the world's people) is not pursued.
 - Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
   terraforming, and no dedicated logic for most civ-specific mechanics (Sheaim planar gates,
   Infernal and Mercurian projects, Khazad vaults, Armageddon rituals; see `civs.rs` for the
