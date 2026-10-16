@@ -1111,6 +1111,9 @@ pub struct Force {
     /// Strength (x100) of the strongest defender seen at the target, in its city (fortified,
     /// city defense, terrain); 0 when nothing is seen.
     pub defense: i32,
+    /// Team that owns the target city (barbarian or a rival civ): who our operation is fighting,
+    /// so callers can weigh our strength against theirs.
+    pub target: Option<TeamId>,
 }
 
 /// The force the operation of `p` wants (what production builds toward), from the cheap
@@ -1127,7 +1130,8 @@ pub fn needed_force(g: &Game, p: PlayerId) -> Option<Force> {
     attackers = attackers.min(if civ { 16 } else { 10 });
     let team = g.players[p].team;
     let defense = visible_defenders(g, team, c.plot).iter().map(|&d| g.unit_max_combat_str(d, Some(c.plot), None, None)).max().unwrap_or(0);
-    Some(Force { attackers, siege, defense })
+    let target = Some(g.players[g.cities[c.city].owner].team);
+    Some(Force { attackers, siege, defense, target })
 }
 
 /// Can a unit of type `u` hurt a defender of strength `defense` (x100) in a city? At least half

@@ -21,6 +21,12 @@ use ffh_data::*;
 
 use crate::view::View;
 
+/// Power ratio (ours * 100 / their defensive power) at which the AI judges itself decisively
+/// stronger than a rival -- strong enough to commit to total war (conquering the civ) rather than
+/// a limited land grab. Reused as the "stronger than its neighbour" bar for guns-vs-butter siege
+/// research (`research::siege_offense`), so both read the same notion of clear superiority.
+pub(crate) const TOTAL_WAR_RATIO: i64 = 140;
+
 /// Relation of player `p` towards `other`: < 0 hostile, > 0 friendly.
 pub fn relation(g: &Game, p: PlayerId, other: PlayerId) -> i32 {
     let a = &g.players[p];
@@ -261,7 +267,7 @@ pub fn manage(g: &mut Game, v: &View) {
         // Greedy gain: a bigger edge, more and closer cities; minus how much we like them; a
         // flavor nudge toward alignment-opposites.
         let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10 + flavor;
-        let total = ratio >= 140;
+        let total = ratio >= TOTAL_WAR_RATIO;
         if best.map_or(true, |(_, s, _)| score > s) {
             best = Some((ot, score, total));
         }

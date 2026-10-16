@@ -315,6 +315,53 @@ techs): Archery as a fixed goal right after the tier-2 goal (23 -> 19, 29.8 -> 2
 early religion (24, 29.0), after Cartography (25, 29.5); the plan's bonus scaled down by
 military pressure, to 75% / 50% / 35% at pressure 4 / 5 / 6 (16, 27.4).
 
+**Guns vs butter: siege research (`research::siege_offense`).** Catapult-class siege engines
+crack city walls (bombard, collateral) but have low raw combat, so the score's military terms
+(attacker/defender strength) never pick their tech -- Construction was chosen about once a game
+where Archery was chosen fifty times, and civs ground against walled cities with no answer. A
+contextual goal (the user's guns-vs-butter hunch) can route a civ toward its siege engine: when
+its campaign is marching on a walled or well-garrisoned rival city that needs siege
+(`campaign::needed_force().siege > 0`) **and** it is decisively stronger than that rival -- the
+same `TOTAL_WAR_RATIO` (power at 140% of the target's defence) diplomacy uses to commit to total
+war -- the nearest researchable step toward the engine is beelined (score `SIEGE_SCORE`, above
+the economy plan, below the survival `defense_goal`). A defensive, parity, or underdog civ, and a
+barbarian target, keep their research on economy. The siege engine is found data-drivenly (any
+trainable unit of our civ with combat, bombard/collateral, and a city-attack/collateral unit AI --
+no unit name), mirroring production's `Role::Siege`.
+
+The gate is the finding. Measured on seeds 1-16, 690 turns, against the AI with no siege goal
+(captures per war = conquest conversion; techs at fixed turns = economy; final power/empire =
+domination):
+
+| vs no-siege baseline | every offensive civ (ungated) | strength-gated (kept) |
+|---|---|---|
+| captures per war | +19.3% | -4.8% (noise) |
+| techs @ turn 300 | -7.2% | +1.0% |
+| techs @ turn 450 | -8.4% | +4.8% |
+| final power | -7.7% | +0.9% |
+| avg max empire | -5.2% | -0.5% |
+| civs eliminated | ±0% | -9.1% |
+
+Routing *every* offensive civ to siege works as a weapon -- wars convert far more decisively
+(+19% captures per war, and mid-game power at turn 300 rises ~11%) -- but it is a losing
+guns-vs-butter trade: the research a civ spends beelining siege (-7% techs by turn 300) compounds
+against it, and by the endgame its power and territory are down ~7%. Lowering the beeline's
+priority did not help (`SIEGE_SCORE` at 0.6M instead of 1.5M: still techs@300 -6.5%, final power
+-7.4%) -- the civ pursues siege until it has it either way, so it pays the same research; only
+*when* changes. The conversion gain and the economy cost both come from the same civs, the
+near-parity attackers who must crack walls, so tuning cannot separate them.
+
+The strength gate separates them by excluding that population: a civ decisively stronger than its
+target resolves its war fast enough for a cracked city to pay off before the research deficit
+compounds. That gate is non-regressive (economy and power flat-to-up, 9% fewer civs eliminated),
+but it fires rarely -- about one to three times a game (`FFH_AI_TRACE_TECH`): by the time a civ is
+that dominant it has usually already teched past Construction, or its targets are too weak to need
+siege. So the validated guns-vs-butter answer is **butter almost always wins** -- the civs that
+most need siege are the ones that can least afford its research -- and the AI now reserves a siege
+beeline for the rare dominant attacker who can. The ungated version is kept out; the gated one is
+kept in as the holistically-correct (if seldom-triggered) policy, strictly better than a baseline
+that never deliberately chose siege at all.
+
 ## Settlers and escorts (`expansion.rs`)
 
 `settler_choice` (when a city builds settlers, item 5 above) and the settler role live here.

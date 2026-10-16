@@ -47,6 +47,9 @@ struct Ctx {
     idle_cities: i32,
     /// We know a process (production to research or gold).
     has_process: bool,
+    /// Guns vs butter: we cannot build a siege engine yet, and our situation calls for one (an
+    /// offensive war on a walled/defended city, and we are at least as strong as a rival).
+    siege_want: bool,
 }
 
 /// Unit types `p` could train with its techs plus `extra` (ignores resources and buildings).
@@ -103,6 +106,55 @@ fn best_military(g: &Game, p: PlayerId, ctx: &Ctx, extra: &[TechType]) -> (i64, 
     (def, att)
 }
 
+/// A land siege engine (bombard/collateral city-attacker). Its raw combat is low, so
+/// `military_value` -- which scores attacker/defender strength -- misses it, yet it is what cracks
+/// walls. Detected data-drivenly (no unit name), mirroring production's `Role::Siege`.
+fn is_siege_unit(info: &UnitInfo) -> bool {
+    info.combat > 0
+        && (info.bombard_rate > 0 || info.collateral_damage > 0)
+        && (info.unit_ai_type[UnitAIType::UNITAI_ATTACK_CITY] || info.unit_ai_type[UnitAIType::UNITAI_COLLATERAL])
+}
+
+/// We can already train a siege engine of our own civilization.
+fn has_siege(g: &Game, p: PlayerId) -> bool {
+    let d = g.d;
+    let Some(civ) = g.player_get_civilization_type(p) else { return false };
+    d.units.keys().any(|u| {
+        let info = &d.units[u];
+        is_siege_unit(info)
+            && info.unit_class_type.is_some_and(|cl| d.civ_unit(civ, cl) == Some(u))
+            && g.player_can_train(p, u, false, false, false)
+    })
+}
+
+/// Guns vs butter (contextual; the user's hunch): a civ wants its siege engine only when it can
+/// reasonably contemplate offense -- its campaign is marching on a walled/defended rival city that
+/// needs siege to crack (`needed_force().siege > 0`, a target we are at war with or preparing one
+/// against, so offence not defence) AND it is decisively stronger than that rival ([the
+/// `TOTAL_WAR_RATIO`][crate::diplomacy::TOTAL_WAR_RATIO] power edge diplomacy itself uses to commit
+/// to conquest). A civ on the defensive, at parity, or the underdog keeps its research on economy
+/// and defence.
+///
+/// Why the strength gate (the half of the hunch under test): routing *every* offensive civ to
+/// siege was measured to raise war conversion (+19% captures per war) but trade too much research
+/// (-7% techs by t300), and net power and domination fell -- the research a slow grind spends on
+/// siege compounds against it faster than the cracked city pays off. The dominant attacker is the
+/// one whose war ends quickly enough for siege to pay, so siege is gated to it. A barbarian target
+/// (barbarians do not out-tech anyone) and a weaker/parity rival are left to the economy plan.
+fn siege_offense(g: &Game, p: PlayerId) -> bool {
+    if g.player_is_barbarian(p) {
+        return false;
+    }
+    let Some(f) = crate::campaign::needed_force(g, p) else { return false };
+    if f.siege <= 0 {
+        return false;
+    }
+    let Some(target) = f.target.filter(|&t| t != g.barbarian_team()) else { return false };
+    let ours = g.team_get_power(g.players[p].team, true).max(1) as i64;
+    let theirs = g.team_get_defensive_power(target).max(1) as i64;
+    ours * 100 / theirs >= crate::diplomacy::TOTAL_WAR_RATIO
+}
+
 fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
     let pl = &g.players[p];
     let team = pl.team;
@@ -149,6 +201,7 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
         has_transport: false,
         idle_cities: pl.cities.iter().filter(|&&c| !g.d.buildings.keys().any(|b| g.city_can_construct(c, b, false, false, false))).count() as i32,
         has_process: g.d.processes.iter().any(|pr| pr.tech_prereq.map_or(true, |t| g.team_is_has_tech(team, Some(t)))),
+        siege_want: false,
     };
     ctx.has_transport = g.d.units.keys().any(|u| {
         let info = &g.d.units[u];
@@ -159,6 +212,10 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
     let (def, att) = best_military(g, p, &ctx, &[]);
     ctx.best_defense = def;
     ctx.best_attack = att;
+    // Guns vs butter: computed once per research choice (siege_offense does pathfinding via
+    // needed_force). has_siege short-circuits, so a civ that can already build siege never runs the
+    // offensive check.
+    ctx.siege_want = !has_siege(g, p) && siege_offense(g, p);
     ctx
 }
 
@@ -268,6 +325,29 @@ fn defense_goal(g: &Game, p: PlayerId, ctx: &Ctx) -> Option<TechType> {
     best.map(|(t, _)| t)
 }
 
+/// Siege comes after [`defense_goal`] but before the economy plan for a civ that can contemplate
+/// offense ([`siege_offense`]): like [`DEFENSE_SCORE`], its score is what the nearest step toward
+/// our siege engine is worth whatever its cost, so the civ beelines it -- below defense (survival
+/// first), above ordinary economy techs. Half of [`DEFENSE_SCORE`].
+const SIEGE_SCORE: i64 = 1_500_000;
+
+/// The nearest researchable tech on the path to our civilization's siege engine, or `None` when we
+/// already have that tech, have no siege unit, or no path exists.
+fn siege_step_tech(g: &Game, p: PlayerId) -> Option<TechType> {
+    let d = g.d;
+    let civ = g.player_get_civilization_type(p)?;
+    let target = d.units.keys().find_map(|u| {
+        let info = &d.units[u];
+        (is_siege_unit(info) && info.unit_class_type.is_some_and(|cl| d.civ_unit(civ, cl) == Some(u)))
+            .then_some(info.prereq_and_tech)
+            .flatten()
+    })?;
+    if g.team_is_has_tech(g.players[p].team, Some(target)) {
+        return None;
+    }
+    crate::tech_plan::path(g, p, target)?.techs.into_iter().find(|&t| g.player_can_research(p, t, false))
+}
+
 /// Goal-directed research (`tech_plan`): the researchable techs on the path to the first two
 /// unmet goals share the goal's value (its own value plus [`PLAN_VALUE`]) by their share of the
 /// path's research time (turns + 4, as in the score), so each step scores as researching the
@@ -284,6 +364,19 @@ fn goal_bonus(g: &Game, p: PlayerId, ctx: &Ctx, trace: bool) -> Vec<(TechType, i
         out.push((t, DEFENSE_SCORE * (turns + 4) / 1000));
         if trace {
             crate::trace!(g, p, "  defense goal {} (pressure {}, best defender {})", g.d.techs[t].base.type_, ctx.pressure, ctx.best_defense);
+        }
+    }
+    // Guns vs butter (contextual, the user's hunch): a civ that can contemplate offense beelines
+    // its siege engine (below defense, above the economy plan). military_value misses siege, so
+    // this routes the civ toward it one researchable step at a time; a defensive or weaker civ
+    // (siege_want=false) is untouched and keeps its research on economy and defence.
+    if ctx.siege_want {
+        if let Some(t) = siege_step_tech(g, p) {
+            let turns = g.team_get_research_left(team, t).max(1) as i64 / rate;
+            out.push((t, SIEGE_SCORE * (turns + 4) / 1000));
+            if trace {
+                crate::trace!(g, p, "  siege goal {} (want offense)", g.d.techs[t].base.type_);
+            }
         }
     }
     let mut n = 0;
@@ -500,7 +593,9 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
         value += 400 * ctx.idle_cities.min(6) + 300;
     }
 
-    // Military: a better defender / attacker, as pressure demands.
+    // Military: a better defender / attacker, as pressure demands. (Siege is handled as a
+    // goal-directed beeline in `goal_bonus`, since `military_value` misses it -- catapults have low
+    // raw combat; their worth is cracking walls.)
     value += military_value(g, p, ctx, &[t]);
     // Casters: the first arcane unit.
     if let Some(l) = leader {
