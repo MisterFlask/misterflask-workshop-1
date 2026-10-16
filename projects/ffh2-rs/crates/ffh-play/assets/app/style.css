@@ -55,6 +55,15 @@ body.busy { cursor: progress; }
 body.picking #mapwrap canvas.map { cursor: crosshair; }
 ::selection { background: var(--c-dusk); color: var(--c-vellum); }
 
+/* Scrollbars: thin and dark, so a scrolling panel (the tech tree, a city, the messages) keeps the
+   soot look instead of the OS's bright default bar. */
+* { scrollbar-width: thin; scrollbar-color: var(--c-ash) var(--c-void); }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--c-void); }
+::-webkit-scrollbar-thumb { background: var(--c-ash); border: 2px solid var(--c-void); }
+::-webkit-scrollbar-thumb:hover { background: var(--c-stone); }
+::-webkit-scrollbar-corner { background: var(--c-void); }
+
 /* Bitmap text (look.js `pix`, ui.js `textSpan`) and pixel-art canvases. */
 .ui-ptext { display: inline-block; vertical-align: middle; flex: none; position: relative; background-color: currentColor; }
 .ui-sr { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
