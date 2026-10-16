@@ -375,7 +375,7 @@ K    Q     l     x     S     6
   their tile's left or right edge.
 - **Draw order.** The terrain cache (ground, water, rivers, routes, flat improvements, city pools,
   then upright features, peaks, improvements and cities row by row from north to south), then
-  borders and fog, then units row by row (team ring, then figure), then overlays: standards, health
+  borders and fog, then units row by row (team ring, then figure), then overlays: count chips, health
   bars, plaques, selection, path.
 
 ### 3.2 On-screen scale
@@ -404,13 +404,13 @@ K    Q     l     x     S     6
 | feature, peak, hill | up to 34x40, plus overhang | scattered inside the tile |
 | **unit** | **32x32** | feet at (15, 29): the figure fills the tile, as in the references |
 | giant unit | 40x40 | feet at (19, 37): rises 8 px into the tile above, 4 px over each side |
-| legacy unit | 24x24 | feet at (11, 21), placed at tile offset (6, 7): the pre-revamp figures still accepted |
+| equipment | 24x24 | feet at (11, 21), placed at tile offset (6, 7): items lying on the tile (10.4) |
 | team ring | 24x8 (30x9 under giants) | drawn by the renderer under the feet (7.4) |
 | city | up to 34x34 | base on the bottom row; tiers in section 9 |
 | improvement | up to 24x20 | quiet marks; towers and castles may rise 8 px |
 | landmark | 32x32, plus overhang | may glow (6.2) |
 | resource medallion | 11x11 seal, 7x7 glyph | bottom-right of the tile, centred at (25, 25) |
-| stack standard | 7x12 | top-left of the tile (top-right in a city) |
+| stack count chip | up to 13x9 | top-left corner of the tile (top-right in a city) |
 | UI icon | 16x16 (8x8 inline and on the map) | section 11.5 |
 | cursor | 16x16 | section 11.7 |
 
@@ -476,7 +476,7 @@ K    Q     l     x     S     6
 
   | what | how |
   |---|---|
-  | unit move | the figure (and its ring, standard and selection) slides tile to tile, 4 tiles at most |
+  | unit move | the figure (and its ring, marks and selection) slides tile to tile, 4 tiles at most |
   | combat | the struck tile flashes a dithered crimson |
   | camera | glides to the selection |
   | turn | the End Turn crescent breathes while the AIs move and flares when your turn returns |
@@ -670,9 +670,12 @@ colour of a city's lit windows (amber by default); by day there is no ground poo
   so two players sharing a tincture show two-tone rings. It replaces the contact shadow and plays
   the part of the references' coloured bases. Units with hidden nationality show no ring.
 - **Borders** (8.1): solid lines in the tincture.
-- **The stack standard**: a 7x12 gonfalon at the tile's top-left (top-right in a city) with the
-  sigil; quiet (the shade as the field) except on your own movable or selected stack; the finial
-  pip shows moves, a gilt finial a hero; the count chip hangs under it.
+- **The stack marks** keep to the corners and the top edge, so the figure and its ring stay clear:
+  a count chip in the top-left corner (top-right in a city), a gold pip beside it for a hero, the
+  health bar on the top edge, the state mark top-right. Your own spent stack stands on a quiet ring
+  (the tincture's shade as the field): a bright ring under your unit says it can still move. The
+  night look's 7x12 gonfalon is opt-in (`state.standard`), like the references, which mark a unit by
+  its colours and its land alone.
 - **City banner and plaque** (9.4): the size chip in the owner's field.
 - **Unit cloth**: an atlas unit's main cloth accent (its red, blue, purple or olive) is converted
   to the owner slots `#` (field, the lighter half of the ramp) and `%` (shade); figures whose colour
@@ -735,8 +738,8 @@ the tile row of the sprite's top (negative: into the tile to the north).
   coloured roofs; windows amber `l` (recoloured to the civilization's light, 7.3); no ground pool
   for firelight towns (4.4).
 - **Garrisons**: units fill the tile, so a garrison would hide its city. In a city the client
-  draws the stack's figure only while it is selected or sliding; the standard (top-right) and
-  count mark the garrison.
+  draws the stack's figure only while it is selected or sliding; the count chip (top-right) marks
+  the garrison.
 
 ### 9.2 City styles
 
@@ -787,14 +790,16 @@ turns. At survey zoom only the chip is drawn. This is the references' "1 Rome" l
 
 - **The 32x32 frame** has its feet at (15, 29): an infantryman stands about 27 px from feet to
   crown, raised weapons reach the top rows, mounted units span the tile. Giants (war elephants,
-  demon riders) use the **40x40** frame, feet at (19, 37). Legacy 24x24 figures (feet 11, 21) are
-  still accepted while they last (10.4).
+  demon riders, dragons, balors) use the **40x40** frame, feet at (19, 37). Equipment glyphs are
+  24x24 (feet 11, 21): items lying on the tile.
 - All units face **right** (east) and are mirrored after a westward move.
 - **One figure per stack**: the head unit (the best defender of a foreign stack, the selected unit
   of yours), on its team ring (7.4), with up to 2 offset echoes behind it as dark silhouettes.
-- **Overlays** (`units/stack.js`): the standard, the count chip, a 12x2 health bar (only when hurt
-  or selected: cream above 50%, ochre from 25%, crimson below), the moves pip, state marks
-  (fortified, sleeping, sentry, healing, automated, promotion ready).
+- **Overlays** (`units/stack.js`), in the corners and on the top edge: the count chip (top-left,
+  top-right in a city), a gold hero pip beside it, a 12x1 health bar in a void frame on the top edge
+  (only when hurt or selected: cream above 50%, ochre from 25%, crimson below), state marks
+  (fortified, sleeping, sentry, healing, automated, promotion ready) top-right. Moves show on the
+  ring (quiet when your stack is spent); units without a ring show them as a pip bottom-right.
 - **Selection**: a white rim round the figure; **garrisons** show only when selected or moving
   (9.1).
 
@@ -820,8 +825,8 @@ its `.spr` output is the source afterwards):
    and rim colours), keep the main connected body, **enforce the outline** (4.2), reduce to 18
    colours (4.3), convert the cloth accent to owner slots (7.4), and place the feet on the anchor.
 5. **Map** (`unit_mapping.json`): each crop to a game type, with options (`slots`, `frame`, `ship`
-   to strip the water under a hull). Writes `units/atlas.spr`; `integrate_units.py` drops the
-   legacy definitions it replaces, adds the source to the manifest and rewrites the variant remaps.
+   to strip the water under a hull). Writes `units/atlas.spr`; `integrate_units.py` adds the source
+   to the manifest and rewrites the variant remaps.
 
 81 figures come from the atlases: the melee, archer, recon, mounted, siege and naval lines, the
 civilians, the core animals, and stand-ins chosen for FfH units from unused atlas figures (adept:
@@ -841,21 +846,50 @@ beastmaster), frostlings (ice-blue skin), the ophanim's brightened steel, the sh
 (the spectre darkened, or in violet), Rosier (the knight in crimson) and Saverous (the demon rider
 in teal). Ghosts are the same figures through the translucency checker.
 
-### 10.4 Legacy figures
+### 10.4 Composed figures
 
-About 120 pre-revamp figures (most demons, undead, golems, elementals, heroes, the priestly lines,
-sea monsters, equipment glyphs and the category silhouettes) are still the old 24x24 drawings. They
-were value-lifted two steps (`1>3`, `2>4`, `3>5`, `4>6`, `5>H`, `6>7`, and `u>i`, `v>p`, `c>I`,
-`k>t`, `d>n`) so they read as lit steel and stone rather than navy-black on the bright map, and they
-stand on team rings like everything else. Their replacement, from the atlas parts 2-4 (magic and
-religion, heroes, monsters) through the same pipeline, is the main open point (16.4).
+The units the atlas sheets do not show (demons, undead, golems, elementals, angels, dragons, sea
+monsters, the heroes, the faiths drawn per religion, the great people, the special ships, the
+spells and the 24 equipment glyphs) are composed by `tools/atlas/compose_units.py` at the atlases'
+own scale and go through the same quantizer (10.2, steps 3-4), so they share the atlas look: the
+same outline, ramps and colour budget. 161 sprites, in `units/composed.spr`.
+
+- **From atlas parts** wherever a figure fits: recoloured along a palette ramp by lightness rank
+  (`Layer.recolor`: a hue, chroma and lightness selection mapped onto, say, `cICR` for a demon's
+  skin), mirrored, scaled (giants and dragons into the 40x40 frame), combined (a pride of lions, a
+  pack of wolves), riders erased and the mount's back painted under the gap. The dragons are the
+  atlas dragon in four colourings (Abashi black, Acheron red, Drifa frost, Eurabatres gold); the
+  balor is the berserker grown, reddened and bat-winged; the kraken is the Eater of Dreams in sea
+  red; Auric Ascended is the Dread Knight in frost with feathered wings; the heroes are unused atlas
+  figures in their own colours with a mark of their own (Herne's antlers, Loki's gold horns, Valin's
+  plume, Auric's crown, Wilboman's frost skin).
+- **Painted** where nothing fits: ellipses, polygons and tapered strokes shaded as lit domes under
+  the top-left light, posterized to a palette ramp, each with a dark rim so overlapping parts stay
+  apart (`composelib.paint`): the skeleton, spiders, scorpion, gorilla, tortoise, golems, treant,
+  elementals, sea serpents, gargoyle, manes, wraith, hawk, vines, the workboat and supplies, the
+  spells and every equipment glyph. Accessories (feathered and bat wings, halos, horns, flames,
+  staffs, beards, plumes, crowns, antlers) are painted onto atlas figures the same way.
+- **Variants are separate sprites**, not manifest remaps: one golem per material, a disciple,
+  priest and high priest per religion (the trim in the faith's colour, the robe dark for the Veil and
+  the Overlords), a dragon per colour, the angel of death and the repentant angel, Aurealis, the ice
+  and lightning elementals, the beastman, the tar demon, Meshabber.
+- Figures with a flame or a glow carry `: light` on their brightest pixel: the fire elemental,
+  Aurealis, the pyre zombie, balor, Hyborem, Wrath, the seraph, the disciple of Acheron, fireball and
+  meteor (FIRE), the arcane barge and the lightning elemental (ARC).
+
+`cut_missed.py` cuts figures the automatic extraction missed (they touched their card frame) by
+hand-given boxes: the elephant of sheet 3. `integrate_composed.py` writes `units/composed.spr` and
+the manifest's rules. Every unit type resolves to an atlas or a composed figure; no pre-revamp
+drawing is left in the units set.
 
 ### 10.5 Naval and air
 
 Ships (galley, trireme, caravel, privateer, frigate, man-o-war, sailors' dirge) come from the
 atlas with the water of their hex stripped below the waterline; the airship hangs under its gas
-bag. Ships stand on a team ring on the water. Other naval figures (galleon, queen of the line,
-arcane barge, workboat, black wind, sea monsters) are legacy.
+bag. Ships stand on a team ring on the water. The galleon (khaki sails), queen of the line (40x40,
+a long owner pennant), black wind (black sails, dark hull) and arcane barge (violet sails and a
+glowing orb) are atlas ships recoloured; the workboat is painted. Sea monsters (kraken, sea serpent,
+leviathan) rise out of a ring of foam.
 
 ---
 
@@ -1175,7 +1209,7 @@ Section 13's format, extended with metadata lines between the header and the row
   | `terrain/` | 64x64 seamless texture |
   | `hill/`, `peak/`, `feature/` | upright sprites (humps, masses, trees, single features) |
   | `route/` | the dot a road is stamped with |
-  | `unit/` | 32x32 feet 15,29 (the standard frame), 40x40 feet 19,37 (giants), 24x24 feet 11,21 (legacy) |
+  | `unit/` | 32x32 feet 15,29 (the standard frame), 40x40 feet 19,37 (giants), 24x24 feet 11,21 (equipment) |
   | `city/<style>_<tier>` | base on the bottom row; tiers 1-5 (section 9.1) |
   | `improvement/` | at most 34x34 |
   | `res/` | 7x7 glyph centred at 3,3; `res/_disc` the 11x11 seal |
@@ -1186,7 +1220,7 @@ Section 13's format, extended with metadata lines between the header and the row
 
 - Groups: `name_a`, `name_b`... are variants of `name` (picked per tile by hash); `name_f1`,
   `name_f2`... are animation frames (picked by `art.time`, 400 ms each). A rule targets the group.
-- Names starting with `_` (`unit/_melee`) are generic: category fallbacks, not a game type.
+- Names starting with `_` (`res/_food`) are generic: category fallbacks, not a game type.
 - Outlines are part of the sprite. Team rings, contact shadows, selection rims, pools, standards,
   HP strips and plaques are added by the renderer.
 
@@ -1197,11 +1231,11 @@ in parallel without touching a shared file (only a new set edits `sets.txt`):
 
 ```text
 set units
-source generic.spr
-map unit race=UNDEAD -> unit/_undead prio=15
-map unit combat=MELEE -> unit/_melee
-map unit combat=MELEE tier=4 -> unit/_melee remap=34,45,56,u3
-map unit * -> unit/_civilian
+source atlas.spr
+map unit race=UNDEAD -> unit/skeleton prio=15
+map unit combat=MELEE -> unit/axeman
+map unit UNIT_POLAR_BEAR -> unit/bear remap=uG,hD,iH,j8,rD
+map unit * -> unit/worker
 ```
 
 A rule is `map <kind> <conditions> -> <sprite|none> [options]`. A condition is a type name
@@ -1274,7 +1308,7 @@ Drawing functions take the canvas position of the tile's top-left corner:
 | `drawResource(ctx, x, y, bonusType)` | the seal at tile 25,25 |
 | `drawImprovement(ctx, x, y, type, plot)` | improvement with its pools (dark windows when not visible) |
 | `drawCity(ctx, x, y, city, ownerStyle)` | style and tier sprite, pool, window light, finial, banner, plaque |
-| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | team ring (or contact shadow), echoes, selection rim; the overlay (standard, count chip, health bar, mark, lantern reflections) from `units/stack.js` |
+| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | team ring (or contact shadow), echoes, selection rim; the overlay (count chip, hero pip, health bar, mark, lantern reflections) from `units/stack.js`; a spent own stack's quiet ring |
 | `drawFog(ctx, x, y, plot)` | the fog pass: REMEMBER remap with hatching, navy for unrevealed, ragged edges |
 | `drawLight(ctx, cx, cy, table, r, {inner})`, `drawVignette(ctx, x, y, w, h)` | index-remap pools (daylight-scaled, 4.4) and the vignette (off by day) |
 | `drawText(ctx, x, y, text, {font, color, shadow, smallCaps})`, `measureText` | Vigil and Tally |
@@ -1391,7 +1425,7 @@ combats 10/10, specialists 11/11.
 `loadArt()` loads the sprites and the mapping, then installs the sets' **passes** (`PASSES` in
 art.js): `terrain/ground.js` (the ground pass: blob terrain classes, a wider warp, Bayer transition
 bands, sunlit clearings and cloud shade, organic fog through REMEMBER, pale paths, river verges,
-wooded crests, sunlit wood rims), `units/stack.js` (the stack standard, count chip, health bar, marks and lantern
+wooded crests, sunlit wood rims), `units/stack.js` (the count chip, hero pip, health bar, marks, quiet rings and lantern
 reflections) and `cities/citylight.js` (the light pass: three-ring pools for cities and every other
 light, scaled by its DAYLIGHT table, 4.4). Each wraps or replaces some `Art`
 methods, so the drawing
@@ -1424,7 +1458,7 @@ renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 
 - `cities`: `{ x, y, owner, size, name, capital, own, turns, disorder }`; `stacks`: one per tile,
   the head unit, `{ x, y, unit, owner, count, state }` with `state` `{ own, moves, selected, hp,
   mark, hero, facing }` (`moves` only for your own units; foreign stacks stay quiet). A stack on a
-  city tile flies its standard at the top-right (`inCity`, set by `renderMap` from `cities`); the
+  city tile shows its count chip at the top-right (`inCity`, set by `renderMap` from `cities`); the
   client draws a garrison's figure only while it is selected or sliding (10.1).
 - Canvases that fog and pools read back need `getContext('2d', { willReadFrequently: true })`.
 - Map overlays from `ui/ui.js`: `UI.drawTileMark`, `drawPath`, `drawOdds`, `drawRange`,

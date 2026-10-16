@@ -13,7 +13,7 @@
 // light, walls).
 //
 // Each frame then draws the vignette, the units (sprites row by row, the city banners and
-// plaques, the stack standards), the tile marks, the path preview with the odds, and the
+// plaques, the stack marks), the tile marks, the path preview with the odds, and the
 // minimap. The two smallest zoom steps are the chart (docs/ART.md 3.2: flat colours, owner
 // washes, city dots; no sprites).
 
@@ -667,7 +667,7 @@ export class ArtMap {
   }
 
   /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the city
-   *  banners and plaques, then the stacks' standards, counts, health and marks. */
+   *  banners and plaques, then the stacks' count chips, health and marks. */
   drawUnits(g, f) {
     const art = this.art;
     const stacks = this.stacksInView(f);
@@ -675,7 +675,7 @@ export class ArtMap {
     const owner = (p) => this.owners.get(p);
     const zoom = f.s / f.dpr;
     // The slide offset of each moving stack (docs/ART.md 4.5): from its old tile to its new one,
-    // used for both the sprite and the overlay pass so the standard, count and health ride with
+    // used for both the sprite and the overlay pass so the count, health and marks ride with
     // the figure (and, in drawOverlays, the selection mark rides with it too).
     const now = performance.now();
     const offsets = new Map();
@@ -687,7 +687,7 @@ export class ArtMap {
       const off = offOf(st.head.id);
       const inCity = cityAt.has(`${st.x},${st.row}`);
       // A garrison would hide its city (units fill the tile): in a city the figure shows only while
-      // it is selected or sliding; the standard and count (overlay pass) still mark the garrison.
+      // it is selected or sliding; the count chip (overlay pass) still marks the garrison.
       if (inCity && !st.state.selected && !off.ox && !off.oy) continue;
       const X = f.ox + st.ux * f.tp + off.ox;
       const Y = f.oy + st.row * f.tp + off.oy;

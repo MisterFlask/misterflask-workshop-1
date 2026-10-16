@@ -879,7 +879,7 @@ export class Art {
     if (spr && layer !== 'overlay') {
       const gy = y + (fy + (entry?.domain === 'AIR' ? 3 : 0)) * s;
       // the owner's ring on the ground (docs/ART.md 10): who a unit belongs to, at a glance
-      if (owner && !animal && !owner.hidden) this._teamBase(ctx, x + fx * s, gy, owner, spr.w >= 40);
+      if (owner && !animal && !owner.hidden) this._teamBase(ctx, x + fx * s, gy, state.ringOwner || owner, spr.w >= 40);
       else if (!sea) this._contactShadow(ctx, x + fx * s, gy);
       const base = { remap: r.opts.remap, owner: owner || null, accent: state.accent || r.opts.accent, mirror };
       if (state.lit !== false) {

@@ -1,36 +1,29 @@
 // units/stack.js: the unit stack presentation, designed to read at the survey zoom (1x, 32 px a tile).
 //
-// The overlay of a stack (docs/ART.md 10.1, 7.4) is gathered in one place, so the unit sprite keeps
-// the middle of the tile:
+// The overlay of a stack (docs/ART.md 10.1, 7.4) is gathered in one place. The figure fills the tile
+// and stands on its team ring (art.js), which carries ownership, so the overlay keeps to the corners
+// and the top edge and never covers the figure's body or the ring:
 //
-//   standard   top-left: a 7x12 gonfalon (ui/stack_banner: pole, crossbar and a 5x8 field) in the
-//              owner's field and division, with the civilization's sigil in the charge colour. The
-//              unit box starts at tile x = 6, so the standard sits beside the figure, not on it.
-//   quiet      the standard is drawn in the tincture's darker partner (the shade becomes the field,
-//              the charge takes whichever of charge and field reads best on it, vellum stepped down
-//              to bone) for every stack except your own movable or selected one: foreign stacks and
-//              your spent ones stay dark, so the map is not a field of bright flags.
-//   moves      your own movable or selected stack shows the full tincture and a vellum finial pip:
-//              the pip is the 'can move' signal. A spent stack is quiet and passed through FOG, with
-//              an iron pip. Foreign stacks (moves unknown) show an ash knob. A hero in the stack
-//              gilds the finial (ochre with a glow pixel above it).
-//   count      a soot chip in the tally font hung under the pole (2 or more units): vellum digits
-//              when active, bone when quiet, stone when spent.
-//   health     a 12x2 bar on the bottom edge with a void frame, drawn when the head unit is hurt
-//              (or selected): bone above 50%, ochre from 25%, crimson below 25%; the rest iron.
+//   ring       your own spent stack stands on a quiet ring (the tincture's darker partner as the
+//              field, quietOwner below): a bright ring under your unit says 'can move'. Foreign
+//              rings keep the full tincture. (The wrapper passes it to drawUnit as state.ringOwner.)
+//   count      a soot chip in the tally font in the top-left corner (2 or more units, or any garrison,
+//              whose figure the city hides): vellum digits on your movable stack, stone when spent,
+//              bone on foreign stacks.
+//   hero       a gold pip beside the count chip (or in the corner): a hero is in the stack.
+//   health     a 12x2 bar on the top edge with a void frame, drawn when the head unit is hurt (or
+//              selected): bone above 50%, ochre from 25%, crimson below 25%; the rest iron.
 //   state      top-right: the 8x8 state mark (ui/mark_<state>: fortify, sleep, sentry, heal...).
-//   in a city  state.inCity (or state.standard = 'right') mirrors the standard to the top-right,
-//              since the city banner holds the top-left; the state mark then sits at the top centre.
+//   in a city  state.inCity mirrors the corners: the city banner holds the top-left, so the count
+//              chip moves to the top-right and the state mark to the top centre.
 //   lanterns   a head unit on water whose sprite carries a FIRE, RITE or ARC `: light` casts a
 //              broken reflection on the water under the source (docs/ART.md 5.4): dashes of the
 //              light's ring colour, then its dark partner, 2 px apart, narrowing downwards.
+//   standard   the 7x12 gonfalon (ui/stack_banner) of the night look is opt-in: state.standard
+//              'left' or 'right' draws it, in the owner's division with the civilization's sigil.
 //
-// No standard for animals, equipment on the ground and hidden nationality (privateers, assassins):
-// their own units then show moves as a 2x2 pip at the end of the health bar's row.
-//
-// Geometry comes from the standard sprite's metadata (`: flag` places the sigil, `: finial` the
-// pip; the count chip hangs under the sprite), so the sprite can be redrawn or moved to another set
-// without touching this file.
+// Units without a ring (animals, equipment on the ground, hidden nationality) show your own unit's
+// moves as a 2x2 pip at the bottom right instead.
 //
 // Use: loadArt() installs it (art.js PASSES); by hand, `installStackOverlay(art)` once after
 // loadArt({ passes: false }); art.drawUnit then draws this overlay
@@ -226,54 +219,61 @@ export function drawStackOverlay(art, ctx, x, y, unitType, owner, state = {}) {
   const known = state.moves !== undefined && state.moves !== null;
   const mode = standardMode(state);
   const spent = mode === 'spent';
-  const banner = owner && !animal && !item && !owner.hidden && !state.noPennant && art.hasSprite(BANNER);
+  const ringed = owner && !animal && !item && !owner.hidden;
+  const banner = ringed && !state.noPennant && (state.standard === 'left' || state.standard === 'right') && art.hasSprite(BANNER);
 
   drawReflections(art, ctx, x, y, unitType, state);
 
-  // in a city the city's own banner holds the top-left: the standard moves to the top-right
+  // in a city the city's own banner holds the top-left: the chip (and a standard) go top-right
   const right = !!(state.inCity || state.standard === 'right');
+  let chipEnd = 1; // first free tile column after the top-left chip
   if (banner) {
     const spr = art.pick(BANNER);
     const look = mode === 'active' ? owner : quietOwner(art, owner);
     const table = spent ? 'FOG' : undefined;
-    // the sprite's (0,0) sits at tile (1,1), so its moon rim stays inside the tile
     const at = (i) => (right ? 31 - 1 - i : 1 + i); // tile column of sprite column i
     const v = { owner: look, flag: true, rim: 1, table };
     if (right) art.drawSprite(ctx, x + 30 * s, y + 1 * s, spr.name, { ...v, mirror: true });
     else art.drawSprite(ctx, x + 1 * s, y + 1 * s, spr.name, v);
     const [fx, fy, fw, fh] = spr.meta.flag || [1, 2, spr.w - 2, spr.h - 4];
     if (owner.sigil && art.hasSprite(owner.sigil)) drawSigil(art, ctx, x, y, art.pick(owner.sigil), look, [fx, fy, fw, fh], table, right, at);
-    const [pi, pj] = spr.meta.finial || [0, 0];
-    const pole = at(pi);
-    if (state.hero) px(art, ctx, x, y, [[pole, 1 + pj, 'y'], [pole, pj, 'L']]);
-    else px(art, ctx, x, y, [[pole, 1 + pj, known && state.own !== false ? (state.moves ? '8' : '3') : '5']]);
-    if (count > 1) {
-      const text = count > 99 ? '99' : String(count);
-      const w = art.measureText(text, 'tally') + 2;
-      const j = 1 + spr.h + 1;
-      countChip(art, ctx, x, y, right ? 31 - w : 1, j, text, mode === 'active' ? '8' : spent ? '6' : '7');
-    }
-  } else if (count > 1) {
-    countChip(art, ctx, x, y, 2, 2, count > 99 ? '99' : String(count), spent ? '6' : known ? '8' : '7');
+  }
+  // the chip: 2 or more units, or any garrison (its figure is hidden in the city, 10.1)
+  const chip = count > 1 || (!!state.inCity && count >= 1 && ringed);
+  if (chip) {
+    const text = count > 99 ? '99' : String(count);
+    const w = art.measureText(text, 'tally') + 2;
+    const i = right ? 31 - w : 1;
+    countChip(art, ctx, x, y, i, banner ? 14 : 1, text, mode === 'active' ? '8' : spent ? '6' : '7');
+    if (!right) chipEnd = 1 + w + 1;
+  }
+  if (state.hero && ringed) {
+    // a gold pip: beside the chip, else in the corner
+    const i = right ? (chip ? 31 - art.measureText(count > 99 ? '99' : String(count), 'tally') - 6 : 28) : chipEnd;
+    rect(art, ctx, x, y, i, 1, 4, 4, '0');
+    rect(art, ctx, x, y, i + 1, 2, 2, 2, 'K');
+    if (!right) chipEnd = i + 5;
   }
 
-  if (state.mark && !(count > 1 && !banner)) {
+  if (state.mark) {
     const m = art.hasSprite(`ui/mark_${state.mark}`) ? art.pick(`ui/mark_${state.mark}`) : null;
-    if (m) art.drawSprite(ctx, x + (right && banner ? 12 : 23) * s, y + 1 * s, m.name);
+    if (m) art.drawSprite(ctx, x + (right ? 12 : 23) * s, y + (right ? 3 : 1) * s, m.name);
   }
 
   const hp = state.hp;
   const hurt = hp !== undefined && hp !== null && (hp < 100 || state.selected);
   if (hurt) {
     const v = Math.max(0, Math.min(100, hp));
-    const fill = v > 0 ? Math.max(1, Math.round((12 * v) / 100)) : 0;
-    rect(art, ctx, x, y, 9, 29, 14, 3, '0');
-    rect(art, ctx, x, y, 10, 30, 12, 2, '3');
-    if (fill) rect(art, ctx, x, y, 10, 30, fill, 2, hpColour(v));
+    // centred on the top edge, nudged right of a chip and short of the state mark
+    const x0 = Math.max(9, chipEnd), w = Math.min(14, (state.mark && !right ? 23 : 31) - x0);
+    const inner = w - 2, f = v > 0 ? Math.max(1, Math.round((inner * v) / 100)) : 0;
+    rect(art, ctx, x, y, x0, 0, w, 3, '0');
+    rect(art, ctx, x, y, x0 + 1, 1, inner, 1, '3');
+    if (f) rect(art, ctx, x, y, x0 + 1, 1, f, 1, hpColour(v));
   }
-  if (!banner && known && owner && !animal && !item) {
-    rect(art, ctx, x, y, 23, 29, 4, 3, '0');
-    rect(art, ctx, x, y, 24, 30, 2, 2, spent ? '3' : '8');
+  if (!ringed && known && owner && !animal && !item) {
+    rect(art, ctx, x, y, 26, 27, 4, 4, '0');
+    rect(art, ctx, x, y, 27, 28, 2, 2, spent ? '3' : '8');
   }
 }
 
@@ -283,7 +283,9 @@ export function installStackOverlay(art) {
   const base = art.drawUnit.bind(art);
   art.drawUnit = (ctx, x, y, unitType, owner, state = {}) => {
     const layer = state.layer || 'all';
-    if (layer !== 'overlay') base(ctx, x, y, unitType, owner, { ...state, layer: 'sprite' });
+    // your own spent stack stands on a quiet ring; a bright ring says 'can move'
+    const ringOwner = owner && standardMode(state) === 'spent' ? quietOwner(art, owner) : undefined;
+    if (layer !== 'overlay') base(ctx, x, y, unitType, owner, { ...state, layer: 'sprite', ringOwner });
     if (layer !== 'sprite') drawStackOverlay(art, ctx, x, y, unitType, owner, state);
   };
   art._stackOverlay = true;
