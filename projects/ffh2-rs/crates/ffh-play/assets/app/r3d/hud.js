@@ -3,7 +3,7 @@
 // badges (count, moves, health), the Yields layer's numbers and the combat flashes. Each is
 // anchored to a world point and projected with the frame's camera, so it tracks the 3D scene.
 
-import { S, me } from "../state.js";
+import { S, me, dname } from "../state.js";
 import * as T from "../tiles.js";
 
 const FONT = "system-ui, 'DejaVu Sans', 'Segoe UI', sans-serif";
@@ -43,14 +43,18 @@ export function drawHud(r3d, cam) {
   // small shield in its owner's colour on a stem over the figure (the strategy map's pieces).
   if (ts < 60) {
     const k = Math.max(0, Math.min(1, (60 - ts) / 16));
+    g.textAlign = "center";
+    g.textBaseline = "middle";
     for (const s of r3d.stacks ?? []) {
       const a = s.anchor;
       if (!a) continue;
       const base = r3d.project(cam, [r3d.nearX(a.x), a.y + a.height, a.z]);
       if (!inView(base)) continue;
-      const r = 4 + 2 * k;
-      const x = base.x, y = base.y - 7 - 5 * k;
-      g.globalAlpha = 0.55 + 0.45 * k;
+      // A shield in the owner's colour on a stem, carrying the unit type (F6): far out the figures
+      // are too small to tell apart, so the pin names the stack's kind.
+      const r = 7 + 4 * k;
+      const x = base.x, y = base.y - 9 - 6 * k;
+      g.globalAlpha = 0.7 + 0.3 * k;
       g.strokeStyle = "rgba(15,10,8,0.85)";
       g.lineWidth = 1.5;
       g.beginPath();
@@ -69,6 +73,13 @@ export function drawHud(r3d, cam) {
       g.strokeStyle = s.picked ? "#fff2a8" : "rgba(15,10,8,0.9)";
       g.lineWidth = s.picked ? 2 : 1.2;
       g.stroke();
+      const ab = T.abbrev(dname("UnitType", s.top.type));
+      g.font = `700 ${Math.round(r * 1.15)}px ${FONT}`;
+      g.lineWidth = 2;
+      g.strokeStyle = "rgba(12,8,6,0.9)";
+      g.fillStyle = "#f8f2e4";
+      g.strokeText(ab, x, y + 1);
+      g.fillText(ab, x, y + 1);
       g.globalAlpha = 1;
     }
   }
@@ -142,14 +153,20 @@ export function drawHud(r3d, cam) {
       g.fillStyle = f > 0.6 ? "#7ad04a" : f > 0.3 ? "#e8c040" : "#e04a30";
       g.fillRect(p.x - bw / 2, p.y - 4, bw * f, 3);
     }
-    if (s.units.length > 1) {
-      const t = String(s.units.length);
+    // A type tag (and the stack count) over the figure at the gameplay zooms, so the unit's kind
+    // reads where the figures are too small to tell apart (F6). Fades out above ~150 px, where the
+    // figures speak for themselves; below 60 px the far-zoom shield carries the type instead.
+    const multi = s.units.length > 1;
+    const tag = ts >= 60 ? T.abbrev(dname("UnitType", top.type)) + (multi ? " " + s.units.length : "") : multi ? String(s.units.length) : null;
+    const tagAlpha = ts >= 60 ? Math.max(0, Math.min(1, (152 - ts) / 14)) : 1;
+    if (tag && tagAlpha > 0) {
       const fs = Math.max(10, Math.min(14, Math.round(ts * 0.14)));
       g.font = `700 ${fs}px ${FONT}`;
-      const bw = g.measureText(t).width + 8;
+      const bw = g.measureText(tag).width + 8;
       const bh = fs + 4;
       const bx = p.x - ts * 0.16 - bw;
       const by = p.y - bh - 2;
+      g.globalAlpha = tagAlpha;
       g.fillStyle = "rgba(18,14,12,0.88)";
       roundRect(g, bx, by, bw, bh, 3);
       g.fill();
@@ -159,7 +176,8 @@ export function drawHud(r3d, cam) {
       g.fillStyle = "#f4ecd8";
       g.textAlign = "center";
       g.textBaseline = "middle";
-      g.fillText(t, bx + bw / 2, by + bh / 2 + 0.5);
+      g.fillText(tag, bx + bw / 2, by + bh / 2 + 0.5);
+      g.globalAlpha = 1;
     }
     if (top.owner === mine) {
       g.beginPath();
