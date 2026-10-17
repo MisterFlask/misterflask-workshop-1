@@ -288,6 +288,16 @@ export class Scene {
     this.markers = null;
     const world = this.world;
     if (!world) return;
+    // The rings change with the stacks and the selection, the path with every hover: the rings
+    // keep their own mesh, rebuilt only when they (or the ground) change.
+    const ringKey = rings.map((g) => `${g.x},${g.y},${g.r},${g.color},${g.rim},${g.width},${g.fill}`).join(";");
+    const rebuildRings = ringKey !== this.ringKey || world !== this.ringWorld;
+    if (rebuildRings) {
+      this.ringMesh?.dispose();
+      this.ringMesh = null;
+      this.ringKey = ringKey;
+      this.ringWorld = world;
+    }
     const v = [];
     const ground = (mx, my) => world.heightAt(mx, my);
     const push = (mx, my, lift, c, a, H = ground) => v.push(mx, H(mx, my) + lift, -my, c[0], c[1], c[2], a);
@@ -318,7 +328,7 @@ export class Scene {
         corner(r0, k + 1);
       }
     };
-    for (const g of rings) {
+    for (const g of rebuildRings ? rings : []) {
       const c = hexRgbArr(g.color);
       const rim = hexRgbArr(g.rim ?? "#1a1410");
       const r = g.r ?? 0.3;
@@ -328,6 +338,8 @@ export class Scene {
       annulus(g.x, g.y, r - wd * 0.32, r + wd * 0.32, c, 0.95, 0.016, H);
       if (g.fill) annulus(g.x, g.y, 0, r - wd * 0.5, c, g.fill, 0.012, H);
     }
+    if (rebuildRings && v.length) this.ringMesh = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT);
+    v.length = 0;
     if (path && path.length > 1) {
       const c = hexRgbArr(pathColor ?? "#ffe9a0");
       const wd = 0.035;
@@ -530,11 +542,12 @@ export class Scene {
   }
 
   drawMarkers(prog, U) {
-    if (!this.markers) return;
+    if (!this.markers && !this.ringMesh) return;
     prog.use().set(U).set(this.mapUniforms());
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy });
-      this.markers.draw();
+      this.ringMesh?.draw();
+      this.markers?.draw();
     }
   }
 
@@ -557,7 +570,7 @@ export class Scene {
       a.lod?.dispose();
     }
     this.assets.clear();
-    for (const m of [this.water, this.rivers, this.markers, this.particles]) m?.dispose();
+    for (const m of [this.water, this.rivers, this.markers, this.ringMesh, this.particles]) m?.dispose();
     for (const t of [this.decal, this.light, this.marks]) if (t) gl.deleteTexture(t);
   }
 }
