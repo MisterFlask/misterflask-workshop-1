@@ -101,7 +101,9 @@ it, §10).
 unrevealed plots) are blended with smoothed bilinear weights whose lookup is warped by two octaves of
 noise (bays and headlands, then a ragged edge; never half a plot, so a plot's centre keeps its kind).
 Lowlands undulate; hills add rolling ridged crests; peaks add sharp ridged massifs (narrow crests,
-deep gullies, finer spurs) and a summit near each peak plot's centre. Rivers (the plot-edge river
+deep gullies, finer spurs) and a lopsided summit near each peak plot's centre (its flanks reach
+out unevenly, spurs with gullies between them, and a lower second summit on one shoulder; on the
+rock, creases bump the shading normal, finer than the mesh can carry). Rivers (the plot-edge river
 bits, chained through shared corners, smoothed with Chaikin and given a slight meander) carve a
 channel with sloping banks. Everything is a pure function of the map and the plot index.
 
@@ -111,7 +113,8 @@ low shoulder (overlapping into ridges where hills neighbour); desert lowlands ge
 
 **Ground painting** (terrain shader). Each fragment blends the materials of the four plots around it
 with weights sharpened by brush-dab noise, so borders between terrains are bands of interleaved
-strokes. Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they
+strokes; the lookup is warped up to most of a plot between plot centres and not at all at them, so a
+plot's centre always shows its own ground while grass, plains and desert meet in organic shapes. Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they
 rise) with impressionist brush dabs at two sizes (oriented elliptical marks on a jittered lattice,
 one painter's hand: orientations within a 60° fan). Over that: features' floors (forest litter, ice,
 flood silt, ash), beaches on the lowest rim of the land, rock with tilted strata on steep ground and
