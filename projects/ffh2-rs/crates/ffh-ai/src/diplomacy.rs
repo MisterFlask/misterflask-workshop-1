@@ -139,21 +139,36 @@ pub fn manage(g: &mut Game, v: &View) {
     let turn = g.game_turn();
 
     let plan = crate::victory::plan(g, p); // victory-pursuit
-    // Peace when the war goes badly or drags on without gains.
+    // Peace when the war goes badly or drags on without gains -- or, when we are clearly winning and
+    // the war has run its course (>10 turns), a peace that converts our edge into reparations (tech +
+    // gold) instead of a valueless white peace (C++ `AI_doDiplo` peace build). A winner pursuing
+    // conquest/domination against this enemy keeps fighting rather than cashing out.
     for &enemy in &v.civ_enemies {
-        if want_peace(g, team, enemy, &plan) {
-            let Some(other) = team_leader(g, enemy).filter(|&q| !g.players[q].human) else { continue };
-            let item = TradeData { item_type: TradeableItem::TRADE_PEACE_TREATY, data: 0, offering: false, hidden: false };
-            if !g.player_can_trade_item(p, other, &item, true) {
-                continue;
-            }
-            let ours_list = vec![item.clone()];
-            let theirs_list = vec![item];
-            let accept = g.controller(other).consider_offer(g, other, p, &ours_list, &theirs_list);
-            if accept {
-                crate::trace!(g, p, "peace with team {:?} after {} turns", enemy, g.teams[team].ai_at_war_counter[enemy]);
-                g.implement_deal(p, other, &ours_list, &theirs_list, false);
-            }
+        let Some(other) = team_leader(g, enemy).filter(|&q| !g.players[q].human) else { continue };
+        let our_want = end_war_val(g, team, enemy); // iOurValue: how much WE want peace
+        let their_want = end_war_val(g, enemy, team); // iTheirValue: how much THEY want peace
+        let victory_war = crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(enemy);
+        let winner_initiated = their_want > our_want && g.teams[team].ai_at_war_counter[enemy] > 10 && !victory_war;
+        if !want_peace(g, team, enemy, &plan) && !winner_initiated {
+            continue;
+        }
+        let item = TradeData { item_type: TradeableItem::TRADE_PEACE_TREATY, data: 0, offering: false, hidden: false };
+        if !g.player_can_trade_item(p, other, &item, true) || !g.player_can_trade_item(other, p, &item, true) {
+            continue;
+        }
+        let mut ours_list = vec![item.clone()];
+        let mut theirs_list = vec![item];
+        if their_want > our_want {
+            // Winning: demand reparations from them (added to their side of the deal).
+            theirs_list.extend(crate::trade::peace_tribute(g, p, other, their_want - our_want));
+        } else if our_want > their_want {
+            // Losing: sweeten the peace with tribute of our own so the winner will accept.
+            ours_list.extend(crate::trade::peace_tribute(g, other, p, our_want - their_want));
+        }
+        let accept = g.controller(other).consider_offer(g, other, p, &ours_list, &theirs_list);
+        if accept {
+            crate::trace!(g, p, "peace with team {:?} after {} turns (we take {}, we give {})", enemy, g.teams[team].ai_at_war_counter[enemy], theirs_list.len() - 1, ours_list.len() - 1);
+            g.implement_deal(p, other, &ours_list, &theirs_list, false);
         }
     }
 
@@ -481,6 +496,58 @@ fn victory_war(g: &Game, p: PlayerId, plan: &crate::victory::Plan) -> Option<(Te
     best.map(|(t, _)| (t, "domination or conquest"))
 }
 
+/// C++ `CvTeamAI::AI_endWarVal` (CvTeamAI.cpp:992): value to `team` of ending its war with `enemy`.
+/// Large when we are weak / losing, cut to a fifth once we dominate (>120% power) -- this gap is
+/// what funds reparations at peace. Integer math throughout (each `/` truncates). The
+/// warmonger-continue sub-factors needing unported strategy/financial state (DAGGER, financial
+/// trouble, the maxWar/limitedWar/dogpileWar rands) are omitted; the land-ratio cut and the
+/// war-plan multiplier -- both with ported inputs -- are kept. Cities-as-tribute is not valued here
+/// (`AI_cityTradeVal` unported). Widened to i64 like the rest of this module's power math to avoid
+/// the C++ `int` overflow on large late-game powers.
+pub(crate) fn end_war_val(g: &Game, team: TeamId, enemy: TeamId) -> i32 {
+    let mut v: i64 = 100;
+    v += g.teams[team].num_cities as i64 * 3;
+    v += g.teams[enemy].num_cities as i64 * 3;
+    v += g.team_get_total_population(team, true) as i64;
+    v += g.team_get_total_population(enemy, true) as i64;
+    v += g.teams[enemy].ai_war_success[team] as i64 * 20; // how hard THEY have hit US
+    let our_power = g.team_get_power(team, true).max(1) as i64;
+    let their_power = g.team_get_defensive_power(enemy).max(1) as i64;
+    v *= their_power + 10;
+    v /= (our_power + 10).max(1); // FfH (Kael 04/23/2009): divide by OUR power only
+    if our_power * 100 > their_power * 120 {
+        v /= 5; // FfH: if we are >120% power, peace is worth a fifth
+    }
+    let our_plan = g.teams[team].ai_war_plan[enemy];
+    let their_plan = g.teams[enemy].ai_war_plan[team];
+    // Warmonger-continue block: only when we are not human and clearly stronger. C++ also folds in
+    // DAGGER / financial-trouble / warRand sub-factors (unported strategy + financial state) --
+    // omitted here; only the land-ratio cut has all inputs ported.
+    if !g.team_is_human(team) && our_power > 120 * their_power / 100 {
+        let land_ratio = g.team_get_total_land(team, true) as i64 * 100 / (g.team_get_total_land(enemy, true).max(1) as i64);
+        if land_ratio > 120 {
+            v = v * (9 * 100) / (10 * land_ratio);
+        }
+    }
+    // War-plan multiplier (either side's plan toward the other).
+    let total = (!g.team_is_human(team) && our_plan == Some(WarPlanType::WARPLAN_TOTAL))
+        || (!g.team_is_human(enemy) && their_plan == Some(WarPlanType::WARPLAN_TOTAL));
+    let dogpile = (!g.team_is_human(team) && our_plan == Some(WarPlanType::WARPLAN_DOGPILE) && g.team_get_at_war_count(enemy, true) > 1)
+        || (!g.team_is_human(enemy) && their_plan == Some(WarPlanType::WARPLAN_DOGPILE) && g.team_get_at_war_count(team, true) > 1);
+    if total {
+        v *= 2;
+    } else if dogpile {
+        v = v * 3 / 2;
+    }
+    // (AGGRESSIVE_AI endangered-cities block omitted: the option is off in our games.)
+    let remainder = g.d.defines.diplomacy_value_remainder.max(1) as i64;
+    v -= v.rem_euclid(remainder);
+    if g.team_is_human(team) {
+        v = v.max(remainder);
+    }
+    v as i32
+}
+
 /// Should `team` seek peace with `enemy`?
 pub(crate) fn want_peace(g: &Game, team: TeamId, enemy: TeamId, plan: &crate::victory::Plan) -> bool {
     let counter = g.teams[team].ai_at_war_counter[enemy];
@@ -517,24 +584,52 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
     let team = g.players[p].team;
     let their_team = g.players[from].team;
     let all = |items: &[TradeData], kind: TradeableItem| items.iter().all(|t| t.item_type == kind);
-    if all(they_give, TradeableItem::TRADE_PEACE_TREATY) && all(we_give, TradeableItem::TRADE_PEACE_TREATY) {
+    // Peace, possibly with reparations: each list carries a peace treaty, and either may also carry
+    // tribute (tech / gold). Value both sides as the at-war `AI_endWarVal` baseline plus the tribute
+    // (C++ `AI_dealVal`/`AI_considerOffer`, CvPlayerAI.cpp:6815, 7057) and accept when what we get is
+    // worth at least what we give.
+    let has_peace = |items: &[TradeData]| items.iter().any(|t| t.item_type == TradeableItem::TRADE_PEACE_TREATY);
+    if has_peace(they_give) && has_peace(we_give) {
         let counter = g.teams[team].ai_at_war_counter[their_team];
         if counter < 10 {
             return false;
         }
-        // We accept unless we are clearly winning.
+        // Never hand over a resource our own judgement blocks (ported `AI_bonusTrade`).
+        for item in we_give {
+            if item.item_type == TradeableItem::TRADE_RESOURCES
+                && crate::trade::bonus_trade_denial(g, p, BonusType::from_usize(item.data as usize), from).is_some()
+            {
+                return false;
+            }
+        }
         let ours = g.team_get_power(team, true).max(1) as i64;
         let theirs = g.team_get_power(their_team, true).max(1) as i64;
         let success = g.teams[team].ai_war_success[their_team] as i64;
         let their_success = g.teams[their_team].ai_war_success[team] as i64;
-        let winning = ours > theirs * 3 / 2 && success > their_success + 20;
-        // victory-pursuit: a war for our domination or conquest, or against a rival about to
-        // win, ends only when it is lost (or after 80 turns).
+        // victory-pursuit OVERRIDE: a war for our domination or conquest, or against a rival about to
+        // win, is not sold for tribute -- it ends only when it is lost (or after 80 turns).
         let plan = crate::victory::plan(g, p);
         if crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(their_team) {
             let losing = their_success > success + 10 && ours * 10 < theirs * 12;
             return losing || counter >= 80;
         }
+        // Reparations: value each side as the at-war `AI_endWarVal` baseline plus its tribute (C++
+        // `AI_dealVal`/`AI_considerOffer`, CvPlayerAI.cpp:6815, 7057). A deal that pays us at least
+        // what we give away -- a winner's reparations, or a loser sweetening the peace -- is taken.
+        let their_v = end_war_val(g, team, their_team) + crate::trade::deal_val(g, p, from, they_give, false, 1);
+        let our_v = end_war_val(g, their_team, team) + crate::trade::deal_val(g, from, p, we_give, false, 1);
+        if their_v >= our_v {
+            return true;
+        }
+        // The deal leaves us behind on value. Give away tribute of our own only when it pays
+        // (the test above) -- never fall through to accept a peace in which we also hand something
+        // over. A BARE peace (we give nothing but the treaty) still ends on plain willingness: we
+        // take it unless we are clearly winning, and always once the war has dragged to exhaustion
+        // (keeps the pre-reparations war-ending behaviour, so even/stalemated wars still resolve).
+        if we_give.iter().any(|t| t.item_type != TradeableItem::TRADE_PEACE_TREATY) {
+            return false;
+        }
+        let winning = ours > theirs * 3 / 2 && success > their_success + 20;
         return !winning || counter >= 60;
     }
     if all(they_give, TradeableItem::TRADE_OPEN_BORDERS) && all(we_give, TradeableItem::TRADE_OPEN_BORDERS) {

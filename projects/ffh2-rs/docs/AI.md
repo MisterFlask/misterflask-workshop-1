@@ -600,6 +600,25 @@ absolute power is about flat (it is the field catching up, not the leader weaken
 at turn 450 slips -3.1%. Kept as faithful, more human-like play that grows total power and mid-game
 economy at the cost of some domination concentration.
 
+**Peace with reparations (`diplomacy::end_war_val`, `trade::peace_tribute`).** A port of
+`CvTeamAI::AI_endWarVal` and the `CvPlayerAI::AI_doDiplo` peace construction: ending a war carries a
+value (large when weak/losing, cut to a fifth once we dominate at >120% power -- the FfH
+divide-by-our-power variant, plus the land-ratio cut and the war-plan ×2/×1.5 multiplier; the
+DAGGER/financial/warRand warmonger sub-factors are omitted as unported). The gap between the two
+sides' `end_war_val` funds reparations: when clearly winning, an AI now *initiates* peace and demands
+tribute (the costliest tech the loser can give, then gold) instead of a valueless white peace, and a
+losing AI *sweetens* its peace offer with tribute of its own so the winner will accept -- converting
+military success into economy. A civ pursuing conquest/domination against that enemy presses on
+rather than cashing out (victory-pursuit override in both the offer and `consider_offer`). The old
+willingness (take a bare peace unless clearly winning, and always past a 60-turn exhaustion floor)
+stays as the fallback, so even/stalemated wars still resolve and research is not starved.
+**Deliberate deviation from the C++ quirk:** `AI_doDiplo` adds tribute gold at *face* value because
+the proposing AI implements the deal unilaterally; here AI-AI deals are judged by the *recipient's*
+`consider_offer`, whose `deal_val` scales gold by `gold_trade_value_percent` (200-300%), so face-value
+gold would read as overpriced and always be refused. `peace_tribute` instead builds the gold that is
+*worth* the gap under `deal_val` (the `AI_counterPropose` scaling), so the deal balances for the
+judge. Cities-as-tribute are omitted (`AI_cityTradeVal` unported). No new saved state; no RNG.
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the

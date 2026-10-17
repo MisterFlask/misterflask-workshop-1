@@ -206,6 +206,57 @@ pub fn max_gold_per_turn_trade(g: &Game, p: PlayerId, other: PlayerId) -> i32 {
     max.min(g.player_calculate_gold_rate(p)).max(0)
 }
 
+/// Build the loser's tribute (what they hand the winner) to close an end-war-value gap of `want`
+/// value units, drawn from `loser`'s inventory and bounded by [`max_gold_trade`] (loser -> winner).
+/// C++ `AI_doDiplo` peace construction (CvPlayerAI.cpp:835-900): a tech, then gold. Deterministic:
+/// the costliest tech `loser` can hand over (substitutes the C++ `rand(10000)` pick), tie-broken by
+/// index; then one-off gold. Cities are omitted (`AI_cityTradeVal` unported).
+///
+/// Deviation from the C++ `AI_doDiplo` quirk (deliberate, recorded in docs/AI.md): the original
+/// adds gold at FACE value to its own value balance (CvPlayerAI.cpp:863) because the proposing AI
+/// then implements the deal unilaterally. Here AI-AI deals are judged by the *recipient's*
+/// `consider_offer`, whose `deal_val` scales gold by `gold_trade_value_percent` (200-300%). Built at
+/// face value the gold would read as 2-3x overpriced and the recipient would always refuse, so the
+/// feature would never fire. We therefore build the gold that is *worth* the remaining gap under
+/// `deal_val` -- the `AI_counterPropose` scaling (CvPlayerAI.cpp:7182) -- so the deal balances for
+/// the judge. Returns the items the loser adds to their side of the deal.
+pub fn peace_tribute(g: &Game, winner: PlayerId, loser: PlayerId, want: i32) -> Vec<TradeData> {
+    let mut items = Vec::new();
+    if want <= 0 {
+        return items;
+    }
+    let winner_team = g.players[winner].team;
+    let tech_item = |t: TechType| TradeData { item_type: TradeableItem::TRADE_TECHNOLOGIES, data: t.i(), offering: false, hidden: false };
+    let tech_val = |t: TechType| g.team_get_research_cost(winner_team, t);
+    // Costliest tech the loser can give us. C++ quirk: the original picks a random tradeable tech
+    // (1 + rand(10000)); we pick deterministically by value, tie-broken by lowest index.
+    let tech = g
+        .d
+        .techs
+        .keys()
+        .filter(|&t| g.player_can_trade_item(loser, winner, &tech_item(t), true))
+        .max_by_key(|&t| (tech_val(t), std::cmp::Reverse(t)));
+    let mut got = 0;
+    if let Some(t) = tech {
+        items.push(tech_item(t));
+        got += tech_val(t);
+    }
+    // Gold worth the remaining gap to the winner under deal_val (see the deviation note above),
+    // capped by what the loser will hand over.
+    let remaining = want - got;
+    if remaining > 0 {
+        let pct = gold_trade_value_percent(g, winner).max(1);
+        let gold = (remaining * 100 / pct).min(max_gold_trade(g, loser, winner));
+        if gold > 0 {
+            let item = gold_item(gold);
+            if g.player_can_trade_item(loser, winner, &item, true) {
+                items.push(item);
+            }
+        }
+    }
+    items
+}
+
 /// Build a deal for `p` to acquire a resource from `other`: the resource of theirs `p` most wants
 /// and they can spare, paid for with the cheapest surplus resource of ours they would take for it
 /// (a balanced swap), or -- failing that -- with gold, at the least price that clears their

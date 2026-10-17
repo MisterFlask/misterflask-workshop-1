@@ -72,15 +72,31 @@ pub fn to_humans(g: &mut Game, v: &View) {
 
 fn offer_peace(g: &mut Game, p: PlayerId, human: PlayerId) {
     let (team, their) = (g.players[p].team, g.players[human].team);
+    if g.teams[team].ai_at_war_counter[their] <= 10 || !contact_due(g, p, human, "CONTACT_PEACE_TREATY") {
+        return;
+    }
     let plan = crate::victory::plan_ours(g, p);
-    if g.teams[team].ai_at_war_counter[their] <= 10 || !crate::diplomacy::want_peace(g, team, their, &plan) || !contact_due(g, p, human, "CONTACT_PEACE_TREATY") {
+    let our_want = crate::diplomacy::end_war_val(g, team, their);
+    let their_want = crate::diplomacy::end_war_val(g, their, team);
+    // When clearly winning (they want peace more than we do), initiate a peace that extracts
+    // reparations -- unless we are pursuing conquest/domination against them, in which case we press
+    // on. Otherwise offer only when we want peace (losing / stalemated), as before.
+    let victory_war = crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(their);
+    let winner_initiated = their_want > our_want && !victory_war;
+    if !crate::diplomacy::want_peace(g, team, their, &plan) && !winner_initiated {
         return;
     }
     let item = peace_item();
     if !g.player_can_trade_item(p, human, &item, true) || !g.player_can_trade_item(human, p, &item, true) {
         return;
     }
-    let (ours, theirs) = (vec![item.clone()], vec![item]);
+    let mut ours = vec![item.clone()];
+    let mut theirs = vec![item];
+    if their_want > our_want {
+        theirs.extend(crate::trade::peace_tribute(g, p, human, their_want - our_want)); // reparations from them
+    } else if our_want > their_want {
+        ours.extend(crate::trade::peace_tribute(g, human, p, our_want - their_want)); // sweeten so they accept
+    }
     crate::trace!(g, p, "offers peace to the human {:?}", human);
     if g.controller(human).consider_offer(g, human, p, &ours, &theirs) {
         g.implement_deal(p, human, &ours, &theirs, false);
