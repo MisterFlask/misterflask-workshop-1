@@ -83,6 +83,7 @@ export const DEFAULTS = {
   grid: 0.12,
   renderScale: 1,
   fxaa: 1,
+  autoQuality: 1,
   animate: true,
   wind: 1,
   particles: true,
@@ -120,6 +121,7 @@ export const PANEL = [
   ["animate", "Animate (wind, water, fire)", "bool"],
   ["renderScale", "Render scale", "range", 0.5, 1.5, 0.25],
   ["fxaa", "Anti-aliasing (FXAA)", "bool"],
+  ["autoQuality", "Auto quality (drop paint/scale when slow)", "bool"],
 ];
 
 export function loadConfig() {

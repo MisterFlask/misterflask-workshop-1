@@ -51,6 +51,12 @@ export class Map3D {
     this.dirty = true;
     this.running = true;
     this.frameMs = [];
+    // Quality ladder (docs/R3D.md §11): when the measured frame time stays high, step down (0 full
+    // -> 1 paint filter off -> 2 + render scale 0.75) to keep the map responsive, and step back up
+    // when it is fast again. Off with cfg.autoQuality = 0.
+    this.autoLevel = 0;
+    this.slowN = 0;
+    this.fastN = 0;
     /** The last sync's costs by stage (ms): world, textures, dress, instances, paint, units. */
     this.syncMs = {};
     this.raf = requestAnimationFrame(() => this.loop());
@@ -547,7 +553,9 @@ export class Map3D {
       this.canvas.width = cw;
       this.canvas.height = ch;
     }
-    const scale = this.cfg.renderScale;
+    // The quality ladder lowers the paint filter and the render scale when frames are slow.
+    const qc = this.qualityCfg();
+    const scale = qc.renderScale;
     this.pipeline.resize(Math.max(1, Math.round(cw * scale)), Math.max(1, Math.round(ch * scale)));
     const cam = this.camera();
     const fr = this.frameState(cam, time);
@@ -566,12 +574,51 @@ export class Map3D {
     } else copies.push(0);
     this.scene.setView(rect, copies, this.ts < 48, this.ts, cam.viewProj);
     this.pipeline.measure = !!this.measuring;
-    this.pipeline.render(fr, this.scene, this.cfg, cw, ch);
+    this.pipeline.render(fr, this.scene, qc, cw, ch);
     this.cam = cam;
     drawHud(this, cam);
     const ms = performance.now() - t0;
     this.frameMs.push(ms);
     if (this.frameMs.length > 120) this.frameMs.shift();
+    this.tuneQuality(ms);
+  }
+
+  /** The config with the quality ladder applied: at level 1 the Kuwahara paint filter is off, at
+   *  level 2 the render scale drops to 0.75 as well. */
+  qualityCfg() {
+    if (this.autoLevel <= 0) return this.cfg;
+    return {
+      ...this.cfg,
+      kuwahara: 0,
+      renderScale: this.cfg.renderScale * (this.autoLevel >= 2 ? 0.75 : 1),
+    };
+  }
+
+  /** Steps the quality ladder from the measured frame time (hysteresis: several sustained slow or
+   *  fast frames before a change, so a single hitch does not flip it; a single lab render never
+   *  accumulates enough frames to change it). */
+  tuneQuality(ms) {
+    if (!(this.cfg.autoQuality ?? 1)) {
+      this.autoLevel = 0;
+      return;
+    }
+    if (ms > 42) {
+      this.slowN++;
+      this.fastN = 0;
+    } else if (ms < 24) {
+      this.fastN++;
+      this.slowN = 0;
+    } else {
+      this.slowN = 0;
+      this.fastN = 0;
+    }
+    if (this.slowN >= 6 && this.autoLevel < 2) {
+      this.autoLevel++;
+      this.slowN = 0;
+    } else if (this.fastN >= 24 && this.autoLevel > 0) {
+      this.autoLevel--;
+      this.fastN = 0;
+    }
   }
 
   // --- the tuning panel -------------------------------------------------------------------------
@@ -659,7 +706,8 @@ export class Map3D {
     const f = this.frameMs;
     const avg = f.length ? f.reduce((a, b) => a + b, 0) / f.length : 0;
     const gpu = Object.entries(this.pipeline.stats.ms).map(([k, s]) => `${k} ${(s.sum / Math.max(1, s.n)).toFixed(2)}`).join("\n");
-    return `cpu ${avg.toFixed(1)} ms/frame\nprops ${this.staticCount ?? 0} + units ${this.unitCount ?? 0}\n${gpu}`;
+    const q = this.autoLevel > 0 ? `  quality -${this.autoLevel}` : "";
+    return `cpu ${avg.toFixed(1)} ms/frame${q}\nprops ${this.staticCount ?? 0} + units ${this.unitCount ?? 0}\n${gpu}`;
   }
 }
 
