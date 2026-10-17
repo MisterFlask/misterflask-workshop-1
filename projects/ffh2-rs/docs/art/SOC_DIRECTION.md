@@ -70,14 +70,28 @@ a blurred shrink.
 (`crates/ffh-play/assets/app/iso.js`, a third renderer beside flat and art). It draws the real
 `/api/map` + `/api/view` with PNG terrain tiles and unit sprites on team rings, owns its own
 projection/hit-testing, and embeds its PNGs via `http::ASSET_BYTES`. Run `ffh-play serve --new`
-and open `/?renderer=iso`. Art ported so far, entity by entity: the full terrain tile set
-(grass/plains/desert/snow/tundra/marsh, coast/ocean water, the broken-lands/burning-sands/
-fields-of-perdition hell terrains); forests as feature overlays; peaks as mountain relief
-sprites; cities as settlement sprites on the team ring (capital star, size badge, name chip);
-and the unit roster so far — knight (melee), archer, lich (casters), spider (beasts), settler,
-scout, worker. Remaining: hills relief, the other features (jungle, oasis, flood plains, ice,
-ancient/burnt forest), the rest of the unit roster, improvements/resources/rivers/roads/borders,
-and promoting iso to a Tools → Options choice.
+and open `/?renderer=iso`. Art ported so far, entity by entity:
+- **Terrain tiles:** the full set — grass/plains/desert/snow/tundra/marsh, coast/ocean water, and
+  the broken-lands/burning-sands/fields-of-perdition hell terrains (shallows reuses coast).
+- **Relief:** peaks as snow-capped mountain sprites; hills as a convex dome shaded over any
+  terrain (the plot centre stays flat so units/overlays anchor where hit-testing expects).
+- **Features:** forest, jungle, ancient forest and burnt forest as depth-sorted overlays (a
+  per-sprite scale lets the ancient grove read bigger).
+- **Rivers & roads:** rivers along the south/east plot edges (the diamond's lower-left/-right
+  edges), roads/railroads connecting plot centres to routed neighbours.
+- **Resources:** one icon per visual class (mana, crop, animal, fish, ore, goods) covering all
+  ~58 bonuses, drawn at the tile front.
+- **Improvements:** one structure per class (lair, fort, mana node, cottage, farm, mine) covering
+  all ~81, incl. the lairs/forts that spawn on the map; sized per class, drawn under the resource
+  icon so a worked resource still shows.
+- **Cities:** settlement sprites on the team ring, with a capital star, size badge and name chip.
+- **Units:** knight (melee), archer, lich (casters), spider (beasts), settler, scout, worker; other
+  types fall back to a labelled token.
+
+Remaining: the minor features (oasis, flood plains, ice, scrub, the hell features
+volcano/flames/obsidian); the Political (owner borders) and Yields view modes in iso; the optional
+per-team banner; more unit archetypes (mounted, siege, naval, demons, angels, heroes) and
+per-resource/-improvement art beyond the class icons; and promoting iso to a Tools → Options choice.
 
 1. **Isometric bake test in the real client.** Add a minimal iso projection + a PNG-unit draw path:
    render a small patch of SoC diamond terrain, place one generated unit (Knight, 128 px) on its
