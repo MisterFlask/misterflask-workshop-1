@@ -105,8 +105,8 @@ const ANCIENT_SLOTS = [
   { u: 0.58, v: 0.4, s: 0.66, core: true },
 ];
 
-/** The plots whose structure or resource icon a tree on plot (x, y) can stand in front of, as
- *  (dx, dy): its own, and the three behind it on screen (straight behind, behind-left and
+/** The plots whose structure or resource icon a tree or mountain on plot (x, y) can stand in front
+ *  of, as (dx, dy): its own, and the three behind it on screen (straight behind, behind-left and
  *  behind-right). */
 const SIGHT = [[0, 0], [-1, 1], [-1, 0], [0, 1]];
 
@@ -490,6 +490,15 @@ export class IsoMap {
       if (keep.has(k)) keep.get(k).push(it);
       else keep.set(k, [it]);
     };
+    // A mountain or one-sprite feature cannot give way like a tree: a structure or resource icon
+    // behind it that it would bury is drawn just after it instead, over it. (Cells run back to
+    // front, so what stands behind is already kept.)
+    const rise = (c, it) => {
+      items.push(it);
+      for (const [dx, dy] of SIGHT) {
+        for (const b of keep.get(T.plotIndex(map, c.x + dx, c.y + dy)) ?? []) if (buries(it, b)) b.d = it.d;
+      }
+    };
     const woods = [];
     for (const c of cells) {
       const vis = map.vis[c.k];
@@ -502,7 +511,7 @@ export class IsoMap {
       if (map.plot_type[c.k] === PLOT.peak) {
         // Mountains overhang the tile and rise highest.
         const img = this.imgs.r_peak;
-        if (img) items.push(this.stand(img, c.sx, c.sy + TH * 0.12, TW * 1.08 * (img.height / img.width), c.sy + TH * DEPTH.ground, 0, fog));
+        if (img) rise(c, this.stand(img, c.sx, c.sy + TH * 0.12, TW * 1.08 * (img.height / img.width), c.sy + TH * DEPTH.ground, 0, fog));
       } else if (!cityAt.has(c.k)) {
         const feat = tname("FeatureType", map.feature[c.k]);
         const wood = feat && TREE_FEATURES[feat];
@@ -511,7 +520,7 @@ export class IsoMap {
         } else if (feat && FEATURE_SPRITE[feat]) {
           const key = FEATURE_SPRITE[feat];
           const img = this.imgs[`f_${key}`];
-          if (img) items.push(this.stand(img, c.sx, c.sy + TH * 0.18, TW * FEATURE_SCALE[key] * (img.height / img.width), c.sy + TH * DEPTH.ground, 0, fog));
+          if (img) rise(c, this.stand(img, c.sx, c.sy + TH * 0.18, TW * FEATURE_SCALE[key] * (img.height / img.width), c.sy + TH * DEPTH.ground, 0, fog));
         }
       }
       if (built) {
