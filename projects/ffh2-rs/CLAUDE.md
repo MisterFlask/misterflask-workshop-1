@@ -2,8 +2,10 @@
 
 **New session? Read `docs/HANDOFF.md` first** (what is merged, what is on `origin/handoff/*`, next steps).
 
-Rules-faithful port of the FFH2 0.41 Civ4 mod (base mod only). The rules engine
-(DLL C++ + rules Python) is ported function by function; the AI is new.
+Port of the FFH2 0.41 Civ4 mod (base mod only), the base for a game of its own. The rules
+engine (DLL C++ + rules Python) was ported function by function; the AI is new. FFH2 0.41 is
+the starting point, not an invariant: once the base is stable and attractive, the game will
+change sweepingly (see "FFH2 is the starting point" under Hard rules).
 
 ## Layout
 
@@ -37,7 +39,7 @@ Other agents share this machine (4 cores) and repository. Follow docs/AGENTS.md:
 
 `tools/fetch-reference.sh` clones the pinned sources to `/home/user/ref`:
 
-- `/home/user/ref/ffh2/CvGameCoreDLL/*.cpp|h` -- FFH2 0.41 DLL source (the spec)
+- `/home/user/ref/ffh2/CvGameCoreDLL/*.cpp|h` -- FFH2 0.41 DLL source (the reference for porting)
 - `/home/user/ref/ffh2/Assets/python/**` -- FFH2 rules Python (spells, events, ...)
 - `/home/user/ref/ffh2/Assets/XML/**` -- original XML (schemas: `*Schema.xml`)
 
@@ -51,18 +53,21 @@ When porting, read the C++/Python being ported -- never port from memory.
   `BTreeMap` or sort first). No wall-clock, no thread-dependent ordering.
 - **Integer math in rules,** as in the C++ (it uses `int` with percentages).
   Port floating-point only where the C++ itself uses float, with the same ops.
-- **Unspecified evaluation order** (two RNG draws in one C++ expression): follow what the
-  original DLL compiler (MSVC 2003, x86) does -- function-call *arguments* are evaluated
-  right to left (`f(rand(a), rand(b))` draws `b` first); operands of binary operators left
-  to right (`rand(a) + rand(b)` draws `a` first). Comment `// C++ quirk: MSVC evaluation order`.
-- **Fidelity bar: what a player could notice.** Rules, formulas, odds and outcomes must match
-  the original. Exact RNG-stream parity and artefacts of C++ container order (e.g. FFreeListTrashArray
-  slot reuse deciding which equal-value city/unit a loop finds first) do NOT need to match: per-owner
-  lists iterate in creation order. Don't add machinery whose only effect is bit-exact replay.
-- **Faithfulness first.** Port C++ semantics exactly, including quirks; if a quirk
-  is an obvious bug that changes no gameplay, keep it and add a `// C++ quirk:` note.
-  Never "improve" rules silently. Deliberate deviations go in docs/PORTING.md.
-- Skip pure UI/graphics/sound/network code (messages may go to the game log).
+- **FFH2 is the starting point, not an invariant.** The port reproduces FFH2 0.41 so the game
+  starts from a known, working base; once that base is stable and attractive, the rules will
+  change sweepingly. Equivalence to FFH2 is temporary: don't add tests, tools or machinery whose
+  only purpose is keeping the port identical (or bit-exact) to FFH2, and a change is not wrong
+  because it departs from FFH2.
+- **Rules changes are deliberate and recorded.** Change rules on purpose, not as a side effect
+  of other work: say what changed and why in the commit, and list gameplay changes from FFH2 0.41
+  in docs/PORTING.md ("Changes from FFH2").
+- **When porting C++/Python,** port what the source does, quirks included, so the port can be
+  checked against it; changing the behaviour is a separate step (a rules change, above). Mark
+  quirks `// C++ quirk:` so they are easy to find when the rules change. Two RNG draws in one C++
+  expression follow the original DLL compiler (MSVC 2003, x86): function-call *arguments* are
+  evaluated right to left (`f(rand(a), rand(b))` draws `b` first), operands of binary operators
+  left to right (`rand(a) + rand(b)` draws `a` first); comment `// C++ quirk: MSVC evaluation order`.
+  Skip pure UI/graphics/sound/network code (messages may go to the game log).
 - `cargo build --release && cargo test --release` must pass before committing.
   `cargo run --release -p ffh-cli` must report `0 warnings` for data loading.
 

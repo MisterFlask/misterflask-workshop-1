@@ -10,7 +10,8 @@ the AI is new. Base mod only; no UI (headless runner).
   searches and per-unit plot scans) and in Python callbacks. Here the rules are compiled
   Rust, the Python is Rust, and the AI is designed for bounded cost per turn.
 - **A stable base for changes.** One language, typed data tables, deterministic simulation
-  (same seed = same game), and tests.
+  (same seed = same game), and tests. FFH2 0.41 is the starting point, not an invariant: once
+  the base is stable and attractive, the game will change sweepingly.
 
 ## Layout
 
@@ -23,7 +24,7 @@ the AI is new. Base mod only; no UI (headless runner).
 | `crates/ffh-cli` | `ffh` binary: data checks, AI-only autoplay, benchmarks |
 | `crates/ffh-stress` | `ffh-stress` binary: AI games over a matrix of game settings (speed, handicap, era, world size, civs, climate, sea level, options, teams, victories), crashes caught per game |
 | `crates/ffh-play` | `ffh-play` binary and library: human play (session core, JSONL agent, HTTP server with the browser client; see `docs/HUMAN.md`) |
-| `docs/` | `PORTING.md` (status, deliberate deviations), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `AGENTS.md` (parallel agents), `porting/*.md` (C++ function maps) |
+| `docs/` | `PORTING.md` (status, changes from FFH2), `AI.md`, `ARCHITECTURE.md`, `DATA.md`, `AGENTS.md` (parallel agents), `porting/*.md` (C++ function maps) |
 | `tools/` | reference fetch, XML vendoring, enum/define generators, C++ parity harness; `tools/agents/`: infrastructure for parallel agents (shared incremental builds per revision or worktree, a run cache for deterministic games, machine-wide CPU slots, sparse agent worktrees; `docs/AGENTS.md`) |
 
 ## Build and run
@@ -76,13 +77,14 @@ over stdin/stdout (`docs/HUMAN.md`):
 printf '%s\n' '{"k":"q","q":"text"}' '{"k":"cmd","c":"end_turn","force":true}' | ./target/release/ffh-play agent --seed 3
 ```
 
-## Faithfulness
+## Relation to FFH2
 
-Rules code follows the C++ line by line, including its quirks (marked `// C++ quirk:`), with
-the same random-number calls in the same order (the C++ `CvRandom` and `CvFractal` are
-verified bit-exact against the original source). The rules Python is ported the same way.
-What is deliberately different is listed in `docs/PORTING.md`; the main items are the AI
-(new), the exe's closed-source A* (re-implemented over the DLL's own callbacks), the
+So far, rules code follows the C++ line by line, including its quirks (marked `// C++ quirk:`,
+so they are easy to find when the rules change), with the same random-number calls in the same
+order (the C++ `CvRandom` and `CvFractal` are verified bit-exact against the original source).
+The rules Python is ported the same way. This is where the game starts, not something it must
+keep: rules changes are made deliberately and listed in `docs/PORTING.md`. The changes so far are
+the AI (new), the exe's closed-source A* (re-implemented over the DLL's own callbacks), the
 Python map scripts (a Fractal generator ships instead) and the game score (a share of the
 world, `docs/SCORE.md`).
 
@@ -90,5 +92,5 @@ world, `docs/SCORE.md`).
 
 The rules port is complete (no `todo!()` left in `ffh-core`) and audited line by line against
 the C++/Python, and stress-tested with about 1,400 AI games over all game settings. AI-only games
-play end to end; the AI itself is the main open work (`docs/AI.md`). Details, deliberate
-deviations and next steps: `docs/PORTING.md`.
+play end to end; the AI itself is the main open work (`docs/AI.md`). Details, changes from
+FFH2 and next steps: `docs/PORTING.md`.

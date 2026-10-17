@@ -1,8 +1,12 @@
 # Handoff (state at the end of session `session_015m21G1a13FKUWE1YyaXREp`, 2026-10-15)
 
-Start here, then read `CLAUDE.md` (conventions, fidelity bar), `README.md`, and the doc for the area you
+Start here, then read `CLAUDE.md` (conventions), `README.md`, and the doc for the area you
 touch (`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`, `docs/ART.md`,
 `docs/SCORE.md`).
+
+**Direction:** FFH2 0.41 is the starting point, not an invariant. Equivalence to FFH2 is
+temporary: once the base is stable and attractive, the game will change sweepingly. Rules
+changes are made deliberately and listed in `docs/PORTING.md` ("Changes from FFH2").
 
 ## What is on master (merged, tested)
 
@@ -10,10 +14,10 @@ touch (`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`,
 `cargo build --release && cargo test --release` (0 warnings) and `bash tools/web-check.sh --smoke --browser`.
 
 - **Rules engine (`ffh-core`, `ffh-data`)**: complete port of the FFH2 0.41 DLL + rules Python, audited
-  against the C++/Python; no `todo!()` left. Deliberate deviations are listed in `docs/PORTING.md`.
+  against the C++/Python; no `todo!()` left. Changes from FFH2 are listed in `docs/PORTING.md`.
   Stress-tested over ~1,400 games across all settings (`crates/ffh-stress`). Save/load is exact
   (`Game::save`/`Game::load`; resumed games are byte-identical).
-- **Score v2** (user decision; deliberate deviation): a civ's score is its share of the world's people,
+- **Score v2** (user decision; a change from FFH2): a civ's score is its share of the world's people,
   land and knowledge in basis points (sums to 10000), see `docs/SCORE.md`. FFH2's formula survives as
   `legacy_score` for tooling. **For AI A/B tests use `legacy_score`**, techs, cities, research, etc.:
   the share score averages 10000/N whatever the AI does.

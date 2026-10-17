@@ -84,10 +84,11 @@ each time a unit drops it in a city; found by the `ffh-play soak` human games).
   `CustomFunctions.warScript`, ...): replaced by the new AI in `ffh-ai`.
 - UI, graphics, sound, networking, Python screens, worldbuilder, replays.
 
-## Deliberate deviations
+## Changes from FFH2
 
-Fidelity bar (CLAUDE.md): rules, formulas, odds and outcomes match the original; RNG-stream parity
-and artefacts of C++ container order need not.
+Every way the port's rules differ from FFH2 0.41, so the starting point can be reconstructed.
+Matching FFH2 is not a requirement (CLAUDE.md, "FFH2 is the starting point"): this list records
+the differences; it does not ask for them to be undone.
 
 **Container order and path finding**
 

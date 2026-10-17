@@ -5,7 +5,7 @@ all land and all knowledge.
 
 The score's only job is to show, as well as we can, how well a civ is doing in this game
 relative to the other civs. FFH2's own score (`CvGameUtils.calculateScore`) was replaced on
-purpose (a user decision; listed in `docs/PORTING.md` under deliberate deviations). FFH2's
+purpose (a user decision; listed in `docs/PORTING.md` under "Changes from FFH2"). FFH2's
 formula stays available as the *legacy score* for tools.
 
 Code: `Game::world_score_shares` / `Game::world_scores` and the apportionment
