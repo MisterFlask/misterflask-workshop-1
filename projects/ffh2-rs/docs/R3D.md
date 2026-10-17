@@ -262,7 +262,31 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
   every unit type of the game gets a figure that builds; a scene's dressing is deterministic, uses
   only registered recipes and places nothing on an unrevealed plot.
 * `tools/r3d-perf.mjs` (§11) and `tools/r3d-compare.mjs` (the same scene in every renderer).
-* `ffh-play stage corrupt DIR`: the vertical slice's real game (§14).
+* `ffh-play stage corrupt DIR`: the vertical slice's real game (below).
+
+### 10.1 The vertical slice
+
+Two scenes, the same renderer:
+
+* **A real game** (`ffh-play stage corrupt DIR`, `src/stage.rs`): seed 11, a standard map at low sea
+  level, the human as the Ljosalfar against six AI civilizations, 200 turns of AI autoplay. Then
+  the heartland of the evil civilization with the most cities is corrupted by FfH2's own hell rule:
+  every land plot it owns within two plots of its capital takes the plot counter an Infernal owner
+  gives its plots each turn (`plot_change_plot_counter(p, 100)`, the Infernal branch of
+  `CvGameUtils.doHellTerrain`), so its terrains turn to burning sands, broken lands and fields of
+  perdition and its resources to their hell kinds, as in play. Nothing about the scene is staged
+  for the renderer beyond that: what stands within six plots of the corrupted capital is what the AI
+  game produced — sea, coast, a river with flood plains, tundra, grassland, plains, desert, hills
+  and a peak, 32 forest plots, roads, a pasture, a plantation, a winery, a mine, the Seven Pines
+  (a unique landmark), raw mana and seven other resources, three cities of two civilizations, ten
+  warriors, archers, workers, a hunter and a wild elephant. `node tools/r3d-compare.mjs --save DIR/corrupt.ffhsave --x 48 --y 15` renders it
+  in every renderer.
+* **The lab showcase** (`r3d-lab/scenes.js` `showcase`): a 24 × 14 synthetic map that puts every
+  kind of thing the renderer draws in one view — sea, coast, a river with a bridge, roads, plains,
+  grassland, marsh, a mountain range, hills, forest, an ancient elven forest with a city, a volcano
+  in hell terrain with an infernal city, farms, mines, villages, a mana node, units of several
+  races and creatures (a dragon among them) — built from the real type tables (the lab's
+  `data.json`), so the same catalog code runs on it.
 
 ## 11. Performance
 
