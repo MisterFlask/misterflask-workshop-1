@@ -11,7 +11,7 @@
 // carve a channel. Unrevealed plots are "void": flat, unknown ground (no hidden plot shapes it).
 
 import { S, tname } from "../state.js";
-import { noise2, fbm2, ridged2, hashf } from "./noise.js";
+import { noise2, noise2p, fbm2p, ridged2p, hashf } from "./noise.js";
 import { smoothstep, clamp } from "./math.js";
 
 /** Plot kinds (the shaders read them too, in the terrain texture's B channel). */
@@ -168,8 +168,9 @@ export class World {
     // Warp the blend lookup so coastlines and hill feet wander off the grid lines.
     // Two octaves: broad bays and headlands, then a ragged edge (plot centres stay inside their
     // plot: the warp never reaches half a plot).
-    const wx = mx + 0.34 * noise2(mx * 0.7 + 3.1, my * 0.7 - 1.7) + 0.1 * noise2(mx * 2.6 - 4.4, my * 2.6 + 9.1);
-    const wy = my + 0.34 * noise2(mx * 0.7 - 7.3, my * 0.7 + 5.5) + 0.1 * noise2(mx * 2.6 + 6.2, my * 2.6 - 2.3);
+    const N = (f, ox, oy) => this.n2(mx, my, f, ox, oy);
+    const wx = mx + 0.34 * N(0.7, 3.1, -1.7) + 0.1 * N(2.6, -4.4, 9.1);
+    const wy = my + 0.34 * N(0.7, -7.3, 5.5) + 0.1 * N(2.6, 6.2, -2.3);
     const u = wx - 0.5;
     const v = wy - 0.5;
     const x0 = Math.floor(u);
@@ -193,19 +194,19 @@ export class World {
     }
     const land = 1 - water - ice - voidW;
     // Gentle undulation of the lowlands; rough sea floor.
-    h += land * 0.05 * fbm2(mx * 1.1 + 40, my * 1.1 - 20, 3);
-    h += water * 0.06 * fbm2(mx * 0.9 - 11, my * 0.9 + 4, 3);
+    h += land * 0.05 * this.fbm(mx, my, 1.1, 40, -20, 3);
+    h += water * 0.06 * this.fbm(mx, my, 0.9, -11, 4, 3);
     if (hill > 0) {
       // Rolling hills: a raised shoulder with crests of ridged noise.
-      const r = ridged2(mx * 1.6 + 5.2, my * 1.6 - 3.4, 3);
+      const r = this.ridged(mx, my, 1.6, 5.2, -3.4, 3);
       h += smoothstep(0, 1, hill) * (0.19 + 0.2 * r);
     }
     if (peak > 0) {
       // Mountains: ridged massif, plus a summit near each peak plot's centre.
       // Sharp crests (ridged noise raised to a power: narrow ridges, deep gullies), a second,
       // finer set of spurs, and the summit of each peak plot.
-      const r = ridged2(mx * 1.1 - 2.7, my * 1.1 + 8.1, 4);
-      const r2 = ridged2(mx * 2.6 + 5.3, my * 2.6 - 1.9, 3);
+      const r = this.ridged(mx, my, 1.1, -2.7, 8.1, 4);
+      const r2 = this.ridged(mx, my, 2.6, 5.3, -1.9, 3);
       const pw = Math.pow(peak, 1.4);
       h += pw * (0.18 + 0.62 * Math.pow(r, 1.7) + 0.16 * r2 * r);
       h += this.summits(mx, my) * (0.75 + 0.35 * r2);
@@ -223,6 +224,29 @@ export class World {
       }
     }
     return h;
+  }
+
+  // Noise of the height, at about f cycles a plot, periodic over the map's width when it wraps
+  // (so the ground meets itself at the seam, and every copy of the map is the same ground).
+
+  period(f) {
+    return this.wrapX ? Math.max(1, Math.round(this.w * f)) : 1 << 20;
+  }
+
+  freq(f) {
+    return this.wrapX ? this.period(f) / this.w : f;
+  }
+
+  n2(mx, my, f, ox, oy) {
+    return noise2p(mx * this.freq(f) + ox, my * f + oy, this.period(f));
+  }
+
+  fbm(mx, my, f, ox, oy, oct) {
+    return fbm2p(mx * this.freq(f) + ox, my * f + oy, this.period(f), oct);
+  }
+
+  ridged(mx, my, f, ox, oy, oct) {
+    return ridged2p(mx * this.freq(f) + ox, my * f + oy, this.period(f), oct);
   }
 
   /** The summit cones of the peak plots near (mx, my). */

@@ -169,3 +169,55 @@ export function fbm3(x, y, z, oct = 3) {
   }
   return s / n;
 }
+
+/** 2D gradient noise periodic in x with period P (whole lattice cells): noise2p(x + P, y, P) ===
+ *  noise2p(x, y, P). For maps that wrap east-west. */
+export function noise2p(x, y, P) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  const X0 = (((xi % P) + P) % P) & 255;
+  const X1 = ((((xi + 1) % P) + P) % P) & 255;
+  const Y = yi & 255;
+  const u = fade(xf);
+  const v = fade(yf);
+  const aa = PERM[PERM[X0] + Y];
+  const ab = PERM[PERM[X0] + Y + 1];
+  const ba = PERM[PERM[X1] + Y];
+  const bb = PERM[PERM[X1] + Y + 1];
+  const x1 = grad2(aa, xf, yf) + u * (grad2(ba, xf - 1, yf) - grad2(aa, xf, yf));
+  const x2 = grad2(ab, xf, yf - 1) + u * (grad2(bb, xf - 1, yf - 1) - grad2(ab, xf, yf - 1));
+  return (x1 + v * (x2 - x1)) * 0.7;
+}
+
+/** fbm2 with a period P in x (lacunarity 2, so every octave stays periodic). */
+export function fbm2p(x, y, P, oct = 4, gain = 0.5) {
+  let a = 1, s = 0, n = 0, p = P;
+  for (let i = 0; i < oct; i++) {
+    s += a * noise2p(x, y, p);
+    n += a;
+    x = x * 2 + 17.3;
+    y = y * 2 - 9.1;
+    p *= 2;
+    a *= gain;
+  }
+  return s / n;
+}
+
+/** ridged2 with a period P in x (lacunarity 2). */
+export function ridged2p(x, y, P, oct = 4, gain = 0.5) {
+  let a = 1, s = 0, n = 0, w = 1, p = P;
+  for (let i = 0; i < oct; i++) {
+    let r = 1 - Math.abs(noise2p(x, y, p));
+    r *= r;
+    s += a * r * w;
+    n += a;
+    w = Math.min(1, r * 1.6);
+    x = x * 2 + 31.7;
+    y = y * 2 + 11.3;
+    p *= 2;
+    a *= gain;
+  }
+  return s / n;
+}

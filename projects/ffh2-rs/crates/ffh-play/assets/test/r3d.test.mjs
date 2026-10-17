@@ -1,0 +1,116 @@
+// node --test: the 3D renderer's pure parts (app/r3d, docs/R3D.md) -- the ground model, the
+// recipes, the placement -- on the lab's synthetic scenes and the real type tables (the lab's
+// data fixture). No WebGL here: what is checked is that the world is a function of what the player
+// knows, deterministic, seamless on a wrapping map, and that every game type gets a model.
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import * as St from "../app/state.js";
+
+const data = JSON.parse(fs.readFileSync(fileURLToPath(new URL("../../r3d-lab/data.json", import.meta.url)), "utf8"));
+St.setData(data);
+const { buildMap, buildView, showcase, riverBits } = await import("../../r3d-lab/scenes.js");
+const { World, KIND } = await import("../app/r3d/world.js");
+const R = await import("../app/r3d/assets/registry.js");
+await import("../app/r3d/assets/index.js");
+const { CATALOG } = await import("../app/r3d/assets/catalog.js");
+const { dressStatic, dressUnits } = await import("../app/r3d/dress.js");
+
+const ROWS = ["..hh^^..~~--..", "..h^^h..~~-...", ".hhh.....--...", "..ff..,,..-...", "mm..dd..xxpp.."];
+
+test("the ground meets itself across a wrapping map's seam", () => {
+  const map = buildMap(data, ROWS, { wrap: true });
+  const w = new World(map);
+  for (let y = 0; y <= ROWS.length; y += 0.17) {
+    for (const x of [0, 0.31, 2.9]) assert.ok(Math.abs(w.heightAt(x, y) - w.heightAt(x + map.w, y)) < 1e-9, `seam at (${x}, ${y})`);
+  }
+});
+
+test("the ground is a pure function of the map", () => {
+  const a = new World(buildMap(data, ROWS));
+  const b = new World(buildMap(data, ROWS));
+  for (let k = 0; k < 200; k++) {
+    const x = (k * 0.137) % ROWS[0].length, y = (k * 0.071) % ROWS.length;
+    assert.equal(a.heightAt(x, y), b.heightAt(x, y));
+  }
+});
+
+test("unrevealed plots shape nothing: what is hidden does not leak through the ground", () => {
+  const hidden = [[6, 2], [7, 2], [6, 3]];
+  const base = buildMap(data, ROWS, { hidden });
+  const leaked = buildMap(data, ROWS, { hidden });
+  // Pretend the server had sent the hidden plots' real contents (it sends -1): a mountain and a river.
+  const peak = data.tables.PlotType.findIndex((e) => e.type === "PLOT_PEAK");
+  for (const [x, y] of hidden) {
+    const i = y * leaked.w + x;
+    leaked.plot_type[i] = peak;
+    leaked.terrain[i] = 0;
+    leaked.river[i] = 3;
+  }
+  const a = new World(base), b = new World(leaked);
+  for (const [x, y] of hidden) assert.equal(a.kind[y * base.w + x], KIND.VOID);
+  for (let y = 0; y < ROWS.length; y += 0.25) for (let x = 0; x < ROWS[0].length; x += 0.25) assert.equal(a.heightAt(x, y), b.heightAt(x, y));
+  assert.equal(b.rivers.length, 0, "no river is traced through unrevealed plots");
+});
+
+test("river edges chain into continuous lines", () => {
+  const rows = Array.from({ length: 6 }, () => ".".repeat(8));
+  const map = buildMap(data, rows, { rivers: riverBits([[1, 5], [1, 4], [2, 4], [2, 3], [3, 3], [3, 2], [4, 2]]) });
+  const w = new World(map);
+  assert.equal(w.rivers.length, 1);
+  const line = w.rivers[0];
+  for (let k = 1; k < line.length; k++) assert.ok(Math.hypot(line[k][0] - line[k - 1][0], line[k][1] - line[k - 1][1]) < 0.6, "no jump along the river");
+  // The channel is carved: the river runs lower than the land beside it.
+  assert.ok(w.heightAt(2, 3.5) < w.heightAt(2.5, 3.5) - 0.03);
+});
+
+test("recipes are deterministic, finite, and simplify for distance", () => {
+  for (const name of R.recipeNames()) {
+    const a = R.buildAsset(name, 1, "");
+    R.clearBuilt();
+    const b = R.buildAsset(name, 1, "");
+    assert.equal(a.count, b.count, name);
+    assert.ok(a.count > 0 && a.count % 3 === 0, `${name}: whole triangles`);
+    for (let i = 0; i < a.data.length; i++) {
+      if (!Number.isFinite(a.data[i])) assert.fail(`${name}: non-finite vertex data at ${i}`);
+    }
+    assert.deepEqual(Array.from(a.data.slice(0, 64)), Array.from(b.data.slice(0, 64)), name);
+    const lod = R.buildAssetLOD(name, 1, "");
+    if (lod) assert.ok(lod.count < a.count, `${name}: the simplified copy is smaller`);
+  }
+});
+
+test("every unit type of the game gets a figure that builds", () => {
+  const missing = [];
+  for (const u of data.tables.UnitType) {
+    const domain = St.tname("DomainType", u.domain);
+    const combat = St.tname("UnitCombatType", u.unit_combat);
+    const look = CATALOG.unit?.(u.type, { info: u, civ: null, domain, combat, family: "human", unit: { id: 1 }, r: () => 0.5, name: u.type });
+    if (!look?.asset || !R.hasRecipe(look.asset)) missing.push(u.type);
+    else R.buildAsset(look.asset, look.variant ?? 0, look.param ?? "");
+  }
+  assert.deepEqual(missing, []);
+});
+
+test("the dressing of a scene is deterministic and only uses what is known", () => {
+  const scene = showcase(data);
+  St.setView(scene.view);
+  St.setMap(scene.map);
+  const w = new World(scene.map);
+  const a = dressStatic(w, scene.map);
+  const b = dressStatic(new World(scene.map), scene.map);
+  assert.equal(a.list.length, b.list.length);
+  assert.deepEqual(a.list.slice(0, 50).map((i) => [i.asset, i.variant, i.x, i.z]), b.list.slice(0, 50).map((i) => [i.asset, i.variant, i.x, i.z]));
+  assert.ok(a.list.length > 200, "a dressed world");
+  for (const it of a.list) {
+    assert.ok(R.hasRecipe(it.asset), `placed asset ${it.asset} has a recipe`);
+    const px = Math.floor(it.x), py = Math.floor(-it.z);
+    const i = w.index(px, py);
+    if (i >= 0) assert.notEqual(scene.map.vis[i], 0, `${it.asset} placed on an unrevealed plot`);
+  }
+  const units = dressUnits(w, scene.map);
+  assert.equal(units.stacks.length, St.S.unitsAt.size);
+  const view2 = buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }] });
+  assert.ok(view2.players.length === 1);
+});
