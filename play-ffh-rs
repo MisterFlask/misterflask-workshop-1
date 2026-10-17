@@ -6,6 +6,9 @@
 # http://127.0.0.1:8642/. This builds the release binary, runs `ffh-play serve`,
 # and opens the page in your browser once the server is up. Stop with Ctrl-C.
 #
+# This is the macOS/Linux/WSL launcher (run it from a terminal). On Windows,
+# double-click play-ffh-rs.cmd instead.
+#
 #   ./play-ffh-rs                        build, serve, open the browser
 #   ./play-ffh-rs --new --seed 3         start a game at once (serve's GAME flags)
 #   ./play-ffh-rs --world WORLDSIZE_SMALL --new
