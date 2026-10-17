@@ -228,71 +228,128 @@ function elven(t, o = {}) {
 }
 
 // ================================================================================== dwarven
-// Khazad (and Luchuirp): halls cut into a crag: a carved gate between pillars, doors and windows in
-// the rock, chimneys with ember tops; the Luchuirp add a gear wheel and a golem forge.
+// Khazad (and Luchuirp): a hold built out of the mountain. Its silhouette is masonry, never a peak:
+// flat ledges and upright walls (a stepped gatehouse, crenellated towers and ramparts) in warm grey
+// stone with a bronze band, chimneys with ember tops, rock shoulders with ledged tops at its flanks.
+// The Luchuirp add a gear wheel on a tower and a golem forge.
 function dwarven(t, o = {}) {
-  const ROCK = { rim: '6', lit: '4', body: '3', sh: '2' };
-  const door = P(`
-    555
-    512
-    5l2`);
-  const win = P(`
-    52
-    l2`);
-  const tall = P(`
-    552
-    5l2
-    5l2`);
-  // the great gate: a pediment over two pillars, the hall's light inside
-  const gate = (big) => (big ? P(`
-    ....5....
-    ...545...
-    ..54442..
-    .5555552.
-    .541E142.
-    .54ElE42.
-    .54lLl42.
-    .5444442.`) : P(`
-    ..5..
-    .5552
-    54142
-    54E42
-    54L42`));
-  const chimney = (h) => { const g = new G(2, h + 1); g.set(0, 0, 'E'); g.set(1, 0, 'e'); for (let y = 1; y <= h; y++) { g.set(0, y, '4'); g.set(1, y, '2'); } return g; };
-  const gear = P(`
-    .5.5.
-    55442
-    .4.3.
-    54322
-    .3.2.`);
-  const forge = P(`
-    552
-    5E2
-    lEl`);
+  const S = { e: 'H', b: 'G', s: 'D', r: 'K', l: 'y', d: 'y', t: 'K', door: 'B' };
+  const ROCK = { rim: 'G', lit: 'D', body: 'B', sh: 'B' };
   const L = o.luchuirp;
-  // the crag with its carvings ([stamp, x, rows above the ground]) and chimneys ([x, height])
-  const hall = (w, pts, carv, chim) => {
-    const g = crag(w, pts, ROCK);
-    for (const [st, x, yb] of carv.filter(Boolean)) g.paint(st, x, g.h - yb - st.h);
-    const top = (x) => { for (let y = 0; y < g.h; y++) if (g.op(x, y)) return g.h - y; return 0; };
-    return compose([[g, 0], ...chim.map(([x, ch]) => [chimney(ch), x, Math.max(0, Math.min(top(x), top(x + 1)) - 2)])]);
+  // masonry w x h, lit left column, shaded right one, a bronze band on row `band`
+  const block = (w, h, band = -1) => {
+    const g = wall(w, h, S);
+    if (band >= 0) for (let x = 0; x < w; x++) g.set(x, band, x === 0 ? 'K' : 'y');
+    return g;
   };
-  if (t === 1) return hall(24, [[0, 3], [3, 6], [9, 13], [12, 14], [19, 6], [23, 3]], [[door, 1, 0], [gate(false), 9, 0], [win, 15, 3], [door, 19, 0]], [[16, 3]]);
+  // battlements: merlons on the even columns (odd widths keep both ends up)
+  const crenel = (w) => {
+    const g = new G(w, 2);
+    for (let x = 0; x < w; x++) {
+      const k = x === 0 ? S.e : x === w - 1 ? S.s : S.b;
+      g.set(x, 1, k);
+      if (x % 2 === 0) g.set(x, 0, k);
+    }
+    return g;
+  };
+  // a square tower with battlements; win [[x, y]] are 1x2 lit windows in the masonry
+  const tower = (w, h, win = [], band = 1) => mark(stack(crenel(w), block(w, h, band)), win.map(([x, y]) => [x, y + 2]));
+  // a rampart: a battlemented wall line
+  const rampart = (w, h, win = []) => tower(w, h, win, -1);
+  // the gatehouse: a lit gate under a bronze lintel, crowned by two 2-row steps
+  const gatehouse = (w, h) => {
+    const body = block(w, h, 1);
+    const c = w >> 1;
+    for (let x = c - 1; x <= c + 1; x++) body.set(x, h - 4, 'K');
+    for (let y = h - 3; y < h; y++) for (let x = c - 1; x <= c + 1; x++) body.set(x, y, x === c && y > h - 3 ? 'L' : 'l');
+    return stack(block(w - 8, 2), block(w - 4, 2), body);
+  };
+  const chimney = (h) => { const g = new G(2, h + 1); g.set(0, 0, 'E'); g.set(1, 0, 'e'); for (let y = 1; y <= h; y++) { g.set(0, y, S.b); g.set(1, y, S.s); } return g; };
+  const hut = (w, h, win = []) => house({ w, h, m: S, roof: 'flat', eave: 1, win });
+  const gear = P(`
+    .H.H.
+    HHGGD
+    .G.D.
+    HGDBB
+    .D.B.`);
+  const forge = P(`
+    HHD
+    HED
+    lEl`);
+  // the mountain the hold is cut into: rock shoulders behind its flanks, plateau-topped (ledges, not
+  // a peak), left one rising toward the hold, right one mirrored
+  const shoulder = (w, h, right = false) => {
+    const g = crag(w, [[0, Math.max(2, h - 6)], [Math.floor(w * 0.4), h - 1], [w - 3, h], [w - 1, h - 2]], ROCK);
+    return right ? g.mirror() : g;
+  };
+  if (t === 1) {
+    return compose([
+      [hut(3, 2, [[1, 0]]), 0],
+      [hut(3, 2), 21],
+      [chimney(3), 17, 9],
+      [tower(7, 12, [[3, 2], [3, 6]]), 9],
+      [rampart(15, 3, [[2, 0], [12, 0]]), 5],
+      [gatehouse(9, 5), 8],
+    ]);
+  }
   if (t === 2) {
-    return hall(29, [[0, 3], [3, 5], [9, 16], [13, 15], [17, 19], [25, 6], [28, 3]],
-      [[gate(false), 12, 0], [door, 5, 0], L ? [forge, 20, 0] : [door, 20, 0], L ? [gear, 9, 7] : [win, 18, 6], [tall, 15, 9], [door, 25, 0]], [[7, 3]]);
+    return compose([
+      [shoulder(9, 12), 1, 2],
+      [shoulder(9, 11, true), 20, 2],
+      [hut(3, 2, [[1, 0]]), 0],
+      [hut(4, 3, [[1, 1]]), 25],
+      [chimney(4), 18, 12],
+      [tower(5, 13, L ? [] : [[2, 2]]), 7],
+      L ? [gear, 7, 9, { bare: true }] : null,
+      [tower(5, 11, [[2, 2]]), 17],
+      [rampart(19, 3, [[13, 0]]), 5],
+      L ? [forge, 19, 0, { bare: true }] : null,
+      [gatehouse(11, 7), 9],
+    ]);
   }
   if (t === 3) {
-    return hall(28, [[0, 4], [7, 11], [11, 22], [14, 25], [17, 22], [21, 14], [27, 5]],
-      [[gate(true), 9, 0], [door, 2, 0], L ? [forge, 22, 0] : [door, 22, 0], [win, 4, 5], L ? [gear, 17, 10] : [win, 18, 10], [tall, 12, 13], [win, 15, 18]], [[3, 3], [24, 3]]);
+    return compose([
+      [shoulder(11, 17), 0, 2],
+      [shoulder(11, 15, true), 18, 2],
+      [chimney(5), 5, 15],
+      [chimney(4), 22, 13],
+      [tower(5, 18, [[2, 2], [2, 7]]), 3],
+      [tower(5, 15, L ? [[2, 7]] : [[2, 2], [2, 7]]), 21],
+      L ? [gear, 21, 15, { bare: true }] : null,
+      [tower(7, 16, [[3, 3]], 2), 11, 6],
+      [rampart(25, 4, [[2, 1], [21, 1]]), 2],
+      L ? [forge, 5, 0, { bare: true }] : null,
+      [gatehouse(13, 8), 8],
+    ]);
   }
   if (t === 4) {
-    return hall(31, [[0, 5], [7, 12], [11, 22], [15, 29], [18, 26], [22, 20], [26, 11], [30, 6]],
-      [[gate(true), 11, 0], [door, 2, 0], L ? [forge, 25, 0] : [door, 25, 0], [door, 6, 6], [win, 20, 10], [tall, 13, 13], [win, 16, 18], L ? [gear, 21, 12] : [win, 22, 13], [tall, 17, 22]], [[3, 3], [27, 3], [15, 4]]);
+    return compose([
+      [shoulder(12, 21), 0, 3],
+      [shoulder(12, 19, true), 20, 3],
+      [chimney(6), 6, 19],
+      [chimney(5), 25, 17],
+      [tower(7, 19, [[3, 2], [1, 8], [5, 8]]), 2],
+      [tower(5, 17, L ? [[2, 7]] : [[2, 2], [2, 7]]), 24],
+      L ? [gear, 24, 19, { bare: true }] : null,
+      [stack(block(5, 2), tower(9, 20, [[4, 3], [2, 9], [6, 9]], 2)), 12, 5],
+      [rampart(29, 5, [[2, 1], [9, 1], [25, 1]]), 1],
+      L ? [forge, 4, 0, { bare: true }] : null,
+      [gatehouse(13, 9), 9],
+    ]);
   }
-  return hall(32, [[0, 6], [8, 12], [12, 24], [16, 32], [19, 28], [23, 21], [27, 12], [31, 7]],
-    [[gate(true), 12, 0], [door, 2, 0], L ? [forge, 26, 0] : [door, 26, 0], [door, 5, 5], [door, 22, 9], [win, 13, 14], [tall, 16, 19], [win, 10, 12], L ? [gear, 22, 13] : [win, 23, 14], [tall, 18, 24], [win, 12, 20], [win, 20, 18]],
-    [[3, 3], [28, 3], [14, 4]]);
+  return compose([
+    [shoulder(12, 23), 0, 3],
+    [shoulder(12, 21, true), 20, 3],
+    [chimney(6), 7, 21],
+    [chimney(6), 24, 19],
+    [tower(7, 21, [[3, 2], [1, 8], [5, 8]]), 1],
+    [tower(7, 19, L ? [[3, 9]] : [[3, 2], [1, 8], [5, 8]]), 24],
+    L ? [gear, 25, 21, { bare: true }] : null,
+    [stack(block(5, 2), block(9, 2), tower(13, 19, [[3, 3], [9, 3], [6, 9], [3, 12], [9, 12]], 2)), 9, 6],
+    [rampart(29, 5, [[2, 1], [8, 1], [20, 1], [26, 1]]), 1],
+    L ? [forge, 3, 0, { bare: true }] : null,
+    [gatehouse(15, 10), 8],
+  ]);
 }
 
 // ================================================================================== tribal
@@ -696,8 +753,8 @@ const STYLES = [
   { name: 'sundomes', note: 'sand stone, flat roofs, low domes and a minaret', make: sundomes, table: 'FIRE' },
   { name: 'elven', note: 'great trees with lit hollows, platforms and pods', make: (t) => elven(t), table: 'FIRE', post: (g) => g.remap({ k: 't', t: 'T', T: 'o' }) },
   { name: 'svartalfar', note: 'elven trees in dusk and bruise, lilac hollows', make: (t) => elven(t, { dark: true }), table: 'ARC' },
-  { name: 'dwarven', note: 'halls cut into a crag: a carved gate between pillars, doors, lit windows, ember chimneys', make: (t) => dwarven(t), table: null },
-  { name: 'luchuirp', note: 'dwarven halls with a gear wheel and a golem forge', make: (t) => dwarven(t, { luchuirp: true }), table: null },
+  { name: 'dwarven', note: 'a hold built out of the mountain: a stepped gatehouse, battlemented towers and ramparts in warm stone with a bronze band, ember chimneys, rock shoulders', make: (t) => dwarven(t), table: null, lift: false },
+  { name: 'luchuirp', note: 'the dwarven hold with a gear wheel and a golem forge', make: (t) => dwarven(t, { luchuirp: true }), table: null, lift: false },
   { name: 'tribal', note: 'hide tents with lit doors, a longhouse, a palisade and a bonfire (FIRE pool, radius 8)', make: (t) => tribal(t), table: 'FIRE', light: ['FIRE', 8] },
   { name: 'barbarian', note: 'dark pelt tents, a skull-topped palisade, a lookout, a bonfire (FIRE pool, radius 8)', make: (t) => tribal(t, { barb: true }), table: 'EMBER', light: ['FIRE', 8] },
   { name: 'harbour', note: 'stilt houses, moored ships with square sails and stern lanterns, a pier, a lighthouse from tier IV', make: harbour, table: 'FIRE', post: (g) => g.remap({ y: 'Q', x: 'e' }) },

@@ -801,8 +801,8 @@ meant to be dark or faded.
 | Sun-domes | Malakim | cream walls, gold domes and a minaret |
 | Elven | Ljosalfar | great trees (brightened one step, `t T o`) with lit hollows and platforms |
 | Svartalfar | Svartalfar | the elven trees in `v p P` with lilac hollows; `ARC` pool |
-| Dwarven | Khazad | halls cut into a pale stone crag: a carved gate, doors, lit windows, chimneys |
-| Luchuirp | Luchuirp | the dwarven halls with a gear wheel and a golem forge |
+| Dwarven | Khazad | a hold built out of the mountain: a stepped gatehouse, battlemented towers and ramparts in warm grey stone with a bronze band, ember chimneys, rock shoulders with ledged tops at its flanks. Its outline is flat ledges and upright walls, never a peak's slopes, so it cannot be read as a mountain beside the cool-grey peaks |
+| Luchuirp | Luchuirp | the dwarven hold with a gear wheel on a tower and a golem forge |
 | Tribal | Clan of Embers, Doviello, Hippus | cream hide tents, a longhouse, a palisade and a bonfire (`FIRE` radius 8, halved) |
 | Barbarian | barbarian | grey pelt tents, a skull-topped palisade, a lookout, a bonfire |
 | Harbour | Lanun | stilt houses, moored ships with square sails, a pier, a lighthouse from tier IV |
