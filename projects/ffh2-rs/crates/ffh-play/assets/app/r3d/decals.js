@@ -42,15 +42,28 @@ export function rasterDecals(world, map, cities) {
       f(W);
     }
   };
-  const channel = (k, draw) => {
+  const [cv2, g2] = canvas(W, Hh);
+  // Each channel is drawn sharp, then blurred once as a whole (a filter per stroke would cost a
+  // blur of the whole canvas per stroke).
+  const channel = (k, draw, blur = 0) => {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.filter = "none";
     g.globalCompositeOperation = "source-over";
-    g.clearRect(0, 0, W, Hh);
+    g.globalAlpha = 1;
     g.fillStyle = "#000";
     g.fillRect(0, 0, W, Hh);
     draw();
-    const px = g.getImageData(0, 0, W, Hh).data;
+    let src = g;
+    if (blur > 0) {
+      g2.filter = "none";
+      g2.fillStyle = "#000";
+      g2.fillRect(0, 0, W, Hh);
+      g2.filter = `blur(${blur}px)`;
+      g2.drawImage(cv, 0, 0);
+      g2.filter = "none";
+      src = g2;
+    }
+    const px = src.getImageData(0, 0, W, Hh).data;
     for (let i = 0; i < W * Hh; i++) out[i * 4 + k] = px[i * 4];
   };
 
@@ -60,7 +73,6 @@ export function rasterDecals(world, map, cities) {
     g.lineCap = "round";
     g.lineJoin = "round";
     g.lineWidth = DRES * 0.11;
-    g.filter = `blur(${DRES * 0.025}px)`;
     for (let y = 0; y < world.h; y++) {
       for (let x = 0; x < world.w; x++) {
         const i = y * world.w + x;
@@ -95,7 +107,7 @@ export function rasterDecals(world, map, cities) {
         }
       }
     }
-  });
+  }, DRES * 0.03);
 
   // g: fields (farms and the gardens of villages), as ragged patchwork.
   channel(1, () => {
@@ -133,7 +145,6 @@ export function rasterDecals(world, map, cities) {
     g.lineCap = "round";
     g.lineJoin = "round";
     g.lineWidth = DRES * 0.42;
-    g.filter = `blur(${DRES * 0.12}px)`;
     g.globalAlpha = 0.7;
     for (const line of world.rivers) {
       copies((o) => {
@@ -143,11 +154,10 @@ export function rasterDecals(world, map, cities) {
       });
     }
     g.globalAlpha = 1;
-  });
+  }, DRES * 0.12);
 
   // a: settlement ground.
   channel(3, () => {
-    g.filter = `blur(${DRES * 0.06}px)`;
     g.fillStyle = "#fff";
     for (const c of cities) {
       const r = DRES * (0.3 + Math.min(0.14, (c.city.size ?? 1) * 0.015));
@@ -170,7 +180,7 @@ export function rasterDecals(world, map, cities) {
         });
       }
     }
-  });
+  }, DRES * 0.06);
   void cv;
   return { data: out, w: W, h: Hh };
 }

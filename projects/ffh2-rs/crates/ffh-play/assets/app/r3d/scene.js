@@ -6,13 +6,18 @@
 
 import { ATTR, Mesh, texture, upload, INSTANCE_FLOATS, PROP_LAYOUT } from "./gl.js";
 import { TerrainMeshes, MapTextures, CHUNK, RES, LOW_RES } from "./terrain.js";
-import { buildAsset } from "./assets/registry.js";
+import { buildAsset, buildAssetLOD } from "./assets/registry.js";
 import { rasterDecals, rasterLight } from "./decals.js";
 import { SEA } from "./world.js";
 import { hexLinear } from "./math.js";
 import { rng } from "./noise.js";
 
 const RIVER_LAYOUT = { aPos: 3, aExtra: 4 };
+/** Below this size on screen (bounding radius in pixels) a prop draws its simplified copy. */
+const LOD_PX = 22;
+/** Props are bucketed by squares of this many plots (finer than the terrain chunks: the frustum
+ *  test then skips more of what is off screen, for a few more draw calls). */
+const BUCKET = 8;
 const PARTICLE_LAYOUT = { aPos: 3, aNormal: 3, aExtra: 4 };
 
 /** One asset's vertex buffer, shared by its per-chunk instance buckets. */
@@ -27,8 +32,9 @@ class AssetBatch {
     this.hi = built.hi[1];
   }
 
-  /** A VAO over this asset's vertices and a new instance buffer. */
-  bucket(instances) {
+  /** A VAO over this asset's vertices and a new instance buffer (or `shared`, another bucket's,
+   *  for the level of detail drawing the same instances). */
+  bucket(instances, shared = null) {
     const gl = this.gl;
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -40,9 +46,9 @@ class AssetBatch {
       gl.vertexAttribPointer(ATTR[name], n, gl.FLOAT, false, stride, off);
       off += n * 4;
     }
-    const ibuf = gl.createBuffer();
+    const ibuf = shared ?? gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, ibuf);
-    gl.bufferData(gl.ARRAY_BUFFER, instances, gl.STATIC_DRAW);
+    if (!shared) gl.bufferData(gl.ARRAY_BUFFER, instances, gl.STATIC_DRAW);
     let o = 0;
     for (const name of ["iPosRot", "iScale", "iTint", "iTeam"]) {
       gl.enableVertexAttribArray(ATTR[name]);
@@ -51,7 +57,7 @@ class AssetBatch {
       o += 16;
     }
     gl.bindVertexArray(null);
-    return { vao, ibuf, n: instances.length / INSTANCE_FLOATS };
+    return { vao, ibuf, n: instances ? instances.length / INSTANCE_FLOATS : 0, shared: !!shared };
   }
 
   dispose() {
@@ -63,7 +69,7 @@ class AssetBatch {
 function packBuckets(list) {
   const by = new Map();
   for (const it of list) {
-    const ck = `${Math.floor(it.x / CHUNK)},${Math.floor(-it.z / CHUNK)}`;
+    const ck = `${Math.floor(it.x / BUCKET)},${Math.floor(-it.z / BUCKET)}`;
     const key = `${it.asset}#${it.variant}#${it.param}`;
     let m = by.get(key);
     if (!m) by.set(key, (m = new Map()));
@@ -157,6 +163,7 @@ export class Scene {
     for (const b of this.layers[layer]) {
       gl.deleteVertexArray(b.bucket.vao);
       gl.deleteBuffer(b.bucket.ibuf);
+      if (b.lodBucket) gl.deleteVertexArray(b.lodBucket.vao);
     }
     const out = [];
     for (const [key, chunks] of packBuckets(list)) {
@@ -171,6 +178,12 @@ export class Scene {
           continue;
         }
         batch = new AssetBatch(gl, built);
+        // The simplified copy, for far zooms and the shadow map (not for units: they stay whole).
+        if (layer === "static") {
+          const [asset, variant, param] = key.split("#");
+          const lod = buildAssetLOD(asset, Number(variant), param);
+          if (lod) batch.lod = new AssetBatch(gl, lod);
+        }
         this.assets.set(key, batch);
       }
       for (const [ck, items] of chunks) {
@@ -181,7 +194,10 @@ export class Scene {
           top = Math.max(top, it.y + batch.hi * it.sy);
         });
         const [cx, cy] = ck.split(",").map(Number);
-        out.push({ batch, cx, cy, top, bucket: batch.bucket(arr) });
+        const bucket = batch.bucket(arr);
+        const lodBucket = batch.lod ? batch.lod.bucket(null, bucket.ibuf) : null;
+        if (lodBucket) lodBucket.n = bucket.n;
+        out.push({ batch, cx, cy, top, bucket, lodBucket });
       }
     }
     this.layers[layer] = out;
@@ -326,8 +342,10 @@ export class Scene {
 
   /** Sets the frame's view: the map rect seen (x0..x1, y0..y1 in map units, x unwrapped), the
    *  copies of the map in view, and whether distant chunks may use the coarse terrain. */
-  setView(rect, copies, far) {
+  setView(rect, copies, far, px = 96, viewProj = null) {
+    this.px = px;
     this.visible = rect;
+    this.planes = viewProj ? frustumPlanes(viewProj) : null;
     this.copies = copies;
     this.far = far;
     this.budget.n = 6;
@@ -335,11 +353,25 @@ export class Scene {
     this.drawn = { draws: 0, instances: 0, tris: 0, terrainTris: 0 };
   }
 
-  chunkVisible(cx, cy, copy, margin = 1.5) {
+  chunkVisible(cx, cy, copy, margin = 1.5, size = CHUNK) {
     const r = this.visible;
     if (!r) return true;
-    const x0 = cx * CHUNK + copy, y0 = cy * CHUNK;
-    return x0 + CHUNK >= r.x0 - margin && x0 <= r.x1 + margin && y0 + CHUNK >= r.y0 - margin && y0 <= r.y1 + margin;
+    const x0 = cx * size + copy, y0 = cy * size;
+    return x0 + size >= r.x0 - margin && x0 <= r.x1 + margin && y0 + size >= r.y0 - margin && y0 <= r.y1 + margin;
+  }
+
+  /** Whether the box over map rect (x0, y0, size) from the sea floor to height `top` meets the
+   *  camera's frustum (the planes of the frame's view-projection). */
+  boxVisible(x0, y0, size, top) {
+    const P = this.planes;
+    if (!P) return true;
+    const lo = [x0, -0.5, -(y0 + size)], hi = [x0 + size, Math.max(top, 0.2), -y0];
+    for (const p of P) {
+      // The box corner furthest along the plane's normal.
+      const x = p[0] >= 0 ? hi[0] : lo[0], y = p[1] >= 0 ? hi[1] : lo[1], z = p[2] >= 0 ? hi[2] : lo[2];
+      if (p[0] * x + p[1] * y + p[2] * z + p[3] < 0) return false;
+    }
+    return true;
   }
 
   mapUniforms() {
@@ -398,14 +430,24 @@ export class Scene {
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy });
       for (const layer of ["static", "units"]) {
+        // Detail culling: decoration a few pixels across at this zoom is not drawn, and the
+        // smallest things cast no shadow (units always draw).
+        const minPx = layer === "units" ? 0 : shadow ? 6 : 2.5;
         for (const b of this.layers[layer]) {
-          if (!this.chunkVisible(b.cx, b.cy, copy, shadow ? 3 : 1.5)) continue;
-          gl.bindVertexArray(b.bucket.vao);
-          gl.drawArraysInstanced(gl.TRIANGLES, 0, b.batch.count, b.bucket.n);
+          const px = b.batch.radius * this.px;
+          if (px < minPx) continue;
+          if (!this.chunkVisible(b.cx, b.cy, copy, shadow ? 3 : 1.5, BUCKET)) continue;
+          if (!shadow && !this.boxVisible(b.cx * BUCKET + copy - 0.6, b.cy * BUCKET - 0.6, BUCKET + 1.2, b.top + 0.05)) continue;
+          // The simplified copy when the thing is small on screen, and always for the shadows.
+          const lod = b.lodBucket && (shadow || px < LOD_PX);
+          const bk = lod ? b.lodBucket : b.bucket;
+          const count = lod ? b.batch.lod.count : b.batch.count;
+          gl.bindVertexArray(bk.vao);
+          gl.drawArraysInstanced(gl.TRIANGLES, 0, count, bk.n);
           if (!shadow && this.drawn && prog.name === "prop") {
             this.drawn.draws++;
-            this.drawn.instances += b.bucket.n;
-            this.drawn.tris += (b.batch.count / 3) * b.bucket.n;
+            this.drawn.instances += bk.n;
+            this.drawn.tris += (count / 3) * bk.n;
           }
         }
       }
@@ -462,11 +504,22 @@ export class Scene {
     this.terrain.dispose();
     this.tex.dispose();
     for (const layer of Object.keys(this.layers)) this.setInstances(layer, []);
-    for (const a of this.assets.values()) a.dispose();
+    for (const a of this.assets.values()) {
+      a.dispose();
+      a.lod?.dispose();
+    }
     this.assets.clear();
     for (const m of [this.water, this.rivers, this.markers, this.particles]) m?.dispose();
     for (const t of [this.decal, this.light, this.marks]) if (t) gl.deleteTexture(t);
   }
+}
+
+/** The six planes (a, b, c, d: inside when ax + by + cz + d >= 0) of view-projection m. */
+function frustumPlanes(m) {
+  const row = (i) => [m[i], m[4 + i], m[8 + i], m[12 + i]];
+  const r0 = row(0), r1 = row(1), r2 = row(2), r3 = row(3);
+  const add = (a, b, s) => a.map((v, k) => v + s * b[k]);
+  return [add(r3, r0, 1), add(r3, r0, -1), add(r3, r1, 1), add(r3, r1, -1), add(r3, r2, 1), add(r3, r2, -1)];
 }
 
 function hexRgbArr(hex) {

@@ -485,7 +485,7 @@ export class Map3D {
     if (map.wrap_x) {
       for (let k = Math.floor((rect.x0 - 2) / map.w); k <= Math.floor((rect.x1 + 2) / map.w); k++) copies.push(k * map.w);
     } else copies.push(0);
-    this.scene.setView(rect, copies, this.ts < 48);
+    this.scene.setView(rect, copies, this.ts < 48, this.ts, cam.viewProj);
     this.pipeline.measure = !!this.measuring;
     this.pipeline.render(fr, this.scene, this.cfg, cw, ch);
     this.cam = cam;

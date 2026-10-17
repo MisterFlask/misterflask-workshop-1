@@ -6,7 +6,8 @@
 // paint layers), the GPU time of each pass (EXT_disjoint_timer_query_webgl2), the wall time of a
 // complete frame, and what was drawn (draw calls, instances, triangles).
 //
-//   node tools/r3d-perf.mjs --save SAVE [--x X --y Y] [--w 1280 --h 800] [--json OUT]
+//   node tools/r3d-perf.mjs --save SAVE [--x X --y Y] [--w 1280 --h 800] [--json OUT] [--runs 3]
+//        [--configs painterly,plain] [--zooms 40,96]
 //
 // Headless Chromium renders WebGL with SwiftShader (software): absolute times are those of a CPU
 // rasteriser, far slower than any GPU; the relative costs of the passes are what carries over.
@@ -16,7 +17,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { ROOT, parseArgs, findBin, tempDir, startServer } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", w: "v", h: "v", json: "v", bin: "v", runs: "v" });
+const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", w: "v", h: "v", json: "v", bin: "v", runs: "v", configs: "v", zooms: "v" });
 if (!args.save) {
   console.error("r3d-perf: --save SAVE is required");
   process.exit(2);
@@ -47,9 +48,9 @@ const CONFIGS = [
   ["no-outline+grade", { outline: 0, grade: 0 }],
   ["plain", "plain"],
 ];
-const ZOOMS = [40, 96, 168];
+const ZOOMS = args.zooms ? args.zooms.split(",").map(Number) : [40, 96, 168];
 const results = [];
-for (const [name, cfg] of CONFIGS) {
+for (const [name, cfg] of CONFIGS.filter(([n]) => !args.configs || args.configs.split(",").includes(n))) {
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
