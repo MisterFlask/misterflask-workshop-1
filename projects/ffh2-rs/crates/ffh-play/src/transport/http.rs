@@ -46,6 +46,7 @@ const JS: &str = "text/javascript; charset=utf-8";
 const CSS: &str = "text/css; charset=utf-8";
 const TEXT: &str = "text/plain; charset=utf-8";
 const PNG: &str = "image/png";
+const WOFF2: &str = "font/woff2";
 
 /// The client files compiled into the binary: `(path, content type, content)`, served at
 /// `/<path>` (`/` is `index.html`). The layout of `assets/` is the URL layout, so that
@@ -105,10 +106,15 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/r3d/assets/vegetation.js", JS, include_str!("../../assets/app/r3d/assets/vegetation.js")),
 ];
 
-/// Binary client files (the isometric renderer's PNG tiles and unit sprites,
-/// docs/art/SOC_DIRECTION.md): `(path, content type, bytes)`, served like [`ASSETS`] but from raw
-/// bytes. `tests/web.rs` checks that every non-text file under `assets/app/` is listed here.
+/// Files served from raw bytes (`(path, content type, bytes)`), like [`ASSETS`] but not embedded
+/// as text: the UI font Inter and its OFL licence (docs/ART.md 11.6), and the isometric
+/// renderer's PNG tiles and unit sprites (docs/art/SOC_DIRECTION.md). `tests/web.rs` checks that
+/// [`ASSETS`] and this together list exactly `index.html` and everything under `assets/app/`.
 pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[
+    // Inter (SIL OFL 1.1, latin subset, variable weight), the UI chrome face; the stylesheet's
+    // @font-face loads it from `/app/fonts/Inter.woff2`. The licence travels beside it.
+    ("app/fonts/Inter.woff2", WOFF2, include_bytes!("../../assets/app/fonts/Inter.woff2")),
+    ("app/fonts/OFL.txt", TEXT, include_bytes!("../../assets/app/fonts/OFL.txt")),
     ("app/iso/terrain/grass.png", PNG, include_bytes!("../../assets/app/iso/terrain/grass.png")),
     ("app/iso/terrain/plains.png", PNG, include_bytes!("../../assets/app/iso/terrain/plains.png")),
     ("app/iso/terrain/desert.png", PNG, include_bytes!("../../assets/app/iso/terrain/desert.png")),
@@ -648,6 +654,7 @@ fn content_type(path: &str) -> &'static str {
         Some("json") => JSON_TYPE,
         Some("svg") => "image/svg+xml",
         Some("png") => "image/png",
+        Some("woff2") => WOFF2,
         Some("txt" | "md") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     }

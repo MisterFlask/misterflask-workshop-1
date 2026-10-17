@@ -176,16 +176,12 @@ export function pixable(text, font = "book", smallCaps = false) {
   return true;
 }
 
-/** The text hook of dom.js: buttons in Vigil Book (the primary one, End turn, in Vigil small
- *  capitals), headings in Vigil (section headings in small capitals), hotkeys in Vigil Book. */
-function hookText(tag, text, el) {
-  let font = "book";
-  let smallCaps = false;
-  if (tag === "H2" || tag === "H3") font = "vigil";
-  else if (tag === "H4") (font = "vigil"), (smallCaps = true);
-  else if (tag === "BUTTON" && el?.classList?.contains("primary")) (font = "vigil"), (smallCaps = true);
-  if (!text.trim() || !pixable(text, font, smallCaps)) return text;
-  return pix(text, { font, smallCaps });
+/** The text hook of dom.js. Chrome text (buttons, headings, hotkeys) renders as DOM text in Inter
+ *  through the stylesheet (docs/ART.md 11.6, `--sans`), not the Vigil bitmap, so the hook returns
+ *  the text unchanged. The bitmap fonts stay for the pixel-art map canvas, the empire readout and
+ *  the city plaques, which draw with `pix`/`drawText` directly (look.js, hud.js, artmap.js). */
+function hookText(_tag, text, _el) {
+  return text;
 }
 
 /** Converts the text of the page's static buttons and headings (index.html) as `h` converts

@@ -9,6 +9,17 @@
    the pointer cursors (--cursor, --cursor-move, ...): the `html.art` rules below draw with them.
    Without the art the same elements fall back to plain double rules. */
 
+/* Inter (SIL OFL 1.1, /app/fonts/OFL.txt): the UI chrome face (docs/ART.md 11.6). A latin-subset
+   variable file carries every weight; `swap` shows the fallback sans until it loads. The pixel-art
+   bitmap fonts (Vigil, Tally) stay for the map canvas, the empire readout and the city plaques. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/app/fonts/Inter.woff2") format("woff2");
+}
+
 :root {
   --c-void: #140d0c; --c-soot: #14223e; --c-coal: #26334f; --c-iron: #424858; --c-slate: #5f6676; --c-ash: #848b98;
   --c-stone: #adb3bd; --c-bone: #e9dbb3; --c-vellum: #fffaec; --c-deep: #0b4290; --c-navy: #1765b2; --c-tide: #3f8cd2;
@@ -38,6 +49,7 @@
   --caution: var(--c-amber);
   --link: var(--c-gold);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font: var(--serif);
   --mono: ui-monospace, "DejaVu Sans Mono", Menlo, monospace;
   color-scheme: dark;
@@ -82,6 +94,8 @@ button, input, select, textarea {
   border-radius: 0;
   padding: 3px 9px;
 }
+/* Chrome controls are set in Inter (docs/ART.md 11.6), not the inherited serif body face. */
+button, select { font-family: var(--sans); }
 button { cursor: pointer; color: var(--c-bone); display: inline-flex; align-items: center; justify-content: center; gap: calc(var(--u) * 2); line-height: 1.2; }
 button:hover:not([disabled]) { border-color: var(--c-stone); color: var(--c-vellum); }
 button:active:not([disabled]) { background: var(--c-soot); box-shadow: inset 1px 1px 0 var(--c-void); }
@@ -95,7 +109,8 @@ button.link { background: none; border: none; color: var(--link); padding: 0; te
 input, select, textarea { background: var(--c-void); border-color: var(--c-iron); color: var(--c-bone); }
 kbd { font: 11px var(--mono); color: var(--dim); border: 1px solid var(--line); padding: 0 3px; margin-left: 6px; }
 code, pre { font-family: var(--mono); }
-h2, h3, h4 { margin: 0; font-weight: normal; color: var(--c-vellum); }
+/* Headings in Inter (docs/ART.md 11.6); 600 keeps the hierarchy the Vigil display face carried. */
+h2, h3, h4 { margin: 0; font-family: var(--sans); font-weight: 600; color: var(--c-vellum); }
 h2 { font-size: 17px; letter-spacing: 0.04em; }
 h3 { font-size: 16px; letter-spacing: 0.03em; }
 h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin: 10px 0 4px; }

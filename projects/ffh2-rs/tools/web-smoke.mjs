@@ -320,16 +320,23 @@ async function newGame(url, saves) {
 
 /** The art client (docs/ART.md, look.js, artmap.js): the art loaded and draws the map (in its
  *  worker where there is one), the view is drawn in full, the map is not blank, a frame takes
- *  little time, the zoom goes through the art's steps and the chart, the interface uses the
- *  bitmap type and frames, and Tools → Options switches to the flat renderer and back. */
+ *  little time, the zoom goes through the art's steps and the chart, the empire readout keeps the
+ *  bitmap type while the chrome is the Inter web font (docs/ART.md 11.6), and Tools → Options
+ *  switches to the flat renderer and back. */
 async function artClient() {
   await until2("!!(window.ffh.look.art || window.ffh.look.error)", "the art to load");
   const err = await b.eval("window.ffh.look.error ? String(window.ffh.look.error.message || window.ffh.look.error) : null");
   if (err) throw new Error(`the art did not load: ${err}`);
   if ((await b.eval("window.ffh.mapView.renderer()")) !== "art") throw new Error("the map is not drawn with the art");
-  if (!(await b.eval(`document.documentElement.classList.contains("art") && !!document.querySelector("#btn-techs .ui-ptext") && !!document.querySelector("#empire canvas.ui-px")`))) {
-    throw new Error("the interface has no bitmap type or icons");
+  // The empire readout keeps the bitmap type — Vigil text (.ui-ptext) and a canvas icon/bar
+  // (.ui-px) — while the chrome (buttons, headings) is now DOM text in the bundled Inter web font,
+  // not the bitmap (docs/ART.md 11.6).
+  if (!(await b.eval(`document.documentElement.classList.contains("art") && !!document.querySelector("#empire .ui-ptext") && !!document.querySelector("#empire canvas.ui-px")`))) {
+    throw new Error("the art interface has no bitmap readout or icons");
   }
+  await until2(`document.fonts.check('600 16px "Inter"')`, "the Inter web font to load");
+  if (await b.eval(`!!document.querySelector("#btn-techs .ui-ptext")`)) throw new Error("a menu button still renders in the bitmap font, not Inter");
+  if (!/inter/i.test(await b.eval(`getComputedStyle(document.querySelector("#btn-techs")).fontFamily`))) throw new Error("the chrome buttons are not set in Inter");
   await until2("window.ffh.mapView.art.settled()", "the art map drawn in full", 60000);
   const look = await b.eval(`(() => {
     const mv = window.ffh.mapView;

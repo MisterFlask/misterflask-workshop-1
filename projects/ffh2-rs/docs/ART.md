@@ -1108,17 +1108,27 @@ Promotion seal rims by family:
 
 ### 11.6 Typography
 
+- **Inter** (SIL OFL 1.1), the UI chrome face: a bundled web font — latin subset, variable weight,
+  `crates/ffh-play/assets/app/fonts/Inter.woff2` (licence beside it as `OFL.txt`), served at
+  `/app/fonts/`; `style.css` declares it with `@font-face` (`font-display: swap`) and the token
+  `--sans` with a `system-ui` fallback. It renders the **DOM chrome** as real text, not a bitmap:
+  buttons (End turn included), panel and section headings (h2/h3/h4, weight 600), the menu, and the
+  dialogs. This is a **deliberate reversal** of the former "body text is a system serif, never a web
+  font" rule — the data-dense chrome wanted a clean UI face legible at small sizes. The `look.js`
+  text hook that used to draw these in Vigil now passes the text through unchanged.
 - **Vigil**, the hand-authored bitmap title font:
   - small-caps serif: cap height 7 px; small capitals (for lower-case input) 5 px; no descenders;
   - proportional advance of 4 to 6 px plus 1 px tracking; word space 3 px;
   - 1 px foot serifs on stems; strokes 1 px;
   - glyphs: A-Z, digits 0-9 (lining, 5x7), and `. , : ; ' - – ( ) / + × ! ? & #`;
   - drawn in vellum or cream, with an optional 1 px void drop shadow (down-right) over the map;
-  - used for: panel titles, city names on plaques, modal initials (at 2x), big numbers in the top
-    bar, the turn count.
+  - used for: city names on plaques, illuminated modal initials (at 2x), and the empire readout in
+    the top bar (gold, score, armageddon, the turn count). The short-label "Book" weight still
+    renders the readout's labels, the unit panel's stat numbers and the city screen's tile yields.
+    No longer the DOM headings or buttons — those are Inter.
 - **Tally**: a 3x5 pixel font of digits `0`-`9` and `+ − / ×`. Used for: stack counts, size chips,
   yield numbers on tiles, path turn numbers, combat odds on the map.
-- **Body text** is the system serif, never a web font:
+- **Body text** is the system serif (the UI chrome is Inter, above):
   - stack: `font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua",
     "URW Palladio L", Georgia, serif`;
   - sizes: 15 px body, 13 px small, line-height 1.4, `font-variant-numeric: lining-nums

@@ -199,7 +199,8 @@ export function renderTop() {
     const label = n ? `End turn (${n} open)` : "End turn";
     if (end.dataset.label !== `${label}|${!!look.art}`) {
       end.dataset.label = `${label}|${!!look.art}`;
-      fill(end, look.art ? iconEl("icon16/turn") : null, look.art ? pix(label, { font: "vigil", smallCaps: true }) : label);
+      // The label is plain DOM text (Inter via --sans), like every other button; the turn icon stays.
+      fill(end, look.art ? iconEl("icon16/turn") : null, label);
     }
     // Civ4's end-turn message: no group waits, so Enter (or Space) ends the turn; else Enter
     // selects the next group.
