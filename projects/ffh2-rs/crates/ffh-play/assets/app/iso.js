@@ -206,6 +206,24 @@ export class IsoMap {
       g.fillStyle = T.terrainColor(terrain);
       g.fill();
     }
+    // Hills: a soft dome of light-over-dark implies raised ground, over any terrain colour,
+    // without moving the tile (units and overlays stay anchored at the flat centre). Peaks get
+    // their mountain in drawFeatures instead.
+    if (map.plot_type[c.k] === this.plotTypes().hills) {
+      g.save();
+      this.diamond(g, c.sx, c.sy);
+      g.clip();
+      // A bright, tight crown of light high on the tile fading to a dark lower rim reads as a
+      // convex, sunlit mound.
+      const grad = g.createRadialGradient(c.sx, c.sy - TH * 0.4, TW * 0.08, c.sx, c.sy + TH * 0.35, TW * 0.66);
+      grad.addColorStop(0, "rgba(255,246,222,0.32)");
+      grad.addColorStop(0.34, "rgba(255,246,222,0.07)");
+      grad.addColorStop(0.62, "rgba(0,0,0,0)");
+      grad.addColorStop(1, "rgba(0,0,0,0.36)");
+      g.fillStyle = grad;
+      g.fillRect(c.sx - TW / 2, c.sy - TH / 2, TW, TH);
+      g.restore();
+    }
     // A faint tile outline keeps the grid legible without reading as a hard lattice.
     this.diamond(g, c.sx, c.sy);
     g.strokeStyle = "rgba(10,13,18,0.16)";
