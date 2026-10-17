@@ -54,7 +54,7 @@ export const PRESETS = {
     saturation: 1.02,
     contrast: 1.06,
     grain: 0.035,
-    vignette: 0.22,
+    vignette: 0.14,
     paint: 1,
     bands: 0.55,
     wrapLight: 0.35,

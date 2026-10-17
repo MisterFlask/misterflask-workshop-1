@@ -177,12 +177,14 @@ export class World {
     const y0 = Math.floor(v);
     const fx = smoother(u - x0);
     const fy = smoother(v - y0);
-    let h = 0, hill = 0, peak = 0, water = 0, ice = 0, voidW = 0;
+    let h = 0, hill = 0, peak = 0, water = 0, ice = 0, voidW = 0, sand = 0;
     for (let j = 0; j < 2; j++) {
       for (let i = 0; i < 2; i++) {
         const k = this.kindAt(x0 + i, y0 + j);
         const wgt = (i ? fx : 1 - fx) * (j ? fy : 1 - fy);
         h += wgt * BASE[k];
+        const gi = this.index(x0 + i, y0 + j);
+        if (gi >= 0 && (this.ground[gi] === GROUND.DESERT || this.ground[gi] === GROUND.BURNING_SANDS) && k === KIND.LAND) sand += wgt;
         if (k === KIND.HILLS) hill += wgt;
         else if (k === KIND.PEAK) {
           peak += wgt;
@@ -196,10 +198,18 @@ export class World {
     // Gentle undulation of the lowlands; rough sea floor.
     h += land * 0.05 * this.fbm(mx, my, 1.1, 40, -20, 3);
     h += water * 0.06 * this.fbm(mx, my, 0.9, -11, 4, 3);
+    if (sand > 0.05) {
+      // Dunes: wind-combed ridges, sharp crest and long back slope, wandering with the noise.
+      const ph = 2 * Math.PI * (mx * this.freq(1.25) + my * 0.55) + 2.6 * this.n2(mx, my, 0.6, 12.5, -4.1);
+      const crest = Math.pow(0.5 + 0.5 * Math.sin(ph), 3);
+      h += smoothstep(0.05, 0.8, sand) * 0.045 * crest * (0.6 + 0.4 * this.n2(mx, my, 1.4, -2.2, 7.7));
+    }
     if (hill > 0) {
-      // Rolling hills: a raised shoulder with crests of ridged noise.
+      // Rolling hills: a low shoulder under the hill country, the rounded domes of the hill plots
+      // (they overlap into ridges where hills neighbour), crests of ridged noise on top.
       const r = this.ridged(mx, my, 1.6, 5.2, -3.4, 3);
-      h += smoothstep(0, 1, hill) * (0.19 + 0.2 * r);
+      h += smoothstep(0, 1, hill) * (0.06 + 0.07 * r);
+      h += this.domes(mx, my) * (0.8 + 0.35 * r);
     }
     if (peak > 0) {
       // Mountains: ridged massif, plus a summit near each peak plot's centre.
@@ -247,6 +257,24 @@ export class World {
 
   ridged(mx, my, f, ox, oy, oct) {
     return ridged2p(mx * this.freq(f) + ox, my * f + oy, this.period(f), oct);
+  }
+
+  /** The rounded domes of the hill plots near (mx, my) (soft sum: overlapping domes merge). */
+  domes(mx, my) {
+    let s = 0;
+    const cx = Math.floor(mx);
+    const cy = Math.floor(my);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const i = this.index(cx + dx, cy + dy);
+        if (i < 0 || (this.kind[i] !== KIND.HILLS && this.kind[i] !== KIND.PEAK)) continue;
+        const px = cx + dx + 0.5 + this.peakJitter[i * 2] * 1.6;
+        const py = cy + dy + 0.5 + this.peakJitter[i * 2 + 1] * 1.6;
+        const t = clamp(1 - Math.hypot(mx - px, my - py) / 0.78, 0, 1);
+        s += 0.34 * t * t * (3 - 2 * t);
+      }
+    }
+    return s / (1 + s * 1.1);
   }
 
   /** The summit cones of the peak plots near (mx, my). */
@@ -428,7 +456,7 @@ function meander(pts) {
     const l = Math.hypot(tx, ty) || 1;
     tx /= l;
     ty /= l;
-    const o = 0.07 * noise2(p[0] * 2.3 + 0.5, p[1] * 2.3 - 0.5);
+    const o = 0.13 * noise2(p[0] * 1.7 + 0.5, p[1] * 1.7 - 0.5) + 0.04 * noise2(p[0] * 5.1 - 2.5, p[1] * 5.1 + 1.5);
     return [p[0] - ty * o, p[1] + tx * o];
   });
 }

@@ -245,7 +245,7 @@ export class Scene {
       if (h0 < h1) pts.reverse();
       let along = 0;
       // Wider than the bed: the banks cut the water's edge (an organic shore line).
-      const width = 0.15;
+      const width = 0.125;
       const ring = [];
       for (let k = 0; k < pts.length; k++) {
         const p = pts[k];

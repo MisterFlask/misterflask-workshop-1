@@ -734,7 +734,7 @@ void main() {
   // Colour by depth: clear teal over the shelf, deepening to indigo over the ocean.
   vec3 shallow = srgb(vec3(0.20, 0.42, 0.40));
   vec3 mid = srgb(vec3(0.10, 0.27, 0.34));
-  vec3 deep = srgb(vec3(0.05, 0.12, 0.21));
+  vec3 deep = srgb(vec3(0.07, 0.16, 0.27));
   vec3 c = mix(shallow, mid, smoothstep(0.0, 0.1, depth));
   c = mix(c, deep, smoothstep(0.1, 0.38, depth));
   // Painted variation of the water's body.
