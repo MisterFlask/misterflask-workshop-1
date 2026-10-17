@@ -1,5 +1,5 @@
 //! Staged situations for testing the clients (`ffh-play stage
-//! capture|attack|automoves|load|trade|automate|election|settlement DIR`,
+//! capture|attack|automoves|load|trade|automate|election|settlement|corrupt DIR`,
 //! and the transports' tests): a saved game at a human control point arranged with rules calls,
 //! so that a client can be tried on a situation a fresh game reaches only by chance (a captured
 //! city's keep/raze decision, an attack, the AutoMoves rule between commands, the transport
@@ -474,4 +474,69 @@ pub fn settlement(dir: &Path) -> Result<StagedSettlement, String> {
     let settler = g.player_init_unit(h, d.t::<UnitType>("UNIT_SETTLER"), x, y, None, None);
     let paths = s.save("settlement").map_err(|e| format!("save: {e:?}"))?;
     Ok(StagedSettlement { save: paths.save, settler, x, y, turn: s.g.game_turn() })
+}
+
+/// A saved game at a human control point in a real mid-game world, for the 3D renderer's vertical
+/// slice (docs/R3D.md): seed 11, a standard map at low sea level, the human playing the Ljosalfar
+/// against six AI civilizations, 200 turns of AI autoplay; then the heartland of the evil
+/// civilization with the most cities is corrupted by FfH2's own hell rule -- every land plot it
+/// owns within two plots of its capital takes the plot counter an Infernal owner gives its plots
+/// each turn (`plot_change_plot_counter(p, 100)`, CvGameUtils.doHellTerrain's Infernal branch):
+/// the terrains turn to their hell forms and the resources to their hell kinds, as in play.
+pub struct StagedCorrupt {
+    pub save: PathBuf,
+    /// The corrupted civilization and its capital.
+    pub player: PlayerId,
+    pub x: i32,
+    pub y: i32,
+    /// Plots whose counter was raised.
+    pub plots: usize,
+    pub turn: i32,
+}
+
+impl StagedCorrupt {
+    pub fn to_json(&self) -> Json {
+        crate::jobj! { "stage" => "corrupt", "save" => self.save.display().to_string(), "player" => self.player.0 as i64, "x" => self.x, "y" => self.y, "plots" => self.plots as i64, "turn" => self.turn }
+    }
+}
+
+pub fn corrupt(dir: &Path) -> Result<StagedCorrupt, String> {
+    let d = ffh_data::global();
+    let mut ng = NewGame::new(d, 11);
+    ng.opponents = 6;
+    ng.world = d.t("WORLDSIZE_STANDARD");
+    ng.sea_level = d.t("SEALEVEL_LOW");
+    ng.civ = Some(d.t::<CivilizationType>("CIVILIZATION_LJOSALFAR"));
+    let opts = SessionOptions { saves_dir: Some(dir.to_path_buf()), autosave_keep: 0, journal: false, ..Default::default() };
+    let mut s = Session::new_game(&ng, Arc::new(AdvisorAnswerer), opts).map_err(|e| format!("new game: {e:?}"))?;
+    let advance = |s: &mut Session| match s.advance(&mut |_| {}) {
+        Stop::Human => Ok(()),
+        other => Err(format!("the game stopped: {other:?}")),
+    };
+    advance(&mut s)?;
+    match s.execute(&Command::AutoPlay { turns: 200 }) {
+        Ok(CmdOk::Applied { .. }) => {}
+        other => return Err(format!("autoplay -> {other:?}")),
+    }
+    advance(&mut s)?;
+    let evil = d.t::<AlignmentType>("ALIGNMENT_EVIL");
+    let g = &mut s.g;
+    let player = g
+        .player_ids()
+        .filter(|&p| g.players[p].alive && g.players[p].alignment == Some(evil) && g.player_get_capital_city(p).is_some())
+        .max_by_key(|&p| (g.players[p].cities.len(), std::cmp::Reverse(p.0)))
+        .ok_or("no evil civilization with a capital")?;
+    let capital = g.player_get_capital_city(player).ok_or("no capital")?;
+    let (cx, cy) = (g.cities[capital].x, g.cities[capital].y);
+    let mut plots = 0;
+    for p in g.map.plot_ids() {
+        let (x, y) = g.map.xy(p);
+        if g.plot_distance(x, y, cx, cy) <= 2 && g.map.plots[p].owner == Some(player) && !g.plot_is_water(p) {
+            g.plot_change_plot_counter(p, 100);
+            plots += 1;
+        }
+    }
+    let turn = s.g.game_turn();
+    let paths = s.save("corrupt").map_err(|e| format!("save: {e:?}"))?;
+    Ok(StagedCorrupt { save: paths.save, player, x: cx, y: cy, plots, turn })
 }

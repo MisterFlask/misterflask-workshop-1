@@ -114,6 +114,16 @@ fn imports(src: &str) -> Vec<String> {
             }
             continue;
         }
+        // A module loaded on demand (`await import("./r3d/map3d.js")`, the 3D renderer).
+        if let Some(i) = l.find("await import(") {
+            let s = &l[i + "await import(".len()..];
+            if let Some(q) = s.chars().next().filter(|c| *c == '"' || *c == '\'') {
+                if let Some(end) = s[1..].find(q) {
+                    out.push(s[1..1 + end].to_string());
+                }
+            }
+            continue;
+        }
         let spec = if l.starts_with("import ") || l.starts_with("export ") || l.starts_with('}') {
             match l.rfind(" from ") {
                 Some(i) => &l[i + 6..],

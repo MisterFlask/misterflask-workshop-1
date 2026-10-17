@@ -15,7 +15,8 @@
 // spectator mode (play, pause, step, stop), and the trade screen (`stage trade`: gold offered and
 // accepted). The art client: the map drawn with the original pixel art (its worker, the view
 // drawn in full, a frame's time, the zoom steps and the chart, the bitmap type), Tools → Options
-// and `?renderer=flat` for the flat renderer. Phase 7: the automate buttons (`stage automate`: a
+// and `?renderer=flat` for the flat renderer; `?renderer=3d`, the experimental 3D renderer (picking,
+// selection, zoom, pan, layers). Phase 7: the automate buttons (`stage automate`: a
 // worker automated with a click, a scout exploring by its hotkey), the secretary general's election
 // popup (`stage election`) and the Kuriotates city-or-settlement decision (`stage settlement`). It
 // fails on any console error, page error, failed
@@ -368,7 +369,7 @@ async function artClient() {
   await dialog("Tools");
   await click("#tool-options");
   await dialog("Options");
-  await click("#option-art-renderer");
+  await click("#option-flat-renderer");
   await until2(`window.ffh.mapView.renderer() === "flat"`, "the flat renderer (Options)");
   await click("#option-art-renderer");
   await until2(`window.ffh.mapView.renderer() === "art"`, "the art renderer again (Options)");
@@ -386,6 +387,87 @@ async function flatRenderer(url) {
   await answerPopups(false);
   await shot("flat-renderer");
   steps.push("?renderer=flat: the flat map of P5");
+}
+
+/** `?renderer=3d`: the experimental 3D renderer (docs/R3D.md) on the same game: its WebGL frame is
+ *  drawn and not blank, picking through the relief finds the plot under every plot's screen
+ *  point, a click selects a unit, the hover follows the mouse, the zoom steps and a drag pan, the
+ *  political layer, and back to the 2D art. Software rendering is slow, so the frame loop is idle
+ *  (no animation) and the internal resolution halved. */
+async function renderer3d(url) {
+  const cfg = encodeURIComponent(JSON.stringify({ animate: false, renderScale: 0.5 }));
+  await b.goto(`${url}/?renderer=3d&r3d=${cfg}`);
+  await until2("window.ffh && window.ffh.ready", "the client to boot (3d)");
+  await waitHuman("the game in the 3D renderer");
+  await answerPopups(false);
+  await until2(`window.ffh.mapView.renderer() === "3d" && !!window.ffh.mapView.r3d.cam`, "the 3D renderer's first frame", 180000);
+  const frame = await b.eval(`(() => {
+    const r = window.ffh.mapView.r3d;
+    r.render(1);
+    const gl = r.gl;
+    const w = 48, h = 48, x = (r.canvas.width - w) >> 1, y = (r.canvas.height - h) >> 1;
+    const px = new Uint8Array(w * h * 4);
+    gl.readPixels(x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const colours = new Set();
+    for (let i = 0; i < px.length; i += 4) colours.add((px[i] << 16) | (px[i + 1] << 8) | px[i + 2]);
+    return { colours: colours.size, props: r.staticCount, units: r.unitCount };
+  })()`);
+  if (frame.colours < 16) throw new Error(`the 3D frame is nearly blank (${frame.colours} colours mid-view)`);
+  // Picking: the plot under each in-view plot's centre on screen is that plot (the ground's relief
+  // and the camera's perspective do not shift the logical grid).
+  const pick = await b.eval(`(() => {
+    const mv = window.ffh.mapView, r = mv.r3d, S = window.ffh.S;
+    const c = mv.center();
+    let n = 0, bad = [];
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const x = ((c.x + dx) % S.map.w + S.map.w) % S.map.w, y = c.y + dy;
+      if (y < 0 || y >= S.map.h || S.map.vis[y * S.map.w + x] === 0) continue;
+      const p = r.screenOf(x, y);
+      if (p.x < 0 || p.y < 0 || p.x > mv.vw || p.y > mv.vh) continue;
+      const q = r.screenToMap(p.x, p.y);
+      n++;
+      if (!q || q.x !== x || q.y !== y) bad.push([x, y, q && [q.x, q.y]]);
+    }
+    return { n, bad };
+  })()`);
+  if (pick.n < 10 || pick.bad.length) throw new Error(`3D picking: ${pick.bad.length} of ${pick.n} plots picked wrong: ${JSON.stringify(pick.bad.slice(0, 5))}`);
+  // A click on one of our units selects it.
+  const mine = await b.eval(`(() => { const S = window.ffh.S; const u = S.view.units.find((u) => u.owner === S.view.me.player); return u ? { x: u.x, y: u.y } : null; })()`);
+  if (mine) {
+    await b.eval("window.ffh.units.clearSelection && window.ffh.units.clearSelection()");
+    const p = await plotPos(mine.x, mine.y);
+    await b.mouse(p.x, p.y);
+    await until2(`(() => { const s = window.ffh.S.sel; return !!s && s.x === ${mine.x} && s.y === ${mine.y}; })()`, "a click on a unit to select it (3D)");
+    // The hover follows the mouse.
+    await b.move(p.x + 3, p.y + 2);
+    await until2(`(() => { const h = window.ffh.mapView.overlay.hover; return !!h && h.x === ${mine.x} && h.y === ${mine.y}; })()`, "the hover on the unit's plot (3D)");
+  }
+  // The zoom steps (pixels a plot) and back; a drag pans.
+  const zooms = [];
+  for (const k of ["-", "-", "+", "+", "+", "-"]) {
+    await b.key(k);
+    zooms.push(await b.eval("window.ffh.mapView.cam.ts"));
+  }
+  if (JSON.stringify(zooms) !== JSON.stringify([72, 56, 72, 96, 128, 96])) throw new Error(`3D zoom steps: ${zooms}`);
+  const before = await b.eval("[window.ffh.mapView.cam.cx, window.ffh.mapView.cam.cy]");
+  await b.key("ArrowLeft");
+  const after = await b.eval("[window.ffh.mapView.cam.cx, window.ffh.mapView.cam.cy]");
+  if (before[0] === after[0]) throw new Error("the arrow key did not pan the 3D map");
+  await b.eval(`window.ffh.setLayer("political")`);
+  await until2("window.ffh.mapView.r3d.scene.overlayOpts.political === 1", "the political layer in 3D");
+  await b.eval(`window.ffh.setLayer("terrain")`);
+  await b.eval("window.ffh.mapView.r3d.render(1)");
+  await shot("renderer-3d");
+  // Back to the 2D art: the 3D canvas goes.
+  await b.eval(`window.ffh.setRenderer("art")`);
+  await until2(`window.ffh.mapView.renderer() === "art" && !document.querySelector("canvas.map3d")`, "the art renderer after the 3D one");
+  // A lost WebGL context (a driver reset) hands the map back to the 2D art.
+  await b.eval(`window.ffh.setRenderer("3d")`);
+  await until2(`window.ffh.mapView.renderer() === "3d" && !!window.ffh.mapView.r3d.cam`, "the 3D renderer again", 180000);
+  const canLose = await b.eval(`(() => { const x = window.ffh.mapView.r3d.gl.getExtension("WEBGL_lose_context"); if (x) x.loseContext(); return !!x; })()`);
+  if (canLose) await until2(`window.ffh.mapView.renderer() === "art" && !document.querySelector("canvas.map3d")`, "the art renderer after the 3D context was lost");
+  else await b.eval(`window.ffh.setRenderer("art")`);
+  steps.push(`?renderer=3d: a frame of ${frame.colours} colours mid-view (${frame.props} props, ${frame.units} unit figures), ${pick.n} plots picked right through the relief, click-select, hover, zoom ${zooms.join(" ")}, pan, political layer, back to the art${canLose ? ", a lost WebGL context falls back to the art" : " (no WEBGL_lose_context: context loss not checked)"}`);
 }
 
 /** Records the page's POST bodies in `window.__posts` (from now on). */
@@ -1158,6 +1240,7 @@ async function main() {
     await shiftWaypoints(bin, saves);
     await shiftWaypoints(bin, saves, "goto");
     await flatRenderer(server.url);
+    await renderer3d(server.url);
     await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

@@ -158,6 +158,10 @@ function clearGame() {
   units.renderPanel();
 }
 
+/** The dialogs that belong to one game (closed when another game arrives); the load, options,
+ *  tools and crash dialogs stay. */
+const GAME_DIALOGS = ["city", "decision", "election", "event", "research", "vote", "promotions", "spells", "trade", "diplomacy", "cities", "civics", "finance", "religion", "techtree", "inspect", "gate", "over", "stuck", "takeover", "save"];
+
 /** Fetches the view (and the map when its revision changed) when the status says it changed. */
 async function refreshView(st) {
   const gk = st.game?.journal ?? st.game?.dir ?? "memory";
@@ -177,6 +181,12 @@ async function refreshView(st) {
     // were the last game's.
     clearDismissed();
     units.clearWaypoints();
+    // The last game's dialogs are about its cities, units and questions, which this game does
+    // not have: close them. A deferred popup still open (the city just founded asking what to
+    // build, when a game is loaded over it) asked the server about a city that is gone ("no
+    // such object") and, open, held back the new game's own popups. The popup loop then
+    // carries on with this game's queue.
+    for (const tag of GAME_DIALOGS) closeTag(tag);
   }
   setView(view);
   if (newGame || !S.map || st.map_rev !== S.map.map_rev) {
@@ -580,6 +590,8 @@ async function boot() {
   // unit sprites on team rings. It owns its own projection, so the art/flat switches leave it be.
   // Chosen with `?renderer=iso` or the remembered Tools → Options choice.
   if (rendererChoice() === "iso") mapView.useIso(true);
+  // The experimental 3D renderer (docs/R3D.md): loaded on demand; without WebGL2 it falls back.
+  if (rendererChoice() === "3d") use3d();
   // The art loads beside the data; the page works meanwhile (and without it). lookLoaded() builds
   // the art worker, which bakes in the engine's type ordering (from /api/data) once, so it must run
   // after setLookData(): otherwise, if the static art bundle wins the race against the server-
@@ -611,6 +623,11 @@ function lookLoaded() {
 /** Switches the map's renderer ("art", "iso" or "flat"; Tools → Options). The isometric renderer
  *  owns the map on its own; leaving it turns it off and falls back to art or flat. */
 function setRenderer(r) {
+  if (r === "3d") {
+    use3d();
+    return;
+  }
+  if (mapView.r3d) mapView.useR3d(false);
   if (r === "iso") {
     mapView.useIso(true);
     return;
@@ -618,6 +635,21 @@ function setRenderer(r) {
   if (mapView.iso) mapView.useIso(false);
   mapView.useArt(r === "art" && !!look.art);
 }
+
+/** Turns the 3D renderer on; when it cannot run, says so and draws with the art (or flat). */
+async function use3d() {
+  if (await mapView.useR3d(true)) return;
+  toast("The 3D renderer cannot run in this browser (it needs WebGL2); using the 2D map.", "error");
+  if (look.art) mapView.useArt(true);
+}
+
+// The 3D renderer lost its WebGL context (a driver reset): the 2D map until the page is reloaded.
+window.addEventListener("ffh:r3d-lost", () => {
+  if (!mapView.r3d) return;
+  mapView.useR3d(false);
+  if (look.art) mapView.useArt(true);
+  toast("The 3D renderer lost its graphics context; using the 2D map until the page is reloaded.", "error");
+});
 
 window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen, look, setRenderer };
 boot();

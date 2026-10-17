@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ffh-play 3D lab</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #0d0b0a; color: #e8e0cc; font: 13px system-ui, sans-serif; }
+  #mapwrap { position: absolute; inset: 0; overflow: hidden; }
+  #mapwrap canvas.map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+</style>
+<script type="module" src="/lab/lab.js"></script>
+</head>
+<body>
+<!-- The 3D lab (docs/R3D.md "Lab"): the 3D renderer on synthetic scenes. Served by
+     tools/r3d-lab.mjs, not by ffh-play. -->
+<div id="mapwrap"><canvas class="map"></canvas></div>
+</body>
+</html>

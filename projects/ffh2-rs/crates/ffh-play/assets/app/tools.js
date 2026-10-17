@@ -11,7 +11,7 @@ import { openModal, closeTag } from "./modals.js";
 import { run, sending } from "./commands.js";
 import { rawRequest, loadScreen } from "./screens.js";
 import { plotIndex } from "./tiles.js";
-import { look, setRendererChoice } from "./look.js";
+import { look, setRendererChoice, EXPERIMENTAL_3D } from "./look.js";
 
 /** The tools menu. */
 export function openTools() {
@@ -298,12 +298,14 @@ export function openOptions() {
     ["art", "Pixel art (2D)", artFailed || "The 2D pixel-art map"],
     ["iso", "Isometric 2.5D", "Songs-of-Conquest-style isometric map (docs/art/SOC_DIRECTION.md)"],
     ["flat", "Flat (debug)", "The flat debugging renderer (colours, glyphs, labels)"],
+    ...(EXPERIMENTAL_3D ? [["3d", "3D painterly (experimental)", "The experimental 3D renderer (docs/R3D.md); needs WebGL2"]] : []),
   ].map(([val, label, title]) =>
     h(
       "label.toggle",
       { title },
       h("input", {
         type: "radio",
+        id: `option-${val}-renderer`,
         name: "option-renderer",
         value: val,
         disabled: val === "art" && !look.art,
