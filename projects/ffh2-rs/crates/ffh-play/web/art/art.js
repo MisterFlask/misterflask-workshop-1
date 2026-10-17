@@ -1057,7 +1057,9 @@ export class Art {
     const chipW = size.length * 4 + 1;
     const nameW = mode === 'full' && city.name ? this.measureText(city.name, 'vigil', true) : 0;
     const turns = mode === 'full' && city.own && city.turns != null ? String(city.turns) : '';
-    const turnsW = turns ? this.measureText(turns, 'tally') + 2 : 0;
+    // the production glyph (a 5 px mallet) before the turns, so the digit cannot pass for a count
+    const glyph = turns && this.hasSprite('ui/plaque_production') ? 6 : 0;
+    const turnsW = turns ? glyph + this.measureText(turns, 'tally') + 2 : 0;
     const w = chipW + (nameW ? nameW + 4 : 1) + turnsW + 1;
     const x0 = x + Math.round(16 - w / 2) * s, y0 = y + 29 * s;
     ctx.fillStyle = this.css('5');
@@ -1070,7 +1072,11 @@ export class Art {
     ctx.fillRect(x0, y0, chipW * s, 7 * s);
     this.drawText(ctx, x0 + 1 * s, y0 + 6 * s, size, { font: 'tally', color: charge });
     if (nameW) this.drawText(ctx, x0 + (chipW + 2) * s, y0 + 6 * s, city.name, { font: 'vigil', color: city.capital && city.own ? '8' : '7', smallCaps: true });
-    if (turns) this.drawText(ctx, x0 + (chipW + nameW + 4) * s, y0 + 6 * s, turns, { font: 'tally', color: '6' });
+    if (turns) {
+      const tx = x0 + (chipW + nameW + 4) * s;
+      if (glyph) this.drawSprite(ctx, tx, y0 + s, 'ui/plaque_production');
+      this.drawText(ctx, tx + glyph * s, y0 + 6 * s, turns, { font: 'tally', color: '6' });
+    }
   }
 
   // ---------------------------------------------------------------- text and icons

@@ -828,8 +828,9 @@ meant to be dark or faded.
 
 Below the city, overlapping the tile's bottom edge by 3 px: a navy plate 7 px tall. At the left a
 5x7 **size chip** in the owner's field colour with the population in the Tally font; then the name
-in Vigil in cream (white for your capital); at default zoom your cities add the production glyph and
-turns. At survey zoom only the chip is drawn. This is the references' "1 Rome" label.
+in Vigil in cream (white for your capital); at default zoom your cities add the production glyph (a
+5 px mallet, `ui/plaque_production`) and the turns, so the digit cannot pass for a unit count. At
+survey zoom only the chip is drawn. This is the references' "1 Rome" label.
 
 ---
 

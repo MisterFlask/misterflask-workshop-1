@@ -468,3 +468,11 @@ R.
 ..................................
 ..................................
 ..................................
+
+= ui/plaque_production 5x5 0,0
+: note the production glyph on a city plaque, before the turns (docs/ART.md 9.4): a mallet, 5 px to fit the plate
+66665
+55554
+..i..
+..i..
+..i..
