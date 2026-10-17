@@ -10,7 +10,7 @@
 
 import { S, me, tname } from "../state.js";
 import * as T from "../tiles.js";
-import { mul, perspective, lookAt, invert, xform4, ortho, vnorm, clamp, lerp } from "./math.js";
+import { mul, perspective, lookAt, invert, xform4, ortho, vnorm, clamp, lerp, smoothstep } from "./math.js";
 import { World, SEA } from "./world.js";
 import { Pipeline } from "./pipeline.js";
 import { Scene } from "./scene.js";
@@ -430,6 +430,7 @@ export class Map3D {
       uFogWar: cfg.fogWar,
       uStylize: cfg.stylize,
       uClouds: cfg.clouds,
+      uDabs: cfg.dabs ?? 1,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
       uWind: cfg.wind,
@@ -479,6 +480,10 @@ export class Map3D {
     fr.scale = v.dpr * scale;
     // The brush grows with the zoom: the painted marks belong to the world, not to the screen.
     fr.paintZoom = clamp(this.ts / 96, 0.6, 1.7);
+    // The filter erases what is narrower than its radius: restrained at the gameplay zooms (where
+    // a road or a pool's rim is a few pixels), fuller close up (where the same things are large
+    // enough to become painted patches).
+    fr.paintStrength = 0.35 + 0.65 * smoothstep(100, 190, this.ts);
     const rect = this.visibleRect(cam);
     const map = v.map;
     const copies = [];

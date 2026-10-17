@@ -33,6 +33,7 @@ uniform float uMist;
 uniform float uFogWar;
 uniform float uStylize;
 uniform float uClouds;
+uniform float uDabs;
 uniform sampler2D uShadowMap;
 uniform mat4 uShadowMat;
 uniform float uShadowOn;
@@ -283,7 +284,7 @@ vec3 masses(vec2 m, vec3 dark, vec3 base, vec3 light, float scale) {
   c = mix(c, light, smoothstep(0.38, 0.78, big) * smoothstep(0.45, 0.8, mid) * 0.5);
   float d1 = mdabs(m, 2.4 * scale) - 0.5;
   float d2 = mdabs(m + 7.3, 6.5 * scale) - 0.5;
-  float k = (d1 * 0.42 + d2 * 0.22) * uStylize;
+  float k = (d1 * 0.42 + d2 * 0.22) * uStylize * uDabs;
   c = k > 0.0 ? mix(c, light, k) : mix(c, dark, -k);
   return c;
 }
@@ -1146,6 +1147,25 @@ void main() {
   acc.a *= mix(1.0, 0.35, uGhost) * smoothstep(0.2, 0.5, v);
   if (acc.a < 0.003) discard;
   o = vec4(acc.rgb, acc.a);
+}`;
+
+/** Units behind scenery (a forest canopy, a house, a hill): their silhouettes in the owner's
+ *  colour, drawn where the depth test fails (GREATER), so a unit is never lost from sight. */
+export const GHOST_FS = `
+in vec3 vWorld;
+in vec3 vNormal;
+in vec4 vTeam;
+flat in vec4 vMat;
+out vec4 o;
+void main() {
+  vec3 n = normalize(vNormal);
+  if (!gl_FrontFacing) n = -n;
+  vec3 V = normalize(uEye - vWorld);
+  float rim = pow(1.0 - abs(dot(n, V)), 2.0);
+  vec3 c = mix(vTeam.rgb * 0.75, vec3(1.0, 0.97, 0.9), rim * 0.6);
+  // A fine diagonal hatching: it reads as "seen through", not as a solid painted figure.
+  float hatch = step(0.5, fract((gl_FragCoord.x + gl_FragCoord.y) * 0.25));
+  o = vec4(c, (0.38 + 0.4 * rim) * (0.75 + 0.25 * hatch));
 }`;
 
 /** Flat overlay meshes laid on the ground (team rings, path lines): colour from the vertex,

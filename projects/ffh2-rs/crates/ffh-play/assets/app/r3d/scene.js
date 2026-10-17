@@ -455,6 +455,21 @@ export class Scene {
     gl.bindVertexArray(null);
   }
 
+  /** The unit figures again (the units layer), for their x-ray silhouettes. */
+  drawUnitGhosts(prog, U) {
+    const gl = this.gl;
+    prog.use().set(U).set(this.mapUniforms());
+    for (const copy of this.copies) {
+      prog.set({ uCopyX: copy });
+      for (const b of this.layers.units) {
+        if (!this.chunkVisible(b.cx, b.cy, copy, 1.5, BUCKET)) continue;
+        gl.bindVertexArray(b.bucket.vao);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, b.batch.count, b.bucket.n);
+      }
+    }
+    gl.bindVertexArray(null);
+  }
+
   drawOverlay(prog, U) {
     const world = this.world;
     if (!world || !this.marks) return;

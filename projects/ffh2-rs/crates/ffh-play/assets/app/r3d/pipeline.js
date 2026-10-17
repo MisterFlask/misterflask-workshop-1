@@ -44,6 +44,7 @@ export class Pipeline {
       finish: P("finish", FULLSCREEN_VS, C + SH.FINISH_FS),
       overlay: P("overlay", C + SH.TERRAIN_VS, C + SH.OVERLAY_FS),
       marker: P("marker", C + SH.MARKER_VS, C + SH.MARKER_FS),
+      ghost: P("ghost", C + SH.PROP_VS, C + SH.GHOST_FS),
       particle: P("particle", C + SH.PARTICLE_VS, SH.PARTICLE_FS),
       blit: P("blit", FULLSCREEN_VS, SH.BLIT_FS),
     };
@@ -248,7 +249,7 @@ export class Pipeline {
           uRadius: Math.min(8, cfg.kuwaharaRadius * (fr.scale ?? 1) * (fr.paintZoom ?? 1)),
           uSharp: cfg.sharp,
           uAniso: cfg.aniso,
-          uStrength: cfg.kuwahara,
+          uStrength: cfg.kuwahara * (fr.paintStrength ?? 1),
         });
       });
       painted = this.t.ldrB;
@@ -295,6 +296,9 @@ export class Pipeline {
         scene.drawMarkers(this.p.marker, { ...U, uGhost: ghost });
       }
       gl.disable(gl.POLYGON_OFFSET_FILL);
+      // Units behind scenery: their silhouettes, where something stands in front of them.
+      gl.depthFunc(gl.GREATER);
+      scene.drawUnitGhosts(this.p.ghost, U);
       gl.depthFunc(gl.LEQUAL);
       if (cfg.particles) {
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
