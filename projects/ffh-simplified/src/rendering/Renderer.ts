@@ -363,13 +363,23 @@ export class Renderer {
       const centerX = screenX + TILE_SIZE / 2;
       const centerY = screenY + TILE_SIZE / 2;
 
+      const spriteTypeId = this.pickLegionSpriteSoldierType(legion);
+
+      // HD path: when a high-res "Songs of Conquest"-style sprite exists for this
+      // unit, draw it large (overflowing the tile upward) with a separate, team-tinted
+      // banner layer behind it. Falls back to the classic marker for every other unit.
+      const hdSprite = spriteTypeId ? getSprite(`hd/${spriteTypeId}.png`) : null;
+      if (hdSprite) {
+        this.renderLegionHD(legion, screenX, screenY, centerX, hdSprite);
+        continue;
+      }
+
       // Legion marker (circle with faction color)
       ctx.fillStyle = FACTION_COLORS[legion.owner] || '#888';
       ctx.beginPath();
       ctx.arc(centerX, centerY, TILE_SIZE / 3, 0, Math.PI * 2);
       ctx.fill();
 
-      const spriteTypeId = this.pickLegionSpriteSoldierType(legion);
       const soldierSprite = spriteTypeId ? getSprite(SOLDIER_TYPES[spriteTypeId].sprite) : null;
 
       if (soldierSprite) {
@@ -417,6 +427,68 @@ export class Renderer {
         ctx.arc(centerX, centerY, TILE_SIZE / 3 + 3, 0, Math.PI * 2);
         ctx.stroke();
       }
+    }
+  }
+
+  // Draws a high-res unit at ~2 tiles tall, standing on the tile's bottom edge, with a
+  // team-tinted banner behind it (one neutral banner asset, recolored per owner). HD art
+  // is illustrative, so smoothing is enabled for these draws only, then restored.
+  private renderLegionHD(
+    legion: Legion,
+    screenX: number,
+    screenY: number,
+    centerX: number,
+    sprite: HTMLImageElement
+  ): void {
+    const { ctx } = this;
+    const prevSmoothing = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = true;
+
+    const feetY = screenY + TILE_SIZE; // stand on the tile's bottom edge
+    const unitH = TILE_SIZE * 2;        // ~64px tall: overflows the tile upward
+    const unitW = unitH * (sprite.naturalWidth / sprite.naturalHeight);
+    const unitX = centerX - unitW / 2;
+    const unitY = feetY - unitH;
+
+    // Banner layer: per-player color comes from a separate tinted asset, drawn behind-left.
+    const bannerSprite = getSprite(
+      legion.owner === 'player' ? 'hd/banner_player.png' : 'hd/banner_enemy.png'
+    );
+    if (bannerSprite) {
+      const bannerH = TILE_SIZE * 2.1;
+      const bannerW = bannerH * (bannerSprite.naturalWidth / bannerSprite.naturalHeight);
+      const bannerX = centerX - unitW * 0.5 - bannerW * 0.4;
+      const bannerY = feetY - bannerH;
+      ctx.drawImage(bannerSprite, bannerX, bannerY, bannerW, bannerH);
+    }
+
+    ctx.drawImage(sprite, unitX, unitY, unitW, unitH);
+    ctx.imageSmoothingEnabled = prevSmoothing;
+
+    // Soldier-count badge (same as the classic path).
+    const badgeSize = 10;
+    const badgeX = screenX + TILE_SIZE - badgeSize - 1;
+    const badgeY = screenY + TILE_SIZE - badgeSize - 1;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    this.drawRoundedRectPath(badgeX, badgeY, badgeSize, badgeSize, 3);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      legion.soldiers.length.toString(),
+      badgeX + badgeSize / 2,
+      badgeY + badgeSize / 2 + 1
+    );
+
+    // Movement cue for the player: a small green ground-ring at the unit's feet.
+    if (legion.owner === 'player' && legion.movementRemaining > 0) {
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(centerX, feetY - 2, TILE_SIZE * 0.32, TILE_SIZE * 0.12, 0, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
 
