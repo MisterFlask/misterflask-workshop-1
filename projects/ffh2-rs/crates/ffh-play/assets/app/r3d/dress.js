@@ -149,6 +149,9 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         return j >= 0 && cityAt.has(j);
       };
       ctx.cityBehind = { n: cityN(0), e: cityN(1), w: cityN(-1) };
+      // A city on any neighbouring plot (wide crowns keep clear of its buildings).
+      ctx.cityNear = false;
+      for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
         const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);

@@ -38,7 +38,9 @@
 // y, i (plot index), kind (world.js KIND), feat (FEAT), ground (GROUND), hills, peak, held
 // (something stands at the centre), city, unit, owner (player id or -1), civ, family, bonus and
 // improvement (type names or null), world, coast ([[dx, dz], ...] plot-local directions of the
-// water around the plot: a harbour faces them; empty inland), river (a river runs along the plot).
+// water around the plot: a harbour faces them; empty inland), river (a river runs along the plot),
+// cityNear (a city stands on a neighbouring plot), cityBehind ({n, e, w}: a city on the plot north,
+// north-east, north-west: this plot stands between it and the camera).
 //
 // ctx always carries `r` (a seeded generator for the plot or object) and `name` (the type name).
 

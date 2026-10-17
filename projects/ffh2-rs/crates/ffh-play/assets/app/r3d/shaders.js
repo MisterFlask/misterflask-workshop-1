@@ -378,13 +378,16 @@ vec3 featureFloor(int f, vec3 c, vec2 m, inout vec3 emit) {
     return srgb(mix(mix(vec3(0.78, 0.86, 0.92), vec3(0.92, 0.95, 0.97), mnoise(m, 2.0)), vec3(0.55, 0.68, 0.78), crack * 0.7));
   }
   if (f == F_FLAMES) {
-    float fl = smoothstep(0.55, 0.85, mnoise(m + vec2(0.0, uTime * 0.4), 4.0));
-    emit += srgb(vec3(1.0, 0.45, 0.1)) * fl * 1.4;
-    return mix(c, srgb(vec3(0.12, 0.08, 0.06)), 0.6);
+    // Burning land: charred ground with embers glowing in it (the flames themselves are props),
+    // not pools of light.
+    float fl = smoothstep(0.78, 0.95, mnoise(m + vec2(0.0, uTime * 0.25), 7.0)) * smoothstep(0.35, 0.7, mnoise(m - 4.0, 1.3));
+    emit += srgb(vec3(1.0, 0.42, 0.1)) * fl * 0.7;
+    return mix(c, srgb(vec3(0.1, 0.07, 0.06)), 0.7);
   }
   if (f == F_OBSIDIAN) return mix(c, srgb(vec3(0.07, 0.06, 0.09)), 0.85);
   if (f == F_SOULS) {
-    emit += srgb(vec3(0.35, 0.7, 0.55)) * smoothstep(0.8, 0.95, mnoise(m + uTime * 0.05, 6.0)) * 0.5;
+    // Tormented souls: a faint, cold shimmer in grey ground (the wisps rising are particles).
+    emit += srgb(vec3(0.35, 0.7, 0.55)) * smoothstep(0.88, 0.98, mnoise(m + uTime * 0.05, 6.0)) * 0.22;
     return mix(c, srgb(vec3(0.20, 0.22, 0.24)), 0.5);
   }
   if (f == F_FALLOUT) return mix(c, srgb(vec3(0.35, 0.40, 0.18)), 0.45);

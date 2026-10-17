@@ -216,7 +216,7 @@ export function rasterLight(world, map, cities, strength = 1) {
       if (world.kind[i] === KIND.VOID) continue;
       if (isHell(world.ground[i])) pool(x + 0.5, y + 0.5, 0.7, "#ff3a18", 0.05);
       const f = world.feat[i];
-      if (f === FEAT.FLAMES || f === FEAT.VOLCANO) pool(x + 0.5, y + 0.5, 0.9, "#ff6a20", 0.3);
+      if (f === FEAT.FLAMES || f === FEAT.VOLCANO) pool(x + 0.5, y + 0.5, 0.8, "#ff6a20", 0.16);
       if (f === FEAT.ANCIENT) pool(x + 0.5, y + 0.5, 0.6, "#9affc0", 0.06);
       const b = map.bonus[i] >= 0 ? tname("BonusType", map.bonus[i]) ?? "" : "";
       const im = map.improvement[i] >= 0 ? tname("ImprovementType", map.improvement[i]) ?? "" : "";

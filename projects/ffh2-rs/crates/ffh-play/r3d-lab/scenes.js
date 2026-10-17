@@ -35,6 +35,16 @@ const LEGEND = {
   l: ["TERRAIN_DESERT", "PLOT_LAND", "FEATURE_FLOOD_PLAINS"],
   i: ["TERRAIN_OCEAN", "PLOT_OCEAN", "FEATURE_ICE"],
   v: ["TERRAIN_BROKEN_LANDS", "PLOT_PEAK", "FEATURE_VOLCANO"],
+  // Mixed grounds and features (for judging the catalog's mixes in their real placement).
+  w: ["TERRAIN_MARSH", "PLOT_LAND", "FEATURE_FOREST"],
+  k: ["TERRAIN_TUNDRA", "PLOT_LAND", "FEATURE_FOREST"],
+  K: ["TERRAIN_SNOW", "PLOT_HILLS", "FEATURE_FOREST"],
+  z: ["TERRAIN_DESERT", "PLOT_LAND", "FEATURE_SCRUB"],
+  q: ["TERRAIN_BROKEN_LANDS", "PLOT_LAND", "FEATURE_FOREST"],
+  r: ["TERRAIN_BURNING_SANDS", "PLOT_LAND", "FEATURE_FLAMES"],
+  O: ["TERRAIN_BROKEN_LANDS", "PLOT_LAND", "FEATURE_OBSIDIAN_PLAINS"],
+  g: ["TERRAIN_FIELDS_OF_PERDITION", "PLOT_LAND", "FEATURE_TORMENTED_SOULS"],
+  J: ["TERRAIN_GRASS", "PLOT_HILLS", "FEATURE_JUNGLE"],
 };
 
 /** A `map` reply from rows of legend chars (north first) and overlays:
@@ -212,4 +222,12 @@ export function settlements(data, civs, sizes = [2, 6, 12], imps = [], { walls =
   const map = buildMap(data, rows, { improvements, owners, cities });
   const view = buildView(data, { players: civs.map((civ) => ({ civ })), cities });
   return { map, view, focus: [w / 2, h / 2] };
+}
+
+/** Any map from legend rows (north first, equal lengths), dressed for real: forests, flora and
+ *  rocks as the game would place them. */
+export function fromRows(data, rows) {
+  const map = buildMap(data, rows);
+  const view = buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }] });
+  return { map, view, focus: [rows[0].length / 2, rows.length / 2] };
 }
