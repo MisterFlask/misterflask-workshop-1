@@ -15,15 +15,17 @@
 //     more than 24 -- shimmer from screen-space effects shows as a configuration scoring worse
 //     than the plain render.
 //
-// Software rendering (SwiftShader) is slow: a 1280x800 frame takes tens of seconds.
+// Software rendering (SwiftShader, the default: no GPU needed) is slow: a 1280x800 frame takes
+// tens of seconds. --gpu draws with the machine's GPU instead (Chromium's full headless mode); the
+// tool prints the WebGL renderer it got, so a fallback to software shows.
 
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { ROOT, parseArgs } from "./web-lib.mjs";
+import { ROOT, parseArgs, chromiumLaunch, webglRenderer } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { out: "v", query: "v", w: "v", h: "v", shots: "v", serve: "flag", port: "v", timeout: "v", time: "v", stability: "flag", shift: "v", configs: "v" });
+const args = parseArgs(process.argv.slice(2), { gpu: "flag", out: "v", query: "v", w: "v", h: "v", shots: "v", serve: "flag", port: "v", timeout: "v", time: "v", stability: "flag", shift: "v", configs: "v" });
 const APP = path.join(ROOT, "crates", "ffh-play", "assets", "app");
 const LAB = path.join(ROOT, "crates", "ffh-play", "r3d-lab");
 const TYPES = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".json": "application/json", ".png": "image/png", ".css": "text/css" };
@@ -54,7 +56,13 @@ if (args.serve) {
   } catch {
     pw = require(require.resolve("playwright", { paths: ["/opt/node22/lib/node_modules"] }));
   }
-  const browser = await pw.chromium.launch({ headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+  const browser = await pw.chromium.launch(chromiumLaunch(!!args.gpu));
+  {
+    // Which WebGL renderer draws (software SwiftShader unless --gpu found a GPU).
+    const p = await browser.newPage();
+    console.log(`WebGL renderer: ${await webglRenderer(p)}`);
+    await p.close();
+  }
   if (args.stability) {
     await stability(browser);
     await browser.close();

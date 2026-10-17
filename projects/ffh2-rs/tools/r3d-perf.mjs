@@ -7,17 +7,19 @@
 // complete frame, and what was drawn (draw calls, instances, triangles).
 //
 //   node tools/r3d-perf.mjs --save SAVE [--x X --y Y] [--w 1280 --h 800] [--json OUT] [--runs 3]
-//        [--configs painterly,plain] [--zooms 40,96]
+//        [--configs painterly,plain] [--zooms 40,96] [--gpu]
 //
-// Headless Chromium renders WebGL with SwiftShader (software): absolute times are those of a CPU
-// rasteriser, far slower than any GPU; the relative costs of the passes are what carries over.
+// By default headless Chromium renders WebGL with SwiftShader (software): absolute times are those of
+// a CPU rasteriser, far slower than any GPU; the relative costs of the passes are what carries over.
+// --gpu measures on the machine's GPU (Chromium's full headless mode); the WebGL renderer printed
+// first says which one was used.
 
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { ROOT, parseArgs, findBin, tempDir, startServer } from "./web-lib.mjs";
+import { ROOT, parseArgs, findBin, tempDir, startServer, chromiumLaunch, webglRenderer } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", w: "v", h: "v", json: "v", bin: "v", runs: "v", configs: "v", zooms: "v" });
+const args = parseArgs(process.argv.slice(2), { gpu: "flag", save: "v", x: "v", y: "v", w: "v", h: "v", json: "v", bin: "v", runs: "v", configs: "v", zooms: "v" });
 if (!args.save) {
   console.error("r3d-perf: --save SAVE is required");
   process.exit(2);
@@ -38,7 +40,13 @@ try {
 } catch {
   pw = require(require.resolve("playwright", { paths: ["/opt/node22/lib/node_modules"] }));
 }
-const browser = await pw.chromium.launch({ headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await pw.chromium.launch(chromiumLaunch(!!args.gpu));
+{
+  // Which WebGL renderer draws (software SwiftShader unless --gpu found a GPU).
+  const p = await browser.newPage();
+  console.log(`WebGL renderer: ${await webglRenderer(p)}`);
+  await p.close();
+}
 const W = Number(args.w ?? 1280), H = Number(args.h ?? 800);
 const CONFIGS = [
   ["painterly", {}],

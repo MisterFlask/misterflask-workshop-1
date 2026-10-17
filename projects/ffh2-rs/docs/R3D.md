@@ -289,6 +289,11 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
   every unit type of the game gets a figure that builds; a scene's dressing is deterministic, uses
   only registered recipes and places nothing on an unrevealed plot.
 * `tools/r3d-perf.mjs` (§11) and `tools/r3d-compare.mjs` (the same scene in every renderer).
+* **Software or GPU.** The lab, compare and perf tools render with SwiftShader by default (software:
+  works anywhere, including GPU-less containers, but a 3D frame takes seconds). On a machine with a
+  GPU, `--gpu` draws with it (Chromium's full headless mode); each tool prints the WebGL renderer
+  it got first, so a silent fallback to software is visible. Real frame rates come only from a
+  GPU run (`node tools/r3d-perf.mjs --gpu --save ...`) or from the panel in a browser.
 * `ffh-play stage corrupt DIR`: the vertical slice's real game (below).
 
 ### 10.1 The vertical slice

@@ -8,6 +8,7 @@
 //
 //   node tools/r3d-compare.mjs --save SAVE --x X --y Y [--out DIR] [--w 1440 --h 900] [--fog]
 //        [--only 3d-painterly,3d-far] [--cfg '{"clouds":0}'] (merged into the painterly shots)
+//        [--gpu] (draw with the machine's GPU instead of software SwiftShader)
 //
 // The page's side and bottom panels stay (this is the game's screen); the bottom panel is folded.
 // The 3D frames are rendered synchronously before each capture (software WebGL is slow).
@@ -15,9 +16,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { ROOT, parseArgs, findBin, tempDir, startServer } from "./web-lib.mjs";
+import { ROOT, parseArgs, findBin, tempDir, startServer, chromiumLaunch, webglRenderer } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", out: "v", w: "v", h: "v", fog: "flag", bin: "v", only: "v", cfg: "v" });
+const args = parseArgs(process.argv.slice(2), { gpu: "flag", save: "v", x: "v", y: "v", out: "v", w: "v", h: "v", fog: "flag", bin: "v", only: "v", cfg: "v" });
 if (!args.save || args.x === undefined || args.y === undefined) {
   console.error("r3d-compare: --save SAVE --x X --y Y are required");
   process.exit(2);
@@ -41,7 +42,13 @@ try {
 } catch {
   pw = require(require.resolve("playwright", { paths: ["/opt/node22/lib/node_modules"] }));
 }
-const browser = await pw.chromium.launch({ headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+const browser = await pw.chromium.launch(chromiumLaunch(!!args.gpu));
+{
+  // Which WebGL renderer draws (software SwiftShader unless --gpu found a GPU).
+  const p = await browser.newPage();
+  console.log(`WebGL renderer: ${await webglRenderer(p)}`);
+  await p.close();
+}
 const W = Number(args.w ?? 1440), H = Number(args.h ?? 900);
 const enc = (o) => encodeURIComponent(typeof o === "string" ? o : JSON.stringify(o));
 const SHOTS = [

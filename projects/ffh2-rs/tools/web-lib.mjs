@@ -128,3 +128,22 @@ export function stage(bin, kind, dir) {
     });
   });
 }
+
+/** Launch options for headless Chromium drawing WebGL. By default software rendering (SwiftShader:
+ *  the same on every machine, no GPU needed, but slow: a 3D frame takes seconds); with `gpu` the
+ *  machine's GPU, through Chromium's full headless mode and its own GL backend. Whether a GPU was
+ *  really used shows in `webglRenderer` (a "SwiftShader" renderer means it was not). */
+export function chromiumLaunch(gpu = false) {
+  if (gpu) return { headless: true, channel: "chromium", args: ["--ignore-gpu-blocklist", "--enable-gpu"] };
+  return { headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] };
+}
+
+/** The name of the WebGL renderer a page draws with (a GPU's name, or SwiftShader). */
+export function webglRenderer(page) {
+  return page.evaluate(() => {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (!gl) return "no WebGL2";
+    const x = gl.getExtension("WEBGL_debug_renderer_info");
+    return String(x ? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  });
+}
