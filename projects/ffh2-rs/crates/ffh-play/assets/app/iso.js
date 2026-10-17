@@ -232,19 +232,29 @@ export class IsoMap {
     cells.sort((a, b) => a.sy - b.sy);
 
     for (const c of cells) this.drawTile(g, c);
-    // Rivers run along the lower (south/east) edges of their plot; draw them over all tiles so a
-    // nearer tile does not paint over a segment.
-    this.drawRivers(g, cells);
-    // Roads connect plot centres to their routed neighbours.
-    this.drawRoutes(g, cells);
-    // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
-    // clump occludes a farther one.
-    this.drawFeatures(g, cells);
-    // Built structures (lairs, forts, mana nodes, farms, ...) sit on the tile, under the resource
-    // icon so a worked resource shows in front of its improvement.
-    this.drawImprovements(g, cells);
-    // Resource icons sit at the front of their tile, over any feature, under cities and units.
-    this.drawResources(g, cells);
+    // The map's layer (Terrain / Political / Yields, like the flat renderer): the terrain view
+    // shows the full detail; the political and yield views replace it with an owner or yield
+    // overlay, keeping cities and units on top.
+    const layer = v.layer ?? "terrain";
+    if (layer === "political") {
+      this.drawPolitical(g, cells);
+    } else if (layer === "yield") {
+      this.drawYields(g, cells);
+    } else {
+      // Rivers run along the lower (south/east) edges of their plot; draw them over all tiles so a
+      // nearer tile does not paint over a segment.
+      this.drawRivers(g, cells);
+      // Roads connect plot centres to their routed neighbours.
+      this.drawRoutes(g, cells);
+      // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
+      // clump occludes a farther one.
+      this.drawFeatures(g, cells);
+      // Built structures (lairs, forts, mana nodes, farms, ...) sit on the tile, under the resource
+      // icon so a worked resource shows in front of its improvement.
+      this.drawImprovements(g, cells);
+      // Resource icons sit at the front of their tile, over any feature, under cities and units.
+      this.drawResources(g, cells);
+    }
     // Cities then units, back to front (units already sorted by their plot's sy via a fresh pass).
     this.drawCities(g, cells);
     this.drawUnits(g);
@@ -477,6 +487,86 @@ export class IsoMap {
       if (vis === 1) g.globalAlpha = 0.5;
       g.drawImage(img, bx, by, Math.round(iw), Math.round(ih));
       g.globalAlpha = 1;
+    }
+  }
+
+  /** The Political view: each owner's colour washed over its plots (unowned land a faint grey),
+   *  with a bold territory outline along every edge to a differently-owned plot. */
+  drawPolitical(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const hw = TW / 2;
+    const hh = TW / 4;
+    const PLOT = this.plotTypes();
+    for (const c of cells) {
+      if (map.vis[c.k] === 0) continue;
+      const owner = map.owner[c.k];
+      if (owner >= 0) {
+        this.diamond(g, c.sx, c.sy);
+        g.fillStyle = ownerColor(owner);
+        g.globalAlpha = 0.5;
+        g.fill();
+        g.globalAlpha = 1;
+      } else if (map.plot_type[c.k] !== PLOT.ocean) {
+        this.diamond(g, c.sx, c.sy);
+        g.fillStyle = "rgba(150,150,150,0.3)";
+        g.fill();
+      }
+    }
+    g.lineWidth = Math.max(2, TW * 0.05);
+    g.lineCap = "round";
+    for (const c of cells) {
+      if (map.vis[c.k] === 0) continue;
+      const owner = map.owner[c.k];
+      if (owner < 0) continue;
+      const nb = (dx, dy) => {
+        const n = T.plotIndex(map, c.x + dx, c.y + dy);
+        return n >= 0 ? map.owner[n] : -2;
+      };
+      g.strokeStyle = ownerColor(owner);
+      g.beginPath();
+      if (nb(0, 1) !== owner) (g.moveTo(c.sx, c.sy - hh), g.lineTo(c.sx + hw, c.sy)); // N edge: top->right
+      if (nb(1, 0) !== owner) (g.moveTo(c.sx, c.sy + hh), g.lineTo(c.sx + hw, c.sy)); // E edge: bottom->right
+      if (nb(0, -1) !== owner) (g.moveTo(c.sx - hw, c.sy), g.lineTo(c.sx, c.sy + hh)); // S edge: left->bottom
+      if (nb(-1, 0) !== owner) (g.moveTo(c.sx - hw, c.sy), g.lineTo(c.sx, c.sy - hh)); // W edge: left->top
+      g.stroke();
+    }
+  }
+
+  /** The Yields view: the board darkened, with the food/production/commerce of every in-sight plot
+   *  drawn in their colours near the plot centre. */
+  drawYields(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    for (const c of cells) {
+      if (map.vis[c.k] === 0) continue;
+      this.diamond(g, c.sx, c.sy);
+      g.fillStyle = "rgba(0,0,0,0.5)";
+      g.fill();
+    }
+    if (TW < 28) return; // too small for legible numbers
+    g.font = `bold ${Math.max(9, Math.round(TW * 0.2))}px system-ui, sans-serif`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    for (const c of cells) {
+      if (map.vis[c.k] !== 2) continue; // only fully-visible plots show yields
+      const y = T.unpackYield(map.yield[c.k]);
+      if (!y) continue;
+      const parts = [];
+      y.forEach((val, j) => {
+        if (val > 0) parts.push([String(val), T.YIELD_COLORS[j]]);
+      });
+      if (!parts.length) continue;
+      const spacing = TW * 0.22;
+      parts.forEach(([val, col], i) => {
+        const ox = (i - (parts.length - 1) / 2) * spacing;
+        g.fillStyle = "rgba(0,0,0,0.65)";
+        g.fillText(val, c.sx + ox + 1, c.sy + 1);
+        g.fillStyle = col;
+        g.fillText(val, c.sx + ox, c.sy);
+      });
     }
   }
 
