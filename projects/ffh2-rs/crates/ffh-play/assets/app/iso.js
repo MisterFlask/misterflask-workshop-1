@@ -78,6 +78,7 @@ export class IsoMap {
     for (const name of TERRAIN_FILES) load(`t_${name}`, `./iso/terrain/${name}.png`);
     for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
     for (const name of RELIEF_FILES) load(`r_${name}`, `./iso/relief/${name}.png`);
+    load("c_town", "./iso/cities/town.png");
     for (const name of ["knight", "lich", "archer", "spider"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
@@ -252,27 +253,90 @@ export class IsoMap {
   drawCities(g, cells) {
     const v = this.view;
     const TW = v.cam.ts;
+    const TH = TW / 2;
     const mine = me()?.player;
     const byPlot = new Map(cells.map((c) => [`${c.x},${c.y}`, c]));
+    // Visible cities, back to front so a nearer settlement occludes a farther one.
+    const list = [];
     for (const city of S.cities.values()) {
       const c = byPlot.get(`${city.x},${city.y}`);
-      if (!c) continue;
+      if (c) list.push({ city, c });
+    }
+    list.sort((a, b) => a.c.sy - b.c.sy);
+    const img = this.imgs.c_town;
+    for (const { city, c } of list) {
       const col = ownerColor(city.owner);
-      const w = TW * 0.5;
-      const hh = Math.max(9, TW * 0.26);
-      const bx = c.sx - w / 2;
-      const by = c.sy - hh * 0.5 - TW * 0.08;
-      g.fillStyle = "rgba(12,14,20,0.82)";
-      roundRect(g, bx, by, w, hh, 3);
+      // Team ring (iso ellipse) under the settlement; gold for a capital.
+      g.save();
+      g.beginPath();
+      g.ellipse(c.sx, c.sy, TW * 0.42, TH * 0.42, 0, 0, Math.PI * 2);
+      g.fillStyle = col;
+      g.globalAlpha = 0.9;
       g.fill();
-      g.strokeStyle = col;
-      g.lineWidth = 2;
+      g.globalAlpha = 1;
+      g.lineWidth = Math.max(2, TW * 0.055);
+      g.strokeStyle = city.capital ? "#ffe9a8" : "rgba(10,10,12,0.5)";
       g.stroke();
-      g.fillStyle = city.owner === mine ? "#ffe9a8" : col;
-      g.font = `bold ${Math.round(hh * 0.74)}px system-ui, sans-serif`;
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(city.size == null ? "?" : String(city.size), c.sx, by + hh / 2 + 0.5);
+      g.restore();
+      // The settlement sprite, rising from just below the tile centre; else a labelled box.
+      if (img) {
+        const cw = TW * 1.02;
+        const ch = cw * (img.height / img.width);
+        g.drawImage(img, Math.round(c.sx - cw / 2), Math.round(c.sy + TH * 0.12 - ch), Math.round(cw), Math.round(ch));
+      } else {
+        const s = TW * 0.5;
+        g.fillStyle = "rgba(12,14,20,0.82)";
+        roundRect(g, c.sx - s / 2, c.sy - s * 0.3, s, s * 0.5, 3);
+        g.fill();
+        g.strokeStyle = col;
+        g.lineWidth = 2;
+        g.stroke();
+      }
+      // Capital crown pip above the settlement.
+      if (city.capital) {
+        g.fillStyle = "#ffdd55";
+        g.strokeStyle = "rgba(10,10,12,0.6)";
+        g.lineWidth = 1;
+        star(g, c.sx, c.sy - TW * 0.92, 5, Math.max(3, TW * 0.08), Math.max(1.5, TW * 0.035));
+        g.fill();
+        g.stroke();
+      }
+      // Size badge at the lower-left of the base.
+      if (city.size != null) {
+        const r = Math.max(7, TW * 0.15);
+        const bx = c.sx - TW * 0.34;
+        const by = c.sy + TH * 0.02;
+        g.beginPath();
+        g.arc(bx, by, r, 0, Math.PI * 2);
+        g.fillStyle = "rgba(16,13,12,0.86)";
+        g.fill();
+        g.lineWidth = Math.max(1.5, TW * 0.025);
+        g.strokeStyle = col;
+        g.stroke();
+        g.fillStyle = city.owner === mine ? "#ffe9a8" : "#f4f0e6";
+        g.font = `bold ${Math.round(r * 1.1)}px system-ui, sans-serif`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(String(city.size), bx, by + 0.5);
+      }
+      // City name chip below the ring, only when there is room.
+      if (city.name && TW >= 52) {
+        const fs = Math.max(10, Math.round(TW * 0.17));
+        g.font = `600 ${fs}px system-ui, sans-serif`;
+        const tw2 = g.measureText(city.name).width;
+        const pad = fs * 0.5;
+        const bw = tw2 + pad * 2;
+        const bh = fs + 6;
+        const bx = c.sx - bw / 2;
+        const by = c.sy + TH * 0.42;
+        g.fillStyle = "rgba(12,14,20,0.8)";
+        roundRect(g, bx, by, bw, bh, 3);
+        g.fill();
+        g.fillStyle = city.owner === mine ? "#ffe9a8" : "#e8e4da";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(city.name, c.sx, by + bh / 2 + 0.5);
+      }
     }
   }
 
@@ -390,5 +454,18 @@ function roundRect(g, x, y, w, h, r) {
   g.arcTo(x + w, y + h, x, y + h, r);
   g.arcTo(x, y + h, x, y, r);
   g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/** A filled star path with `points` spikes (outer radius `ro`, inner `ri`), centred at (cx, cy). */
+function star(g, cx, cy, points, ro, ri) {
+  g.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? ro : ri;
+    const a = (Math.PI / points) * i - Math.PI / 2;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  }
   g.closePath();
 }
