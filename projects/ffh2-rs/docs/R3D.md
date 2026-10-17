@@ -172,6 +172,11 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
   `card`, `tri/quad`) and per-part edits from a `mark()` (`sphereNormals` for soft foliage masses,
   `heightAO`, `heightSway`, `tint`, `displace`). The state (`color`, `mat`, `sway`, `bone`, `ao`)
   sticks to every vertex added.
+* **Winding matters.** Props are drawn without face culling and lit on both sides: the shader
+  flips the normal of a back face (`gl_FrontFacing`), so thin cards and leaves light correctly
+  from behind. A triangle must therefore be wound counter-clockwise as seen from the side its
+  normal points to; one wound against its explicit normal (`quadN`, `tri` with normals) is shaded
+  inside out. The builder's primitives do this; hand-made faces must too.
 * **Vertex format**: position, normal, linear albedo, and `aMat` = (material, sway, bone, baked
   occlusion). Materials: matte, foliage (light through leaves), metal, team (the owner's colour times
   the vertex colour's luminance), emissive, skin, team glow. Bones drive a small idle animation in
