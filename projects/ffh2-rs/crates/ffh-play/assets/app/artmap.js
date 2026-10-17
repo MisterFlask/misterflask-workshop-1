@@ -12,8 +12,8 @@
 // tile it depends on changed (map deltas) or a city near it did (size tier, owner, capital,
 // light, walls).
 //
-// Each frame then draws the vignette, the units (sprites row by row, the city banners and
-// plaques, the stack marks), the tile marks, the path preview with the odds, and the
+// Each frame then draws the vignette (none by day), the units (sprites row by row, the tile
+// marks, the city banners and plaques, the stack marks), the path preview with the odds, and the
 // minimap. The two smallest zoom steps are the chart (docs/ART.md 3.2: flat colours, owner
 // washes, city dots; no sprites).
 
@@ -571,8 +571,9 @@ export class ArtMap {
 
   /** The viewport vignette (docs/ART.md 8.3): beyond 75% of the half-diagonal, pixels pass
    *  through FOG with a Bayer threshold rising to full at the corners. Only the strips at the
-   *  sides that hold such pixels are read back. */
+   *  sides that hold such pixels are read back. Off when the ground pass says so (by day). */
   vignette(g, f) {
+    if (this.art.vignetteOn === false) return;
     const s = f.s;
     const Wa = Math.floor(f.W / s);
     const Ha = Math.floor(f.H / s);
@@ -654,7 +655,7 @@ export class ArtMap {
 
   /** The ease-out pixel offset of unit `id`'s slide (from its new tile back toward the old one),
    *  snapped to whole art pixels; ZERO_OFF when it is not sliding. Pure — expiry is handled by the
-   *  time prune in draw() — so the sprite (drawUnits) and the selection mark (drawOverlays) read
+   *  time prune in draw() — so the sprite (drawUnits) and the selection mark (drawTileMarks) read
    *  the same value and stay locked together. */
   slideOffset(id, f, now) {
     const s = this.slides.get(id);
@@ -666,8 +667,8 @@ export class ArtMap {
     return { ox: snap(-s.dx * f.tp * (1 - e)), oy: snap(s.dy * f.tp * (1 - e)) };
   }
 
-  /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the city
-   *  banners and plaques, then the stacks' count chips, health and marks. */
+  /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the tile marks
+   *  (drawTileMarks), the city banners and plaques, then the stacks' count chips, health and marks. */
   drawUnits(g, f) {
     const art = this.art;
     const stacks = this.stacksInView(f);
@@ -676,7 +677,7 @@ export class ArtMap {
     const zoom = f.s / f.dpr;
     // The slide offset of each moving stack (docs/ART.md 4.5): from its old tile to its new one,
     // used for both the sprite and the overlay pass so the count, health and marks ride with
-    // the figure (and, in drawOverlays, the selection mark rides with it too).
+    // the figure (and, in drawTileMarks, the selection mark rides with it too).
     const now = performance.now();
     const offsets = new Map();
     const offOf = (id) => {
@@ -693,6 +694,7 @@ export class ArtMap {
       const Y = f.oy + st.row * f.tp + off.oy;
       art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity, layer: "sprite" });
     }
+    this.drawTileMarks(g, f);
     for (const c of this.ccities) {
       if (c.y < f.r0 - 1 || c.y > f.r1 + 1) continue;
       const p = this.plots.get(c.x, c.y);
@@ -709,15 +711,19 @@ export class ArtMap {
     }
   }
 
-  /** The tile marks (targets, selection, hover), the waypoints and the path preview. */
-  drawOverlays(g, f) {
+  /** Call `fn(X, Y, ux, row)` at each on-screen copy of map tile (x, y) (device px of its top-left). */
+  tileAt(f, x, y, fn) {
+    const row = rowOf(this.map, y);
+    if (row < f.r0 - 1 || row > f.r1 + 1) return;
+    for (const ux of this.copies(f, x)) fn(f.ox + ux * f.tp, f.oy + row * f.tp, ux, row);
+  }
+
+  /** The tile marks (targets, selection, hover). drawUnits draws them between the sprites and the
+   *  city plaques, banners and stack chips, so a bracket never writes over a town's name. */
+  drawTileMarks(g, f) {
     const art = this.art;
     const o = this.v.overlay;
-    const at = (x, y, fn) => {
-      const row = rowOf(this.map, y);
-      if (row < f.r0 - 1 || row > f.r1 + 1) return;
-      for (const ux of this.copies(f, x)) fn(f.ox + ux * f.tp, f.oy + row * f.tp, ux, row);
-    };
+    const at = (x, y, fn) => this.tileAt(f, x, y, fn);
     if (Array.isArray(o.targets)) for (const [x, y] of o.targets) at(x, y, (X, Y, ux, row) => UI.drawTileMark(art, g, X, Y, "target", { mx: ux, my: row }));
     // The selection mark rides with the selected unit while it slides, so the bracket does not sit
     // at the destination waiting for the sprite to catch up.
@@ -727,6 +733,13 @@ export class ArtMap {
       at(o.sel.x, o.sel.y, (X, Y) => UI.drawTileMark(art, g, X + off.ox, Y + off.oy, "select"));
     }
     if (o.hover && !(o.sel && o.sel.x === o.hover.x && o.sel.y === o.hover.y)) at(o.hover.x, o.hover.y, (X, Y) => UI.drawTileMark(art, g, X, Y, o.targets ? "route" : "hover"));
+  }
+
+  /** The waypoints and the path preview (over everything, after the tile marks and the units). */
+  drawOverlays(g, f) {
+    const art = this.art;
+    const o = this.v.overlay;
+    const at = (x, y, fn) => this.tileAt(f, x, y, fn);
     if (Array.isArray(o.waypoints)) {
       o.waypoints.forEach(([x, y], i) => at(x, y, (X, Y) => {
         const s = f.s;

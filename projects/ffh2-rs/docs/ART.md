@@ -748,8 +748,9 @@ fog edge follows the terrain's warp in a 4 px Bayer band.
 ### 8.3 Unrevealed tiles
 
 Unrevealed land is the interface's **navy** (`1`, `GROUND.unseenKey`), not black, with a ragged
-3 px edge. There is **no vignette** by day (`GROUND.vignette`). The map viewport sits in the panels'
-gold frame.
+3 px edge. There is **no vignette** by day (`GROUND.vignette`; the ground pass sets
+`art.vignetteOn`, which the live client's own vignette honours too). The map viewport sits in the
+panels' gold frame.
 
 ### 8.4 Minimap
 
@@ -1121,8 +1122,10 @@ Promotion seal rims by family:
 
 - **Pointer cursors**, 16x16 at `u`, all with a void outline: pointer, move, attack (crossed
   blades, crimson), cast (a lilac star), invalid, busy.
-- **Tile cursor**: four corner brackets, stone on hover, white on the selected tile; the bracket
-  rides with a sliding unit.
+- **Tile cursor**: four corner brackets standing 1 px outside the tile on every side (34x34
+  marks anchored at 1,1), stone on hover, white on the selected tile; the bracket rides with a
+  sliding unit. Tile marks are drawn after the unit sprites but under the city banners, plaques
+  and stack chips, so a bracket never writes over a town's name.
 - **Selected unit**: the white rim (4.2). **Path preview**: a dotted white line, a navy turn
   roundel with the turn number in Tally at each turn boundary, the part beyond this turn in stone,
   unreachable ends in an ash ring with a bar, attacks in crimson brackets with the odds on a chip.
@@ -1373,7 +1376,8 @@ above every unit. `ownerStyle(civ, {division, tincture, ...})` builds an owner s
 
 Draw order matters because rivers and uprights spill into neighbouring tiles, and fog and pools
 read the canvas back: ground for every tile, then rivers, roads, flat improvements, city pools,
-uprights row by row from north to south, seals, borders, fog, vignette, units, overlays.
+uprights row by row from north to south, seals, borders, fog, vignette (none by day), units
+(sprites, then the tile marks, then the city and stack overlays), the path preview.
 `renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, tx0, ty0, cols, rows })`
 does exactly that, clipped to the view, and reports per-phase times in `timings`. With
 `only: 'terrain'` it draws what a terrain cache holds (everything up to the fog), with
