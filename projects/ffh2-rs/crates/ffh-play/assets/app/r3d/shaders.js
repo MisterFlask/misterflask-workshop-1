@@ -32,6 +32,7 @@ uniform vec2 uHazeRange;
 uniform float uMist;
 uniform float uFogWar;
 uniform float uStylize;
+uniform float uClouds;
 uniform sampler2D uShadowMap;
 uniform mat4 uShadowMat;
 uniform float uShadowOn;
@@ -121,6 +122,30 @@ vec2 mcells(vec2 m, float f) {
   return vec2(d1, d2);
 }
 
+// Impressionist brush dabs: oriented elliptical marks on a jittered lattice (about f per plot),
+// each its own tone, laid in a consistent hand (orientations within a 60-degree fan). Returns the
+// tone of the dab covering the point, 0..1, and 0.5 between dabs; periodic like mnoise.
+float mdabs(vec2 m, float f) {
+  float P = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) : 4096.0;
+  vec2 p = uWrapX > 0.5 ? vec2(m.x * P / uMapSize.x, m.y * f) : m * f;
+  vec2 i = floor(p);
+  vec2 fr = fract(p);
+  float best = 0.0, tone = 0.5;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 g = vec2(float(x), float(y));
+      vec2 cell = mod(i + g, vec2(P, 4096.0));
+      vec2 o = g + hash22(cell) - fr;
+      float a = 0.35 + hash12(cell + 3.7) * 1.05;
+      vec2 r = vec2(cos(a) * o.x + sin(a) * o.y, -sin(a) * o.x + cos(a) * o.y);
+      float d = length(r / vec2(0.78, 0.3));
+      float w = (1.0 - smoothstep(0.5, 1.0, d)) * (0.6 + 0.4 * hash12(cell + 1.3));
+      if (w > best) { best = w; tone = hash12(cell + 9.1); }
+    }
+  }
+  return mix(0.5, tone, best);
+}
+
 // 3D value noise (props' object-space pigment).
 float vnoise3(vec3 p) {
   vec3 i = floor(p);
@@ -163,6 +188,11 @@ vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   float stepped = smoothstep(0.30, 0.62, d) * 0.82 + d * 0.18;
   d = mix(d, stepped, uBands);
   float sh = shadowAt(wp, n);
+  // Cloud shadows drifting over the land: broad, soft masses of light and shade (fixed to the
+  // world, slowly moving), the painter's way of composing a wide landscape.
+  vec2 cm = mapOf(wp) + vec2(uTime * 0.03, uTime * 0.012);
+  float cloud = smoothstep(0.42, 0.68, mfbm(cm + 31.0, 0.16));
+  sh *= 1.0 - cloud * uClouds;
   sun = d * sh;
   vec3 amb = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
   vec3 L = uSunColor * sun + amb * ao;
@@ -243,24 +273,25 @@ ivec4 plotAt(vec2 cell) {
   return ivec4(texelFetch(uTerrain, c, 0) * 255.0 + 0.5);
 }
 
-// A three-tone painted mass: base, a lighter and a darker tone, mixed by broad and fine noise.
+// A three-tone painted mass: broad, soft shapes of base and dark, the lighter tone where the
+// broad shapes rise, then brush dabs at two sizes lightening or darkening the paint.
 vec3 masses(vec2 m, vec3 dark, vec3 base, vec3 light, float scale) {
   float big = mfbm(m, 0.45 * scale);
-  float mid = mnoise(m + 11.0, 2.2 * scale);
-  float str = mstroke(m, 9.0 * scale, 4.0);
-  vec3 c = mix(base, dark, smoothstep(0.5, 0.82, big) * 0.65);
-  c = mix(c, light, smoothstep(0.42, 0.8, big) * smoothstep(0.45, 0.75, mid) * 0.55);
-  // Fine brush strokes: lighter and darker dabs along the stroke direction.
-  c = mix(c, light, smoothstep(0.6, 0.85, str) * 0.35 * uStylize);
-  c = mix(c, dark, smoothstep(0.62, 0.88, 1.0 - str) * 0.22 * uStylize);
+  float mid = mnoise(m + 11.0, 1.6 * scale);
+  vec3 c = mix(base, dark, smoothstep(0.52, 0.8, big) * 0.6);
+  c = mix(c, light, smoothstep(0.38, 0.78, big) * smoothstep(0.45, 0.8, mid) * 0.5);
+  float d1 = mdabs(m, 2.4 * scale) - 0.5;
+  float d2 = mdabs(m + 7.3, 6.5 * scale) - 0.5;
+  float k = (d1 * 0.42 + d2 * 0.22) * uStylize;
+  c = k > 0.0 ? mix(c, light, k) : mix(c, dark, -k);
   return c;
 }
 
 vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
-  if (g == G_GRASS) return srgb(masses(m, vec3(0.20, 0.29, 0.17), vec3(0.33, 0.42, 0.20), vec3(0.52, 0.56, 0.27), 1.0));
-  if (g == G_PLAINS) return srgb(masses(m, vec3(0.40, 0.37, 0.20), vec3(0.58, 0.51, 0.28), vec3(0.74, 0.65, 0.38), 1.0));
+  if (g == G_GRASS) return srgb(masses(m, vec3(0.19, 0.27, 0.17), vec3(0.30, 0.39, 0.21), vec3(0.47, 0.52, 0.28), 1.0));
+  if (g == G_PLAINS) return srgb(masses(m, vec3(0.36, 0.35, 0.21), vec3(0.50, 0.46, 0.27), vec3(0.66, 0.58, 0.36), 1.0));
   if (g == G_DESERT) {
-    vec3 c = masses(m, vec3(0.62, 0.48, 0.30), vec3(0.76, 0.62, 0.40), vec3(0.87, 0.75, 0.52), 0.8);
+    vec3 c = masses(m, vec3(0.58, 0.46, 0.32), vec3(0.71, 0.59, 0.42), vec3(0.82, 0.72, 0.55), 0.8);
     float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
     c *= 0.92 + 0.1 * smoothstep(-0.2, 0.9, dune);
     return srgb(c);
@@ -277,16 +308,27 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     return srgb(mix(c, vec3(0.13, 0.18, 0.2), pool));
   }
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
+    // Corrupted ground: ash and scorched earth (the fields of perdition festering purple-red),
+    // split by a few meandering fissures that smoulder from below -- iso-lines of broad noise,
+    // so they wander and branch like cracks in a painting, not tiles. Brightest where the
+    // corruption runs deepest; a slow pulse; world-anchored.
     vec3 dark, base, light, hot;
-    if (g == G_BURNING) { dark = vec3(0.10, 0.05, 0.04); base = vec3(0.22, 0.11, 0.07); light = vec3(0.36, 0.20, 0.13); hot = vec3(1.0, 0.35, 0.08); }
-    else if (g == G_BROKEN) { dark = vec3(0.16, 0.10, 0.08); base = vec3(0.29, 0.19, 0.14); light = vec3(0.42, 0.29, 0.21); hot = vec3(0.95, 0.28, 0.06); }
-    else { dark = vec3(0.14, 0.07, 0.11); base = vec3(0.27, 0.13, 0.19); light = vec3(0.45, 0.25, 0.30); hot = vec3(0.85, 0.12, 0.30); }
+    if (g == G_BURNING) { dark = vec3(0.07, 0.04, 0.04); base = vec3(0.17, 0.10, 0.08); light = vec3(0.30, 0.19, 0.14); hot = vec3(1.0, 0.40, 0.09); }
+    else if (g == G_BROKEN) { dark = vec3(0.08, 0.06, 0.06); base = vec3(0.19, 0.15, 0.13); light = vec3(0.33, 0.27, 0.23); hot = vec3(1.0, 0.33, 0.07); }
+    else { dark = vec3(0.09, 0.04, 0.06); base = vec3(0.21, 0.10, 0.13); light = vec3(0.36, 0.20, 0.22); hot = vec3(0.92, 0.16, 0.10); }
     vec3 c = masses(m, dark, base, light, 1.4);
-    vec2 cl = mcells(m, 2.6);
-    float crack = 1.0 - smoothstep(0.02, 0.07, cl.y - cl.x);
-    float pulse = 0.75 + 0.25 * sin(uTime * 1.3 + mnoise(m, 1.0) * 12.0);
-    c = mix(c, dark * 0.6, crack * 0.8);
-    emit += srgb(hot) * crack * pulse * (0.6 + 0.6 * mnoise(m + 2.0, 3.0));
+    float scorch = smoothstep(0.5, 0.82, mstroke(m, 3.0, 4.0));
+    c = mix(c, dark * 0.7, scorch * 0.45);
+    float live = smoothstep(0.3, 0.65, mfbm(m + 3.3, 0.5));
+    float r1 = 1.0 - abs(mfbm(m + 7.7, 1.1) - 0.5) * 2.0;
+    float r2 = 1.0 - abs(mfbm(m - 3.1, 2.3) - 0.5) * 2.0;
+    float fis = max(smoothstep(0.978, 0.996, r1), smoothstep(0.986, 0.998, r2) * 0.6) * live;
+    c = mix(c, vec3(0.03, 0.02, 0.02), max(smoothstep(0.9, 0.975, r1), smoothstep(0.95, 0.985, r2) * 0.6) * live * 0.75);
+    float pulse = 0.72 + 0.28 * sin(uTime * 1.1 + mnoise(m, 0.7) * 9.0);
+    emit += srgb(hot) * fis * pulse * 1.7;
+    // A low halo of heat around the cracks, and a few embers.
+    c += srgb(hot) * smoothstep(0.82, 0.975, r1) * live * 0.05;
+    emit += srgb(hot) * smoothstep(0.95, 0.985, mnoise(m, 14.0)) * live * 0.35;
     return srgb(c);
   }
   if (g == G_SHALLOWS || g == G_COAST) return srgb(masses(m, vec3(0.45, 0.40, 0.30), vec3(0.62, 0.55, 0.40), vec3(0.72, 0.66, 0.50), 1.0));
@@ -339,14 +381,16 @@ void main() {
 
   // The ground of the four plots around the point, blended by bilinear weights sharpened and
   // broken up by noise (irregular, painted borders between terrains; the plot centre is pure).
-  vec2 q = m + (vec2(mnoise(m, 1.6), mnoise(m + 17.3, 1.6)) - 0.5) * 0.34;
+  vec2 q = m + (vec2(mnoise(m, 0.9), mnoise(m + 17.3, 0.9)) - 0.5) * 0.6 + (vec2(mnoise(m + 5.1, 3.2), mnoise(m - 8.7, 3.2)) - 0.5) * 0.2;
   vec2 gq = q - 0.5;
   vec2 c0 = floor(gq);
   vec2 f = fract(gq);
   ivec4 p00 = plotAt(c0), p10 = plotAt(c0 + vec2(1, 0)), p01 = plotAt(c0 + vec2(0, 1)), p11 = plotAt(c0 + vec2(1, 1));
   vec4 w = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
-  float brk = mnoise(m, 5.0);
-  w = pow(w, vec4(2.2 + 1.2 * brk));
+  // Painted edges: the weights are pushed by stroke noise, so a border between two grounds is a
+  // band of interleaved brush strokes rather than a gradient.
+  float brk = mdabs(m - 2.1, 4.5);
+  w = pow(w, vec4(2.2 + 4.0 * brk));
   w /= dot(w, vec4(1.0));
   // Each distinct ground among the four is painted once, with the summed weight of its plots.
   int gs[4] = int[](p00.x, p10.x, p01.x, p11.x);
@@ -388,15 +432,24 @@ void main() {
     alb = mix(alb, sand, beach * 0.85);
     // Rock on steep ground: cliffs and the flanks of the mountains, with strata.
     float slope = 1.0 - n.y;
-    float rockMask = smoothstep(0.28, 0.42, slope + (mnoise(m, 4.0) - 0.5) * 0.14);
+    float rockMask = smoothstep(0.24, 0.4, slope + (mnoise(m, 4.0) - 0.5) * 0.14);
+    rockMask = max(rockMask, smoothstep(0.42, 0.62, h) * 0.85);
     if (rockMask > 0.0) {
-      float strata = 0.5 + 0.5 * sin(h * 38.0 + mnoise(m, 2.5) * 5.0);
-      vec3 rock = mix(vec3(0.27, 0.25, 0.27), vec3(0.47, 0.44, 0.41), mfbm(m, 1.7));
-      rock = mix(rock, vec3(0.20, 0.18, 0.22), strata * 0.35);
+      float strata = 0.5 + 0.5 * sin(h * 30.0 + (m.x - m.y) * 1.3 + mnoise(m, 2.5) * 7.0);
+      strata *= smoothstep(0.3, 0.7, mnoise(m + 2.0, 1.2));
+      vec3 rock = mix(vec3(0.22, 0.21, 0.24), vec3(0.42, 0.40, 0.38), mfbm(m, 1.7));
+      rock = mix(rock, vec3(0.16, 0.15, 0.19), strata * 0.22);
+      // Lit faces of the rock read warm, the shaded ones cool (painted massing of a mountain).
+      rock = mix(rock, rock * vec3(1.12, 1.02, 0.9), clamp(dot(n, uSunDir), 0.0, 1.0) * 0.5);
+      float rd = mdabs(m + 4.0, 7.0) - 0.5;
+      rock *= 1.0 + rd * 0.35 * uStylize;
       alb = mix(alb, srgb(rock), rockMask);
     }
     // Snow on the high peaks (and their sunlit ledges).
-    float snow = smoothstep(0.92, 1.05, h + (mnoise(m, 3.0) - 0.5) * 0.18) * smoothstep(0.25, 0.6, n.y);
+    // Snow on the summits and caught on the gentler ledges below them, streaked by the wind.
+    float sn = mnoise(m, 3.0) - 0.5 + (mdabs(m, 5.0) - 0.5) * 0.6;
+    float snow = smoothstep(0.92, 1.08, h + sn * 0.22) * smoothstep(0.3, 0.75, n.y);
+    snow = max(snow, smoothstep(1.15, 1.3, h + sn * 0.1));
     alb = mix(alb, srgb(vec3(0.88, 0.91, 0.95)), snow);
     // Wet ground along rivers and the shore line.
     vec4 dec = texture(uDecal, mapUV(m));
@@ -618,8 +671,16 @@ layout(location = 2) out vec4 oEmit;
 
 void main() {
   vec2 m = mapOf(vWorld);
-  float ground = texture(uHeight, mapUV(m)).r;
-  float depth = max(0.0, vWorld.y - ground);
+  // The sea floor's depth, read through a warp and averaged over a small footprint, so the
+  // colour bands of the shelf follow soft, irregular contours instead of the plot grid.
+  vec2 wq = m + (vec2(mnoise(m, 0.8), mnoise(m + 9.0, 0.8)) - 0.5) * 0.7;
+  float ground = 0.0;
+  for (int k = 0; k < 4; k++) {
+    vec2 o = vec2(k == 1 ? 0.35 : k == 3 ? -0.35 : 0.0, k == 0 ? 0.35 : k == 2 ? -0.35 : 0.0);
+    ground += texture(uHeight, mapUV(wq + o)).r * 0.25;
+  }
+  float near = texture(uHeight, mapUV(m)).r;
+  float depth = max(0.0, vWorld.y - mix(ground, near, smoothstep(0.08, 0.0, vWorld.y - near)));
   float v = visAt(vWorld);
   if (uRiver < 0.5 && v < 0.02) discard;
   // Waves: two drifting layers of noise give the surface normal (gentle, painted ripples).
@@ -641,11 +702,11 @@ void main() {
     depth = 0.06 * (1.0 - abs(vExtra.x));
   }
   // Colour by depth: clear teal over the shelf, deepening to indigo over the ocean.
-  vec3 shallow = srgb(vec3(0.24, 0.47, 0.46));
-  vec3 mid = srgb(vec3(0.12, 0.30, 0.40));
-  vec3 deep = srgb(vec3(0.05, 0.12, 0.24));
-  vec3 c = mix(shallow, mid, smoothstep(0.0, 0.12, depth));
-  c = mix(c, deep, smoothstep(0.12, 0.42, depth));
+  vec3 shallow = srgb(vec3(0.20, 0.42, 0.40));
+  vec3 mid = srgb(vec3(0.10, 0.27, 0.34));
+  vec3 deep = srgb(vec3(0.05, 0.12, 0.21));
+  vec3 c = mix(shallow, mid, smoothstep(0.0, 0.1, depth));
+  c = mix(c, deep, smoothstep(0.1, 0.38, depth));
   // Painted variation of the water's body.
   c *= 0.9 + 0.2 * mfbm(m + t * 0.01, 0.5);
   float sun;
@@ -653,7 +714,7 @@ void main() {
   vec3 col = c * (L * 0.85 + 0.15);
   vec3 V = normalize(uEye - vWorld);
   float fres = pow(1.0 - max(dot(n, V), 0.0), 4.0);
-  col = mix(col, uSkyColor * 1.1, fres * 0.6);
+  col = mix(col, uSkyColor * 0.55, fres * 0.35);
   vec3 H = normalize(V + uSunDir);
   float glint = pow(max(dot(n, H), 0.0), 120.0) * sun;
   col += uSunColor * glint * 0.7;
@@ -926,7 +987,7 @@ void main() {
     float L = dot(col, vec3(0.299, 0.587, 0.114));
     vec3 g = col;
     // Split toning: cool, violet shadows; warm light.
-    g = mix(g, g * uShadowGrade * 1.0 + uShadowGrade * 0.03, (1.0 - smoothstep(0.0, 0.5, L)) * 0.5);
+    g = mix(g, g * uShadowGrade + uShadowGrade * 0.02, (1.0 - smoothstep(0.0, 0.45, L)) * 0.35);
     g = mix(g, g * uLightGrade, smoothstep(0.45, 1.0, L) * 0.4);
     float L2 = dot(g, vec3(0.299, 0.587, 0.114));
     g = mix(vec3(L2), g, uSaturation);

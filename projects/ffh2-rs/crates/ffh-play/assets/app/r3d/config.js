@@ -10,7 +10,7 @@ const KEY = "ffh.r3d.config";
 /** The light of the scene: sun direction (toward the sun) and colours (linear). */
 export const LIGHTING = {
   afternoon: {
-    sunDir: [-0.72, 0.58, 0.38],
+    sunDir: [-0.78, 0.46, 0.42],
     sun: [hexLinear("#ffd6a0"), 3.1],
     sky: [hexLinear("#7489b8"), 0.5],
     ground: [hexLinear("#6a5640"), 0.24],
@@ -51,8 +51,8 @@ export const PRESETS = {
     outline: 0.75,
     outlineWidth: 1,
     grade: 1,
-    saturation: 0.92,
-    contrast: 1.04,
+    saturation: 1.02,
+    contrast: 1.06,
     grain: 0.035,
     vignette: 0.22,
     paint: 1,
@@ -60,8 +60,9 @@ export const PRESETS = {
     wrapLight: 0.35,
     rim: 0.35,
     stylize: 1,
-    haze: 0.55,
-    mist: 0.6,
+    clouds: 0.45,
+    haze: 0.32,
+    mist: 0.35,
   },
   plain: {
     lighting: "day",
@@ -78,6 +79,7 @@ export const PRESETS = {
     wrapLight: 0,
     rim: 0,
     stylize: 0,
+    clouds: 0,
     haze: 0,
     mist: 0,
   },
@@ -112,6 +114,7 @@ export const PANEL = [
   ["bands", "Light banding", "range", 0, 1, 0.05],
   ["stylize", "Coloured shadows", "range", 0, 1, 0.05],
   ["rim", "Rim light", "range", 0, 1, 0.05],
+  ["clouds", "Cloud shadows", "range", 0, 1, 0.05],
   ["haze", "Aerial haze", "range", 0, 1, 0.05],
   ["mist", "Valley mist", "range", 0, 1, 0.05],
   ["grade", "Colour grade", "range", 0, 1, 0.05],

@@ -166,8 +166,10 @@ export class World {
   /** The ground height at map point (mx, my). */
   heightAt(mx, my) {
     // Warp the blend lookup so coastlines and hill feet wander off the grid lines.
-    const wx = mx + 0.2 * noise2(mx * 0.85 + 3.1, my * 0.85 - 1.7);
-    const wy = my + 0.2 * noise2(mx * 0.85 - 7.3, my * 0.85 + 5.5);
+    // Two octaves: broad bays and headlands, then a ragged edge (plot centres stay inside their
+    // plot: the warp never reaches half a plot).
+    const wx = mx + 0.34 * noise2(mx * 0.7 + 3.1, my * 0.7 - 1.7) + 0.1 * noise2(mx * 2.6 - 4.4, my * 2.6 + 9.1);
+    const wy = my + 0.34 * noise2(mx * 0.7 - 7.3, my * 0.7 + 5.5) + 0.1 * noise2(mx * 2.6 + 6.2, my * 2.6 - 2.3);
     const u = wx - 0.5;
     const v = wy - 0.5;
     const x0 = Math.floor(u);
@@ -200,9 +202,13 @@ export class World {
     }
     if (peak > 0) {
       // Mountains: ridged massif, plus a summit near each peak plot's centre.
-      const r = ridged2(mx * 1.15 - 2.7, my * 1.15 + 8.1, 4);
-      h += Math.pow(peak, 1.3) * (0.4 + 0.45 * r);
-      h += this.summits(mx, my);
+      // Sharp crests (ridged noise raised to a power: narrow ridges, deep gullies), a second,
+      // finer set of spurs, and the summit of each peak plot.
+      const r = ridged2(mx * 1.1 - 2.7, my * 1.1 + 8.1, 4);
+      const r2 = ridged2(mx * 2.6 + 5.3, my * 2.6 - 1.9, 3);
+      const pw = Math.pow(peak, 1.4);
+      h += pw * (0.18 + 0.62 * Math.pow(r, 1.7) + 0.16 * r2 * r);
+      h += this.summits(mx, my) * (0.75 + 0.35 * r2);
     }
     if (voidW > 0) h = h * (1 - voidW) + BASE[KIND.VOID] * voidW;
     // Rivers carve their channel.
@@ -230,8 +236,8 @@ export class World {
         const px = cx + dx + 0.5 + this.peakJitter[i * 2];
         const py = cy + dy + 0.5 + this.peakJitter[i * 2 + 1];
         const d = Math.hypot(mx - px, my - py);
-        const t = clamp(1 - d / 0.72, 0, 1);
-        s = Math.max(s, 0.45 * Math.pow(t, 1.5));
+        const t = clamp(1 - d / 0.62, 0, 1);
+        s = Math.max(s, 0.55 * Math.pow(t, 1.25));
       }
     }
     return s;

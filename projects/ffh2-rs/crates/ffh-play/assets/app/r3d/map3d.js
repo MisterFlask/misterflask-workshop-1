@@ -353,6 +353,7 @@ export class Map3D {
       uMist: cfg.mist,
       uFogWar: cfg.fogWar,
       uStylize: cfg.stylize,
+      uClouds: cfg.clouds,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
       uWind: cfg.wind,
@@ -400,6 +401,8 @@ export class Map3D {
     const cam = this.camera();
     const fr = this.frameState(cam, time);
     fr.scale = v.dpr * scale;
+    // The brush grows with the zoom: the painted marks belong to the world, not to the screen.
+    fr.paintZoom = clamp(this.ts / 96, 0.6, 1.7);
     const rect = this.visibleRect(cam);
     const map = v.map;
     const copies = [];

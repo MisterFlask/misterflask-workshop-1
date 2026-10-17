@@ -245,7 +245,7 @@ export class Pipeline {
         this.pass(this.p.kuwahara, this.f.ldrB, W, H, {
           uSrc: this.t.ldrA,
           uTensor: this.t.tensorA,
-          uRadius: cfg.kuwaharaRadius * (fr.scale ?? 1),
+          uRadius: Math.min(8, cfg.kuwaharaRadius * (fr.scale ?? 1) * (fr.paintZoom ?? 1)),
           uSharp: cfg.sharp,
           uAniso: cfg.aniso,
           uStrength: cfg.kuwahara,
