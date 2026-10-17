@@ -343,7 +343,13 @@ lines of `ASSETS` in `src/transport/http.rs`, `useR3d` and the `r3d` delegation 
 
 ## 14. Limitations and next steps
 
-What is not there, or not good enough yet, as of this prototype:
+What is not there, or not good enough yet, as of this prototype. An integrated review of the
+merged renderer (three critics, every finding checked by a skeptical verifier) confirmed 16 open
+issues, with evidence, causes and proposed fixes, in [docs/r3d/REVIEW.md](r3d/REVIEW.md): long
+near-black afternoon shadows, the elven great tree hiding its city, look-alike hell terrains, the
+wrong front unit on foreign stacks, unreadable unit types at 96 px, marks on sea plots drawn on the
+sea floor, settlement hierarchy, tiny resources, flood plains, plate contrast, the north map edge,
+polar ice, no anti-aliasing, stiff rivers, missing stack activity marks, faceted water tint.
 
 * **No GPU numbers.** Everything here was developed and measured in headless Chromium with
   SwiftShader (a CPU rasteriser): frames there take seconds, and §11's absolute times say nothing
