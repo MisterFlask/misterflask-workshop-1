@@ -27,6 +27,9 @@ pub struct View {
     pub target_claims: Vec<(PlotIdx, GroupId)>,
     /// This turn's siege operation (siege-campaigns; built on the first army decision).
     pub campaign: crate::campaign::Plan,
+    /// This turn's amphibious invasion target, if any (an overseas enemy city we can take by
+    /// shipping an army across water; `naval::amphibious_target`).
+    pub amphibious: Option<crate::naval::Amph>,
     /// Our cities whose visible threat exceeds their garrison (city plot, shortfall).
     pub peril: Vec<(PlotIdx, i32)>,
     /// Roads to build this turn (see `workers::road_plan`).
@@ -103,12 +106,14 @@ impl View {
             targets: Vec::new(),
             target_claims: Vec::new(),
             campaign: Default::default(),
+            amphibious: None,
             garrison: BTreeMap::new(),
             flood: Flood::default(),
         };
         v.build_danger(g);
         if !v.barbarian {
             v.targets = crate::military::find_targets(g, &v);
+            v.amphibious = crate::naval::amphibious_target(g, p);
             v.roads = crate::workers::road_plan(g, p);
             for &c in &g.players[p].cities {
                 let cp = g.city_plot(c);

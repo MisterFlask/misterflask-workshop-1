@@ -5,3 +5,4 @@ __pycache__/
 raw_materials/
 .claude/worktrees/
 projects/ffh2-rs/saves/
+generated-images/

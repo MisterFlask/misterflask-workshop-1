@@ -468,6 +468,12 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         return Some(choice);
     }
     if let Some(choice) = crate::civs::production(ai, g, c, ctx.threat) { return Some(choice); } // civ-mechanics
+    // An assault fleet (transport + attackers) for an overseas enemy city we can take.
+    if safe && crate::naval::is_coastal_city(g, c) {
+        if let Some(choice) = crate::naval::assault_production(g, c) {
+            return Some(choice);
+        }
+    }
     // A ship for a settler waiting in port; a sea explorer while our land is full and
     // nothing is known across the water.
     if safe && crate::naval::is_coastal_city(g, c) {
@@ -577,15 +583,15 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
             return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK_CITY));
         }
     }
-    // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
-    if army_short && (ctx.at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
-        if let Some(u) = best_unit(g, c, if ctx.at_war { Role::CityAttack } else { Role::Attack }) {
-            return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
-        }
-    }
-
-    // 9. Buildings by marginal value per turn of production.
+    // 9. Buildings by marginal value per turn of production. Computed BEFORE the surplus-army
+    // interleave below so a high-value economy building (a research/commerce multiplier) is not
+    // starved while the army is short: at war the interleave would otherwise take every turn and
+    // this loop was never reached (measured: libraries in ~1 of 6-8 cities, research = commerce x
+    // slider with no multiplier). The operation's real strike force (army_choice above) and every
+    // garrison are upstream, so only the non-converting attacker tail beyond the army target is
+    // deferred -- a few turns per city, until the economy buildings are up.
     let mut best_building: Option<(BuildingType, i32)> = None;
+    let mut best_economy: Option<(BuildingType, i32)> = None;
     for b in d.buildings.keys() {
         if !building_allowed(g, c, b) || !g.city_can_construct(c, b, false, false, false) {
             continue;
@@ -603,9 +609,37 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         if best_building.map_or(true, |(_, s)| score > s) {
             best_building = Some((b, score));
         }
+        if is_economy_building(g, c, b, ctx.threat) && best_economy.map_or(true, |(_, s)| score > s) {
+            best_economy = Some((b, score));
+        }
+    }
+    // A high-value economy building comes ahead of the surplus-army interleave, but ONLY for a
+    // civ whose finances are actually strained by upkeep (support-heavy: unit support >= a tenth
+    // of commerce with research already pushed below its target; or a structural deficit). Those
+    // are the research-suppressed laggards the de-starvation is for; a healthy civ (research at or
+    // above target) keeps building its army, so conquest is preserved. (Measured: gating on any
+    // available economy building instead raised research but cut captures ~25% and shrank the
+    // biggest empire -- it dampened healthy conquerors too; this condition keeps the research gain
+    // where economy is the real bind without trading away the conquest.)
+    if army_short {
+        if let Some((b, score)) = best_economy {
+            if score >= ECON_BUILD_BAR {
+                let f = crate::finance::state(g, p);
+                if f.support_heavy() || f.structural() {
+                    return Some(Choice::Construct(b));
+                }
+            }
+        }
+    }
+
+    // Interleave army and buildings in peacetime (deterministic: no RNG draw from the AI).
+    if army_short && (ctx.at_war || (g.game_turn() + c.0 as i32) % 3 == 0) {
+        if let Some(u) = best_unit(g, c, if ctx.at_war { Role::CityAttack } else { Role::Attack }) {
+            return Some(Choice::Train(u, UnitAIType::UNITAI_ATTACK));
+        }
     }
     if let Some((b, score)) = best_building {
-        if score >= 40 || !army_short {
+        if score >= ECON_BUILD_BAR || !army_short {
             return Some(Choice::Construct(b));
         }
     }
@@ -871,6 +905,53 @@ fn best_missionary(g: &Game, c: CityId, r: ReligionType) -> Option<UnitType> {
 
 /// Marginal value of building `b` in city `c` (roughly: value points per turn, a hammer being
 /// worth 15 as in the governor).
+/// The marginal score (value per turn, see step 9 of `decide`) a building must clear to be built
+/// while the army is short -- the ladder's existing army-short bar, shared by the economy gate and
+/// step 9 (lifted from a literal so the two stay identical).
+const ECON_BUILD_BAR: i32 = 40;
+
+/// The economy portion of [`building_value`] -- its gold/research commerce terms plus specialists,
+/// great people and trade routes -- using the identical weights. A literal subset of
+/// `building_value`'s own lines (keep the two in sync); keyed only off `CommerceType`/`YieldType`
+/// constants and `BuildingInfo` fields, never a building name.
+fn economy_value(g: &Game, c: CityId, b: BuildingType) -> i32 {
+    let d = g.d;
+    let info = &d.buildings[b];
+    let p = g.cities[c].owner;
+    let n_cities = g.players[p].cities.len() as i32;
+    let pop = g.cities[c].population;
+    let yw = [20, 15, 7];
+    let cw = [8, 9, 4, 1];
+    let mut v = 0;
+    // Commerce YIELD (building_value's yield block, commerce column = index 2 only).
+    let ci = 2usize; // YieldType::YIELD_COMMERCE
+    let comm = g.city_yield_rate(c, YieldType::YIELD_COMMERCE).max(0);
+    v += info.yield_change[ci] * yw[ci] * 10;
+    v += info.yield_modifier[ci] * comm * yw[ci] / 10;
+    v += info.global_yield_modifier[ci] * comm * yw[ci] * n_cities.min(8) / 20;
+    // GOLD and RESEARCH commerce (building_value's commerce block, those columns only).
+    for i in [CommerceType::COMMERCE_GOLD.idx(), CommerceType::COMMERCE_RESEARCH.idx()] {
+        let rate = g.city_commerce_rate(c, CommerceType::from_usize(i)).max(0);
+        v += (info.commerce_change[i] + info.obsolete_safe_commerce_change[i]) * cw[i] * 10;
+        v += info.commerce_modifier[i] * rate * cw[i] / 10;
+        v += info.global_commerce_modifier[i] * rate * cw[i] * n_cities.min(8) / 20;
+    }
+    // Specialists, great people, trade routes (building_value's own terms).
+    let slots: i32 = info.specialist_count.iter().sum();
+    v += slots * 15 * (pop - 4).clamp(0, 8);
+    v += info.great_people_rate_change * 40 + info.great_people_rate_modifier * pop / 4;
+    v += info.free_specialist * 120;
+    v += info.trade_routes * 60;
+    v
+}
+
+/// A building whose value is majority economy (research/commerce), so it should not wait behind the
+/// surplus-army interleave in `decide`. A ratio of the same valuation, not a magic threshold.
+fn is_economy_building(g: &Game, c: CityId, b: BuildingType, threat: i32) -> bool {
+    let ev = economy_value(g, c, b);
+    ev > 0 && ev * 2 >= building_value(g, c, b, threat).max(1)
+}
+
 pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
     let d = g.d;
     let info = &d.buildings[b];

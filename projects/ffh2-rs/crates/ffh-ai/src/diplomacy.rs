@@ -21,6 +21,12 @@ use ffh_data::*;
 
 use crate::view::View;
 
+/// Power ratio (ours * 100 / their defensive power) at which the AI judges itself decisively
+/// stronger than a rival -- strong enough to commit to total war (conquering the civ) rather than
+/// a limited land grab. Reused as the "stronger than its neighbour" bar for guns-vs-butter siege
+/// research (`research::siege_offense`), so both read the same notion of clear superiority.
+pub(crate) const TOTAL_WAR_RATIO: i64 = 140;
+
 /// Relation of player `p` towards `other`: < 0 hostile, > 0 friendly.
 pub fn relation(g: &Game, p: PlayerId, other: PlayerId) -> i32 {
     let a = &g.players[p];
@@ -164,7 +170,9 @@ pub fn manage(g: &mut Game, v: &View) {
 
     // A prepared war: declare when the army is ready, or give up when the target is gone.
     if let Some(target) = preparing_target(g, team) {
-        let reachable = reach_distance(g, team, target).is_some();
+        // Reachable by land (a shared landmass) or by sea (an overseas city we can ship an army to).
+        let reachable = reach_distance(g, team, target).is_some()
+            || team_leader(g, target).is_some_and(|q| crate::naval::amphibious_city(g, p, q).is_some());
         if !reachable || !g.team_can_declare_war(team, target) {
             g.team_ai_set_war_plan(team, target, None, true);
             return;
@@ -234,18 +242,32 @@ pub fn manage(g: &mut Game, v: &View) {
         if ratio < need_ratio {
             continue;
         }
-        let Some(dist) = reach_distance(g, team, ot) else { continue };
-        if dist > 16 {
-            continue;
-        }
-        // Data-driven floor on "could we take a city from them": our best trainable attacker
-        // against their weakest city's defence (siege-aware). No hardcoded unit or stat.
-        if !can_take_cities(g, p, other) {
-            continue;
-        }
-        // Greedy gain: a bigger edge, more and closer cities; minus how much we like them.
-        let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10;
-        let total = ratio >= 140;
+        // Reachable and takeable: by land (a shared landmass within 16 plots whose weakest city
+        // our best trainable attacker can take), or, failing that, by sea (an overseas city we
+        // can ship an army to and take -- `amphibious_city` already checks its takeability). No
+        // hardcoded unit or stat; reachability from the flood/distance helpers.
+        let land = reach_distance(g, team, ot).filter(|&d| d <= 16 && can_take_cities(g, p, other));
+        let dist = match land {
+            Some(d) => d,
+            None => match crate::naval::amphibious_city(g, p, other) {
+                Some(a) => a.dist,
+                None => continue,
+            },
+        };
+        // Flavor bias (secondary): prefer striking a rival of the opposed alignment -- the
+        // good/evil conflict at the heart of FFH. Added only to the score, so it re-ranks targets
+        // we can already reach and take (the reachability/takeability gate above has run); it never
+        // makes us attack an unreachable civ, so it cannot trade away the greedy territory-grab.
+        let flavor = {
+            let good = g.d.ty::<AlignmentType>("ALIGNMENT_GOOD");
+            let evil = g.d.ty::<AlignmentType>("ALIGNMENT_EVIL");
+            let (us, them) = (g.players[p].alignment, op.alignment);
+            if (us == good && them == evil) || (us == evil && them == good) { 30 } else { 0 }
+        };
+        // Greedy gain: a bigger edge, more and closer cities; minus how much we like them; a
+        // flavor nudge toward alignment-opposites.
+        let score = ratio - dist as i64 * 6 - rel as i64 * 15 + op.cities.len() as i64 * 10 + flavor;
+        let total = ratio >= TOTAL_WAR_RATIO;
         if best.map_or(true, |(_, s, _)| score > s) {
             best = Some((ot, score, total));
         }
@@ -318,12 +340,13 @@ fn trade(g: &mut Game, p: PlayerId) {
     }
 }
 
-/// Can our units realistically take `other`'s cities: our best trainable attacker against
-/// their best city defender (fortified, with city bonuses), or siege engines to wear the
-/// walls down.
-fn can_take_cities(g: &Game, p: PlayerId, other: PlayerId) -> bool {
+/// Our best trainable land attacker's effective city-attack strength (x100), and whether we
+/// can train a siege engine. `None` when we have no capital to train from. No hardcoded unit:
+/// every land attacker the capital can train is weighed (combat + damage types, city-attack
+/// bonus), siege engines noted for the bombard discount.
+pub(crate) fn best_trainable_attack(g: &Game, p: PlayerId) -> Option<(i32, bool)> {
     let d = g.d;
-    let Some(c) = g.players[p].capital_city.filter(|&c| g.cities.contains(c)) else { return false };
+    let c = g.players[p].capital_city.filter(|&c| g.cities.contains(c))?;
     let mut best_attack = 0;
     let mut siege = false;
     for u in d.units.keys() {
@@ -337,27 +360,55 @@ fn can_take_cities(g: &Game, p: PlayerId, other: PlayerId) -> bool {
         best_attack = best_attack.max((info.combat + info.damage_type_combat.iter().sum::<i32>()) * (100 + info.city_attack_modifier.max(0)));
         siege |= info.bombard_rate > 0;
     }
-    // Their weakest city (the one we would attack first): its best defender.
+    Some((best_attack, siege))
+}
+
+/// The strength (x100) of city `c`'s best defender as we see it (fortified city bonuses), or
+/// `None` when the city plot is not revealed to our team.
+fn city_best_defense(g: &Game, p: PlayerId, c: CityId) -> Option<i32> {
     let team = g.players[p].team;
-    let mut weakest: Option<i32> = None;
-    for &oc in &g.players[other].cities {
-        let cp = g.city_plot(oc);
-        if !g.map.plots[cp].revealed[team] {
+    let cp = g.city_plot(c);
+    if !g.map.plots[cp].revealed[team] {
+        return None;
+    }
+    let other = g.cities[c].owner;
+    let mut best = 0;
+    for &e in &g.map.plots[cp].units {
+        if g.units[e].owner != other {
             continue;
         }
-        let mut best = 0;
-        for &e in &g.map.plots[cp].units {
-            if g.units[e].owner != other {
-                continue;
-            }
-            let info = &d.units[g.units[e].unit_type];
-            if info.combat <= 0 {
-                continue;
-            }
-            let def = if info.combat_defense > 0 { info.combat_defense } else { info.combat } + info.damage_type_combat.iter().sum::<i32>();
-            best = best.max(def * (100 + info.city_defense_modifier.max(0)));
+        let info = &g.d.units[g.units[e].unit_type];
+        if info.combat <= 0 {
+            continue;
         }
-        weakest = Some(weakest.map_or(best, |w: i32| w.min(best)));
+        let def = if info.combat_defense > 0 { info.combat_defense } else { info.combat } + info.damage_type_combat.iter().sum::<i32>();
+        best = best.max(def * (100 + info.city_defense_modifier.max(0)));
+    }
+    Some(best)
+}
+
+/// Can our best trainable attacker realistically take city `c`: its best defender (fortified in
+/// the city, with city bonuses), siege engines lowering the bar. False when we cannot train an
+/// attacker or the city plot is not revealed.
+pub(crate) fn can_take_city(g: &Game, p: PlayerId, c: CityId) -> bool {
+    let Some((best_attack, siege)) = best_trainable_attack(g, p) else { return false };
+    let Some(best_defense) = city_best_defense(g, p, c) else { return false };
+    // Fortified in a city: roughly +50%; siege engines take most of that away.
+    let needed = best_defense * if siege { 85 } else { 120 } / 100;
+    best_attack >= needed
+}
+
+/// Can our units realistically take `other`'s cities: our best trainable attacker against
+/// their weakest revealed city's best defender (fortified, with city bonuses), or siege
+/// engines to wear the walls down.
+fn can_take_cities(g: &Game, p: PlayerId, other: PlayerId) -> bool {
+    let Some((best_attack, siege)) = best_trainable_attack(g, p) else { return false };
+    // Their weakest city (the one we would attack first): its best defender.
+    let mut weakest: Option<i32> = None;
+    for &oc in &g.players[other].cities {
+        if let Some(best) = city_best_defense(g, p, oc) {
+            weakest = Some(weakest.map_or(best, |w: i32| w.min(best)));
+        }
     }
     let Some(best_defense) = weakest else { return false };
     // Fortified in a city: roughly +50%; siege engines take most of that away.

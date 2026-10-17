@@ -211,6 +211,74 @@ fn stack_power(g: &Game, grp: GroupId) -> i32 {
 }
 
 /// One decision for an army stack led by `u`.
+/// Diagnostic (`FFH_AI_EXPOSURE=1`): report army stacks of `p` left on a plot that a *much
+/// stronger* visible enemy unit can reach next turn -- the single strongest enemy attacker in
+/// reach out-powers our best defender by half again (`maxatt > 1.5x bestdef`), the "obviously
+/// about to be killed" case. `natt` is how many enemy attackers reach the plot and `wipe` whether
+/// there are enough to kill every unit in the stack. Skips a garrison in one of our cities and a
+/// stack next to its target about to strike this turn; `ctx=op` marks a stack marching/striking in
+/// an operation, `ctx=loose` one not in any. Compares single units (not summed power, which
+/// over-counts many weak attackers a strong defender beats one at a time). Pure read, printed only
+/// when the env var is set, so it has no cost or effect otherwise. Called once per player's turn.
+pub fn report_exposure(g: &Game, v: &View, p: PlayerId) {
+    use std::sync::OnceLock;
+    static ON: OnceLock<bool> = OnceLock::new();
+    if !*ON.get_or_init(|| std::env::var("FFH_AI_EXPOSURE").is_ok()) {
+        return;
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for &u in &g.players[p].units {
+        if !g.units.contains(u) {
+            continue;
+        }
+        let Some(grp) = g.units[u].group else { continue };
+        if !seen.insert(grp) || !g.groups[grp].units.iter().any(|&o| is_army_unit(g, o)) {
+            continue;
+        }
+        let head = g.group_get_head_unit(grp).unwrap_or(u);
+        let here = g.unit_plot(head);
+        if g.map.plots[here].plot_city.is_some_and(|c| g.cities[c].owner == p) || crate::campaign::striking(g, v, grp) {
+            continue;
+        }
+        let (hx, hy) = g.map.xy(here);
+        let best_def = g.groups[grp].units.iter().map(|&o| defense_power(g, o)).max().unwrap_or(0).max(1);
+        // Strongest single visible enemy attacker that can reach this plot next turn, and how many.
+        let mut max_att = 0;
+        let mut n_att = 0;
+        for pl in g.players.iter() {
+            if !pl.alive || !v.enemies.contains(&pl.team) {
+                continue;
+            }
+            for &e in &pl.units {
+                if !g.units.contains(e) {
+                    continue;
+                }
+                let eu = &g.units[e];
+                let att = attack_power(g, e);
+                if att == 0 {
+                    continue;
+                }
+                let Some(ep) = g.map.plot_xy(eu.x, eu.y) else { continue };
+                if !g.plot_is_visible(ep, v.team) {
+                    continue;
+                }
+                let range = (g.d.units[eu.unit_type].moves.max(1) + 1).min(4);
+                if g.plot_distance(eu.x, eu.y, hx, hy) <= range {
+                    max_att = max_att.max(att);
+                    n_att += 1;
+                }
+            }
+        }
+        if max_att * 2 > best_def * 3 {
+            let ctx = if crate::campaign::on_the_move(v, grp) { "op" } else { "loose" };
+            eprintln!(
+                "[EXPOSED t{} p{} grp{}] bestdef={} maxatt={} ratio={} natt={} units={} wipe={} ctx={}",
+                g.game_turn(), p.0, grp.0, best_def, max_att, max_att * 100 / best_def, n_att, g.groups[grp].units.len(), n_att >= g.groups[grp].units.len(), ctx
+            );
+        }
+    }
+}
+
 pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let here = g.unit_plot(u);
@@ -297,6 +365,13 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             finish(g, grp);
             return;
         }
+    }
+
+    // An amphibious invasion (naval.rs): a committed stack boards the transport in port to
+    // cross the water; a stack already landed on the enemy's landmass takes the overseas city
+    // (which `campaign.rs` cannot, as it only targets landmasses where we hold a city).
+    if crate::naval::amphibious(g, v, grp, u) {
+        return;
     }
 
     // War (or its preparation): the operation against the chosen enemy city; stacks close to

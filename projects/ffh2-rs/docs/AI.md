@@ -315,6 +315,53 @@ techs): Archery as a fixed goal right after the tier-2 goal (23 -> 19, 29.8 -> 2
 early religion (24, 29.0), after Cartography (25, 29.5); the plan's bonus scaled down by
 military pressure, to 75% / 50% / 35% at pressure 4 / 5 / 6 (16, 27.4).
 
+**Guns vs butter: siege research (`research::siege_offense`).** Catapult-class siege engines
+crack city walls (bombard, collateral) but have low raw combat, so the score's military terms
+(attacker/defender strength) never pick their tech -- Construction was chosen about once a game
+where Archery was chosen fifty times, and civs ground against walled cities with no answer. A
+contextual goal (the user's guns-vs-butter hunch) can route a civ toward its siege engine: when
+its campaign is marching on a walled or well-garrisoned rival city that needs siege
+(`campaign::needed_force().siege > 0`) **and** it is decisively stronger than that rival -- the
+same `TOTAL_WAR_RATIO` (power at 140% of the target's defence) diplomacy uses to commit to total
+war -- the nearest researchable step toward the engine is beelined (score `SIEGE_SCORE`, above
+the economy plan, below the survival `defense_goal`). A defensive, parity, or underdog civ, and a
+barbarian target, keep their research on economy. The siege engine is found data-drivenly (any
+trainable unit of our civ with combat, bombard/collateral, and a city-attack/collateral unit AI --
+no unit name), mirroring production's `Role::Siege`.
+
+The gate is the finding. Measured on seeds 1-16, 690 turns, against the AI with no siege goal
+(captures per war = conquest conversion; techs at fixed turns = economy; final power/empire =
+domination):
+
+| vs no-siege baseline | every offensive civ (ungated) | strength-gated (kept) |
+|---|---|---|
+| captures per war | +19.3% | -4.8% (noise) |
+| techs @ turn 300 | -7.2% | +1.0% |
+| techs @ turn 450 | -8.4% | +4.8% |
+| final power | -7.7% | +0.9% |
+| avg max empire | -5.2% | -0.5% |
+| civs eliminated | ±0% | -9.1% |
+
+Routing *every* offensive civ to siege works as a weapon -- wars convert far more decisively
+(+19% captures per war, and mid-game power at turn 300 rises ~11%) -- but it is a losing
+guns-vs-butter trade: the research a civ spends beelining siege (-7% techs by turn 300) compounds
+against it, and by the endgame its power and territory are down ~7%. Lowering the beeline's
+priority did not help (`SIEGE_SCORE` at 0.6M instead of 1.5M: still techs@300 -6.5%, final power
+-7.4%) -- the civ pursues siege until it has it either way, so it pays the same research; only
+*when* changes. The conversion gain and the economy cost both come from the same civs, the
+near-parity attackers who must crack walls, so tuning cannot separate them.
+
+The strength gate separates them by excluding that population: a civ decisively stronger than its
+target resolves its war fast enough for a cracked city to pay off before the research deficit
+compounds. That gate is non-regressive (economy and power flat-to-up, 9% fewer civs eliminated),
+but it fires rarely -- about one to three times a game (`FFH_AI_TRACE_TECH`): by the time a civ is
+that dominant it has usually already teched past Construction, or its targets are too weak to need
+siege. So the validated guns-vs-butter answer is **butter almost always wins** -- the civs that
+most need siege are the ones that can least afford its research -- and the AI now reserves a siege
+beeline for the rare dominant attacker who can. The ungated version is kept out; the gated one is
+kept in as the holistically-correct (if seldom-triggered) policy, strictly better than a baseline
+that never deliberately chose siege at all.
+
 ## Settlers and escorts (`expansion.rs`)
 
 `settler_choice` (when a city builds settlers, item 5 above) and the settler role live here.
@@ -470,6 +517,28 @@ plot falls or the odds turn bad, and moves in.
   transport.
 - **Work boats** improve sea resources in our borders (one per unimproved resource, at most
   one per city at a time).
+- **Amphibious invasion** (`amphibious_target`, `UNITAI_ASSAULT_SEA`): a civ can ship an army
+  across water to take an enemy city on a landmass where it has no city (the siege campaigns
+  only target landmasses we already hold a city on). The target is the best overseas enemy (or
+  barbarian) city -- revealed, coastal, on a landmass with no city of ours, within 24 plots of
+  one of our coastal cities, whose weakest defender our best trainable attacker can beat
+  (`can_take_city`) -- by value (population, wonders) for its cost (force needed, distance);
+  deterministic ordering, recomputed each turn. *Production* (the coastal city nearest the
+  target, the staging port): a fleet of assault transports big enough to carry the whole force in
+  one wave (`ceil(need / cargo per ship)` of them -- one transport only trickles a few units per
+  trip, which rarely masses enough to take a defended city), then attackers up to what one assault
+  needs (`need` = defenders x2 + 1, capped). *Execution* reuses the overseas-settling
+  machinery: the nearest army stacks (up to `need`) walk to the staging port and board the
+  transport there (as a settler and its escort board); the transport, carrying an army rather
+  than a settler, sails to a water plot beside the target city and lands the army on a land plot
+  next to it; the landed stack then takes the city with `military::assault` (which holds rather
+  than throwing the stack away if the revealed defenders are too strong). Every trip lands on the
+  *same* plot -- the reachable land plot beside the city already holding the most of our army (then
+  the soonest-reachable, then the strongest ground) -- so a trickle of small landings piles onto
+  one plot and merges (`military::army` merges army units sharing a plot) into a stack that can
+  strike, instead of scattering across the city's approaches and never massing. One transport trip
+  still carries only the ship's cargo capacity, so with early, small transports the force builds up
+  over several trips; bigger invasions wait for better ships.
 
 ## Diplomacy (`diplomacy.rs`)
 
@@ -485,8 +554,16 @@ parity (an eager warmonger accepts a slight underdog as acceptable risk) up to c
 superiority for a cautious leader, who also spares civs it likes; the greediest leaders strike
 any profitable, reachable target. A broke empire wants a bigger edge; a bankrupt one does not
 start wars. (This replaces the earlier port of `AI_doWar`'s three odds-gated kinds, which left
-strong civs idle for want of a grudge or a lucky roll; a continentally isolated civ still can
-not expand -- it has no land-reachable target and there are no amphibious invasions yet.) The
+strong civs idle for want of a grudge or a lucky roll.) Reachable means by land (a shared
+landmass within 16 plots) or, failing that, by sea: a civ whose takeable city is within
+sea-reach of one of our coastal cities (`naval::amphibious_city`) is a valid target too, so an
+isolated or across-the-water rival can now be invaded (see Naval / amphibious invasion). Among
+the targets we can reach and take, a flavour nudge prefers one of the opposed alignment (good vs
+evil, the core FFH conflict): a small bonus added to the target score, after the reachability
+gate, so it only re-ranks viable targets and never sends a civ at a rival it cannot reach. In an
+8-game A/B it lifted good-vs-evil wars from 35% to 59% of a civ's wars where opposed rivals were
+reachable (inert where they are across the water), with captures and economy slightly up, not
+traded -- a secondary bias that does not cost the primary. The
 war plan starts as `WARPLAN_PREPARING_*` (production builds the army,
 stacks gather on the rally city) and is declared when the army is ready (or after 40 turns).
 Peace is sought when the war goes badly (war success and power), or drags on without gains;
@@ -784,9 +861,71 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
 
 ## Known gaps (future work)
 
-- Naval: no amphibious invasions (wars only target cities on landmasses we share; good
-  transports come late in the tech tree), no naval combat, escorts or blockades; ships only
-  settle, explore and fish. Overseas settling sends one settler at a time.
+- Naval: amphibious invasions now ship an army across water to take an overseas enemy city
+  (see Naval), but there is no naval combat, no escorts and no blockades (the transport sails
+  undefended), and one trip lands only the ship's cargo capacity, so invasions are small until
+  good transports arrive late in the tech tree. Overseas settling still sends one settler at a time.
+  The trickle no longer scatters and no longer under-ships: each trip lands on the reachable plot
+  already holding the most of our army (they pile onto one plot and strike), and the staging port
+  builds a fleet big enough to carry the force in one wave. Traced water-isolated civs that used to
+  land repeatedly without ever assaulting now take overseas cities; 4 of 5 such civs convert and
+  held overseas cities rose ~20% at a fixed turn (8-game A/B), economy flat.
+  The remaining hard case is a civ whose *main army is on a different landmass from the staging
+  port* -- an isolated civ (e.g. Doviello, seed 5) whose only target sits beyond its home coast's
+  sea-range, reachable only from a small forward colony that cannot build transports and holds
+  little army. `committed` only musters army already on the staging landmass, so the home army
+  (3000+ idle stack-turns) never joins. Two simple fixes were tried and both measured worse, so
+  both were reverted: (a) letting *any* coastal city build the assault transports (so the fleet is
+  built and the colony's few units cross) made civs start more overseas wars they still cannot
+  convert -- captures -8/-9%, economy -7% at t690; (b) staging from the port on the landmass that
+  holds the most of our army (ship the home army directly, however far) got the home army aboard
+  (boards 1->11) but the home->target journey was so long the transports sailed all game and
+  delivered almost nothing (333 sail-actions, 3 landings, 0 assaults) -- the target is simply too
+  far from home for direct shipping, which is why the forward colony exists. The real fix is the
+  original DLL's approach: classify the home landmass `AREAAI_ASSAULT_MASSING`, commit the home
+  army, and ferry it in *two hops* (home -> forward colony, then a short colony -> target assault),
+  massing at the colony before striking, sized so the landed force can take the city and gated so
+  it does not bankrupt the economy. That is a multi-hop logistics pipeline (a new transport mode
+  plus cross-landmass `committed`), a dedicated feature rather than a staging tweak.
+- War conversion vs. decisive wars: civs with a real army but no reachable *takeable* target sit
+  idle (traced `big army / took=0` civs, e.g. Sheaim seed 1: ~71 power of army, exactly one war
+  prepared all game, 2283 unit-turns "0 targets"). The dominant land-war gate is `can_take_cities`
+  (diplomacy.rs): it clears a war only when our best *trainable* attacker reaches the enemy's
+  weakest city defender x1.2 (the fortification margin). Tracing the greedy war loop across seeds
+  1-3 (all civs) found this gate rejects ~700 land-reachable (<=16 plots), already-power-parity
+  targets -- ~8x the wars that pass -- and none of those rejections are catastrophic per-unit gaps
+  (worst ~0.6x; 44% are cases where our unit already *beats* their defender, blocked only by the
+  x1.2 margin). Hypothesis: the x1.2 "solo the fortress" bar is wrong because a war is declared
+  only after massing `army_needed_for_war` (4-14) attackers, so a stack should take a fortified
+  city at per-unit parity. Dropping the no-siege multiplier 120->100 (attacker >= defender) was
+  measured (16-seed A/B, full 690-turn games): wars_declared +47%, but net territory flat (final
+  cities 838->816), biggest empire flat (avg 22.8->22.1), economy 2-8% behind at *every* fixed
+  checkpoint t200/t300/t450, and the +16% final "power" was standing military that never converted
+  (NEW games ran *longer*, 6 vs 4 reaching t690 -- grinding, not decisive). Reverted: the per-unit
+  bar turns out to select for *decisive* wars; the near-parity fights it filters out grind and
+  mutually destroy power (seed 3: the relaxed gate flipped the winner and left the victor with half
+  the base winner's power), an arms race rather than domination -- and over-militarization is a BTS
+  pathology this AI otherwise avoids.
+  A second attempt (v2) built the "decisive-force" gate that reasoning implied: SELECTION loosened
+  to per-unit parity PLUS a numbers requirement (the force we will field overwhelms the softest
+  revealed city's defender *count* with a reserve, via the campaign's own `rough_need`/`margin`),
+  and a new DECLARE backstop that commits a prepared war only when the *real gathered army*
+  decisively covers a visible target city -- reusing `campaign::covers`/`force_on`, the exact
+  predicate the march logic uses, so a declared war is one the army would actually march on. This is
+  the numbers-aware, truthfully-computed gate v1 lacked. It also measured net-negative (16-seed A/B):
+  wars +15% but captures-per-war -19% (wars LESS decisive, not more), economy -8% at t300 worsening
+  to -9.3% at t450 (a *growing*, sustained drag -- not one-time war-prep cost -- so an affordability
+  pre-gate would not recover it), games longer (7 vs 4 reaching t690), eliminations +30%. The only
+  gain was domination *concentration* (biggest empire +10%, top-power share +14%), but it came from
+  a more war-torn world that suppressed everyone's research. Reverted.
+  Conclusion from both attempts: the war-DECLARATION gate is not the lever. Wars are dynamic -- the
+  enemy mobilizes and reinforces once war is declared -- so any declaration-time snapshot (per-unit,
+  numbers, or real-army-covers-the-opening) cannot guarantee the *whole* war is decisive; the
+  opening advantage erodes into a grind. The baseline's standing gross-power-ratio + per-unit bar is
+  a near-optimal heuristic for a declaration gate precisely because it demands a *persistent* edge.
+  If this pathology is pursued again, the lever is the campaign/prosecution layer (sustain local
+  force superiority through a war, concentrate faster, pick targets that stay takeable) or the
+  one-war-at-a-time constraint (diplomacy.rs) -- not the decision to declare.
 - Sparse worlds (2 civs on a standard map): barbarians and their cities dominate the empty
   land; expansion is slow because settlers wait until no enemy is near their city. Letting
   them go out under a held threat founded more cities but lost many more to the barbarians
@@ -801,6 +940,22 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   The civs still stuck at low research expanded to 7-8 cities in Despotism before reaching
   Cartography: only the settler gate (`finance::city_affordable`, not wired in) prevents that,
   and gating expansion costs cities (no better score by turn 300).
+  A diagnosis (instrumented Finance + per-city builds) found research is cost-limited, not
+  slider-limited (`empire::sliders` already maxes research subject to solvency), and the dominant
+  cost is unit support (35-48% of costs at t300), while research-multiplier buildings are starved:
+  at war + army-short the production ladder returned a military unit every turn and never reached
+  the building step, so libraries were built in ~1 of 6-8 cities and beakers = commerce x slider
+  with no multiplier. Fix (`production.rs` decide(), the "economy-before-the-army-tail" gate): a
+  high-value economy building (identified data-drivenly by its gold/research commerce + specialist/
+  GP/trade value, `is_economy_building`) now preempts the surplus-army *interleave* -- but only for
+  a civ whose finances are actually strained by upkeep (`Finance::support_heavy` or `structural`),
+  so the research-suppressed laggards get relief while healthy conquerors keep their army. It is
+  strictly downstream of `army_choice` (the operation's real needed force) and every garrison, so
+  only the non-converting attacker tail is deferred; nothing is disbanded. Measured (16-seed A/B):
+  research@t300 +4%, final power +12%, biggest empire +3% and top-power share +10% (domination up),
+  net territory and eliminations flat. A broader variant (gate on any economy building, no finance
+  condition) gave more research (+12%) but cut captures ~25% and shrank the top empire -- it
+  dampened healthy conquerors, so the upkeep-strained condition was kept.
 - Sieges: one operation at a time; armies are small (at war the operation spends half its turns
   gathering, typically 2-3 units against a need of 4-6), so a barbarian town of 5+ archers is
   out of reach and is left alone; casters do not join the strike (they only follow the army); a
@@ -809,6 +964,41 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   gathers, a "can we hold it" check before the strike, every unit following the victor into the
   city, stacks marching on a barbarian town turning back for cities in peril (fewer towns
   taken, no fewer cities lost), barbarian targets out to 20 plots, a larger strike margin.
+  One prosecution defect WAS fixed: the Strike gate fired off the adjacent ring alone
+  (`ok_adj = covers(adj, spare=false)`) while a committed stack one plot out (dist 2) was not yet
+  in the fight (`strike()` pools only units a single plot from the city), so the adjacent force
+  struck at acceptable odds and bounced, then re-mustered (16 "steps back" for one civ in seed 3).
+  `build_op` now defers a MARGINAL strike one turn (Strike->StepIn) when a committed dist-2 stack
+  can reach an adjacent plot that turn and the combined force would then take the city with a
+  reserve -- strictly one-turn-bounded (a stack that cannot close now is not counted, so a
+  hardening city is still struck at acceptable odds), and it only ever downgrades Strike to StepIn
+  so it can never make a strike weaker. Measured (16-seed A/B): "steps back" ~23->5 and razed
+  cities -29% (captures kept intact, not destroyed), final power +4.6%, eliminations -5.7%,
+  research flat; but gross captures-per-war was flat (-1.9%), so this is a coherence/retention
+  improvement (the army stops striking piecemeal and keeps more of what it takes), NOT a
+  conversion win -- the outcome deltas other than razing are within 16-seed noise.
+- Loose stacks exposed to a stronger enemy (the classic Civ4 "a stack parked in front of
+  something that one-shots it"). Measured with a gated diagnostic (`FFH_AI_EXPOSURE`, which flags
+  army stacks standing where a single visible enemy can reach and out-fight their best defender
+  next turn): 230-450 *distinct* such stacks a game (4 games x 690t), ~90% with enough attackers
+  to wipe the stack, a tail at 3-7x strength, concentrated in the mid/late war era (t250+), not
+  early-game barbarian noise. It is entirely *loose* stacks -- stacks in an operation are never
+  exposed, because `campaign.rs` keeps them concentrated -- so the gross cases (a lone unit next
+  to a death stack, attacking into a stronger defender) are already handled by the odds-gated
+  attack logic and the idle-retreat-to-city fallback; this is the residue. It looks bad but is
+  not costing the AI: making an outclassed loose stack fall back to the safest plot it can reach
+  (a city, or a plot where it is not outclassed with terrain credited), strictly after every
+  attack/garrison/heal/city-defence/escort/operation/hunt step so offence is untouched, measured
+  clearly NET-NEGATIVE on the primary goal (16-seed, 690t A/B): final power -8.1%, biggest empire
+  -9.2%, top-power share -10.8%, techs@450 -7.3%, games longer (5 vs 3 reaching t690, i.e.
+  grinding), for only +4% captures per war; and it barely moved the exposure itself (-18% over
+  four games, worse in two of them -- the stack retreats toward a safe haven it cannot reach in
+  one turn, so it ends the turn on another exposed plot and churns). The exposed stacks apparently
+  do useful work -- pressure, map presence, attrition -- that retreating removes, so pulling them
+  back makes the AI timid, the same over-caution the war-declaration and strike-hold experiments
+  hit. Reverted; the `FFH_AI_EXPOSURE` counter is kept as observation tooling. A fix that helped
+  would have to avoid *creating* the exposure -- danger-aware movement that ends each turn on a
+  safe plot -- without making stacks passive, which is a pathfinding change, not a retreat rule.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
   defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
 - Victories: nearly every decided game is a cultural victory. The Tower of Mastery needs 16

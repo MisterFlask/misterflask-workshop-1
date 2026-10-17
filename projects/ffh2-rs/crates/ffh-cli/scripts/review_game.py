@@ -50,9 +50,12 @@ def fmt_eta(e):
     return "-" if e is None else str(e)
 
 
-def civ_flags(rows):
+def civ_flags(rows, started=True):
     """Blunt 'this looks off for the civ' heuristics from the trajectory. Data-driven:
-    they compare a civ's own signals over time, never against a fixed roster/threshold."""
+    they compare a civ's own signals over time, never against a fixed roster/threshold.
+    `started` is False for a civ that first appears after the game's opening snapshot (a
+    mid-game summon such as the Mercurians/Infernals), which begins with an army and so is
+    not judged by start-to-end power growth."""
     end = rows[-1]
     flags = []
     # Reached the coast/overseas or built ships at some point but ended with none / never any.
@@ -74,9 +77,11 @@ def civ_flags(rows):
     # Power stagnated: an alive civ whose power barely grew over the game is not increasing its
     # power by the means available (the design goal). (We do NOT flag an idle victory planner:
     # civs greedily grow power and let domination/conquest emerge, rather than chasing a victory.)
+    # Skipped for mid-game summons: they spawn with an army, so their first power is already high
+    # and start-to-end growth says nothing about whether they stagnated.
     first_pow = num(rows[0].get("power"))
     end_pow = num(end.get("power"))
-    if end.get("alive") and len(rows) >= 3 and end_pow <= max(first_pow * 3, 60):
+    if started and end.get("alive") and len(rows) >= 3 and end_pow <= max(first_pow * 3, 60):
         flags.append(f"power barely grew ({first_pow} -> {end_pow}): not increasing power by the means available")
     return flags
 
@@ -144,7 +149,10 @@ def main():
               f"took civ/barb={num(end.get('taken_civ'))}/{num(end.get('taken_barb'))} "
               f"lost civ/barb={num(end.get('lost_civ'))}/{num(end.get('lost_barb'))} "
               f"conquest_eta={fmt_eta(end.get('conquest_eta'))} domination_eta={fmt_eta(end.get('domination_eta'))}")
-        flags = civ_flags(rows)
+        # A civ present only from a later snapshot spawned mid-game (a summon); it is not judged
+        # by start-to-end power growth.
+        started = turns[0] in series
+        flags = civ_flags(rows, started=started)
         if flags:
             print("  ?? " + "\n  ?? ".join(flags))
         print()
