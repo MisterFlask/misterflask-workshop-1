@@ -23,6 +23,10 @@ python3 integrate_units.py WORK ../..                 # into units/atlas.spr, le
 sh ../check.sh                                        # validate
 ```
 
+`quantize.py` runs `cleanup.py` (a pixel-over pass: base wings, tone caps, lone pixels, owner
+specks; docs/ART.md 10.2) on the sprites whose mapping entry has `"cleanup": true`, the ones a
+review found it improved; `FFH_CLEAN=1` runs it on all of them to try changes to the pass.
+
 `extract_units.py` writes `WORK/<atlas>_sheet.png`, a numbered contact sheet of the crops: read it
 to fill `unit_mapping.json`. Options per sprite: `slots` (`auto`, `none`, `red`, `blue`, `skyblue`,
 `purple`, `olive`: which cloth becomes the owner slots), `frame` (`32`, or `40` for giants), `ship`

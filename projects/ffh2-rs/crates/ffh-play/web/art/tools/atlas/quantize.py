@@ -8,7 +8,8 @@ OUT_preview.png    each sprite at 4x on grass, owner slots filled red and blue.
 A mapping entry's `src` is an atlas crop (atlasN_KK) or a composed figure (comp:NAME, written by
 compose_units.py into WORK/crops/comp/ at atlas 2's scale). Options: slots, frame (24, 32, 40),
 ship, size (a scale factor, for small creatures), feet (false: keep the bottom rows as drawn,
-for painted figures that carry no hex base), maxc (colour budget, default 18)."""
+for painted figures that carry no hex base), maxc (colour budget, default 18), cleanup (true: run
+the pixel-over pass of cleanup.py on this sprite)."""
 import json, os, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -28,7 +29,9 @@ MAP = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path
 mapping = json.load(open(MAP))
 OUT = sys.argv[3] if len(sys.argv) > 3 else 'units_atlas'
 scales = json.load(open(f'{R}/scales.json'))
-# the pixel-over pass (cleanup.py): opt-in with FFH_CLEAN=1 until its output is reviewed and installed
+# the pixel-over pass (cleanup.py) runs on the sprites whose mapping says "cleanup": true (the ones a
+# review found better for it; on others it greyed steel into brown, cut shields and lost eyes);
+# FFH_CLEAN=1 runs it on every sprite not marked "cleanup": false, to try changes to the pass
 import cleanup
 CLEAN = os.environ.get('FFH_CLEAN') == '1'
 CP = cleanup.Pal(KEYS, PLAB, [p[3] for p in PAL])
@@ -261,15 +264,16 @@ for name, opt in mapping.items():
     idx = clean(idx)
     if not opt.get('ship') and opt.get('feet', True):
         idx = clean_feet(idx)
-    if CLEAN and opt.get('cleanup', True):
+    pixel_over = opt.get('cleanup', CLEAN)
+    if pixel_over:
         idx = cleanup.pre(idx, CP, opt)
     idx = outline(idx)
     idx = reduce_colours(idx, opt.get('maxc', 18))
-    if CLEAN and opt.get('cleanup', True):
+    if pixel_over:
         idx = cleanup.post(idx, CP, opt)
     before = idx.copy()
     idx, fam = slots(idx, opt.get('slots', 'auto'))
-    if CLEAN and opt.get('cleanup', True) and fam:
+    if pixel_over and fam:
         idx = cleanup.flecks(idx, before, CP)
     g, ax, ay = frame_place(idx, F)
     sprites.append((name, F, ax, ay, to_text(g), fam, opt['src']))

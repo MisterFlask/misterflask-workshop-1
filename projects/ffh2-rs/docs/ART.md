@@ -875,8 +875,18 @@ its `.spr` output is the source afterwards):
    and rim colours), keep the main connected body, **enforce the outline** (4.2), reduce to 18
    colours (4.3), convert the cloth accent to owner slots (7.4), and place the feet on the anchor.
 5. **Map** (`unit_mapping.json`): each crop to a game type, with options (`slots`, `frame`, `ship`
-   to strip the water under a hull). Writes `units/atlas.spr`; `integrate_units.py` adds the source
-   to the manifest and rewrites the variant remaps.
+   to strip the water under a hull, `cleanup`). Writes `units/atlas.spr`; `integrate_units.py` adds
+   the source to the manifest and rewrites the variant remaps.
+6. **Clean up, where it helps** (`cleanup.py`, the mapping's `"cleanup": true`): a pixel-over pass
+   for the noise a box downsample leaves (a third or more of a cut figure's pixels have no
+   same-colour neighbour). It drops the painted base's grass wings above the feet, caps each
+   material at three tones, merges lone pixels into neighbours near them in light, softens specks
+   of black inside a material and drops owner-colour specks. A review of all 224 changed figures
+   (each pair read as text and at 8x, every regression given a second look) found it better on
+   46, the same on 88 and worse on 89: it merges greys into browns (steel turns to leather), its
+   wing cut can take a shield's rim or a horse's tail, it erases one-pixel eyes, and it drops a
+   unit's only owner patch. So it runs only on the 46 figures it improved (24 cut, 22 composed);
+   `FFH_CLEAN=1` runs it on every figure, to try changes to the pass.
 
 81 figures come from the atlases: the melee, archer, recon, mounted, siege and naval lines, the
 civilians, the core animals, and stand-ins chosen for FfH units from unused atlas figures (adept:

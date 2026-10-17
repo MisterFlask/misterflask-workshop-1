@@ -15,14 +15,16 @@
  },
  "unit/phalanx": {
   "src": "atlas2_06",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/berserker": {
   "src": "atlas2_07",
   "slots": "none"
  },
  "unit/immortal": {
-  "src": "atlas2_11"
+  "src": "atlas2_11",
+  "cleanup": true
  },
  "unit/death_knight": {
   "src": "atlas2_15",
@@ -32,7 +34,8 @@
   "src": "atlas1_04"
  },
  "unit/scout": {
-  "src": "atlas2_16"
+  "src": "atlas2_16",
+  "cleanup": true
  },
  "unit/hunter": {
   "src": "atlas2_17"
@@ -61,27 +64,33 @@
  },
  "unit/priest_of_winter": {
   "src": "atlas2_27",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/eater_of_dreams": {
   "src": "atlas2_28",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/spectre": {
   "src": "atlas2_30",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/disciple_fellowship_of_leaves": {
   "src": "atlas2_09",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/priest_of_leaves": {
   "src": "atlas2_10",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/druid": {
   "src": "atlas2_14",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/archer": {
   "src": "atlas2_32"
@@ -93,7 +102,8 @@
   "src": "atlas2_34"
  },
  "unit/marksman": {
-  "src": "atlas2_35"
+  "src": "atlas2_35",
+  "cleanup": true
  },
  "unit/firebow": {
   "src": "atlas2_37",
@@ -103,13 +113,15 @@
   "src": "atlas2_38"
  },
  "unit/arquebus": {
-  "src": "atlas2_39"
+  "src": "atlas2_39",
+  "cleanup": true
  },
  "unit/horseman": {
   "src": "atlas2_47"
  },
  "unit/knight": {
-  "src": "atlas2_48"
+  "src": "atlas2_48",
+  "cleanup": true
  },
  "unit/paladin": {
   "src": "atlas2_49"
@@ -127,7 +139,8 @@
   "src": "atlas2_54"
  },
  "unit/centaur_lancer": {
-  "src": "atlas1_34"
+  "src": "atlas1_34",
+  "cleanup": true
  },
  "unit/wolf_rider": {
   "src": "atlas2_58"
@@ -140,7 +153,8 @@
  },
  "unit/valkyrie": {
   "src": "atlas2_61",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/commander": {
   "src": "atlas2_63"
@@ -167,7 +181,8 @@
  },
  "unit/battering_ram": {
   "src": "atlas1_53",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/cannon": {
   "src": "atlas1_48",
@@ -190,12 +205,14 @@
  "unit/caravel": {
   "src": "atlas1_56",
   "slots": "none",
-  "ship": true
+  "ship": true,
+  "cleanup": true
  },
  "unit/privateer": {
   "src": "atlas1_57",
   "slots": "none",
-  "ship": true
+  "ship": true,
+  "cleanup": true
  },
  "unit/frigate": {
   "src": "atlas1_58",
@@ -214,13 +231,15 @@
  },
  "unit/airship": {
   "src": "atlas1_61",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/settler": {
   "src": "atlas3_00"
  },
  "unit/worker": {
-  "src": "atlas3_01"
+  "src": "atlas3_01",
+  "cleanup": true
  },
  "unit/disciple": {
   "src": "atlas3_05",
@@ -243,7 +262,8 @@
  },
  "unit/bear": {
   "src": "atlas3_41",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/lion": {
   "src": "atlas3_42",
@@ -259,14 +279,17 @@
  },
  "unit/mage": {
   "src": "atlas2_19",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/archmage": {
   "src": "atlas2_12",
-  "slots": "none"
+  "slots": "none",
+  "cleanup": true
  },
  "unit/battlemaster": {
-  "src": "atlas1_08"
+  "src": "atlas1_08",
+  "cleanup": true
  },
  "unit/stygian_guard": {
   "src": "atlas1_09",
@@ -276,7 +299,8 @@
   "src": "atlas2_05"
  },
  "unit/dragon_slayer": {
-  "src": "atlas3_24"
+  "src": "atlas3_24",
+  "cleanup": true
  },
  "unit/royal_guard": {
   "src": "atlas1_32"
