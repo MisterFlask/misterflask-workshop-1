@@ -463,12 +463,18 @@ export class Scene {
     if (!depthOnly) prog.set(this.mapUniforms());
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy, uRiver: 0 });
+      if (!depthOnly) prog.set({ uRiverLift: 0 });
       this.water.draw();
       if (this.rivers) {
         prog.set({ uRiver: 1 });
+        // Lift the ribbon only in the colour pass, and only at the far zoom, so it rides over the
+        // coarse terrain instead of sinking under it (F18). The depth prepass (shadowTerrain) does
+        // not use this uniform, so no reset is needed there.
+        if (!depthOnly) prog.set({ uRiverLift: this.far ? 0.05 : 0 });
         this.rivers.draw();
       }
     }
+    if (!depthOnly) prog.set({ uRiverLift: 0 });
   }
 
   drawProps(prog, U, shadow) {

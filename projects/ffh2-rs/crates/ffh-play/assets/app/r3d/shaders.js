@@ -782,9 +782,12 @@ in vec3 aPos;
 in vec4 aExtra;
 out vec3 vWorld;
 out vec4 vExtra;
+uniform float uRiverLift;
 invariant gl_Position;
 void main() {
-  vec3 w = aPos + vec3(uCopyX, 0.0, 0.0);
+  // uRiverLift raises the river ribbon at the far zoom, where the coarse (LOW_RES) terrain does not
+  // hold the carved channel and would otherwise bury it (F18); 0 for the sea and at near zoom.
+  vec3 w = aPos + vec3(uCopyX, uRiverLift, 0.0);
   vWorld = w;
   vExtra = aExtra;
   gl_Position = uViewProj * vec4(w, 1.0);

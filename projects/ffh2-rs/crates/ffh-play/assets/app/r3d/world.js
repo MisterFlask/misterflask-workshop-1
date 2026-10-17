@@ -449,7 +449,9 @@ export class World {
     segs.forEach((s, k) => {
       if (!used[k]) lines.push(walk(k, s[0]));
     });
-    this.rivers = lines.map((l) => meander(chaikin(chaikin(l))));
+    // Subdivide before smoothing so even a one-edge reach (2 points, a straight bar otherwise) gets
+    // interior points that chaikin and meander can bend (F18).
+    this.rivers = lines.map((l) => meander(chaikin(chaikin(subdivide(l, 0.3)))));
     // Segment index by cell.
     this.riverCells = new Map();
     this.riverSegs = [];
@@ -503,6 +505,19 @@ function segDist(px, py, ax, ay, bx, by) {
   const l2 = dx * dx + dy * dy || 1e-9;
   const t = clamp(((px - ax) * dx + (py - ay) * dy) / l2, 0, 1);
   return Math.hypot(px - ax - dx * t, py - ay - dy * t);
+}
+
+/** Insert interior points so each segment is about `step` long (keeps the end points), so short
+ *  reaches have points to bend. */
+function subdivide(pts, step) {
+  if (pts.length < 2) return pts;
+  const out = [pts[0]];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+    for (let k = 1; k <= n; k++) out.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
+  }
+  return out;
 }
 
 /** One round of Chaikin corner cutting (keeps the end points). */
