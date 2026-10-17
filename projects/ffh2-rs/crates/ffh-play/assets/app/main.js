@@ -633,5 +633,13 @@ async function use3d() {
   if (look.art) mapView.useArt(true);
 }
 
+// The 3D renderer lost its WebGL context (a driver reset): the 2D map until the page is reloaded.
+window.addEventListener("ffh:r3d-lost", () => {
+  if (!mapView.r3d) return;
+  mapView.useR3d(false);
+  if (look.art) mapView.useArt(true);
+  toast("The 3D renderer lost its graphics context; using the 2D map until the page is reloaded.", "error");
+});
+
 window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen, look, setRenderer };
 boot();

@@ -56,11 +56,13 @@ export class Map3D {
     this.raf = requestAnimationFrame(() => this.loop());
     this.panel = null;
     this.addPanelButton();
-    // A lost context (driver reset, too many contexts) drops back to the 2D renderer.
+    // A lost context (driver reset, too many contexts) drops back to the 2D renderer: main.js
+    // listens for "ffh:r3d-lost" (the stored choice stays 3D, so a reload tries again).
     this.canvas.addEventListener("webglcontextlost", (ev) => {
       ev.preventDefault();
       console.warn("r3d: WebGL context lost");
       this.lost = true;
+      setTimeout(() => globalThis.dispatchEvent?.(new CustomEvent("ffh:r3d-lost")), 0);
     });
   }
 
