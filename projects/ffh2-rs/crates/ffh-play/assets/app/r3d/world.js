@@ -289,8 +289,19 @@ export class World {
         const px = cx + dx + 0.5 + this.peakJitter[i * 2];
         const py = cy + dy + 0.5 + this.peakJitter[i * 2 + 1];
         const d = Math.hypot(mx - px, my - py);
-        const t = clamp(1 - d / 0.62, 0, 1);
+        if (d > 0.9) continue;
+        // Not a cone: the reach of the summit's flanks varies around it (two low harmonics, their
+        // phases per plot), so spurs run out from the top with gullies between them.
+        const a = Math.atan2(my - py, mx - px);
+        const p1 = hashf(i, 71) * 6.2832, p2 = hashf(i, 72) * 6.2832;
+        const reach = 0.62 * (1 + 0.3 * Math.sin(3 * a + p1) + 0.14 * Math.sin(5 * a + p2));
+        const t = clamp(1 - d / reach, 0, 1);
         s = Math.max(s, 0.55 * Math.pow(t, 1.25));
+        // A lower second summit on one shoulder: a lone mountain is a lopsided massif.
+        const b = hashf(i, 73) * 6.2832;
+        const d2 = Math.hypot(mx - (px + Math.cos(b) * 0.3), my - (py + Math.sin(b) * 0.3));
+        const t2 = clamp(1 - d2 / 0.36, 0, 1);
+        s = Math.max(s, 0.36 * Math.pow(t2, 1.1));
       }
     }
     return s;

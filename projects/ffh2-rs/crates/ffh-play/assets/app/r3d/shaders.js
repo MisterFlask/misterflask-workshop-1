@@ -476,6 +476,12 @@ void main() {
     float rockMask = smoothstep(0.24, 0.4, slope + (mnoise(m, 4.0) - 0.5) * 0.14);
     rockMask = max(rockMask, smoothstep(0.42, 0.62, h) * 0.85);
     if (rockMask > 0.0) {
+      // Crags: creases of ridged noise across the rock faces catch the light (a bump on the
+      // shading normal, world-anchored, close up mostly), finer than the terrain mesh can carry.
+      float crease = 1.0 - abs(mnoise(m + 1.7, 2.2) * 2.0 - 1.0);
+      float crease2 = 1.0 - abs(mnoise(m - 6.1, 5.3) * 2.0 - 1.0);
+      float crag = (crease * crease * 0.7 + crease2 * crease2 * 0.3) * rockMask;
+      n = bump(n, vWorld, crag * 0.1 * (0.35 + 0.65 * near), 1.0);
       float strata = 0.5 + 0.5 * sin(h * 30.0 + (m.x - m.y) * 1.3 + mnoise(m, 2.5) * 7.0);
       strata *= smoothstep(0.3, 0.7, mnoise(m + 2.0, 1.2));
       vec3 rock = mix(vec3(0.22, 0.21, 0.24), vec3(0.42, 0.40, 0.38), mfbm(m, 1.7));
