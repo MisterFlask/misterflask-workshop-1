@@ -29,6 +29,14 @@ function star(g, cx, cy, ro, ri) {
   g.closePath();
 }
 
+// Relative luminance of a "#rrggbb" colour (0..1), for picking readable text on an owner disc.
+function hexLum(hex) {
+  const h = String(hex).replace("#", "");
+  if (h.length < 6) return 0.5;
+  const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 export function drawHud(r3d, cam) {
   const v = r3d.view;
   const g = v.ctx;
@@ -115,11 +123,27 @@ export function drawHud(r3d, cam) {
     g.arc(x + sizeR + 1, p.y, sizeR, 0, Math.PI * 2);
     g.fillStyle = col;
     g.fill();
-    g.fillStyle = "#14100c";
+    // A dark owner disc (the barbarian #5a1010) gets a light rim and light digit text, so the size
+    // never reads as dark-on-dark (F14); mid/bright owner colours keep the dark digit.
+    const darkDisc = hexLum(col) < 0.2;
+    if (darkDisc) {
+      g.lineWidth = 1.2;
+      g.strokeStyle = "#c8b89a";
+      g.stroke();
+    }
     g.font = `700 ${Math.round(fs * 0.95)}px ${FONT}`;
     g.textAlign = "center";
     g.textBaseline = "middle";
-    g.fillText(String(city.size ?? ""), x + sizeR + 1, p.y + 0.5);
+    const sizeStr = String(city.size ?? "");
+    if (darkDisc) {
+      g.lineWidth = 2;
+      g.strokeStyle = "rgba(10,8,6,0.85)";
+      g.strokeText(sizeStr, x + sizeR + 1, p.y + 0.5);
+      g.fillStyle = city.owner === mine ? "#ffe9a8" : "#f4ecd8";
+    } else {
+      g.fillStyle = "#14100c";
+    }
+    g.fillText(sizeStr, x + sizeR + 1, p.y + 0.5);
     if (name) {
       g.font = `600 ${fs}px ${FONT}`;
       g.fillStyle = city.owner === mine ? "#ffe9a8" : "#efe6d4";
