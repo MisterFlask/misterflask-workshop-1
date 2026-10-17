@@ -22,13 +22,17 @@ const TERRAIN_TILE = {
   TERRAIN_PLAINS: "plains",
   TERRAIN_DESERT: "desert",
   TERRAIN_SNOW: "snow",
-  TERRAIN_TUNDRA: "snow",
+  TERRAIN_TUNDRA: "tundra",
   TERRAIN_MARSH: "marsh",
+  TERRAIN_COAST: "coast",
+  TERRAIN_OCEAN: "ocean",
   TERRAIN_BROKEN_LANDS: "hell",
-  TERRAIN_FIELDS_OF_PERDITION: "hell",
-  TERRAIN_BURNING_SANDS: "hell",
-  TERRAIN_SHALLOWS: "marsh",
+  TERRAIN_FIELDS_OF_PERDITION: "perdition",
+  TERRAIN_BURNING_SANDS: "burning",
+  TERRAIN_SHALLOWS: "coast",
 };
+
+const TERRAIN_FILES = ["grass", "plains", "desert", "snow", "tundra", "marsh", "coast", "ocean", "hell", "burning", "perdition"];
 
 /** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token. */
 function unitSpriteKey(type) {
@@ -58,7 +62,7 @@ export class IsoMap {
       };
       im.src = new URL(url, import.meta.url).href;
     };
-    for (const name of ["grass", "plains", "desert", "snow", "marsh", "hell"]) load(`t_${name}`, `./iso/terrain/${name}.png`);
+    for (const name of TERRAIN_FILES) load(`t_${name}`, `./iso/terrain/${name}.png`);
     for (const name of ["knight", "lich", "archer", "spider"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
