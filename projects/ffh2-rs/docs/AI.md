@@ -625,6 +625,16 @@ gold would read as overpriced and always be refused. `peace_tribute` instead bui
 *worth* the gap under `deal_val` (the `AI_counterPropose` scaling), so the deal balances for the
 judge. Cities-as-tribute are omitted (`AI_cityTradeVal` unported). No new saved state; no RNG.
 
+Measured (16-seed, 690-turn A/B vs the pre-reparations tip, with the `press_conquest` guard):
+captured cities +16%, civs eliminated +25%, the leader's world-share at turn 690 35.9% -> 42.5%
+(x1.20 -> x1.40 over the runner-up) -- a markedly stronger march toward domination, the primary
+goal. War declarations are *down* 10% and decision turns slightly faster, so pressing conquest
+resolves wars rather than dragging them. Research at turn 300 is flat within noise (-1.7%, lower in
+10 of 16 seeds / higher in 4, per-seed swings +-46), i.e. the economic engine is not sacrificed.
+An adversarial trace audit of the first (un-guarded) cut caught strong civs tribute-farming weak
+victims for whole games instead of conquering them (primary traded for a secondary tech); the
+`press_conquest` guard fixed it (worst seed: peace events 31 -> 6).
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the
