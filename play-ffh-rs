@@ -16,6 +16,7 @@
 #   ./play-ffh-rs --load game-3/auto/T0040.ffhsave   resume a save
 #   ./play-ffh-rs --no-build             skip the build (a binary already exists)
 #   ./play-ffh-rs --no-open              do not open a browser
+#   ./play-ffh-rs --3d                   open the experimental 3D map (plain preset; needs a GPU)
 #
 # Any flag not listed above is passed through to `ffh-play serve`; HUMAN.md lists
 # the GAME flags (--seed, --world, --civ, --leader, --new, --load, --saves,
@@ -34,6 +35,7 @@ fi
 
 build=1
 open=1
+three_d=0
 port=8642
 can_open=1        # whether we can predict the URL to open (off for --port 0 / --bind)
 serve_args=()
@@ -44,9 +46,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --no-build) build=0 ;;
     --no-open)  open=0 ;;
+    --3d)       three_d=1 ;;
     -h|--help)
       # Print the header comment above (drop the shebang and the leading "# ").
-      sed -n '2,20p' "$0" | sed 's/^#\( \|$\)//'
+      sed -n '2,24p' "$0" | sed 's/^#\( \|$\)//'
       exit 0
       ;;
     --port)
@@ -73,7 +76,12 @@ if [ ! -x "$bin" ]; then
   exit 1
 fi
 
-url="http://127.0.0.1:${port}/"
+# --3d opens the experimental 3D renderer with the lighter "plain" preset (docs/R3D.md). It needs a
+# GPU-accelerated browser; without one the client shows a message and keeps the 2D map (it no longer
+# freezes). Pass nothing for the default 2D pixel-art map.
+query=""
+[ "$three_d" = 1 ] && query="?renderer=3d&r3d=plain"
+url="http://127.0.0.1:${port}/${query}"
 
 # A best-effort browser opener; absent in a headless/cloud session, which is fine.
 opener=""
@@ -96,9 +104,12 @@ open_when_ready() {
   done
 }
 
+[ "$three_d" = 1 ] && echo "play-ffh-rs: 3D needs a GPU-accelerated browser; without one it shows a message and uses the 2D map"
 if [ "$open" = 1 ] && [ "$can_open" = 1 ] && [ -n "$opener" ]; then
   echo "play-ffh-rs: will open $url when the server is ready"
   open_when_ready &
+elif [ "$open" = 1 ] && [ "$three_d" = 1 ]; then
+  echo "play-ffh-rs: open the server's URL with ?renderer=3d&r3d=plain once it is serving (printed below)"
 elif [ "$open" = 1 ]; then
   echo "play-ffh-rs: open the game in your browser once it is serving (URL printed below)"
 fi

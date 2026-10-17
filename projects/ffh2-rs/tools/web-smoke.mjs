@@ -396,7 +396,9 @@ async function flatRenderer(url) {
  *  (no animation) and the internal resolution halved. */
 async function renderer3d(url) {
   const cfg = encodeURIComponent(JSON.stringify({ animate: false, renderScale: 0.5 }));
-  await b.goto(`${url}/?renderer=3d&r3d=${cfg}`);
+  // `--disable-gpu` makes WebGL2 software (SwiftShader), which the renderer now refuses by default
+  // (docs/R3D.md §1); `force3d=1` overrides the guard so the test still exercises 3D.
+  await b.goto(`${url}/?renderer=3d&r3d=${cfg}&force3d=1`);
   await until2("window.ffh && window.ffh.ready", "the client to boot (3d)");
   await waitHuman("the game in the 3D renderer");
   await answerPopups(false);

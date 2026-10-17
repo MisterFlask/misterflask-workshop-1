@@ -639,7 +639,11 @@ function setRenderer(r) {
 /** Turns the 3D renderer on; when it cannot run, says so and draws with the art (or flat). */
 async function use3d() {
   if (await mapView.useR3d(true)) return;
-  toast("The 3D renderer cannot run in this browser (it needs WebGL2); using the 2D map.", "error");
+  if (mapView.r3dError?.code === "software-webgl") {
+    toast(`${mapView.r3dError.message} Enable hardware acceleration in your browser (or add ?force3d=1 to try anyway); using the 2D map.`, "error", 15000);
+  } else {
+    toast("The 3D renderer cannot run in this browser (it needs WebGL2); using the 2D map.", "error");
+  }
   if (look.art) mapView.useArt(true);
 }
 
