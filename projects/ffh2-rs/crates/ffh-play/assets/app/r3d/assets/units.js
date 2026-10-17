@@ -50,7 +50,7 @@ function C(c) {
 
 /** Team-coloured cloth: `v` 0..1 is how much of the owner's colour shows (light grey = full). */
 function teamCol(v = 1) {
-  const g = Math.round(0x50 + (0xdc - 0x50) * v).toString(16).padStart(2, "0");
+  const g = Math.round(0x50 + (0xdc - 0x50) * v * 0.92).toString(16).padStart(2, "0");
   return `#${g}${g}${g}`;
 }
 
@@ -216,6 +216,12 @@ const GARB = {
   undead: { cloth: "#4a4640", leather: "#3a3430", leather2: "#262220", metal: "#6a625a", metal2: "#4a443e", trim: "#7a6a4a", wood: "#3e342c", legs: "#2e2a26", boots: "#221e1c", fur: "#4a4440", hair: ["#8a8478"] },
   demon: { cloth: "#3a1c1c", leather: "#2a1a18", leather2: "#1a1010", metal: "#3a3436", metal2: "#26222a", trim: "#9a3a1a", wood: "#2e2220", legs: "#221616", boots: "#160e0e", fur: "#2a1e1e", hair: ["#140c0c"] },
 };
+
+// Undyed outdoor wool (hunters' kilts, scouts' cloaks) and the deep dye of a mage's hat, per garb:
+// the owner's colour goes on one or two big readable zones, the rest of a figure stays natural
+// (leather, wool, steel, skin) so it reads as a character, not a coloured pawn.
+const FIELD = { human: ["#5a5236", "#2e3044"], dark: ["#2e2a30", "#1e1a26"], elf: ["#4a5434", "#2c3a2c"], elfdark: ["#2a2834", "#1a1824"], dwarf: ["#5e4630", "#3a2c24"], orc: ["#4a3e2c", "#2e2620"], lizard: ["#5a4c30", "#2e3a2a"], undead: ["#3a3632", "#24202a"], demon: ["#2a1616", "#1a0e10"] };
+for (const [k, [field, hat]] of Object.entries(FIELD)) Object.assign(GARB[k], { field, hat });
 
 function garbOf(race, dark) {
   if (dark) return race === "elf" ? GARB.elfdark : race === "human" || race === "dwarf" ? GARB.dark : GARB[race] ?? GARB.dark;
@@ -477,8 +483,8 @@ const WEAPONS = {
     mb.part(() => {
       mb.translate(0, 0.175, 0);
       const poly = [];
-      for (let i = 0; i < 14; i++) {
-        const a = (i / 14) * TAU + Math.PI / 2;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU + Math.PI / 2;
         const rr = i % 2 ? 0.024 : 0.04;
         poly.push([Math.cos(a) * rr, Math.sin(a) * rr]);
       }
@@ -656,7 +662,10 @@ function figure(o) {
   const mb = new MeshBuilder();
   const r = o.r;
   const race = o.race ?? "human";
-  const R = RACES[race] ?? RACES.human;
+  const R0 = RACES[race] ?? RACES.human;
+  // Heroic stylisation: limbs a little stouter and hands bigger than life, so arms, weapons and
+  // stances still read when the figure is 35-45 pixels tall.
+  const R = { ...R0, armR: R0.armR * 1.12, legR: R0.legR * 1.08, handR: R0.handR * 1.18 };
   const g = o.garb ?? garbOf(race, o.dark);
   const skinC = jitter(C(o.skin ?? R.skin), r, 0.04);
   const skinMat = race === "undead" ? MAT.MATTE : MAT.SKIN;
@@ -785,7 +794,7 @@ function figure(o) {
         return [C(g.cloth), MAT.MATTE];
       case "tunic":
       default:
-        return o.tunicTeam === false ? [C(g.cloth), MAT.MATTE] : [C(teamCol(0.9)), MAT.TEAM];
+        return o.tunicTeam === false ? [C(g.cloth), MAT.MATTE] : [C(teamCol(o.tunicShade ?? 0.9)), MAT.TEAM];
     }
   };
   const [bc, bm] = bodyCol();
@@ -834,6 +843,8 @@ function figure(o) {
 
   // Skirt / tunic hem / robe.
   const skirtLen = o.skirt ?? 0;
+  // A robe hangs from the chest: never narrower than the body's frame (skeletal liches included).
+  const RW = Math.max(R.waistR, R.chestR * 0.8);
   if (robe) {
     mb.color = bc;
     mb.mat = bm;
@@ -844,12 +855,14 @@ function figure(o) {
       const top = pelvis[1] + 0.02;
       const flare = o.flare ?? 1;
       const folds = (a, y) => (0.07 * Math.sin(a * 7 + 0.5) + 0.04 * Math.sin(a * 3)) * Math.max(0, 1 - y / top);
-      mb.lathe([[R.waistR * 0.6, -0.008], [R.waistR * 1.75 * flare, -0.008], [R.waistR * 1.6 * flare, top * 0.25], [R.waistR * 1.25, top * 0.7], [R.waistR * 1.1, top]], o.lite ? 9 : 10, { caps: true, wobble: folds });
+      mb.lathe([[RW * 0.6, -0.008], [RW * 1.75 * flare, -0.008], [RW * 1.6 * flare, top * 0.25], [RW * 1.25, top * 0.7], [RW * 1.1, top]], o.lite ? 9 : 10, { caps: true, wobble: folds });
       // A hem band of darker cloth.
       mb.color = o.hemColor ? C(o.hemColor) : bm === MAT.TEAM ? C(teamCol(0.35)) : mixc(bc, "#000000", 0.45);
-      mb.lathe([[R.waistR * 1.79 * flare, -0.008], [R.waistR * 1.76 * flare, 0.022], [R.waistR * 1.7 * flare, 0.026]], o.lite ? 9 : 10, { caps: false, wobble: folds });
+      mb.lathe([[RW * 1.79 * flare, -0.008], [RW * 1.76 * flare, 0.022], [RW * 1.7 * flare, 0.026]], o.lite ? 9 : 10, { caps: false, wobble: folds });
     });
     mb.heightSway(m0, R.hipY * 0.6, 0.0, 0.25);
+    // Painted folds and a hem in shadow: the dye varies around and down the robe.
+    mb.tint(m0, (x, y, z) => (0.84 + 0.16 * Math.min(1, y / (R.hipY * 0.9))) * (1 + 0.1 * Math.sin(Math.atan2(z - pelvis[2], x - pelvis[0]) * 7 + 0.5)));
     // A front panel (stole / scapular) in the contrasting colour.
     if (o.stole !== false) {
       const sc = o.stole ?? (bm === MAT.TEAM ? [C(g.trim), MAT.METAL] : [C(teamCol(0.95)), MAT.TEAM]);
@@ -857,8 +870,8 @@ function figure(o) {
       mb.mat = sc[1] ?? MAT.MATTE;
       mb.part(() => {
         const top = T([0, ts * 0.95, R.chestR * R.depth * 0.92]);
-        const mid = T([0, 0.0, R.waistR * R.depth * 1.12]);
-        const bot = [pelvis[0], 0.012, pelvis[2] + R.waistR * 1.55 * 0.85];
+        const mid = T([0, 0.0, RW * R.depth * 1.12]);
+        const bot = [pelvis[0], 0.004, pelvis[2] + RW * 1.95 * (o.flare ?? 1) * 0.85];
         const wv = R.chestR * 0.36;
         mb.quad(vadd(top, [-wv, 0, 0.003]), vadd(top, [wv, 0, 0.003]), vadd(mid, [wv * 1.05, 0, 0.004]), vadd(mid, [-wv * 1.05, 0, 0.004]));
         mb.quad(vadd(mid, [-wv * 1.05, 0, 0.004]), vadd(mid, [wv * 1.05, 0, 0.004]), vadd(bot, [wv * 1.3, 0, 0.004]), vadd(bot, [-wv * 1.3, 0, 0.004]));
@@ -943,7 +956,7 @@ function figure(o) {
     mb.part(() => {
       mb.apply(TF.m);
       mb.translate(0, ts - 0.004, -0.004);
-      ringTube(mb, R.shW * 0.92, R.chestR * R.depth * 1.05, R.armR * 1.25, 9, 4, { wob: 0.18, seed });
+      ringTube(mb, R.shW * 0.92, R.chestR * R.depth * 1.05, R.armR * 1.15, 8, 4, { wob: 0.18, seed });
     });
   }
 
@@ -1001,7 +1014,7 @@ function figure(o) {
   // --- the neck and head ----------------------------------------------------------------------
   mb.bone = BONE.HEAD;
   const neckTop = T([0, tn, 0.004]);
-  const HR = R.headR * (o.headScale ?? 1.1); // heroic: heads a little large
+  const HR = R.headR * (o.headScale ?? 1.16); // heroic: heads a little large
   const hdOff = race === "orc" || race === "goblin" ? [0, HR * 0.68, HR * 0.42] : race === "lizard" ? [0, HR * 0.85, HR * 0.3] : [0, HR * 0.9, HR * 0.1];
   const headC = vadd(neckTop, hdOff);
   if (!bony) {
@@ -1042,8 +1055,8 @@ function figure(o) {
     for (let i = 0; i < nu; i++) {
       for (let j = 0; j < nv; j++) {
         const u0 = i / nu, u1 = (i + 1) / nu, v0 = j / nv, v1 = (j + 1) / nv;
-        mb.mat = MAT.TEAM;
-        mb.color = teamCol(o.capeShade ?? 0.82);
+        if (o.capeColor) setMat(mb, o.capeColor);
+        else setTeam(mb, o.capeShade ?? 0.82);
         mb.quad(P(u0, v0), P(u1, v0), P(u1, v1), P(u0, v1));
       }
     }
@@ -1139,6 +1152,16 @@ function figure(o) {
   mb.bone = BONE.BODY;
   // Baked occlusion: darker toward the ground (legs, hems), so the figure sits in its shadow.
   if (!seated) mb.heightAO(0, 0.0, R.hipY * 1.15, 0.62);
+  // Dyed cloth is never one flat colour: the owner's colour deepens toward the hems and in soft
+  // blotches (folds, wear), so it reads as painted wool rather than plastic.
+  const tv = mb.v, nseed = (o.variant ?? 0) * 3.7;
+  for (let i = 0; i < tv.length; i += 13) {
+    if (tv[i + 9] !== MAT.TEAM) continue;
+    const k = (0.86 + 0.14 * Math.min(1, Math.max(0, tv[i + 1] / R.shY))) * (1 + 0.11 * noise3(tv[i] * 42 + nseed, tv[i + 1] * 30, tv[i + 2] * 42));
+    tv[i + 6] *= k;
+    tv[i + 7] *= k;
+    tv[i + 8] *= k;
+  }
   return { mb, hands, headC, top: headC[1] + HR };
 }
 
@@ -1199,7 +1222,7 @@ function head(mb, part, { o, race, hr, skinC, skinMat, g, r }) {
       mb.part(() => {
         mb.translate(0, -hr * 0.45, hr * 0.42);
         mb.scale(race === "goblin" ? 0.7 : 1.05, 0.55, 0.65);
-        mb.sphere(hr * 0.8, 1);
+        mb.sphere(hr * 0.8, 0);
       });
       mb.part(() => {
         mb.translate(0, hr * 0.26, hr * 0.62);
@@ -1225,6 +1248,23 @@ function head(mb, part, { o, race, hr, skinC, skinMat, g, r }) {
       });
     }
   });
+  // A painter's face: the eyes as two dabs of shadow under the brow (a face turned toward the
+  // viewer reads as a face, not a bald egg). Demons' eyes glow instead (below).
+  if (race !== "demon" && !o.eyeGlow && !o.lite) {
+    part(() => {
+      mb.color = mixc(skinC, "#140a08", 0.68);
+      mb.mat = MAT.MATTE;
+      const ey = race === "goblin" ? hr * 0.12 : hr * 0.06;
+      for (const s of [-1, 1]) {
+        mb.part(() => {
+          const ex = s * hr * (race === "orc" || race === "goblin" ? 0.4 : 0.34);
+          mb.translate(ex, ey, Math.sqrt(Math.max(0, 1 - (ex / hr) ** 2 - (ey / hr) ** 2)) * hr * 0.97 - hr * 0.06);
+          mb.rotateY(s * 0.35);
+          mb.box(hr * 0.26, hr * 0.16, hr * 0.12, { top: 0.8 });
+        });
+      }
+    });
+  }
   // Ears.
   part(() => {
     mb.color = skinC;
@@ -1303,7 +1343,7 @@ function head(mb, part, { o, race, hr, skinC, skinMat, g, r }) {
       }
       // Moustache.
       setMat(mb, o.beardColor ?? hair);
-      mb.tube([[-hr * 0.55, -hr * 0.55, hr * 0.7], [0, -hr * 0.28, hr * 0.98], [hr * 0.55, -hr * 0.55, hr * 0.7]], [hr * 0.1, hr * 0.15, hr * 0.1], 4, { caps: true });
+      mb.tube([[-hr * 0.55, -hr * 0.55, hr * 0.7], [0, -hr * 0.28, hr * 0.98], [hr * 0.55, -hr * 0.55, hr * 0.7]], [hr * 0.1, hr * 0.15, hr * 0.1], 3, { caps: true });
     });
   }
   // Headgear.
@@ -1528,11 +1568,13 @@ function headgear(mb, hg, { o, race, hr, g }) {
         });
       });
     });
-    setMat(mb, o.hatBand ?? g.trim, o.hatBand ? MAT.MATTE : MAT.METAL);
+    if (o.hatBand === "team") setTeam(mb, 0.86);
+    else setMat(mb, o.hatBand ?? g.trim, o.hatBand ? MAT.MATTE : MAT.METAL);
+    const bandH = o.hatBand === "team" ? 0.26 : 0.15;
     mb.part(() => {
       mb.translate(0, hr * 0.62, -hr * 0.07);
       mb.rotateX(-0.12);
-      mb.cylinder(hr * 0.99, hr * 0.95, hr * 0.15, 10, { caps: false });
+      mb.cylinder(hr * 1.0, hr * 0.94, hr * bandH, 10, { caps: false });
     });
     return;
   }
@@ -1701,9 +1743,9 @@ function spearmanSpec({ race, dark, variant }) {
     lean: 0.08,
     twist: 0.08,
     body: k.body ?? (race === "demon" ? "armour" : "vest"),
-    sleeves: "team",
+    sleeves: "cloth",
     skirt: R.hipY * 0.42,
-    skirtColor: teamCol(0.88),
+    skirtColor: teamCol(0.8),
     skirtMat: MAT.TEAM,
     pauldrons: race === "dwarf" ? true : race === "elf" ? "team" : false,
     bracers: true,
@@ -1727,10 +1769,9 @@ function archerSpec({ race, dark, variant }) {
     twist: 0.05,
     headYaw: 0.95,
     body: k.body ?? "vest",
-    sleeves: "team",
+    sleeves: "cloth",
     skirt: R.hipY * 0.38,
-    skirtColor: teamCol(0.85),
-    skirtMat: MAT.TEAM,
+    skirtColor: garbOf(race, dark).field,
     bracers: true,
     head: race === "lizard" ? "bare" : race === "undead" ? "hood" : race === "elf" ? vpick(variant, ["circlet", "hood", "circlet", "hood"]) : vpick(variant, ["hood", "hood", "deephood", "hood"]),
     cape: race === "elf",
@@ -1752,8 +1793,15 @@ function mageSpec({ race, dark, variant }) {
     lean: 0.02,
     twist: -0.15,
     body: "robe",
-    robeShade: dark ? 0.6 : 0.88,
-    stole: [C(garbOf(race, dark).trim), MAT.METAL],
+    robeShade: dark ? 0.6 : 0.76,
+    // Hatted mages wear the owner's robe under a hat of deep dye; hooded ones (and the dead) a robe
+    // of deep dye under the owner's hood, a stole of the owner's colour down the front.
+    robeTeam: !hood,
+    robeColor: garbOf(race, dark).hat,
+    sleeves: hood ? "body" : undefined,
+    stole: hood ? [C(teamCol(0.85)), MAT.TEAM] : [C(garbOf(race, dark).hat), MAT.MATTE],
+    hatColor: garbOf(race, dark).hat,
+    hatBand: "team",
     head: hood ? "deephood" : race === "goblin" || race === "orc" ? "hood" : "hat",
     horns: race === "goblin" || race === "orc",
     hornColor: "bone",
@@ -1761,7 +1809,7 @@ function mageSpec({ race, dark, variant }) {
     beard: race === "human" || race === "dwarf" ? (variant === 2 ? "short" : "full") : null,
     beardColor: race === "human" ? "#cfc8b8" : undefined,
     mantle: race === "orc" || race === "goblin",
-    right: { hand: [0.045, -0.06, 0.075], elbow: [0.8, -0.7, -0.2], weapon: "staff", dir: [-0.08, 1, 0.06], opts: { len: 0.2 + R.headR * 1.5, back: R.shY - 0.06, glow: GLOW[race] } },
+    right: { hand: [0.05, -0.05, 0.075], elbow: [0.8, -0.7, -0.2], weapon: "staff", dir: [-0.15, 1, 0.07], opts: { len: 0.25 + R.headR * 1.5, back: R.shY - 0.05, glow: GLOW[race] } },
     left: { hand: [0.01, -0.05, 0.13], elbow: [0.5, -1, -0.1] },
   };
 }
@@ -1781,6 +1829,8 @@ function priestSpec({ race, dark, variant }) {
     robeColor: evil ? "#2a2228" : race === "elf" ? "#c8c4a0" : "#d4ccb8",
     stole: false,
     chasuble: true,
+    sleeves: "body",
+    hoodColor: evil ? "#2a2228" : undefined,
     head: evil ? "deephood" : race === "dwarf" ? "helm" : race === "elf" ? "circlet" : vpick(variant, ["mitre", "hood", "mitre", "bare"]),
     hoodGlow: evil ? (race === "demon" ? "#ff5020" : "#b07aff") : null,
     hoodShade: 0.7,
@@ -1802,8 +1852,9 @@ function workerSpec({ race, dark, variant }) {
     lean: hoe ? 0.16 : 0.06,
     twist: hoe ? -0.2 : 0,
     body: k.body ?? "tunic",
+    tunicShade: 0.78,
     skirt: R.hipY * 0.4,
-    sleeves: "team",
+    sleeves: "cloth",
     head: race === "dwarf" ? "helm" : race === "elf" ? "bare" : race === "orc" || race === "goblin" ? "bandana" : "straw",
     back: hoe ? [] : ["sack"],
     right: hoe ? { hand: [-0.01, -0.09, 0.11], elbow: [0.6, -0.6, -0.3], weapon: "hoe", dir: [0.3, 0.75, -0.6] } : { hand: [0.0, 0.015, 0.055], elbow: [0.5, -0.9, 0.4], weapon: "pick", dir: [-0.28, 0.55, -0.8] },
@@ -1827,7 +1878,7 @@ function scoutSpec({ race, dark, variant }) {
     head: race === "lizard" ? "bare" : "hood",
     hoodShade: 0.9,
     cape: true,
-    capeShade: 0.78,
+    capeColor: garbOf(race, dark).field,
     capeLen: 0.85,
     back: bow ? ["quiver"] : ["bedroll"],
     right: { hand: [0.03, -0.07, 0.07], elbow: [0.8, -0.5, -0.3], weapon: "spear", dir: [-0.06, 1, 0.12], opts: { len: 0.2, back: R.shY - 0.05 } },
@@ -1916,10 +1967,10 @@ function rotXAbout(p, piv, a) {
  *  factors, neck [len, angle, r0, r1], head [kind, len, r], leg [r, foot], tail [kind, len, r],
  *  coat/belly/mane colours. */
 const BEASTS = {
-  horse: { len: 0.38, h: 0.275, girth: 0.07, chest: 1.0, rump: 1.0, mid: 0.94, neck: [0.15, 0.95, 0.038, 0.027], head: ["horse", 0.115, 0.027], leg: [0.014, "hoof"], tail: ["horse", 0.12, 0.012], coat: "#6a4630", belly: "#5a3a26", mane: "#241a14" },
+  horse: { len: 0.38, h: 0.28, girth: 0.07, chest: 1.04, rump: 1.04, mid: 0.94, neck: [0.17, 1.0, 0.052, 0.03], head: ["horse", 0.12, 0.03], leg: [0.0155, "hoof"], tail: ["horse", 0.12, 0.012], coat: "#6a4630", belly: "#5a3a26", mane: "#241a14" },
   ox: { len: 0.3, h: 0.19, girth: 0.068, chest: 1.12, rump: 0.95, mid: 1.05, neck: [0.06, 0.25, 0.045, 0.036], head: ["bovine", 0.075, 0.03], leg: [0.015, "hoof"], tail: ["rope", 0.1, 0.006], coat: "#7a6048", belly: "#9a8264", mane: "#4a3a2c", horns: true },
-  wolf: { len: 0.24, h: 0.17, girth: 0.047, chest: 1.25, rump: 0.86, mid: 0.84, neck: [0.06, 0.45, 0.036, 0.03], head: ["canine", 0.06, 0.032], leg: [0.011, "paw"], tail: ["brush", 0.13, 0.02], coat: "#6a6660", belly: "#a8a294", mane: "#3a3634" },
-  hound: { len: 0.17, h: 0.125, girth: 0.028, chest: 1.12, rump: 0.85, mid: 0.75, neck: [0.05, 0.6, 0.019, 0.016], head: ["canine", 0.05, 0.019], leg: [0.006, "paw"], tail: ["rope", 0.08, 0.005], coat: "#7a5a3a", belly: "#b09a78", mane: "#4a3624" },
+  wolf: { len: 0.24, h: 0.17, girth: 0.05, chest: 1.3, rump: 0.86, mid: 0.82, neck: [0.06, 0.38, 0.044, 0.036], head: ["canine", 0.07, 0.035], leg: [0.0125, "paw"], tail: ["brush", 0.13, 0.025], coat: "#5e5a54", belly: "#a8a294", mane: "#2a2624", saddleBack: 0.6, ruff: 1.3 },
+  hound: { len: 0.17, h: 0.125, girth: 0.033, chest: 1.18, rump: 0.86, mid: 0.76, neck: [0.05, 0.5, 0.025, 0.021], head: ["canine", 0.055, 0.024], leg: [0.0078, "paw"], tail: ["rope", 0.08, 0.006], coat: "#7a5a3a", belly: "#b09a78", mane: "#4a3624", saddleBack: 0.35 },
   bear: { len: 0.3, h: 0.21, girth: 0.072, chest: 1.08, rump: 0.98, mid: 1.0, neck: [0.05, 0.1, 0.05, 0.042], head: ["bear", 0.065, 0.04], leg: [0.02, "bear"], tail: ["stub", 0.03, 0.012], coat: "#4e3828", belly: "#3a2a1e", mane: "#6a503a", hump: 1 },
   boar: { len: 0.24, h: 0.15, girth: 0.055, chest: 1.15, rump: 0.85, mid: 0.95, neck: [0.04, 0.0, 0.045, 0.04], head: ["boar", 0.08, 0.034], leg: [0.01, "hoof"], tail: ["rope", 0.05, 0.004], coat: "#4a3a30", belly: "#3a2e26", mane: "#241c18", hump: 0.6 },
   cat: { len: 0.22, h: 0.175, girth: 0.042, chest: 1.2, rump: 0.95, mid: 0.85, neck: [0.045, 0.45, 0.034, 0.03], head: ["cat", 0.05, 0.04], leg: [0.0135, "paw"], tail: ["rope", 0.16, 0.007], coat: "#b08a52", belly: "#d8c098", mane: "#6a4a2a" },
@@ -1970,10 +2021,12 @@ function quadruped(mb, b, o = {}) {
     }
   });
   // Pale belly, darker back (painted countershading).
+  const sb = b.saddleBack ?? 0;
   mb.tint(m0, (x, y) => {
     const t = Math.max(0, Math.min(1, (yb - y) / G + 0.2));
     const back = Math.max(0, Math.min(1, (y - yb) / G));
-    return [0, 1, 2].map((k) => (1 - t) * (1 - back * 0.25) + (t * bellyC[k]) / Math.max(coat[k], 1e-3));
+    const dk = Math.max(0, Math.min(1, (y - yb) / G + 0.35)) * sb;
+    return [0, 1, 2].map((k) => (1 - t) * (1 - back * 0.25) * (1 - dk + (dk * mane[k]) / Math.max(coat[k], 1e-3)) + (t * bellyC[k]) / Math.max(coat[k], 1e-3));
   });
   if (b.stripes) {
     const sc = C(b.stripes);
@@ -1983,9 +2036,11 @@ function quadruped(mb, b, o = {}) {
   if (b.head[0] === "canine" || b.head[0] === "bear" || b.ruff) {
     mb.color = mixc(coat, mane, 0.35);
     const seed = r.range(0, 30);
+    const ru = typeof b.ruff === "number" ? b.ruff : 1;
     mb.part(() => {
-      mb.translate(0, yb + G * 0.12, chestZ - G * 0.55);
-      mb.blob(G * 1.08, { detail: 1, amp: 0.16, squash: 1.0, noise: (v) => noise3(v[0] * 3 + seed, v[1] * 3, v[2] * 3) });
+      mb.translate(0, yb + G * 0.18 * ru, chestZ - G * 0.5);
+      mb.scale(0.86, 1, 1);
+      mb.blob(G * 1.08 * ru, { detail: 1, amp: 0.2, squash: 1.0, noise: (v) => noise3(v[0] * 3 + seed, v[1] * 3, v[2] * 3) });
     });
   }
 
@@ -2085,6 +2140,7 @@ function quadruped(mb, b, o = {}) {
   }
 
   // --- neck and head --------------------------------------------------------------------------
+  const headM = mb.mark();
   mb.bone = BONE.HEAD;
   const [nl, na, nr0, nr1] = b.neck;
   const nb = [0, yb + G * 0.3, chestZ - G * 0.15];
@@ -2094,7 +2150,13 @@ function quadruped(mb, b, o = {}) {
   const ne = vadd(nb, vscale(nd, nl));
   mb.color = coat;
   const nm = mb.mark();
-  mb.tube([vadd(nb, vscale(nd, -0.02)), vadd(nb, vscale(nd, nl * 0.5)), ne], [nr0 * 1.1, (nr0 + nr1) / 2, nr1], o.lite ? 5 : 7, { caps: true });
+  if (b.head[0] === "horse") {
+    // A horse's neck: a deep blade, flat from side to side, arched along its crest.
+    local(mb, (q) => {
+      q.tube([vadd(nb, vscale(nd, -0.03)), vadd(vadd(nb, vscale(nd, nl * 0.45)), [0, 0.006, 0]), ne], [nr0 * 1.1, (nr0 + nr1) * 0.52, nr1], o.lite ? 6 : 8, { caps: true });
+      q.displace(0, (x) => [-x * 0.3, 0, 0]);
+    });
+  } else mb.tube([vadd(nb, vscale(nd, -0.02)), vadd(nb, vscale(nd, nl * 0.5)), ne], [nr0 * 1.1, (nr0 + nr1) / 2, nr1], o.lite ? 5 : 7, { caps: true });
   mb.sphereNormals(nm, vadd(nb, [0, -0.02, 0]), 0.2);
   const [hk, hl, hr] = b.head;
   const hang = (hk === "horse" ? -1.0 : hk === "bovine" ? -0.9 : hk === "elephant" ? -0.6 : -0.25) - headDown * 0.6;
@@ -2103,7 +2165,9 @@ function quadruped(mb, b, o = {}) {
   const muzzle = vadd(hs, vscale(hd, hl));
   mb.color = coat;
   if (hk === "horse") {
-    mb.tube([vadd(hs, vscale(hd, -0.01)), vadd(hs, vscale(hd, hl * 0.35)), vadd(hs, vscale(hd, hl * 0.8)), muzzle], [hr * 1.05, hr * 0.98, hr * 0.72, hr * 0.62], 7, { caps: true });
+    mb.tube([vadd(hs, vscale(hd, -0.01)), vadd(hs, vscale(hd, hl * 0.35)), vadd(hs, vscale(hd, hl * 0.8)), muzzle], [hr * 1.0, hr * 0.92, hr * 0.68, hr * 0.6], 7, { caps: true });
+    // Jowls: the broad cheek under the eye.
+    ball(mb, vadd(vadd(hs, vscale(hd, hl * 0.16)), [0, -hr * 0.45, -hr * 0.2]), hr * 1.08, 1, [0.78, 1, 1.1]);
     mb.color = mixc(coat, "#1a1412", 0.5);
     ball(mb, muzzle, hr * 0.62, 1);
     // Mane along the neck's crest.
@@ -2125,8 +2189,9 @@ function quadruped(mb, b, o = {}) {
       mb.color = mane;
       const seed = r.range(0, 20);
       mb.part(() => {
-        mb.translate(hs[0], hs[1] - hr * 0.15, hs[2] - hr * 0.35);
-        mb.blob(hr * 2.0, { detail: 1, amp: 0.2, noise: (v) => noise3(v[0] * 3 + seed, v[1] * 3, v[2] * 3) });
+        mb.translate(hs[0], hs[1] - hr * 0.25, hs[2] - hr * 0.55);
+        mb.scale(1, 1.05, 0.9);
+        mb.blob(hr * 1.62, { detail: 1, amp: 0.24, noise: (v) => noise3(v[0] * 3 + seed, v[1] * 3, v[2] * 3) });
       });
     }
     if (o.snarl) {
@@ -2175,6 +2240,9 @@ function quadruped(mb, b, o = {}) {
       });
     }
   }
+
+  // A centaur's horse body has no neck or head of its own (the rider's torso rises there).
+  if (o.noHead) mb.v.length = headM * 13;
 
   // --- trappings: collar, war paint, caparison, saddle, barding --------------------------------
   const anchors = { saddle: [0, yb + G * 0.95, -G * 0.15], withers: [0, b.h, chestZ - G * 0.5], head: hs, neckBase: nb, neckEnd: ne, girth: G, yb, chestZ, rumpZ, legs, muzzle };
@@ -2227,7 +2295,7 @@ function quadruped(mb, b, o = {}) {
       const side = Math.sign(a) || 1;
       if (Math.abs(a) <= Math.PI / 2) return [Math.sin(a) * rr * 0.86, yb + Math.cos(a) * rr + 0.004, z];
       const k = (Math.abs(a) - Math.PI / 2) / (Math.PI * 0.05);
-      return [side * rr * 0.9, yb - k * (yb - hem) + 0.02 * Math.sin(i * 2.1), z];
+      return [side * rr * (0.9 + 0.22 * k), yb - k * (yb - hem) + (k > 0.5 ? 0.014 * Math.sin(i * 2.6 + 0.5) : 0), z];
     };
     for (let i = 0; i < nz; i++) {
       for (let j = 0; j < na2; j++) {
@@ -2286,14 +2354,14 @@ function beastRecipe(name, kind, variants, tweak) {
 /** unit.wolf: a grey wolf stalking, head low, collared in the owner's colour; colours by
  *  variant (grey, dark, pale, winter), param "winter" | "hell" (a hellhound, ember eyes). */
 beastRecipe("unit.wolf", "wolf", 4, (b, o, v, param) => {
-  const coats = [["#6a6660", "#b0aa9a", "#2e2a28"], ["#3a3634", "#7a746a", "#1a1816"], ["#8a7e6a", "#c8bca4", "#4a4036"], ["#b8b8b4", "#e8e6e0", "#6a6a6a"]];
+  const coats = [["#5e5a54", "#aaa494", "#24201e"], ["#3a3634", "#7a746a", "#141210"], ["#7a6c58", "#c0b49c", "#3a3026"], ["#aeaeaa", "#e0ded8", "#6a6a68"]];
   const [c, bl, m] = param === "winter" ? coats[3] : coats[v % 4];
   b.coat = c;
   b.belly = bl;
   b.mane = m;
   o.gait = v % 2 ? "walk" : "stalk";
   o.snarl = true;
-  o.scale = 1.45;
+  o.scale = 1.5;
   if (param === "hell") {
     b.coat = "#3a1a14";
     b.belly = "#6a2a18";
@@ -2363,7 +2431,7 @@ unitRecipe("unit.cavalry", {
     const { race, dark, mod } = raceOf(param);
     const kind = variant % 4;
     const { b, wolf } = mountOf(race, variant, dark, mod);
-    const o = { r, gait: kind === 1 ? "charge" : "walk", caparison: !wolf && kind !== 2, caparisonHem: kind === 3 ? 0.07 : undefined, saddle: true, barding: kind === 0 || kind === 3 ? (race === "demon" ? "#3a3036" : "steel") : false, collar: !!wolf, bone: BONE.MOUNT };
+    const o = { r, gait: kind === 1 ? "charge" : "walk", caparison: !wolf && kind !== 2, caparisonHem: kind === 3 ? b.h * 0.42 : (b.h - b.girth) - b.girth * 0.85, caparisonSpan: kind === 3 ? 0.9 : 0.5, saddle: true, barding: kind === 0 || kind === 3 ? (race === "demon" ? "#3a3036" : "steel") : false, collar: !!wolf, bone: BONE.MOUNT };
     const R = RACES[race];
     const k = kit(race, dark, variant);
     const spec =
@@ -2387,11 +2455,11 @@ unitRecipe("unit.cavalry", {
         : {
             ...k,
             body: "armour",
-            tabard: race !== "undead",
+            tabard: race !== "undead" && kind !== 3,
             tabardLen: R.hipY * 0.35,
             pauldrons: true,
             gloves: true,
-            cape: kind !== 3,
+            cape: kind === 1,
             capeLen: 0.55,
             head: kind === 3 ? "great" : race === "elf" ? "helm" : race === "orc" || race === "dwarf" ? "horned" : "helm",
             plume: kind !== 1,
@@ -2454,10 +2522,10 @@ function wagon(mb, r, g, { len = 0.22, w = 0.12, team = true } = {}) {
       mb.rotateZ(Math.PI / 2);
       setMat(mb, "#3a2a1e");
       mb.translate(0, -0.006, 0);
-      mb.lathe([[rad * 0.8, 0], [rad, 0.0], [rad, 0.012], [rad * 0.8, 0.012]], 8, { caps: false });
+      mb.lathe([[rad * 0.8, 0], [rad, 0.0], [rad, 0.012], [rad * 0.8, 0.012]], 7, { caps: false });
       mb.translate(0, 0.006, 0);
       setMat(mb, "timber");
-      mb.cylinder(0.008, 0.008, 0.016, 6);
+      mb.cylinder(0.008, 0.008, 0.016, 5);
       for (let i = 0; i < 2; i++) {
         mb.part(() => {
           mb.rotateY((i / 2) * Math.PI + 0.4);
@@ -2494,19 +2562,19 @@ function wagon(mb, r, g, { len = 0.22, w = 0.12, team = true } = {}) {
     mb.translate(0, bedY + 0.03, z0);
     mb.scale(1, 1.15, 1);
     mb.rotateX(Math.PI / 2);
-    mb.cylinder(hoopR, hoopR * 0.9, 0.01, 8, { caps: true });
+    mb.cylinder(hoopR, hoopR * 0.9, 0.01, 6, { caps: true });
   });
   setMat(mb, "timber");
   for (const zz of [z0, z1]) {
     mb.part(() => {
       mb.translate(0, bedY + 0.03, zz);
       mb.scale(1, 1.15, 1);
-      ringTube(mb, hoopR + 0.002, 0.0001, 0.004, 8, 3);
+      ringTube(mb, hoopR + 0.002, 0.0001, 0.004, 6, 3);
     });
   }
   // The shaft to the yoke.
   setMat(mb, "timber");
-  for (const s of [-1, 1]) mb.tube([[s * w * 0.3, bedY + 0.01, len * 0.5], [s * 0.035, bedY + 0.02, len * 0.5 + 0.12]], 0.004, 4);
+  for (const s of [-1, 1]) mb.tube([[s * w * 0.3, bedY + 0.01, len * 0.5], [s * 0.035, bedY + 0.02, len * 0.5 + 0.12]], 0.004, 3);
   return { front: len * 0.5 + 0.12, bedY };
 }
 
@@ -2519,9 +2587,10 @@ unitRecipe("unit.settler", {
     mb.part(() => {
       mb.rotateY(1.0);
       mb.translate(0, 0, -0.08);
-      // The wagon and its ox a little under life size against the walker: the unit's mass should
-      // match the other figures', not tower over them.
-      mb.scale(0.78);
+      // The wagon and its ox a little under life size against the walker (the unit's mass should
+      // match the other figures', not tower over them), but big enough to read as the settlers'
+      // covered wagon, the unit's emblem.
+      mb.scale(0.9);
       local(mb, (k) => {
         const wg = wagon(k, r, g, {});
         const ox = { ...BEASTS.ox, len: 0.22, h: 0.16, girth: 0.055 };
@@ -2536,7 +2605,7 @@ unitRecipe("unit.settler", {
           k.translate(0, 0.15, wg.front + 0.175);
           k.rotateZ(Math.PI / 2);
           k.translate(0, -0.05, 0);
-          k.cylinder(0.006, 0.006, 0.1, 5);
+          k.cylinder(0.006, 0.006, 0.1, 4);
         });
       });
     });
@@ -2576,6 +2645,13 @@ function wing(mb, s, root, o = {}) {
   const boneC = C(o.bone ?? "#3a1a16"), memC = C(o.membrane ?? "#5a1a14");
   const prev = mb.bone;
   mb.bone = s > 0 ? BONE.WING_L : BONE.WING_R;
+  const w0 = mb.mark();
+  // The beat's weight per vertex (the shader reads the sway channel of wing bones): 0 at the root,
+  // growing with the distance from it (absolute, so small wings beat less far than great ones).
+  const flapWeights = () => {
+    const v = mb.v;
+    for (let i = w0 * 13; i < v.length; i += 13) v[i + 10] = Math.max(0.02, Math.min(1, Math.hypot(v[i] - root[0], v[i + 1] - root[1], v[i + 2] - root[2]) / 0.6));
+  };
   const P = (x, y, z) => [root[0] + s * x * span, root[1] + y, root[2] + z];
   const elbow = P(0.42, lift * 0.75, -sweep * 0.05);
   const wrist = P(0.78, lift, -sweep * 0.25);
@@ -2591,26 +2667,40 @@ function wing(mb, s, root, o = {}) {
     mb.color = boneC;
     mb.mat = MAT.MATTE;
     mb.tube([root, elbow, wrist, tips[0]], [0.016, 0.013, 0.01, 0.004], 5, { caps: true });
-    const rows = o.rows ?? 9;
-    for (let i = 0; i < rows; i++) {
-      const t = i / (rows - 1);
-      const base = t < 0.5 ? vlerp(root, wrist, t * 2) : vlerp(wrist, tips[0], (t - 0.5) * 2);
-      const len = (0.18 + 0.32 * Math.sin(t * Math.PI * 0.9)) * span;
-      const dir = vnorm([s * (0.2 + t * 0.9), -0.25 - t * 0.2, -1.0 + t * 0.35]);
-      const tip = vadd(base, vscale(dir, len));
-      const w = 0.035 * span * 2;
-      const side = vnorm(vcross(dir, [0, 1, 0]));
-      mb.color = mixc(boneC, memC, 0.4 + t * 0.6);
-      mb.sway = 0.3 + t * 0.4;
-      mb.quad(vadd(base, vscale(side, -w * 0.5)), vadd(base, vscale(side, w * 0.5)), vadd(tip, vscale(side, w * 0.35)), vadd(tip, vscale(side, -w * 0.35)));
+    // Two layers: long overlapping flight feathers with rounded tips, and short broad coverts over
+    // their roots (a solid wing mass at the gameplay zoom, not a fan of sticks).
+    const rows = o.rows ?? 10;
+    for (const layer of [0, 1]) {
+      const n = layer ? rows - 2 : rows;
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);
+        const base = vadd(t < 0.5 ? vlerp(root, wrist, t * 2) : vlerp(wrist, tips[0], (t - 0.5) * 2), [0, layer * 0.006, 0]);
+        const len = (layer ? 0.42 : 1) * (0.2 + 0.34 * Math.sin(t * Math.PI * 0.9)) * span;
+        // Feathers hang down and back from the arm, so the wing shows its face to the viewer
+        // (fanned straight back they were seen edge-on: a stick with a tuft at the end).
+        const hang = o.hang ?? 0.65; // 0: spread flat (a bird in flight)
+        const dir = vnorm([s * (0.15 + t * 0.85), (-0.25 - t * 0.2) * (1 - hang) + (-0.8 + t * 0.35) * hang, (-1.0 + t * 0.35) * (1 - hang) + (-0.55 + t * 0.2) * hang]);
+        const tip = vadd(base, vscale(dir, len));
+        const w = (layer ? 0.2 : 0.15) * span;
+        // The vane lies along the arm (neighbours overlap like shingles), across the feather.
+        const arm = vnorm(t < 0.5 ? vsub(wrist, root) : vsub(tips[0], wrist));
+        const side = vnorm(vsub(arm, vscale(dir, vdot(arm, dir))));
+        mb.color = layer ? mixc(boneC, memC, 0.25) : mixc(boneC, memC, 0.45 + t * 0.55);
+        const a = vadd(base, vscale(side, -w * 0.5)), b = vadd(base, vscale(side, w * 0.5));
+        const c = vadd(vlerp(base, tip, 0.8), vscale(side, w * 0.42)), d = vadd(vlerp(base, tip, 0.8), vscale(side, -w * 0.42));
+        mb.quad(a, b, c, d);
+        mb.tri(d, c, tip);
+      }
     }
-    mb.sway = 0;
+    flapWeights();
     mb.bone = prev;
     return { wrist, tips };
   }
   // The membrane: fans between consecutive spars, each panel's trailing edge sagging toward the
   // wrist, and a last panel back to the flank.
-  mb.mat = MAT.MATTE;
+  // A membrane is thin skin: the foliage material lets the low sun glow through it from behind
+  // (a lit underside reads warm, not as a cold blue shadow).
+  mb.mat = MAT.FOLIAGE;
   mb.color = memC;
   const m0 = mb.mark();
   for (let i = 0; i + 1 < fingers; i++) {
@@ -2625,19 +2715,44 @@ function wing(mb, s, root, o = {}) {
   mb.tri(elbow, lastTip, midIn);
   mb.tri(elbow, midIn, body0);
   mb.tri(root, elbow, body0);
-  // Membrane normals: face up (a little curl), darker toward the body.
+  // Membrane normals: face up (a little curl), darker toward the body. The triangles are first
+  // wound so their front faces look up (the mirrored wing's came out wound the other way, and the
+  // shader's back-face flip then turned its stored normals down: a cold rim-lit wing).
   const v = mb.v;
+  const want = [s * 0.12, 1, 0.15];
+  for (let i = m0 * 13; i < v.length; i += 39) {
+    const a = [v[i], v[i + 1], v[i + 2]], b = [v[i + 13], v[i + 14], v[i + 15]], c = [v[i + 26], v[i + 27], v[i + 28]];
+    if (vdot(vcross(vsub(b, a), vsub(c, a)), want) < 0) {
+      for (let j = 0; j < 13; j++) {
+        const t = v[i + 13 + j];
+        v[i + 13 + j] = v[i + 26 + j];
+        v[i + 26 + j] = t;
+      }
+    }
+  }
+  // Each panel keeps its own facing (eased a little toward up for a soft, painted membrane): a
+  // panel seen from below then shades as an underside instead of catching the rim light.
+  for (let i = m0 * 13; i < v.length; i += 39) {
+    const a = [v[i], v[i + 1], v[i + 2]], b = [v[i + 13], v[i + 14], v[i + 15]], c = [v[i + 26], v[i + 27], v[i + 28]];
+    const n = vnorm(vadd(vnorm(vcross(vsub(b, a), vsub(c, a))), vscale(vnorm(want), 0.3)));
+    for (let j = 0; j < 39; j += 13) {
+      v[i + j + 3] = n[0];
+      v[i + j + 4] = n[1];
+      v[i + j + 5] = n[2];
+    }
+  }
   for (let i = m0 * 13; i < v.length; i += 13) {
-    v[i + 3] = s * 0.12;
-    v[i + 4] = 1;
-    v[i + 5] = 0.15;
     const d = Math.min(1, Math.abs(v[i] - root[0]) / span);
     const k = 0.65 + 0.45 * d;
+    // Occlusion damps the sky's rim light, which otherwise paints a thin dark skin seen edge-on
+    // (the far panels of a raised wing) cold blue.
+    v[i + 12] *= o.feathers ? 1 : 0.42;
     v[i + 6] *= k;
     v[i + 7] *= k;
     v[i + 8] *= k;
   }
   // The arm and the finger spars.
+  mb.mat = MAT.MATTE;
   mb.color = boneC;
   const ar = o.armR ?? 0.022;
   mb.tube([root, elbow, wrist], [ar, ar * 0.75, ar * 0.55], 6, { caps: true });
@@ -2645,6 +2760,7 @@ function wing(mb, s, root, o = {}) {
   // A thumb claw at the wrist.
   mb.color = C(o.claw ?? "bone");
   horn(mb, wrist, [s * 0.3, 1, 0.5], 0.035 * span * 2, 0.008 * span * 2, [0, -0.5, 0.6], 3, 4);
+  flapWeights();
   mb.bone = prev;
   return { wrist, tips, elbow };
 }
@@ -2752,7 +2868,7 @@ unitRecipe("unit.dragon", {
   variants: 2,
   build(mb, r, { variant, param }) {
     const SCHEMES = {
-      red: { body: "#8a2a1a", dark: "#4a1410", belly: "#c08a4a", wing: "#6a1c14", horn: "#d8cfb6", glow: "#ff7a20", eye: "#ffd040" },
+      red: { body: "#5c271e", dark: "#220e0b", belly: "#9a7a4c", wing: "#4a1a15", horn: "#d8cfb6", glow: "#ff7a20", eye: "#ffd040" },
       black: { body: "#2a2626", dark: "#141212", belly: "#5a5248", wing: "#2a1e22", horn: "#a8a090", glow: "#9a60ff", eye: "#c0ff60" },
       white: { body: "#c8ccd0", dark: "#7a8490", belly: "#e8e4dc", wing: "#8aa0b4", horn: "#e8e8f0", glow: "#9ae6ff", eye: "#80d0ff" },
       gold: { body: "#b08a3a", dark: "#6a4a1a", belly: "#e0c080", wing: "#8a5a22", horn: "#f0e8d0", glow: "#ffd060", eye: "#ffffff" },
@@ -2775,8 +2891,8 @@ unitRecipe("unit.dragon", {
         k.tint(tm, (x, y, z) => {
           const t = Math.max(0, Math.min(1, (0.19 - y) / 0.07));
           const band = 0.9 + 0.1 * Math.sin(z * 80);
-          const sp = Math.max(0, Math.min(1, (y - 0.3) / 0.06));
-          return [0, 1, 2].map((i) => (1 - t) * (1 - 0.35 * sp) + (t * belly[i] * band) / body[i]);
+          const sp = Math.max(0, Math.min(1, (y - 0.27) / 0.09)) * 0.75;
+          return [0, 1, 2].map((i) => (1 - t) * (1 - sp + (sp * dark[i]) / body[i]) + (t * belly[i] * band) / body[i]);
         });
         // Tail: sweeping back and curling to the side, ending in a spade.
         k.bone = BONE.TAIL;
@@ -2939,7 +3055,7 @@ unitRecipe("unit.golem", {
     const KINDS = {
       stone: { c: "#8a8378", c2: "#625c54", flat: true, amp: 0.2, eye: "#9ad0ff" },
       clay: { c: "#8a6440", c2: "#6a4a2e", eye: "#ffb060", amp: 0.12 },
-      iron: { c: "#5a5e66", c2: "#3a3c42", hewn: true, metal: true, eye: "#ff8a30" },
+      iron: { c: "#4a4a4e", c2: "#2c2a2c", hewn: true, metal: true, eye: "#ff8a30" },
       wood: { c: "#5e4632", c2: "#3e2c1e", eye: "#a0ff70", moss: "#46612e", amp: 0.16 },
       bone: { c: "#d9cfb6", c2: "#a89a80", flat: true, amp: 0.12, eye: "#7ad8ff" },
       flesh: { c: "#a87a6a", c2: "#7a4a44", eye: "#ffd040", amp: 0.14 },
@@ -2958,8 +3074,13 @@ unitRecipe("unit.golem", {
         if (rx) k.rotateX(rx);
         if (rz) k.rotateZ(rz);
         if (K.hewn) {
-          k.translate(0, -size[1] / 2, 0);
-          k.box(size[0], size[1], size[2], { top: taper, skew: [r.range(-0.006, 0.006), r.range(-0.006, 0.006)] });
+          // Forged plate: a bellied, eight-sided shell with a riveted rim band (not a box).
+          const w = size[0] / 2, h = size[1];
+          k.translate(0, -h / 2, 0);
+          k.scale(1, 1, size[2] / size[0]);
+          k.lathe([[w * 0.82, 0], [w * 1.0, h * 0.28], [w * 0.98 * Math.max(taper, 0.9), h * 0.7], [w * 0.78 * taper, h * 0.96], [w * 0.4 * taper, h]], 8, { phase: Math.PI / 8 });
+          k.color = jitter(C(K.c2), r, 0.05);
+          k.lathe([[w * 1.01, h * 0.26], [w * 1.04, h * 0.32], [w * 1.01, h * 0.38]], 8, { caps: false, phase: Math.PI / 8 });
         } else {
           k.scale(size[0] / 2, size[1] / 2, size[2] / 2);
           k.blob(1, { detail: 1, amp: K.amp ?? 0.15, flat: K.flat, noise: (v) => noise3(v[0] * 2.5 + seed + p[1] * 9, v[1] * 2.5 + p[0] * 7, v[2] * 2.5) });
@@ -2971,10 +3092,10 @@ unitRecipe("unit.golem", {
       k.color = jitter(C(col), r, 0.07);
       k.mat = mat;
       if (K.hewn) {
-        k.part(() => {
-          orient(k, vsub(a, vscale(vnorm(vsub(b, a)), w * 0.3)), vsub(b, a), [0, 0, 1]);
-          k.box(w, vlen(vsub(b, a)) + w * 0.5, w * 0.9, { top: 0.82 });
-        });
+        // A forged limb: a tapering plated tube and a ball joint at its end.
+        k.tube([vsub(a, vscale(vnorm(vsub(b, a)), w * 0.2)), vlerp(a, b, 0.5), b], [w * 0.5, w * 0.47, w * 0.4], 6, { caps: true });
+        k.color = jitter(C(K.c2), r, 0.05);
+        ball(k, b, w * 0.5, 0);
       } else {
         k.tube([a, vlerp(a, b, 0.5), b], [w * 0.5, w * 0.44, w * 0.42], 6, { caps: true });
         k.part(() => {
@@ -3075,24 +3196,59 @@ unitRecipe("unit.elemental", {
           const sc = 1 - li * 0.22;
           k.mat = S.mat;
           k.color = col(li / 3);
-          const prof = [[0.075 * sc, 0.0], [0.06 * sc, 0.06], [0.045 * sc, 0.15], [0.07 * sc, 0.26], [0.095 * sc, 0.35], [0.08 * sc, 0.42], [0.03 * sc, 0.47]];
+          const prof = el === "air"
+            ? [[0.012 * sc, 0.0], [0.028 * sc, 0.07], [0.05 * sc, 0.17], [0.08 * sc, 0.28], [0.1 * sc, 0.37], [0.08 * sc, 0.44], [0.03 * sc, 0.48]]
+            : [[0.075 * sc, 0.0], [0.06 * sc, 0.06], [0.045 * sc, 0.15], [0.07 * sc, 0.26], [0.095 * sc, 0.35], [0.08 * sc, 0.42], [0.03 * sc, 0.47]];
           local(k, (q) => {
-            q.lathe(prof, 9, { caps: true, wobble: (a, y) => 0.18 * Math.sin(a * 5 + y * 30 + li) });
-            q.displace(0, (x, y) => [twist(y), 0, twist(y + 1) * 0.6]);
+            q.lathe(prof, el === "ice" ? 6 : 9, { caps: true, wobble: el === "ice" ? null : (a, y) => (el === "air" ? 0.1 : 0.18) * Math.sin(a * 5 + y * 30 + li) });
+            q.displace(0, (x, y) => [twist(y) * (el === "air" ? 1.8 : 1), 0, twist(y + 1) * 0.6]);
           });
         }
         // Tongues of flame / spray / gusts rising from the shoulders and head.
-        const nT = el === "air" ? 6 : 12;
-        for (let i = 0; i < nT; i++) {
-          const a = (i / nT) * TAU + r.range(-0.3, 0.3);
-          const y0 = r.range(0.18, 0.44);
-          const rad = 0.06 + (0.44 - y0) * 0.2;
-          const p0 = [Math.cos(a) * rad, y0, Math.sin(a) * rad * 0.8];
-          k.mat = S.mat;
-          k.color = col(r.range(0.2, 1));
-          k.sway = 0.5;
-          horn(k, p0, [Math.cos(a) * 0.5, 1, Math.sin(a) * 0.4], r.range(0.08, 0.16), r.range(0.014, 0.024), [r.range(-0.6, 0.6), 0.2, r.range(-0.6, 0.6)], 4, 5);
-          k.sway = 0;
+        /** A flat-faceted crystal (a bipyramid of four sides) from `p` along `dir`. */
+        const shard = (p, dir, len, rad) => k.part(() => {
+          orient(k, p, dir, [0.3, 0.2, 1]);
+          const ring = [0, 1, 2, 3].map((j) => [Math.cos((j * TAU) / 4) * rad, len * 0.22, Math.sin((j * TAU) / 4) * rad]);
+          for (let j = 0; j < 4; j++) {
+            const a = ring[j], b = ring[(j + 1) % 4];
+            k.tri([0, len, 0], b, a);
+            k.tri([0, -len * 0.05, 0], a, b);
+          }
+        });
+        if (el === "air") {
+          // Wisps spiralling up around the funnel.
+          for (let i = 0; i < 4; i++) {
+            const pts = [], rads = [];
+            for (let j = 0; j <= 8; j++) {
+              const t = j / 8, a = (i / 4) * TAU + t * 5.5;
+              const rr = 0.04 + t * 0.11;
+              pts.push([Math.cos(a) * rr + twist(t * 0.45) * 1.8, 0.02 + t * 0.44, Math.sin(a) * rr * 0.85]);
+              rads.push(0.004 + 0.008 * Math.sin(t * Math.PI));
+            }
+            k.mat = S.mat;
+            k.color = col(0.6 + i * 0.1);
+            k.sway = 0.4;
+            k.tube(pts, rads, 4, { caps: true });
+            k.sway = 0;
+          }
+        } else {
+          const nT = el === "ice" ? 9 : 12;
+          for (let i = 0; i < nT; i++) {
+            const a = (i / nT) * TAU + r.range(-0.3, 0.3);
+            const y0 = r.range(0.18, 0.44);
+            const rad = 0.06 + (0.44 - y0) * 0.2;
+            const p0 = [Math.cos(a) * rad, y0, Math.sin(a) * rad * 0.8];
+            k.mat = S.mat;
+            k.color = col(r.range(0.2, 1));
+            if (el === "ice") {
+              shard(p0, [Math.cos(a) * 0.9, r.range(0.3, 0.9), Math.sin(a) * 0.8], r.range(0.07, 0.13), r.range(0.012, 0.02));
+              continue;
+            }
+            k.sway = 0.5;
+            if (el === "water") horn(k, p0, [Math.cos(a) * 0.4, 1, Math.sin(a) * 0.35], r.range(0.08, 0.13), r.range(0.014, 0.022), [Math.cos(a) * 1.6, -2.2, Math.sin(a) * 1.4], 5, 5);
+            else horn(k, p0, [Math.cos(a) * 0.5, 1, Math.sin(a) * 0.4], r.range(0.08, 0.16), r.range(0.014, 0.024), [r.range(-0.6, 0.6), 0.2, r.range(-0.6, 0.6)], 4, 5);
+            k.sway = 0;
+          }
         }
         // Arms of the element, reaching out.
         for (const s of [-1, 1]) {
@@ -3112,7 +3268,9 @@ unitRecipe("unit.elemental", {
         k.color = col(0.75);
         ball(k, [0, 0.5, 0.02], 0.045, 1, [0.9, 1.15, 0.9]);
         k.color = col(1);
-        for (let i = 0; i < 5; i++) horn(k, [(i - 2) * 0.012, 0.53, -0.01], [(i - 2) * 0.25, 1, -0.3], 0.07 + (i % 2) * 0.03, 0.012, [0, 0, -0.4], 4, 4);
+        if (el === "ice") for (let i = 0; i < 3; i++) shard([(i - 1) * 0.02, 0.53, -0.01], [(i - 1) * 0.35, 1, -0.25], 0.09 + (i === 1 ? 0.04 : 0), 0.014);
+        else if (el === "water") horn(k, [0, 0.53, 0.02], [0, 1, -0.6], 0.11, 0.024, [0, -1.2, 2.2], 6, 6);
+        else if (el === "fire") for (let i = 0; i < 5; i++) horn(k, [(i - 2) * 0.012, 0.53, -0.01], [(i - 2) * 0.25, 1, -0.3], 0.07 + (i % 2) * 0.03, 0.012, [0, 0, -0.4], 4, 4);
         k.mat = MAT.MATTE;
         k.color = C("#120a08");
         for (const s of [-1, 1]) ball(k, [s * 0.016, 0.505, 0.06], 0.008, 0, [1.3, 0.7, 0.6]);
@@ -3203,7 +3361,12 @@ unitRecipe("unit.serpent", {
           k.color = body;
           const m0 = k.mark();
           k.tube(pts, pts.map((_, j) => rad * (1 - 0.15 * Math.abs(j / (n - 1) - 0.5))), 8, { caps: true });
-          k.tint(m0, (x) => (x < -rad * 0.3 ? belly[0] / body[0] : 1));
+          // The pale belly on the arch's underside (by the normal), dark scales above.
+          k.tint(m0, (x, y, z, vi) => {
+            const ny = k.v[vi * 13 + 4];
+            const t = Math.max(0, Math.min(1, (-ny - 0.1) * 2.5));
+            return [0, 1, 2].map((c) => (1 - t) * (0.85 + 0.15 * Math.max(0, ny)) + (t * belly[c]) / body[c]);
+          });
           // Dorsal fin along the arch.
           k.color = fin;
           for (let j = 1; j < n - 1; j++) {
@@ -3286,9 +3449,9 @@ unitRecipe("unit.beast", {
     if (kind === "boar") return quad({ ...BEASTS.boar, coat: ["#4a3a30", "#5a4636", "#2e2622"][variant % 3] }, { gait: variant ? "charge" : "stand", collar: true }, 0.7, 1.5);
     if (kind === "lion" || kind === "tiger" || kind === "sandlion") {
       const b = { ...BEASTS.cat };
-      if (kind === "lion") Object.assign(b, { maneful: true, coat: "#b08a52", belly: "#d8c098", mane: "#6a4a2a" });
+      if (kind === "lion") Object.assign(b, { maneful: true, coat: "#a8824e", belly: "#d0b890", mane: "#5a3c22", girth: 0.05, len: 0.25 });
       if (kind === "tiger") Object.assign(b, { coat: "#c07a32", belly: "#e8dcc0", mane: "#2a1a10", stripes: "#2a1a12" });
-      if (kind === "sandlion") Object.assign(b, { coat: "#c8a870", belly: "#e8d8b0", mane: "#8a6a40", maneful: true });
+      if (kind === "sandlion") Object.assign(b, { coat: "#c0a06a", belly: "#e0d0a8", mane: "#7a5a36", maneful: true, girth: 0.05, len: 0.25 });
       return quad(b, { gait: variant % 2 ? "stalk" : "walk", collar: true, snarl: true }, 0.7, 1.45);
     }
     // A wild elephant is grey hide; only the war elephant wears the owner's cloth, a saddle cloth
@@ -3302,7 +3465,7 @@ unitRecipe("unit.beast", {
       return place(mb, sub, [0, 0, 0], 0, 0.85);
     }
     if (kind === "centaur") {
-      quad({ ...BEASTS.horse, coat: ["#6a4630", "#8a5a32", "#4a3a30"][variant % 3] }, { gait: "walk" }, 0.75);
+      quad({ ...BEASTS.horse, coat: ["#6a4630", "#8a5a32", "#4a3a30"][variant % 3] }, { gait: "walk", noHead: true }, 0.75);
       // The human torso rising from the horse's chest (the rider's legs dropped).
       const R = RACES.human;
       const f = figure({ r, race: "human", variant, body: "vest", sleeves: "bare", seat: { w: 0.03 }, hairStyle: "long", mantle: true, left: { hand: [0.16, 0.02, 0.0], weapon: "bow", dir: [0.06, 1, 0.02], face: [-1, 0, 0], opts: (h) => ({ len: 0.3, recurve: true, draw: Math.max(0.08, vlen(vsub(h[L_SIDE].pos, h[R_SIDE].pos)) - 0.01) }) }, right: { handAt: (h, S) => vadd(S, [R.shW, 0.03, 0.025]) }, headYaw: 0.9 });
@@ -3325,44 +3488,86 @@ unitRecipe("unit.beast", {
       return;
     }
     if (kind === "treant") {
-      // A walking tree: bark body, branch arms, a crown of leaves.
+      // A walking tree: root-footed stumps, a gnarled trunk leaning forward with a face in the
+      // bark, branch arms, and a ragged crown of leaf clumps on its upper boughs (asymmetric,
+      // with sky between them: never a ball on a stick).
       mb.part(() => {
         mb.rotateY(-0.2);
         local(mb, (k) => {
-          const bark = C("#4a392b");
-          k.color = bark;
-          for (const s of [-1, 1]) k.tube([[s * 0.07, -0.02, s * 0.02], [s * 0.06, 0.12, 0], [s * 0.03, 0.22, 0]], [0.045, 0.04, 0.05], 6, { caps: true });
-          k.tube([[0, 0.18, 0], [0, 0.32, 0.02], [0, 0.48, 0.0], [0, 0.56, -0.02]], [0.08, 0.075, 0.07, 0.05], 7, { caps: true });
-          for (const s of [-1, 1]) {
-            k.bone = s > 0 ? BONE.ARM_L : BONE.ARM_R;
-            k.color = bark;
-            k.tube([[s * 0.05, 0.44, 0], [s * 0.15, 0.4, 0.03], [s * 0.2, 0.28, 0.08], [s * 0.22, 0.18, 0.1]], [0.035, 0.028, 0.02, 0.012], 5, { caps: true });
-            for (let j = 0; j < 3; j++) horn(k, [s * 0.22, 0.18, 0.1], [s * 0.2 + (j - 1) * 0.4, -0.6, 0.6], 0.05, 0.01, [0, 0, 0], 3, 3);
-          }
-          k.bone = BONE.HEAD;
-          k.mat = MAT.EMISSIVE;
-          k.color = C("#c8f0a4");
-          for (const s of [-1, 1]) ball(k, [s * 0.025, 0.45, 0.07], 0.008, 0);
-          k.mat = MAT.FOLIAGE;
-          const m0 = k.mark();
+          const bark = C(variant === 2 ? "#5a4e44" : "#4a392b");
           const seed = r.range(0, 40);
-          for (let i = 0; i < 5; i++) {
-            const a = (i / 5) * TAU;
-            k.color = jitter(mixc("oak", "oakLight", r.range(0, 0.5)), r, 0.08);
-            k.part(() => {
-              k.translate(Math.cos(a) * 0.08, 0.6 + (i % 2) * 0.04, Math.sin(a) * 0.07);
-              k.blob(0.085, { detail: 1, amp: 0.22, noise: (v) => noise3(v[0] * 2.2 + seed + i, v[1] * 2.2, v[2] * 2.2) });
-            });
+          const grain = (m0) => k.tint(m0, (x, y, z) => 0.78 + 0.3 * Math.max(0, Math.sin(Math.atan2(z, x) * 7 + y * 14 + seed)));
+          // Legs and roots.
+          for (const s2 of [-1, 1]) {
+            k.bone = s2 > 0 ? BONE.LEG_L : BONE.LEG_R;
+            k.color = bark;
+            k.mat = MAT.MATTE;
+            const m0 = k.mark();
+            const foot = [s2 * 0.08, -0.03, s2 * 0.02 + 0.01];
+            k.tube([foot, [s2 * 0.07, 0.08, 0.01], [s2 * 0.035, 0.2, 0]], [0.05, 0.04, 0.05], 6, { caps: true });
+            for (let j = 0; j < 3; j++) {
+              const a = (s2 > 0 ? 0 : Math.PI) + (j - 1) * 0.9 + 0.3;
+              horn(k, vadd(foot, [0, 0.04, 0]), [Math.cos(a), -0.35, Math.sin(a) + 0.3], 0.075, 0.016, [0, -0.4, 0], 3, 4);
+            }
+            grain(m0);
           }
-          k.sphereNormals(m0, [0, 0.6, 0], 0.6);
-          k.heightSway(m0, 0.55, 0.72, 0.5);
-          // The owner's colour: a band of cloth about the trunk.
-          setTeam(k, 0.9);
+          // The trunk, bending forward, splitting into boughs at the top.
           k.bone = BONE.BODY;
-          k.part(() => {
-            k.translate(0, 0.3, 0.01);
-            ringTube(k, 0.085, 0.08, 0.014, 10, 4);
+          k.color = bark;
+          const tm = k.mark();
+          k.tube([[0, 0.16, 0], [0.012, 0.29, 0.03], [-0.01, 0.41, 0.045], [0.005, 0.5, 0.02]], [0.082, 0.078, 0.07, 0.052], 8, { caps: true });
+          const boughs = [[[0.01, 0.48, 0.02], [0.09, 0.58, -0.02], [0.15, 0.66, -0.04]], [[-0.01, 0.48, 0.02], [-0.07, 0.6, 0.0], [-0.12, 0.7, -0.03]], [[0, 0.5, 0.0], [0.02, 0.63, -0.07], [-0.01, 0.76, -0.09]]];
+          for (const b of boughs) k.tube(b, [0.03, 0.022, 0.012], 5, { caps: true });
+          grain(tm);
+          // A face in the bark: a heavy brow, deep sockets with a green light, a hollow mouth.
+          k.bone = BONE.HEAD;
+          k.color = mixc(bark, "#000000", 0.25);
+          k.tube([[-0.04, 0.455, 0.075], [0, 0.445, 0.088], [0.04, 0.455, 0.075]], [0.012, 0.016, 0.012], 5, { caps: true });
+          k.color = C("#120c08");
+          ball(k, [0, 0.39, 0.083], 0.016, 0, [1.3, 0.8, 0.5]);
+          k.mat = MAT.EMISSIVE;
+          k.color = C("#b8f090");
+          for (const s2 of [-1, 1]) ball(k, [s2 * 0.022, 0.43, 0.084], 0.0075, 0);
+          // Arms: one bough raised in threat, one hanging to a clawed hand of twigs.
+          const arms = [[1, [0.06, 0.42, 0.01], [0.15, 0.4, 0.05], [0.2, 0.28, 0.09], [0.21, 0.17, 0.11]], [-1, [-0.06, 0.43, 0.01], [-0.15, 0.47, 0.04], [-0.2, 0.58, 0.06], [-0.2, 0.66, 0.1]]];
+          for (const [s2, a0, a1, a2, a3] of arms) {
+            k.bone = s2 > 0 ? BONE.ARM_L : BONE.ARM_R;
+            k.mat = MAT.MATTE;
+            k.color = bark;
+            const am = k.mark();
+            k.tube([a0, a1, a2, a3], [0.036, 0.028, 0.021, 0.013], 5, { caps: true });
+            grain(am);
+            for (let j = 0; j < 3; j++) horn(k, a3, vadd(vnorm(vsub(a3, a2)), [(j - 1) * 0.5, 0, (j - 1) * 0.2]), 0.05, 0.008, [0, s2 > 0 ? -0.3 : 0.3, 0.2], 3, 3);
+          }
+          // The crown: leaf clumps on the bough tips and the raised arm, sizes and heights varied.
+          k.bone = BONE.BODY;
+          k.mat = MAT.FOLIAGE;
+          const leaf = variant === 1 ? ["ancientDark", "ancient", "ancientLight"] : variant === 2 ? ["#3a3a22", "#5a5228", "#8a7a3a"] : ["oakDark", "oak", "oakLight"];
+          const clumps = [[0.16, 0.69, -0.05, 0.105], [-0.13, 0.73, -0.04, 0.098], [-0.01, 0.8, -0.1, 0.1], [0.04, 0.68, 0.04, 0.08], [0.0, 0.7, -0.17, 0.085], [-0.21, 0.69, 0.1, 0.06]];
+          clumps.forEach(([x, y, z, rad], i) => {
+            const m0 = k.mark();
+            k.color = jitter(mixc(leaf[0], leaf[1], r.range(0.3, 0.9)), r, 0.06);
+            k.part(() => {
+              k.translate(x, y, z);
+              k.scale(1, 0.78, 1);
+              k.blob(rad, { detail: 1, amp: 0.3, noise: (v) => noise3(v[0] * 2.4 + seed + i * 3, v[1] * 2.4, v[2] * 2.4) });
+            });
+            k.sphereNormals(m0, [x, y - rad * 0.4, z], 0.75);
+            k.tint(m0, (px, py) => mixc([1, 1, 1], [0.82, 0.86, 0.74], Math.max(0, Math.min(1, (y + rad * 0.2 - py) / (rad * 1.2)))));
+            k.heightSway(m0, y - rad, y + rad, 0.45);
           });
+          // A light top on the sunward clumps.
+          // The owner's colour: a band of cloth knotted about the trunk, its ends hanging.
+          k.mat = MAT.TEAM;
+          setTeam(k, 0.85);
+          k.part(() => {
+            k.translate(0.004, 0.3, 0.028);
+            k.rotateZ(0.12);
+            ringTube(k, 0.083, 0.078, 0.015, 10, 4);
+          });
+          k.sway = 0.6;
+          k.tube([[0.07, 0.3, 0.06], [0.085, 0.24, 0.075], [0.08, 0.18, 0.07]], [0.012, 0.01, 0.006], 4, { caps: true });
+          k.sway = 0;
         });
       });
       return;
@@ -3782,7 +3987,7 @@ unitRecipe("unit.angel", {
       stance: "stride",
       lean: 0.04,
       head: kind === 1 ? "winged" : "circlet",
-      wings: { feathers: true, span: 0.32, lift: 0.22, sweep: 0.1, rows: 9, bone: fallen ? "#2a2830" : "#efeae0", membrane: fallen ? "#3a3644" : "#d8d0c0" },
+      wings: { feathers: true, span: 0.32, lift: 0.3, sweep: 0.12, rows: 9, bone: fallen ? "#2a2830" : "#efeae0", membrane: fallen ? "#3a3644" : "#d8d0c0" },
       right,
       left: kind === 0 ? { hand: [-0.01, -0.1, 0.1], elbow: [0.9, -0.3, -0.2], shield: "heater", shieldFace: [0.25, 0.1, 1], shieldOpts: { rim: "gold", w: 0.075, h: 0.12 } } : { hand: [0.06, -0.06, 0.08] },
     });
@@ -3832,7 +4037,7 @@ unitRecipe("unit.bird", {
           k.color = C(teamCol(i % 2 ? 0.5 : 0.9));
           k.quad([0, 0, -0.04], [Math.sin(a - 0.1) * 0.08, 0.004, -0.04 - Math.cos(a - 0.1) * 0.08], [Math.sin(a + 0.1) * 0.08, 0.004, -0.04 - Math.cos(a + 0.1) * 0.08], [0, 0, -0.04]);
         }
-        for (const s of [-1, 1]) wing(k, s, [s * 0.02, 0.012, 0.01], { feathers: true, span: 0.17, lift: 0.04, sweep: 0.05, rows: 8, bone: "#5a4430", membrane: "#3e3024" });
+        for (const s of [-1, 1]) wing(k, s, [s * 0.02, 0.012, 0.01], { feathers: true, hang: 0, span: 0.17, lift: 0.04, sweep: 0.05, rows: 8, bone: "#5a4430", membrane: "#3e3024" });
       });
     });
   },
