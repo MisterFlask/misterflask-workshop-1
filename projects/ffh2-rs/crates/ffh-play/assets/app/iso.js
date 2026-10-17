@@ -34,6 +34,15 @@ const TERRAIN_TILE = {
 
 const TERRAIN_FILES = ["grass", "plains", "desert", "snow", "tundra", "marsh", "coast", "ocean", "hell", "burning", "perdition"];
 
+/** FeatureType name -> feature sprite file (under app/iso/features), drawn as an overlay on top of
+ *  the terrain tile. Unmapped features draw nothing (the tile alone shows). */
+const FEATURE_SPRITE = {
+  FEATURE_FOREST: "forest",
+  FEATURE_FOREST_NEW: "forest",
+};
+
+const FEATURE_FILES = ["forest"];
+
 /** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token. */
 function unitSpriteKey(type) {
   const t = type ?? "";
@@ -63,6 +72,7 @@ export class IsoMap {
       im.src = new URL(url, import.meta.url).href;
     };
     for (const name of TERRAIN_FILES) load(`t_${name}`, `./iso/terrain/${name}.png`);
+    for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
     for (const name of ["knight", "lich", "archer", "spider"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
@@ -156,6 +166,9 @@ export class IsoMap {
     cells.sort((a, b) => a.sy - b.sy);
 
     for (const c of cells) this.drawTile(g, c);
+    // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
+    // clump occludes a farther one.
+    this.drawFeatures(g, cells);
     // Cities then units, back to front (units already sorted by their plot's sy via a fresh pass).
     this.drawCities(g, cells);
     this.drawUnits(g);
@@ -202,6 +215,30 @@ export class IsoMap {
       this.diamond(g, c.sx, c.sy);
       g.fillStyle = "rgba(6,10,16,0.45)";
       g.fill();
+    }
+  }
+
+  /** Feature overlays (forests, ...) drawn on top of the terrain tiles. Anchored so the clump's
+   *  base sits just below the tile centre and it rises upward, like a shorter unit sprite. */
+  drawFeatures(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const TH = TW / 2;
+    for (const c of cells) {
+      const vis = map.vis[c.k];
+      if (vis === 0) continue; // unrevealed
+      const feat = tname("FeatureType", map.feature[c.k]);
+      const key = feat && FEATURE_SPRITE[feat];
+      const img = key && this.imgs[`f_${key}`];
+      if (!img) continue;
+      const fw = TW * 0.92;
+      const fh = fw * (img.height / img.width);
+      const bx = Math.round(c.sx - fw / 2);
+      const by = Math.round(c.sy + TH * 0.18 - fh);
+      if (vis === 1) g.globalAlpha = 0.5; // remembered-but-fogged: muted
+      g.drawImage(img, bx, by, Math.round(fw), Math.round(fh));
+      g.globalAlpha = 1;
     }
   }
 
