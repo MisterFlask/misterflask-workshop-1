@@ -3933,6 +3933,84 @@ class Plan {
       s += done || 0.016;
     }
   }
+
+  /** A street that buildings front onto (also kept clear): a polyline of half-width `half`. */
+  street(pts, half = 0.014) {
+    this.lane(pts, half);
+    this.streets ??= [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+      const l = Math.hypot(bx - ax, bz - az);
+      if (l > 1e-4) this.streets.push({ ax, az, tx: (bx - ax) / l, tz: (bz - az) / l, l, half });
+    }
+  }
+
+  /** The nearest street to (x, z): {d (to its centre line), px, pz, tx, tz, half}, or null. */
+  nearestStreet(x, z) {
+    let best = null;
+    for (const s of this.streets ?? []) {
+      const t = Math.max(0, Math.min(s.l, (x - s.ax) * s.tx + (z - s.az) * s.tz));
+      const px = s.ax + s.tx * t, pz = s.az + s.tz * t;
+      const d = Math.hypot(x - px, z - pz);
+      if (!best || d < best.d) best = { d, px, pz, tx: s.tx, tz: s.tz, half: s.half };
+    }
+    return best;
+  }
+
+  /** Packs `items` densely, one at a time, each into the best of many candidate spots: fronts on
+   *  a street edge (turned to face it) or wherever it fits (turned to the nearest street), scored
+   *  by closeness to the `heart` (the town grows outward from its square), how squarely its front
+   *  meets a street and how many neighbours it touches (wall to wall, not scattered). `gap` keeps
+   *  a family's spacing (wider for camps and elven groves); `jitter` turns them off the street. */
+  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null } = {}) {
+    const r = this.r;
+    const S = this.streets ?? [];
+    const total = S.reduce((a, s) => a + s.l, 0);
+    const placed = [];
+    for (const it of items) {
+      const b = buildAsset(it.asset, it.variant, it.param ?? this.P);
+      const sc = it.scale ?? 1;
+      const hd = b.hi[2] * sc;
+      let best = null, bestScore = Infinity;
+      for (let k = 0; k < cands; k++) {
+        let x, z, yaw;
+        if (total > 0 && k % 3 !== 2) {
+          // A street front: a point along a street, a side, the front just off the street edge.
+          let t = r() * total, s = S[0];
+          for (const q of S) if ((t -= q.l) <= 0) { s = q; break; }
+          const u = r() * s.l, side = r() < 0.5 ? 1 : -1;
+          const nx = -s.tz * side, nz = s.tx * side;
+          const off = s.half + hd + gap / 2 + 0.004 + r.range(0, 0.008);
+          x = s.ax + s.tx * u + nx * off;
+          z = s.az + s.tz * u + nz * off;
+          yaw = yawTo(-nx, -nz);
+        } else {
+          const a = r.range(0, TAU), d = Math.sqrt(r.range((rmin / rmax) ** 2, 1)) * rmax;
+          x = Math.sin(a) * d;
+          z = Math.cos(a) * d;
+          const ns = this.nearestStreet(x, z);
+          yaw = ns && ns.d > 1e-3 ? yawTo(ns.px - x, ns.pz - z) : yawTo(heart[0] - x, heart[1] - z);
+        }
+        const rad = Math.hypot(x, z);
+        if (rad < rmin || rad > rmax) continue;
+        if (front !== null && z > front) continue;
+        yaw += r.range(-jitter, jitter);
+        const A = obb(it.asset, it.variant, it.param ?? this.P, x, z, yaw, sc, gap / 2);
+        if (!this.fits(A, 0)) continue;
+        // Closeness to the heart, a front meeting a street, neighbours touched.
+        let score = Math.hypot(x - heart[0], (z - heart[1]) * 0.9) * spread;
+        const fx = x + Math.sin(yaw) * hd, fz = z + Math.cos(yaw) * hd;
+        const ns = this.nearestStreet(fx, fz);
+        if (ns) score += street * 0.6 * Math.max(0, ns.d - ns.half - 0.006);
+        let touch = 0;
+        for (const B of this.boxes) if (overlap(A, B, -0.022)) touch++;
+        score -= 0.018 * Math.min(4, touch) + r() * 0.01;
+        if (score < bestScore) [bestScore, best] = [score, { x, z, yaw }];
+      }
+      if (best) placed.push(this.add(it.asset, it.variant, best.x, best.z, best.yaw, sc, { ...it, pad: gap / 2 }));
+    }
+    return placed;
+  }
 }
 
 /** A street from (x, z) heading `a` (from +z), drifting by `turn` per step, until radius `R`. */
@@ -4007,8 +4085,8 @@ function cityLayout(ctx) {
   const out = plan.out;
   const N = cityCounts(size);
   // The garrison's place by the gate, and the way in.
-  plan.zone(0, 0.3, 0.1);
-  plan.lane([[0, 0.12], [0, 0.6]], 0.05);
+  plan.zone(0, 0.3, 0.09);
+  plan.lane([[0, 0.12], [0, 0.6]], 0.03);
 
   // The landmark at the back of the square (a great tree's crown may spread over the houses).
   const lmScale = ctx.capital ? 1 : Math.min(0.92, 0.7 + size * 0.025);
@@ -4046,16 +4124,17 @@ function cityLayout(ctx) {
         out.emit.push({ dx: s * 0.075, dz: z, dy: 0.08, color: "#ff5a1a", size: 0.007, rise: 0.3, count: 4, spread: 0.015 });
       }
 
-  // A ring street around the heart of the town (wobbling, a little off-centre), lanes crossing it;
-  // buildings line both sides of the ring, turned to face it.
-  const hsc = Math.max(0.76, Math.min(0.95, 1.0 - size * 0.02));
-  const Rs = Math.max(0.19, Math.min(0.29, Rmax - 0.135 * hsc - 0.035));
-  const ring = ringStreet(r, lm.x * 0.3, 0.0, Rs, 0.42, TAU - 0.42);
-  plan.lane(ring, 0.014);
-  const dirs = [QT, -QT, Math.PI * 0.8 * r.sign()].slice(0, size < 8 ? 2 : 3);
+  // Streets: a ring around the heart of the town (wobbling, a little off-centre, open toward the
+  // gate) and lanes out from it; buildings front onto them.
+  const hsc = Math.max(0.8, Math.min(0.97, 1.02 - size * 0.018));
+  const Rs = Math.max(0.17, Math.min(0.25, Rmax - 0.17));
+  const ring = ringStreet(r, lm.x * 0.3, 0.0, Rs, 0.5, TAU - 0.5);
+  plan.street(ring, 0.013);
+  plan.street([[0, 0.1], [0, Rmax + 0.06]], 0.024);
+  const dirs = [QT, -QT, Math.PI * 0.8 * r.sign()].slice(0, size < 6 ? 2 : 3);
   for (const a of dirs) {
     const a1 = a + r.range(-0.25, 0.25);
-    plan.lane(street(r, Math.sin(a1) * (Rs - 0.06), Math.cos(a1) * (Rs - 0.06), a1, r.range(-0.08, 0.08), Rmax + 0.06), 0.018);
+    plan.street(street(r, Math.sin(a1) * (Rs - 0.04), Math.cos(a1) * (Rs - 0.04), a1, r.range(-0.08, 0.08), Rmax + 0.06), 0.014);
   }
   // Halls face the square from its sides; towers stand toward the back.
   const halls = [];
@@ -4063,39 +4142,21 @@ function cityLayout(ctx) {
   const hallSide = r.sign();
   halls.forEach((h, k) => {
     const s = k % 2 ? -hallSide : hallSide;
-    for (let t = 0; t < 12; t++) {
-      const x = sq.x + s * r.range(0.17, 0.26), z = sq.z + r.range(-0.08, 0.06);
-      if (plan.try(h.asset, h.variant, x, z, yawTo(sq.x - x, 0) + r.range(-0.15, 0.15), h.scale)) {
+    for (let t = 0; t < 16; t++) {
+      const x = sq.x + s * r.range(0.15, 0.24), z = sq.z + r.range(-0.08, 0.06);
+      if (plan.try(h.asset, h.variant, x, z, yawTo(sq.x - x, 0) + r.range(-0.15, 0.15), h.scale, { pad: 0.003 })) {
         h.done = true;
         break;
       }
     }
   });
-  for (let k = 0; k < N.towers; k++) plan.scatter(cityTower(k), { rmin: Rs, rmax: Rmax - 0.03, back: -0.05, face: (x, z) => yawTo(-x, -z) });
+  for (let k = 0; k < N.towers; k++) plan.scatter(cityTower(k), { rmin: Rs - 0.02, rmax: Rmax - 0.02, back: -0.04, face: (x, z) => yawTo(-x, -z) });
+  // The houses, packed from the square outward: the bigger first, the town's front rows (toward
+  // the camera) a little lower so that the square and the landmark stay in view.
   const items = halls.filter((h) => !h.done);
   const hv = shuffle(r, [0, 1, 2, 3, 4, 5]);
-  for (let k = 0; k < N.houses; k++) items.push({ asset: "bld.house", variant: hv[k % 6], scale: r.range(0.92, 1.04) * hsc });
-  const rowOpts = { gap: L.gap, jitter: L.jitter };
-  plan.row(ring, 1, items, { ...rowOpts, quota: Math.ceil(items.length * 0.6) });
-  plan.row(ring, -1, items, rowOpts);
-  plan.row(ring, 1, items, rowOpts);
-  // Back rows behind the street fronts, then whatever gaps are left, turned to the ring.
-  const back = 0.022 + 0.13 * hsc + 0.012;
-  plan.row(ring, 1, items, { ...rowOpts, half: back });
-  plan.row(ring, -1, items, { ...rowOpts, half: back });
-  const ringFace = (x, z) => {
-    let best = ring[0], bd = Infinity;
-    for (const p of ring) {
-      const d = Math.hypot(p[0] - x, p[1] - z);
-      if (d < bd) [bd, best] = [d, p];
-    }
-    return yawTo(best[0] - x, best[1] - z) + r.range(-0.2, 0.2);
-  };
-  if (f === "elven") items.splice(Math.ceil(N.houses * 0.75));
-  while (items.length) {
-      const it = items.shift();
-      plan.scatter(it.asset === "bld.house" ? { ...it, scale: it.scale * 0.92 } : it, { rmin: 0.12, face: ringFace, tries: 150 });
-    }
+  for (let k = 0; k < N.houses; k++) items.push({ asset: "bld.house", variant: hv[k % 6], scale: r.range(0.93, 1.05) * hsc });
+  plan.pack(items, { heart: [sq.x, sq.z - 0.06], gap: L.gap, jitter: L.jitter, cands: 160, rmin: 0.06 });
   // Trees among an elven town's houses (the vegetation's, when it is loaded).
   if (L.trees) {
     const dark = sub === "dark";
