@@ -65,6 +65,19 @@ test("river edges chain into continuous lines", () => {
   assert.ok(w.heightAt(2, 3.5) < w.heightAt(2.5, 3.5) - 0.03);
 });
 
+test("a small lake is a bowl of water; water touching the unknown is not a lake", () => {
+  const rows = ["......", ".h....", "..-n..", "......", "......"];
+  const w = new World(buildMap(data, rows));
+  const i = (x, y) => y * 6 + x;
+  // Rows are listed north first: row 2 is map y = 2.
+  const ly = rows.length - 1 - 2;
+  assert.equal(w.lake[i(2, ly)], 1);
+  assert.ok(w.heightAt(2.5, ly + 0.5) < -0.2, `the lake's middle is deep (${w.heightAt(2.5, ly + 0.5)})`);
+  // The same pond beside an unrevealed plot may be the edge of a sea: no bowl.
+  const open = new World(buildMap(data, rows, { hidden: [[1, ly]] }));
+  assert.equal(open.lake[i(2, ly)], 0);
+});
+
 test("recipes are deterministic, finite, and simplify for distance", () => {
   for (const name of R.recipeNames()) {
     const a = R.buildAsset(name, 1, "");
