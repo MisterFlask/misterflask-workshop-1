@@ -7,6 +7,13 @@
 //   node tools/r3d-lab.mjs --out a.png --query "grid=tree.oak,tree.pine&variants=6&ts=144"
 //   node tools/r3d-lab.mjs --shots shots.json      many shots: [{"out": "a.png", "query": "..."}]
 //   node tools/r3d-lab.mjs --serve [--port 8650]   just serve (open /lab/lab.html in a browser)
+//   node tools/r3d-lab.mjs --stability [--query "scene=showcase&ts=96"] [--shift 4]
+//        [--configs 'plain;{"animate":false};{"animate":false,"kuwahara":0}']
+//     temporal stability under panning: renders the frame, pans the camera by `shift` pixels and
+//     renders again; a stable image is the first one shifted (up to parallax). Prints, per
+//     configuration, the mean difference (0-255) at the best shift and the share of pixels off by
+//     more than 24 -- shimmer from screen-space effects shows as a configuration scoring worse
+//     than the plain render.
 //
 // Software rendering (SwiftShader) is slow: a 1280x800 frame takes tens of seconds.
 
@@ -16,7 +23,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { ROOT, parseArgs } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { out: "v", query: "v", w: "v", h: "v", shots: "v", serve: "flag", port: "v", timeout: "v", time: "v" });
+const args = parseArgs(process.argv.slice(2), { out: "v", query: "v", w: "v", h: "v", shots: "v", serve: "flag", port: "v", timeout: "v", time: "v", stability: "flag", shift: "v", configs: "v" });
 const APP = path.join(ROOT, "crates", "ffh-play", "assets", "app");
 const LAB = path.join(ROOT, "crates", "ffh-play", "r3d-lab");
 const TYPES = { ".js": "text/javascript", ".mjs": "text/javascript", ".html": "text/html", ".json": "application/json", ".png": "image/png", ".css": "text/css" };
@@ -48,6 +55,12 @@ if (args.serve) {
     pw = require(require.resolve("playwright", { paths: ["/opt/node22/lib/node_modules"] }));
   }
   const browser = await pw.chromium.launch({ headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"] });
+  if (args.stability) {
+    await stability(browser);
+    await browser.close();
+    server.close();
+    process.exit(0);
+  }
   const shots = args.shots ? JSON.parse(fs.readFileSync(args.shots, "utf8")) : [{ out: args.out, query: args.query ?? "", w: args.w, h: args.h }];
   let failed = 0;
   for (const s of shots) {
@@ -86,4 +99,54 @@ if (args.serve) {
   await browser.close();
   server.close();
   process.exit(failed ? 1 : 0);
+}
+
+async function stability(browser) {
+  const shift = Number(args.shift ?? 4);
+  const q = args.query ?? "scene=showcase&ts=96";
+  const configs = (args.configs ?? 'plain;{"animate":false};{"animate":false,"kuwahara":0}').split(";");
+  for (const cfg of configs) {
+    const page = await browser.newPage({ viewport: { width: Number(args.w ?? 900), height: Number(args.h ?? 600) } });
+    await page.goto(`${base}/lab/lab.html?${q}&r3d=${encodeURIComponent(cfg)}`);
+    await page.waitForFunction(() => window.lab?.ready || window.lab?.error, null, { timeout: Number(args.timeout ?? 120000) });
+    const out = await page.evaluate((shift) => {
+      const r = window.lab.r3d, v = window.lab.view, gl = r.gl;
+      r.running = false;
+      cancelAnimationFrame(r.raf);
+      const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+      const grab = () => {
+        r.render(1);
+        const px = new Uint8Array(W * H * 4);
+        gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        return px;
+      };
+      grab();
+      const a = grab();
+      // The camera moves east by `shift` pixels' worth of map: the picture moves west.
+      v.cam.cx += shift / v.cam.ts;
+      grab();
+      const b = grab();
+      const m = 40;
+      let best = null;
+      for (let sy = -2; sy <= 2; sy++) {
+        for (let sx = shift - 3; sx <= shift + 3; sx++) {
+          let sum = 0, off = 0, n = 0;
+          for (let y = m; y < H - m; y += 1) {
+            for (let x = m; x < W - m - sx; x += 1) {
+              const ia = ((y + sy) * W + x + sx) * 4, ib = (y * W + x) * 4;
+              const d0 = Math.abs(a[ia] - b[ib]), d1 = Math.abs(a[ia + 1] - b[ib + 1]), d2 = Math.abs(a[ia + 2] - b[ib + 2]);
+              sum += d0 + d1 + d2;
+              if (Math.max(d0, d1, d2) > 24) off++;
+              n++;
+            }
+          }
+          const d = sum / (n * 3);
+          if (!best || d < best.d) best = { d, sx, sy, off: off / n };
+        }
+      }
+      return best;
+    }, shift);
+    console.log(`${cfg.padEnd(44)} best shift (${out.sx}, ${out.sy})  mean |diff| ${out.d.toFixed(2)}  off by >24: ${(out.off * 100).toFixed(2)}%`);
+    await page.close();
+  }
 }
