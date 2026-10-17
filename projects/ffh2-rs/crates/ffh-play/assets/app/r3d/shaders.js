@@ -217,7 +217,8 @@ float visAt(vec3 wp) {
 vec3 fogOfWar(vec3 c, float v) {
   float fog = (1.0 - smoothstep(0.62, 0.97, v)) * uFogWar;
   vec3 g = vec3(lum(c));
-  vec3 mem = mix(g, c, 0.42) * vec3(0.6, 0.62, 0.72);
+  // Remembered, not seen: dimmed, half the colour gone, cooled (a memory of the land).
+  vec3 mem = mix(g, c, 0.5) * vec3(0.48, 0.52, 0.62);
   return mix(c, mem, fog);
 }
 
@@ -304,8 +305,12 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   if (g == G_SNOW) return srgb(masses(m, vec3(0.70, 0.76, 0.84), vec3(0.85, 0.88, 0.92), vec3(0.95, 0.96, 0.97), 0.7));
   if (g == G_MARSH) {
     vec3 c = masses(m, vec3(0.20, 0.24, 0.17), vec3(0.29, 0.34, 0.21), vec3(0.40, 0.42, 0.26), 1.3);
-    float pool = smoothstep(0.6, 0.66, mfbm(m + 7.0, 1.8));
-    return srgb(mix(c, vec3(0.13, 0.18, 0.2), pool));
+    // Shallow pools among the reeds, catching the sky; a darker muddy rim around each.
+    float pn = mfbm(m + 7.0, 2.2);
+    float rimM = smoothstep(0.56, 0.62, pn) * (1.0 - smoothstep(0.62, 0.66, pn));
+    float pool = smoothstep(0.63, 0.67, pn);
+    c = mix(c, c * 0.62, rimM);
+    return srgb(mix(c, vec3(0.34, 0.42, 0.46), pool * 0.9));
   }
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
     // Corrupted ground: ash and scorched earth (the fields of perdition festering purple-red),
@@ -335,8 +340,9 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   if (g == G_OCEAN) return srgb(vec3(0.22, 0.26, 0.28));
   // The unexplored: dark parchment with a faint ink hatching.
   float hatch = smoothstep(0.55, 0.9, mstroke(m, 14.0, 8.0));
-  vec3 c = mix(vec3(0.16, 0.13, 0.11), vec3(0.24, 0.20, 0.16), mfbm(m, 0.6));
-  return srgb(c * (1.0 - hatch * 0.18));
+  vec3 c = mix(vec3(0.15, 0.12, 0.10), vec3(0.25, 0.20, 0.15), mfbm(m, 0.5));
+  c *= 0.9 + 0.2 * mdabs(m, 1.5);
+  return srgb(c * (1.0 - hatch * 0.22));
 }
 
 // The floor a feature lays over the ground (forest litter, ice, flood silt, ...).
@@ -488,12 +494,18 @@ void main() {
   col += emit;
 
   float v = visAt(vWorld);
-  if (!known || v < 0.3) {
-    // Unexplored: no light, no detail -- the map's blank parchment.
-    float t = known ? smoothstep(0.3, 0.05, v) : 1.0;
-    vec3 blank = groundAlbedo(G_VOID, m, h, emit) * 1.4;
-    col = mix(col, blank, t);
-    emit *= 1.0 - t;
+  // The unexplored: the map's blank, dark parchment. The frontier is a brushy edge (the smooth
+  // visibility field pushed by brush dabs), with a scorched rim like the edge of burnt paper.
+  float edgeN = (mdabs(m + 1.7, 3.0) - 0.5) * 0.35 + (mnoise(m, 2.0) - 0.5) * 0.15;
+  float blankT = 1.0 - smoothstep(0.12, 0.4, v + edgeN);
+  if (!known) blankT = max(blankT, 1.0 - smoothstep(0.08, 0.3, v + edgeN));
+  if (blankT > 0.0) {
+    vec3 e0 = vec3(0.0);
+    vec3 blank = groundAlbedo(G_VOID, m, h, e0) * 1.5;
+    float rim = smoothstep(0.0, 0.5, blankT) * (1.0 - smoothstep(0.5, 1.0, blankT));
+    col = mix(col, blank, blankT);
+    col *= 1.0 - rim * 0.55;
+    emit *= 1.0 - blankT;
   }
   col = fogOfWar(col, v);
   col = atmosphere(col, vWorld);

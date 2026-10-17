@@ -330,6 +330,8 @@ export class Scene {
     this.copies = copies;
     this.far = far;
     this.budget.n = 6;
+    /** What the last frame's shaded prop pass drew: draw calls, instances, triangles. */
+    this.drawn = { draws: 0, instances: 0, tris: 0, terrainTris: 0 };
   }
 
   chunkVisible(cx, cy, copy, margin = 1.5) {
@@ -366,7 +368,10 @@ export class Scene {
           if (!this.chunkVisible(cx, cy, copy, shadow ? 3 : 1)) continue;
           const res = this.far || shadow || cy < 0 || cy >= ncy ? LOW_RES : RES;
           const c = this.terrain.get(cx, cy, res, this.budget);
-          if (c) c.mesh.draw();
+          if (c) {
+            c.mesh.draw();
+            if (!shadow && this.drawn && prog.name === "terrain") this.drawn.terrainTris += c.mesh.count / 3;
+          }
         }
       }
     }
@@ -396,6 +401,11 @@ export class Scene {
           if (!this.chunkVisible(b.cx, b.cy, copy, shadow ? 3 : 1.5)) continue;
           gl.bindVertexArray(b.bucket.vao);
           gl.drawArraysInstanced(gl.TRIANGLES, 0, b.batch.count, b.bucket.n);
+          if (!shadow && this.drawn && prog.name === "prop") {
+            this.drawn.draws++;
+            this.drawn.instances += b.bucket.n;
+            this.drawn.tris += (b.batch.count / 3) * b.bucket.n;
+          }
         }
       }
     }

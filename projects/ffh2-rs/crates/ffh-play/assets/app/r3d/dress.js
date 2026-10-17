@@ -278,7 +278,10 @@ export function dressUnits(world, map) {
       const ground = world.heightAt(mx, my);
       const yy = look.float ? Math.max(SEA + 0.005, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
       const s = (look.scale ?? 1) * (k === 0 ? 1 : 0.78);
-      out.push(inst(pick(look.asset, "basic.unit"), mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i }));
+      const it = inst(pick(look.asset, "basic.unit"), mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
+      it.uid = u.id;
+      it.ground = !look.float && !look.fly;
+      out.push(it);
       if (k === 0) anchor = { x: mx, y: yy, z: -my, height: (look.height ?? 0.5) * s };
     });
     stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot });

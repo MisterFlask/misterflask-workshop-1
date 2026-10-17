@@ -305,6 +305,7 @@ export function openOptions() {
       { title },
       h("input", {
         type: "radio",
+        id: `option-${val}-renderer`,
         name: "option-renderer",
         value: val,
         disabled: val === "art" && !look.art,

@@ -7,6 +7,7 @@
 //            &ground=.  &spacing=1
 //   &cx=..&cy=..&ts=..                         camera (map point, pixels per plot)
 //   &r3d=painterly|plain|{json}                pipeline overrides (as in the client)
+//   &sel=x,y&select=1&hover=x,y&targets=x,y;x,y&path=x,y;x,y&attack=1&layer=political  overlays
 
 import { S, setData, setView, setMap } from "/app/state.js";
 import { Map3D } from "/app/r3d/map3d.js";
@@ -47,6 +48,18 @@ async function main() {
   };
   canvas.width = view.vw;
   canvas.height = view.vh;
+  // Overlays: &sel=x,y &hover=x,y &targets=x,y;x,y &path=x,y;x,y (&attack=1) &select=1 (the units
+  // on the sel plot are selected).
+  const pts = (k) => (q.get(k) ?? "").split(";").filter(Boolean).map((p) => p.split(",").map(Number));
+  if (q.get("sel")) view.overlay.sel = { x: pts("sel")[0][0], y: pts("sel")[0][1] };
+  if (q.get("hover")) view.overlay.hover = { x: pts("hover")[0][0], y: pts("hover")[0][1] };
+  if (q.get("targets")) view.overlay.targets = pts("targets");
+  if (q.get("path")) view.overlay.path = { ok: true, attack: q.get("attack") === "1", declare_war_team: null, nodes: pts("path").map(([x, y], k) => ({ x, y, turns: k })) };
+  if (q.get("select") && view.overlay.sel) {
+    const here = S.view.units.filter((u) => u.x === view.overlay.sel.x && u.y === view.overlay.sel.y);
+    S.sel = { units: here.map((u) => u.id), x: view.overlay.sel.x, y: view.overlay.sel.y };
+    view.overlay.units = S.sel.units;
+  }
   const r3d = new Map3D(view);
   if (scene.items) {
     // Grid mode: the recipes in rows, not the dressing.

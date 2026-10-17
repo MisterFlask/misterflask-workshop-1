@@ -51,6 +51,8 @@ export class Map3D {
     this.dirty = true;
     this.running = true;
     this.frameMs = [];
+    /** The last sync's costs by stage (ms): world, textures, dress, instances, paint, units. */
+    this.syncMs = {};
     this.raf = requestAnimationFrame(() => this.loop());
     this.panel = null;
     this.addPanelButton();
@@ -198,13 +200,17 @@ export class Map3D {
     const map = this.view.map;
     if (!map) return false;
     let mapChanged = false;
+    const T0 = performance.now();
     if (map !== this.mapSeen) {
       const prev = this.mapSeen;
       const dirty = prev && prev.w === map.w && prev.h === map.h ? changedPlots(prev, map) : null;
       if (!prev || !dirty || dirty.length) {
         this.world = new World(map);
+        const T1 = performance.now();
         this.scene.setWorld(this.world, map, dirty);
         mapChanged = true;
+        this.syncMs.world = T1 - T0;
+        this.syncMs.textures = performance.now() - T1;
       }
       this.mapSeen = map;
     }
@@ -214,21 +220,31 @@ export class Map3D {
       for (const p of S.players.values()) colors[p.id] = teamColour(p.id);
       for (let i = 0; i < 64; i++) if (!colors[i]) colors[i] = T.playerColor(i);
       this.scene.setOwnerColors(colors);
+      const T2 = performance.now();
       const st = dressStatic(this.world, map);
+      const T3 = performance.now();
       this.cities = st.cities;
       this.scene.setInstances("static", st.list);
       this.emitters = st.emitters;
       this.scene.setParticles(st.emitters);
+      const T4 = performance.now();
       this.scene.setPaint(this.world, map, st.cities, this.cfg.lighting === "dusk" ? 1.6 : 1);
+      this.syncMs.dress = T3 - T2;
+      this.syncMs.instances = T4 - T3;
+      this.syncMs.paint = performance.now() - T4;
       this.staticCount = st.list.length;
       this.viewSeen = S.view;
       this.selSeen = null;
     }
     const selKey = JSON.stringify(S.sel?.units ?? []) + JSON.stringify(this.view.overlay.units ?? []);
     if (selKey !== this.selSeen || viewChanged || mapChanged) {
+      const T5 = performance.now();
       const u = dressUnits(this.world, map);
       this.stacks = u.stacks;
-      this.scene.setInstances("units", u.list);
+      this.startTweens(u.list);
+      this.unitList = u.list;
+      this.scene.setInstances("units", this.tweened(performance.now()));
+      this.syncMs.units = performance.now() - T5;
       this.unitCount = u.list.length;
       this.selSeen = selKey;
       this.overlaySeen = "";
@@ -269,6 +285,62 @@ export class Map3D {
     return mx;
   }
 
+  // --- unit movement --------------------------------------------------------------------------
+
+  /** Units that changed plot since the last dressing walk there (a short glide with a step bob)
+   *  and keep facing their heading -- turned at most 100 degrees from the camera, so a figure
+   *  never shows only its back. A jump of more than three plots (a teleport, a load) is not
+   *  animated; nor is anything under prefers-reduced-motion. */
+  startTweens(list) {
+    const now = performance.now();
+    this.tweens ??= new Map();
+    this.facing ??= new Map();
+    this.lastPos ??= new Map();
+    const motion = !this.view.reduceMotion();
+    const w = this.world?.w ?? 1;
+    for (const it of list) {
+      if (it.uid === undefined) continue;
+      const prev = this.lastPos.get(it.uid);
+      if (prev) {
+        let dx = it.x - prev.x;
+        if (this.world?.wrapX) dx -= Math.round(dx / w) * w;
+        const dz = it.z - prev.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.3 && d < 3.2) {
+          const heading = Math.atan2(dx, dz);
+          const lim = (100 * Math.PI) / 180;
+          this.facing.set(it.uid, Math.max(-lim, Math.min(lim, heading)));
+          if (motion) this.tweens.set(it.uid, { fx: it.x - dx, fz: it.z - dz, fy: prev.y, t0: now, dur: 380 + d * 120 });
+        }
+      }
+      this.lastPos.set(it.uid, { x: it.x, y: it.y, z: it.z });
+    }
+  }
+
+  /** The unit instances at time `now`, the walking ones partway along. */
+  tweened(now) {
+    const out = [];
+    for (const it of this.unitList ?? []) {
+      const f = it.uid !== undefined ? this.facing?.get(it.uid) : undefined;
+      let o = f !== undefined ? { ...it, yaw: f } : it;
+      const tw = it.uid !== undefined ? this.tweens?.get(it.uid) : undefined;
+      if (tw) {
+        const t = Math.min(1, (now - tw.t0) / tw.dur);
+        if (t >= 1) this.tweens.delete(it.uid);
+        else {
+          const e = t * t * (3 - 2 * t);
+          const x = tw.fx + (it.x - tw.fx) * e;
+          const z = tw.fz + (it.z - tw.fz) * e;
+          // On foot over the ground's relief; ships and fliers straight between their heights.
+          const y = it.ground && this.world ? this.world.heightAt(x, -z) : tw.fy + (it.y - tw.fy) * e;
+          o = { ...o, x, z, y: y + (it.ground ? Math.abs(Math.sin(t * Math.PI * 3)) * 0.012 : 0) };
+        }
+      }
+      out.push(o);
+    }
+    return out;
+  }
+
   // --- frames -----------------------------------------------------------------------------------
 
   /** MapView's draw: the next frame will render (the loop below draws). */
@@ -286,6 +358,10 @@ export class Map3D {
       this.dirty = true;
     } else this.ts = target;
     const animate = this.cfg.animate && !this.view.reduceMotion();
+    if (this.tweens?.size) {
+      this.scene.setInstances("units", this.tweened(performance.now()));
+      this.dirty = true;
+    }
     if (!this.dirty && !animate) return;
     // Animation at ~30 frames per second is enough for wind and water.
     const now = performance.now();
