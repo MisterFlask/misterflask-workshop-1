@@ -163,8 +163,13 @@ pub fn deal_val(g: &Game, p: PlayerId, other: PlayerId, list: &[TradeData], igno
                     value += gold_per_turn_trade_val(g, p, item.data);
                 }
             }
-            // AI: other item kinds (maps, cities, war, ...) are not valued here; the resource/gold
-            // offer paths never build them, and consider_offer handles peace/open-borders itself.
+            // C++ `AI_dealVal` TRADE_WAR (CvPlayerAI.cpp:6877): what `p` charges to declare war on
+            // the item's target team as a favour to `other` -- our price for a war bribe.
+            TradeableItem::TRADE_WAR => {
+                value += crate::diplomacy::declare_war_trade_val(g, team, TeamId(item.data as u8), g.players[other].team);
+            }
+            // AI: other item kinds (maps, cities, ...) are not valued here; the resource/gold offer
+            // paths never build them, and consider_offer handles peace/open-borders itself.
             _ => {}
         }
     }

@@ -646,7 +646,25 @@ enabler) rather than a random one; and we never gift a civ that is our victory r
 C++ `AI_getTradeAttitude` is unported), matching how resource/open-borders trading was integrated.
 Like the base game it is rare (the gating plus the ~150-turn cadence fire it only a handful of times
 across a 16-game set), so it is a faithful, low-impact "keep an ally alive" gesture rather than a
-force on the outcome. No new saved state; no RNG.
+force on the outcome. No new saved state; no RNG. (Measured 16-seed/690-turn A/B vs the
+peace-with-reparations tip: flat within noise -- research at turn 300 +1.2%, leader world-share at
+turn 690 42.5% -> 42.8%, war/peace/elimination counts unchanged -- with research at turn 690 +11% and
+one domination win, i.e. harmless-to-slightly-helpful, as expected from a feature that fires only a
+handful of times.)
+
+**Hire a war ally (`hire_war_ally`, `declare_war_trade_val`).** A port of C++ `AI_doDiplo`'s paid
+war-bribe (`TRADE_WAR`): a civ already at war pays a third AI, at peace with it, tech + gold to
+declare war on one of its enemies -- turning gold into a second front. The price is a faithful port
+of `CvTeamAI::AI_declareWarTradeVal` (the target's size, the bribee's attitude to the target and to
+us, the relative powers, a dogpile bonus when the target has no other wars, scaled up as the game
+ages); `consider_offer` values an incoming bribe with the same function and runs the AI half of
+`AI_declareWarTrade` that ffh-core leaves open (one war at a time, the target not too strong even
+with our help, and the bribee's attitude to briber and target). Deterministic deviations from the
+C++: the target is the enemy the bribee most dislikes (`AI_getAttitudeWeight`) and the payment is the
+costliest tech(s) the bribee would value plus a gold top-up, rather than the C++ random picks; a
+staggered period from the leader's `DeclareWarTradeRand` replaces the 1-in-N roll; and we never pay a
+civ that is our victory rival (do not strengthen a would-be winner). `AI_isAllyLandTarget` is unported
+(assumed false); nukes are 0 in FfH 0.41. No new saved state; no RNG.
 
 ## Civilization-specific (`civs.rs`)
 

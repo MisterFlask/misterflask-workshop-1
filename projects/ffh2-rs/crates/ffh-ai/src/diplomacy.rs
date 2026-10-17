@@ -193,6 +193,20 @@ pub fn manage(g: &mut Game, v: &View) {
         give_help(g, p, other, &plan);
     }
 
+    // While at war, pay a third AI (tech + gold) to pile onto one of our enemies (C++ war bribe).
+    if !v.civ_enemies.is_empty() {
+        for bribee in g.player_ids() {
+            if bribee == p {
+                continue;
+            }
+            let bp = &g.players[bribee];
+            if !bp.alive || bp.human || bp.team == team || g.player_is_barbarian(bribee) || !is_team_leader(g, bribee) || !g.teams[team].has_met[bp.team] {
+                continue;
+            }
+            hire_war_ally(g, p, bribee, &plan);
+        }
+    }
+
     // One war at a time.
     if !v.civ_enemies.is_empty() {
         return;
@@ -347,6 +361,83 @@ fn give_help(g: &mut Game, p: PlayerId, other: PlayerId, plan: &crate::victory::
     crate::trace!(g, p, "gifts {:?} to weaker ally {:?}", t, other);
     let ours = vec![tech_item(t)];
     g.implement_deal(p, other, &ours, &[], false);
+}
+
+/// C++ `AI_doDiplo` war-bribe (CvPlayerAI.cpp:13986): while at war, pay a third AI (`bribee`, at
+/// peace with us) tech + gold to declare war on one of our enemies. Deterministic (ffh-ai draws no
+/// RNG): the target is the enemy the bribee is most hostile to (`AI_getAttitudeWeight`), the payment
+/// is our costliest giveable tech(s) plus a gold top-up; the C++ random target/tech picks and the
+/// 1/`DeclareWarTradeRand` roll are replaced by value-ranked picks and a deterministic staggered
+/// cadence. The bribee's `consider_offer` is the final judge (its `AI_declareWarTrade` gates + value
+/// test), so an underpriced or refused offer does nothing. We never pay our victory rival (project
+/// "do not prop up a rival" rule). Argument order for the price follows the C++ offer path
+/// (this = briber, eWarTeam = target, eTeam = bribee); the bribee re-derives the same value in its
+/// `consider_offer`.
+fn hire_war_ally(g: &mut Game, p: PlayerId, bribee: PlayerId, plan: &crate::victory::Plan) {
+    let (team, bribee_team) = (g.players[p].team, g.players[bribee].team);
+    if g.at_war(team, bribee_team) || crate::victory::rival_team(g, plan) == Some(bribee_team) {
+        return;
+    }
+    // Deterministic cadence (replaces the getDeclareWarTradeRand roll); staggered by the pair.
+    let period = g.players[p].personality_type.map_or(1, |l| g.d.leader_heads[l].declare_war_trade_rand).max(1);
+    if (g.game_turn() + 7 * p.0 as i32 + 3 * bribee.0 as i32).rem_euclid(period) != 0 {
+        return;
+    }
+    // Target: an enemy of ours the bribee is not at war with, not already dogpiled, that the bribee
+    // can be bribed to attack. Pick the one the bribee is most hostile to (C++ picks by weight x rand).
+    let cap = 2.max(g.team_ids().filter(|&t| g.team_is_alive(t) && !g.team_is_barbarian(t)).count() as i32 / 2);
+    let mut best: Option<(TeamId, i64)> = None;
+    for target in g.team_ids() {
+        if !g.team_is_alive(target) || !g.at_war(team, target) || g.at_war(bribee_team, target) || g.team_get_at_war_count(target, true) >= cap {
+            continue;
+        }
+        let item = TradeData { item_type: TradeableItem::TRADE_WAR, data: target.0 as i32, offering: false, hidden: false };
+        if !g.player_can_trade_item(bribee, p, &item, true) {
+            continue;
+        }
+        let w = 101 + attitude_weight(team_attitude(g, target, team));
+        if best.map_or(true, |(_, bw)| w > bw) {
+            best = Some((target, w));
+        }
+    }
+    let Some((target, _)) = best else { return };
+    let our_val = declare_war_trade_val(g, team, target, bribee_team) as i64;
+    // Payment: the costliest tech(s) the bribee would value that we can give, then a gold top-up.
+    let pct = crate::trade::gold_trade_value_percent(g, p).max(1) as i64;
+    let mut ours: Vec<TradeData> = Vec::new();
+    let mut given: Vec<TechType> = Vec::new();
+    let mut their_val: i64 = 0;
+    for _ in 0..2 {
+        if their_val >= our_val {
+            break;
+        }
+        let give = g
+            .d
+            .techs
+            .keys()
+            .filter(|&t| !given.contains(&t) && g.player_can_trade_item(p, bribee, &tech_item(t), true))
+            .max_by_key(|&t| (g.team_get_research_cost(bribee_team, t), std::cmp::Reverse(t)));
+        let Some(t) = give else { break };
+        their_val += g.team_get_research_cost(bribee_team, t) as i64;
+        given.push(t);
+        ours.push(tech_item(t));
+    }
+    if their_val < our_val {
+        let gold = (((our_val - their_val) * 100 / pct) as i32).min(crate::trade::max_gold_trade(g, p, bribee));
+        if gold > 0 {
+            their_val += gold as i64 * pct / 100;
+            ours.push(crate::trade::gold_item(gold));
+        }
+    }
+    // Offer only if the payment is worth more than three quarters of our war-valuation (C++ 14177).
+    if their_val <= our_val * 3 / 4 || ours.is_empty() {
+        return;
+    }
+    let theirs = vec![TradeData { item_type: TradeableItem::TRADE_WAR, data: target.0 as i32, offering: false, hidden: false }];
+    crate::trace!(g, p, "bribes {:?} to war team {:?} (pay {} items, price {})", bribee, target, ours.len(), our_val);
+    if g.controller(bribee).consider_offer(g, bribee, p, &ours, &theirs) {
+        g.implement_deal(p, bribee, &ours, &theirs, false);
+    }
 }
 
 /// Tech swaps and open borders with the AI leaders of teams we know and like well enough.
@@ -571,6 +662,91 @@ fn press_conquest(g: &Game, team: TeamId, enemy: TeamId) -> bool {
     ours * 100 >= theirs * PRESS_CONQUEST_RATIO
 }
 
+/// Team-level attitude as the leaders' attitude (ffh-ai has no team-averaged `AI_getAttitude`).
+fn team_attitude(g: &Game, t: TeamId, towards: TeamId) -> AttitudeType {
+    match (team_leader(g, t), team_leader(g, towards)) {
+        (Some(a), Some(b)) => attitude(g, a, b),
+        _ => AttitudeType::ATTITUDE_CAUTIOUS,
+    }
+}
+
+/// C++ `AI_getAttitudeWeight` (CvTeamAI.cpp:3814): a signed weight used to bias the choice of which
+/// enemy to bribe a third party against.
+fn attitude_weight(a: AttitudeType) -> i64 {
+    match a {
+        AttitudeType::ATTITUDE_FURIOUS => -100,
+        AttitudeType::ATTITUDE_ANNOYED => -40,
+        AttitudeType::ATTITUDE_PLEASED => 50,
+        AttitudeType::ATTITUDE_FRIENDLY => 100,
+        _ => -5, // CAUTIOUS
+    }
+}
+
+/// C++ `CvTeamAI::AI_declareWarTradeVal` (CvTeamAI.cpp:1932): the price `this_team` puts on declaring
+/// war on `war_team` as a favour to `other_team`. Integer math byte-faithful (each `/` truncates).
+/// Team attitude is the leaders' `attitude` (no team-averaged attitude in ffh-ai); `AI_isAllyLandTarget`
+/// is unported and assumed false (the common case -> the x2 branch, a conservative upward bias on the
+/// price); nukes are 0 in FfH 0.41. Widened to i64 to avoid the C++ `int` overflow on large powers.
+pub(crate) fn declare_war_trade_val(g: &Game, this_team: TeamId, war_team: TeamId, other_team: TeamId) -> i32 {
+    let mut v: i64 = 0;
+    v += g.teams[war_team].num_cities as i64 * 10;
+    v += g.team_get_total_population(war_team, true) as i64 * 2;
+    let i_modifier: i64 = match team_attitude(g, other_team, war_team) {
+        AttitudeType::ATTITUDE_ANNOYED => 25,
+        AttitudeType::ATTITUDE_CAUTIOUS => 50,
+        AttitudeType::ATTITUDE_PLEASED => 150,
+        AttitudeType::ATTITUDE_FRIENDLY => 400,
+        _ => 0, // FURIOUS
+    };
+    v *= (i_modifier + 100).max(0);
+    v /= 100;
+    let their_power = g.team_get_power(other_team, true) as i64;
+    let war_power = g.team_get_power(war_team, true) as i64;
+    v *= 50 + (100 * war_power) / (their_power + war_power + 1);
+    v /= 100;
+    v *= 2; // AI_isAllyLandTarget unported -> assume not an ally land target
+    if !g.at_war(this_team, war_team) {
+        v *= 3;
+    } else {
+        v *= 150;
+        let ws = g.teams[this_team].ai_war_success[war_team] as i64;
+        let pop = g.team_get_total_population(this_team, false) as i64;
+        let inner = (100 * ws / (8 + pop)).min(100);
+        v /= (100 + (50 * inner) / 100).max(1);
+    }
+    v += g.teams[other_team].num_cities as i64 * 20;
+    v += g.team_get_total_population(other_team, true) as i64 * 15;
+    if g.at_war(this_team, war_team) {
+        let at_war_count = g.team_get_at_war_count(this_team, true) as i64;
+        let mult: i64 = match team_attitude(g, other_team, this_team) {
+            AttitudeType::ATTITUDE_PLEASED => (100 - at_war_count * 10).max(75),
+            AttitudeType::ATTITUDE_FRIENDLY => (100 - at_war_count * 20).max(50),
+            _ => 100, // FURIOUS / ANNOYED / CAUTIOUS
+        };
+        v *= mult;
+        v /= 100;
+    }
+    v += g.team_get_num_nuke_units(war_team) as i64 * 250;
+    v += g.team_get_num_nuke_units(other_team) as i64 * 150;
+    if g.team_get_at_war_count(war_team, false) == 0 {
+        v *= 2;
+        for i in g.team_ids() {
+            if g.team_is_alive(i) && i != this_team && i != war_team && i != other_team && g.teams[war_team].defensive_pact[i] {
+                v += g.teams[i].num_cities as i64 * 30;
+                v += g.team_get_total_population(i, true) as i64 * 20;
+            }
+        }
+    }
+    v *= 60 + (140 * g.game_turn() as i64) / (g.estimate_end_turn as i64).max(1);
+    v /= 100;
+    let remainder = g.d.defines.diplomacy_value_remainder.max(1) as i64;
+    v -= v.rem_euclid(remainder);
+    if g.team_is_human(this_team) {
+        v = v.max(remainder);
+    }
+    v as i32
+}
+
 /// C++ `CvTeamAI::AI_endWarVal` (CvTeamAI.cpp:992): value to `team` of ending its war with `enemy`.
 /// Large when we are weak / losing, cut to a fifth once we dominate (>120% power) -- this gap is
 /// what funds reparations at peace. Integer math throughout (each `/` truncates). The
@@ -708,6 +884,37 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
         }
         let winning = ours > theirs * 3 / 2 && success > their_success + 20;
         return !winning || counter >= 60;
+    }
+    // War bribe: `from` pays us (tech / gold) to declare war on a third team. Judge as the bribee.
+    // The AI-judgement denial gates `ai_declare_war_trade` leaves to the AI (C++ `AI_declareWarTrade`,
+    // CvTeamAI.cpp:2096-2155) run here; vassal/DP/can-declare are already enforced at construction by
+    // `player_can_trade_item`. Then value both sides (`deal_val` scores the TRADE_WAR item via
+    // `declare_war_trade_val`) and accept when the payment is worth at least our price (C++ 7057).
+    if let Some(war_item) = we_give.iter().find(|t| t.item_type == TradeableItem::TRADE_WAR) {
+        let target = TeamId(war_item.data as u8);
+        // One war at a time (DENIAL_TOO_MANY_WARS).
+        if g.team_get_at_war_count(team, true) > 0 || preparing_target(g, team).is_some() {
+            return false;
+        }
+        // Too strong even with the briber's help, when the briber is already at war with the target
+        // (DENIAL_NO_GAIN; AI_isAllyLandTarget unported -> no /2).
+        let briber_help = if g.at_war(their_team, target) { g.team_get_power(their_team, true) as i64 } else { 0 };
+        if g.team_get_defensive_power(target) as i64 > g.team_get_power(team, true) as i64 + briber_help {
+            return false;
+        }
+        // Won't declare war for a civ we dislike, nor against one we like too much.
+        if let Some(l) = g.players[p].personality_type.map(|l| &g.d.leader_heads[l]) {
+            if attitude(g, p, from).i() <= opt_to_i32(l.declare_war_refuse_attitude_threshold) {
+                return false;
+            }
+            if team_attitude(g, team, target).i() > opt_to_i32(l.declare_war_them_refuse_attitude_threshold) {
+                return false;
+            }
+        }
+        // (Target nukes: FfH 0.41 has none, and the briber is at war with the target anyway.)
+        let theirs = crate::trade::deal_val(g, p, from, they_give, false, 1);
+        let ours = crate::trade::deal_val(g, from, p, we_give, false, 1);
+        return theirs >= ours;
     }
     if all(they_give, TradeableItem::TRADE_OPEN_BORDERS) && all(we_give, TradeableItem::TRADE_OPEN_BORDERS) {
         return !g.at_war(team, their_team) && relation(g, p, from) >= 1;
