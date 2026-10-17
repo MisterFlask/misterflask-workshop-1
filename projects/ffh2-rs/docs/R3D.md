@@ -136,7 +136,7 @@ nodes, ancient forests) that light the terrain and the props.
 
 | pass | what | optional |
 |---|---|---|
-| shadow | 2048² sun depth map over the ground in view, texel-snapped (no shimmer when panning), 12-tap rotated Poisson PCF | `shadows` |
+| shadow | sun depth maps over the ground in view, texel-snapped (no shimmer when panning): the props in a 2048² map (crisp, 12-tap rotated Poisson PCF), the terrain in a 1024² one (6 wide taps, soft) applied at part strength, so a hill's cast shadow darkens the plain behind it a little instead of punching a hole in it | `shadows`, `terrainShadow` |
 | scene | depth pre-pass (each pixel shaded once), then terrain, sea, rivers, props into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id | — |
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
@@ -146,7 +146,7 @@ nodes, ancient forests) that light the terrain and the props.
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
 The light model (scene pass): a wrapped, softly stepped sun term (broad light masses), coloured
-shadows (a cool sky ambient and a shadow tint), drifting cloud shadows anchored to the world, local
+shadows (a cool sky ambient and a shadow tint), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
 light pools, rim light on silhouettes (stronger on units), soft metal highlights, light through
 leaves, an aerial haze with distance and valley mist, and the fog of war (§9). HUD text and the
 interface marks are never filtered: the strategic overlays draw after the post passes and the
