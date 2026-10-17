@@ -666,6 +666,19 @@ staggered period from the leader's `DeclareWarTradeRand` replaces the 1-in-N rol
 civ that is our victory rival (do not strengthen a would-be winner). `AI_isAllyLandTarget` is unported
 (assumed false); nukes are 0 in FfH 0.41. No new saved state; no RNG.
 
+Measured (16-seed/690-turn A/B vs the gift tip, and an adversarial audit of briber bankruptcy and
+bribee prop-up): research at turn 300 flat (-0.9%, hard guard PASS -- it moves on only 2 seeds); war
+declarations flat (285 -> 286, so bribes organise dogpiles onto existing wars rather than spawning new
+ones); and more games resolve with a genuine victory before the turn cap (8/16 -> 11/16, domination
+wins 1 -> 2). The audit refuted the two risks: the winning team is unchanged in 15/16 seeds and the
+most-bribed civ never snowballs (bribe + tribute income is too small to move outcomes -- leader
+world-share barely moves, 42.8% -> 43.7%), and bribers cannot bankrupt themselves (`max_gold_trade`
+caps the gold under treasury with a deficit buffer, payment is tech-first, and an offer is made only
+when the payment is worth over three quarters of the price) -- in practice the bribers are the
+*winners*, converting gold into a decisive second front (seed 5: the dogpile cuts the target from 13
+cities to 2 and the briber-side winner closes out by domination 64 turns early). No new saved state;
+no RNG.
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the
