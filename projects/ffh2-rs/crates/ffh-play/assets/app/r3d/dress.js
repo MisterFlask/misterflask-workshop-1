@@ -117,7 +117,7 @@ export function dressStatic(world, map) {
       const civ = ownerP ? tname("CivilizationType", ownerP.civ) : null;
       const family = civ ? CATALOG.family?.(civ, null) ?? "human" : "human";
       const team = ownerId >= 0 ? hexRgb(teamColour(ownerId)) : [0.62, 0.58, 0.5];
-      const ctx = { r, x, y, i, kind, feat, ground, world, hills: kind === KIND.HILLS, peak: kind === KIND.PEAK, held, city: !!city, owner: ownerId, civ, family, unit: unitAt.has(i), bonus, improvement: imp };
+      const ctx = { r, x, y, i, kind, feat, ground, world, hills: kind === KIND.HILLS, peak: kind === KIND.PEAK, held, city: !!city, owner: ownerId, civ, family, unit: unitAt.has(i), bonus, improvement: imp, coast: shoreOf(world, x, y), river: map.river[i] > 0 };
       const at = (lx, lz) => [x + 0.5 + lx, y + 0.5 - lz]; // plot-local (x east, z south) -> map
       // Nothing grows in a river's channel.
       const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < 0.2;
@@ -215,7 +215,7 @@ export function dressStatic(world, map) {
         const family = CATALOG.family?.(civ, city) ?? "human";
         const team = hexRgb(teamColour(city.owner));
         const cr = rng(hash32(city.id * 977 + 13));
-        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y };
+        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y, coast: ctx.coast, river: ctx.river };
         const parts = CATALOG.city?.(cctx) ?? basicCity(cctx);
         for (const e of parts.emit ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5 + (e.dx ?? 0), y + 0.5 - (e.dz ?? 0)) + (e.dy ?? 0.2), z: -(y + 0.5 - (e.dz ?? 0)) });
         const cid = idOf(`city${city.id}`);
@@ -229,6 +229,17 @@ export function dressStatic(world, map) {
     }
   }
   return { list: out, emitters, cities };
+}
+
+/** Where the water is around plot (x, y): the plot-local directions ([dx, dz], x east, z south)
+ *  of its water neighbours (sea, coast or lake), the four edges first. Empty inland. */
+function shoreOf(world, x, y) {
+  const out = [];
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]]) {
+    const j = world.index(x + dx, y + dy);
+    if (j >= 0 && world.isWater(j)) out.push([dx, -dy]);
+  }
+  return out;
 }
 
 /** An emitter carried by an improvement's part (`e.dx/dy/dz` in the part's own frame), placed in

@@ -22,7 +22,7 @@
 //   city(ctx)              -> [{asset, variant?, param?, x, z, yaw, scale, lift?}] (+ optional
 //                              `.emit` array property: chimney smoke, braziers) a settlement's
 //                              buildings around its plot centre (ctx: size, capital, walls,
-//                              family, civ, seed, height(dx, dz))
+//                              family, civ, seed, height(dx, dz), coast, river)
 //   unit(type, ctx)        -> {asset, param?, variant?, scale?, height?, float?, fly?}  a unit's
 //                              figure (ctx: info, civ, family, domain "DOMAIN_SEA"/"DOMAIN_LAND"/
 //                              "DOMAIN_AIR", combat "UNITCOMBAT_MELEE"..., unit, name)
@@ -37,7 +37,8 @@
 // Plot ctx (forest, flora, rocks, feature, settlement, improvement, bonus, emitters "plot"): r, x,
 // y, i (plot index), kind (world.js KIND), feat (FEAT), ground (GROUND), hills, peak, held
 // (something stands at the centre), city, unit, owner (player id or -1), civ, family, bonus and
-// improvement (type names or null), world.
+// improvement (type names or null), world, coast ([[dx, dz], ...] plot-local directions of the
+// water around the plot: a harbour faces them; empty inland), river (a river runs along the plot).
 //
 // ctx always carries `r` (a seeded generator for the plot or object) and `name` (the type name).
 
