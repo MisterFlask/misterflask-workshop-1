@@ -105,6 +105,10 @@ deep gullies, finer spurs) and a summit near each peak plot's centre. Rivers (th
 bits, chained through shared corners, smoothed with Chaikin and given a slight meander) carve a
 channel with sloping banks. Everything is a pure function of the map and the plot index.
 
+Height noise is periodic over the map's width when the map wraps (the ground meets itself at the
+seam; every copy of the map is the same ground). Hills are rounded domes on each hill plot over a
+low shoulder (overlapping into ridges where hills neighbour); desert lowlands get wind-combed dunes.
+
 **Ground painting** (terrain shader). Each fragment blends the materials of the four plots around it
 with weights sharpened by brush-dab noise, so borders between terrains are bands of interleaved
 strokes. Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they
@@ -137,9 +141,9 @@ nodes, ancient forests) that light the terrain and the props.
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
-| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world); units (keep-sharp mask) mostly spared | `kuwahara`, `kuwaharaRadius` |
+| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared | `kuwahara`, `kuwaharaRadius` |
 | finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance, coloured from the paint below (sepia ink, not black); split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `grade`, `grain`, `vignette` |
-| overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; particles (additive) | `borders`, `grid`, `particles` |
+| overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
 The light model (scene pass): a wrapped, softly stepped sun term (broad light masses), coloured
 shadows (a cool sky ambient and a shadow tint), drifting cloud shadows anchored to the world, local

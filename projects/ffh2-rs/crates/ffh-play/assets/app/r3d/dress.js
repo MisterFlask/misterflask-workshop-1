@@ -99,6 +99,12 @@ export function dressStatic(world, map) {
       const team = ownerId >= 0 ? hexRgb(teamColour(ownerId)) : [0.62, 0.58, 0.5];
       const ctx = { r, x, y, i, kind, feat, ground, world, hills: kind === KIND.HILLS, peak: kind === KIND.PEAK, held, city: !!city, owner: ownerId, civ, family, unit: unitAt.has(i), bonus, improvement: imp };
       const at = (lx, lz) => [x + 0.5 + lx, y + 0.5 - lz]; // plot-local (x east, z south) -> map
+      // Nothing grows in a river's channel.
+      const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < 0.2;
+      ctx.nearRiver = nearRiver;
+      // Something stands on the plot behind this one (north): its trees in front of it keep low.
+      const north = world.index(x, y + 1);
+      ctx.northHeld = north >= 0 && (unitAt.has(north) || cityAt.has(north));
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
         const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);
@@ -117,7 +123,8 @@ export function dressStatic(world, map) {
             const lx = r.range(-0.42, 0.42), lz = r.range(-0.42, 0.42);
             if (held && Math.hypot(lx, lz) < 0.3) continue;
             if (city) continue;
-            place(pick(f.asset, "basic.tree"), lx, lz, { variant: r.int(0, 7), scale: (f.scale ?? 1) * r.range(0.8, 1.15), yaw: r.range(0, 6.28), phase: r(), tint: f.tint });
+            if (nearRiver(lx, lz)) continue;
+            place(pick(f.asset, "basic.tree"), lx, lz, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: (f.scale ?? 1) * r.range(0.8, 1.15), yaw: r.range(0, 6.28), phase: r(), tint: f.tint });
           }
         }
       }
@@ -228,8 +235,11 @@ function placeTrees(world, ctx, place) {
       if (r() > keep) continue;
       // A glade where something holds the plot (and in front of it, toward the camera).
       if (ctx.held && (Math.hypot(lx, lz) < 0.26 || (lz > 0 && Math.abs(lx) < 0.2))) continue;
+      if (ctx.nearRiver(lx, lz)) continue;
       const m = choose();
-      const s = (m.scale ?? 1) * r.range(0.8, 1.2);
+      let s = (m.scale ?? 1) * r.range(0.8, 1.2);
+      // The back row of this plot stands just in front of whatever holds the plot behind it.
+      if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.3) s *= 0.6;
       place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint: m.tint, lift: -0.008 });
     }
   }
@@ -238,7 +248,8 @@ function placeTrees(world, ctx, place) {
     for (let k = 0; k < (u.count ?? 2); k++) {
       const lx = r.range(-0.45, 0.45), lz = r.range(-0.45, 0.45);
       if (ctx.held && Math.hypot(lx, lz) < 0.26) continue;
-      place(u.asset, lx, lz, { variant: r.int(0, 7), scale: (u.scale ?? 1) * r.range(0.7, 1.2), yaw: r.range(0, 6.28), phase: r() });
+      if (ctx.nearRiver(lx, lz)) continue;
+      place(u.asset, lx, lz, { variant: u.variant ?? r.int(0, 7), param: u.param, scale: (u.scale ?? 1) * r.range(0.7, 1.2), yaw: r.range(0, 6.28), phase: r() });
     }
   }
 }
