@@ -7,6 +7,7 @@ This directory contains standalone code projects. Each subdirectory is a self-co
 | Project | Description | Tech Stack |
 |---------|-------------|------------|
 | [ffh-simplified](./ffh-simplified/) | Simplified Fall From Heaven-style 4X game | TypeScript, Vite, Canvas |
+| [openai-image-mcp](./openai-image-mcp/) | MCP server for OpenAI (ChatGPT) image generation in Claude Code | TypeScript, MCP SDK, esbuild |
 
 ## Adding a New Project
 
