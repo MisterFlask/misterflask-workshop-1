@@ -578,7 +578,8 @@ async function boot() {
   renderBottom();
   // The isometric renderer (docs/art/SOC_DIRECTION.md): an opt-in map renderer with PNG tiles and
   // unit sprites on team rings. It owns its own projection, so the art/flat switches leave it be.
-  if (new URLSearchParams(location.search).get("renderer") === "iso") mapView.useIso(true);
+  // Chosen with `?renderer=iso` or the remembered Tools → Options choice.
+  if (rendererChoice() === "iso") mapView.useIso(true);
   // The art loads beside the data; the page works meanwhile (and without it). lookLoaded() builds
   // the art worker, which bakes in the engine's type ordering (from /api/data) once, so it must run
   // after setLookData(): otherwise, if the static art bundle wins the race against the server-
@@ -607,10 +608,14 @@ function lookLoaded() {
   units.renderPanel();
 }
 
-/** Switches the map's renderer ("art" or "flat"; Tools → Options). The isometric renderer owns the
- *  map on its own, so the art/flat toggle does not disturb it. */
+/** Switches the map's renderer ("art", "iso" or "flat"; Tools → Options). The isometric renderer
+ *  owns the map on its own; leaving it turns it off and falls back to art or flat. */
 function setRenderer(r) {
-  if (mapView.iso) return;
+  if (r === "iso") {
+    mapView.useIso(true);
+    return;
+  }
+  if (mapView.iso) mapView.useIso(false);
   mapView.useArt(r === "art" && !!look.art);
 }
 

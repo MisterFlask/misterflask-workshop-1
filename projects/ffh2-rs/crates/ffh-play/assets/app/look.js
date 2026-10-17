@@ -33,10 +33,10 @@ export function rendererChoice() {
   } catch {
     q = null;
   }
-  if (q === "flat" || q === "art") return q;
+  if (q === "flat" || q === "art" || q === "iso") return q;
   try {
     const v = globalThis.localStorage?.getItem(RENDERER_KEY);
-    if (v === "flat" || v === "art") return v;
+    if (v === "flat" || v === "art" || v === "iso") return v;
   } catch {
     /* no storage */
   }

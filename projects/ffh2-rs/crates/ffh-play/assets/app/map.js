@@ -440,7 +440,7 @@ export class MapView {
 
   /** The renderer drawing the map: "art" or "flat". */
   renderer() {
-    return this.art ? "art" : "flat";
+    return this.iso ? "iso" : this.art ? "art" : "flat";
   }
 
   /** A new map (the `map` reply, or the map a delta brought up to date): redraws the chunks
