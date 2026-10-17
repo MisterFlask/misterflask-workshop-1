@@ -1,11 +1,17 @@
 # ffh2-rs: Fall from Heaven 2 (0.41) ported to Rust
 
-**New session? Read `docs/HANDOFF.md` first** (what is merged, what is on `origin/handoff/*`, next steps).
+**New session?** Read `README.md` (status, build and run), then the doc for the area you touch:
+`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`, `docs/art/SOC_DIRECTION.md`,
+`docs/SCORE.md`.
 
 Port of the FFH2 0.41 Civ4 mod (base mod only), the base for a game of its own. The rules
 engine (DLL C++ + rules Python) was ported function by function; the AI is new. FFH2 0.41 is
 the starting point, not an invariant: once the base is stable and attractive, the game will
 change sweepingly (see "FFH2 is the starting point" under Hard rules).
+
+Scope for now (the owner's call): the sandbox game, AI quality (including pursuing victory
+conditions), human play and art. Out of scope for now: scenarios (world-builder saves +
+ScenarioFunctions.py) and porting the C++ AI.
 
 ## Layout
 
@@ -194,3 +200,4 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
 - Work in small, compiling steps; commit with clear messages.
 - Update docs/PORTING.md when a C++/Python unit is ported (file, functions, status).
 - Tests: unit tests next to code; data spot-checks in `crates/ffh-data/tests/`.
+- Merge finished, tested work into master as it lands (the owner's preference).

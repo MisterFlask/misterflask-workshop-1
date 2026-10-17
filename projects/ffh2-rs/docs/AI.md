@@ -886,6 +886,8 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   game log.
 - `--option GAMEOPTION_X` (repeatable) turns game options on for any of these commands (for
   example `GAMEOPTION_ADVANCED_START`).
+- Measure a change on seeds it was not tuned on before merging it: two round-3 changes looked
+  good on their authors' seeds and failed on fresh ones.
 
 ## Known gaps (future work)
 
@@ -1038,3 +1040,13 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   terraforming, and no dedicated logic for most civ-specific mechanics (Sheaim planar gates,
   Infernal and Mercurian projects, Khazad vaults, Armageddon rituals; see `civs.rs` for the
   ones handled).
+- Unmerged round 3b branches, measured only by their authors (2026-10-15; never re-measured on
+  fresh seeds, and each about 160 commits behind master, so re-measure against current master and
+  expect conflicts): `origin/handoff/ai3b-worker-safety` (`security.rs`: workers flee into a
+  threatened city and stop out of a raider's reach; barbarian worker captures ~125 -> ~5.5 per
+  game, economy neutral to up, CPU -5%; adds `ffh stats` `captured_or_razed_by_barb` and
+  `workers_captured_by_barb`); `origin/handoff/ai3b-siege-estimate` (`odds.rs`: strike odds over
+  the defender's health states replace the expected-value estimate; strike success 82 -> 88%,
+  units lost in failed strikes 116 -> 51 on 96 seeds, economy flat);
+  `origin/handoff/ai3b-kuriotates-tuning` (settlements without the research collapse: on 80
+  Kuriotates games legacy score +54 (t 2.3), research +30 (t 6.0)).
