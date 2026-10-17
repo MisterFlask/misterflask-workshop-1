@@ -298,7 +298,7 @@ export class Pipeline {
       gl.disable(gl.POLYGON_OFFSET_FILL);
       // Units behind scenery: their silhouettes, where something stands in front of them.
       gl.depthFunc(gl.GREATER);
-      scene.drawUnitGhosts(this.p.ghost, U);
+      scene.drawUnitGhosts(this.p.ghost, { ...U, uND: this.t.nd, uEmitId: this.t.emit });
       gl.depthFunc(gl.LEQUAL);
       if (cfg.particles) {
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);

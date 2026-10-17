@@ -188,7 +188,7 @@ export function grid(data, names, variants = 6, { ground = ".", spacing = 1 } = 
   const view = buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }] });
   const items = [];
   names.forEach((name, row) => {
-    for (let v = 0; v < variants; v++) items.push({ asset: name, variant: v, mx: 1.5 + v * spacing, my: h - 1.5 - row * spacing });
+    for (let v = 0; v < variants; v++) items.push({ asset: name, variant: v, row, mx: 1.5 + v * spacing, my: h - 1.5 - row * spacing });
   });
   return { map, view, items, focus: [w / 2, h / 2] };
 }

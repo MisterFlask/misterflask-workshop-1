@@ -566,7 +566,8 @@ void main() {
   vec3 p = aPos * iScale.xyz;
   float phase = iScale.w;
   // Wind in the leaves and cloth: a slow sway and a faster flutter, stronger toward the tips.
-  if (aMat.y > 0.0) {
+  int bone0 = int(aMat.z + 0.5);
+  if (aMat.y > 0.0 && bone0 != 8 && bone0 != 9) {
     float ph = phase * 6.2831 + iPosRot.x * 0.37 + iPosRot.z * 0.21;
     float s = sin(uTime * 1.3 + ph) * 0.7 + sin(uTime * 2.9 + ph * 1.7) * 0.3;
     p.xz += vec2(0.8, 0.5) * s * aMat.y * uWind * 0.025 * max(iScale.y, 0.5);
@@ -577,15 +578,19 @@ void main() {
   if (bone > 0 || iTeam.a > 0.5) {
     float t = uTime * 1.6 + phase * 6.2831;
     if (bone == 1) p.y += sin(t) * 0.004;
-    else if (bone == 2 || bone == 3) p.y += sin(t + (bone == 2 ? 0.0 : 1.5)) * 0.004;
-    else if (bone == 6) p.xz += vec2(0.0, 1.0) * sin(t * 1.7 + aPos.y * 9.0) * 0.006 * aPos.y * 4.0;
-    else if (bone == 7) p += vec3(sin(t * 0.5) * 0.004, sin(t) * 0.003, 0.0);
+    // A weapon moves with the hand that holds it (the right arm).
+    else if (bone == 2 || bone == 3 || bone == 7) p.y += sin(t + (bone == 2 ? 0.0 : 1.5)) * 0.004;
+    // Cloth hanging from the shoulders: the hem moves most.
+    else if (bone == 6) p.xz += vec2(0.0, 1.0) * sin(t * 1.7 + aPos.y * 9.0) * 0.018 * clamp((0.42 - aPos.y) * 3.0, 0.0, 1.0);
     else if (bone == 8 || bone == 9) {
-      float side = bone == 8 ? -1.0 : 1.0;
-      float flap = sin(uTime * 3.2 + phase * 6.2831) * 0.45;
-      float r = abs(aPos.x) * iScale.x;
-      p.y += r * flap;
+      // Wings beat about their root: the sway channel weighs each vertex (0 at the root, 1 at the
+      // tips) when the model sets it, else the distance from the body's axis does.
+      float flap = sin(uTime * 3.2 + phase * 6.2831);
+      float wgt = aMat.y > 0.0 ? aMat.y : clamp(abs(aPos.x) * 2.5, 0.0, 1.0);
+      p.y += wgt * flap * 0.07 * iScale.y;
     } else if (bone == 10) p.x += sin(t * 1.3 + aPos.z * 8.0) * 0.01 * abs(aPos.z) * 4.0;
+    // A mount breathes and shifts too.
+    else if (bone == 11) p.y += sin(t * 0.8) * 0.0025 * clamp(aPos.y * 4.0, 0.0, 1.0);
     if (bone == 0 || bone == 1 || bone == 2 || bone == 3 || bone == 7) p.y *= 1.0 + sin(t) * 0.006;
   }
   vec3 w = rotY(p, iPosRot.w) + iPosRot.xyz + vec3(uCopyX, 0.0, 0.0);
@@ -1155,9 +1160,19 @@ export const GHOST_FS = `
 in vec3 vWorld;
 in vec3 vNormal;
 in vec4 vTeam;
+in vec4 vTint;
 flat in vec4 vMat;
+uniform sampler2D uND;
+uniform sampler2D uEmitId;
 out vec4 o;
 void main() {
+  // Only where something else stands in front: not the figure's own far side (its object id is
+  // the frontmost one here), nor a surface barely nearer.
+  ivec2 px = ivec2(gl_FragCoord.xy);
+  float frontId = texelFetch(uEmitId, px, 0).a;
+  float frontDepth = texelFetch(uND, px, 0).w;
+  float depth = -(uView * vec4(vWorld, 1.0)).z;
+  if (abs(frontId - vTint.a) < 1.5e-3 || frontDepth > depth - 0.03) discard;
   vec3 n = normalize(vNormal);
   if (!gl_FrontFacing) n = -n;
   vec3 V = normalize(uEye - vWorld);

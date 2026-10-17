@@ -4,6 +4,7 @@
 //
 //   lab.html?scene=showcase                     the vertical-slice scene
 //   lab.html?grid=tree.oak,tree.pine&variants=6 recipes in rows of variants on flat grass
+//            &param=x (all rows) or &params=a,b,c (one per row; repeat a name for several params)
 //            &ground=.  &spacing=1
 //   &cx=..&cy=..&ts=..                         camera (map point, pixels per plot)
 //   &r3d=painterly|plain|{json}                pipeline overrides (as in the client)
@@ -67,7 +68,7 @@ async function main() {
     const list = scene.items.map((it, k) => ({
       asset: it.asset,
       variant: it.variant,
-      param: q.get("param") ?? "",
+      param: (q.get("params") ? q.get("params").split(",")[it.row] : null) ?? q.get("param") ?? "",
       x: it.mx,
       y: r3d.world.heightAt(it.mx, it.my),
       z: -it.my,
