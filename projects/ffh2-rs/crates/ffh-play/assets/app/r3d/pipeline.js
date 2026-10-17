@@ -46,6 +46,7 @@ export class Pipeline {
       tensor: P("tensor", FULLSCREEN_VS, SH.TENSOR_FS),
       kuwahara: P("kuwahara", FULLSCREEN_VS, SH.KUWAHARA_FS),
       finish: P("finish", FULLSCREEN_VS, C + SH.FINISH_FS),
+      fxaa: P("fxaa", FULLSCREEN_VS, SH.FXAA_FS),
       overlay: P("overlay", C + SH.OVERLAY_VS, C + SH.OVERLAY_FS),
       marker: P("marker", C + SH.MARKER_VS, C + SH.MARKER_FS),
       ghost: P("ghost", C + SH.PROP_VS, C + SH.GHOST_FS),
@@ -83,6 +84,7 @@ export class Pipeline {
       ldrB: texture(gl, w, h),
       tensorA: texture(gl, w, h, F),
       tensorB: texture(gl, w, h, F),
+      aa: texture(gl, w, h),
       final: texture(gl, w, h),
     };
     this.depth = depthBuffer(gl, w, h);
@@ -97,6 +99,7 @@ export class Pipeline {
       ldrB: framebuffer(gl, [t.ldrB]),
       tensorA: framebuffer(gl, [t.tensorA]),
       tensorB: framebuffer(gl, [t.tensorB]),
+      aa: framebuffer(gl, [t.aa]),
       final: framebuffer(gl, [t.final], this.depth),
     };
   }
@@ -287,9 +290,10 @@ export class Pipeline {
       painted = this.t.ldrB;
     }
 
-    // --- finish
+    // --- finish (into the AA buffer when FXAA is on, else straight to final)
+    const useFxaa = (cfg.fxaa ?? 1) > 0;
     this.timed("finish", () => {
-      this.pass(this.p.finish, this.f.final, W, H, {
+      this.pass(this.p.finish, useFxaa ? this.f.aa : this.f.final, W, H, {
         ...U,
         uSrc: painted,
         uND: this.t.nd,
@@ -309,6 +313,10 @@ export class Pipeline {
         uInvView: fr.invView,
       });
     });
+
+    // --- anti-aliasing: FXAA on the finished colour into final, before the overlays (F17). The
+    // HUD is a separate 2D canvas, so it is unaffected.
+    if (useFxaa) this.timed("fxaa", () => this.pass(this.p.fxaa, this.f.final, W, H, { uSrc: this.t.aa, uTexel: [1 / W, 1 / H] }));
 
     // --- overlays, depth-tested against the scene's depth (shared by the final target)
     this.timed("overlay", () => {

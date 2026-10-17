@@ -82,6 +82,7 @@ export const DEFAULTS = {
   borders: 1,
   grid: 0.12,
   renderScale: 1,
+  fxaa: 1,
   animate: true,
   wind: 1,
   particles: true,
@@ -118,6 +119,7 @@ export const PANEL = [
   ["particles", "Particles", "bool"],
   ["animate", "Animate (wind, water, fire)", "bool"],
   ["renderScale", "Render scale", "range", 0.5, 1.5, 0.25],
+  ["fxaa", "Anti-aliasing (FXAA)", "bool"],
 ];
 
 export function loadConfig() {

@@ -1350,3 +1350,35 @@ in vec2 vUv;
 uniform sampler2D uSrc;
 out vec4 o;
 void main() { o = texture(uSrc, vUv); }`;
+
+// FXAA (Timothy Lottes' console-quality variant): cheap edge anti-aliasing on the finished colour,
+// to take the stair-step off silhouettes and the ink outlines and stop them crawling when panning
+// (F17). Run after the finish pass, before the overlays; the HUD is a separate 2D canvas.
+export const FXAA_FS = `
+in vec2 vUv;
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+out vec4 o;
+#define FXAA_SPAN_MAX 8.0
+#define FXAA_REDUCE_MUL (1.0 / 8.0)
+#define FXAA_REDUCE_MIN (1.0 / 128.0)
+float flum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+void main() {
+  vec2 t = uTexel;
+  vec3 rgbNW = texture(uSrc, vUv + vec2(-t.x, -t.y)).rgb;
+  vec3 rgbNE = texture(uSrc, vUv + vec2(t.x, -t.y)).rgb;
+  vec3 rgbSW = texture(uSrc, vUv + vec2(-t.x, t.y)).rgb;
+  vec3 rgbSE = texture(uSrc, vUv + vec2(t.x, t.y)).rgb;
+  vec3 rgbM = texture(uSrc, vUv).rgb;
+  float lNW = flum(rgbNW), lNE = flum(rgbNE), lSW = flum(rgbSW), lSE = flum(rgbSE), lM = flum(rgbM);
+  float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+  float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+  vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), ((lNW + lSW) - (lNE + lSE)));
+  float dirReduce = max((lNW + lNE + lSW + lSE) * 0.25 * FXAA_REDUCE_MUL, FXAA_REDUCE_MIN);
+  float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
+  dir = clamp(dir * rcpDirMin, vec2(-FXAA_SPAN_MAX), vec2(FXAA_SPAN_MAX)) * t;
+  vec3 rgbA = 0.5 * (texture(uSrc, vUv + dir * (1.0 / 3.0 - 0.5)).rgb + texture(uSrc, vUv + dir * (2.0 / 3.0 - 0.5)).rgb);
+  vec3 rgbB = rgbA * 0.5 + 0.25 * (texture(uSrc, vUv + dir * -0.5).rgb + texture(uSrc, vUv + dir * 0.5).rgb);
+  float lB = flum(rgbB);
+  o = vec4((lB < lMin || lB > lMax) ? rgbA : rgbB, 1.0);
+}`;
