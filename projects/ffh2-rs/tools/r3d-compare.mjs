@@ -45,8 +45,9 @@ const browser = await pw.chromium.launch({ headless: true, args: ["--use-angle=s
 const W = Number(args.w ?? 1440), H = Number(args.h ?? 900);
 const enc = (o) => encodeURIComponent(typeof o === "string" ? o : JSON.stringify(o));
 const SHOTS = [
-  { name: "art", renderer: "art", ts: 64 },
-  { name: "iso", renderer: "iso", ts: 64 },
+  // The 2D renderers at the 3D's gameplay zoom (96 px a plot): the same piece of the map in each.
+  { name: "art", renderer: "art", ts: 96 },
+  { name: "iso", renderer: "iso", ts: 96 },
   { name: "3d-plain", renderer: "3d", ts: 96, cfg: "plain" },
   { name: "3d-painterly", renderer: "3d", ts: 96, cfg: {} },
   { name: "3d-close", renderer: "3d", ts: 168, cfg: {} },
@@ -75,8 +76,12 @@ for (const s of SHOTS) {
     mv.centerOn(x, y, { animate: false });
     mv.resize();
   }, [X, Y, s.ts]);
-  if (s.renderer === "art") await page.waitForFunction(() => window.ffh.mapView.art?.settled?.() ?? true, null, { timeout: 120000 }).catch(() => {});
   await page.waitForTimeout(s.renderer === "3d" ? 300 : 2500);
+  // The client may have moved the camera meanwhile (it centres on the next unit waiting for
+  // orders): centre again just before the capture.
+  await page.evaluate(([x, y]) => window.ffh.mapView.centerOn(x, y, { animate: false }), [X, Y]);
+  if (s.renderer === "art") await page.waitForFunction(() => window.ffh.mapView.art?.settled?.() ?? true, null, { timeout: 120000 }).catch(() => {});
+  if (s.renderer !== "3d") await page.waitForTimeout(1500);
   if (s.renderer === "3d") {
     await page.evaluate(() => {
       const r = window.ffh.mapView.r3d;
