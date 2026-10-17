@@ -635,6 +635,19 @@ An adversarial trace audit of the first (un-guarded) cut caught strong civs trib
 victims for whole games instead of conquering them (primary traded for a secondary tech); the
 `press_conquest` guard fixed it (worst seed: peace events 31 -> 6).
 
+**Gift tech to a weaker ally (`give_help`).** A port of C++ `AI_doDiplo`'s give-help (FfH "Better
+Diplomatics" block B): a team leader gifts a free technology to a civ markedly weaker than itself
+(team assets below half ours) that it likes (attitude over the target leader's `NoGiveHelp`
+threshold, eased one step by shared alignment or favourite religion), at peace, on the deterministic
+`contact_due` cadence (~150 turns). Deliberate deviations from the C++: the gift is the *cheapest*
+tech we can give (deterministic -- ffh-ai draws no RNG -- and so it never hands over an expensive key
+enabler) rather than a random one; and we never gift a civ that is our victory rival (the project's
+"do not prop up a rival" rule). The gift does not raise attitude (`relation()` does not track gifts;
+C++ `AI_getTradeAttitude` is unported), matching how resource/open-borders trading was integrated.
+Like the base game it is rare (the gating plus the ~150-turn cadence fire it only a handful of times
+across a 16-game set), so it is a faithful, low-impact "keep an ally alive" gesture rather than a
+force on the outcome. No new saved state; no RNG.
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the

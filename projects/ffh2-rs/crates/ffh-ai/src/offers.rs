@@ -37,7 +37,7 @@ fn leader(g: &Game, t: TeamId) -> Option<PlayerId> {
 
 /// Is this turn the AI `p`'s turn to contact `human` about `contact` (every `iContactDelay +
 /// iContactRand` turns, staggered by the two players)?
-fn contact_due(g: &Game, p: PlayerId, human: PlayerId, contact: &str) -> bool {
+pub(crate) fn contact_due(g: &Game, p: PlayerId, human: PlayerId, contact: &str) -> bool {
     let Some(c) = g.d.ty::<ContactType>(contact) else { return false };
     let Some(l) = g.players[p].personality_type.map(|l| &g.d.leader_heads[l]) else { return false };
     let period = (l.contact_delay[c] + l.contact_rand[c]).max(1);

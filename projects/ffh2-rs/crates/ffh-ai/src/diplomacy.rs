@@ -180,6 +180,19 @@ pub fn manage(g: &mut Game, v: &View) {
         trade(g, p);
     }
 
+    // Gift a free tech to a markedly weaker, well-liked ally (C++ give-help). The ~150-turn contact
+    // cadence keeps it rare, so run every turn rather than on the staggered trade schedule.
+    for other in g.player_ids() {
+        if other == p {
+            continue;
+        }
+        let op = &g.players[other];
+        if !op.alive || op.human || op.team == team || g.player_is_barbarian(other) || !is_team_leader(g, other) || !g.teams[team].has_met[op.team] {
+            continue;
+        }
+        give_help(g, p, other, &plan);
+    }
+
     // One war at a time.
     if !v.civ_enemies.is_empty() {
         return;
@@ -298,6 +311,42 @@ pub fn manage(g: &mut Game, v: &View) {
 
 fn tech_item(t: TechType) -> TradeData {
     TradeData { item_type: TradeableItem::TRADE_TECHNOLOGIES, data: t.i(), offering: false, hidden: false }
+}
+
+/// C++ `AI_doDiplo` give-help (FfH "Better Diplomatics" block B, CvPlayerAI.cpp:13105): the team
+/// leader `p` gifts a free tech to a markedly weaker civ it likes, to keep an ally viable. The
+/// recipient's side of the deal is empty (a free gift), implemented directly -- the base game does
+/// not consult the recipient. Deliberate deviations from the C++, for ffh-ai's conventions and the
+/// project's "do not prop up a rival" rule: the gift tech is the CHEAPEST one we can give (determin-
+/// istic -- ffh-ai draws no RNG -- and this avoids handing over an expensive key enabler) rather than
+/// the C++ random pick; and we never gift a civ that is our victory rival. Giving does not raise
+/// attitude: `relation()` does not track gifts (C++ `AI_getTradeAttitude` unported), as with
+/// resource/open-borders trading. The per-turn contact-timer + 1/iContactRand roll is replaced by the
+/// deterministic `offers::contact_due` cadence (period = contact_delay + contact_rand, ~150 turns).
+fn give_help(g: &mut Game, p: PlayerId, other: PlayerId, plan: &crate::victory::Plan) {
+    let (team, ot) = (g.players[p].team, g.players[other].team);
+    // Markedly weaker (team assets < half ours), at peace, and not a civ contesting our victory.
+    if g.team_get_assets(ot) >= g.team_get_assets(team) / 2 || g.at_war(team, ot) || crate::victory::rival_team(g, plan) == Some(ot) {
+        return;
+    }
+    // Attitude + FfH alignment / favourite-religion sweetener vs the TARGET leader's NoGiveHelp bar.
+    let i_mod = i32::from(g.players[other].alignment == g.players[p].alignment)
+        + i32::from(g.players[other].favorite_religion == g.players[p].favorite_religion);
+    let thr = g.players[other].personality_type.map_or(-1, |l| opt_to_i32(g.d.leader_heads[l].no_give_help_attitude_threshold));
+    if attitude(g, p, other).i() + i_mod <= thr || !crate::offers::contact_due(g, p, other, "CONTACT_GIVE_HELP") {
+        return;
+    }
+    // The cheapest tech they lack and we can give (deterministic; C++ picks one at random).
+    let give = g
+        .d
+        .techs
+        .keys()
+        .filter(|&t| g.player_can_trade_item(p, other, &tech_item(t), true))
+        .min_by_key(|&t| (g.team_get_research_cost(team, t), t));
+    let Some(t) = give else { return };
+    crate::trace!(g, p, "gifts {:?} to weaker ally {:?}", t, other);
+    let ours = vec![tech_item(t)];
+    g.implement_deal(p, other, &ours, &[], false);
 }
 
 /// Tech swaps and open borders with the AI leaders of teams we know and like well enough.
