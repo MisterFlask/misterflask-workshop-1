@@ -180,6 +180,22 @@ export class World {
     }
   }
 
+  /** The round bowls of the lake plots near (mx, my), summed (0 at a bowl's rim, 1 at a centre). */
+  lakeBowl(mx, my) {
+    let s = 0;
+    const cx = Math.floor(mx);
+    const cy = Math.floor(my);
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const i = this.index(cx + dx, cy + dy);
+        if (i < 0 || !this.lake[i]) continue;
+        const t = clamp(1 - Math.hypot(mx - (cx + dx + 0.5), my - (cy + dy + 0.5)) / 0.8, 0, 1);
+        s += t * t * (3 - 2 * t);
+      }
+    }
+    return s;
+  }
+
   /** The plot index of (x, y) after wrapping, or -1 off the map. */
   index(x, y) {
     if (this.wrapX) x = ((x % this.w) + this.w) % this.w;
@@ -236,8 +252,9 @@ export class World {
     h += land * 0.05 * this.fbm(mx, my, 1.1, 40, -20, 3);
     h += water * 0.06 * this.fbm(mx, my, 0.9, -11, 4, 3);
     // A lake's floor falls away just inside its shore (the shore is where the blend crosses sea
-    // level, at about 0.45 of the lake's weight), so a lake is a bowl with a narrow rim of surf.
-    if (lakeW > 0.4) h -= 0.2 * smoothstep(0.42, 0.95, lakeW);
+    // level, at about 0.45 of the lake's weight), so a lake is a bowl with a narrow rim of surf;
+    // round bowls about its plots' centres keep the deep water from following the plot grid.
+    if (lakeW > 0.4) h -= 0.2 * smoothstep(0.42, 0.95, lakeW) * Math.min(1, this.lakeBowl(mx, my) * 1.4);
     if (sand > 0.05) {
       // Dunes: wind-combed ridges, sharp crest and long back slope, wandering with the noise.
       const ph = 2 * Math.PI * (mx * this.freq(1.25) + my * 0.55) + 2.6 * this.n2(mx, my, 0.6, 12.5, -4.1);
