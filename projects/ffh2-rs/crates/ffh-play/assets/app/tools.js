@@ -292,21 +292,30 @@ export function openOptions() {
   });
   // The map's renderer (not a game option: remembered by this browser). The flat one is the P5
   // renderer, kept for debugging; `?renderer=flat` in the address does the same for one page.
-  const renderer = h(
-    "label.toggle",
-    { title: look.art ? "Off: the flat debugging renderer (colours, glyphs, labels)" : `The art did not load${look.error ? `: ${look.error.message ?? look.error}` : ""}` },
-    h("input", {
-      type: "checkbox",
-      id: "option-art-renderer",
-      disabled: !look.art,
-      checked: !!look.art && globalThis.ffh?.mapView?.renderer?.() === "art",
-      onchange: (ev) => {
-        const r = ev.target.checked ? "art" : "flat";
-        setRendererChoice(r);
-        emit("renderer", r);
-      },
-    }),
-    " Draw the map with the pixel art",
+  const current = globalThis.ffh?.mapView?.renderer?.() ?? "art";
+  const artFailed = look.art ? "" : `The art did not load${look.error ? `: ${look.error.message ?? look.error}` : ""}`;
+  const renderer = [
+    ["art", "Pixel art (2D)", artFailed || "The 2D pixel-art map"],
+    ["iso", "Isometric 2.5D", "Songs-of-Conquest-style isometric map (docs/art/SOC_DIRECTION.md)"],
+    ["flat", "Flat (debug)", "The flat debugging renderer (colours, glyphs, labels)"],
+  ].map(([val, label, title]) =>
+    h(
+      "label.toggle",
+      { title },
+      h("input", {
+        type: "radio",
+        name: "option-renderer",
+        value: val,
+        disabled: val === "art" && !look.art,
+        checked: current === val,
+        onchange: (ev) => {
+          if (!ev.target.checked) return;
+          setRendererChoice(val);
+          emit("renderer", val);
+        },
+      }),
+      ` ${label}`,
+    ),
   );
   return openModal({
     title: "Options",

@@ -14,7 +14,7 @@ use std::sync::Arc;
 use common::TempDir;
 use ffh_play::json::Json;
 use ffh_play::transport::art_files::{art_bundle, art_modules};
-use ffh_play::transport::http::{route, HttpCtx, HttpRequest, ART_BUNDLE, ART_BUNDLE_PATH, ART_MODULES, ASSETS};
+use ffh_play::transport::http::{route, HttpCtx, HttpRequest, ART_BUNDLE, ART_BUNDLE_PATH, ART_MODULES, ASSETS, ASSET_BYTES};
 use ffh_play::transport::shared::Shared;
 use ffh_play::{Session, SessionOptions};
 
@@ -26,24 +26,35 @@ fn art_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("web").join("art")
 }
 
-/// The files a client may load: `index.html` and everything under `app/`.
+/// The files a client may load: `index.html` and everything under `app/` (recursively; the
+/// isometric renderer keeps its PNG sprites in `app/iso/`).
 fn files_on_disk() -> Vec<String> {
     let mut out = vec!["index.html".to_string()];
     let app = assets_dir().join("app");
-    let mut names: Vec<String> = std::fs::read_dir(&app).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
-    names.sort();
-    out.extend(names.into_iter().map(|n| format!("app/{n}")));
+    let mut stack = vec![app.clone()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(format!("app/{}", p.strip_prefix(&app).unwrap().to_string_lossy().replace('\\', "/")));
+            }
+        }
+    }
+    out.sort();
     out
 }
 
 #[test]
 fn every_client_file_is_embedded_as_it_is_on_disk() {
     let disk = files_on_disk();
-    let mut embedded: Vec<String> = ASSETS.iter().map(|(p, _, _)| p.to_string()).collect();
+    let mut embedded: Vec<String> =
+        ASSETS.iter().map(|(p, _, _)| p.to_string()).chain(ASSET_BYTES.iter().map(|(p, _, _)| p.to_string())).collect();
     embedded.sort();
     let mut want = disk.clone();
     want.sort();
-    assert_eq!(embedded, want, "http::ASSETS must list exactly index.html and assets/app/*");
+    assert_eq!(embedded, want, "http::ASSETS + ASSET_BYTES must list exactly index.html and assets/app/**");
     for (path, ctype, body) in ASSETS {
         let on_disk = std::fs::read_to_string(assets_dir().join(path)).unwrap();
         assert_eq!(*body, on_disk, "{path}");

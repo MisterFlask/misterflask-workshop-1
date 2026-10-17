@@ -14,6 +14,7 @@
 import { S, tname, dname, info, me, isBarbarian, ORDER_KINDS } from "./state.js";
 import * as T from "./tiles.js";
 import { ArtMap } from "./artmap.js";
+import { IsoMap } from "./iso.js";
 import { artZooms, defaultArtZoom } from "./stacks.js";
 
 const ZOOMS = [12, 16, 24, 32, 48, 64];
@@ -85,6 +86,8 @@ export class MapView {
     this.layer = "terrain";
     /** The art renderer (`ArtMap`) when it draws the map, else null (the flat renderer). */
     this.art = null;
+    /** The isometric renderer (`IsoMap`, `?renderer=iso`) when it draws the map, else null. */
+    this.iso = null;
     this.queued = false;
     /** An in-flight camera glide (`glideTo`): `{ sx, sy, dx, dy, t0, dur }`, else null. Direct
      *  manipulation (drag, zoom, pan) cancels it; `prefers-reduced-motion` skips it. */
@@ -117,7 +120,10 @@ export class MapView {
         if (!down.dragged && Math.hypot(dx, dy) > 5) down.dragged = true;
         if (down.dragged) {
           this.cancelGlide();
-          this.cam = T.clampCamera({ ...this.cam, cx: down.cx - dx / this.cam.ts, cy: down.cy + dy / this.cam.ts }, this.map ?? { w: 1, h: 1 });
+          const pan = this.iso
+            ? this.iso.panDelta(down.cx, down.cy, dx, dy)
+            : { cx: down.cx - dx / this.cam.ts, cy: down.cy + dy / this.cam.ts };
+          this.cam = T.clampCamera({ ...this.cam, ...pan }, this.map ?? { w: 1, h: 1 });
           this.hideTip();
           this.request();
           return;
@@ -179,6 +185,7 @@ export class MapView {
   plotAt(ev) {
     if (!this.map) return null;
     const r = this.canvas.getBoundingClientRect();
+    if (this.iso) return this.iso.screenToMap(ev.clientX - r.left, ev.clientY - r.top);
     return T.screenToMap(this.cam, this.map, this.vw, this.vh, ev.clientX - r.left, ev.clientY - r.top);
   }
 
@@ -223,6 +230,7 @@ export class MapView {
   /** The zoom steps (tile sizes in CSS px) of the renderer in use: the art's are whole numbers
    *  of device pixels per art pixel (docs/ART.md 3.2). */
   zooms() {
+    if (this.iso) return this.iso.zooms();
     return this.art ? artZooms(this.dpr) : ZOOMS;
   }
 
@@ -232,6 +240,12 @@ export class MapView {
     const next = zs[Math.min(zs.length - 1, Math.max(0, (i < 0 ? 3 : i) + step))];
     if (next === this.cam.ts) return;
     this.cancelGlide();
+    if (this.iso) {
+      this.cam = { ...this.cam, ts: next };
+      this.hideTip();
+      this.request();
+      return;
+    }
     this.cam = T.clampCamera(T.zoomAt(this.cam, this.vw, this.vh, next, sx, sy), this.map ?? { w: 1, h: 1 });
     this.hideTip();
     this.request();
@@ -369,6 +383,7 @@ export class MapView {
   /** The centre of plot (x, y) on the canvas (CSS pixels), the copy nearest the centre. */
   screenOf(x, y) {
     if (!this.map) return null;
+    if (this.iso) return this.iso.screenOf(x, y);
     const p = T.mapToScreen(this.cam, this.map, this.vw, this.vh, x, y);
     return { x: p.sx + this.cam.ts / 2, y: p.sy + this.cam.ts / 2, ts: this.cam.ts };
   }
@@ -394,6 +409,27 @@ export class MapView {
     this.request();
   }
 
+  /** Switches to the isometric renderer (`?renderer=iso`, docs/art/SOC_DIRECTION.md) or back to
+   *  the default renderer. */
+  useIso(on) {
+    if (!!on === !!this.iso) return;
+    if (on) {
+      if (this.art) {
+        this.art.dispose();
+        this.art = null;
+      }
+      this.iso = new IsoMap(this);
+      this.snapZoom(64);
+    } else {
+      this.iso.dispose?.();
+      this.iso = null;
+    }
+    this.chunks.clear();
+    this.pixels = 0;
+    this.miniImage = null;
+    this.request();
+  }
+
   /** The zoom moved to the renderer's nearest step (or `ts` when given). */
   snapZoom(ts = null) {
     const zs = this.zooms();
@@ -404,7 +440,7 @@ export class MapView {
 
   /** The renderer drawing the map: "art" or "flat". */
   renderer() {
-    return this.art ? "art" : "flat";
+    return this.iso ? "iso" : this.art ? "art" : "flat";
   }
 
   /** A new map (the `map` reply, or the map a delta brought up to date): redraws the chunks
@@ -465,6 +501,15 @@ export class MapView {
   }
 
   draw() {
+    if (this.iso) {
+      try {
+        this.iso.draw();
+      } catch (e) {
+        console.error("iso map:", e);
+      }
+      this.drawMini();
+      return;
+    }
     if (this.art) {
       try {
         this.art.draw();

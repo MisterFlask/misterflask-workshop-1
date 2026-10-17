@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "nano-banana": {
-      "command": "node",
-      "args": ["projects/ffh-simplified/tools/nano-banana-mcp/dist/index.js"],
-      "env": {
-        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
-      }
-    },
     "openai-image": {
       "command": "node",
       "args": ["plugins/openai-image/dist/index.js"],
