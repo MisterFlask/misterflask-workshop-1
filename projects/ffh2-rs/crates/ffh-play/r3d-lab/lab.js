@@ -9,11 +9,13 @@
 //   &cx=..&cy=..&ts=..                         camera (map point, pixels per plot)
 //   &r3d=painterly|plain|{json}                pipeline overrides (as in the client)
 //   &float=1                                   (grid) things stand on the water, not the sea floor
+//   scene=cities&civs=CIVILIZATION_A,CIVILIZATION_B&sizes=2,6,12&imps=IMPROVEMENT_COTTAGE,...
+//        &walls=8                              settlements side by side: a row per civilization
 //   &sel=x,y&select=1&hover=x,y&targets=x,y;x,y&path=x,y;x,y&attack=1&layer=political  overlays
 
 import { S, setData, setView, setMap } from "/app/state.js";
 import { Map3D } from "/app/r3d/map3d.js";
-import { showcase, grid } from "./scenes.js";
+import { showcase, grid, settlements } from "./scenes.js";
 
 const q = new URLSearchParams(location.search);
 
@@ -24,6 +26,9 @@ async function main() {
   if (q.get("grid")) {
     const names = q.get("grid").split(",").filter(Boolean);
     scene = grid(data, names, Number(q.get("variants") ?? 6), { ground: q.get("ground") ?? ".", spacing: Number(q.get("spacing") ?? 1) });
+  } else if (q.get("scene") === "cities") {
+    const list = (k, d) => (q.get(k) ?? d).split(",").filter(Boolean);
+    scene = settlements(data, list("civs", "CIVILIZATION_BANNOR"), list("sizes", "2,6,12").map(Number), list("imps", ""), { walls: Number(q.get("walls") ?? 8) });
   } else {
     scene = showcase(data);
   }

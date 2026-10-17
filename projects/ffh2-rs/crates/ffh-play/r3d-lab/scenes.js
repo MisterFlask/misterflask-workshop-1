@@ -192,3 +192,24 @@ export function grid(data, names, variants = 6, { ground = ".", spacing = 1 } = 
   });
   return { map, view, items, focus: [w / 2, h / 2] };
 }
+
+/** Settlements side by side, for the architecture: a row per civilization (its cities at `sizes`,
+ *  then its improvements `imps`, all on its own land so they take its family), two plots apart on
+ *  flat grass. Capital on the first city; walls from size `walls` up. */
+export function settlements(data, civs, sizes = [2, 6, 12], imps = [], { walls = 8, ground = "." } = {}) {
+  const cols = sizes.length + imps.length;
+  const w = Math.max(6, cols * 2 + 1);
+  const h = Math.max(4, civs.length * 2 + 1);
+  const rows = Array.from({ length: h }, () => ground.repeat(w));
+  const cities = [], improvements = [], owners = [];
+  let id = 1;
+  civs.forEach((civ, k) => {
+    const y = h - 2 - k * 2;
+    owners.push([0, y - 1 < 0 ? 0 : y - 1, w - 1, Math.min(h - 1, y + 1), k]);
+    sizes.forEach((size, c) => cities.push({ id: id++, owner: k, x: 1 + c * 2, y, name: `${civ.replace("CIVILIZATION_", "")} ${size}`, capital: c === 0, size, walls: size >= walls }));
+    imps.forEach((t, c) => improvements.push([1 + (sizes.length + c) * 2, y, t]));
+  });
+  const map = buildMap(data, rows, { improvements, owners, cities });
+  const view = buildView(data, { players: civs.map((civ) => ({ civ })), cities });
+  return { map, view, focus: [w / 2, h / 2] };
+}
