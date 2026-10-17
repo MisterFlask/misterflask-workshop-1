@@ -82,7 +82,10 @@ def deadtree(p, cx, foot, height, keys='hBD'):
 def pine_px(p, cx, foot, tiers, keys='mTtk', trunk='ru'):
     """A pine by pixel rules: tiers = [(rows, half-width at the bottom)] from the top tier down; each
     tier widens a pixel a row, its left edge lit, its right half shaded, its last row the dark
-    underside with drooping tips; a void outline around it (rows() adds it)."""
+    underside with drooping tips. The void outline (rows() adds it) closes the slanted sides, but
+    each tier's underside row keeps its darkest green: a forest is many overlapping pines, and a
+    black bar under every tier would make it a dark lattice that outshouts the units (docs/ART.md
+    4.3)."""
     lit, base, shade, deep = keys
     y = foot - 1 - sum(r for r, _ in tiers) + (len(tiers) - 1)   # tiers overlap a row
     p.put(cx, y - 1, lit)                                         # the tip
@@ -104,10 +107,10 @@ def pine_px(p, cx, foot, tiers, keys='mTtk', trunk='ru'):
                     k = base if dx <= 0 else shade
                 else:
                     k = shade if dx < half else deep
-                p.put(x, yy, k)
+                p.put(x, yy, k, okey=deep if last else '0')
             if last and half >= 2:
-                p.put(cx - half - 1, yy, shade)
-                p.put(cx + half + 1, yy, deep)
+                p.put(cx - half - 1, yy, shade, okey=deep)
+                p.put(cx + half + 1, yy, deep, okey=deep)
         y += rows - 1
     for yy in range(y + 1, foot + 1):
         p.put(cx, yy, trunk[0])
@@ -1090,13 +1093,6 @@ def res(fn):
     return fn
 
 
-def sheaf(p, keys='ylKY'):
-    for dx in (-2.4, -1.2, 0, 1.2, 2.4):
-        p.add(lambda s, dx=dx: s.stroke([(6.5 + dx * 0.4, 12.4), (6.5 + dx, 4.4)], 0.55, 0.5, smooth=False), keys, flat=1, sep=False)
-        p.add(lambda s, dx=dx: s.ellipse(6.5 + dx * 1.15, 3.4, 0.85, 1.6), keys, sigma=0.6, sep=False)
-    p.add(lambda s: s.rect(4.4, 8, 8.6, 9.2), 'riu', flat=1, sep=False)
-
-
 def ingots(p, keys):
     for (x, y) in ((3.6, 12.4), (9.4, 12.4), (6.5, 9.4)):
         p.add(lambda s, x=x, y=y: s.poly([(x - 3, y), (x - 2.2, y - 3), (x + 2.2, y - 3), (x + 3, y)]), keys, sigma=0.9, gloss=keys[-1])
@@ -1126,8 +1122,94 @@ def quad(p, x, base, body, head, keys, legs='0', horns=None, mane=None):
         p.add(lambda s: s.stroke([(x + body[0] - 1.4, base - 5.6), (hx - 0.4, hy - 0.8)], 0.7, 0.6), mane, flat=0, sep=False)
 
 
+# Hand-drawn objects where the painted recipe lost the subject at 13x13 (the art review: corn read as
+# a gem, wheat as a goblet, cotton as a lollipop, the pearl and the toad as blobs). Fills only: the
+# void outline is added around them.
+HAND_RES = {
+    # three ears fanned over a leather tie, the stalks splayed below
+    'wheat': ['.............',
+              '...L..L..L...',
+              '..LK.LKy.Ky..',
+              '..Ky.KKy.yy..',
+              '...KyKyyKy...',
+              '....KyKyy....',
+              '.....iii.....',
+              '.....ijj.....',
+              '....yjyjy....',
+              '...yj.y.jy...',
+              '..yj..y..jy..',
+              '..j...j...j..',
+              '.............'],
+    # a cob of gold kernels in two green husk leaves peeling outward
+    'corn': ['.............',
+             '.....LKy.....',
+             '.....KyK.....',
+             '.....yKy.....',
+             '.....KyK.....',
+             '..O..yKy..O..',
+             '..mO.KyK.Om..',
+             '...mOyKyOm...',
+             '....mOyOm....',
+             '.....mOm.....',
+             '......m......',
+             '......q......',
+             '.............'],
+    # three white bolls on a green shrub
+    'cotton': ['.............',
+               '.....887.....',
+               '....88776....',
+               '.887.776.887.',
+               '8877687688776',
+               '.776.r6r.776.',
+               '..r.mrmrm.r..',
+               '..mmOmmmOmm..',
+               '...mmOqmmq...',
+               '....mmqqm....',
+               '......r......',
+               '......r......',
+               '.............'],
+    # a white pearl in an open scallop: the ribbed fan of the upper shell behind, the bowl in front
+    'pearl': ['.............',
+              '...PPpPpPp...',
+              '..PWpPpPpPv..',
+              '..PpPpPpPpv..',
+              '...PpPpPpv...',
+              '....pF87v....',
+              '....F8876....',
+              '.PP.88766.pv.',
+              '.PPP87766ppv.',
+              '.PPPp766ppvv.',
+              '..PPPpppppv..',
+              '...pppppvv...',
+              '.............'],
+    # a squat frog: eyes on top, a dark mouth line, a pale belly, splayed feet
+    'toad': ['.............',
+             '.............',
+             '..OO.....OO..',
+             '.OW0O...OW0O.',
+             '.OOAOAAAOAAz.',
+             '.OAAAAAAAAAz.',
+             'OAA0000000Azz',
+             'OAAAYYYYAAAzz',
+             '.AAYYYYYYAzz.',
+             '..AAYYYYAzz..',
+             '.OAzAzzzAzzz.',
+             'OA.z.....z.zz',
+             '.............'],
+}
+
+
+def hand_res(p, fill):
+    """A hand-drawn 13x13 fill with a void outline (4-neighbour) around it."""
+    H, W = len(fill), len(fill[0])
+    op = lambda x, y: 0 <= y < H and 0 <= x < W and fill[y][x] != '.'
+    rows = [''.join('0' if c == '.' and any(op(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))) else c
+                    for x, c in enumerate(r)) for y, r in enumerate(fill)]
+    stamp(p, rows, 0, 0)
+
+
 @res
-def _food(p): sheaf(p)
+def _food(p): hand_res(p, HAND_RES['wheat'])
 @res
 def _strategic(p): rock_pile(p, '3456', 'K')
 @res
@@ -1138,15 +1220,13 @@ def _mana(p):
 
 
 @res
-def corn(p):
-    p.add(lambda s: s.ellipse(6.5, 6.6, 2.4, 5.0), 'ylKL', sigma=1.2)
-    p.add(lambda s: (s.stroke([(6.5, 12.4), (3.6, 8), (3.2, 4)], 1.0, 0.4), s.stroke([(6.5, 12.4), (9.4, 8.4), (10, 5)], 1.0, 0.4)), 'qmo', sigma=0.6, sep=False)
+def corn(p): hand_res(p, HAND_RES['corn'])
 @res
 def rice(p):
     p.add(lambda s: s.ellipse(6.5, 7.4, 5, 3.4), 'G78', sigma=1.4)
     p.add(lambda s: s.poly([(1.2, 8), (11.8, 8), (10, 12.4), (3, 12.4)]), 'hriu', sigma=1.0)
 @res
-def wheat(p): sheaf(p)
+def wheat(p): hand_res(p, HAND_RES['wheat'])
 @res
 def cow(p): quad(p, 5.8, 12.6, (3.8, 2.4), (1.4, 1.2), 'riuj', horns='78')
 @res
@@ -1159,10 +1239,7 @@ def sheep(p):
     p.add(lambda s: (s.ellipse(6, 7.6, 4.2, 2.8), s.ellipse(4, 6.4, 2, 1.8), s.ellipse(7.6, 6.2, 2.2, 1.8)), '678', sigma=1.2)
     p.add(lambda s: s.ellipse(10.8, 6.6, 1.5, 1.4), '0BD', sigma=0.6)
 @res
-def toad(p):
-    p.add(lambda s: s.ellipse(6.5, 9.4, 5, 3.2), 'wzAO', sigma=1.4)
-    p.add(lambda s: (s.ellipse(4.4, 6.6, 1.3, 1.2), s.ellipse(8.6, 6.6, 1.3, 1.2)), 'zAO', sigma=0.5, sep=False)
-    p.solid(lambda s: (s.ellipse(4.4, 6.6, 0.5, 0.5), s.ellipse(8.6, 6.6, 0.5, 0.5)), '0')
+def toad(p): hand_res(p, HAND_RES['toad'])
 @res
 def banana(p):
     for dx in (-2.2, 0, 2.2):
@@ -1262,14 +1339,9 @@ def wine(p):
         p.add(lambda s, x=x, y=y: s.ellipse(x, y, 1.3, 1.3), 'vpPW', sigma=0.6, gloss='W')
     p.add(lambda s: s.poly([(6.5, 3.4), (9, 0.6), (11.6, 2.4), (9.6, 3.6)]), 'qmo', sigma=0.6)
 @res
-def pearl(p):
-    p.add(lambda s: s.poly([(0.6, 9), (3, 12.4), (10, 12.4), (12.4, 9), (6.5, 10.6)]), 'jQY', sigma=0.8)
-    p.add(lambda s: s.ellipse(6.5, 7.4, 2.6, 2.6), 'G78F', sigma=1.0, gloss='F')
+def pearl(p): hand_res(p, HAND_RES['pearl'])
 @res
-def cotton(p):
-    p.add(lambda s: s.stroke([(6.5, 12.6), (6.5, 7)], 0.5, 0.5, smooth=False), 'ri', flat=0, sep=False)
-    for (x, y) in ((4.4, 5.6), (8.6, 5.6), (6.5, 3.6), (6.5, 7)):
-        p.add(lambda s, x=x, y=y: s.ellipse(x, y, 2.2, 2.0), '678', sigma=0.9)
+def cotton(p): hand_res(p, HAND_RES['cotton'])
 @res
 def ale(p):
     p.add(lambda s: s.rect(2.6, 4.4, 9, 12.6), 'hriu', sigma=1.0)

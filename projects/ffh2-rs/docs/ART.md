@@ -577,6 +577,8 @@ The feature sprites are painted by `tools/atlas/compose_map.py` (4.3):
 
 - **Forest**: pines by pixel rules, two to four tiers widening a pixel a row, a lit `m`/`O` west edge,
   needle `T` body, pine `t` shade and a dark `k` underside with drooping tips, an umber trunk;
+  the void outline closes each tier's slanted sides, but the underside rows stay `k`, not void, so
+  a stand of overlapping pines reads as green tiers, not a black lattice;
   seven shapes (one in the mossy ramp) scattered per tile. **New forest**: saplings by the same
   rules. **Ancient forest**: broad canopies of overlapping lit domes in deep greens over a thick
   rooted trunk, rising into the tile above.
@@ -619,7 +621,7 @@ goody hut is a small cairn with a flickering candle.
 
 A revealed resource (`BONUS_*`) is a **small object** standing in the tile's lower right, as in the
 references: a 13x13 painted sprite with its feet at (6, 12), drawn with its feet at tile (25, 30)
-on a soft checker shadow. The object names the resource: a golden sheaf, a cob of corn, a bowl of
+on a soft checker shadow. The object names the resource: a golden sheaf, a husked cob of corn, a bowl of
 rice, a cow, a pig, a sheep, a deer, a toad, a banana bunch, a fish, a clam, a crab, a whale's back
 and spout; copper, iron and mithril ingots; a horse and the nightmare; a keg, a vial of reagents, a
 veined sheut stone, a marble block, a dye pot, a pelt, cut gems, gold nuggets, a censer, a tusk, a
@@ -627,6 +629,10 @@ bolt of silk, sugar cane, grapes, a pearl in its shell, cotton, a tankard of ale
 clothes, a jewelled ring, razorweed, a sealed jar, the Fruit of Yggdrasil. **Mana** is a standing
 stone carved with its sphere's rune (colour the family, shape the sphere, 11.5). The category
 objects (`res/_food`, `_strategic`, `_luxury`, `_mana`) are the fallbacks for bonuses added later.
+Where painting lost the subject at this size, the object is drawn by hand as a fill that the tool
+outlines (`HAND_RES` in `compose_map.py`): the sheaf (three ears fanned over a tie, stalks
+splayed; also `res/_food`), the husked cob, cotton bolls on a shrub, a pearl in an open scallop,
+the squat frog.
 
 ### 6.2 Landmarks (unique improvements)
 
