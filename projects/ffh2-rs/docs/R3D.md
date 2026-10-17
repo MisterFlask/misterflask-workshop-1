@@ -278,7 +278,7 @@ Two scenes, the same renderer:
   for the renderer beyond that: what stands within six plots of the corrupted capital is what the AI
   game produced — sea, coast, a river with flood plains, tundra, grassland, plains, desert, hills
   and a peak, 32 forest plots, roads, a pasture, a plantation, a winery, a mine, the Seven Pines
-  (a unique landmark), raw mana and seven other resources, three cities of two civilizations, ten
+  (a unique landmark), raw mana and seven other resources, three Svartalfar cities, ten
   warriors, archers, workers, a hunter and a wild elephant. `node tools/r3d-compare.mjs --save DIR/corrupt.ffhsave --x 48 --y 15` renders it
   in every renderer.
 * **The lab showcase** (`r3d-lab/scenes.js` `showcase`): a 24 × 14 synthetic map that puts every
