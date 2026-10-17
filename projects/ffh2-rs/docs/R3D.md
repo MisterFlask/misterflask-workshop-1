@@ -25,7 +25,8 @@ cargo build --release
 * `?renderer=3d` for one page, or **Tools → Options → "3D painterly (experimental)"** (remembered by
   the browser, like the other renderer choices). Choosing another renderer there switches back.
 * The **3D** button at the map's top-left opens the tuning panel: the *painterly* and *plain* presets,
-  the light (afternoon, dusk, day) and a switch or slider for every stage of the pipeline (§12), with
+  the light (afternoon or day: the map is always in daylight) and a switch or slider for every stage
+  of the pipeline (§12), with
   the frame time and per-pass GPU times.
 * `?r3d=plain`, `?r3d=painterly` or `?r3d={"kuwahara":0,"outline":0}` override the look for one page.
 * It needs WebGL2. Without it the client says so and keeps the 2D map.
@@ -321,7 +322,8 @@ Two scenes, the same renderer:
 ## 12. Configuration
 
 `r3d/config.js`: `PRESETS.painterly` (default) and `PRESETS.plain` (every stylisation off: an
-ordinary real-time render of the same geometry, for comparison), `LIGHTING` (afternoon, dusk, day),
+ordinary real-time render of the same geometry, for comparison), `LIGHTING` (afternoon, day: always
+daylight, by design; a saved light that is no longer offered falls back to the afternoon),
 and the switches of the panel (`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width),
 paint (pigment variation), bands (stepped light), stylize (coloured shadows), rim, clouds, haze,
 mist, grade, grain, vignette, borders, grid, fogWar, particles, animate, renderScale.
@@ -344,8 +346,8 @@ What is not there, or not good enough yet, as of this prototype:
   occlusion and glow, full-screen passes), but it has not been profiled on one.
 * **Motion.** Units glide between plots and idle (breathing, capes, wings, tails, wind); there are
   no attack, death or work animations, and combat shows only the 2D flashes.
-* **One light at a time.** Afternoon (default), dusk and day are presets; there is no time of day
-  that follows the game.
+* **Always daylight, by choice.** Afternoon (default) and day are the lights; there is no dusk,
+  night or day/night cycle.
 * **Faces and hands** are blank at the closest zoom; crossbowmen and slingers use the bow and
   spear poses.
 * **Map edges.** Where the map does not wrap (north and south), the ground ends in a cut.
@@ -353,12 +355,11 @@ What is not there, or not good enough yet, as of this prototype:
   unexplored is dark parchment, not modelled.
 * **Particles** draw after the paint passes and cannot be occluded behind tall props per pixel
   (a point sprite is depth-tested at its centre).
-* **Water** has no reflections, no waterfalls where rivers drop, and harbours do not yet use the
-  shore context cities now receive.
+* **Water** has no reflections and no waterfalls where rivers drop.
 
 Next steps, roughly by value: profile on real GPUs and add a quality ladder (render scale,
 Kuwahara off, shadow size) chosen from the measured frame time; combat and work animations;
-a time of day bound to the turn; a reflection or sky term for water.
+a reflection or sky term for water.
 
 ## 15. Provenance
 

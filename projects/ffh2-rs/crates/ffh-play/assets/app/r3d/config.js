@@ -18,15 +18,6 @@ export const LIGHTING = {
     shadowTint: [0.62, 0.68, 1.05],
     exposure: 1.0,
   },
-  dusk: {
-    sunDir: [-0.8, 0.42, 0.42],
-    sun: [hexLinear("#ffc49a"), 2.3],
-    sky: [hexLinear("#56609a"), 0.62],
-    ground: [hexLinear("#4a3634"), 0.22],
-    haze: hexLinear("#8c7590"),
-    shadowTint: [0.55, 0.58, 1.15],
-    exposure: 1.06,
-  },
   day: {
     sunDir: [-0.55, 0.72, 0.42],
     sun: [hexLinear("#fff1dc"), 2.6],
@@ -142,6 +133,8 @@ export function loadConfig() {
     saved = {};
   }
   const cfg = { ...DEFAULTS, ...saved };
+  // The map is always in daylight; a light no longer offered (a saved "dusk") falls back.
+  if (!LIGHTING[cfg.lighting]) cfg.lighting = DEFAULTS.lighting;
   // A page-only override: ?r3d=plain|painterly or ?r3d={"kuwahara":0}.
   try {
     const q = new URLSearchParams(globalThis.location?.search ?? "").get("r3d");

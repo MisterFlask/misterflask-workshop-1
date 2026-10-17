@@ -281,7 +281,7 @@ export class Map3D {
       // cities and the light.
       const paintKey = `${this.cfg.lighting};${[...cityKey].join(";")}`;
       if (mapChanged || paintKey !== this.paintSeen) {
-        this.scene.setPaint(this.world, map, cities, this.cfg.lighting === "dusk" ? 1.6 : 1);
+        this.scene.setPaint(this.world, map, cities);
         this.paintSeen = paintKey;
       }
       this.dressSeen = { n, civKey, unitAt: env.unitAt, cityKey };

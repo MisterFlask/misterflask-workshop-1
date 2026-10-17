@@ -3,7 +3,7 @@
 //
 //   decal texture (DRES px per plot): r roads, g fields, b wet ground (river banks), a trodden
 //                                     settlement ground
-//   light texture (LRES px per plot): rgb pools of local light (towns at dusk, lava, mana) that
+//   light texture (LRES px per plot): rgb pools of local light (towns, lava, mana) that
 //                                     the terrain and the props are lit by
 //
 // Roads run from each routed plot's centre to its routed neighbours, bowed a little so a network
@@ -190,8 +190,7 @@ function rgba(hex, a) {
   return m ? `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${a})` : `rgba(255,255,255,${a})`;
 }
 
-/** The light-pool texture's pixels (RGBA, LRES px per plot). `strength` scales the pools (the
- *  lighting preset: towns glow more at dusk). */
+/** The light-pool texture's pixels (RGBA, LRES px per plot). `strength` scales the pools. */
 export function rasterLight(world, map, cities, strength = 1) {
   const W = world.w * LRES, Hh = world.h * LRES;
   const [, g] = canvas(W, Hh);
