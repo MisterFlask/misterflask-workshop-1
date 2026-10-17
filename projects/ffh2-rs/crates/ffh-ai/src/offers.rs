@@ -61,11 +61,11 @@ pub fn to_humans(g: &mut Game, v: &View) {
         if !g.teams[team].has_met[their] || !g.player_can_contact(p, human) {
             continue;
         }
-        // abContacted: one contact per human a turn, peace first.
+        // abContacted: one contact per human a turn, peace first, then a tech or a resource offer.
         if g.at_war(team, their) {
             offer_peace(g, p, human);
-        } else {
-            offer_tech_trade(g, p, human);
+        } else if !offer_tech_trade(g, p, human) {
+            offer_resource_trade(g, p, human);
         }
     }
 }
@@ -87,10 +87,12 @@ fn offer_peace(g: &mut Game, p: PlayerId, human: PlayerId) {
     }
 }
 
-fn offer_tech_trade(g: &mut Game, p: PlayerId, human: PlayerId) {
+/// Returns whether the AI contacted the human with a tech offer this turn (so `to_humans` can fall
+/// back to a resource offer when it did not).
+fn offer_tech_trade(g: &mut Game, p: PlayerId, human: PlayerId) -> bool {
     let (team, their) = (g.players[p].team, g.players[human].team);
     if crate::diplomacy::relation(g, p, human) < 0 || crate::diplomacy::preparing_target(g, team) == Some(their) || !contact_due(g, p, human, "CONTACT_TRADE_TECH") {
-        return;
+        return false;
     }
     let cost = |t: TechType| g.team_get_research_cost(team, t).max(1);
     // The human's tech we value most (the costliest we can research).
@@ -100,7 +102,7 @@ fn offer_tech_trade(g: &mut Game, p: PlayerId, human: PlayerId) {
         .keys()
         .filter(|&t| !g.team_is_has_tech(team, Some(t)) && g.player_can_research(p, t, false) && g.player_can_trade_item(human, p, &tech_item(t), true))
         .max_by_key(|&t| (cost(t), std::cmp::Reverse(t)));
-    let Some(get) = get else { return };
+    let Some(get) = get else { return false };
     // Ours closest in cost.
     let give = g
         .d
@@ -108,13 +110,34 @@ fn offer_tech_trade(g: &mut Game, p: PlayerId, human: PlayerId) {
         .keys()
         .filter(|&t| g.team_is_has_tech(team, Some(t)) && !g.team_is_has_tech(their, Some(t)) && g.player_can_trade_item(p, human, &tech_item(t), true))
         .min_by_key(|&t| ((cost(t) - cost(get)).abs(), t));
-    let Some(give) = give else { return };
+    let Some(give) = give else { return false };
     let (ours, theirs) = (vec![tech_item(give)], vec![tech_item(get)]);
+    // Only a deal the AI would accept itself.
+    if !crate::diplomacy::consider_offer(g, p, human, &theirs, &ours) {
+        return false;
+    }
+    crate::trace!(g, p, "offers {} for {} to the human {:?}", g.d.techs[give].base.type_, g.d.techs[get].base.type_, human);
+    if g.controller(human).consider_offer(g, human, p, &ours, &theirs) {
+        g.implement_deal(p, human, &ours, &theirs, false);
+    }
+    true
+}
+
+/// Offer the human a resource of theirs we want, paid for with a surplus of ours or with gold
+/// (`trade::buy_resource_offer`). Gated like the tech offer and only when the AI would take the
+/// deal itself.
+fn offer_resource_trade(g: &mut Game, p: PlayerId, human: PlayerId) {
+    let (team, their) = (g.players[p].team, g.players[human].team);
+    if crate::diplomacy::relation(g, p, human) < 0 || crate::diplomacy::preparing_target(g, team) == Some(their) || !contact_due(g, p, human, "CONTACT_TRADE_BONUS") {
+        return;
+    }
+    let Some((ours, theirs)) = crate::trade::buy_resource_offer(g, p, human) else { return };
     // Only a deal the AI would accept itself.
     if !crate::diplomacy::consider_offer(g, p, human, &theirs, &ours) {
         return;
     }
-    crate::trace!(g, p, "offers {} for {} to the human {:?}", g.d.techs[give].base.type_, g.d.techs[get].base.type_, human);
+    let got = BonusType::from_usize(theirs[0].data as usize);
+    crate::trace!(g, p, "offers to buy {} from the human {:?}", g.d.bonuses[got].base.type_, human);
     if g.controller(human).consider_offer(g, human, p, &ours, &theirs) {
         g.implement_deal(p, human, &ours, &theirs, false);
     }

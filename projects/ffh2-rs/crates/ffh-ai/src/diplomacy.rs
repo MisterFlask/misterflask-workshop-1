@@ -307,6 +307,8 @@ fn trade(g: &mut Game, p: PlayerId) {
                 }
             }
         }
+        // A resource of theirs we want, paid for with a surplus of ours or with gold.
+        resource_trade(g, p, other);
         // The tech of theirs we value most, for the tech of ours closest in cost.
         let cost = |t: TechType| g.team_get_research_cost(team, t).max(1);
         let mut want: Option<(TechType, i32)> = None;
@@ -337,6 +339,17 @@ fn trade(g: &mut Game, p: PlayerId) {
             crate::trace!(g, p, "trades {} for {} with {:?}", g.d.techs[give].base.type_, g.d.techs[get].base.type_, other);
             g.implement_deal(p, other, &ours, &theirs, false);
         }
+    }
+}
+
+/// Offer `other` a resource trade ([`trade::buy_resource_offer`][crate::trade::buy_resource_offer]
+/// builds the deal); the AI leader `other` judges it through its own `consider_offer`.
+fn resource_trade(g: &mut Game, p: PlayerId, other: PlayerId) {
+    let Some((ours, theirs)) = crate::trade::buy_resource_offer(g, p, other) else { return };
+    if g.controller(other).consider_offer(g, other, p, &ours, &theirs) {
+        let got = BonusType::from_usize(theirs[0].data as usize);
+        crate::trace!(g, p, "buys {} from {:?}", g.d.bonuses[got].base.type_, other);
+        g.implement_deal(p, other, &ours, &theirs, false);
     }
 }
 
@@ -535,6 +548,35 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
         }
         let value = |items: &[TradeData]| items.iter().map(|t| g.team_get_research_cost(team, TechType::from_usize(t.data as usize))).sum::<i32>();
         return value(they_give) * 5 >= value(we_give) * 4;
+    }
+    // Resources and gold (and any mixed deal): value both sides in gold-equivalent (C++
+    // `AI_dealVal`) and accept when what we receive is worth at least what we give away. A friendly
+    // act, so only at peace with a civ we do not dislike and are not about to attack; we refuse
+    // gold-for-gold, and never hand over a resource our own judgement blocks (`trade::bonus_trade_denial`,
+    // the ported `AI_bonusTrade`: our worst enemy, a resource they already have, or a strategic /
+    // happiness / health resource to a civ we do not like enough).
+    let tradeable = |items: &[TradeData]| {
+        items
+            .iter()
+            .any(|t| matches!(t.item_type, TradeableItem::TRADE_RESOURCES | TradeableItem::TRADE_GOLD | TradeableItem::TRADE_GOLD_PER_TURN))
+    };
+    if tradeable(they_give) || tradeable(we_give) {
+        if crate::trade::is_gold_deal(they_give) && crate::trade::is_gold_deal(we_give) {
+            return false;
+        }
+        if g.at_war(team, their_team) || relation(g, p, from) < 0 || preparing_target(g, team) == Some(their_team) {
+            return false;
+        }
+        for item in we_give {
+            if item.item_type == TradeableItem::TRADE_RESOURCES
+                && crate::trade::bonus_trade_denial(g, p, BonusType::from_usize(item.data as usize), from).is_some()
+            {
+                return false;
+            }
+        }
+        let theirs = crate::trade::deal_val(g, p, from, they_give, false, 1);
+        let ours = crate::trade::deal_val(g, from, p, we_give, false, 1);
+        return theirs >= ours;
     }
     false
 }

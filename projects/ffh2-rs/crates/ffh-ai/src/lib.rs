@@ -35,6 +35,7 @@ pub mod reach;
 pub mod research;
 pub mod sites;
 pub mod tech_plan;
+pub mod trade;
 pub mod units;
 pub mod values;
 pub mod victory;

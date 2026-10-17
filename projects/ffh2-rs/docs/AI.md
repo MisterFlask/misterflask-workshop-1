@@ -572,6 +572,34 @@ technologies one for one at similar cost (once `TECH_TRADE` allows it) and signs
 with civs it likes; `consider_offer` accepts tech swaps worth at least 80% of what it gives,
 never with the civ it prepares a war against.
 
+**Resources and gold (`trade.rs`).** The AI also trades resources (bonuses) and gold -- a port of
+the base game's `CvPlayerAI` trade valuation (`AI_bonusTradeVal`, `AI_bonusTrade`, `AI_dealVal`,
+`AI_goldTradeValuePercent`/`AI_goldPerTurnTradeVal`, `AI_maxGold(PerTurn)Trade`). The value of
+*holding* a resource is ffh-core's already-ported `player_ai_bonus_val` (happiness/health,
+unit/building enablement, the FfH mana and evil-resource terms); `trade.rs` is the trade layer on
+top: a resource's trade value (scaled by the smaller of the two empires, the data
+`AITradeModifier`, over a treaty's length), a deal's total gold-equivalent value (`deal_val`, techs
+via the research-cost proxy since `AI_techTradeVal` is unported), gold valuation (worth more when
+broke) and the gold caps (a research buffer plus an already-traded-to limit), and the give-refusal
+(`bonus_trade`: never to our worst enemy, nor a resource they already have, nor a strategic /
+happiness / health resource to a civ we do not like enough -- one step more generous toward a civ
+of our alignment or favourite religion). `consider_offer` values any resource/gold/mixed deal
+(accept when what we receive is worth at least what we give, no gold-for-gold, never a resource the
+refusal blocks); `trade()` (AI<->AI) and `offers.rs` (AI->human) buy the resource we most want and
+a neighbour can spare, paying with a surplus of ours or with gold, only at peace with civs we like.
+No corporations exist in FfH 0.41, so that value is 0 and its branches are dead; `AI_getAttitude`
+and `AI_isFinancialTrouble` reuse this AI's `attitude`/`production::financial_trouble` proxies
+(docs/PORTING.md). It adds no saved state -- deal memory rides ported `Game` fields updated by
+`implement_deal` -- and draws no RNG (deterministic, checksum-stable).
+
+Measured (16-seed, 690-turn A/B vs the no-trade tip): trading is positive-sum, so every civ grows
+-- final power +8.7%, research at turn 300 +3.4% (the hard guard), and 7% fewer civs eliminated
+(weaker civs trade to stay viable). The cost is less *concentrated* domination -- biggest empire
+-4.5%, top-power share -9.4%, and games run longer (6 vs 3 reaching turn 690) -- but the leader's
+absolute power is about flat (it is the field catching up, not the leader weakening), and research
+at turn 450 slips -3.1%. Kept as faithful, more human-like play that grows total power and mid-game
+economy at the cost of some domination concentration.
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the
