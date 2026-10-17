@@ -1929,7 +1929,7 @@ const BEASTS = {
 /**
  * Builds a quadruped into `mb` (standing on y = 0, facing +z). `b`: a BEASTS entry (overridable),
  * o: {r, gait: "stand" | "walk" | "stalk" | "charge", headDown, collar, warpaint, caparison,
- *     caparisonHem, saddle, saddleColor, barding, bone, snarl, lite}. Returns anchors {saddle,
+ *     caparisonHem, caparisonSpan, saddle, saddleColor, barding, bone, snarl, lite}. Returns anchors {saddle,
  *     withers, head, girth, yb, ...}.
  */
 function quadruped(mb, b, o = {}) {
@@ -2211,7 +2211,10 @@ function quadruped(mb, b, o = {}) {
     mb.bone = bodyBone;
     const hem = o.caparisonHem ?? yb * 0.45;
     const nz = 6, na2 = 7;
-    const z0 = rumpZ - G * 0.1, z1 = chestZ + G * 0.05;
+    // `caparisonSpan` < 1: a saddle cloth over the middle of the back instead of a full caparison.
+    const span = o.caparisonSpan ?? 1;
+    const zc = (rumpZ - G * 0.1 + chestZ + G * 0.05) * 0.5, zh = (chestZ + G * 0.05 - (rumpZ - G * 0.1)) * 0.5 * span;
+    const z0 = zc - zh, z1 = zc + zh;
     const prof = (z) => {
       const t = (z - z0) / (z1 - z0);
       return G * (0.92 + 0.12 * Math.sin(t * Math.PI)) * 1.06;
@@ -2476,7 +2479,9 @@ function wagon(mb, r, g, { len = 0.22, w = 0.12, team = true } = {}) {
   const N = (j) => [Math.cos(Math.PI * (j / na)), Math.sin(Math.PI * (j / na)), 0];
   for (let i = 0; i < nz; i++) {
     for (let j = 0; j < na; j++) {
-      const band = team && (j === 1 || j === 2 || j === na - 2 || j === na - 3);
+      // One narrow stripe of the owner's colour along each side: the canvas stays canvas (a solid
+      // team-coloured cover read as a giant barrel at the gameplay zoom).
+      const band = team && (j === 2 || j === na - 3) && i > 0;
       if (band) setTeam(mb, 0.9);
       else setMat(mb, "#cfc3a4");
       // (wound so the explicit outward normals face the same way as the triangles)
@@ -2513,7 +2518,10 @@ unitRecipe("unit.settler", {
     const g = garbOf(race, dark);
     mb.part(() => {
       mb.rotateY(1.0);
-      mb.translate(0, 0, -0.1);
+      mb.translate(0, 0, -0.08);
+      // The wagon and its ox a little under life size against the walker: the unit's mass should
+      // match the other figures', not tower over them.
+      mb.scale(0.78);
       local(mb, (k) => {
         const wg = wagon(k, r, g, {});
         const ox = { ...BEASTS.ox, len: 0.22, h: 0.16, girth: 0.055 };
@@ -3261,7 +3269,7 @@ unitRecipe("unit.serpent", {
 });
 
 /** unit.beast: param picks the creature: "beastman" (goat-headed, default), "minotaur",
- *  "werewolf", "ogre", "giant", "ape", "boar", "lion", "tiger", "sandlion", "elephant", "treant",
+ *  "werewolf", "ogre", "giant", "ape", "boar", "lion", "tiger", "sandlion", "elephant", "war-elephant", "treant",
  *  "centaur", "lizard" (a giant lizard), "scorpion". Variants recolour and re-pose. */
 unitRecipe("unit.beast", {
   variants: 3,
@@ -3283,7 +3291,10 @@ unitRecipe("unit.beast", {
       if (kind === "sandlion") Object.assign(b, { coat: "#c8a870", belly: "#e8d8b0", mane: "#8a6a40", maneful: true });
       return quad(b, { gait: variant % 2 ? "stalk" : "walk", collar: true, snarl: true }, 0.7, 1.45);
     }
-    if (kind === "elephant") return quad({ ...BEASTS.elephant }, { gait: "walk", caparison: true, caparisonHem: 0.2 }, 0.75, 1.0);
+    // A wild elephant is grey hide; only the war elephant wears the owner's cloth, a saddle cloth
+    // over the back (a full caparison turned the whole beast into a block of team colour).
+    if (kind === "elephant") return quad({ ...BEASTS.elephant }, { gait: "walk" }, 0.75, 1.0);
+    if (kind === "war-elephant") return quad({ ...BEASTS.elephant }, { gait: "walk", caparison: true, caparisonHem: 0.27, caparisonSpan: 0.42 }, 0.75, 1.0);
     if (kind === "lizard") return quad({ ...BEASTS.cat, coat: "#4a5a3a", belly: "#9a9a6a", mane: "#2a3a22", head: ["boar", 0.08, 0.03], tail: ["rope", 0.24, 0.016], h: 0.12, leg: [0.012, "paw"] }, { gait: "stalk", warpaint: true }, 0.7, 1.4);
     if (kind === "scorpion") {
       const sub = new MeshBuilder();
@@ -3932,7 +3943,7 @@ const UNIT_RULES = [
   [/SAND_LION/, { asset: "unit.beast", param: "sandlion" }],
   [/LION|GRIFFON|MANTICORE/, { asset: "unit.beast", param: "lion" }],
   [/TIGER/, { asset: "unit.beast", param: "tiger" }],
-  [/WAR_ELEPHANT/, { asset: "unit.beast", param: "elephant", scale: 1.1 }],
+  [/WAR_ELEPHANT/, { asset: "unit.beast", param: "war-elephant", scale: 1.1 }],
   [/ELEPHANT/, { asset: "unit.beast", param: "elephant" }],
   [/GORILLA/, { asset: "unit.beast", param: "ape" }],
   [/HAWK/, { asset: "unit.bird", fly: 0.3, height: 0.1 }],
