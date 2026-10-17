@@ -333,28 +333,49 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     return srgb(mix(c, vec3(0.16, 0.24, 0.26), pool * 0.85));
   }
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
-    // Corrupted ground: ash and scorched earth (the fields of perdition festering purple-red),
-    // split by a few meandering fissures that smoulder from below -- iso-lines of broad noise,
-    // so they wander and branch like cracks in a painting, not tiles. Brightest where the
-    // corruption runs deepest; a slow pulse; world-anchored.
-    vec3 dark, base, light, hot;
-    if (g == G_BURNING) { dark = vec3(0.07, 0.04, 0.04); base = vec3(0.17, 0.10, 0.08); light = vec3(0.30, 0.19, 0.14); hot = vec3(1.0, 0.40, 0.09); }
-    else if (g == G_BROKEN) { dark = vec3(0.08, 0.06, 0.06); base = vec3(0.19, 0.15, 0.13); light = vec3(0.33, 0.27, 0.23); hot = vec3(1.0, 0.33, 0.07); }
-    else { dark = vec3(0.09, 0.04, 0.06); base = vec3(0.21, 0.10, 0.13); light = vec3(0.36, 0.20, 0.22); hot = vec3(0.92, 0.16, 0.10); }
-    vec3 c = masses(m, dark, base, light, 1.4);
+    // Corrupted ground, each hell terrain its own material (F3): burning sands (ash-orange dunes),
+    // broken lands (grey basalt split into plates), fields of perdition (wine-red with festering
+    // pools). Mid-value bases so daylight and the dabs register; a sparse smouldering crack line
+    // (not iso-line rings); brightest where the corruption runs deepest; a slow pulse; anchored.
+    vec3 c = vec3(0.0);
+    vec3 hot = vec3(1.0, 0.4, 0.1);
+    if (g == G_BURNING) {
+      // Ash-orange sand with the desert dune ripple.
+      c = masses(m, vec3(0.26, 0.15, 0.09), vec3(0.40, 0.25, 0.16), vec3(0.56, 0.38, 0.22), 0.9);
+      float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
+      c *= 0.9 + 0.12 * smoothstep(-0.2, 0.9, dune);
+      hot = vec3(1.0, 0.42, 0.10);
+    } else if (g == G_BROKEN) {
+      // Grey basalt cut into plates by cell edges (the F_ICE idiom), dark seams between them.
+      c = masses(m, vec3(0.20, 0.18, 0.18), vec3(0.30, 0.27, 0.26), vec3(0.42, 0.39, 0.37), 1.1);
+      vec2 cl = mcells(m, 3.2);
+      float seam = 1.0 - smoothstep(0.015, 0.06, cl.y - cl.x);
+      c = mix(c, c * 0.5, seam * 0.8);
+      hot = vec3(1.0, 0.36, 0.08);
+    } else {
+      // Fields of perdition: wine-red with dark festering pools (the marsh pool/rim idiom).
+      c = masses(m, vec3(0.22, 0.10, 0.13), vec3(0.34, 0.15, 0.19), vec3(0.48, 0.24, 0.27), 1.2);
+      float pn = mfbm(m + 7.0, 2.4) + 0.03;
+      float rimP = smoothstep(0.56, 0.62, pn) * (1.0 - smoothstep(0.62, 0.66, pn));
+      float poolP = smoothstep(0.63, 0.67, pn);
+      c = mix(c, c * 0.6, rimP);
+      c = mix(c, vec3(0.10, 0.03, 0.05), poolP * 0.8);
+      hot = vec3(0.95, 0.18, 0.12);
+    }
+    // Blight: scorch masses keep the dark contrast without a uniformly low base.
     float scorch = smoothstep(0.5, 0.82, mstroke(m, 3.0, 4.0));
-    c = mix(c, dark * 0.7, scorch * 0.45);
-    // (Restrained: thin lines where the corruption runs deepest, not a neon network.)
+    c = mix(c, c * 0.6, scorch * 0.4);
+    // A sparse smouldering network: one low-frequency crack line (the small iso-rings came from a
+    // second high-frequency term, now dropped), live where the corruption runs deepest.
     float live = smoothstep(0.42, 0.72, mfbm(m + 3.3, 0.5));
-    float r1 = 1.0 - abs(mfbm(m + 7.7, 1.1) - 0.5) * 2.0;
-    float r2 = 1.0 - abs(mfbm(m - 3.1, 2.3) - 0.5) * 2.0;
-    float fis = max(smoothstep(0.986, 0.998, r1), smoothstep(0.99, 0.999, r2) * 0.5) * live;
-    c = mix(c, vec3(0.03, 0.02, 0.02), max(smoothstep(0.93, 0.985, r1), smoothstep(0.96, 0.99, r2) * 0.5) * live * 0.7);
+    float r1 = 1.0 - abs(mfbm(m + 7.7, 1.2) - 0.5) * 2.0;
+    float crackLine = smoothstep(0.93, 0.985, r1) * live;
+    float fis = smoothstep(0.986, 0.998, r1) * live;
+    c = mix(c, vec3(0.04, 0.02, 0.02), crackLine * 0.6);
     float pulse = 0.72 + 0.28 * sin(uTime * 1.1 + mnoise(m, 0.7) * 9.0);
     emit += srgb(hot) * fis * pulse * 1.1;
-    // A low halo of heat around the cracks, and a few embers.
-    c += srgb(hot) * smoothstep(0.88, 0.985, r1) * live * 0.03;
-    emit += srgb(hot) * smoothstep(0.965, 0.99, mnoise(m, 14.0)) * live * 0.25;
+    c += srgb(hot) * crackLine * 0.03;
+    emit += srgb(hot) * smoothstep(0.965, 0.99, mnoise(m, 14.0)) * live * 0.22;
     return srgb(c);
   }
   if (g == G_SHALLOWS || g == G_COAST) return srgb(masses(m, vec3(0.45, 0.40, 0.30), vec3(0.62, 0.55, 0.40), vec3(0.72, 0.66, 0.50), 1.0));
