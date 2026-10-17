@@ -731,13 +731,19 @@ void main() {
   vec2 m = mapOf(vWorld);
   // The sea floor's depth, read through a warp and averaged over a small footprint, so the
   // colour bands of the shelf follow soft, irregular contours instead of the plot grid.
+  // Only samples under water count: around a small lake most of the footprint is dry land, which
+  // read as shallows everywhere (a pale salt pan instead of a lake).
   vec2 wq = m + (vec2(mnoise(m, 0.8), mnoise(m + 9.0, 0.8)) - 0.5) * 0.7;
-  float ground = 0.0;
+  float near = texture(uHeight, mapUV(m)).r;
+  float gsum = 0.0, gw = 0.0;
   for (int k = 0; k < 4; k++) {
     vec2 o = vec2(k == 1 ? 0.35 : k == 3 ? -0.35 : 0.0, k == 0 ? 0.35 : k == 2 ? -0.35 : 0.0);
-    ground += texture(uHeight, mapUV(wq + o)).r * 0.25;
+    float g = texture(uHeight, mapUV(wq + o)).r;
+    float wet = step(g, vWorld.y - 0.004);
+    gsum += g * wet;
+    gw += wet;
   }
-  float near = texture(uHeight, mapUV(m)).r;
+  float ground = gw > 0.0 ? gsum / gw : near;
   float depth = max(0.0, vWorld.y - mix(ground, near, smoothstep(0.08, 0.0, vWorld.y - near)));
   float v = visAt(vWorld);
   if (uRiver < 0.5 && v < 0.02) discard;

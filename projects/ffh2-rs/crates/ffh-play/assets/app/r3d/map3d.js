@@ -207,7 +207,11 @@ export class Map3D {
       const prev = this.mapSeen;
       const dirty = prev && prev.w === map.w && prev.h === map.h ? changedPlots(prev, map) : null;
       if (!prev || !dirty || dirty.length) {
+        const before = this.world;
         this.world = new World(map);
+        // A lake is decided by its whole body (it touches no unrevealed plot): revealing one plot
+        // can change the floor of water several plots away.
+        if (dirty && before?.lake) for (let i = 0; i < map.w * map.h; i++) if (before.lake[i] !== this.world.lake[i]) dirty.push(i);
         const T1 = performance.now();
         this.scene.setWorld(this.world, map, dirty);
         mapChanged = true;

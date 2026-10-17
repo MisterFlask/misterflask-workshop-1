@@ -112,6 +112,7 @@ export class World {
     this.vis = new Uint8Array(n);
     this.peakJitter = new Float32Array(n * 2);
     this.classify();
+    this.findLakes();
     this.buildRivers();
     this.centerH = new Float32Array(n);
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) this.centerH[y * this.w + x] = this.heightAt(x + 0.5, y + 0.5);
@@ -141,6 +142,41 @@ export class World {
       else if (pt === "PLOT_PEAK") k = KIND.PEAK;
       if (this.feat[i] === FEAT.ICE && (k === KIND.OCEAN || k === KIND.COAST)) k = KIND.ICE;
       this.kind[i] = k;
+    }
+  }
+
+  /** Lakes: bodies of water of at most 12 plots (8-connected, as the game's areas) that touch no
+   *  unrevealed plot. Their floors are sunk into bowls (heightAt): the blend with the land around
+   *  would leave a small lake all shelf, so it painted as surf and pale shallows, like a salt pan. */
+  findLakes() {
+    const n = this.w * this.h;
+    this.lake = new Uint8Array(n);
+    this.hasLakes = false;
+    const seen = new Uint8Array(n);
+    const water = (k) => k === KIND.OCEAN || k === KIND.COAST;
+    for (let s = 0; s < n; s++) {
+      if (seen[s] || !water(this.kind[s])) continue;
+      const comp = [s];
+      seen[s] = 1;
+      let open = false;
+      for (let q = 0; q < comp.length && comp.length <= 12; q++) {
+        const x = comp[q] % this.w, y = (comp[q] - x) / this.w;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const j = this.index(x + dx, y + dy);
+            if (j < 0 || j === comp[q]) continue;
+            if (this.kind[j] === KIND.VOID) open = true;
+            else if (!seen[j] && water(this.kind[j])) {
+              seen[j] = 1;
+              comp.push(j);
+            }
+          }
+        }
+      }
+      if (comp.length <= 12 && !open) {
+        for (const i of comp) this.lake[i] = 1;
+        this.hasLakes = true;
+      }
     }
   }
 
@@ -177,7 +213,7 @@ export class World {
     const y0 = Math.floor(v);
     const fx = smoother(u - x0);
     const fy = smoother(v - y0);
-    let h = 0, hill = 0, peak = 0, water = 0, ice = 0, voidW = 0, sand = 0;
+    let h = 0, hill = 0, peak = 0, water = 0, ice = 0, voidW = 0, sand = 0, lakeW = 0;
     for (let j = 0; j < 2; j++) {
       for (let i = 0; i < 2; i++) {
         const k = this.kindAt(x0 + i, y0 + j);
@@ -185,6 +221,7 @@ export class World {
         h += wgt * BASE[k];
         const gi = this.index(x0 + i, y0 + j);
         if (gi >= 0 && (this.ground[gi] === GROUND.DESERT || this.ground[gi] === GROUND.BURNING_SANDS) && k === KIND.LAND) sand += wgt;
+        if (gi >= 0 && this.lake[gi]) lakeW += wgt;
         if (k === KIND.HILLS) hill += wgt;
         else if (k === KIND.PEAK) {
           peak += wgt;
@@ -198,28 +235,33 @@ export class World {
     // Gentle undulation of the lowlands; rough sea floor.
     h += land * 0.05 * this.fbm(mx, my, 1.1, 40, -20, 3);
     h += water * 0.06 * this.fbm(mx, my, 0.9, -11, 4, 3);
+    // A lake's floor falls away just inside its shore (the shore is where the blend crosses sea
+    // level, at about 0.45 of the lake's weight), so a lake is a bowl with a narrow rim of surf.
+    if (lakeW > 0.4) h -= 0.2 * smoothstep(0.42, 0.95, lakeW);
     if (sand > 0.05) {
       // Dunes: wind-combed ridges, sharp crest and long back slope, wandering with the noise.
       const ph = 2 * Math.PI * (mx * this.freq(1.25) + my * 0.55) + 2.6 * this.n2(mx, my, 0.6, 12.5, -4.1);
       const crest = Math.pow(0.5 + 0.5 * Math.sin(ph), 3);
       h += smoothstep(0.05, 0.8, sand) * 0.045 * crest * (0.6 + 0.4 * this.n2(mx, my, 1.4, -2.2, 7.7));
     }
-    if (hill > 0) {
+    // Hills and mountains do not spill into a lake (their domes reach over the plot's edge).
+    const dry = lakeW > 0.3 ? 1 - smoothstep(0.3, 0.6, lakeW) : 1;
+    if (hill > 0 && dry > 0) {
       // Rolling hills: a low shoulder under the hill country, the rounded domes of the hill plots
       // (they overlap into ridges where hills neighbour), crests of ridged noise on top.
       const r = this.ridged(mx, my, 1.6, 5.2, -3.4, 3);
-      h += smoothstep(0, 1, hill) * (0.06 + 0.07 * r);
-      h += this.domes(mx, my) * (0.8 + 0.35 * r);
+      h += dry * smoothstep(0, 1, hill) * (0.06 + 0.07 * r);
+      h += dry * this.domes(mx, my) * (0.8 + 0.35 * r);
     }
-    if (peak > 0) {
+    if (peak > 0 && dry > 0) {
       // Mountains: ridged massif, plus a summit near each peak plot's centre.
       // Sharp crests (ridged noise raised to a power: narrow ridges, deep gullies), a second,
       // finer set of spurs, and the summit of each peak plot.
       const r = this.ridged(mx, my, 1.1, -2.7, 8.1, 4);
       const r2 = this.ridged(mx, my, 2.6, 5.3, -1.9, 3);
       const pw = Math.pow(peak, 1.4);
-      h += pw * (0.18 + 0.62 * Math.pow(r, 1.7) + 0.16 * r2 * r);
-      h += this.summits(mx, my) * (0.75 + 0.35 * r2);
+      h += dry * pw * (0.18 + 0.62 * Math.pow(r, 1.7) + 0.16 * r2 * r);
+      h += dry * this.summits(mx, my) * (0.75 + 0.35 * r2);
     }
     if (voidW > 0) h = h * (1 - voidW) + BASE[KIND.VOID] * voidW;
     // Rivers carve their channel.
