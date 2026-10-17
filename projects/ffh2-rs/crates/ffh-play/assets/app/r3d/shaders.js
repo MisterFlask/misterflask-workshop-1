@@ -814,11 +814,15 @@ void main() {
   for (int k = 0; k < 4; k++) {
     vec2 o = vec2(k == 1 ? 0.35 : k == 3 ? -0.35 : 0.0, k == 0 ? 0.35 : k == 2 ? -0.35 : 0.0);
     float g = texture(uHeight, mapUV(wq + o)).r;
-    float wet = step(g, vWorld.y - 0.004);
+    // Fade each tap's weight continuously across the waterline (F20): the hard step() made a tap
+    // snap in or out as it crossed the shore, so depth jumped into hard-edged polygonal facets in
+    // lakes and on the shelf. The fallback to the centre sample blends by the missing weight too.
+    float wet = smoothstep(0.0, 0.03, vWorld.y - g);
     gsum += g * wet;
     gw += wet;
   }
-  float ground = gw > 0.0 ? gsum / gw : near;
+  float rest = max(0.0, 1.0 - gw);
+  float ground = (gsum + near * rest) / (gw + rest);
   float depth = max(0.0, vWorld.y - mix(ground, near, smoothstep(0.08, 0.0, vWorld.y - near)));
   float v = visAt(vWorld);
   if (uRiver < 0.5 && v < 0.02) discard;
