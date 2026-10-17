@@ -18,7 +18,9 @@ import { hasRecipe, buildAsset } from "./assets/registry.js";
 
 /** Where on a plot things stand (plot-local, x east / z south, plot half-size 0.5). */
 const UNIT_SPOT = [0, 0.04];
-const CITY_UNIT_SPOT = [0.0, 0.3];
+// The garrison stands at the city's front corner, not the gate centre, so it no longer covers the
+// settlement's landmark and houses (F10). The badge still carries the stack count.
+const CITY_UNIT_SPOT = [-0.27, 0.32];
 const VOLCANO_UNIT_SPOT = [-0.14, 0.38];
 const STRUCTURE_SPOT = [0.02, -0.12];
 const BONUS_SPOT = [-0.26, 0.2];
@@ -398,7 +400,7 @@ export function dressUnits(world, map) {
       const lz = spot[1] + slots[k][1];
       const mx = u0.x + 0.5 + lx;
       const my = u0.y + 0.5 - lz;
-      const s = (look.scale ?? 1) * (k === 0 ? 1 : 0.78);
+      const s = (look.scale ?? 1) * (k === 0 ? 1 : onCity ? 0.6 : 0.78);
       const asset = pick(look.asset, "basic.unit");
       const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
       const ground = standHeight(world, mx, my, foot);

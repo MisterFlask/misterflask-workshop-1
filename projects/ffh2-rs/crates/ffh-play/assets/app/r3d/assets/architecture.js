@@ -4320,7 +4320,10 @@ function cityLayout(ctx) {
   const deep = woods >= 3.5;
   const lmScale = (ctx.capital ? 1 : Math.min(0.92, 0.7 + size * 0.025)) * (deep ? 1.12 : 1) * (f === "tribal" ? 0.8 : 1);
   const lm = { x: r.range(-0.05, 0.05), z: ctx.capital ? r.range(-0.12, -0.09) : r.range(-0.14, -0.1) };
-  if (size <= 3 && !ctx.capital && f !== "elven") plan.add("bld.hall", r.int(0, 2), lm.x, lm.z + 0.03, r.range(-0.15, 0.15), 1);
+  // A small city gets a vertical landmark a TOWN improvement never has (F10): a low keep, so it
+  // reads as a city, not a cluster of houses. A tribal camp keeps its moot hall.
+  if (size <= 3 && !ctx.capital && f !== "elven")
+    plan.add(f === "tribal" ? "bld.hall" : "bld.keep", f === "tribal" ? r.int(0, 2) : 0, lm.x, f === "tribal" ? lm.z + 0.03 : lm.z, r.range(-0.12, 0.12), f === "tribal" ? 1 : 0.66);
   else {
     // Elven cities keep the great tree as their landmark, but let it grow with size (F2): the old
     // Math.max(0.9, ...) floored every non-capital tree at 0.9, so a size-1 town looked as big as a
@@ -4516,11 +4519,12 @@ function settlementOf(type, ctx) {
       if (ctx.unit) plan.try("bld.well", 0, r.range(-0.2, 0.2), 0.3, 0, 1);
       break;
     case "TOWN": {
-      // A hall (chapel, moot hall) at the back, houses packed close around it along the lanes.
+      // A hall (chapel, moot hall) at the back, houses packed around it. Kept clearly below a
+      // size-1 city (F10): a smaller hall, fewer houses and a wider gap, and no vertical keep.
       track(true);
       if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), 0.06, r.range(0, TAU), 1);
-      plan.try("bld.hall", r.int(0, 2), r.range(-0.06, 0.06), -0.2, r.range(-0.2, 0.2), 0.8) ?? plan.scatter({ asset: "bld.hall", variant: r.int(0, 2), scale: 0.78 }, { rmin: 0.1, rmax: 0.4, face, tries: 60 });
-      plan.pack(houses(r.int(9, 11), 0.8), { heart: [0, -0.08], gap: gapF, jitter: jitF, cands: 120, rmin: 0, rmax: 0.44 });
+      plan.try("bld.hall", r.int(0, 2), r.range(-0.06, 0.06), -0.2, r.range(-0.2, 0.2), 0.66) ?? plan.scatter({ asset: "bld.hall", variant: r.int(0, 2), scale: 0.62 }, { rmin: 0.1, rmax: 0.4, face, tries: 60 });
+      plan.pack(houses(r.int(6, 8), 0.72), { heart: [0, -0.08], gap: gapF * 1.6, jitter: jitF, cands: 120, rmin: 0, rmax: 0.44 });
       break;
     }
     case "TOWER":
