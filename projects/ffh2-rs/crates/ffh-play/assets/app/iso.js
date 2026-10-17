@@ -182,6 +182,9 @@ export class IsoMap {
     cells.sort((a, b) => a.sy - b.sy);
 
     for (const c of cells) this.drawTile(g, c);
+    // Rivers run along the lower (south/east) edges of their plot; draw them over all tiles so a
+    // nearer tile does not paint over a segment.
+    this.drawRivers(g, cells);
     // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
     // clump occludes a farther one.
     this.drawFeatures(g, cells);
@@ -240,6 +243,43 @@ export class IsoMap {
       g.fillStyle = "rgba(6,10,16,0.45)";
       g.fill();
     }
+  }
+
+  /** Rivers along plot edges. The server packs bit 0 = a river on the plot's south edge and bit 1
+   *  = its east edge; in the iso projection those are the diamond's lower-left (left→bottom vertex)
+   *  and lower-right (bottom→right vertex) edges. Drawn as a darker channel with a brighter core. */
+  drawRivers(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const hw = TW / 2;
+    const hh = TW / 4;
+    const path = new Path2D();
+    let any = false;
+    for (const c of cells) {
+      if (map.vis[c.k] === 0) continue;
+      const rv = map.river[c.k];
+      if (rv <= 0) continue;
+      if (rv & 1) {
+        path.moveTo(c.sx - hw, c.sy);
+        path.lineTo(c.sx, c.sy + hh);
+        any = true;
+      }
+      if (rv & 2) {
+        path.moveTo(c.sx, c.sy + hh);
+        path.lineTo(c.sx + hw, c.sy);
+        any = true;
+      }
+    }
+    if (!any) return;
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    g.strokeStyle = "#235c99";
+    g.lineWidth = Math.max(2.5, TW / 7);
+    g.stroke(path);
+    g.strokeStyle = "#6fb8ec";
+    g.lineWidth = Math.max(1, TW / 14);
+    g.stroke(path);
   }
 
   /** Relief and feature overlays drawn on top of the terrain tiles. A peak plot gets the mountain
