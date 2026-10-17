@@ -185,6 +185,8 @@ export class IsoMap {
     // Rivers run along the lower (south/east) edges of their plot; draw them over all tiles so a
     // nearer tile does not paint over a segment.
     this.drawRivers(g, cells);
+    // Roads connect plot centres to their routed neighbours.
+    this.drawRoutes(g, cells);
     // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
     // clump occludes a farther one.
     this.drawFeatures(g, cells);
@@ -280,6 +282,60 @@ export class IsoMap {
     g.strokeStyle = "#6fb8ec";
     g.lineWidth = Math.max(1, TW / 14);
     g.stroke(path);
+  }
+
+  /** Roads/railroads: a line from each routed plot's centre toward every routed, revealed
+   *  neighbour, meeting at the shared midpoint so a network joins up. Neighbour directions use the
+   *  same iso projection as the tiles (a map step (dx, dy) is a screen step of
+   *  ((dx+dy)·TW/2, (dx-dy)·TW/4)); half of that reaches the midpoint. */
+  drawRoutes(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const roadPath = new Path2D();
+    const railPath = new Path2D();
+    let anyRoad = false;
+    let anyRail = false;
+    for (const c of cells) {
+      if (map.vis[c.k] === 0) continue;
+      const rt = map.route[c.k];
+      if (rt < 0) continue;
+      const rail = tname("RouteType", rt) === "ROUTE_RAILROAD";
+      const path = rail ? railPath : roadPath;
+      let connected = false;
+      for (const [dx, dy] of T.DIRS8) {
+        const n = T.plotIndex(map, c.x + dx, c.y + dy);
+        if (n >= 0 && map.route[n] >= 0 && map.vis[n] > 0) {
+          path.moveTo(c.sx, c.sy);
+          path.lineTo(c.sx + ((dx + dy) * TW) / 4, c.sy + ((dx - dy) * TW) / 8);
+          connected = true;
+        }
+      }
+      if (!connected) {
+        path.moveTo(c.sx - TW * 0.1, c.sy);
+        path.lineTo(c.sx + TW * 0.1, c.sy);
+      }
+      if (rail) anyRail = true;
+      else anyRoad = true;
+    }
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    if (anyRoad) {
+      g.strokeStyle = "#6f5024";
+      g.lineWidth = Math.max(2, TW / 10);
+      g.stroke(roadPath);
+      g.strokeStyle = "#a9814a";
+      g.lineWidth = Math.max(1, TW / 20);
+      g.stroke(roadPath);
+    }
+    if (anyRail) {
+      g.strokeStyle = "#2a2a2a";
+      g.lineWidth = Math.max(2, TW / 8);
+      g.stroke(railPath);
+      g.strokeStyle = "#6b6b6b";
+      g.lineWidth = Math.max(1, TW / 24);
+      g.stroke(railPath);
+    }
   }
 
   /** Relief and feature overlays drawn on top of the terrain tiles. A peak plot gets the mountain
