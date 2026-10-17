@@ -82,9 +82,11 @@ tools/r3d-lab.mjs r3d-perf.mjs r3d-compare.mjs   lab screenshots, performance, c
 ```
 
 Data flow per change: `S.map`/`S.view` change → `Map3D.sync()` rebuilds only what changed (the world
-model and the dirty terrain chunks when the map changed; the dressing when the map or view changed;
-the unit figures when the view or the selection changed; the overlay marks when the overlay
-changed) → the frame loop renders. Per frame no geometry is generated: instance buffers and meshes
+model and the dirty terrain chunks when the map changed; the static dressing of the plots around
+what changed — a plot's dressing depends only on it and its neighbours, so a unit's step redresses
+the nine plots around each end and repacks only the instance buckets of the chunks they touch;
+the paint layers when the map, the cities or the light changed; the unit figures when the view or
+the selection changed; the overlay marks when the overlay changed) → the frame loop renders. Per frame no geometry is generated: instance buffers and meshes
 are reused; only uniforms change (a walking unit's instances are re-uploaded while it walks).
 
 The boundary: the 3D code reads `S`, `MapView`'s camera/overlay/layer and the type tables, and
@@ -318,7 +320,29 @@ lines of `ASSETS` in `src/transport/http.rs`, `useR3d` and the `r3d` delegation 
 
 ## 14. Limitations and next steps
 
-(Filled in at the end of the prototype.)
+What is not there, or not good enough yet, as of this prototype:
+
+* **No GPU numbers.** Everything here was developed and measured in headless Chromium with
+  SwiftShader (a CPU rasteriser): frames there take seconds, and §11's absolute times say nothing
+  about a real GPU. The design is GPU-conventional (instancing, a depth pre-pass, half-resolution
+  occlusion and glow, full-screen passes), but it has not been profiled on one.
+* **Motion.** Units glide between plots and idle (breathing, capes, wings, tails, wind); there are
+  no attack, death or work animations, and combat shows only the 2D flashes.
+* **One light at a time.** Afternoon (default), dusk and day are presets; there is no time of day
+  that follows the game.
+* **Faces and hands** are blank at the closest zoom; crossbowmen and slingers use the bow and
+  spear poses.
+* **Map edges.** Where the map does not wrap (north and south), the ground ends in a cut.
+* **Fog of war** follows the plot grid on purpose (it says which plots are in sight); the
+  unexplored is dark parchment, not modelled.
+* **Particles** draw after the paint passes and cannot be occluded behind tall props per pixel
+  (a point sprite is depth-tested at its centre).
+* **Water** has no reflections, no waterfalls where rivers drop, and harbours do not yet use the
+  shore context cities now receive.
+
+Next steps, roughly by value: profile on real GPUs and add a quality ladder (render scale,
+Kuwahara off, shadow size) chosen from the measured frame time; combat and work animations;
+a time of day bound to the turn; a reflection or sky term for water.
 
 ## 15. Provenance
 
