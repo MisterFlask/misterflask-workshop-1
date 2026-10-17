@@ -70,8 +70,14 @@ a blurred shrink.
 (`crates/ffh-play/assets/app/iso.js`, a third renderer beside flat and art). It draws the real
 `/api/map` + `/api/view` with PNG terrain tiles and unit sprites on team rings, owns its own
 projection/hit-testing, and embeds its PNGs via `http::ASSET_BYTES`. Run `ffh-play serve --new`
-and open `/?renderer=iso`. Remaining: water/forest/hills/feature tiles, per-terrain variants, the
-full unit roster, and promoting iso to a Tools → Options choice.
+and open `/?renderer=iso`. Art ported so far, entity by entity: the full terrain tile set
+(grass/plains/desert/snow/tundra/marsh, coast/ocean water, the broken-lands/burning-sands/
+fields-of-perdition hell terrains); forests as feature overlays; peaks as mountain relief
+sprites; cities as settlement sprites on the team ring (capital star, size badge, name chip);
+and the unit roster so far — knight (melee), archer, lich (casters), spider (beasts), settler,
+scout, worker. Remaining: hills relief, the other features (jungle, oasis, flood plains, ice,
+ancient/burnt forest), the rest of the unit roster, improvements/resources/rivers/roads/borders,
+and promoting iso to a Tools → Options choice.
 
 1. **Isometric bake test in the real client.** Add a minimal iso projection + a PNG-unit draw path:
    render a small patch of SoC diamond terrain, place one generated unit (Knight, 128 px) on its

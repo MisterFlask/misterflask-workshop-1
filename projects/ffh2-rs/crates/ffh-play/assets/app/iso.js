@@ -47,9 +47,13 @@ const FEATURE_FILES = ["forest"];
  *  gets the mountain. */
 const RELIEF_FILES = ["peak"];
 
-/** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token. */
+/** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token.
+ *  Civilian keywords are matched first so e.g. a scout never falls through to a combat archetype. */
 function unitSpriteKey(type) {
   const t = type ?? "";
+  if (/SETTLER/.test(t)) return "settler";
+  if (/WORKER|SLAVE|LABORER/.test(t)) return "worker";
+  if (/SCOUT|EXPLORER/.test(t)) return "scout";
   if (/ARCHER|HUNTER|RANGER|MARKSMAN|LONGBOW|CROSSBOW/.test(t)) return "archer";
   if (/MAGE|ADEPT|LICH|WIZARD|SORCER|ARCHMAGE|PRIEST|SUMMONER|DRUID|CONJUR|NECROMANCER/.test(t)) return "lich";
   if (/SPIDER|BEAST|WOLF|LION|BEAR|TIGER|GORILLA|SCORPION|BROOD|ANIMAL/.test(t)) return "spider";
@@ -79,7 +83,7 @@ export class IsoMap {
     for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
     for (const name of RELIEF_FILES) load(`r_${name}`, `./iso/relief/${name}.png`);
     load("c_town", "./iso/cities/town.png");
-    for (const name of ["knight", "lich", "archer", "spider"]) load(`u_${name}`, `./iso/units/${name}.png`);
+    for (const name of ["knight", "lich", "archer", "spider", "settler", "scout", "worker"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
   dispose() {}
