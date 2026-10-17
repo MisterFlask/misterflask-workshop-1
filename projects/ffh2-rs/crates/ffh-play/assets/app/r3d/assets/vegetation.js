@@ -6,17 +6,20 @@
 // masses (never one sphere) with gaps and overhangs. Foliage is painted in two to three tones baked
 // into the vertices (a cool dark underside, a mid body, a warm sunlit crown) by height and normal,
 // with soft spherical normals per mass and per crown so the light reads as broad painted masses.
-// Conifers are ragged, drooping, star-edged tiers; the ancient trees are twisted, buttressed giants
-// with a tiered, mallorn-like canopy and a few lantern-fruits; burnt and blighted woods are black,
+// Conifers are ragged, drooping, star-edged tiers; the ancient trees are silver-barked, buttressed
+// giants whose crowns are cedar-like tiers of broad foliage plates (dark teal below, lit sage-gold on
+// top) with a few lantern-fruits; jungle emergents hold flat umbrella plates over banana-leaved
+// understory; willows weep in curtains; burnt and blighted woods are black,
 // clawed snags with sparse embers. Variety stays inside each identity: size, lean, mass count and a
 // small hue drift per variant. Colours come from palette.js (PAL) plus a few vegetation tones below.
 //
 // Recipes (names are a contract): tree.oak tree.birch tree.pine (param "snow") tree.pine.snow
-// tree.jungle tree.palm tree.ancient tree.dead tree.blighted (the infernal woods) tree.willow (marsh)
+// tree.jungle (variants 4-5: understory) tree.palm tree.ancient tree.dead tree.blighted (the infernal
+// woods) tree.willow (marsh)
 // tree.sapling (param "broad" | "pine" | "snow" | "ancient"; none: broadleaf variants 0-3, conifer
 // 4-5) tree.sapling.pine tree.sapling.ancient bush shrub.dry reeds plant.fern plant.mushroom
-// plant.mushroom.glow plant.grass. The ".snow"/".pine"/".ancient" aliases exist because the
-// catalog's flora and undergrowth entries cannot pass a param.
+// plant.mushroom.glow plant.grass. The ".snow"/".pine"/".ancient" aliases predate params on flora
+// and undergrowth entries; they stay as names other modules may use.
 
 import { recipe } from "./registry.js";
 import { extendCatalog } from "./catalog.js";
@@ -31,17 +34,17 @@ const TAU = Math.PI * 2;
 // --- colours --------------------------------------------------------------------------------------
 // Foliage ramps run deep (cool, shadowed underside) -> dark -> mid -> light (warm, sunlit crown).
 
-const OAK = ["#182a22", "#28402a", "#3f5a30", "#6f7d40"];
-const OAK_AUTUMN = ["#1a2a20", "#2e4128", "#4c5a2e", "#807238"];
-const BIRCH = ["#22362a", "#38502f", "#5a7038", "#929a54"];
+const OAK = ["#14231d", "#243b28", "#3a5531", "#62763f"];
+const OAK_AUTUMN = ["#16261e", "#2a3d28", "#47582f", "#717441"];
+const BIRCH = ["#1e3226", "#324b30", "#4f6b3d", "#7b9260"];
 const PINE = ["#0d1f1c", "#183429", "#274a3d", "#557259"];
-const JUNGLE = ["#0a1e14", "#14341e", "#234b25", "#4a6e33"];
-const WILLOW = ["#1a2c22", "#2c4429", "#465e34", "#728048"];
-const ANCIENT = ["#0b2321", "#15372f", "#2c554a", "#688a66", "#a6bf8e"];
+const JUNGLE = ["#08191a", "#112e22", "#1d4630", "#456a3c"];
+const WILLOW = ["#1b2a23", "#2e4330", "#4b6244", "#7e8e68"];
+const ANCIENT = ["#0b1d1f", "#15322f", "#244840", "#486a53", "#aab27e"];
 const BLIGHT = ["#120a0e", "#24121a", "#3a1a1e", "#6a3424"];
 const BUSH = ["#1a2c20", "#2a4024", "#3a5228", "#66743a"];
-const PALM = ["#1e3622", "#2d4c26", "#486c30", "#86904c"];
-const SAGE = ["#2c3428", "#434d3a", "#5f6a50", "#8a9272"];
+const PALM = ["#1a3024", "#28442a", "#3b5a33", "#687a45"];
+const SAGE = ["#222b24", "#344234", "#4c5e46", "#6c7e5c"];
 const SNOW = "#f0f4f6";
 const SNOW_SHADE = "#c4d0dc";
 const ASH = "#6a645f";
@@ -185,7 +188,7 @@ function shadeBark(mb, from, { foot = null, footAmt = 0.6, y0 = 0, y1 = 0.08, up
 /** A broadleaf crown: masses around `C` (half-width `W`, half-height `hc`), with limbs from the
  *  trunk point `fork` to the outer ones. `layout` lists [angle, dist (of W), dy (of hc), rad (of W),
  *  detail]. Returns the foliage mark (the limbs come before it). */
-function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0 }) {
+function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0, self = 0.55 }) {
   // Limbs first (wood), toward the outer masses.
   const outer = layout.filter((m) => m[1] > 0.3).slice(0, limbs);
   mb.color = bark;
@@ -200,7 +203,7 @@ function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat 
   for (const [a, d, dy, rad, detail] of layout) {
     mb.color = jitter(WHITE, r, 0.07);
     const c = [C[0] + Math.cos(a) * d * W, C[1] + dy * hc, C[2] + Math.sin(a) * d * W];
-    leafMass(mb, c, rad * W, { detail: detail ?? 1, amp, squash, flat, seed: r.range(0, 50), self: 0.55 });
+    leafMass(mb, c, rad * W, { detail: detail ?? 1, amp, squash, flat, seed: r.range(0, 50), self });
     cores.push([c, rad * W, squash]);
   }
   if (nTufts) tufts(mb, r, cores, nTufts);
@@ -239,6 +242,28 @@ function tufts(mb, r, cores, n, { size = [0.32, 0.46], minUp = -0.25, out = 0.82
   }
 }
 
+/** A canopy plate (the mallorns' tiers, umbrella crowns): a broad, flat-bellied, gently domed disc of
+ *  foliage around `c` (its waist) of radius `R` and thickness `T`, its rim scalloped into irregular
+ *  lobes and drooping a little, its top lumpy. Smooth-shaded (a lathe), 10 * `seg` triangles.
+ *  Returns its mark. */
+function plate(mb, r, c, R, T, { seg = 11, lobes = 5, scallop = 0.2, lump = 0.3, droop = 0.3, dome = 1 } = {}) {
+  const m = mb.mark();
+  const ph = r.range(0, TAU), seed = r.range(0, 50), lp = r.range(0, TAU);
+  const prof = [[0, -0.34], [0.68, -0.5], [1, -0.08], [0.8, 0.32 * dome], [0.4, 0.52 * dome], [0, 0.58 * dome]].map(([x, y]) => [x * R, y * T]);
+  const lobe = (a) => scallop * (0.6 * Math.cos(lobes * a + lp) + 0.6 * noise3(Math.cos(a) * 1.7 + seed, Math.sin(a) * 1.7, seed * 0.3));
+  mb.part(() => {
+    mb.translate(c[0], c[1], c[2]);
+    mb.lathe(prof, seg, { caps: false, phase: ph, wobble: (a, y, i) => (i === 0 || i === prof.length - 1 ? 0 : lobe(a) * (i === 2 || i === 3 ? 1 : 0.55)) });
+  });
+  mb.displace(m, (x, y, z) => {
+    const d = Math.hypot(x - c[0], z - c[2]) / R;
+    const up = clamp((y - c[1]) / T + 0.2, 0, 1);
+    const n = noise3(x * 12 + seed, z * 12 - seed, seed) + 0.5 * noise3(x * 27 - seed, z * 27 + seed, seed * 0.7);
+    return [0, T * (lump * up * n - droop * d * d), 0];
+  });
+  return m;
+}
+
 // --- tree.oak -----------------------------------------------------------------------------------------
 
 /** The common broadleaf: a stout trunk with a root flare forking into a few boughs under a broad,
@@ -246,9 +271,9 @@ function tufts(mb, r, cores, n, { size = [0.32, 0.46], minUp = -0.25, out = 0.82
  *  broad dome, twin-stemmed (forked low, two lobes), leaning with a heavy low bough, split crown. */
 function buildOak(mb, r, variant, cols = OAK) {
   const shape = variant % 4;
-  const H = r.range(0.3, 0.35) * (shape === 1 ? 1.08 : 1);
-  const W = r.range(0.122, 0.136) * (shape === 0 ? 1.06 : 1);
-  const forkY = H * (shape === 1 ? r.range(0.18, 0.22) : r.range(0.28, 0.33));
+  const H = r.range(0.3, 0.355) * (shape === 1 ? 1.06 : 1);
+  const W = r.range(0.12, 0.132) * (shape === 0 ? 1.05 : 1);
+  const forkY = H * (shape === 1 ? r.range(0.17, 0.21) : r.range(0.22, 0.27));
   const la = r.range(0, TAU);
   const ln = (shape === 2 ? r.range(0.025, 0.035) : r.range(0.004, 0.015));
   const lx = Math.cos(la) * ln, lz = Math.sin(la) * ln;
@@ -260,29 +285,31 @@ function buildOak(mb, r, variant, cols = OAK) {
   const wig = () => r.range(-0.005, 0.005);
   const fork = [lx, forkY, lz];
   mb.tube([[0, 0.03, 0], [lx * 0.3 + wig(), forkY * 0.55, lz * 0.3 + wig()], [lx, forkY, lz], [lx * 1.2, forkY + 0.06, lz * 1.2]], [tr, tr * 0.85, tr * 0.72, tr * 0.45], 6);
-  const hc = (H - Math.max(forkY, H * 0.3)) * 0.5;
+  const hc = (H - Math.max(forkY, H * 0.26)) * 0.5;
   const C = [lx * 1.6, H - hc * 0.95, lz * 1.6];
   let layout;
   if (shape === 0) {
     // Broad dome with a scalloped, overhanging skirt.
-    layout = [[0, 0, 0.3, 0.56], ...ringLayout(r, 4, { dist: [0.66, 0.82], dy: [-0.5, 0.05], rad: [0.4, 0.48] })];
+    layout = [[0, 0, 0.3, 0.64], ...ringLayout(r, 4, { dist: [0.56, 0.7], dy: [-0.5, 0.05], rad: [0.47, 0.55] })];
   } else if (shape === 1) {
     // Twin-stemmed: forked low into two leaders, each carrying its own lobe of the crown.
     const a = r.range(0, TAU);
-    layout = [[a, 0.6, 0.15, 0.52], [a + Math.PI, 0.6, 0.0, 0.52], [a + 0.9, 0.75, -0.4, 0.4], [a + Math.PI + 0.9, 0.7, 0.4, 0.42], [a + Math.PI / 2, 0.15, 0.6, 0.42]];
+    layout = [[a, 0.55, 0.15, 0.58], [a + Math.PI, 0.55, 0.0, 0.58], [a + 0.9, 0.7, -0.4, 0.46], [a + Math.PI + 0.9, 0.65, 0.4, 0.48], [a + Math.PI / 2, 0.15, 0.6, 0.48]];
   } else if (shape === 2) {
     // A heavy bough reaching out on the leaning side, low.
-    layout = [[0, 0, 0.25, 0.58], [la + r.range(-0.3, 0.3), 0.95, -0.4, 0.46], [la + Math.PI + r.range(-0.5, 0.5), 0.6, 0.4, 0.44], ...ringLayout(r, 2, { dist: [0.6, 0.75], dy: [-0.35, 0.25], rad: [0.38, 0.46] })];
+    layout = [[0, 0, 0.25, 0.62], [la + r.range(-0.3, 0.3), 0.9, -0.4, 0.52], [la + Math.PI + r.range(-0.5, 0.5), 0.55, 0.4, 0.5], ...ringLayout(r, 2, { dist: [0.55, 0.7], dy: [-0.35, 0.25], rad: [0.44, 0.52] })];
   } else {
     // Split crown: two lobes with a gap between them.
     const a = r.range(0, TAU);
-    layout = [[a, 0.55, 0.3, 0.55], [a + Math.PI, 0.6, 0.05, 0.55], [a + 1.5, 0.75, -0.45, 0.42], [a + Math.PI + 1.3, 0.5, 0.65, 0.45]];
+    layout = [[a, 0.55, 0.3, 0.6], [a + Math.PI, 0.6, 0.05, 0.6], [a + 1.5, 0.72, -0.45, 0.48], [a + Math.PI + 1.3, 0.5, 0.65, 0.5]];
   }
-  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.72, nTufts: layout.length > 4 ? 4 : 7 });
+  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.74, nTufts: layout.length > 4 ? 4 : 6, self: 0.35 });
   shadeBark(mb, w0, { foot: MOSS, footAmt: 0.55, y0: -0.02, y1: 0.07 });
   mb.heightAO(w0, -0.02, forkY, 0.55);
-  mb.sphereNormals(m0, [C[0], C[1] - hc * 0.6, C[2]], 0.45);
-  shadeFoliage(mb, m0, { lo: forkY, hi: C[1] + hc * 1.2, cols, center: C, rad: W * 1.1, seed: r.range(0, 9) });
+  mb.sphereNormals(m0, [C[0], C[1] - hc * 0.6, C[2]], 0.6);
+  // Each tree drifts a little in hue inside the identity (bluer, greener, more olive).
+  const drift = [[0.94, 1, 1.08], [1, 1, 1], [1.06, 1.02, 0.9], [0.97, 1.03, 0.98]][r.int(0, 3)];
+  shadeFoliage(mb, m0, { lo: forkY, hi: C[1] + hc * 1.2, cols: cols.map((c) => lin(c).map((x, q) => x * drift[q])), center: C, rad: W * 1.1, seed: r.range(0, 9) });
   swayFoliage(mb, m0, forkY, H, W, 0.9, C[0], C[2]);
 }
 
@@ -330,18 +357,20 @@ function buildBirch(mb, r, variant) {
   const m0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
   const ox = tops.reduce((acc, t) => acc + t.p[0], 0) / stems, oz = tops.reduce((acc, t) => acc + t.p[2], 0) / stems;
-  const W = [0.07, 0.082, 0.092][stems - 1] * r.range(0.92, 1.08);
-  const y0 = Math.max(0.12, H * 0.45), y1 = H - 0.01;
+  // Airy: separate small clumps spiralling up the stems, with gaps between them where the pale
+  // stems and the light show through (never one dense ball).
+  const W = [0.082, 0.092, 0.1][stems - 1] * r.range(0.92, 1.08);
+  const y0 = Math.max(0.12, H * 0.42), y1 = H - 0.015;
   const lo = y0 - W * 0.5, hi = y1 + W * 0.4;
   const ph = r.range(0, TAU);
   const n = 6;
   for (let k = 0; k < n; k++) {
     const u = k / (n - 1);
-    const a = ph + k * 2.4;
-    const d = W * (0.6 - 0.42 * u) * r.range(0.8, 1.1);
+    const a = ph + k * 2.4 + r.range(-0.3, 0.3);
+    const d = W * (k === n - 1 ? 0.12 : (0.68 - 0.36 * u) * r.range(0.85, 1.1));
     const c = [ox + Math.cos(a) * d, y0 + (y1 - y0) * u, oz + Math.sin(a) * d];
-    mb.color = jitter(WHITE, r, 0.07);
-    leafMass(mb, c, W * (0.72 - 0.3 * u) * r.range(0.9, 1.1), { detail: 1, amp: 0.4, squash: 0.9, flat: 0.2, seed: r.range(0, 50), self: 0.45, freq: 2.0 });
+    mb.color = jitter(WHITE, r, 0.08);
+    leafMass(mb, c, W * (0.56 - 0.16 * u) * r.range(0.88, 1.1), { detail: 1, amp: 0.36, squash: 0.92, flat: 0.2, seed: r.range(0, 50), self: 0.4, freq: 2.0 });
   }
   const cx = ox, cz = oz;
   const cy = (lo + hi) * 0.5;
@@ -401,8 +430,8 @@ function pineTier(mb, r, { cx, cz, y, rad, tall, spokes, droop, jag, light, cols
 function buildPine(mb, r, variant, { snow = false, small = false, cols = PINE } = {}) {
   const type = small ? 0 : variant % 8;
   const slim = type === 5, scraggly = type >= 6;
-  const H = small ? r.range(0.15, 0.21) : r.range(0.36, 0.43) * (slim ? 1.05 : scraggly ? 0.95 : 1);
-  const R = (slim ? 0.072 : scraggly ? 0.1 : 0.095) * r.range(0.9, 1.1) * (small ? 0.68 : 1);
+  const H = small ? r.range(0.14, 0.18) : r.range(0.36, 0.43) * (slim ? 1.05 : scraggly ? 0.95 : 1);
+  const R = (slim ? 0.078 : scraggly ? 0.106 : 0.102) * r.range(0.9, 1.1) * (small ? 0.66 : 1);
   const tiers = small ? 3 : scraggly ? 5 : slim ? 7 : r.int(5, 6);
   const base = H * (scraggly ? 0.24 : small ? 0.14 : r.range(0.11, 0.16));
   const lean = [r.range(-0.012, 0.012), 0, r.range(-0.012, 0.012)];
@@ -465,12 +494,41 @@ recipe("tree.pine.snow", { variants: 8, build: (mb, r, { variant }) => buildPine
 
 // --- tree.jungle --------------------------------------------------------------------------------------
 
-/** A rainforest emergent: a tall, pale, slightly S-curved trunk on thin buttress fins, a broad dark
- *  umbrella crown of flattened masses with a lower side tier, and a few hanging vines. */
+/** A long leaf blade (palm fronds, banana and elephant-ear leaves) from `top` out along the angle `a`:
+ *  `L` long, rising by `elev` and falling by `drop` (of L) along a parabola, folded along its spine
+ *  (`fold`, of its half-width), `width` (of L) wide at its widest; coloured from `cols` (deep, dark,
+ *  mid, light) heart to tip, or `dry` (a dead, straw frond). */
+function frondBlade(mb, top, a, L, elev, drop, { width = 0.24, fold = 0.55, cols, dry = null, m = 6, round = 0.7 } = {}) {
+  const dir = [Math.cos(a), 0, Math.sin(a)];
+  const side = [-Math.sin(a), 0, Math.cos(a)];
+  const [deep, dark, mid, lite] = cols;
+  const L0 = [], S0 = [], R0 = [], kL = [], kS = [], kR = [];
+  for (let j = 0; j < m; j++) {
+    const s = j / (m - 1);
+    const sp = [top[0] + dir[0] * L * s, top[1] + L * (elev * s - drop * s * s), top[2] + dir[2] * L * s];
+    const w = L * width * Math.pow(Math.sin(Math.PI * Math.min(1, 0.15 + s * 0.95)), round);
+    const sag = w * fold;
+    L0.push([sp[0] + side[0] * w, sp[1] - sag, sp[2] + side[2] * w]);
+    S0.push(sp);
+    R0.push([sp[0] - side[0] * w, sp[1] - sag, sp[2] - side[2] * w]);
+    const c = dry ? vlerp(dry, pal("#5e4a30"), 0.5 * (1 - s)) : s < 0.5 ? vlerp(dark, mid, s * 2) : vlerp(mid, lite, (s - 0.5) * 2);
+    kS.push(c);
+    kL.push(dry ? c : vlerp(c, deep, 0.35));
+    kR.push(dry ? c : vlerp(c, deep, 0.35));
+  }
+  surface(mb, [L0, S0, R0], [kL, kS, kR], { up: [0, 1, 0] });
+}
+
+/** Rainforest trees. Emergents (variants 0-3): a tall, pale, slightly S-curved trunk on thin
+ *  buttress fins, holding up a broad, flat-topped umbrella of foliage plates (a big one on top, two
+ *  or three lower at its sides, like a kapok), big leaves bursting from under its rim and lianas
+ *  hanging. Understory (4, 5): a short stem in a burst of huge, drooping, banana-like leaves around a
+ *  dark heart. Deep, cool greens, darker than the temperate woods. */
 function buildJungle(mb, r, variant) {
-  const H = r.range(0.37, 0.43);
-  const W = r.range(0.13, 0.15) * (variant % 3 === 2 ? 1.08 : 1);
-  const forkY = H * r.range(0.56, 0.64);
+  if (variant % 6 >= 4) return buildJungleUnder(mb, r);
+  const H = r.range(0.38, 0.44);
+  const W = r.range(0.135, 0.155) * (variant % 3 === 2 ? 1.08 : 1);
+  const forkY = H * r.range(0.6, 0.68);
   const la = r.range(0, TAU), ln = r.range(0.006, 0.022);
   const lx = Math.cos(la) * ln, lz = Math.sin(la) * ln;
   const tr = r.range(0.016, 0.019);
@@ -497,31 +555,88 @@ function buildJungle(mb, r, variant) {
     }
     surface(mb, [inner, outer], [kin, kout], { up: [-sa, 0, ca] });
   }
+  // The umbrella's plates: the crown on top, two or three lower ones at its sides.
+  const C = [lx * 1.3, H - W * 0.26, lz * 1.3];
+  const ph = r.range(0, TAU);
+  const plates = [{ a: ph, c: [C[0], C[1], C[2]], R: W * r.range(0.66, 0.72), T: W * 0.3 }];
+  const ns = r.int(2, 3);
+  for (let k = 0; k < ns; k++) {
+    const a = ph + (k / ns) * TAU + r.range(-0.4, 0.4);
+    const d = W * r.range(0.62, 0.78);
+    plates.push({ a, c: [C[0] + Math.cos(a) * d, C[1] - W * r.range(0.2, 0.42), C[2] + Math.sin(a) * d], R: W * r.range(0.46, 0.54), T: W * 0.24 });
+  }
   const fork = [lx, forkY, lz];
-  const C = [lx * 1.3, H - W * 0.28, lz * 1.3];
+  for (const p of plates.slice(1)) limb(mb, fork, [p.c[0], p.c[1] - p.T * 0.3, p.c[2]], tr * 0.6, tr * 0.3, 4, 0.35);
+  limb(mb, fork, [C[0], C[1] - plates[0].T * 0.3, C[2]], tr * 0.65, tr * 0.35, 4, 0.5);
   shadeBark(mb, w0, { foot: MOSS, footAmt: 0.5, y0: -0.02, y1: 0.12 });
   mb.heightAO(w0, -0.02, forkY, 0.5);
-  // Hanging vines (lianas) from the crown's underside.
+  // Hanging vines (lianas) from the plates' bellies.
   const v0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
-  mb.color = pal("#26401f");
+  mb.color = pal("#22391f");
   const vines = r.int(2, 4);
   for (let k = 0; k < vines; k++) {
-    const a = r.range(0, TAU), d = W * r.range(0.45, 0.85);
-    const top = [C[0] + Math.cos(a) * d, C[1] - W * 0.15, C[2] + Math.sin(a) * d];
+    const p = plates[1 + (k % ns)];
+    const a = r.range(0, TAU), d = p.R * r.range(0.3, 0.8);
+    const top = [p.c[0] + Math.cos(a) * d, p.c[1] - p.T * 0.4, p.c[2] + Math.sin(a) * d];
     const len = r.range(0.07, 0.15);
     mb.tube([top, [top[0] + r.range(-0.01, 0.01), top[1] - len * 0.5, top[2] + r.range(-0.01, 0.01)], [top[0] + r.range(-0.01, 0.01), top[1] - len, top[2]]], [0.0032, 0.0026, 0.0016], 3);
   }
   eachVert(mb, v0, (v, i) => {
     v[i + 10] = 0.7 * clamp((C[1] - v[i + 1]) / 0.12, 0, 1);
   });
-  // The umbrella: a centre and a ring of four flattened masses.
-  // The umbrella: a centre, a ring of three flattened masses and a lower side tier.
-  const layout = [[0, 0, 0.2, 0.56], [r.range(0, TAU), 1.05, -1.0, 0.5], ...ringLayout(r, 3, { dist: [0.6, 0.75], dy: [-0.3, 0.1], rad: [0.44, 0.52] })];
-  const m0 = crown(mb, r, { C, W, hc: W * 0.5, fork, layout, squash: 0.5, flat: 0.55, amp: 0.3, limbR: tr * 0.6, limbs: 3, bark });
-  mb.sphereNormals(m0, [C[0], C[1] - W * 0.4, C[2]], 0.35);
-  shadeFoliage(mb, m0, { lo: C[1] - W * 0.8, hi: H, cols: JUNGLE, center: C, rad: W * 1.2, seed: r.range(0, 9), hw: 0.3, upw: 0.42 });
+  const m0 = mb.mark();
+  mb.mat = MAT.FOLIAGE;
+  for (const p of plates) {
+    mb.color = jitter(WHITE, r, 0.07);
+    plate(mb, r, p.c, p.R, p.T, { seg: 12, lobes: r.int(4, 5), scallop: 0.24, lump: 0.35, droop: 0.4, dome: 1.1 });
+  }
+  mb.sphereNormals(m0, [C[0], C[1] - W * 0.5, C[2]], 0.35);
+  const drift = [[0.95, 1, 1.05], [1, 1, 1], [1.04, 1.02, 0.94]][variant % 3];
+  const cols = JUNGLE.map((c) => lin(c).map((x, q) => x * drift[q]));
+  shadeFoliage(mb, m0, { lo: C[1] - W * 0.6, hi: H, cols, center: C, rad: W * 1.2, seed: r.range(0, 9), hw: 0.36, upw: 0.36, aoMin: 0.45 });
+  // Big leaves bursting from under the plates' rims: the tropical edge of the silhouette.
+  const f0 = mb.mark();
+  const fc = cols.map((c) => c);
+  const nl = r.int(4, 5);
+  for (let k = 0; k < nl; k++) {
+    const p = plates[1 + (k % ns)];
+    const a = p.a + r.range(-0.9, 0.9);
+    const base = [p.c[0] + Math.cos(a) * p.R * 0.55, p.c[1] - p.T * 0.2, p.c[2] + Math.sin(a) * p.R * 0.55];
+    frondBlade(mb, base, a, r.range(0.07, 0.09), r.range(0.1, 0.35), r.range(0.7, 1.0), { width: 0.2, cols: [fc[0], fc[1], fc[2], vlerp(fc[2], fc[3], 0.6)], m: 4 });
+  }
   swayFoliage(mb, m0, forkY - 0.05, H, W, 0.75, C[0], C[2]);
+  swayFoliage(mb, f0, forkY, H, W, 1, C[0], C[2]);
+}
+
+/** The jungle's understory: a short, leaning stem in a burst of huge, drooping, banana-like leaves
+ *  around a dark heart, a few young leaves standing up in the middle. */
+function buildJungleUnder(mb, r) {
+  const H = r.range(0.11, 0.15);
+  const la = r.range(0, TAU), ln = r.range(0.005, 0.015);
+  const top = [Math.cos(la) * ln, H, Math.sin(la) * ln];
+  mb.color = jitter(pal(BARK_JUNGLE), r, 0.06);
+  const w0 = mb.mark();
+  mb.tube([[0, -0.05, 0], [top[0] * 0.5, H * 0.5, top[2] * 0.5], top], [0.012, 0.009, 0.006], 5);
+  mb.heightAO(w0, -0.02, H, 0.55);
+  const m0 = mb.mark();
+  mb.mat = MAT.FOLIAGE;
+  const cols = JUNGLE.map(lin);
+  // A dark heart the leaves spring from.
+  mb.color = jitter(WHITE, r, 0.06);
+  leafMass(mb, [top[0], H - 0.005, top[2]], 0.04, { detail: 1, amp: 0.3, squash: 0.8, flat: 0.3, seed: r.range(0, 50), self: 0.5 });
+  shadeFoliage(mb, m0, { lo: H - 0.04, hi: H + 0.04, cols, seed: r.range(0, 9), bias: -0.12 });
+  const n = r.int(7, 8), ph = r.range(0, TAU);
+  for (let k = 0; k < n; k++) {
+    const a = ph + (k / n) * TAU + r.range(-0.25, 0.25);
+    const L = r.range(0.11, 0.15);
+    const j = jitter(WHITE, r, 0.08);
+    frondBlade(mb, [top[0], H - 0.005, top[2]], a, L, r.range(0.5, 0.9), r.range(1.1, 1.5), { width: 0.26, fold: 0.35, round: 0.5, cols: cols.map((c) => c.map((x, q) => x * j[q])), m: 5 });
+  }
+  for (let k = 0; k < 2; k++) {
+    frondBlade(mb, [top[0], H - 0.005, top[2]], r.range(0, TAU), r.range(0.06, 0.08), r.range(1.6, 2.2), 0.8, { width: 0.2, cols, m: 4 });
+  }
+  swayFoliage(mb, m0, H - 0.04, H + 0.08, 0.14, 1, top[0], top[2]);
 }
 
 recipe("tree.jungle", { variants: 6, build: (mb, r, { variant }) => buildJungle(mb, r, variant) });
@@ -529,7 +644,7 @@ recipe("tree.jungle", { variants: 6, build: (mb, r, { variant }) => buildJungle(
 // --- tree.palm ----------------------------------------------------------------------------------------
 
 /** A palm: a ringed, gracefully bent trunk swelling at its foot, a starburst of arching, drooping
- *  fronds (folded leaf blades, yellowing at the tips), a dead frond or two hanging and a few nuts. */
+ *  fronds (folded leaf blades, yellowing a little at the tips), a dead frond hanging and a few nuts. */
 function buildPalm(mb, r, variant) {
   const H = r.range(0.29, 0.36);
   const ba = r.range(0, TAU), bend = r.range(0.03, 0.08);
@@ -559,37 +674,18 @@ function buildPalm(mb, r, variant) {
   }
   const m0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
-  const [deep, dark, mid, lite] = PALM.map(lin);
-  const dry = pal("#9a8248");
+  const j = jitter(WHITE, r, 0.05);
+  const cols = PALM.map((c) => lin(c).map((x, q) => x * j[q]));
+  const dry = pal("#8a7448");
   const nf = r.int(7, 9);
   const fph = r.range(0, TAU);
-  const frond = (a, L, elev, drop, isDry) => {
-    const dir = [Math.cos(a), 0, Math.sin(a)];
-    const side = [-Math.sin(a), 0, Math.cos(a)];
-    const L0 = [], S0 = [], R0 = [], kL = [], kS = [], kR = [];
-    const m = 6;
-    for (let j = 0; j < m; j++) {
-      const s = j / (m - 1);
-      const sp = [top[0] + dir[0] * L * s, top[1] + L * (elev * s - drop * s * s), top[2] + dir[2] * L * s];
-      const w = L * 0.24 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.15 + s * 0.95)), 0.7);
-      const sag = w * 0.55;
-      L0.push([sp[0] + side[0] * w, sp[1] - sag, sp[2] + side[2] * w]);
-      S0.push(sp);
-      R0.push([sp[0] - side[0] * w, sp[1] - sag, sp[2] - side[2] * w]);
-      const c = isDry ? vlerp(dry, pal("#5e4a30"), 0.5 * (1 - s)) : s < 0.5 ? vlerp(dark, mid, s * 2) : vlerp(mid, lite, (s - 0.5) * 2);
-      kS.push(c);
-      kL.push(isDry ? c : vlerp(c, deep, 0.35));
-      kR.push(isDry ? c : vlerp(c, deep, 0.35));
-    }
-    surface(mb, [L0, S0, R0], [kL, kS, kR], { up: [0, 1, 0] });
-  };
   for (let k = 0; k < nf; k++) {
     const a = fph + (k / nf) * TAU + r.range(-0.25, 0.25);
-    frond(a, r.range(0.12, 0.155), r.range(0.35, 0.75), r.range(0.9, 1.25), false);
+    frondBlade(mb, top, a, r.range(0.12, 0.155), r.range(0.35, 0.75), r.range(0.9, 1.25), { cols });
   }
   // A young upright frond in the heart and a dead one hanging.
-  frond(r.range(0, TAU), 0.07, 1.6, 1.1, false);
-  if (variant % 2 === 0) frond(fph + 0.4, 0.1, -0.7, 0.4, true);
+  frondBlade(mb, top, r.range(0, TAU), 0.07, 1.6, 1.1, { cols });
+  if (variant % 2 === 0) frondBlade(mb, top, fph + 0.4, 0.1, -0.7, 0.4, { cols, dry });
   mb.sphereNormals(m0, [top[0], top[1] - 0.04, top[2]], 0.35);
   swayFoliage(mb, m0, top[1] - 0.04, top[1] + 0.04, 0.14, 1, top[0], top[2]);
 }
@@ -598,128 +694,168 @@ recipe("tree.palm", { variants: 6, build: (mb, r, { variant }) => buildPalm(mb, 
 
 // --- tree.ancient -------------------------------------------------------------------------------------
 
-/** The great trees of the ancient forests (elven, mallorn-like): a massive trunk of twisted strands
- *  on sprawling buttress roots, each strand unravelling into a great bough that carries a broad, flat
- *  mass of the lower canopy, under a dome of foliage over the trunk -- a two-tiered, spreading crown,
- *  teal with pale sunlit tops; silvered bark, mossy at the foot; a few lantern-fruits glowing pale
- *  under the boughs. Variants: grand, broad, gnarled and leaning, younger. */
+const ANCIENT_BARK = "#7a7d74";
+const ANCIENT_BARK_LIGHT = "#c9cabd";
+const ANCIENT_MOSS = "#252f22";
+
+/** The great trees of the ancient forests (elven, mallorn-like): a massive, silver-barked trunk of
+ *  twisted strands on mossy buttress roots, carrying a crown of distinct horizontal tiers -- broad,
+ *  flat plates of foliage on great boughs, each tier smaller and higher than the one below, dark
+ *  teal in the lower tiers and lit to pale sage-gold at the top, with dark gaps between them where
+ *  the boughs and the trunk show -- moss beards and a few lantern-fruits glowing at the tiers' rims.
+ *  Variants: grand (three tiers), broad (three wide tiers), gnarled and leaning, younger. */
 function buildAncient(mb, r, variant) {
   const kind = variant % 4;
-  const H = [1.0, 0.92, 0.88, 0.8][kind] * r.range(0.96, 1.04);
-  const Rc = [0.4, 0.44, 0.38, 0.33][kind] * r.range(0.95, 1.05);
-  const forkY = H * [0.42, 0.4, 0.42, 0.45][kind];
+  const H = [0.98, 0.9, 0.88, 0.8][kind] * r.range(0.97, 1.03);
+  const Rc = [0.4, 0.44, 0.38, 0.34][kind] * r.range(0.95, 1.05);
+  const forkY = H * [0.34, 0.32, 0.38, 0.4][kind];
   const la = r.range(0, TAU);
-  const lean = kind === 2 ? 0.08 : 0.02;
-  const R0 = [0.095, 0.1, 0.09, 0.075][kind];
+  const lean = kind === 2 ? 0.1 : 0.025;
+  const R0 = [0.08, 0.085, 0.078, 0.064][kind];
+  // The trunk's axis bends with height (fraction of H).
   const axis = (t) => [Math.cos(la) * lean * t * t, Math.sin(la) * lean * t * t];
-  const [ax, az] = axis(1);
-  // The crown: great boughs, each ending in a broad flat mass of the lower canopy (at varied
-  // heights), and a dome over the trunk.
-  const nb = kind < 2 ? 6 : 5;
-  const th0 = r.range(0, TAU);
-  const boughs = [];
-  for (let k = 0; k < nb; k++) {
-    const a = th0 + (k / nb) * TAU + r.range(-0.25, 0.25);
-    const d = Rc * r.range(0.56, 0.72);
-    boughs.push({ a, c: [ax + Math.cos(a) * d, forkY + H * r.range(0.05, 0.17), az + Math.sin(a) * d], rad: Rc * r.range(0.4, 0.48) });
+  const at = (y) => {
+    const [x, z] = axis(clamp(y / H, 0, 1));
+    return [x, y, z];
+  };
+  // The tiers, cedar-like: broad, flat plates (each a bough's load of foliage) in layers that stay
+  // wide as they rise, each layer's plates in the gaps of the one below, so every layer shows.
+  const nt = 3;
+  const topY = H - 0.1;
+  const y0 = forkY + 0.07;
+  const tiers = [];
+  let ph = r.range(0, TAU);
+  for (let k = 0; k < nt; k++) {
+    const u = k / (nt - 1);
+    const top = k === nt - 1;
+    const y = y0 + (topY - y0) * Math.pow(u, 0.85);
+    const Rk = Rc * (1 - 0.3 * u);
+    const np = top ? 2 : k === 0 ? 4 : 3;
+    const plates = [];
+    for (let j = 0; j < np; j++) {
+      const a = ph + (j / np) * TAU + r.range(-0.3, 0.3);
+      // The gnarled one reaches out on its leaning side.
+      const reach = kind === 2 ? 1 + 0.4 * Math.max(0, Math.cos(a - la)) : 1;
+      const d = Rk * (top ? r.range(0.2, 0.3) : r.range(0.5, 0.62)) * reach;
+      const o = at(y);
+      const pr = Rk * (top ? r.range(0.58, 0.66) : r.range(0.5, 0.58));
+      plates.push({ a, c: [o[0] + Math.cos(a) * d, y + r.range(-0.025, 0.025), o[2] + Math.sin(a) * d], R: pr, T: pr * (top ? r.range(0.56, 0.64) : r.range(0.42, 0.52)), top });
+    }
+    tiers.push({ y, R: Rk, plates });
+    ph += Math.PI / np + r.range(-0.3, 0.3);
   }
-  const nd = kind === 3 ? 3 : 4;
-  const dph = r.range(0, TAU);
-  const dome = [];
-  for (let k = 0; k < nd; k++) {
-    const a = dph + (k / nd) * TAU + r.range(-0.3, 0.3);
-    const d = Rc * r.range(0.24, 0.34);
-    dome.push({ c: [ax + Math.cos(a) * d, H - Rc * 0.22 + r.range(-0.03, 0.02), az + Math.sin(a) * d], rad: Rc * r.range(0.42, 0.48) });
-  }
-  const bark = jitter(pal(BARK_ANCIENT), r, 0.04);
+  const crownTop = at(topY);
+
+  // --- wood: core, twisted strands unravelling into the lowest tier's boughs, the leader with the
+  // upper tiers' boughs, buttress roots.
+  const bark = jitter(pal(ANCIENT_BARK), r, 0.04);
   const w0 = mb.mark();
   mb.color = bark;
-  // The core of the trunk, rising on as the leader into the dome.
-  const lead = [ax, H - Rc * 0.4, az];
-  mb.tube([0, 0.33, 0.66, 1].map((t) => { const [x, z] = axis(t); return [x, -0.05 + (forkY + 0.08) * t, z]; }).concat([lead]), [R0 * 0.9, R0 * 0.78, R0 * 0.7, R0 * 0.6, R0 * 0.38], 8);
-  for (const m of dome) limb(mb, [lead[0], lead[1] - 0.06, lead[2]], [m.c[0], m.c[1] - m.rad * 0.3, m.c[2]], R0 * 0.24, R0 * 0.12, 4, 0.5);
-  // Twisted strands, each unravelling into a bough.
+  const core = [0, 0.3, 0.6, 1].map((t) => at(-0.05 + (forkY + 0.1) * t));
+  mb.tube(core.concat([at((forkY + topY) * 0.5), at(topY - 0.02)]), [R0 * 0.85, R0 * 0.74, R0 * 0.66, R0 * 0.56, R0 * 0.36, R0 * 0.2], 7);
+  const low = tiers[0].plates;
   const twist = r.range(0.9, 1.5) * r.sign();
-  boughs.forEach((m, k) => {
-    const thk = m.a - twist;
+  low.forEach((m) => {
     const P = [], Rr = [];
-    const rs = R0 * 0.5;
-    for (let j = 0; j <= 5; j++) {
-      const t = j / 5;
-      const th = thk + twist * t;
-      const rr = R0 * (0.68 + 0.9 * Math.pow(1 - t, 3));
-      const [x, z] = axis(t);
-      P.push([x + Math.cos(th) * rr, -0.05 + (forkY + 0.02) * t, z + Math.sin(th) * rr]);
-      Rr.push(rs * (1 - 0.3 * t) * (1 + 0.7 * Math.pow(1 - t, 4)));
+    const rs = R0 * 0.52;
+    for (let j = 0; j <= 4; j++) {
+      const t = j / 4;
+      const th = m.a - twist + twist * t;
+      const rr = R0 * (0.62 + 0.95 * Math.pow(1 - t, 3));
+      const o = at(-0.05 + (forkY + 0.02) * t);
+      P.push([o[0] + Math.cos(th) * rr, o[1], o[2] + Math.sin(th) * rr]);
+      Rr.push(rs * (1 - 0.3 * t) * (1 + 0.6 * Math.pow(1 - t, 4)));
     }
-    const p5 = P[5];
-    const end = [m.c[0], m.c[1] - m.rad * 0.15, m.c[2]];
-    P.push([p5[0] + (end[0] - p5[0]) * 0.35, p5[1] + (end[1] - p5[1]) * 0.6 + 0.025, p5[2] + (end[2] - p5[2]) * 0.35]);
-    P.push([p5[0] + (end[0] - p5[0]) * 0.72, p5[1] + (end[1] - p5[1]) * 0.9 + 0.012, p5[2] + (end[2] - p5[2]) * 0.72]);
+    const p4 = P[4];
+    const end = [m.c[0] - Math.cos(m.a) * m.R * 0.15, m.c[1] - m.T * 0.35, m.c[2] - Math.sin(m.a) * m.R * 0.15];
+    P.push([p4[0] + (end[0] - p4[0]) * 0.45, p4[1] + (end[1] - p4[1]) * 0.75 + 0.02, p4[2] + (end[2] - p4[2]) * 0.45]);
     P.push(end);
-    Rr.push(rs * 0.62, rs * 0.45, rs * 0.25);
+    Rr.push(rs * 0.5, rs * 0.26);
     mb.tube(P, Rr, 6);
   });
-  // Buttress roots between the strands, arching out over the ground and diving into it.
-  for (let k = 0; k < nb; k++) {
-    const a = th0 + ((k + 0.5) / nb) * TAU + r.range(-0.25, 0.25);
-    const ca = Math.cos(a), sa = Math.sin(a);
-    const L = r.range(0.17, 0.24) * (kind === 3 ? 0.8 : 1);
-    const q = (d, y) => [ca * d + r.range(-0.006, 0.006), y, sa * d + r.range(-0.006, 0.006)];
-    mb.tube([q(R0 * 0.6, 0.11), q(R0 * 1.5, 0.055), q(L * 0.62, 0.012), q(L, -0.055)], [R0 * 0.42, R0 * 0.36, R0 * 0.22, R0 * 0.1], 5);
+  for (const t of tiers.slice(1)) {
+    for (const m of t.plates) {
+      const from = at(t.y - 0.07);
+      limb(mb, from, [m.c[0] - Math.cos(m.a) * m.R * 0.2, m.c[1] - m.T * 0.35, m.c[2] - Math.sin(m.a) * m.R * 0.2], R0 * 0.3, R0 * 0.14, 4, 0.55);
+    }
   }
-  shadeBark(mb, w0, { foot: "#33402f", footAmt: 0.7, y0: 0, y1: 0.22, up: "#b4b8ae", upAmt: 0.45 });
-  mb.heightAO(w0, -0.03, forkY * 0.8, 0.5);
-  // The foliage: broad, flat-bellied masses on the boughs, a rounder dome, small tufts scalloping
-  // the rims.
+  const nr = low.length + 1;
+  const rph = low[0].a + Math.PI / nr;
+  const roots0 = mb.mark();
+  for (let k = 0; k < nr; k++) {
+    const a = rph + (k / nr) * TAU + r.range(-0.25, 0.25);
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const L = r.range(0.16, 0.22) * (kind === 3 ? 0.8 : 1);
+    const q = (d, y) => [ca * d + r.range(-0.006, 0.006), y, sa * d + r.range(-0.006, 0.006)];
+    mb.tube([q(R0 * 0.55, 0.12), q(R0 * 1.4, 0.06), q(L * 0.6, 0.014), q(L, -0.055)], [R0 * 0.44, R0 * 0.36, R0 * 0.22, R0 * 0.09], 5);
+  }
+  // Silvered bark, its upper faces catching the light; the foot and the roots dark with moss.
+  // Up in the crown the wood is in the shade of the tiers.
+  const pale = pal(ANCIENT_BARK_LIGHT), moss = pal(ANCIENT_MOSS), shade = pal("#33392f");
+  eachVert(mb, w0, (v, i) => {
+    const y = v[i + 1];
+    let c = [v[i + 6], v[i + 7], v[i + 8]];
+    c = vlerp(c, pale, 0.42 * clamp(v[i + 4] + 0.3, 0, 1) * smoothstep(0.1, 0.25, y) * (1 - smoothstep(forkY * 0.8, forkY + 0.08, y)));
+    c = vlerp(c, shade, 0.6 * smoothstep(forkY * 0.9, forkY + 0.12, y));
+    c = vlerp(c, moss, 0.85 * (1 - smoothstep(0.03, 0.24, y)));
+    v[i + 6] = c[0];
+    v[i + 7] = c[1];
+    v[i + 8] = c[2];
+  });
+  mb.heightAO(w0, -0.03, forkY * 0.7, 0.45);
+  mb.heightAO(roots0, -0.04, 0.1, 0.6);
+
+  // --- foliage: the tiers' plates. Each tier is painted on its own ramp position so the tiers read
+  // as separate layers: the lowest dark teal, the top lit pale.
   const m0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
-  const cores = [];
-  for (const m of boughs) {
-    mb.color = jitter(WHITE, r, 0.06);
-    leafMass(mb, m.c, m.rad, { detail: 1, amp: 0.3, squash: 0.4, flat: 0.6, seed: r.range(0, 50), self: 0.5, freq: 1.8 });
-    cores.push([m.c, m.rad, 0.4]);
-  }
-  for (const m of dome) {
-    mb.color = jitter(WHITE, r, 0.06);
-    leafMass(mb, m.c, m.rad, { detail: 1, amp: 0.3, squash: 0.48, flat: 0.5, seed: r.range(0, 50), self: 0.5, freq: 1.8 });
-    cores.push([m.c, m.rad, 0.48]);
-  }
-  tufts(mb, r, cores, 10, { size: [0.3, 0.42], minUp: -0.1, out: 0.86 });
-  const mid = [ax, forkY + (H - forkY) * 0.35, az];
-  mb.sphereNormals(m0, mid, 0.3);
-  // Each giant drifts a little in hue: bluer, greener or more golden teal.
-  const drift = [[0.96, 1, 1.06], [1, 1.02, 0.94], [1.06, 1.03, 0.9], [0.98, 1.01, 1.02]][kind];
-  shadeFoliage(mb, m0, { lo: forkY, hi: H, cols: ANCIENT.map((c) => lin(c).map((x, q) => x * drift[q])), center: [ax, (forkY + H) * 0.55, az], rad: Rc * 1.15, seed: r.range(0, 9), hw: 0.14, upw: 0.5, bias: 0.04, nw: 0.28, aoMin: 0.5 });
-  swayFoliage(mb, m0, forkY, H, Rc, 0.45, ax, az);
-  // Beards of pale moss hanging from the boughs.
+  const drift = [[0.95, 1, 1.07], [1, 1.02, 0.96], [1.05, 1.03, 0.92], [0.97, 1.01, 1.03]][kind];
+  const cols = ANCIENT.map((c) => lin(c).map((x, q) => x * drift[q]));
+  tiers.forEach((t, k) => {
+    const tm = mb.mark();
+    for (const m of t.plates) {
+      mb.color = jitter(WHITE, r, 0.06);
+      plate(mb, r, m.c, m.R, m.T, { seg: 16, lobes: r.int(3, 4), scallop: m.top ? 0.16 : 0.22, dome: m.top ? 1.25 : 1.1, droop: m.top ? 0.15 : 0.42, lump: 0.42 });
+    }
+    const o = at(t.y);
+    mb.sphereNormals(tm, [o[0], t.y - t.R * 0.5, o[2]], 0.4);
+    const u = k / (nt - 1);
+    shadeFoliage(mb, tm, { lo: t.y - t.R * 0.25, hi: t.y + t.R * 0.25, cols, center: [o[0], t.y - t.R * 0.1, o[2]], rad: t.R * 1.1, seed: r.range(0, 9), hw: 0.12, upw: 0.36, nw: 0.2, nf: 9, bias: -0.04 + 0.28 * u, aoMin: 0.45 });
+  });
+  swayFoliage(mb, m0, forkY, H, Rc, 0.4, crownTop[0], crownTop[2]);
+
+  // Beards of pale moss hanging from the lowest tier's bellies.
   const b0 = mb.mark();
-  mb.mat = MAT.FOLIAGE;
-  for (let k = 0; k < 7; k++) {
-    const m = boughs[k % boughs.length];
-    const a = r.range(0, TAU), d = m.rad * r.range(0.2, 0.7);
-    const top = [m.c[0] + Math.cos(a) * d, m.c[1] - m.rad * 0.3, m.c[2] + Math.sin(a) * d];
+  for (let k = 0; k < 6; k++) {
+    const m = low[k % low.length];
+    const a = m.a + r.range(-1.2, 1.2), d = m.R * r.range(0.3, 0.8);
+    const top = [m.c[0] + Math.cos(a) * d, m.c[1] - m.T * 0.4, m.c[2] + Math.sin(a) * d];
     const len = r.range(0.05, 0.1);
-    mb.color = jitter(pal("#7b8a6c"), r, 0.08);
-    mb.tube([top, [top[0] + r.range(-0.006, 0.006), top[1] - len * 0.55, top[2] + r.range(-0.006, 0.006)], [top[0], top[1] - len, top[2]]], [0.005, 0.0035, 0.001], 3);
+    mb.color = jitter(pal("#7e8c72"), r, 0.08);
+    mb.tube([top, [top[0] + r.range(-0.006, 0.006), top[1] - len * 0.55, top[2] + r.range(-0.006, 0.006)], [top[0], top[1] - len, top[2]]], [0.0055, 0.0035, 0.001], 3);
   }
   eachVert(mb, b0, (v, i) => (v[i + 10] = 0.45));
-  // Lantern-fruits: a few pale lights hanging on threads at the rims of the boughs.
-  const glows = [5, 5, 4, 3][kind];
+
+  // Lantern-fruits: a few pale lights hanging at the tiers' rims, out where they show from the
+  // camera's height -- one or two from the upper tiers (seen over the canopy), the rest lower.
+  const glows = [4, 4, 3, 3][kind];
+  const upper = tiers.slice(1).flatMap((t) => t.plates), lower = tiers[0].plates;
   for (let k = 0; k < glows; k++) {
-    const m = boughs[(k * 2 + 1) % boughs.length];
-    const a = m.a + r.range(-0.7, 0.7), d = m.rad * r.range(0.6, 0.85);
-    const hang = [m.c[0] + Math.cos(a) * d, m.c[1] - m.rad * 0.25, m.c[2] + Math.sin(a) * d];
-    const fruit = [hang[0], hang[1] - r.range(0.04, 0.08), hang[2]];
+    const hi = k < 2;
+    const list = hi ? upper : lower;
+    const m = list[(k * 2 + 1) % list.length];
+    const a = m.a + r.range(-0.6, 0.6), d = m.R * r.range(0.95, 1.05);
+    const hang = [m.c[0] + Math.cos(a) * d * 0.9, m.c[1] - m.T * 0.2, m.c[2] + Math.sin(a) * d * 0.9];
+    const fruit = [m.c[0] + Math.cos(a) * d, hang[1] - r.range(0.025, 0.045), m.c[2] + Math.sin(a) * d];
     const g0 = mb.mark();
     mb.mat = MAT.MATTE;
     mb.color = pal("#4f5e48");
     mb.tube([hang, fruit], 0.0018, 3);
     mb.mat = MAT.EMISSIVE;
-    mb.color = vlerp(pal(PAL.ancientGlow), pal("#9ee0c0"), r());
+    mb.color = vlerp(pal(PAL.ancientGlow), pal("#9ee0c8"), r());
     mb.part(() => {
       mb.translate(fruit[0], fruit[1], fruit[2]);
-      mb.sphere(r.range(0.014, 0.018), 0, { squash: 1.3 });
+      mb.sphere(hi ? r.range(0.017, 0.02) : r.range(0.014, 0.017), 0, { squash: 1.3 });
     });
     eachVert(mb, g0, (v, i) => (v[i + 10] = 0.5));
   }
@@ -869,7 +1005,7 @@ function buildBlighted(mb, r, variant) {
       mb.cone(tr * 0.35, tr * 1.8, 3);
     });
   }
-  shadeBark(mb, w0, { foot: "#140c0e", footAmt: 0.5, y0: 0, y1: 0.08, up: "#5a4248", upAmt: 0.4 });
+  shadeBark(mb, w0, { foot: "#140c0e", footAmt: 0.5, y0: 0, y1: 0.08, up: "#6e565a", upAmt: 0.5 });
   if (variant % 2 === 0) {
     // A split in the trunk, glowing from within.
     mb.mat = MAT.EMISSIVE;
@@ -907,12 +1043,14 @@ recipe("tree.blighted", { variants: 6, build: (mb, r, { variant }) => buildBligh
 
 // --- tree.willow --------------------------------------------------------------------------------------
 
-/** A marsh willow: a short, thick, leaning trunk, arching limbs, a domed crown and, around it, long
- *  hanging curtains of leaves with a ragged hem, lit on the outside, dark within. */
+/** A marsh willow: a short, thick, leaning trunk forking low under a rounded crown that weeps -- long
+ *  streamers of silvery leaves spring from all over the dome, arch out over it and fall in a ragged
+ *  curtain almost to the ground, wider at the hem (a fountain, not a cap), with gaps showing the dark
+ *  interior and the trunk. */
 function buildWillow(mb, r, variant) {
   const H = r.range(0.27, 0.32);
-  const W = r.range(0.11, 0.13);
-  const forkY = r.range(0.1, 0.12);
+  const W = r.range(0.1, 0.115);
+  const forkY = r.range(0.09, 0.11);
   const la = r.range(0, TAU), ln = r.range(0.015, 0.035);
   const lx = Math.cos(la) * ln, lz = Math.sin(la) * ln;
   const tr = r.range(0.019, 0.023);
@@ -921,39 +1059,51 @@ function buildWillow(mb, r, variant) {
   mb.color = bark;
   rootFlare(mb, 0, 0, tr, { h: 0.035, lobes: 4, seed: r.range(0, 6) });
   mb.tube([[0, 0.025, 0], [lx * 0.5, forkY * 0.6, lz * 0.5], [lx, forkY, lz], [lx * 1.2, forkY + 0.04, lz * 1.2]], [tr, tr * 0.9, tr * 0.75, tr * 0.5], 6);
-  const hc = (H - forkY) * 0.36;
-  const C = [lx * 1.3, H - hc, lz * 1.3];
-  const layout = [[0, 0, 0.25, 0.6], ...ringLayout(r, 3, { dist: [0.5, 0.62], dy: [-0.1, 0.25], rad: [0.44, 0.52] })];
-  const m0 = crown(mb, r, { C, W, hc, fork: [lx, forkY, lz], layout, limbR: tr * 0.5, limbs: 3, bark, squash: 0.7, amp: 0.25, flat: 0.3 });
+  const hc = (H - forkY) * 0.3;
+  const C = [lx * 1.3, H - hc * 1.1, lz * 1.3];
+  // The dome under the streamers (mostly hidden: it gives the crown its dark body).
+  const layout = [[0, 0, 0.3, 0.62], ...ringLayout(r, 2, { dist: [0.45, 0.55], dy: [-0.2, 0.1], rad: [0.48, 0.55] })];
+  const m0 = crown(mb, r, { C, W, hc, fork: [lx, forkY, lz], layout, limbR: tr * 0.5, limbs: 3, bark, squash: 0.75, amp: 0.25, flat: 0.3, self: 0.4 });
   shadeBark(mb, w0, { foot: MOSS, footAmt: 0.6, y0: -0.02, y1: 0.08 });
   mb.heightAO(w0, -0.02, forkY, 0.5);
-  const y0 = C[1] - hc * 0.15;
-  mb.sphereNormals(m0, [C[0], C[1] - hc * 0.5, C[2]], 0.45);
-  shadeFoliage(mb, m0, { lo: y0 - 0.02, hi: H, cols: WILLOW, center: C, rad: W * 1.1, seed: r.range(0, 9), hw: 0.4, upw: 0.3 });
-  swayFoliage(mb, m0, y0, H, W, 0.8, C[0], C[2]);
-  // The curtains: hanging streamers of leaves around the crown's waist, arching out a little and
-  // falling, ragged in length, with gaps that show the dark interior and the trunk.
-  const S = 18;
+  mb.sphereNormals(m0, [C[0], C[1] - hc * 0.5, C[2]], 0.5);
+  const cols = WILLOW.map(lin);
+  shadeFoliage(mb, m0, { lo: C[1] - hc, hi: H, cols, center: C, rad: W * 1.1, seed: r.range(0, 9), hw: 0.3, upw: 0.3, bias: -0.08 });
+  swayFoliage(mb, m0, C[1] - hc, H, W, 0.6, C[0], C[2]);
+  // The streamers: from the dome's shoulders up near its top, arching outward, then falling.
+  const [deep, dark, mid, lite] = cols;
+  const S = 16;
   const ph = r.range(0, TAU);
-  const [deep, dark, mid, lite] = WILLOW.map(lin);
   const c0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
+  const top = C[1] + hc * 0.9;
   for (let s = 0; s < S; s++) {
-    const a = ph + (s / S) * TAU + r.range(-0.12, 0.12);
+    const a = ph + (s / S) * TAU + r.range(-0.15, 0.15);
     const ca = Math.cos(a), sa = Math.sin(a);
     const side = [-sa, 0, ca];
-    const rr = W * r.range(0.8, 0.95);
-    const len = (s % 3 === 1 ? r.range(0.45, 0.65) : r.range(0.75, 1.0)) * (y0 - 0.02);
-    const w = r.range(0.014, 0.019);
-    const spine = [0, 0.3, 0.65, 1].map((u) => [C[0] + ca * rr * (1 + 0.16 * Math.sin(u * 2.2)), y0 + 0.01 - len * u, C[2] + sa * rr * (1 + 0.16 * Math.sin(u * 2.2))]);
-    const left = spine.map((p, j) => vadd(p, vscale(side, w * (1 - 0.6 * (j / 3)))));
-    const right = spine.map((p, j) => vsub(p, vscale(side, w * (1 - 0.6 * (j / 3)))));
+    const inner = s % 2 === 0;
+    const r0 = W * (inner ? r.range(0.15, 0.35) : r.range(0.45, 0.6));
+    const y0 = inner ? top : top - hc * 0.6;
+    const hem = W * r.range(1.0, 1.18);
+    const end = r.range(0.035, 0.08) + (s % 3 === 1 ? r.range(0.03, 0.06) : 0);
+    const w = r.range(0.016, 0.022);
+    // Spine: start, shoulder (out and barely down), then falling with a slight outward drift.
+    const spine = [
+      [r0, y0],
+      [W * 0.86, C[1] + hc * 0.2],
+      [W * 0.98, C[1] - hc * 0.6],
+      [hem * 0.98, (C[1] - hc * 0.6 + end) * 0.5],
+      [hem, end],
+    ].map(([d, y]) => [C[0] + ca * d, y, C[2] + sa * d]);
+    const left = spine.map((p, j) => vadd(p, vscale(side, w * (1 - 0.45 * (j / 4)))));
+    const right = spine.map((p, j) => vsub(p, vscale(side, w * (1 - 0.45 * (j / 4)))));
     const j = jitter(WHITE, r, 0.1);
-    const ks = spine.map((_, q) => vlerp(vlerp(dark, mid, 0.45), vlerp(mid, lite, 0.4), q / 3).map((x, c) => x * j[c]));
-    surface(mb, [left, spine, right], [ks.map((k) => vlerp(k, deep, 0.25)), ks, ks.map((k) => vlerp(k, deep, 0.25))], { ref: [C[0], y0 - len * 0.5, C[2]] });
+    // Lit on the crown, darker in the curtain, a little lighter again at the hem's tips.
+    const ks = spine.map((_, q) => (q < 2 ? vlerp(mid, lite, (inner ? 0.5 : 0.3) - 0.25 * q) : vlerp(dark, mid, 0.4 + 0.15 * (q - 2))).map((x, c) => x * j[c]));
+    surface(mb, [left, spine, right], [ks.map((k) => vlerp(k, deep, 0.2)), ks, ks.map((k) => vlerp(k, deep, 0.2))], { ref: [C[0], C[1] - hc, C[2]] });
   }
   eachVert(mb, c0, (v, i) => {
-    v[i + 10] = 0.3 + 0.7 * clamp((y0 - v[i + 1]) / 0.15, 0, 1);
+    v[i + 10] = 0.25 + 0.75 * clamp((C[1] - v[i + 1]) / 0.15, 0, 1);
   });
 }
 
@@ -1009,20 +1159,22 @@ function buildSapling(mb, r, variant, param) {
   mb.heightAO(w0, -0.02, H * 0.4, 0.6);
   const m0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
-  // An upright, irregular young crown: a tall main mass, a smaller one low on one side and a tuft
-  // at the top, leaning a little.
-  const W = r.range(0.042, 0.05);
-  const C = [top[0] * 0.8, H * 0.6, top[2] * 0.8];
-  mb.color = jitter(WHITE, r, 0.06);
-  leafMass(mb, C, W * 0.72, { detail: 1, squash: kind === "ancient" ? 0.9 : 1.3, flat: 0.25, seed: r.range(0, 50), amp: 0.35 });
-  const b = a + r.range(1.5, 3.5);
-  mb.color = jitter(WHITE, r, 0.08);
-  leafMass(mb, [C[0] + Math.cos(b) * W * 0.62, H * 0.42, C[2] + Math.sin(b) * W * 0.62], W * r.range(0.46, 0.54), { detail: 0, amp: 0.15, squash: 0.85, flat: 0.3, seed: r.range(0, 50) });
-  mb.color = jitter(WHITE, r, 0.08);
-  leafMass(mb, [top[0] + Math.cos(a) * W * 0.3, H - W * 0.38, top[2] + Math.sin(a) * W * 0.3], W * r.range(0.4, 0.48), { detail: 0, amp: 0.15, squash: 1.1, flat: 0.2, seed: r.range(0, 50) });
-  mb.sphereNormals(m0, [C[0], C[1] - W * 0.3, C[2]], 0.45);
-  shadeFoliage(mb, m0, { lo: H * 0.35, hi: H, cols: kind === "ancient" ? ANCIENT : OAK, center: C, rad: W * 1.2, seed: r.range(0, 9), bias: 0.04, aoMin: 0.65 });
-  swayFoliage(mb, m0, H * 0.35, H, W, 1, C[0], C[2]);
+  // An upright, irregular young crown (never a ball on a stick): five small clumps spiralling up
+  // the stem from low down, the lower ones out on short twigs, narrowing to a tuft at the top.
+  const W = r.range(0.046, 0.056) * (kind === "ancient" ? 1.1 : 1);
+  const C = [top[0] * 0.7, H * 0.62, top[2] * 0.7];
+  const n = 5, a0 = r.range(0, TAU);
+  for (let k = 0; k < n; k++) {
+    const u = k / (n - 1);
+    const b = a0 + k * 2.3 + r.range(-0.3, 0.3);
+    const d = W * (0.55 - 0.42 * u) * r.range(0.85, 1.15);
+    const p = [top[0] * (0.3 + 0.7 * u) + Math.cos(b) * d, H * (0.36 + 0.56 * u), top[2] * (0.3 + 0.7 * u) + Math.sin(b) * d];
+    mb.color = jitter(WHITE, r, 0.08);
+    leafMass(mb, p, W * (0.62 - 0.2 * u) * r.range(0.9, 1.1), { detail: 0, amp: 0.2, squash: 0.85, flat: 0.25, seed: r.range(0, 50), self: 0.3 });
+  }
+  mb.sphereNormals(m0, [C[0], C[1] - W * 0.4, C[2]], 0.6);
+  shadeFoliage(mb, m0, { lo: H * 0.3, hi: H, cols: kind === "ancient" ? ANCIENT : OAK, center: C, rad: W * 1.4, seed: r.range(0, 9), bias: kind === "ancient" ? 0.1 : 0.04, aoMin: 0.6 });
+  swayFoliage(mb, m0, H * 0.3, H, W, 1, C[0], C[2]);
 }
 
 recipe("tree.sapling", { variants: 6, build: (mb, r, { variant, param }) => buildSapling(mb, r, variant, param) });
@@ -1125,28 +1277,32 @@ function buildDryShrub(mb, r, variant) {
     shadeFoliage(mb, m0, { lo: 0.02, hi: 0.08, cols: SAGE, seed: r.range(0, 9), bias: -0.1 });
     swayFoliage(mb, m0, 0, 0.09, 0.08, 0.4);
   } else if (kind === 1) {
-    // Sagebrush: a low, wide, dusty clump.
+    // Sagebrush: a low, wide, ragged clump of small silvery tufts on dark twigs (not one smooth
+    // mound, which reads as a stone).
+    mb.color = jitter(pal("#4a3c2c"), r, 0.06);
+    const tips = [];
+    const n = 6, ph = r.range(0, TAU);
+    for (let k = 0; k < n; k++) {
+      const a = ph + (k / n) * TAU + r.range(-0.3, 0.3), d = k === 0 ? 0.004 : r.range(0.025, 0.045);
+      const tp = [Math.cos(a) * d, k === 0 ? r.range(0.045, 0.055) : r.range(0.022, 0.04), Math.sin(a) * d];
+      mb.tube([[tp[0] * 0.2, -0.02, tp[2] * 0.2], tp], [0.003, 0.0015], 3);
+      tips.push(tp);
+    }
     const m0 = mb.mark();
     mb.mat = MAT.FOLIAGE;
-    mb.color = jitter(WHITE, r, 0.06);
-    leafMass(mb, [0, 0.014, 0], 0.042, { detail: 1, squash: 0.65, flat: 0.3, seed: r.range(0, 50), amp: 0.4, freq: 2.4 });
-    for (let k = 0; k < 2; k++) {
-      const a = r.range(0, TAU);
-      mb.color = jitter(WHITE, r, 0.08);
-      leafMass(mb, [Math.cos(a) * 0.035, 0.012, Math.sin(a) * 0.035], 0.024, { detail: 0, amp: 0.2, squash: 0.7, flat: 0.4, seed: r.range(0, 50) });
+    for (const t of tips) {
+      mb.color = jitter(WHITE, r, 0.1);
+      leafMass(mb, t, r.range(0.016, 0.022), { detail: 0, amp: 0.3, squash: 0.8, flat: 0.35, seed: r.range(0, 50), self: 0.5 });
     }
-    eachVert(mb, m0, (v, i) => {
-      if (v[i + 1] < 0) v[i + 1] -= 0.015;
-    });
-    mb.sphereNormals(m0, [0, 0, 0], 0.5);
-    shadeFoliage(mb, m0, { lo: -0.01, hi: 0.05, cols: SAGE, seed: r.range(0, 9), center: [0, 0.01, 0], rad: 0.06, aoMin: 0.65 });
-    swayFoliage(mb, m0, 0, 0.05, 0.06, 0.25);
+    mb.sphereNormals(m0, [0, -0.01, 0], 0.4);
+    shadeFoliage(mb, m0, { lo: 0, hi: 0.06, cols: SAGE, seed: r.range(0, 9), center: [0, 0.015, 0], rad: 0.06, aoMin: 0.6, nw: 0.3 });
+    swayFoliage(mb, m0, 0, 0.05, 0.06, 0.3);
   } else if (kind === 2) {
     // A column cactus with an arm or two turning up.
     const g = jitter(pal("#4c6544"), r, 0.05);
-    const H = r.range(0.11, 0.15);
+    const H = r.range(0.13, 0.17);
     mb.color = g;
-    mb.lathe([[0.014, -0.04], [0.0145, H * 0.6], [0.012, H * 0.92], [0.006, H], [0, H + 0.003]], 8, { caps: false, wobble: (a) => 0.08 * Math.cos(a * 8) });
+    mb.lathe([[0.017, -0.04], [0.0175, H * 0.6], [0.0145, H * 0.92], [0.007, H], [0, H + 0.003]], 8, { caps: false, wobble: (a) => 0.08 * Math.cos(a * 8) });
     const arms = r.int(1, 2), a0 = r.range(0, TAU);
     for (let k = 0; k < arms; k++) {
       const a = a0 + k * Math.PI + r.range(-0.4, 0.4);
@@ -1156,7 +1312,7 @@ function buildDryShrub(mb, r, variant) {
     }
     // Sunlit tops: lighter toward the crown.
     eachVert(mb, 0, (v, i) => {
-      const k = 0.75 + 0.45 * clamp(v[i + 1] / H, 0, 1) + 0.2 * Math.max(0, v[i + 4]);
+      const k = 0.72 + 0.3 * clamp(v[i + 1] / H, 0, 1) + 0.12 * Math.max(0, v[i + 4]);
       v[i + 6] *= k;
       v[i + 7] *= k;
       v[i + 8] *= k;
@@ -1182,7 +1338,7 @@ function buildDryShrub(mb, r, variant) {
       });
     }
     eachVert(mb, 0, (v, i) => {
-      const k = 0.8 + 0.4 * Math.max(0, v[i + 4]);
+      const k = 0.78 + 0.22 * Math.max(0, v[i + 4]);
       v[i + 6] *= k;
       v[i + 7] *= k;
       v[i + 8] *= k;
@@ -1282,7 +1438,8 @@ function forestMix(feat, ctx) {
   const hell = isHell(g);
   if (feat === FEAT.ANCIENT) {
     // Giants, a little smaller where something stands among them (a glade under the boughs).
-    return mix([{ asset: "tree.ancient", scale: ctx.held ? 0.66 : 0.8, weight: 1 }], [
+    const k = ctx.held ? 0.8 : 1;
+    return mix([{ asset: "tree.ancient", scale: 0.84 * k, weight: 3 }, { asset: "tree.ancient", variant: 3, scale: 0.72 * k, weight: 1 }], [
       { asset: "plant.fern", scale: 1.2, count: 3 },
       { asset: "tree.sapling.ancient", scale: 1.1, count: 2 },
       { asset: "plant.mushroom.glow", scale: 1.2, count: 1 },
@@ -1301,24 +1458,26 @@ function forestMix(feat, ctx) {
   }
   if (feat === FEAT.YOUNG) {
     if (hell) return mix([{ asset: "tree.blighted", scale: 0.55, weight: 1 }, { asset: "tree.dead", scale: 0.55, weight: 1 }]);
-    if (COLD(g)) return mix([{ asset: "tree.sapling", param: "snow", scale: 1, weight: 3 }, { asset: "tree.pine", param: "snow", scale: 0.55, weight: 1 }, { asset: "bush", scale: 0.8, weight: 0.3 }]);
+    if (COLD(g)) return mix([{ asset: "tree.sapling", param: "snow", scale: 1.05, weight: 3 }, { asset: "tree.pine", param: "snow", scale: 0.55, weight: 1 }, { asset: "bush", scale: 0.8, weight: 0.3 }], [], 5);
+    // A thicket: saplings close together, a few bushes and a young birch.
     return mix([
-      { asset: "tree.sapling", param: "broad", scale: 1, weight: 3 },
-      { asset: "tree.sapling", param: "pine", scale: 1, weight: ctx.hills ? 2 : 1 },
-      { asset: "bush", scale: 1.1, weight: 1 },
+      { asset: "tree.sapling", param: "broad", scale: 1.08, weight: 3 },
+      { asset: "tree.sapling", param: "pine", scale: 1.05, weight: ctx.hills ? 2 : 1 },
+      { asset: "bush", scale: 1.15, weight: 1 },
       { asset: "tree.birch", scale: 0.6, weight: 0.6 },
-    ], [{ asset: "plant.grass", scale: 1, count: 2 }]);
+    ], [{ asset: "plant.grass", scale: 1, count: 2 }], 5);
   }
   if (feat !== FEAT.FOREST) return null;
   // Woods by ground.
   if (hell) return mix([{ asset: "tree.blighted", scale: 0.95, weight: 3 }, { asset: "tree.dead", scale: 0.9, weight: 1 }]);
   if (g === GROUND.SNOW) return mix([{ asset: "tree.pine", param: "snow", scale: 0.88, weight: 1 }]);
   if (g === GROUND.TUNDRA) return mix([{ asset: "tree.pine", param: "snow", scale: 0.88, weight: 4 }, { asset: "tree.pine", scale: 0.85, weight: 1 }, { asset: "tree.birch", scale: 0.85, weight: 0.6 }]);
-  if (ctx.hills) return mix([{ asset: "tree.pine", scale: 0.88, weight: 3 }, { asset: "tree.oak", scale: 0.9, weight: 1.2 }, { asset: "tree.birch", scale: 0.9, weight: 0.4 }], [{ asset: "bush", scale: 1, count: 1 }]);
+  if (ctx.hills) return mix([{ asset: "tree.pine", scale: 0.9, weight: 3 }, { asset: "tree.oak", scale: 0.9, weight: 1.2 }, { asset: "tree.birch", scale: 0.9, weight: 0.4 }], [{ asset: "bush", scale: 1, count: 1 }], 5);
   if (g === GROUND.MARSH) return mix([{ asset: "tree.willow", scale: 0.95, weight: 2.5 }, { asset: "tree.oak", scale: 0.85, weight: 1 }, { asset: "tree.birch", scale: 0.9, weight: 0.8 }], [{ asset: "reeds", scale: 1, count: 3 }]);
-  if (g === GROUND.DESERT) return mix([{ asset: "tree.oak", scale: 0.8, weight: 1 }, { asset: "tree.pine", scale: 0.8, weight: 1 }, { asset: "tree.palm", scale: 0.9, weight: 0.6 }], [{ asset: "shrub.dry", scale: 1, count: 2 }], 3);
-  if (g === GROUND.PLAINS) return mix([{ asset: "tree.oak", scale: 0.92, weight: 3 }, { asset: "tree.pine", scale: 0.88, weight: 1.5 }, { asset: "tree.birch", scale: 0.9, weight: 0.8 }], [{ asset: "bush", scale: 1, count: 1 }]);
-  return mix([{ asset: "tree.oak", scale: 0.9, weight: 3 }, { asset: "tree.birch", scale: 0.9, weight: 1.3 }, { asset: "tree.pine", scale: 0.86, weight: 1 }], [{ asset: "bush", scale: 1, count: 1 }, { asset: "plant.fern", scale: 1, count: 1 }], 5);
+  if (g === GROUND.DESERT) return mix([{ asset: "tree.oak", scale: 0.8, weight: 1 }, { asset: "tree.pine", scale: 0.8, weight: 1 }, { asset: "tree.palm", scale: 0.9, weight: 0.6 }], [{ asset: "shrub.dry", scale: 1.25, count: 2 }], 3);
+  // Temperate woods: oaks of two sizes (an uneven canopy), birch and some pine.
+  if (g === GROUND.PLAINS) return mix([{ asset: "tree.oak", scale: 0.95, weight: 2 }, { asset: "tree.oak", scale: 0.74, weight: 1 }, { asset: "tree.pine", scale: 0.88, weight: 1.5 }, { asset: "tree.birch", scale: 0.88, weight: 0.8 }], [{ asset: "bush", scale: 1, count: 1 }]);
+  return mix([{ asset: "tree.oak", scale: 0.95, weight: 2 }, { asset: "tree.oak", scale: 0.74, weight: 1.2 }, { asset: "tree.birch", scale: 0.9, weight: 1.1 }, { asset: "tree.pine", scale: 0.86, weight: 0.9 }], [{ asset: "bush", scale: 1, count: 1 }, { asset: "plant.fern", scale: 1.2, count: 1 }], 5);
 }
 
 function floraOf(ctx) {
@@ -1329,7 +1488,7 @@ function floraOf(ctx) {
     if (g === GROUND.BURNING_SANDS) return [{ asset: "tree.dead", scale: 0.45, count: one(0.12) }];
     return [{ asset: "tree.blighted", scale: 0.5, count: one(0.2) }, { asset: "tree.dead", scale: 0.45, count: one(0.15) }];
   }
-  if (ctx.feat === FEAT.SCRUB) return [{ asset: "shrub.dry", scale: 1.1, count: r.int(3, 5) }];
+  if (ctx.feat === FEAT.SCRUB) return [{ asset: "shrub.dry", scale: 1.3, count: r.int(3, 5) }];
   if (ctx.feat === FEAT.FLOOD) return [{ asset: "reeds", scale: 1, count: r.int(2, 3) }, { asset: "plant.grass", scale: 1.1, count: r.int(1, 3) }];
   switch (g) {
     case GROUND.GRASS:
@@ -1342,7 +1501,7 @@ function floraOf(ctx) {
       return [
         { asset: "bush", scale: 0.85, count: one(0.25) },
         { asset: "plant.grass", scale: 1.1, count: r.int(0, 2) },
-        { asset: "shrub.dry", scale: 0.9, count: one(0.15) },
+        { asset: "shrub.dry", scale: 1.1, count: one(0.15) },
         { asset: "tree.oak", scale: 0.8, count: one(0.06) },
       ];
     case GROUND.TUNDRA:
@@ -1350,7 +1509,7 @@ function floraOf(ctx) {
     case GROUND.SNOW:
       return [{ asset: "tree.pine.snow", scale: 0.55, count: one(0.1) }];
     case GROUND.DESERT:
-      return [{ asset: "shrub.dry", scale: 1, count: r.int(0, 2) }];
+      return [{ asset: "shrub.dry", scale: 1.3, count: r.int(0, 2) }];
     case GROUND.MARSH:
       return [{ asset: "reeds", scale: 1, count: r.int(2, 4) }, { asset: "tree.willow", scale: 0.7, count: one(0.15) }];
     default:
@@ -1359,3 +1518,4 @@ function floraOf(ctx) {
 }
 
 extendCatalog({ forest: forestMix, flora: floraOf });
+
