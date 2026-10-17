@@ -51,7 +51,7 @@ camera/hit-testing map to iso, units/rings anchor to diamond centres).
 | D1 | **Unit resolution** | 32×32, fills tile | larger, overflows upward (~1.5–2 tiles tall) | author **128 px tall**, draw ~2 tiles tall at default zoom |
 | D2 | **Palette** | closed 56-colour indexed | open / near-true colour for figures | open for units; terrain can reuse indexed passes at first |
 | D3 | **Authoring** | text `.spr`, JS-drawn | AI-generated + downscaled **PNG sprites** | add a PNG sprite path; workflow in §6 |
-| D4 | **Mood** | cheerful daylight | dark/dramatic, cool rim light | confirm dark (the references are dark) |
+| D4 | **Mood** | cheerful daylight | **bright sunny daylight (CHOSEN)** | sunny base key; golden-hour kept as an optional later lighting pass |
 
 Owner identity keeps the **team ring**, now drawn as an **isometric ellipse** under the figure's
 feet on its diamond; a per-team **banner** (`soc/owner-banner-demo.png`, one neutral asset tinted at
@@ -87,9 +87,13 @@ low-saturation cloth.
 
 ## 7. Open decisions for the owner
 
-- **D4 — mood:** dark/dramatic (as the references) vs. a lighter SoC key. This sets the whole
-  palette; it is the one I most need before generating terrain.
+- **D4 — mood: RESOLVED → bright sunny daylight.** Neutral daylight keeps terrain types distinct
+  and units readable; golden-hour is kept as an optional mood/lighting pass (dusk, screenshots, a
+  possible time-of-day toggle), not the base board. Figures must be **daylight-keyed** (lit from the
+  upper-left, bright) to sit on a sunny board, so the earlier dark reference units are re-generated
+  in this key.
 - **D0 — iso tile footprint** (64×32 default) and **D1 — unit authored height** (128 px default).
 - **D2 — how far the open palette extends** (units only, or terrain too from the start).
 
-Defaults above are my recommendation; set D4 and I proceed to §5 step 1 (the isometric bake test).
+D4 is set (sunny). The remaining defaults stand unless changed; proceeding to §5 step 1 (the
+isometric bake test).
