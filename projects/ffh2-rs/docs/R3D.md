@@ -149,6 +149,7 @@ nodes, ancient forests) that light the terrain and the props.
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
 | paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared | `kuwahara`, `kuwaharaRadius` |
 | finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance, coloured from the paint below (sepia ink, not black); split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `grade`, `grain`, `vignette` |
+| aa | FXAA (Timothy Lottes' console variant) on the finished colour before the overlays: takes the stair-step off silhouettes and the ink outlines and stops them crawling when panning (the HUD is a separate 2D canvas, so it stays crisp) | `fxaa` |
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
 The light model (scene pass): a wrapped, softly stepped sun term (broad light masses), coloured
@@ -185,7 +186,7 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
   the vertex colour's luminance), emissive, skin, team glow. Bones drive a small idle animation in
   the vertex shader (breathing, arms, cape, wings, tail); sway drives wind.
 * **Palette** (`assets/palette.js`): every recipe takes its colours from one designed palette
-  (late-afternoon key; saturation spent on owner colours, magic and fire), plus the mana schools'
+  (warm daylight key; saturation spent on owner colours, magic and fire), plus the mana schools'
   colours.
 * **Scale contract**: one unit = one plot; a humanoid ~0.48 tall, broadleaf trees 0.30-0.42,
   conifers 0.34-0.50, great ancient trees 0.8-1.1, houses ~0.15, keeps 0.3-0.4, towers 0.4-0.55,
@@ -312,7 +313,21 @@ Two scenes, the same renderer:
   and a peak, 32 forest plots, roads, a pasture, a plantation, a winery, a mine, the Seven Pines
   (a unique landmark), raw mana and seven other resources, three Svartalfar cities, ten
   warriors, archers, workers, a hunter and a wild elephant. `node tools/r3d-compare.mjs --save DIR/corrupt.ffhsave --x 48 --y 15` renders it
-  in every renderer.
+  in every renderer. The shots below (centred on the corrupted heartland between Gereth Minar and
+  Thariss, 96 px a plot except where noted) are from the review-fixes tree:
+
+  | renderer | |
+  |---|---|
+  | 2D pixel art | [slice-art.jpg](r3d/slice-art.jpg) |
+  | isometric 2.5D | [slice-iso.jpg](r3d/slice-iso.jpg) |
+  | 3D, every stylisation off | [slice-3d-plain.jpg](r3d/slice-3d-plain.jpg) |
+  | 3D painterly | [slice-3d-painterly.jpg](r3d/slice-3d-painterly.jpg) |
+  | 3D painterly, close (168 px) | [slice-3d-close.jpg](r3d/slice-3d-close.jpg) |
+  | 3D painterly, far (40 px) | [slice-3d-far.jpg](r3d/slice-3d-far.jpg) |
+
+  Against this same scene the review found its findings; the 3D painterly shot now reads cleanly
+  (short daylight shadows, slate-violet Svartalfar cities, distinct hell terrains), see
+  `docs/r3d/REVIEW.md`.
 * **The lab showcase** (`r3d-lab/scenes.js` `showcase`): a 24 × 14 synthetic map that puts every
   kind of thing the renderer draws in one view — sea, coast, a river with a bridge, roads, plains,
   grassland, marsh, a mountain range, hills, forest, an ancient elven forest with a city, a volcano
@@ -327,11 +342,13 @@ Two scenes, the same renderer:
 ## 12. Configuration
 
 `r3d/config.js`: `PRESETS.painterly` (default) and `PRESETS.plain` (every stylisation off: an
-ordinary real-time render of the same geometry, for comparison), `LIGHTING` (afternoon, day: always
-daylight, by design; a saved light that is no longer offered falls back to the afternoon),
-and the switches of the panel (`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width),
-paint (pigment variation), bands (stepped light), stylize (coloured shadows), rim, clouds, haze,
-mist, grade, grain, vignette, borders, grid, fogWar, particles, animate, renderScale.
+ordinary real-time render of the same geometry, for comparison), `LIGHTING` (one `daylight` look:
+always daylight by design, a warm high sun at about 42 degrees; a saved light that is no longer
+offered -- a "dusk", "afternoon" or "day" -- falls back to it), and the switches of the panel
+(`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width), paint (pigment variation),
+bands (stepped light), stylize (coloured shadows), rim, clouds, haze, mist, grade, grain, vignette,
+borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing), autoQuality (the
+measured-frame-time quality ladder).
 
 ## 13. Removing it
 
@@ -351,20 +368,23 @@ What is not there, or not good enough yet, as of this prototype:
   occlusion and glow, full-screen passes), but it has not been profiled on one.
 * **Motion.** Units glide between plots and idle (breathing, capes, wings, tails, wind); there are
   no attack, death or work animations, and combat shows only the 2D flashes.
-* **Always daylight, by choice.** Afternoon (default) and day are the lights; there is no dusk,
+* **Always daylight, by choice.** There is one `daylight` light (a warm, high sun); no dusk,
   night or day/night cycle.
 * **Faces and hands** are blank at the closest zoom; crossbowmen and slingers use the bow and
   spear poses.
-* **Map edges.** Where the map does not wrap (north and south), the ground ends in a cut.
+* **Map edges.** Where the map does not wrap, north and south run into the dark-parchment border
+  (continuous, no gap); east and west simply end at the last plot.
 * **Fog of war** follows the plot grid on purpose (it says which plots are in sight); the
   unexplored is dark parchment, not modelled.
 * **Particles** draw after the paint passes and cannot be occluded behind tall props per pixel
   (a point sprite is depth-tested at its centre).
 * **Water** has no reflections and no waterfalls where rivers drop.
 
-Next steps, roughly by value: profile on real GPUs and add a quality ladder (render scale,
-Kuwahara off, shadow size) chosen from the measured frame time; combat and work animations;
-a reflection or sky term for water.
+Next steps, roughly by value: profile on real GPUs (the quality ladder -- paint filter off, then
+render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
+is not yet a ladder step); spread the initial world sync over frames or a worker (about 2 s of
+JavaScript on a crowded map); combat and work animations; a reflection or sky term for water; the
+sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 
 ## 15. Provenance
 
