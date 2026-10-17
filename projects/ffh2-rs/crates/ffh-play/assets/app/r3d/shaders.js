@@ -416,8 +416,15 @@ vec3 featureFloor(int f, vec3 c, vec2 m, inout vec3 emit) {
     return mix(c, srgb(mix(vec3(0.10, 0.09, 0.08), vec3(0.24, 0.21, 0.19), mnoise(m, 4.0))), 0.75);
   }
   if (f == F_FLOOD) {
-    float silt = smoothstep(0.4, 0.8, mstroke(m, 5.0, 5.0));
-    return mix(mix(c, srgb(vec3(0.32, 0.44, 0.20)), 0.5), srgb(vec3(0.50, 0.44, 0.30)), silt * 0.35);
+    // Fertile river land, not dry desert scrub (F13): broken patches of fresh green over the silt,
+    // vivid where present (about half the tile) with sandy gaps between, and thin dark damp streaks
+    // -- no pale silt wash pulling the whole tile back to khaki.
+    vec3 green = srgb(mix(vec3(0.30, 0.46, 0.17), vec3(0.42, 0.54, 0.22), mnoise(m + 5.0, 4.0)));
+    float grow = smoothstep(0.36, 0.56, mnoise(m, 2.6));
+    vec3 col = mix(c, green, grow * 0.92);
+    float streak = smoothstep(0.6, 0.82, mstroke(m, 6.0, 5.0));
+    col = mix(col, srgb(vec3(0.20, 0.25, 0.14)), streak * 0.3);
+    return col;
   }
   if (f == F_SCRUB) return mix(c, srgb(vec3(0.55, 0.48, 0.30)), smoothstep(0.6, 0.8, mnoise(m, 9.0)) * 0.5);
   if (f == F_ICE) {
