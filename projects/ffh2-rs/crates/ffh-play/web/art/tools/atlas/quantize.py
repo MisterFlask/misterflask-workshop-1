@@ -28,6 +28,10 @@ MAP = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path
 mapping = json.load(open(MAP))
 OUT = sys.argv[3] if len(sys.argv) > 3 else 'units_atlas'
 scales = json.load(open(f'{R}/scales.json'))
+# the pixel-over pass (cleanup.py): opt-in with FFH_CLEAN=1 until its output is reviewed and installed
+import cleanup
+CLEAN = os.environ.get('FFH_CLEAN') == '1'
+CP = cleanup.Pal(KEYS, PLAB, [p[3] for p in PAL])
 FAM = {
     'red': ['R', 'C', 'I', 'c'],
     'blue': ['J', 'N', 'n', 'd'],
@@ -257,9 +261,16 @@ for name, opt in mapping.items():
     idx = clean(idx)
     if not opt.get('ship') and opt.get('feet', True):
         idx = clean_feet(idx)
+    if CLEAN and opt.get('cleanup', True):
+        idx = cleanup.pre(idx, CP, opt)
     idx = outline(idx)
     idx = reduce_colours(idx, opt.get('maxc', 18))
+    if CLEAN and opt.get('cleanup', True):
+        idx = cleanup.post(idx, CP, opt)
+    before = idx.copy()
     idx, fam = slots(idx, opt.get('slots', 'auto'))
+    if CLEAN and opt.get('cleanup', True) and fam:
+        idx = cleanup.flecks(idx, before, CP)
     g, ax, ay = frame_place(idx, F)
     sprites.append((name, F, ax, ay, to_text(g), fam, opt['src']))
 
