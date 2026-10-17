@@ -1,8 +1,12 @@
 # OpenAI Image MCP
 
 An MCP server that gives Claude Code sessions access to OpenAI's GPT Image models, the image
-generation behind ChatGPT. It is registered in the repo's `.mcp.json` as `openai-image`, so any
-Claude Code session started in this repo picks it up.
+generation behind ChatGPT. This directory holds the source. The build ships to
+[`plugins/openai-image`](../../plugins/openai-image/), which is both:
+
+- **a Claude Code plugin**, installable in any repo (see that directory's README), and
+- **this repo's own server**: the root `.mcp.json` runs the same bundle as `openai-image`, so any
+  session in this repo, cloud sessions included, picks it up without installing anything.
 
 ## Tools
 
@@ -35,21 +39,24 @@ noticeably more, so use `low` or `medium` for drafts.
 
 1. **API key.** Set `OPENAI_API_KEY` in the environment Claude Code runs in. For a cloud
    session, add it in the environment's settings (cloud environment menu → Edit) and start a new
-   session. Locally, export it in your shell before launching `claude`.
+   session. Locally, export it in your shell before launching `claude`, or, with the plugin, set
+   its API key option instead.
 2. **Network access (cloud sessions).** The environment's network policy must allow
    `api.openai.com`. Under Network access, either pick a broader level or add `api.openai.com`
    to Allowed domains.
 3. Start a new Claude Code session in the repo and approve the `openai-image` server when asked.
    `/mcp` shows whether it connected.
 
-No install step is needed. `dist/index.js` is a single self-contained bundle (MCP SDK and zod
-included, no native modules), so it runs on any OS with Node 20+ and no `node_modules`.
+No install step is needed. `plugins/openai-image/dist/index.js` is a single self-contained
+bundle (MCP SDK and zod included, no native modules), so it runs on any OS with Node 20+ and no
+`node_modules`.
 
 ### Environment variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `OPENAI_API_KEY` | — | Required |
+| `OPENAI_IMAGE_API_KEY` | — | Set by the plugin's API key option; wins over `OPENAI_API_KEY` |
+| `OPENAI_API_KEY` | — | Used when `OPENAI_IMAGE_API_KEY` is unset. One of the two is required |
 | `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare` | Model used when a call doesn't name one |
 | `OPENAI_IMAGE_OUTPUT_DIR` | `<project root>/generated-images` | Where images go when a call doesn't set `output_dir` (gitignored) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint, e.g. a gateway |
@@ -59,11 +66,14 @@ included, no native modules), so it runs on any OS with Node 20+ and no `node_mo
 
 ```bash
 npm install
-npm run build   # typecheck, then bundle src/ into dist/index.js
+npm run build   # typecheck, then bundle src/ into ../../plugins/openai-image/dist/index.js
 ```
 
-Commit the rebuilt `dist/index.js` together with any source change, because `.mcp.json` runs the
-bundle directly.
+Commit the rebuilt bundle together with any source change, because both the plugin and the root
+`.mcp.json` run it directly. Bump `version` in `plugins/openai-image/.claude-plugin/plugin.json`
+(and here in `package.json`) when you change it, or installed copies won't update. Check the
+manifests with `claude plugin validate --strict plugins/openai-image` and
+`claude plugin validate --strict .` from the repo root.
 
 ```
 src/

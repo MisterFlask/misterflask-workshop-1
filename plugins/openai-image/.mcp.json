@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "openai-image": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "OPENAI_IMAGE_API_KEY": "${user_config.openai_api_key}",
+        "NODE_USE_ENV_PROXY": "1"
+      }
+    }
+  }
+}

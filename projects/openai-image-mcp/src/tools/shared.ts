@@ -115,7 +115,7 @@ export async function buildImageResult(
 export function errorResult(action: string, error: unknown): CallToolResult {
   let text: string;
   if (error instanceof ApiKeyError) {
-    text = 'Error: OPENAI_API_KEY environment variable is not set. Add it to the environment Claude Code runs in, then restart the session.';
+    text = 'Error: no OpenAI API key. Set the openai-image plugin\'s API key option (/plugin → Configure options), or set OPENAI_API_KEY in the environment Claude Code runs in, then restart the session.';
   } else if (error instanceof OpenAIApiError) {
     text = `OpenAI API error (HTTP ${error.status}${error.code ? `, ${error.code}` : ''}): ${error.message}`;
   } else if (error instanceof NetworkError) {

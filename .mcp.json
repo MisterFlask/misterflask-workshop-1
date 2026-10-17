@@ -9,7 +9,7 @@
     },
     "openai-image": {
       "command": "node",
-      "args": ["projects/openai-image-mcp/dist/index.js"],
+      "args": ["plugins/openai-image/dist/index.js"],
       "env": {
         "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
         "NODE_USE_ENV_PROXY": "1"

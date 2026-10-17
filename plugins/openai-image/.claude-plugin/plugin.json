@@ -1,0 +1,17 @@
+{
+  "name": "openai-image",
+  "version": "1.0.0",
+  "description": "Generate and edit images with OpenAI GPT Image (ChatGPT image generation) from Claude Code. Defaults to gpt-image-2.5-flare.",
+  "author": { "name": "MisterFlask" },
+  "repository": "https://github.com/MisterFlask/misterflask-workshop-1",
+  "keywords": ["image-generation", "openai", "gpt-image", "mcp"],
+  "userConfig": {
+    "openai_api_key": {
+      "type": "string",
+      "title": "OpenAI API key",
+      "description": "Optional if OPENAI_API_KEY is already set in your environment.",
+      "sensitive": true,
+      "required": false
+    }
+  }
+}

@@ -10,7 +10,7 @@ import { API_BASE_URL, REQUEST_TIMEOUT_MS, readEnv } from '../config/defaults.js
 
 export class ApiKeyError extends Error {
   constructor() {
-    super('OPENAI_API_KEY environment variable is not set');
+    super('No OpenAI API key: OPENAI_IMAGE_API_KEY and OPENAI_API_KEY are both unset');
     this.name = 'ApiKeyError';
   }
 }
@@ -77,7 +77,8 @@ function toBlob(image: InputImage): Blob {
 }
 
 async function post(endpoint: string, body: string | FormData, headers: Record<string, string>): Promise<ImageResponse> {
-  const apiKey = readEnv('OPENAI_API_KEY');
+  // The plugin's API key option arrives as OPENAI_IMAGE_API_KEY; otherwise use the inherited OPENAI_API_KEY
+  const apiKey = readEnv('OPENAI_IMAGE_API_KEY') ?? readEnv('OPENAI_API_KEY');
   if (!apiKey) {
     throw new ApiKeyError();
   }
