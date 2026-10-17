@@ -39,9 +39,15 @@ const TERRAIN_FILES = ["grass", "plains", "desert", "snow", "tundra", "marsh", "
 const FEATURE_SPRITE = {
   FEATURE_FOREST: "forest",
   FEATURE_FOREST_NEW: "forest",
+  FEATURE_JUNGLE: "jungle",
+  FEATURE_FOREST_ANCIENT: "ancient",
+  FEATURE_FOREST_BURNT: "burnt",
 };
 
-const FEATURE_FILES = ["forest"];
+/** Per-sprite on-screen width as a fraction of the tile; the ancient grove reads bigger. */
+const FEATURE_SCALE = { forest: 0.92, jungle: 0.94, ancient: 1.04, burnt: 0.9 };
+
+const FEATURE_FILES = ["forest", "jungle", "ancient", "burnt"];
 
 /** Relief sprites (under app/iso/relief), drawn as tall overlays for a plot's relief: a peak plot
  *  gets the mountain. */
@@ -260,6 +266,7 @@ export class IsoMap {
         const feat = tname("FeatureType", map.feature[c.k]);
         const key = feat && FEATURE_SPRITE[feat];
         img = key ? this.imgs[`f_${key}`] : null;
+        if (img) scale = FEATURE_SCALE[key] ?? 0.92;
       }
       if (!img) continue;
       const fw = TW * scale;
