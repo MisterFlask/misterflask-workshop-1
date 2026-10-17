@@ -271,6 +271,8 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
   without a game server: the vertical-slice `showcase`, recipe grids
   (`grid=tree.oak,tree.pine&variants=6`, `&params=a,b` a param per row, `&float=1` on water),
   settlements side by side (`scene=cities&civs=CIVILIZATION_BANNOR,CIVILIZATION_KHAZAD&sizes=2,6,12&imps=IMPROVEMENT_TOWN`),
+  any map written as legend rows and dressed by the real placement (`rows=.www.kkk.,.zzz.qqq.`;
+  `scenes.js` `LEGEND`),
   overlays (`&sel=x,y&path=...`), any pipeline override (`&r3d={...}`).
   `node tools/r3d-lab.mjs --out a.png --query "scene=showcase&ts=96"`; `--shots FILE` for many;
   `--serve` to open it in a browser; `--stability` for the panning test (§11).
