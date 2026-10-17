@@ -451,7 +451,7 @@ export class Map3D {
   /** The frame's uniforms and light, for camera `cam`. */
   frameState(cam, time) {
     const cfg = this.cfg;
-    const L = LIGHTING[cfg.lighting] ?? LIGHTING.afternoon;
+    const L = LIGHTING[cfg.lighting] ?? LIGHTING.daylight;
     const sunDir = vnorm(L.sunDir);
     const sun = L.sun[0].map((c) => c * L.sun[1]);
     const sky = L.sky[0].map((c) => c * L.sky[1]);

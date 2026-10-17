@@ -7,31 +7,26 @@ import { hexLinear } from "./math.js";
 
 const KEY = "ffh.r3d.config";
 
-/** The light of the scene: sun direction (toward the sun) and colours (linear). */
+/** The light of the scene: sun direction (toward the sun) and colours (linear).
+ * The map is always in daylight. There is one light, `daylight`: a warm, high sun (about 42
+ * degrees up) so shadows stay short (about 1.2x object height) and the shaded side keeps its
+ * colour. No dusk, night or time-of-day cycle (owner decision); the old `afternoon`/`day` pair,
+ * whose low (27 degrees) sun cast the long near-black shadows F1 reported, is merged into this. */
 export const LIGHTING = {
-  afternoon: {
-    sunDir: [-0.78, 0.46, 0.42],
-    sun: [hexLinear("#ffd9ac"), 2.9],
-    sky: [hexLinear("#7489b8"), 0.56],
-    ground: [hexLinear("#6a5640"), 0.24],
-    haze: hexLinear("#b4aab0"),
-    shadowTint: [0.62, 0.68, 1.05],
-    exposure: 1.0,
-  },
-  day: {
-    sunDir: [-0.55, 0.72, 0.42],
-    sun: [hexLinear("#fff1dc"), 2.6],
-    sky: [hexLinear("#8aa6d6"), 0.7],
-    ground: [hexLinear("#6d6050"), 0.3],
-    haze: hexLinear("#b9c2cf"),
-    shadowTint: [0.72, 0.78, 1.0],
+  daylight: {
+    sunDir: [-0.65, 0.67, 0.35],
+    sun: [hexLinear("#ffe2bc"), 2.8],
+    sky: [hexLinear("#7e93bf"), 0.68],
+    ground: [hexLinear("#6c5a44"), 0.26],
+    haze: hexLinear("#b7b3bc"),
+    shadowTint: [0.72, 0.78, 1.02],
     exposure: 1.0,
   },
 };
 
 export const PRESETS = {
   painterly: {
-    lighting: "afternoon",
+    lighting: "daylight",
     shadows: true,
     ssao: 0.75,
     glow: 0.55,
@@ -48,7 +43,7 @@ export const PRESETS = {
     vignette: 0.14,
     paint: 1,
     bands: 0.55,
-    wrapLight: 0.35,
+    wrapLight: 0.45,
     rim: 0.35,
     stylize: 1,
     clouds: 0.45,
@@ -58,7 +53,7 @@ export const PRESETS = {
     mist: 0.35,
   },
   plain: {
-    lighting: "day",
+    lighting: "daylight",
     shadows: true,
     ssao: 0,
     glow: 0,
@@ -133,7 +128,8 @@ export function loadConfig() {
     saved = {};
   }
   const cfg = { ...DEFAULTS, ...saved };
-  // The map is always in daylight; a light no longer offered (a saved "dusk") falls back.
+  // The map is always in daylight; a light no longer offered (a saved "dusk", "afternoon" or
+  // "day") falls back to the single "daylight" look.
   if (!LIGHTING[cfg.lighting]) cfg.lighting = DEFAULTS.lighting;
   // A page-only override: ?r3d=plain|painterly or ?r3d={"kuwahara":0}.
   try {

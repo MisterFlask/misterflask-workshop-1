@@ -194,7 +194,9 @@ float shadowAt(vec3 wp, vec3 n) {
 vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   float ndl = dot(n, uSunDir);
   float d = clamp((ndl + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
-  float stepped = smoothstep(0.30, 0.62, d) * 0.82 + d * 0.18;
+  // The light-mass band: a lower threshold so a slope turned from the (now higher) sun keeps a
+  // readable value instead of being crushed near-black (F1).
+  float stepped = smoothstep(0.16, 0.56, d) * 0.82 + d * 0.18;
   d = mix(d, stepped, uBands);
   float sh = shadowAt(wp, n);
   // Cloud shadows drifting over the land: broad, soft masses of light and shade (fixed to the
@@ -204,6 +206,9 @@ vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   float cn = mnoise(cm + 31.0, 0.11) * 0.7 + mnoise(cm - 13.0, 0.23) * 0.3;
   float cloud = smoothstep(0.5, 0.72, cn);
   sh *= 1.0 - cloud * uClouds * 0.75;
+  // Floor the cast/terrain shadow for the stylized look, so shaded ground keeps its colour and
+  // never reads as a near-black hole (F1). Plain (uStylize 0) keeps full-strength shadows.
+  sh = mix(sh, mix(0.38, 1.0, sh), uStylize);
   sun = d * sh;
   vec3 amb = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
   vec3 L = uSunColor * sun + amb * ao;
