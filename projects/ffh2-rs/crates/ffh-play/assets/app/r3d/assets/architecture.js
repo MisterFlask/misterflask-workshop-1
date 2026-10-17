@@ -1227,9 +1227,11 @@ const ELF = {
     lit: "#ffd68a", glass: "#2a3028", door: "#5a4630", moss: "#4a5a38",
   },
   dark: {
-    bark: "#3e3638", barkDark: "#2a2428", wall: ["#5e5460", "#544a56", "#665a68"],
-    roof: [["#2c2836", 3], ["#382c42", 2], ["#46283a", 1]],
-    gold: "#4a3a5a",
+    // Lifted one value step (F2): the Svartalfar hall and flets were so dark they vanished under
+    // the crown. Still cold slate-violet, just readable.
+    bark: "#4a424a", barkDark: "#322c34", wall: ["#6e6474", "#645a6c", "#786a7e"],
+    roof: [["#3a3448", 3], ["#443852", 2], ["#56364a", 1]],
+    gold: "#5a4a6c",
     leaf: ["#121418", "#1e2228", "#2e3440", "#4a5262"],
     lit: "#a8b4ff", glass: "#141218", door: "#201a1e", moss: "#2a3030",
   },
@@ -1593,7 +1595,9 @@ function elvenKeep(mb, r, v, sub) {
   mb.heightAO(w0, -0.04, forkY * 0.7, 0.5);
   // The crown: dark olive and teal in the lower tiers, lit gold at the top (Ljosalfar); slate and
   // violet under a cold sheen (Svartalfar).
-  const ramp = S.dark ? ["#0a0a12", "#14172a", "#222840", "#363e60", "#5a6488", "#9098bc"] : ["#121c16", "#20301e", "#3e4a26", "#6e6c32", "#a8964c", "#d8c486"];
+  // Svartalfar: the darkest two stops were near-black (#0a0a12/#14172a), so the crown read as a navy
+  // mushroom (F2). Raised to a slate-violet base; the lavender top and the violet identity stay.
+  const ramp = S.dark ? ["#1c1a28", "#262840", "#333a58", "#454d72", "#6872a0", "#9aa6c8"] : ["#121c16", "#20301e", "#3e4a26", "#6e6c32", "#a8964c", "#d8c486"];
   const f0 = mb.mark();
   mb.mat = MAT.FOLIAGE;
   tiers.forEach((t, k) => {
@@ -4318,7 +4322,10 @@ function cityLayout(ctx) {
   const lm = { x: r.range(-0.05, 0.05), z: ctx.capital ? r.range(-0.12, -0.09) : r.range(-0.14, -0.1) };
   if (size <= 3 && !ctx.capital && f !== "elven") plan.add("bld.hall", r.int(0, 2), lm.x, lm.z + 0.03, r.range(-0.15, 0.15), 1);
   else {
-    const p = plan.add("bld.keep", ctx.capital ? 1 : 0, lm.x, lm.z, r.range(-0.1, 0.1), f === "elven" ? Math.max(0.9, lmScale) : lmScale, { ghost: f === "elven" });
+    // Elven cities keep the great tree as their landmark, but let it grow with size (F2): the old
+    // Math.max(0.9, ...) floored every non-capital tree at 0.9, so a size-1 town looked as big as a
+    // size-8 one and the crown buried the houses. lmScale already grows (0.7 + size*0.025, cap 0.92).
+    const p = plan.add("bld.keep", ctx.capital ? 1 : 0, lm.x, lm.z, r.range(-0.1, 0.1), lmScale, { ghost: f === "elven" });
     if (f === "elven") plan.boxes.push({ x: lm.x, z: lm.z, hw: 0.14 * p.scale, hd: 0.12 * p.scale, c: 1, s: 0 });
   }
   const towerV = sub === "arcane" ? [2, 0] : f === "elven" ? [2, 0, 1] : [0, 1];

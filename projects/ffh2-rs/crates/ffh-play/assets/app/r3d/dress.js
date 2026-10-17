@@ -320,6 +320,9 @@ function placeTrees(world, ctx, place) {
       if (ctx.nearRiver(lx, lz)) continue;
       const m = choose();
       let s = (m.scale ?? 1) * r.range(0.8, 1.2);
+      // Adjacent to a city, keep the trees shorter so the town (and its own great tree) shows over
+      // the canopy instead of being buried (F2: Evermore in the ancient wood).
+      if (ctx.cityNear) s *= 0.75;
       // The back row of this plot stands just in front of whatever holds the plot behind it.
       if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.3) s *= 0.6;
       // In front of a city the wood opens: clear on the half of the plot toward it, low beyond
