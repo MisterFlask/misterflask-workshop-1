@@ -755,13 +755,15 @@ export class Art {
     const t = style.tincture;
     const t2 = style.division !== 'plain' ? style.second : null;
     const out = new Uint8Array(TILE * TILE).fill(TRANSPARENT);
-    const k0 = this.K('0');
+    // a solid line, not a dashed stitch: a dark edge (the shade) where the owners meet, the bright
+    // core (the stitch), then a checker fringe of the stitch fading into the territory. A divided
+    // owner alternates its two tinctures every 6 px; Sable keeps its bone tick.
     const put = (i, j, depth, along) => {
       const g = along % 6;
-      if (g >= 4) return;
-      const dash = Math.floor(along / 6);
-      const tt = t2 && dash % 2 ? t2 : t;
-      let c = depth === 0 ? k0 : depth === 1 ? tt.stitch : tt.under;
+      const seg = Math.floor(along / 6);
+      const tt = t2 && seg % 2 ? t2 : t;
+      if (depth === 2 && ((i + j) & 1)) return;
+      let c = depth === 0 ? tt.under : tt.stitch;
       if (depth === 1 && tt.tick !== null && g === 0) c = tt.tick;
       const p = j * TILE + i;
       if (out[p] === TRANSPARENT || depth < 2) out[p] = c;
@@ -818,15 +820,15 @@ export class Art {
 
   // ---------------------------------------------------------------- map objects
 
-  /** Resource medallion (docs/ART.md 6.1): a soot disc with a class-coloured rim, glyph inside. */
+  /** Resource (docs/ART.md 6.1): a small object standing in the tile's lower right, on a soft shadow. */
   drawResource(ctx, x, y, bonusType) {
     const r = this.resolve('bonus', bonusType);
     if (!r || r.sprite === 'none') return;
     const s = this.scale;
-    const rim = r.opts.rim || 'o';
-    if (this.hasSprite('res/_disc')) this.drawSprite(ctx, x + 25 * s, y + 25 * s, this.pick('res/_disc').name, { remap: `#${rim}` });
     const g = this.pick(r.sprite, 0);
-    if (g) this.drawSprite(ctx, x + 25 * s, y + 25 * s, g.name, { remap: r.opts.remap });
+    if (!g) return;
+    this._contactShadow(ctx, x + 25 * s, y + 30 * s, 10, 2);
+    this.drawSprite(ctx, x + 25 * s, y + 30 * s, g.name, { remap: r.opts.remap });
   }
 
   /** Improvement (docs/ART.md 5.7-5.8, 6.2): placed at `: place` (default tile 16,29), with its pools. */
@@ -875,7 +877,10 @@ export class Art {
     const animal = entry?.combat === 'ANIMAL' || owner?.animal;
     const sea = entry?.domain === 'SEA';
     if (spr && layer !== 'overlay') {
-      if (!sea) this._contactShadow(ctx, x + fx * s, y + (fy + (entry?.domain === 'AIR' ? 3 : 0)) * s);
+      const gy = y + (fy + (entry?.domain === 'AIR' ? 3 : 0)) * s;
+      // the owner's ring on the ground (docs/ART.md 10): who a unit belongs to, at a glance
+      if (owner && !animal && !owner.hidden) this._teamBase(ctx, x + fx * s, gy, state.ringOwner || owner, spr.w >= 40);
+      else if (!sea) this._contactShadow(ctx, x + fx * s, gy);
       const base = { remap: r.opts.remap, owner: owner || null, accent: state.accent || r.opts.accent, mirror };
       if (state.lit !== false) {
         for (const l of spr.meta.lights) {
@@ -886,7 +891,7 @@ export class Art {
       const echoes = Math.min(2, Math.max(0, (state.count | 0) - 1));
       for (let k = echoes; k >= 1; k--) this.drawSprite(ctx, x + (fx - 2 * k) * s, y + (fy - 2 * k) * s, spr.name, { ...base, silhouette: '2' });
       this.drawSprite(ctx, x + fx * s, y + fy * s, spr.name, {
-        ...base, rim: state.selected ? 2 : 1, checker: !!(state.translucent || r.opts.ghost),
+        ...base, rim: state.selected ? 2 : 0, checker: !!(state.translucent || r.opts.ghost),
       });
     }
     if (layer === 'sprite') return;
@@ -912,16 +917,39 @@ export class Art {
   }
 
   /** The contact shadow (4.1): a 14x3 50% checker ellipse of void centred on (x, y). */
-  _contactShadow(ctx, x, y) {
-    if (!this.lib.sprites.has('_shadow')) {
-      const w = 14, h = 3, data = new Uint8Array(w * h).fill(TRANSPARENT);
+  _contactShadow(ctx, x, y, w = 14, h = 3) {
+    const name = w === 14 && h === 3 ? '_shadow' : `_shadow${w}x${h}`;
+    if (!this.lib.sprites.has(name)) {
+      const data = new Uint8Array(w * h).fill(TRANSPARENT);
+      const cx = (w - 1) / 2, cy = (h - 1) / 2;
       for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-        const u = (i - 6.5) / 7, v = (j - 1) / 1.6;
+        const u = (i - cx) / (w / 2), v = (j - cy) / (h / 2 + 0.1);
         if (u * u + v * v <= 1 && ((i + j) & 1) === 0) data[j * w + i] = 0;
       }
-      this.lib.sprites.set('_shadow', { name: '_shadow', w, h, ax: 7, ay: 1, data, meta: { lights: [], types: [], tags: [] } });
+      this.lib.sprites.set(name, { name, w, h, ax: Math.floor(w / 2), ay: h - 1, data, meta: { lights: [], types: [], tags: [] } });
     }
-    this.drawSprite(ctx, x, y, '_shadow');
+    this.drawSprite(ctx, x, y, name);
+  }
+
+  /**
+   * The owner's ground ring under a unit: an ellipse in the tincture's field with a shade lip at
+   * the front and a checker shadow inside, centred on (x, y). Drawn through the owner slots with
+   * the division applied, so two players sharing a tincture show different rings.
+   */
+  _teamBase(ctx, x, y, owner, big = false) {
+    const name = big ? '_teambase_big' : '_teambase';
+    if (!this.lib.sprites.has(name)) {
+      const w = big ? 30 : 24, h = big ? 9 : 8, rx = w / 2 - 0.5, ry = h / 2 - 0.5;
+      const data = new Uint8Array(w * h).fill(TRANSPARENT);
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        const u = (i - rx) / rx, v = (j - ry) / ry, d = u * u + v * v;
+        if (d > 1) continue;
+        if (d > 0.55) data[j * w + i] = j > ry && d > 0.78 ? SLOT_SHADE : SLOT_FIELD;
+        else if (((i + j) & 1) === 0) data[j * w + i] = 0;
+      }
+      this.lib.sprites.set(name, { name, w, h, ax: Math.floor(w / 2), ay: Math.floor(h / 2), data, meta: { lights: [], types: [], tags: [], flag: null } });
+    }
+    this.drawSprite(ctx, x, y, name, { owner, flag: true });
   }
 
   /** Paint single art pixels: list of [tileX, tileY, key] relative to canvas point (x, y). */
@@ -1029,7 +1057,9 @@ export class Art {
     const chipW = size.length * 4 + 1;
     const nameW = mode === 'full' && city.name ? this.measureText(city.name, 'vigil', true) : 0;
     const turns = mode === 'full' && city.own && city.turns != null ? String(city.turns) : '';
-    const turnsW = turns ? this.measureText(turns, 'tally') + 2 : 0;
+    // the production glyph (a 5 px mallet) before the turns, so the digit cannot pass for a count
+    const glyph = turns && this.hasSprite('ui/plaque_production') ? 6 : 0;
+    const turnsW = turns ? glyph + this.measureText(turns, 'tally') + 2 : 0;
     const w = chipW + (nameW ? nameW + 4 : 1) + turnsW + 1;
     const x0 = x + Math.round(16 - w / 2) * s, y0 = y + 29 * s;
     ctx.fillStyle = this.css('5');
@@ -1042,7 +1072,11 @@ export class Art {
     ctx.fillRect(x0, y0, chipW * s, 7 * s);
     this.drawText(ctx, x0 + 1 * s, y0 + 6 * s, size, { font: 'tally', color: charge });
     if (nameW) this.drawText(ctx, x0 + (chipW + 2) * s, y0 + 6 * s, city.name, { font: 'vigil', color: city.capital && city.own ? '8' : '7', smallCaps: true });
-    if (turns) this.drawText(ctx, x0 + (chipW + nameW + 4) * s, y0 + 6 * s, turns, { font: 'tally', color: '6' });
+    if (turns) {
+      const tx = x0 + (chipW + nameW + 4) * s;
+      if (glyph) this.drawSprite(ctx, tx, y0 + s, 'ui/plaque_production');
+      this.drawText(ctx, tx + glyph * s, y0 + 6 * s, turns, { font: 'tally', color: '6' });
+    }
   }
 
   // ---------------------------------------------------------------- text and icons

@@ -275,7 +275,7 @@ export function nineEl(art, name, w, h, { u = 2, dpr = 1 } = {}) {
   return c;
 }
 
-/** CSS custom properties for the 40 palette colours: --c-void ... --c-wisp (docs/ART.md 11.2). */
+/** CSS custom properties for the palette colours: --c-void ... --c-gold (docs/ART.md 11.2). */
 export function paletteCSS(art) {
   return ':root {\n' + art.palette.colors.map((c) => `  --c-${c.name}: ${c.hex};`).join('\n') + '\n}\n';
 }
@@ -366,7 +366,7 @@ export function drawButton(art, ctx, x, y, w, h, label, { kind = 'normal', state
 /** Remap that greys a sprite out (every colour to iron/ash by value), for disabled controls. */
 export function disabledRemap(art, spr) {
   const used = new Set();
-  for (const v of spr.data) if (v < 40 && v !== 0) used.add(v);
+  for (const v of spr.data) if (v < art.palette.colors.length && v !== 0) used.add(v);
   return [...used].map((i) => {
     const L = art.palette.colors[i];
     const lum = 0.3 * L.rgb[0] + 0.59 * L.rgb[1] + 0.11 * L.rgb[2];
@@ -445,10 +445,11 @@ export function drawInitial(art, ctx, x, y, letter, { size = 22 } = {}) {
 
 /** Tile marks (11.7): kind 'hover' | 'select' | 'attack' | 'route' | 'target'; (x, y) the tile's top-left. */
 export function drawTileMark(art, ctx, x, y, kind = 'hover', { mx = 0, my = 0 } = {}) {
-  const s = art.scale;
   if (kind === 'target') drawRange(art, ctx, x, y, { mx, my, ring: false });
+  // the 34x34 marks are anchored at (1,1): drawn at the tile's top-left, they stand 1 px outside
+  // the tile on every side
   const spr = art.pick(`ui/tile_${kind}`);
-  if (spr) art.drawSprite(ctx, x + spr.ax * s, y + spr.ay * s, spr.name);
+  if (spr) art.drawSprite(ctx, x, y, spr.name);
 }
 
 /**
@@ -458,7 +459,8 @@ export function drawTileMark(art, ctx, x, y, kind = 'hover', { mx = 0, my = 0 } 
 export function drawRange(art, ctx, x, y, { mx = 0, my = 0, ring = true } = {}) {
   const T = art.tables.ARC;
   art.remapRegion(ctx, x, y, 32, 32, (i, j, c) => (((mx * 32 + i) & 1) === 0 && ((my * 32 + j) & 1) === 0 ? T[c] : c));
-  if (ring) { const spr = art.pick('ui/tile_target'); if (spr) art.drawSprite(ctx, x + spr.ax * art.scale, y + spr.ay * art.scale, spr.name); }
+  const spr = ring ? art.pick('ui/tile_target') : null;
+  if (spr) art.drawSprite(ctx, x, y, spr.name);
 }
 
 /**

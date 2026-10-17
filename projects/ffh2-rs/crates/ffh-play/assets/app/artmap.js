@@ -12,8 +12,8 @@
 // tile it depends on changed (map deltas) or a city near it did (size tier, owner, capital,
 // light, walls).
 //
-// Each frame then draws the vignette, the units (sprites row by row, the city banners and
-// plaques, the stack standards), the tile marks, the path preview with the odds, and the
+// Each frame then draws the vignette (none by day), the units (sprites row by row, the tile
+// marks, the city banners and plaques, the stack marks), the path preview with the odds, and the
 // minimap. The two smallest zoom steps are the chart (docs/ART.md 3.2: flat colours, owner
 // washes, city dots; no sprites).
 
@@ -22,7 +22,7 @@ import * as T from "./tiles.js";
 import { look, UI, heraldry, KIND_TABLES } from "./look.js";
 import { renderMap, makePlots, fromApiMap } from "../art/compose.js";
 import { TILE } from "../art/art.js";
-import { CHUNK, artScale, rowOf, rowChunksOfTiles, changedTiles, stackState, citySignature, updateFacing, OwnerStyles } from "./stacks.js";
+import { CHUNK, artScale, rowOf, rowChunksOfTiles, changedTiles, stackState, citySignature, updateFacing, unitMoves, OwnerStyles } from "./stacks.js";
 import { drawChunkLayers } from "./chunks.js";
 
 /** The terrain cache's budget, in art pixels (least recently used chunks go first). */
@@ -38,6 +38,19 @@ const IN_FLIGHT = 3;
 const CHART = 4;
 
 const LAYERS = T.MAP_LAYERS;
+
+/** The move slide (docs/ART.md 4.5): about 8 tiles a second (125 ms a tile), capped so a longer
+ *  net hop is still a quick sweep; a move of more than SLIDE_MAX_TILES jumps (a teleport, or a
+ *  long multi-tile move that would read as flying in a straight line across the terrain). */
+const SLIDE_MS_PER_TILE = 125;
+const SLIDE_MAX_MS = 400;
+const SLIDE_MAX_TILES = 4;
+const ZERO_OFF = { ox: 0, oy: 0 };
+
+/** The 4x4 ordered-dither threshold the art's light pools use (docs/ART.md 4.4), so the combat
+ *  flash dissolves at its edge in crisp pixels rather than a smooth gradient. */
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const bayer4 = (x, y) => (BAYER4[(((y % 4) + 4) % 4) * 4 + (((x % 4) + 4) % 4)] + 0.5) / 16;
 
 export class ArtMap {
   /** `view`: the MapView (camera, viewport, canvas, overlay). */
@@ -63,6 +76,12 @@ export class ArtMap {
     this.sigs = new Map();
     this.lastSize = new Map();
     this.facing = new Map();
+    /** The move slide (docs/ART.md 4.5): the last view's unit positions (id -> {x, y}), the units
+     *  now sliding (id -> {dx, dy, t0, dur}), and the turn of the last view processed (slides are
+     *  made only for the player's own in-turn moves, not the AI moves seen on turn rollover). */
+    this.unitPos = new Map();
+    this.slides = new Map();
+    this.slideTurn = null;
     this.owners = new OwnerStyles(this.art, []);
     this.ownerSpecs = [];
     this.ownersSig = "";
@@ -204,6 +223,9 @@ export class ArtMap {
       this.clear();
       this.sigs.clear();
       this.facing.clear();
+      this.unitPos.clear();
+      this.slides.clear();
+      this.slideTurn = null;
       this.lastSize.clear();
       this.viewSeen = null;
     } else {
@@ -248,6 +270,27 @@ export class ArtMap {
     }
     // Facing from the moves since the last view.
     this.facing = updateFacing(this.facing, view?.units ?? [], map.w, !!map.wrap_x);
+    // Move slide (docs/ART.md 4.5): the units that changed tile glide from their old tile to the
+    // new one. Only the player's own in-turn moves (same turn as the last view) slide — on turn
+    // rollover every AI move would otherwise slide at once; and only short hops, so a unit never
+    // flies in a straight line across the map. prefers-reduced-motion jumps.
+    const { positions, moved } = unitMoves(this.unitPos, view?.units ?? [], map.w, !!map.wrap_x);
+    this.unitPos = positions;
+    const turn = S.status?.turn ?? S.view?.turn ?? 0;
+    // Slide only the player's OWN moves made while they have control, and only within the same
+    // turn: an AI move seen on turn rollover, or when a decision refetches the view mid-AI-turn
+    // (same turn number, phase "decision"), must not slide a swarm of foreign units.
+    const mep = me()?.player;
+    if (turn === this.slideTurn && S.status?.phase === "human" && mep !== null && mep !== undefined && !this.v.reduceMotion()) {
+      const own = new Set((view?.units ?? []).filter((u) => u.owner === mep).map((u) => u.id));
+      for (const { id, dx, dy } of moved) {
+        if (!own.has(id)) continue;
+        const steps = Math.max(Math.abs(dx), Math.abs(dy));
+        if (steps > SLIDE_MAX_TILES) continue; // a teleport or a long multi-tile move: jump
+        this.slides.set(id, { dx, dy, t0: performance.now(), dur: Math.min(SLIDE_MAX_MS, steps * SLIDE_MS_PER_TILE) });
+      }
+    }
+    this.slideTurn = turn;
     // Cities as the art draws them; a city looks like the last size seen while it is fogged.
     const cities = [];
     const sigs = new Map();
@@ -409,6 +452,7 @@ export class ArtMap {
       this.drawUnits(g, f);
       lap("units");
       this.drawOverlays(g, f);
+      this.drawFlashes(g, f);
       lap("overlays");
     } else {
       this.drawChartUnits(g, f);
@@ -420,6 +464,14 @@ export class ArtMap {
     this.stats.phases = ph;
     if (missing && !worker) v.request();
     else if (!missing && f.s) this.prefetch(f);
+    // Keep frames coming while a unit is sliding. Expire by time here (not only in drawUnits,
+    // which runs just for in-view stacks) so a unit that slid off-screen cannot leave a slide
+    // behind and spin this loop forever.
+    if (this.slides.size) {
+      const now = performance.now();
+      for (const [id, s] of this.slides) if (now - s.t0 >= s.dur) this.slides.delete(id);
+      if (f.s && this.slides.size) v.request();
+    }
     // The path's dots march (docs/ART.md 4.5: 1 px every 150 ms) while a path is shown.
     if (f.s && v.overlay.path?.ok && !this.marching) {
       this.marching = setTimeout(() => {
@@ -519,8 +571,9 @@ export class ArtMap {
 
   /** The viewport vignette (docs/ART.md 8.3): beyond 75% of the half-diagonal, pixels pass
    *  through FOG with a Bayer threshold rising to full at the corners. Only the strips at the
-   *  sides that hold such pixels are read back. */
+   *  sides that hold such pixels are read back. Off when the ground pass says so (by day). */
   vignette(g, f) {
+    if (this.art.vignetteOn === false) return;
     const s = f.s;
     const Wa = Math.floor(f.W / s);
     const Ha = Math.floor(f.H / s);
@@ -600,19 +653,48 @@ export class ArtMap {
     return out;
   }
 
-  /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the city
-   *  banners and plaques, then the stacks' standards, counts, health and marks. */
+  /** The ease-out pixel offset of unit `id`'s slide (from its new tile back toward the old one),
+   *  snapped to whole art pixels; ZERO_OFF when it is not sliding. Pure — expiry is handled by the
+   *  time prune in draw() — so the sprite (drawUnits) and the selection mark (drawTileMarks) read
+   *  the same value and stay locked together. */
+  slideOffset(id, f, now) {
+    const s = this.slides.get(id);
+    if (!s) return ZERO_OFF;
+    const t = (now - s.t0) / s.dur;
+    if (t >= 1) return ZERO_OFF;
+    const e = 1 - Math.pow(1 - t, 3);
+    const snap = (v) => Math.round(v / f.s) * f.s;
+    return { ox: snap(-s.dx * f.tp * (1 - e)), oy: snap(s.dy * f.tp * (1 - e)) };
+  }
+
+  /** Units (docs/ART.md 3.1, compose.js's unit layers): the sprites row by row, the tile marks
+   *  (drawTileMarks), the city banners and plaques, then the stacks' count chips, health and marks. */
   drawUnits(g, f) {
     const art = this.art;
     const stacks = this.stacksInView(f);
     const cityAt = new Set(this.ccities.map((c) => `${c.x},${c.y}`));
     const owner = (p) => this.owners.get(p);
     const zoom = f.s / f.dpr;
+    // The slide offset of each moving stack (docs/ART.md 4.5): from its old tile to its new one,
+    // used for both the sprite and the overlay pass so the count, health and marks ride with
+    // the figure (and, in drawTileMarks, the selection mark rides with it too).
+    const now = performance.now();
+    const offsets = new Map();
+    const offOf = (id) => {
+      if (!offsets.has(id)) offsets.set(id, this.slideOffset(id, f, now));
+      return offsets.get(id);
+    };
     for (const st of stacks) {
-      const X = f.ox + st.ux * f.tp;
-      const Y = f.oy + st.row * f.tp;
-      art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity: cityAt.has(`${st.x},${st.row}`), layer: "sprite" });
+      const off = offOf(st.head.id);
+      const inCity = cityAt.has(`${st.x},${st.row}`);
+      // A garrison would hide its city (units fill the tile): in a city the figure shows only while
+      // it is selected or sliding; the count chip (overlay pass) still marks the garrison.
+      if (inCity && !st.state.selected && !off.ox && !off.oy) continue;
+      const X = f.ox + st.ux * f.tp + off.ox;
+      const Y = f.oy + st.row * f.tp + off.oy;
+      art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity, layer: "sprite" });
     }
+    this.drawTileMarks(g, f);
     for (const c of this.ccities) {
       if (c.y < f.r0 - 1 || c.y > f.r1 + 1) continue;
       const p = this.plots.get(c.x, c.y);
@@ -622,24 +704,42 @@ export class ArtMap {
       }
     }
     for (const st of stacks) {
-      const X = f.ox + st.ux * f.tp;
-      const Y = f.oy + st.row * f.tp;
+      const off = offOf(st.head.id);
+      const X = f.ox + st.ux * f.tp + off.ox;
+      const Y = f.oy + st.row * f.tp + off.oy;
       art.drawUnit(g, X, Y, st.head.type, owner(st.head.owner), { ...st.state, inCity: cityAt.has(`${st.x},${st.row}`), layer: "overlay" });
     }
   }
 
-  /** The tile marks (targets, selection, hover), the waypoints and the path preview. */
+  /** Call `fn(X, Y, ux, row)` at each on-screen copy of map tile (x, y) (device px of its top-left). */
+  tileAt(f, x, y, fn) {
+    const row = rowOf(this.map, y);
+    if (row < f.r0 - 1 || row > f.r1 + 1) return;
+    for (const ux of this.copies(f, x)) fn(f.ox + ux * f.tp, f.oy + row * f.tp, ux, row);
+  }
+
+  /** The tile marks (targets, selection, hover). drawUnits draws them between the sprites and the
+   *  city plaques, banners and stack chips, so a bracket never writes over a town's name. */
+  drawTileMarks(g, f) {
+    const art = this.art;
+    const o = this.v.overlay;
+    const at = (x, y, fn) => this.tileAt(f, x, y, fn);
+    if (Array.isArray(o.targets)) for (const [x, y] of o.targets) at(x, y, (X, Y, ux, row) => UI.drawTileMark(art, g, X, Y, "target", { mx: ux, my: row }));
+    // The selection mark rides with the selected unit while it slides, so the bracket does not sit
+    // at the destination waiting for the sprite to catch up.
+    if (o.sel) {
+      const selId = (o.units ?? [])[0];
+      const off = selId !== undefined && selId !== null ? this.slideOffset(selId, f, performance.now()) : ZERO_OFF;
+      at(o.sel.x, o.sel.y, (X, Y) => UI.drawTileMark(art, g, X + off.ox, Y + off.oy, "select"));
+    }
+    if (o.hover && !(o.sel && o.sel.x === o.hover.x && o.sel.y === o.hover.y)) at(o.hover.x, o.hover.y, (X, Y) => UI.drawTileMark(art, g, X, Y, o.targets ? "route" : "hover"));
+  }
+
+  /** The waypoints and the path preview (over everything, after the tile marks and the units). */
   drawOverlays(g, f) {
     const art = this.art;
     const o = this.v.overlay;
-    const at = (x, y, fn) => {
-      const row = rowOf(this.map, y);
-      if (row < f.r0 - 1 || row > f.r1 + 1) return;
-      for (const ux of this.copies(f, x)) fn(f.ox + ux * f.tp, f.oy + row * f.tp, ux, row);
-    };
-    if (Array.isArray(o.targets)) for (const [x, y] of o.targets) at(x, y, (X, Y, ux, row) => UI.drawTileMark(art, g, X, Y, "target", { mx: ux, my: row }));
-    if (o.sel) at(o.sel.x, o.sel.y, (X, Y) => UI.drawTileMark(art, g, X, Y, "select"));
-    if (o.hover && !(o.sel && o.sel.x === o.hover.x && o.sel.y === o.hover.y)) at(o.hover.x, o.hover.y, (X, Y) => UI.drawTileMark(art, g, X, Y, o.targets ? "route" : "hover"));
+    const at = (x, y, fn) => this.tileAt(f, x, y, fn);
     if (Array.isArray(o.waypoints)) {
       o.waypoints.forEach(([x, y], i) => at(x, y, (X, Y) => {
         const s = f.s;
@@ -655,6 +755,40 @@ export class ArtMap {
       const kind = path.attack ? "attack" : o.routeTo ? "route" : "move";
       const odds = path.attack && o.odds !== null && o.odds !== undefined ? o.odds / 10 : null;
       UI.drawPath(art, g, f.ox, f.oy, steps, { kind, odds, time: art.time });
+    }
+  }
+
+  /** The combat flashes (docs/ART.md 4.5), in device pixels; both renderers read `v.flashes`,
+   *  the flat one draws them in `MapView.drawFlashes`. A brief crimson glow on the struck tile, a
+   *  crimson puff rising as a unit is lost. */
+  drawFlashes(g, f) {
+    const flashes = this.v.flashes;
+    if (!flashes || !flashes.length || !f.s) return;
+    const s = f.s; // device px per art px
+    const now = performance.now();
+    for (const fl of flashes) {
+      const row = rowOf(this.map, fl.y);
+      if (row < f.r0 - 1 || row > f.r1 + 1) continue;
+      const t = Math.min(1, (now - fl.t0) / fl.dur);
+      const a = (1 - t) * (fl.kind === "death" ? 0.5 : 0.58);
+      if (a <= 0.01) continue;
+      // Radius in whole art pixels; a death pool is smaller and rises as it fades.
+      const R = Math.round(fl.kind === "death" ? 9 + t * 5 : 14);
+      const rise = fl.kind === "death" ? Math.round(t * 8) : 0;
+      g.fillStyle = `rgba(119,37,43,${a})`; // crimson #77252b (ART.md's war/damage hue)
+      for (const ux of this.copies(f, fl.x)) {
+        // Centre in art-pixel coordinates (16,16 is the tile centre of a 32 px tile).
+        const aox = Math.round((f.ox + ux * f.tp) / s) + 16;
+        const aoy = Math.round((f.oy + row * f.tp) / s) + 16 - rise;
+        g.beginPath();
+        for (let dy = -R; dy <= R; dy++) {
+          for (let dx = -R; dx <= R; dx++) {
+            const d = Math.sqrt((dx / R) ** 2 + ((dy * 1.4) / R) ** 2); // elliptical, as the light pools
+            if (d < 1 && 1 - d > bayer4(aox + dx, aoy + dy)) g.rect((aox + dx) * s, (aoy + dy) * s, s, s);
+          }
+        }
+        g.fill();
+      }
     }
   }
 

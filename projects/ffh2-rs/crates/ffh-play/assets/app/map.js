@@ -86,6 +86,14 @@ export class MapView {
     /** The art renderer (`ArtMap`) when it draws the map, else null (the flat renderer). */
     this.art = null;
     this.queued = false;
+    /** An in-flight camera glide (`glideTo`): `{ sx, sy, dx, dy, t0, dur }`, else null. Direct
+     *  manipulation (drag, zoom, pan) cancels it; `prefers-reduced-motion` skips it. */
+    this.anim = null;
+    this.animRaf = 0;
+    /** One-shot combat flashes (`flashTile`): `{ x, y, kind, t0, dur }`, drawn by both renderers
+     *  and self-expiring. */
+    this.flashes = [];
+    this.flashRaf = 0;
     this.listen();
     new ResizeObserver(() => this.resize()).observe(wrap);
     this.resize();
@@ -108,6 +116,7 @@ export class MapView {
         const dy = ev.clientY - down.y;
         if (!down.dragged && Math.hypot(dx, dy) > 5) down.dragged = true;
         if (down.dragged) {
+          this.cancelGlide();
           this.cam = T.clampCamera({ ...this.cam, cx: down.cx - dx / this.cam.ts, cy: down.cy + dy / this.cam.ts }, this.map ?? { w: 1, h: 1 });
           this.hideTip();
           this.request();
@@ -150,6 +159,7 @@ export class MapView {
     );
     const miniMove = (ev) => {
       if (!this.map) return;
+      this.cancelGlide();
       const r = this.mini.getBoundingClientRect();
       const x = ((ev.clientX - r.left) / r.width) * this.map.w;
       const y = this.map.h - ((ev.clientY - r.top) / r.height) * this.map.h;
@@ -221,6 +231,7 @@ export class MapView {
     const i = zs.findIndex((z) => Math.abs(z - this.cam.ts) < 0.01);
     const next = zs[Math.min(zs.length - 1, Math.max(0, (i < 0 ? 3 : i) + step))];
     if (next === this.cam.ts) return;
+    this.cancelGlide();
     this.cam = T.clampCamera(T.zoomAt(this.cam, this.vw, this.vh, next, sx, sy), this.map ?? { w: 1, h: 1 });
     this.hideTip();
     this.request();
@@ -228,12 +239,116 @@ export class MapView {
 
   pan(dx, dy) {
     if (!this.map) return;
+    this.cancelGlide();
     this.cam = T.clampCamera({ ...this.cam, cx: this.cam.cx + dx, cy: this.cam.cy + dy }, this.map);
     this.request();
   }
 
-  centerOn(x, y) {
+  /** Whether the viewer asked for less motion; the glide then jumps instead. */
+  reduceMotion() {
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  }
+
+  cancelGlide() {
+    if (this.animRaf) cancelAnimationFrame(this.animRaf);
+    this.animRaf = 0;
+    this.anim = null;
+  }
+
+  /** Eases the camera's centre to the plot centre (cx, cy) in map units: a glide across the page,
+   *  the short way round a wrapping map. A tiny move, no map, or prefers-reduced-motion jumps. */
+  glideTo(cx, cy) {
     if (!this.map) return;
+    const end = T.clampCamera({ ...this.cam, cx, cy }, this.map);
+    let dx = end.cx - this.cam.cx;
+    if (this.map.wrap_x) {
+      dx = ((dx % this.map.w) + this.map.w) % this.map.w;
+      if (dx > this.map.w / 2) dx -= this.map.w;
+    }
+    const dy = end.cy - this.cam.cy;
+    const dist = Math.hypot(dx, dy);
+    if (this.reduceMotion() || dist < 0.75) {
+      this.cancelGlide();
+      this.cam = end;
+      this.hideTip();
+      this.request();
+      return;
+    }
+    this.hideTip();
+    // The camera stays unwrapped through the glide (the renderer handles any centre); it is
+    // normalised at the end. Longer hops take a little longer, capped so a cross-map jump is a
+    // quick sweep, not a slog.
+    this.anim = { sx: this.cam.cx, sy: this.cam.cy, dx, dy, t0: performance.now(), dur: Math.min(460, 170 + dist * 7) };
+    if (!this.animRaf) this.stepGlide();
+  }
+
+  stepGlide() {
+    this.animRaf = requestAnimationFrame(() => {
+      this.animRaf = 0;
+      const a = this.anim;
+      if (!a) return;
+      const t = Math.min(1, (performance.now() - a.t0) / a.dur);
+      const e = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      this.cam = { ...this.cam, cx: a.sx + a.dx * e, cy: a.sy + a.dy * e };
+      if (t >= 1) {
+        this.anim = null;
+        this.cam = T.clampCamera(this.cam, this.map);
+      }
+      this.draw();
+      if (this.anim) this.stepGlide();
+    });
+  }
+
+  /** A brief combat light on a tile (docs/ART.md 4.5: "the loser's rim flashes crimson"); `kind`
+   *  is "hit" (a struck defender) or "death" (a unit lost). It fades on its own; both renderers
+   *  draw it. prefers-reduced-motion shows nothing (stillness is kept). */
+  flashTile(x, y, kind) {
+    if (this.reduceMotion() || !this.map) return;
+    this.flashes.push({ x, y, kind, t0: performance.now(), dur: kind === "death" ? 620 : 460 });
+    if (this.flashes.length > 8) this.flashes.splice(0, this.flashes.length - 8);
+    if (!this.flashRaf) this.stepFlash();
+  }
+
+  stepFlash() {
+    this.flashRaf = requestAnimationFrame(() => {
+      this.flashRaf = 0;
+      const now = performance.now();
+      this.flashes = this.flashes.filter((fl) => now - fl.t0 < fl.dur);
+      this.draw();
+      if (this.flashes.length) this.stepFlash();
+    });
+  }
+
+  /** The combat flashes, in the flat renderer (CSS pixels). The art renderer draws them in
+   *  `ArtMap.drawFlashes`; both read this one list. */
+  drawFlashes(g) {
+    if (!this.flashes.length) return;
+    const ts = this.cam.ts;
+    const now = performance.now();
+    for (const fl of this.flashes) {
+      const t = Math.min(1, (now - fl.t0) / fl.dur);
+      const a = (1 - t) * (fl.kind === "death" ? 0.5 : 0.58);
+      this.eachCopy(fl.x, fl.y, (sx, sy) => {
+        const cx = sx + ts / 2;
+        const cy = sy + ts / 2 - (fl.kind === "death" ? t * ts * 0.25 : 0);
+        const r = ts * (fl.kind === "death" ? 0.3 + t * 0.22 : 0.46);
+        const grd = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grd.addColorStop(0, `rgba(119,37,43,${a})`); // crimson (#77252b), ART.md's war/damage hue
+        grd.addColorStop(1, "rgba(119,37,43,0)");
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.fill();
+      });
+    }
+  }
+
+  /** Centres on plot (x, y). By default the camera glides there (`glideTo`); `animate: false`
+   *  jumps (a new game's first look, where there is nothing to glide from). */
+  centerOn(x, y, { animate = true } = {}) {
+    if (!this.map) return;
+    if (animate) return this.glideTo(x + 0.5, y + 0.5);
+    this.cancelGlide();
     this.cam = T.clampCamera({ ...this.cam, cx: x + 0.5, cy: y + 0.5 }, this.map);
     this.request();
   }
@@ -314,6 +429,7 @@ export class MapView {
     }
     this.miniImage = null;
     if (first) {
+      this.flashes = [];
       this.cam = T.clampCamera(this.cam, map);
       // The minimap keeps the map's proportions.
       const w = this.mini.getBoundingClientRect().width || 220;
@@ -370,6 +486,7 @@ export class MapView {
     this.drawCities(g);
     this.drawUnits(g);
     this.drawOverlays(g);
+    this.drawFlashes(g);
     this.drawMini();
   }
 

@@ -27,9 +27,10 @@ touch (`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`,
   `cargo build --release && ./target/release/ffh-play serve`, open http://127.0.0.1:8642/.
   `docs/HUMAN.md` is the tester guide. The client on master still draws **flat placeholder colours**
   (the art client is on a handoff branch, below).
-- **Art**: original pixel art ("Monastic Pixel Noir", user's mood board `docs/art/mood-board.png` —
-  style/vibe only, not UX), first pass: style guide `docs/ART.md`, 959 sprites + toolkit under
-  `crates/ffh-play/web/art` (`tools/check.sh`).
+- **Art**: original pixel art, "cheerful readability" (the user's style reference
+  `docs/art/style-reference-map.png` and unit atlases `docs/art/unit-atlas-*.png`; it replaced the
+  first "Monastic Pixel Noir" pass): style guide `docs/ART.md`, 1013 sprites + toolkit under
+  `crates/ffh-play/web/art` (`tools/check.sh`; the Python authoring pipeline in `tools/atlas/`).
 - **Runner tooling**: `ffh autoplay|bench|stats|inspect` (`--until-supremacy` stops a game once it is
   decided: victory, last civ standing, or 1.5x the runner-up's score held 30 turns from turn 200),
   `crates/ffh-cli/scripts/ai_metrics.py` (multi-seed metrics, `--compare`).

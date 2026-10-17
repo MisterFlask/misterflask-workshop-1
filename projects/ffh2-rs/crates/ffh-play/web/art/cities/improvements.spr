@@ -1,5 +1,6 @@
-; improvements (docs/ART.md 5.7-5.8, 6.2): quiet marks in the tile's lower half, at most 4
-; colours plus outline, below the value of the ground's light marks except lit windows and fires.
+; improvements (docs/ART.md 5.7-5.8, 6.2): small objects in the tile's lower half, painted by
+; tools/atlas/compose_map.py (huts, keeps, caves, obelisks... as lit shapes, one void outline), up to
+; 8 colours; fields and plantations are flat ground marks without outline.
 ; Placed with the anchor at tile (16, 29) unless `: place` says otherwise. `: flat` ones are drawn
 ; in the ground pass, under trees and buildings.
 ; The unique landmarks (6.2) are the terrain set's (improvement/landmark_*); _landmark below is only the
@@ -8,1225 +9,1225 @@
 = improvement/farm 24x11 12,10
 : types IMPROVEMENT_FARM
 : flat
-: note ruled furrow rows (u and Q dashes); no outline, it is a ground mark
-..QQQu.QQQu.QQQu.QQQu...
+: note improvement: farm, painted in the atlas look (tools/atlas/compose_map.py)
 ........................
-.uQQQ.uQQQ.uQQQ.uQQQ.uQQ
-........................
-QQQu.QQQu.QQQu.QQQu.QQQu
-........................
-.uQQQ.uQQQ.uQQQ.uQQQ.uQQ
-........................
-QQQu.QQQu.QQQu.QQQu.QQQu
-........................
-..uQQQ.uQQQ.uQQQ.uQQQ...
+.YKYK.Y.YlYKYK.YlYKYK.Yl
+.lyqyqyqyqlyqyqyqlyqyqy.
+..YKYK.YlYKYK.YlYKYK.Y..
+.qlyqyqyqlyqyqyqlyqyqyq.
+.YKYK.Y.YKYKYK.YKYKYK.YK
+.lylyqyqlylylyqlylylyqly
+..YKYK.YKYKYK.YKYKYK.Y..
+.qlylyqlylylyqlylylyqyq.
+.YlYK.Y.YlYK.Y.YlYK.Y.Y.
+.lylyqyqlylyKyqlylyKyqly
 
 = improvement/cottage 8x8 4,7
 : types IMPROVEMENT_COTTAGE
-: note one hut, no light yet (cottages grow into lit hamlets, villages and towns)
+: note improvement: cottage, painted in the atlas look (tools/atlas/compose_map.py)
+........
+........
 ...00...
-..0520..
-.053220.
-05332220
-.042220.
-.043320.
-.043320.
-..0000..
+..0yy0..
+.0rrrr0.
+.07hYY0.
+.0YhhQ0.
+.Q0hh0j.
 
 = improvement/hamlet 15x13 7,12
 : types IMPROVEMENT_HAMLET
-: note two huts and the first lit window
+: note improvement: hamlet, painted in the atlas look (tools/atlas/compose_map.py)
+...............
+...............
+...............
+...............
 ..........0....
-.........050...
-.........050...
-........05320..
-........05320..
-...00..0533220.
-..0520.0533220.
-.05322053332220
-053322053332220
-.0422200422220.
-.043320043l320.
-.0433200433320.
-..0000..00000..
+...00....0C0...
+..0Yy0..0CCr0r.
+.0yyjj00ccccc0.
+0rrrrrrYYYYYY0.
+.0YYYYQYYYhQQ0.
+.0YhhQjYYQhhj0.
+.Q0hh00000hh0j.
+...............
 
 = improvement/mine 18x11 9,9
 : types IMPROVEMENT_MINE
-: note an adit (void square in an umber frame) with an ash spoil heap
-....00000.........
-...0uuuuu0........
-...0u000u0.....0..
-...0u000u0....050.
-...0u000u0...05560
-..0uuuuuuu00055556
-...000000055555560
-........0555555550
-.........00000000.
+: note improvement: mine, painted in the atlas look (tools/atlas/compose_map.py)
 ..................
 ..................
+..................
+..................
+......000000......
+....00uuuiih00....
+...0jju0000hii0...
+..0jjji0000hiuu0..
+.0jjjji0000hu66j0.
+.0jjiii0000h45550.
+jj000000000000004u
 
 = improvement/_mark 10x11 5,9
-: note fallback for improvements without a sprite: a marker post with a pale flag
-....0.....
-...0600...
-...06770..
-...06770..
-...0600...
-...060....
-...060....
-...060....
-..02220...
-...000....
+: note improvement: mark, painted in the atlas look (tools/atlas/compose_map.py)
+..........
+......0...
+....u0C0c.
+....0c0c..
+....i0....
+....ir....
+....ir....
+....rh....
+....rh....
+..........
 ..........
 
 = improvement/_lair 18x12 9,10
-: note fallback for lairs (permanent, spawning): a rock cave mouth with a bone pixel
-.......00.........
-.....00550........
-....0554430.......
-...05544430.......
-..0554400330......
-.05544000330......
-.055400003320.....
-05544000033200....
-055440070333220...
-.0000..0.00000....
+: note improvement: lair, painted in the atlas look (tools/atlas/compose_map.py)
 ..................
 ..................
+..................
+..................
+........00........
+....0000660000....
+...066665555540...
+..06555000044440..
+.0555500000043330.
+.0555400000033380.
+055540000000088330
+500000000000000003
 
 = improvement/_landmark 26x14 13,12
-: note fallback for unique landmarks: menhirs around a pale-green ritual ring
+: note improvement: landmark, painted in the atlas look (tools/atlas/compose_map.py)
 : light 13,11 RITE 8
-...0..............0.......
-..050.....0......050......
-.05540...050....05540.....
-.05540..05540...05540.....
-.05430..05540...05430.....
-.05430..05430...05430.....
-.04430..05430...04430.....
-0444300.044300.044430.....
-044430S0S4430S0S44430.....
-.0300.0S0000S0.00300......
-..0....00SS00....0........
-.........00...............
 ..........................
 ..........................
+..........................
+..........................
+..........05....0.........
+.........060...060........
+...605...050...050...605..
+...050...050...050...050..
+...050...050...050...050..
+...050..S553SSS550...050..
+...043SSS543SSS543SSS540..
+...043SSS543SSS543sss440..
+...400sss333sss333sss003..
+........ssssssssss........
 
 = improvement/_node 12x14 6,12
-: note fallback for mana nodes: a slate obelisk with the sphere rune in the @ accent
+: note improvement: node, painted in the atlas look (tools/atlas/compose_map.py)
 : accent P
 : light 6,12 ARC 6
-.....0......
-....050.....
-...05540....
-...05540....
-...05@40....
-...0@@@0....
-...05@40....
-...05540....
-...05540....
-..0554430...
-..0444330...
-...00000....
 ............
-............
+.....00.....
+....0540....
+...055440...
+...054430...
+...044430...
+...044430...
+...044430...
+...044430...
+...044430...
+...044430...
+...044330...
+...033320...
+..33000022..
 
 = improvement/_cairn 14x11 7,9
-: note the goody hut: a small cairn with one lit candle
-: light 7,5 FIRE 5
-......0.......
-.....0L0......
-.....0l0......
-....05550.....
-...0555430....
-..055544330...
-.0555443330...
-.0444433330...
-..00000000....
+: note improvement: cairn, painted in the atlas look (tools/atlas/compose_map.py)
+: light 7,1 FIRE 5
 ..............
-..............
+.......L......
+......ee......
+.....0ee0.....
+.....0540.....
+.....0330.....
+....065540....
+..0035443300..
+.065533335540.
+.054430054430.
+..0000..0000..
 
 = improvement/_boat 16x9 8,7
-: note water improvements: a tiny boat with net dots
-.......0........
-......0u0.......
-...0..0u00......
-..06000u060.....
-.0uuuuuuuuu0....
-..0uQQQQQu0.....
-...0uuuuu0......
-....00000.......
+: note improvement: boat, painted in the atlas look (tools/atlas/compose_map.py)
 ................
+................
+................
+................
+................
+...000000000ir..
+..0iiiiiiiir0...
+...0r0r00000h...
+..Y.Y.Y.........
 
 = improvement/village 19x12 9,11
 : types IMPROVEMENT_VILLAGE
-: note three huts, two lit windows
-........00.........
-.......0520........
-.......0520........
-......053220..0....
-...00.053220.050...
-..052053322205320..
-.05322033220533220.
-0533222022053332220
-.04222043320422220.
-.04l32043320433l20.
-.04332043320433320.
-..0000.0000.00000..
+: note improvement: village, painted in the atlas look (tools/atlas/compose_map.py)
+...................
+...................
+...................
+...................
+.........0.........
+...00...0C0...C0...
+..0Qj0.0CCr0..0C0..
+.0rrrr0ccccc00ccc0.
+.0YhYQ777YYYj7YhY0.
+.0YhQj7YYhQYjYhhY0.
+.Q0h00YQhhQjj0hh0j.
+......00hh000......
 
 = improvement/town 23x14 11,13
 : types IMPROVEMENT_TOWN
-: note five huts around a small spire, three lit windows
-............0..........
-...........050.........
-...........050.........
-......00..05320........
-.....0520.05320........
-.....05200503220.......
-...00532200502200000...
-..0520322053200050520..
-.053220205332205053220.
-05332220533322205332220
-.042220204222204042220.
-.04l320304333204043l20.
-.043320304333204043320.
-..000000000000.000000..
+: note improvement: town, painted in the atlas look (tools/atlas/compose_map.py)
+...........C...........
+...........0...........
+..........0C0..........
+..........0r0..........
+..........0cc0.........
+..........0Y0..........
+...0...0..0Y0..0....0..
+..0Q0.0C0.0Y0.0Y0..0C0.
+.0rrr0CCr0YYQ0QQj00cc0.
+.0hYcccccccYrrrrrrrhY0.
+.0hhjYYYLjYQjYYYLjYhL0.
+.Qhh0YhhLjYQjYhhLj0hhj.
+.....0hhjj000Yhhj0.....
+.....Q0h00...00h0j.....
 
 = improvement/pirate_cove 11x13 5,12
 : types IMPROVEMENT_PIRATE_COVE
-: note a stilted shack under a sable flag
-...00......
-..0520.....
-..0520.000.
-.0532202720
-.053220220.
-053322200..
-053322200..
-.0Q2220u0..
-.0Quu200...
-.0Quu20....
-0u0u0u0....
-0u0u0u0....
-.0.0.0.....
+: note improvement: pirate cove, painted in the atlas look (tools/atlas/compose_map.py)
+...........
+......r210.
+......r0...
+......r....
+...0..r....
+..0i00r....
+.0hhhh0....
+.0jhj0.....
+.0jhi0.....
+.r0h0r.....
+.r...r.....
+.r...r.....
+.r...r.....
 
 = improvement/pirate_harbor 16x16 8,15
 : types IMPROVEMENT_PIRATE_HARBOR
-: note two stilted shacks, a lit window, a sable flag
-..........0.....
-.........050....
-.........050....
-...00...05320...
-..0520..0532000.
-..0520.053322020
-.05322005332200.
-.05322053332220.
-053322053332220.
-05332220Q22220..
-.0Q22200Quuu20..
-.0Qlu200Quuu20..
-.0Quu200Quuu20..
-0u0u0u0u0u0u0u0.
-0u0u0u0u0u0u0u0.
-.0.0.0.0.0.0.0..
+: note improvement: pirate harbor, painted in the atlas look (tools/atlas/compose_map.py)
+................
+................
+................
+.............r2.
+.............010
+.............r..
+..........0..r..
+...0i....0u0.r..
+..0i0...0iir0r..
+.0hhh0.0hhhhh0..
+.0jhj0..0jhL0...
+.0hhi0..0hhi0...
+.rhh0r..rhh0r...
+.r...r..r...r...
+.r...r..r...r...
+.r...r..r...r...
 
 = improvement/pirate_port 21x17 10,16
 : types IMPROVEMENT_PIRATE_PORT
-: note three stilted shacks, two lit windows, a sable flag
-..........0..........
-....0....050.........
-...050...050.........
-...050..05320........
-..05320005320...00...
-..053200533220.0520..
-.0533220533220.0520..
-.0533205333222053220.
-05333205333222053220.
-05333220Q222205332220
-.0Q22220Quuu205332220
-.0Qulu20Quul200Q2220.
-.0Quuu20Quuu200Quu20.
-.0Quuu20Quuu200Quu20.
-0u0u0u0u0u0u0u00u0u0.
-0u0u0u0u0u0u0u00u0u0.
-.0.0.0.0.0.0.00.0.0..
+: note improvement: pirate port, painted in the atlas look (tools/atlas/compose_map.py)
+.....................
+.....................
+.....................
+.....................
+.............2110....
+.............00......
+.............r.......
+..........0..r.......
+...0i....0i0.r..00...
+..0i0...0hhh0r.0ii0..
+.0hhh0..0Qjj0.0hhhh0.
+.0jhL0..0jhi0.0Qhji0.
+.0hhL0..0hhi0.0jhhL0.
+.rhh0r..rhh0r.r0hh0r.
+.r...r..r...r.r....r.
+.r...r..r...r.r....r.
+.r...r..r...r.r....r.
 
 = improvement/castle 12x15 6,14
 : types IMPROVEMENT_CASTLE
-: note a crenellated keep over a curtain wall, a bone pennant
-......00....
-.....0770...
-.....070....
-...0.050....
-..0504040...
-..05444440..
-..05444430..
-..05444430..
-.000404030..
-05040404040.
-054444444440
-054444444430
-054444444430
-054444444430
-.0000000000.
+: note improvement: castle, painted in the atlas look (tools/atlas/compose_map.py)
+.....r0.....
+.....0807...
+.....r0.....
+...6.0.0....
+...303030...
+...066550...
+...055540...
+...055440...
+...044430...
+60.03333303.
+06066666650.
+06655555550.
+05555005540.
+05444004430.
+40000000003.
 
 = improvement/citadel 18x17 9,16
 : types IMPROVEMENT_CITADEL
-: note a keep between two towers over a curtain wall
-.........00.......
-........0770......
-........070.......
-......0.050.......
-.....0504040......
-.....05444440.....
-.0.0.05444430.0.0.
-050400544443005040
-054400544443005440
-05430054l443005430
-050300040403000430
-005040404040404030
-005444444444444400
-005444444444444300
-005444444444444300
-005444444444444300
-.0000000000000000.
+: note improvement: citadel, painted in the atlas look (tools/atlas/compose_map.py)
+..................
+...6.........6....
+60.0..6.0.0..3.00.
+06050.303030.60650
+06050.066550.06540
+06040.060050.05040
+05540.055540.05540
+05540.055540.05540
+05540.055440.05540
+05540.055440.05440
+05440.054440.05430
+04430.044433054430
+.0333033333363330.
+.0666555555555550.
+.0555555005555440.
+.0444444004444330.
+.4000000000000003.
 
 = improvement/fort 18x10 9,9
 : types IMPROVEMENT_FORT
-: note a palisade square of umber stakes
-.00.0.0.0.0.0.0.0.
-0QQ0Q0Q0Q0Q0Q0Q0Q0
-0uu0u0u0u0u0u0u0u0
-0uu0u0u0u0u0u0u0u0
-0u00000000000000u0
-0u0Q0Q0Q0Q0Q0Q0Qu0
-0u0u0u0u0u0u0u0uu0
-0u0u0u0u0u0u0u0uu0
-0u0u0u0u0u0u0u0uu0
-.0.0.0.0.0.0.0.00.
+: note improvement: fort, painted in the atlas look (tools/atlas/compose_map.py)
+..................
+..................
+..................
+.u00000000000.000u
+.0uiuuiuiuuiu0iui0
+.0iiiuiiiiiiiuiir0
+.0iriuiiriiriuiir0
+.0iriiririiriirir0
+.0rhrrhrhrrhrrhrh0
+.r000000000000000h
 
 = improvement/tower 7x16 3,15
 : types IMPROVEMENT_TOWER
-: note a skeletal watchtower: open timber frame, one lantern
+: note improvement: tower, painted in the atlas look (tools/atlas/compose_map.py)
 : light 3,3 FIRE 5
-..000..
-.0uQu0.
-0uQQQu0
-0u0l0u0
-0uuuuu0
-.0u0u0.
-.0uuu0.
-.0u0u0.
-.0u0u0.
-0u0u0u0
-0u0u0u0
-0uu0uu0
-0u0.0u0
-0u0.0u0
-0u0.0u0
-.0...0.
+...0...
+..0C0..
+.0ccc0.
+.0iLr0.
+.0h00..
+..0.r..
+..r.r..
+.rr.rr.
+.r0.0r.
+.0r0r0.
+.0r0r0.
+.r0.0r.
+.r...r.
+.r...r.
+rr...rr
+rr...rr
 
 = improvement/pasture 22x11 11,10
 : types IMPROVEMENT_PASTURE
 : flat
-: note a dotted fence loop of stone posts around two grazing beasts
-.........6..6.........
-.....6.6.2..2.6.6.....
-..6.62.2......2.26.6..
-.62.2.6665.......2.26.
-.6....6.6...........6.
-.6..........6665....26
-.6..........6.6.....62
-.6..................6.
-.26.6............6.62.
-..2.2.66......6.62.2..
-......22.6..6.2.2.....
+: note improvement: pasture, painted in the atlas look (tools/atlas/compose_map.py)
+......................
+......................
+......................
+......................
+.j.....0..............
+.jj80006jjjjj00006jjji
+.i.08870B0.0B08870..ji
+.i0777770...0777770.0i
+.ij07766jjjjj67760jji0
+.r..0000.....0000...0r
+.r.....r.....r0.....rr
 
 = improvement/plantation 22x9 11,8
 : types IMPROVEMENT_PLANTATION
 : flat
-: note staggered rows of shrubs
-..O....O....O....O....
-.ooq..ooq..ooq..ooq...
+: note improvement: plantation, painted in the atlas look (tools/atlas/compose_map.py)
 ......................
-.....O....O....O....O.
-....ooq..ooq..ooq..ooq
-......................
-..O....O....O....O....
-.ooq..ooq..ooq..ooq...
-......................
+Oo.Oo.Oo.OoOo.Oo.Oo.Oo
+mG.mG.mqomqoGqmG.mG.mq
+.........q..q.........
+.OomOomOo.Oo.OoOomOom.
+.omqoGqmG.mG.mqomqoGq.
+.........O..O.........
+Oo.Oo.OooomomqOo.Oo.Om
+mq.mq.mq.mqmq.mq.mq.mq
 
 = improvement/winery 22x9 11,8
 : types IMPROVEMENT_WINERY
 : flat
-: note trellis rows: umber posts with olive leaf dots
-Q....Q....Q....Q......
-uooOouOooOuoOoouooO...
-uo.o.u.o.ouo.o.u.o....
-u....u....u....u......
+: note improvement: winery, painted in the atlas look (tools/atlas/compose_map.py)
 ......................
-...Q....Q....Q....Q...
-...uOooOuoOoouooOouOoo
-...uo.o.u.o.ouo.o.u.o.
-...u....u....u....u...
+.omomomomomomomomomom.
+.pqmqpqmqpqmqpqmqpqmq.
+......................
+.oqomomomomomomomomoq.
+.prqrprqrprqrprqrprqr.
+......................
+.oqoqoqoqoqoqoqoqoqoq.
+.prqrprqrprqrprqrprqr.
 
 = improvement/windmill 15x21 7,20
 : types IMPROVEMENT_WINDMILL
-: note a stone mill with four bone sail lines and one lit window
-..0.........0..
-.070.......070.
-..070.....070..
-...070...070...
-....0700070....
-.....07570.....
-.....05530.....
-.....07470.....
-....0754370....
-...070543070...
-..07054443070..
-.0700544430070.
-..0.054l430.0..
-....0544430....
-....0544430....
-...054444430...
-...054444430...
-...054444430...
-...054414430...
-...054414430...
-....0000000....
+: note improvement: windmill, painted in the atlas look (tools/atlas/compose_map.py)
+...............
+...........GG..
+.G0........GG..
+.0G0......GG...
+..0G0....0G....
+...0GG0.0G0....
+.....0G0G0.....
+......0r0......
+.....0GhG0.....
+.....0GcGG0....
+....0G77YGG0...
+...0GG7YYQQ0GG.
+..0G07YYYQ0.GG.
+..G0.0YYYQ0....
+....07YYYQ0....
+....07YYYQ0....
+....0YYYYQ0....
+....0YYhQQ0....
+....0YhhQQ0....
+....0Qhhjj0....
+....Q00h00j....
 
 = improvement/mana_air 9x17 4,16
 : types IMPROVEMENT_MANA_AIR
-: note a slate obelisk carved with the air rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 5,12 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05FFF1120
-05111F120
-05FFFF120
-051111F20
-051FF1120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..FFFF30.
+..0443F0.
+.FFFFF30.
+.044433F.
+.0FFF4F0.
+.0444F30.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_body 9x17 4,16
 : types IMPROVEMENT_MANA_BODY
-: note a slate obelisk carved with the body rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05Y1Y1Y20
-05Y1Y1Y20
-05YYYYY20
-05YYYY120
-051YY1120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..Y4Y3Y0.
+..Y4Y3Y0.
+..YYYYY0.
+.YYYYYY0.
+.0YYYYY0.
+.04YYY30.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_chaos 9x17 4,16
 : types IMPROVEMENT_MANA_CHAOS
-: note a slate obelisk carved with the chaos rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,10 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05R1R1R20
-051RRR120
-05RRLRR20
-051RRR120
-05R1R1R20
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+.R54R33R.
+..R4R3R0.
+..0RRR30.
+.RRRLRRR.
+.04RRR30.
+.0R4R4R0.
+.R44R33R.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_death 9x17 4,16
 : types IMPROVEMENT_MANA_DEATH
-: note a slate obelisk carved with the death rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051777120
-057171720
-057777720
-051717120
-051111120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..777770.
+.7777777.
+.7077707.
+.7777777.
+.0770770.
+.0747470.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_earth 9x17 4,16
 : types IMPROVEMENT_MANA_EARTH
-: note a slate obelisk carved with the earth rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051111120
-0511y1120
-051yyy120
-05yyyyy20
-051111120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044330.
+..0y4330.
+..yyy330.
+.0yyyyy0.
+.yyyyyyy.
+.0444430.
+.yyyyyyy.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_enchantment 9x17 4,16
 : types IMPROVEMENT_MANA_ENCHANTMENT
-: note a slate obelisk carved with the enchantment rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,10 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-0511P1120
-05P1P1P20
-051P8P120
-05P1P1P20
-0511P1120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..0PPP30.
+..P4P3P0.
+.P5PPP3P.
+.PPP8PPP.
+.P4PPP3P.
+.0PP4PP0.
+.04PPP30.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_entropy 9x17 4,16
 : types IMPROVEMENT_MANA_ENTROPY
-: note a slate obelisk carved with the entropy rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05ppppp20
-051111p20
-051pp1p20
-051p11p20
-051pppp20
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+.pPPPPPp.
+..04433P.
+..pPPp3P.
+.0P44P3P.
+.0P4PP3P.
+.0P4443P.
+.0pPPPPp.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_fire 9x17 4,16
 : types IMPROVEMENT_MANA_FIRE
-: note a slate obelisk carved with the fire rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,12 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-0511l1120
-051ll1120
-051lLl120
-05lllll20
-051lll120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..04l330.
+..04ll30.
+..0lll30.
+.0llLll0.
+.0lllll0.
+.04lll30.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_law 9x17 4,16
 : types IMPROVEMENT_MANA_LAW
-: note a slate obelisk carved with the law rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,13 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051181120
-058888820
-058181820
-057181720
-051888120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..048330.
+.8888888.
+.8548338.
+.8448338.
+.7748477.
+.0448430.
+.0488830.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_life 9x17 4,16
 : types IMPROVEMENT_MANA_LIFE
-: note a slate obelisk carved with the life rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,10 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051SSS120
-051S1S120
-051SWS120
-05SSSSS20
-0511S1120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..0SSS30.
+..S443S0.
+..S443S0.
+.04SWS30.
+.SSSSSSS.
+.044S430.
+.044S330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_metamagic 9x17 4,16
 : types IMPROVEMENT_MANA_METAMAGIC
-: note a slate obelisk carved with the metamagic rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,11 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05PP1PP20
-05P181P20
-05P818P20
-05P181P20
-05PP1PP20
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044330.
+..PP4PP0.
+.P54833P.
+.P48483P.
+.P44843P.
+.0PP4PP0.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_mind 9x17 4,16
 : types IMPROVEMENT_MANA_MIND
-: note a slate obelisk carved with the mind rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,10 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051TTT120
-05T111T20
-05T181T20
-05T111T20
-051TTT120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044330.
+..0TTT30.
+..TT4TT0.
+.TT483TT.
+.0TT4TT0.
+.04TTT30.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_nature 9x17 4,16
 : types IMPROVEMENT_MANA_NATURE
-: note a slate obelisk carved with the nature rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05111OO20
-0511OOO20
-051OOoO20
-05OOoO120
-05o111120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044OO0.
+..04OOO0.
+..0OOoO0.
+.0OOoOO0.
+.0OoOO30.
+.0oOO430.
+.o444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_shadow 9x17 4,16
 : types IMPROVEMENT_MANA_SHADOW
-: note a slate obelisk carved with the shadow rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051444120
-054444420
-054111420
-054111420
-054111420
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044430.
+..444440.
+.4400044.
+.4400044.
+.4400040.
+.0444440.
+.0444330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_spirit 9x17 4,16
 : types IMPROVEMENT_MANA_SPIRIT
-: note a slate obelisk carved with the spirit rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-0511F1120
-051g1g120
-0511g1120
-051g1g120
-0511g1120
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044F30.
+..04g3g0.
+..0g43g0.
+.04g4g30.
+.044g430.
+.04ggg30.
+.0g443g0.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_sun 9x17 4,16
 : types IMPROVEMENT_MANA_SUN
-: note a slate obelisk carved with the sun rune
-: light 4,14 ARC 6
+: note mana node: a slate obelisk carved with its sphere rune
+: light 4,13 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-05l1l1l20
-051lll120
-05llLll20
-051lll120
-05l1l1l20
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..04l330.
+..l4l3l0.
+..0lll30.
+.lllLlll.
+.04lll30.
+.0l4l4l0.
+.044l330.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/mana_water 9x17 4,16
 : types IMPROVEMENT_MANA_WATER
-: note a slate obelisk carved with the water rune
+: note mana node: a slate obelisk carved with its sphere rune
 : light 4,14 ARC 6
 ....0....
 ...050...
-..05320..
-.0533220.
-.0533320.
-.0533320.
-.0533320.
-053333320
-051g11g20
-05gNggN20
-051111120
-051g11g20
-05gNggN20
-053333320
-053333320
-053333320
-.0000000.
+...0540..
+..05440..
+..04440..
+..04430..
+..04430..
+..044330.
+..g443g0.
+.gNg4gNg.
+.N4NgN3N.
+.0444430.
+.0g444g0.
+.gNg4gNg.
+.0443330.
+.0333220.
+.3000002.
 
 = improvement/graveyard 16x9 8,8
 : types IMPROVEMENT_GRAVEYARD
-: note four headstones and a bone cross
-...........0....
-...0......070...
-..050.....070...
-.05450.0.07670..
-.05440050.070...
-.0544054500640..
-.0433054400540..
-..000043300430..
-......000..00...
+: note improvement: graveyard, painted in the atlas look (tools/atlas/compose_map.py)
+................
+.............8..
+.............0..
+............080.
+......06.....0..
+..06.070..06.7..
+.060.060.060.7..
+.050.050.050.7..
+..04..04..04.7..
 
 = improvement/workshop 12x12 6,11
 : types IMPROVEMENT_WORKSHOP
-: note a small hall: ash smoke from the chimney, one forge pixel at the door
-.........00.
-........0450
-.....0.0400.
-....050.040.
-...0532000..
-..053322020.
-.0533322200.
-05333322220.
-.042222220..
-.04l332320..
-.04333E320..
-..0000000...
+: note improvement: workshop, painted in the atlas look (tools/atlas/compose_map.py)
+.......66...
+.......55...
+.....0060...
+....06550...
+...055540...
+..05444440..
+.0333333330.
+.0jjjjjjjj0.
+.0jjjjjjii0.
+.0jjihhiii0.
+.0iiihhiii0.
+..000h0000..
 
 = improvement/enclave 22x13 11,12
 : types IMPROVEMENT_ENCLAVE
-: note a small walled garden
-............0.........
-..........00O00.......
-......0..0OOoOm0.0....
-....00O00Oooomm00O00..
-...0OOom0Oommm0OOomm0.
-...0Oom0Oommmm0Oommm0.
-..0Oommm0mmmm0Oommmmm0
-..00mmmm0mmmmm0mmmmm0.
-..00mmmmm0mmmm0mmmmm0.
-.0000000000000000000..
-05444444422444444440..
-05444444422444444440..
-.000000000000000000...
+: note improvement: enclave, painted in the atlas look (tools/atlas/compose_map.py)
+......................
+......................
+......................
+......................
+6000000000000000000004
+06oOOoqooOOoqooOOoqm40
+06oOooqooOooqooOooqm40
+06ooomqmmoomqmmoomqm40
+06oqqqqmmqqqqmmqqqqq40
+05mmmmmmmmmmmmmmmmqq40
+05mmmqqqqqqqqqqqqqqq40
+04mqqqqqqqhhqqqqqqqq40
+.000000000hh000000000.
 
 = improvement/jungle_altar 14x10 7,9
 : types IMPROVEMENT_JUNGLE_ALTAR
-: note a stepped altar with a stair and a crimson-stained top
-.....0000.....
-....05CC30....
-...005cc300...
-..0544554430..
-..0544664430..
-.005445544300.
-05444466444430
-05444455444430
-05444466444430
-.000000000000.
+: note improvement: jungle altar, painted in the atlas look (tools/atlas/compose_map.py)
+..............
+....C0000C....
+....066550....
+....055440....
+..6033333304..
+..0555555440..
+..0333333330..
+D0DDDDDDDD5504
+05544444444440
+50000000000003
 
 = improvement/portal 15x17 7,16
 : types IMPROVEMENT_PORTAL
-: note an upright stone ring around a lilac swirl
-: light 7,14 ARC 7
-.....00000.....
-....0555550....
-...055555550...
-..0555ppp5440..
-.055PPPPppp420.
-0555PPpPPpp2220
-055Pppp8PppP220
-055Ppp888ppP220
-055PppP8pppP220
-0555ppPPpPP2220
-.054pppPPPP220.
-..0442ppp2220..
-...022222220...
-.0000222220000.
-054444444444420
-054444444444420
-.0000000000000.
+: note improvement: portal, painted in the atlas look (tools/atlas/compose_map.py)
+: light 7,10 ARC 7
+.......00......
+....0005500....
+...055444550...
+..0543vvv4550..
+.054vpWWWWv550.
+.053vWWPPWv550.
+.04vpWWWWWpv540
+054vpWWWWPpv540
+054vpWWWWPpv540
+.04vpWWWWPpv540
+.05vppWWWWpv50.
+.055vpppppv540.
+..055vvpvv650..
+...0555555430..
+....04444430...
+..60555555540..
+..54000000003..
 
 = improvement/barrow 20x9 10,8
 : types IMPROVEMENT_BARROW
-: note a grassed barrow mound, a stone door onto void, one pale-green pixel
-......00000000......
-....00OOOOOOmm00....
-...0OOoommmmmmmm0...
-..0Ooooommmmmmmmm0..
-.0Oooooommmmmmmmmm0.
-.0Oooooo555mmmmmmm0.
-0Ooooooo502mmmmmmmm0
-0ooooooo5S2mmmmmmmm0
-.000000000000000000.
+: note improvement: barrow, painted in the atlas look (tools/atlas/compose_map.py)
+....................
+....................
+.........00.........
+.....0000OO0000.....
+...00Ooo6663oom00...
+..0oooom6003mmmqq0..
+.0ooommm6003mmqqqq0.
+.0oommmm6003qqqqqq0.
+oo0000000000000000qq
 
 = improvement/bear_den 20x13 10,12
 : types IMPROVEMENT_BEAR_DEN
-: note a rock cave mouth with a gnawed bone
-......0.............
-.....050............
-.....05000000.......
-....05455555300.....
-....054433333320....
-...05444333223220...
-..0544443333332220..
-.054444433333322220.
-.054444433333322220.
-05444444300023222220
-04444444000003222220
-04444447000007222220
-.000000000000000000.
+: note improvement: bear den, painted in the atlas look (tools/atlas/compose_map.py)
+....................
+....................
+....................
+....................
+....................
+.......000000.......
+....000QQQjjj000....
+...0QQjjjjjjjiii0...
+..0jjjjj0000iiiuu0..
+.0jjjjj000000iuuuu0.
+.0jjjj00000000uuuu0.
+0jjjji00000000uu88u0
+j000000000000088800u
 
 = improvement/lion_den 20x13 10,12
 : types IMPROVEMENT_LION_DEN
-: note a sandstone cave mouth with bones
-......0.............
-.....0Y0............
-.....0Y000000.......
-....0Y6YYYYYQ00.....
-....0Y66QQQQQQu0....
-...0Y666QQQuuQuu0...
-..0Y6666QQQQQQuuu0..
-.0Y66666QQQQQQuuuu0.
-.0Y66666QQQQQQuuuu0.
-0Y666666Q000uQuuuuu0
-0666666600000Quuuuu0
-066666670000077uuuu0
-.000000000000000000.
+: note improvement: lion den, painted in the atlas look (tools/atlas/compose_map.py)
+....................
+....................
+....................
+....................
+....................
+.......000000.......
+....000777YYY000....
+...077YYYYYYYyyy0...
+..0YYYYY0000yyyxx0..
+.0YYYYY000000yxxxx0.
+.0YYYY00000000xxxx0.
+0YYYYy00000000xx88x0
+Y000000000000088800x
 
 = improvement/goblin_fort 21x15 10,14
 : types IMPROVEMENT_GOBLIN_FORT
-: note a spiked palisade ring around a hut and a campfire
+: note improvement: goblin fort, painted in the atlas look (tools/atlas/compose_map.py)
 : light 6,7 FIRE 5
-..............0......
-.............0y0.....
-.............0y0.....
-............0yQu0....
-............0yQu0....
-...........0yQQuu0...
-...........0yQQuu0...
-.0...0...00yQ0Quu00..
-0Q000Q000Q000Q000Q00.
-0u0Q0u0Q0u0Q0u0Q0u0Q0
-0u0u0u0u0u0u0u0u0u0u0
-0u0u0u0u0u0u0u0u0u0u0
-0u0u0u0u0u0u0u0u0u0u0
-0u0u0u0u0u0u0u0u0u0u0
-.0.0.0.0.0.0.0.0.0.0.
+.....................
+.....................
+.....................
+..........0..........
+.........0u0.........
+........0iir0........
+.......0hhhhh0.......
+.......0jjhii0.......
+.......0ihhir0.L.....
+.......i0hh00r.L.....
+.00.00.......0.el...u
+0iu0iu0.....0ieLe...i
+0iiiri0.....0rlle...i
+0rrrhr0.....0heee...h
+r00000h.....r0......h
 
 = improvement/ruins 16x13 8,12
 : types IMPROVEMENT_RUINS
-: note broken columns wrapped in vine, a fallen drum
-............000.
-...........05430
-.00........05o30
-0540.......054O0
-05o0.......05430
-054O0..00..0o430
-05430.0540.05430
-0o430.05o0.054O0
-05430.054O005o30
-0540000000000430
-0505555505443030
-05044444043320O0
-.00000000000000.
+: note improvement: ruins, painted in the atlas look (tools/atlas/compose_map.py)
+......7065......
+......070.......
+......070.......
+.7065.060.......
+.070..0m0.......
+.070..0m0.......
+.0m0..06m..7705.
+.0mm..06m...070.
+.06m..06m...060.
+.06m..06m...060.
+.0m0..0m0...060.
+.0m0..0m5070650.
+.605..600665005.
 
 = improvement/snake_pillar 8x20 4,19
 : types IMPROVEMENT_SNAKE_PILLAR
-: note a stone pillar with a serpent coiled about it
-...00...
-..0oO0..
-.0oyoO0.
-..00o0..
-.054430.
-.054430.
-.054430.
-.054430.
-.0Oo430.
-.054oo0.
-.054430.
-.0oo430.
-.054Oo0.
-.054430.
-.0Oo430.
-.054oo0.
-.054430.
-.0oo430.
-05444430
-.000000.
+: note improvement: snake pillar, painted in the atlas look (tools/atlas/compose_map.py)
+.60000..
+.066650.
+.05440..
+..0oTC..
+..0TT0..
+.0T650..
+.0TT50..
+..0TT0..
+..065T0.
+..06TT0.
+..0TT0..
+.0oT50..
+.0TT50..
+..0TT0..
+..06TT0.
+..065T0.
+..0TT0..
+.0TTs0..
+.0s540..
+..0004..
 
 = improvement/monster_skeleton 24x13 12,12
 : types IMPROVEMENT_MONSTER_SKELETON
-: note a huge ribcage arching out of the ground
+: note improvement: monster skeleton, painted in the atlas look (tools/atlas/compose_map.py)
 ........................
-...........0............
-........0.080.0.........
-.......080070080........
-.....0.080070080.0......
-....080070070070080.0...
-....07007070.070070080..
-....07070070070.0707770.
-...070070070070070776770
-...070070070070070760670
-.0070070070070070007770.
-0767676767676767676760..
-.00000000000000000000...
+..............8.........
+.........87..87..87.....
+.....77.87..87..87...77.
+...877.87..87..87..877..
+..87..87..87..87..87....
+..87..87..87..87..87....
+..87..87..87..87..87....
+..77..87..87..87..77....
+..77..87..87..87..77....
+...7...7...7...7...7....
+...76..6...7...6...76...
+.7777777777777777777777.
 
 = improvement/dungeon 13x12 6,11
 : types IMPROVEMENT_DUNGEON
-: note a stone doorway with stairs down into void, an ember glow below
+: note improvement: dungeon, painted in the atlas look (tools/atlas/compose_map.py)
 : light 6,7 FIRE 3
-..000000000..
-.05555555550.
-0554444444320
-0544444444430
-0544444444430
-0540000000430
-0540000000430
-05400eeE00430
-0540055500430
-0540444440430
-0545555555430
-.00000000000.
+......0......
+.....0600....
+...0065550...
+.00655055500.
+0665000005540
+0650000000540
+0650000000440
+0550000000440
+0550444440440
+0550044400440
+0440000000330
+40000eee00003
 
 = improvement/city_ruins 20x10 10,9
 : types IMPROVEMENT_CITY_RUINS
-: note broken walls and a tower stump in ash; no light at all
-...0................
-..050...........0...
-.0550..........050..
-.0540..0......0540..
-.05440050..0..0540..
-055440054005005540..
-0554405540054054420.
-0554405540054454420.
-05544444425444444220
-.000000000000000000.
+: note improvement: city ruins, painted in the atlas look (tools/atlas/compose_map.py)
+....................
+........6005........
+........0650........
+........0650........
+........0550........
+600.....0550........
+066005..0550..00000.
+065550..0550.0665550
+055440..0540.0555440
+500004..5004.5000004
 
 = improvement/camp 15x11 7,9
 : types IMPROVEMENT_CAMP
 : light 12,8 FIRE 4
-: note a hide lean-to on its pole and a small campfire
-.....0.........
-....0u0........
-...05Qu0.......
-..05QQ2u0......
-.05QQQ22u0.....
-05QQQQ222u0....
-05QQQQ22220.0..
-05QQQQ222200l0.
-05QQQQ22220lEl0
-05QQQQ22220uEu0
-.000000000.000.
+: note improvement: camp, painted in the atlas look (tools/atlas/compose_map.py)
+...............
+...............
+....Qj.........
+....00.........
+...0Qj0........
+...0jj0....LL..
+..0Qj0i0...LL..
+..0j00i0...le..
+.0ji00ii0..LLe.
+.i000000r.eLle.
+...........ee..
 
 = improvement/fishing_boats 16x9 9,7
 : types IMPROVEMENT_FISHING_BOATS
-: note a small boat with a stub sail and a trail of net floats
-..........0.....
-.........0u0....
-.........0u70...
-.........0u770..
-..0.0.0000u7770.
-.06060yQQQQQQQy0
-..06060uuuuuuu0.
-.06060.0222200..
-..0.0...0000....
+: note improvement: fishing boats, painted in the atlas look (tools/atlas/compose_map.py)
+........r08.....
+........080.....
+........0870....
+........r0770...
+........0.0G0...
+....0000u0uui0r.
+...0iiiiiiiir0..
+....000000000h..
+................
 
 = improvement/whaling_boats 19x9 10,7
 : types IMPROVEMENT_WHALING_BOATS
-: note a whaleboat with a harpoon line running to a fluke
-............0......
-...........0u0.....
-...........0u70....
-.0.0.......0u770...
-0g0g0...0.00u77700.
-0ggg0..070yQQQQQQy0
-.0g0..070.0uuuuuu0.
-.0g0.070...022220..
-..0...0.....0000...
+: note improvement: whaling boats, painted in the atlas look (tools/atlas/compose_map.py)
+...................
+...................
+...................
+...................
+..................4
+..0000000i88...5043
+.0iiiiiir0..88.040.
+..0000000h.....303.
+...................
 
 = improvement/penguins 19x8 9,6
 : types IMPROVEMENT_PENGUINS
-: note four penguins: dark backs, bone fronts
-......0............
-..0..020......0....
-.02002270.0..020...
-02270227002002270..
-022700y0022702270..
-.0y0..0.022700y0...
-..0......0y0..0....
-..........0........
+: note improvement: penguins, painted in the atlas look (tools/atlas/compose_map.py)
+...................
+..0........0.......
+.02l..00..02l..00..
+.080.0280.080.0280.
+.080.0880.080.0880.
+.080.0170.080.0870.
+.107..00..107..00..
+...................
 
 = improvement/mushrooms 18x8 8,6
 : types IMPROVEMENT_MUSHROOMS
-: note pale caps on short stems
-..........000.....
-...000...07770....
-..07770.0777760...
-.0777760000600....
-..00600777060.....
-...060777760......
-....0.00600.......
-........0.........
+: note improvement: mushrooms, painted in the atlas look (tools/atlas/compose_map.py)
+..................
+.......0000.......
+..00..0887y0......
+.08R0.07yyy0.000..
+0RRCC0.0RR0.08RC0.
+.0cc0...00..R0c0c.
+..00....77....0...
+..............7...
 
 = improvement/quarry 18x11 9,10
 : types IMPROVEMENT_QUARRY
-: note a rock outcrop with a stepped cut face, cut blocks stacked in front
-........000.......
-......0053300.....
-.....055422330....
-.....0446666660...
-....054444444430..
-...0003333666660..
-..06660332444440..
-.0044300322266000.
-066000660222406660
-044304430233204430
-.0000000000000000.
+: note improvement: quarry, painted in the atlas look (tools/atlas/compose_map.py)
+..................
+..................
+..................
+....000000........
+...07775540.......
+..07766544600.....
+.066555444555005..
+0666554443444440..
+06664444334465060.
+06554433334440.04.
+60000000000004....
 
 = improvement/lumbermill 18x11 9,10
 : types IMPROVEMENT_LUMBERMILL
-: note a stack of logs and a spoked saw wheel on its frame
-............000...
-...........05550..
-..........0504050.
-.........050040050
-.........054444420
-....00000050040020
-...0yQQQu00504020.
-.000yuuuu0.02220..
-0yQQQyQQQu0u000u0.
-0yuuuyuuuu00...0u0
-.0000000000.....0.
+: note improvement: lumbermill, painted in the atlas look (tools/atlas/compose_map.py)
+..................
+..................
+..................
+...........r04r0r.
+...........060040.
+...........60..05.
+...0000....6....4.
+..0iiii0...55..54.
+..0rrrrY0..45554r.
+.0iriiYi0..r.44.r.
+.i000000r.........
 
 = improvement/necrototem 7x16 3,14
 : types IMPROVEMENT_NECROTOTEM
-: note a bone totem crowned with a skull, one pale-green eye
-..000..
-.07770.
-0777770
-071S170
-.07770.
-.07070.
-..060..
-.07670.
-.00600.
-0706070
-.07670.
-..060..
-..060..
-.06660.
-0666660
-.00000.
+: note improvement: necrototem, painted in the atlas look (tools/atlas/compose_map.py)
+...0...
+.80807.
+.00700.
+.00700.
+.06606.
+..00...
+..87...
+..87...
+..87...
+..87...
+..87...
+..87...
+..77...
+..77...
+..76...
+..66...
 
 = improvement/warning_post 7x12 3,10
 : types IMPROVEMENT_WARNING_POST
-: note a stake with a skull and a rag
-..000..
-.07770.
-.07170.
-..070..
-.03u0..
-033u0..
-.03u0..
-..0u0..
-..0u0..
-..0u0..
-.0uuu0.
-..000..
+: note improvement: warning post, painted in the atlas look (tools/atlas/compose_map.py)
+...0...
+..080..
+.00000.
+..080..
+...0...
+...i0C.
+...0C0.
+...i0c.
+...i...
+...r...
+...h...
+...h...
 
 = improvement/cage 9x10 4,8
 : types IMPROVEMENT_CAGE
-: note an iron cage of bars on a plinth
-...000...
-..05550..
-.0544420.
-.0404020.
-.0404020.
-.0404020.
-.0404020.
-.0544420.
-054444420
-.0000000.
+: note improvement: cage, painted in the atlas look (tools/atlas/compose_map.py)
+.6605054.
+.3030303.
+.4.0.0.4.
+.4.4.4.4.
+.4.4.4.4.
+.4.4.4.4.
+.4.4.4.4.
+.0.0.0.0.
+050404040
+504040303
 
 = improvement/smoke 7x15 3,14
 : types IMPROVEMENT_SMOKE
-: note an ash smoke column rising from a smouldering patch
-...56..
-..5665.
-.56665.
-..5655.
-...55..
-..454..
-..445..
-...44..
-...44..
-..434..
-..43...
-...33..
-..333..
-.3333..
-.3e3e3.
+: note improvement: smoke, painted in the atlas look (tools/atlas/compose_map.py)
+..666..
+..6655.
+..4544.
+.6644..
+665554.
+.5544..
+..4455.
+.66554.
+..4544.
+.6645..
+.6554..
+..44...
+..655..
+..eee..
+.eeeee.
 
 = improvement/hellfire 15x9 7,7
 : types IMPROVEMENT_HELLFIRE
-: light 7,5 BLOOD 8
-: note a pit of hellfire: a scarlet core in a crimson flame, a rim of soot rock
-......0........
-.....0R0.......
-....0CRC0......
-...0cCRCc0.....
-..03cCRCc30....
-.043ccCcc3400..
-04433ccc334420.
-.043322222340..
-..0000000000...
+: light 8,5 BLOOD 8
+: note improvement: hellfire, painted in the atlas look (tools/atlas/compose_map.py)
+.........L.....
+.........L.....
+....LL...LL....
+....LL...el....
+....ee..eLe....
+..00lle0lLe00..
+.032Lle2ELe2201
+.021ee11ele1000
+..0000000e000..
 
 = improvement/ship_wreck 15x10 7,8
 : types IMPROVEMENT_SHIP_WRECK
-: note a broken hull canted on the shore, its mast snapped
-.......0.......
-......0u0......
-.....0u0.......
-..0.0u0........
-.0y00u0..0.0...
-.0uy00..0y0y0..
-.0uuyy00yQ0Q0..
-..0uuuyyQuQu0..
-...02uuuuuu20..
-....00000000...
+: note improvement: ship wreck, painted in the atlas look (tools/atlas/compose_map.py)
+........r......
+........r......
+.......r.......
+.......00000i..
+..00000uuuii0..
+.0uu0iii0iiii0.
+.0iiiiiiiiirrr0
+.0iirrrrrrrrr0.
+.i0rrrrrrrhh0..
+...000000000...
 
 = improvement/goody_hut_f1 11x11 5,9
 : types IMPROVEMENT_GOODY_HUT
 : light 5,2 FIRE 5
-: note the goody hut: a small cairn with one lit candle (2-frame flicker)
-.....0.....
-....0L0....
-....0l0....
-...05550...
-..0555440..
-.055544330.
-.054444330.
-0554443330.
-0544433320.
-.022222220.
-..0000000..
+: note improvement: goody hut f1, painted in the atlas look (tools/atlas/compose_map.py)
+...........
+.....L.....
+.....l.....
+.....e.....
+....050....
+....030....
+...06540...
+..0354430..
+.055303550.
+.0440.0440.
+..00...00..
 
 = improvement/goody_hut_f2 11x11 5,9
 : types IMPROVEMENT_GOODY_HUT
 : light 5,2 FIRE 5
-.....0.....
-....0l0....
-....0L0....
-...05550...
-..0555440..
-.055544330.
-.054444330.
-0554443330.
-0544433320.
-.022222220.
-..0000000..
+.....L.....
+.....L.....
+.....l.....
+.....e.....
+....050....
+....030....
+...06540...
+..0354430..
+.055303550.
+.0440.0440.
+..00...00..
 

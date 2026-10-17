@@ -1,0 +1,299 @@
+{
+ "_doc": "sprite -> source crop (atlasN_KK) + options. slots: auto | none | red | blue | purple | olive. frame: 32 (default) | 40. ship: strip water under the hull.",
+ "unit/warrior": {
+  "src": "atlas2_00"
+ },
+ "unit/axeman": {
+  "src": "atlas2_01"
+ },
+ "unit/swordsman": {
+  "src": "atlas2_02",
+  "slots": "skyblue"
+ },
+ "unit/champion": {
+  "src": "atlas2_13"
+ },
+ "unit/phalanx": {
+  "src": "atlas2_06",
+  "slots": "none"
+ },
+ "unit/berserker": {
+  "src": "atlas2_07",
+  "slots": "none"
+ },
+ "unit/immortal": {
+  "src": "atlas2_11"
+ },
+ "unit/death_knight": {
+  "src": "atlas2_15",
+  "slots": "red"
+ },
+ "unit/dwarven_soldier_runes": {
+  "src": "atlas1_04"
+ },
+ "unit/scout": {
+  "src": "atlas2_16"
+ },
+ "unit/hunter": {
+  "src": "atlas2_17"
+ },
+ "unit/ranger": {
+  "src": "atlas2_18"
+ },
+ "unit/assassin": {
+  "src": "atlas2_20",
+  "slots": "none"
+ },
+ "unit/shadow": {
+  "src": "atlas2_21",
+  "slots": "none"
+ },
+ "unit/beastmaster": {
+  "src": "atlas2_22"
+ },
+ "unit/fawn": {
+  "src": "atlas2_23",
+  "slots": "none"
+ },
+ "unit/satyr": {
+  "src": "atlas2_24",
+  "slots": "none"
+ },
+ "unit/priest_of_winter": {
+  "src": "atlas2_27",
+  "slots": "none"
+ },
+ "unit/eater_of_dreams": {
+  "src": "atlas2_28",
+  "slots": "none"
+ },
+ "unit/spectre": {
+  "src": "atlas2_30",
+  "slots": "none"
+ },
+ "unit/disciple_fellowship_of_leaves": {
+  "src": "atlas2_09",
+  "slots": "none"
+ },
+ "unit/priest_of_leaves": {
+  "src": "atlas2_10",
+  "slots": "none"
+ },
+ "unit/druid": {
+  "src": "atlas2_14",
+  "slots": "none"
+ },
+ "unit/archer": {
+  "src": "atlas2_32"
+ },
+ "unit/longbowman": {
+  "src": "atlas2_33"
+ },
+ "unit/crossbowman": {
+  "src": "atlas2_34"
+ },
+ "unit/marksman": {
+  "src": "atlas2_35"
+ },
+ "unit/firebow": {
+  "src": "atlas2_37",
+  "slots": "none"
+ },
+ "unit/dwarven_slinger": {
+  "src": "atlas2_38"
+ },
+ "unit/arquebus": {
+  "src": "atlas2_39"
+ },
+ "unit/horseman": {
+  "src": "atlas2_47"
+ },
+ "unit/knight": {
+  "src": "atlas2_48"
+ },
+ "unit/paladin": {
+  "src": "atlas2_49"
+ },
+ "unit/horse_archer": {
+  "src": "atlas2_55"
+ },
+ "unit/chariot": {
+  "src": "atlas2_56"
+ },
+ "unit/centaur": {
+  "src": "atlas2_53"
+ },
+ "unit/centaur_archer": {
+  "src": "atlas2_54"
+ },
+ "unit/centaur_lancer": {
+  "src": "atlas1_34"
+ },
+ "unit/wolf_rider": {
+  "src": "atlas2_58"
+ },
+ "unit/boar_rider": {
+  "src": "atlas2_57"
+ },
+ "unit/bison_rider": {
+  "src": "atlas2_59"
+ },
+ "unit/valkyrie": {
+  "src": "atlas2_61",
+  "slots": "none"
+ },
+ "unit/commander": {
+  "src": "atlas2_63"
+ },
+ "unit/mercenary_mounted": {
+  "src": "atlas2_50"
+ },
+ "unit/chaos_marauder": {
+  "src": "atlas2_68",
+  "slots": "none",
+  "frame": 40
+ },
+ "unit/war_elephant": {
+  "src": "atlas1_42",
+  "frame": 40
+ },
+ "unit/catapult": {
+  "src": "atlas1_45",
+  "slots": "none"
+ },
+ "unit/trebuchet": {
+  "src": "atlas1_46",
+  "slots": "none"
+ },
+ "unit/battering_ram": {
+  "src": "atlas1_53",
+  "slots": "none"
+ },
+ "unit/cannon": {
+  "src": "atlas1_48",
+  "slots": "none"
+ },
+ "unit/dwarven_cannon": {
+  "src": "atlas1_49",
+  "slots": "none"
+ },
+ "unit/galley": {
+  "src": "atlas1_54",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/trireme": {
+  "src": "atlas1_55",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/caravel": {
+  "src": "atlas1_56",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/privateer": {
+  "src": "atlas1_57",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/frigate": {
+  "src": "atlas1_58",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/man_o_war": {
+  "src": "atlas1_59",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/sailors_dirge": {
+  "src": "atlas1_60",
+  "slots": "none",
+  "ship": true
+ },
+ "unit/airship": {
+  "src": "atlas1_61",
+  "slots": "none"
+ },
+ "unit/settler": {
+  "src": "atlas3_00"
+ },
+ "unit/worker": {
+  "src": "atlas3_01"
+ },
+ "unit/disciple": {
+  "src": "atlas3_05",
+  "slots": "none"
+ },
+ "unit/adventurer": {
+  "src": "atlas3_06"
+ },
+ "unit/freak": {
+  "src": "atlas3_07",
+  "slots": "none"
+ },
+ "unit/slave": {
+  "src": "atlas3_08",
+  "slots": "none"
+ },
+ "unit/wolf": {
+  "src": "atlas1_44",
+  "slots": "none"
+ },
+ "unit/bear": {
+  "src": "atlas3_41",
+  "slots": "none"
+ },
+ "unit/lion": {
+  "src": "atlas3_42",
+  "slots": "none"
+ },
+ "unit/tiger": {
+  "src": "atlas3_46",
+  "slots": "none"
+ },
+ "unit/adept": {
+  "src": "atlas2_25",
+  "slots": "none"
+ },
+ "unit/mage": {
+  "src": "atlas2_19",
+  "slots": "none"
+ },
+ "unit/archmage": {
+  "src": "atlas2_12",
+  "slots": "none"
+ },
+ "unit/battlemaster": {
+  "src": "atlas1_08"
+ },
+ "unit/stygian_guard": {
+  "src": "atlas1_09",
+  "slots": "red"
+ },
+ "unit/mercenary": {
+  "src": "atlas2_05"
+ },
+ "unit/dragon_slayer": {
+  "src": "atlas3_24"
+ },
+ "unit/royal_guard": {
+  "src": "atlas1_32"
+ },
+ "unit/crusader": {
+  "src": "atlas1_31"
+ },
+ "unit/nightwatch": {
+  "src": "atlas2_26",
+  "slots": "none"
+ },
+ "unit/shadowrider": {
+  "src": "atlas2_67",
+  "slots": "none"
+ },
+ "unit/ophanim": {
+  "src": "atlas2_62",
+  "slots": "none"
+ }
+}

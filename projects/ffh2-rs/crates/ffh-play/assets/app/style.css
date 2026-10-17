@@ -1,5 +1,5 @@
-/* The browser client's styles: the "Monastic Pixel Noir" interface of docs/ART.md 11 (soot
-   panels, double rules, bone text, gilt nails). Every colour is a palette entry (--c-*, the 40
+/* The browser client's styles: the "cheerful readability" interface of docs/ART.md 11 (navy
+   panels, gold rules, cream text, gilt nails). Every colour is a palette entry (--c-*, the 40
    colours of web/art/palette.txt, defined here so the page looks right before the art loads;
    look.js's ui stylesheet sets the same values). Lengths in the chrome are multiples of the UI
    scale --u (CSS px per art px, docs/ART.md 3.2).
@@ -10,30 +10,33 @@
    Without the art the same elements fall back to plain double rules. */
 
 :root {
-  --c-void: #05080b; --c-soot: #0c1115; --c-coal: #161c21; --c-iron: #252b2f; --c-slate: #373a3b; --c-ash: #56524c;
-  --c-stone: #7d7366; --c-bone: #b3a28c; --c-vellum: #ddcfb4; --c-deep: #071219; --c-navy: #0d1d2b; --c-tide: #193249;
-  --c-glint: #3d5868; --c-frost: #717f86; --c-rime: #aab5b6; --c-teal-dk: #0f2224; --c-teal: #1c383d; --c-patina: #3d6364;
-  --c-moss-dk: #1f251c; --c-moss: #363d31; --c-olive: #4d5537; --c-lichen: #6c724a; --c-umber: #2e2620; --c-dun: #4f483e;
-  --c-rust: #5f3a2a; --c-ochre: #76663f; --c-sand: #8c8068; --c-bruise: #1b1622; --c-dusk: #382d45; --c-lilac: #6e5b80;
-  --c-ember: #5a2412; --c-flame: #ad501d; --c-amber: #e2913c; --c-glow: #f7d47e; --c-blood: #3a1216; --c-crimson: #77252b;
-  --c-scarlet: #b33a3a; --c-barrow: #22463a; --c-ritual: #6aab88; --c-wisp: #c4efc4;
+  --c-void: #140d0c; --c-soot: #14223e; --c-coal: #26334f; --c-iron: #424858; --c-slate: #5f6676; --c-ash: #848b98;
+  --c-stone: #adb3bd; --c-bone: #e9dbb3; --c-vellum: #fffaec; --c-deep: #0b4290; --c-navy: #1765b2; --c-tide: #3f8cd2;
+  --c-glint: #80b7e3; --c-frost: #c6ddec; --c-rime: #f2f8fc; --c-pine-dk: #163c2f; --c-pine: #215e3e; --c-needle: #3c8b4f;
+  --c-moss-dk: #4a6f22; --c-moss: #6fa534; --c-olive: #91c03d; --c-lichen: #bddb5d; --c-umber: #5b3a1f; --c-dun: #c2a95f;
+  --c-rust: #b9582a; --c-ochre: #dba63b; --c-sand: #ecd18c; --c-bruise: #2f1b4b; --c-dusk: #5c3393; --c-lilac: #a276da;
+  --c-ember: #8d2f10; --c-flame: #ef6b1b; --c-amber: #ffb63b; --c-glow: #ffe78c; --c-blood: #561417; --c-crimson: #c8272b;
+  --c-scarlet: #f15b47; --c-barrow: #2a7a63; --c-ritual: #70e0b1; --c-wisp: #d9fbe9; --c-skin-lt: #e8bd90; --c-skin: #c58b58;
+  --c-bark: #3a2314; --c-auburn: #7a3b1c; --c-leather: #96612f; --c-khaki: #a9874f; --c-olive-dk: #2c4117; --c-fern-dk: #5c6c2c;
+  --c-fern: #7f9134; --c-pewter: #4f4a4c; --c-flint: #77716f; --c-ash-lt: #a8a09a; --c-silver: #cdcacc; --c-maroon: #8f1e1f;
+  --c-royal: #3356b6; --c-gold: #f2c74b;
 
   --u: 2px;
   --bg: var(--c-soot);
   --panel: var(--c-soot);
   --panel-2: var(--c-coal);
   --line: var(--c-iron);
-  --frame: var(--c-ash);
+  --frame: var(--c-ochre);
   --fg: var(--c-bone);
   --dim: var(--c-stone);
   --em: var(--c-vellum);
-  --accent: var(--c-sand);
+  --accent: var(--c-gold);
   --accent-fg: var(--c-soot);
   --fire: var(--c-amber);
   --good: var(--c-lichen);
   --warn: var(--c-scarlet);
   --caution: var(--c-amber);
-  --link: var(--c-sand);
+  --link: var(--c-gold);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, serif;
   --font: var(--serif);
   --mono: ui-monospace, "DejaVu Sans Mono", Menlo, monospace;
@@ -54,6 +57,15 @@ body {
 body.busy { cursor: progress; }
 body.picking #mapwrap canvas.map { cursor: crosshair; }
 ::selection { background: var(--c-dusk); color: var(--c-vellum); }
+
+/* Scrollbars: thin and dark, so a scrolling panel (the tech tree, a city, the messages) keeps the
+   soot look instead of the OS's bright default bar. */
+* { scrollbar-width: thin; scrollbar-color: var(--c-ash) var(--c-void); }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--c-void); }
+::-webkit-scrollbar-thumb { background: var(--c-ash); border: 2px solid var(--c-void); }
+::-webkit-scrollbar-thumb:hover { background: var(--c-stone); }
+::-webkit-scrollbar-corner { background: var(--c-void); }
 
 /* Bitmap text (look.js `pix`, ui.js `textSpan`) and pixel-art canvases. */
 .ui-ptext { display: inline-block; vertical-align: middle; flex: none; position: relative; background-color: currentColor; }
@@ -117,12 +129,23 @@ h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 #top .group:empty { display: none; }
 #menu { flex: 1 1 auto; justify-content: flex-end; }
 #phase { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
-.phase-dot { width: 8px; height: 8px; background: var(--dim); flex: none; }
+/* The turn heartbeat: the crescent and the phase dot share a slow candle-breath while the AIs
+   move, and the crescent warms briefly when control returns. Driven by two inheriting custom
+   properties animated on the STABLE #phase element, so the dot/crescent — rebuilt by fill() each
+   render — just read the inherited, still-running value (no restart). Falls back to static on
+   engines without @property, and is turned off under prefers-reduced-motion (below). */
+@property --breath { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --flare { syntax: "<number>"; inherits: true; initial-value: 0; }
+@keyframes breathe { 0%, 100% { --breath: 1; } 50% { --breath: 0.5; } }
+@keyframes turn-arrive { 0% { --breath: 0.5; --flare: 1; } 100% { --breath: 1; --flare: 0; } }
+body[data-phase="running"] #phase { animation: breathe 2.8s ease-in-out infinite; }
+#phase.turn-arrived { animation: turn-arrive 720ms ease-out; }
+.turn-crescent { display: inline-flex; align-items: center; opacity: var(--breath, 1); filter: brightness(calc(1 + var(--flare, 0) * 0.45)); }
+.phase-dot { width: 8px; height: 8px; background: var(--dim); flex: none; opacity: var(--breath, 1); }
 .phase-dot[data-phase="human"] { background: var(--fire); }
-.phase-dot[data-phase="running"] { background: var(--c-stone); animation: pulse 1s infinite alternate; }
+.phase-dot[data-phase="running"] { background: var(--c-stone); }
 .phase-dot[data-phase="decision"] { background: var(--c-frost); }
 .phase-dot[data-phase="crashed"], .phase-dot[data-phase="stuck"] { background: var(--c-scarlet); }
-@keyframes pulse { from { opacity: 1; } to { opacity: 0.3; } }
 #empire { display: flex; gap: calc(var(--u) * 5); flex-wrap: wrap; align-items: center; flex: 0 1 auto; min-width: 0; font-variant-numeric: lining-nums tabular-nums; }
 .stat { white-space: nowrap; display: inline-flex; align-items: center; gap: calc(var(--u) * 2); }
 .stat > span:not(.num) + .num { margin-left: 3px; }
@@ -147,7 +170,7 @@ html.art #top .sep { display: block; }
 
 /* Map and side panel: the map is a page in an ash frame; the side panel a soot panel. */
 #main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
-#mapwrap { position: relative; overflow: hidden; background: var(--c-void); min-height: 200px; }
+#mapwrap { position: relative; overflow: hidden; background: var(--c-soot); min-height: 200px; }
 #mapwrap canvas.map { position: absolute; inset: 0; display: block; touch-action: none; }
 #mapwrap canvas.minimap {
   position: absolute; right: 10px; bottom: 10px; width: 220px; height: 136px;
@@ -254,9 +277,34 @@ textarea.raw { width: 100%; font: 12px var(--mono); }
 
 /* Toasts. */
 #toasts { position: fixed; right: 12px; bottom: 190px; z-index: 30; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
-.toast { background: var(--c-soot); border: 1px solid var(--c-stone); padding: 6px 10px; max-width: 420px; box-shadow: 0 0 0 1px var(--c-void); }
+.toast { background: var(--c-soot); border: 1px solid var(--c-stone); padding: 6px 10px; max-width: 420px; box-shadow: 0 0 0 1px var(--c-void); transition: opacity 160ms ease, transform 160ms ease; }
 .toast.error { border-color: var(--c-scarlet); color: var(--c-vellum); }
 .toast.log { border-color: var(--c-glint); }
+.toast.leaving { opacity: 0; transform: translateX(10px); }
+
+/* Motion. The interface is a scriptorium: a page is laid down, not snapped into place, and the
+   map glides across (map.js `glideTo`). Entrances only, short and quiet; prefers-reduced-motion
+   turns them all off. */
+@keyframes toast-in { from { opacity: 0; transform: translateX(12px); } }
+/* Fade the backdrop's DIM (its background), not its opacity — the modal is a child, so fading the
+   backdrop's opacity would fade the page too and ghost it over the map. */
+@keyframes backdrop-in { from { background-color: rgba(5, 8, 11, 0); } }
+/* The page settles in with a slight rise and scale; it stays opaque throughout (no fade) so a
+   large screen never ghosts over the map while the backdrop dims the surround. */
+@keyframes modal-in { from { transform: translateY(10px) scale(0.985); } }
+#toasts .toast { animation: toast-in 200ms ease-out; }
+#modals .backdrop { animation: backdrop-in 140ms ease-out; }
+.modal { animation: modal-in 190ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  #toasts .toast, #modals .backdrop, .modal { animation: none; }
+  .toast { transition: none; }
+  body[data-phase="running"] #phase, #phase.turn-arrived { animation: none; }
+  #phase { --breath: 1; --flare: 0; }
+  .turn-crescent { opacity: 1; filter: none; }
+  .phase-dot { opacity: 1; }
+  .phase-dot[data-phase="running"] { opacity: 0.55; }
+}
 
 /* Phase 6: the map layers, the spectator bar, the sliders button. */
 #mapwrap .layers { position: absolute; left: 48px; bottom: 10px; display: flex; gap: 2px; }
@@ -352,13 +400,13 @@ button.promote { border-color: var(--c-ochre); color: var(--c-vellum); }
 html.art #top { border-bottom: none; box-shadow: none; padding-bottom: calc(var(--u) * 2); }
 html.art #top::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * 3);
-  background: linear-gradient(var(--c-ash) 0 var(--u), var(--c-soot) var(--u) calc(var(--u) * 2), var(--c-iron) calc(var(--u) * 2) calc(var(--u) * 3));
+  background: linear-gradient(var(--c-gold) 0 var(--u), var(--c-soot) var(--u) calc(var(--u) * 2), var(--c-khaki) calc(var(--u) * 2) calc(var(--u) * 3));
 }
 html.art #top .group {
   border-style: solid; border-width: var(--nine-frame-panel-w); border-image: var(--nine-frame-panel);
   padding: 0 calc(var(--u) * 2); min-height: calc(var(--u) * 17); display: flex; align-items: center; gap: calc(var(--u) * 4);
 }
-html.art .group .sep { width: var(--u); align-self: stretch; margin: calc(var(--u) * 1) 0; background: var(--c-iron); }
+html.art .group .sep { width: var(--u); align-self: stretch; margin: calc(var(--u) * 1) 0; background: var(--c-khaki); }
 html.art #side, html.art #bottom {
   box-shadow: none;
   border-style: solid; border-width: var(--nine-frame-panel-w); border-image: var(--nine-frame-panel);

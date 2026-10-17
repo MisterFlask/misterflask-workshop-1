@@ -87,7 +87,13 @@ export function toast(text, kind = "info", ms = 4500) {
   const el = h(`div.toast.${kind}`, { role: kind === "error" ? "alert" : "status" }, text);
   box.appendChild(el);
   while (box.children.length > 6) box.firstChild.remove();
-  setTimeout(() => el.remove(), ms);
+  // Fade out before removing (CSS transition on `.leaving`); a fallback removes it even when no
+  // transition runs (reduced motion, a hidden tab).
+  setTimeout(() => {
+    el.classList.add("leaving");
+    el.addEventListener("transitionend", () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 400);
+  }, ms);
 }
 
 let busyCount = 0;

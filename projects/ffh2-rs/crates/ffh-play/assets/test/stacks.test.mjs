@@ -118,6 +118,23 @@ test("facing follows the last move, across the seam", () => {
   assert.equal(f.has(3), false);
 });
 
+test("unitMoves: net displacement of the units that changed tile, wrap-aware", () => {
+  let { positions, moved } = St.unitMoves(new Map(), [{ id: 1, x: 5, y: 7 }, { id: 2, x: 0, y: 0 }], 20, true);
+  assert.equal(moved.length, 0, "no previous positions: nothing moved");
+  assert.deepEqual(positions.get(1), { x: 5, y: 7 });
+  // A straight step east and a step north; a unit standing still is not moved.
+  ({ positions, moved } = St.unitMoves(positions, [{ id: 1, x: 6, y: 8 }, { id: 2, x: 0, y: 0 }], 20, true));
+  assert.deepEqual(moved, [{ id: 1, dx: 1, dy: 1 }]);
+  // A step west across the seam (19 -> 0) is +1, not +19 - 0.
+  ({ positions, moved } = St.unitMoves(positions, [{ id: 1, x: 6, y: 8 }, { id: 2, x: 19, y: 0 }], 20, true));
+  assert.deepEqual(moved, [{ id: 2, dx: -1, dy: 0 }]);
+  // A brand-new unit (id 3) is never "moved"; a vanished unit drops out of positions.
+  ({ positions, moved } = St.unitMoves(positions, [{ id: 3, x: 1, y: 1 }], 20, true));
+  assert.equal(moved.length, 0);
+  assert.equal(positions.has(1), false);
+  assert.deepEqual(positions.get(3), { x: 1, y: 1 });
+});
+
 test("heraldry: a tincture plain, then its divisions, kept for the game", () => {
   const T = { CIVILIZATION_BANNOR: "Argent", CIVILIZATION_ELOHIM: "Argent", CIVILIZATION_LANUN: "Azure", CIVILIZATION_MERCURIANS: "Argent" };
   const tinctureOf = (civ) => T[civ] ?? "Argent";

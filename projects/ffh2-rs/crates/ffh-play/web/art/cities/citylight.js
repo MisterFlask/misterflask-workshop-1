@@ -37,61 +37,15 @@
 // 5. Sprite lights. drawCity draws the city sprite's own `: light` pools under it (the tribal and
 //    barbarian bonfire), as point lights.
 //
-// The tables are written like palette.txt's remap section (key, then the target per table), so the
-// toolkit can move them there as new columns (2.4 lists them as the light pass's tables).
+// The ring tables (WARM, HEARTH, EMBER, SMOULDER, GORE, AURA, HALLOW, HAZE) are palette.txt remap
+// columns beside the derived FIRE, BLOOD, RITE and ARC (docs/ART.md 2.4); RINGS names each family's three.
 
 import { hash3 } from '../art.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
 
-// key WARM HEARTH EMBER SMOULDER GORE AURA HALLOW HAZE: the light pass's rings (the outer, inner and core
-// tables of each family that 2.4 does not already give)
-export const LIGHT_TABLES = `
-key WARM     HEARTH   EMBER    SMOULDER GORE     AURA     HALLOW   HAZE
-0   u        e        e        c        c        v        k        k
-1   u        e        e        c        c        v        s        k
-2   u        e        E        c        c        v        s        t
-3   x        e        E        c        C        p        s        t
-4   x        x        E        x        C        p        s        t
-5   y        E        l        x        C        P        S        T
-6   Y        E        l        C        R        P        S        S
-7   8        l        L        C        R        8        W        W
-8   8        l        L        C        R        8        W        W
-d   d        d        d        d        d        d        d        d
-n   n        n        n        n        n        n        n        n
-N   N        e        E        c        C        p        s        t
-g   g        E        l        x        C        P        S        T
-f   Y        E        l        x        C        P        S        S
-F   7        l        L        C        R        8        W        W
-k   u        e        E        c        c        v        s        t
-t   x        x        E        c        C        p        s        T
-T   y        E        l        x        C        P        S        S
-q   x        x        E        c        c        p        s        t
-m   y        E        l        x        C        p        S        T
-o   Y        E        l        x        C        P        S        T
-O   Y        l        L        x        C        P        S        S
-u   x        x        E        c        C        p        s        t
-Q   y        E        l        x        C        p        S        T
-x   y        E        l        C        C        P        S        T
-y   Y        l        L        x        C        P        S        S
-Y   7        l        L        C        R        P        W        S
-v   x        x        E        c        c        p        s        t
-p   x        E        l        x        C        P        S        T
-P   Y        l        L        C        R        8        W        S
-e   E        E        l        C        C        p        s        t
-E   l        l        L        C        R        P        S        S
-l   L        L        L        R        R        P        W        W
-L   L        L        L        R        R        8        W        W
-c   x        x        E        C        C        p        s        t
-C   E        E        l        C        R        P        S        T
-R   l        l        L        R        R        P        W        S
-s   x        x        E        c        C        p        S        T
-S   y        E        l        x        C        P        W        W
-W   8        l        L        C        R        8        W        W
-`;
-
-/** The rings of each pool family: [outer, inner, core] table names (2.4 tables or LIGHT_TABLES). */
+/** The rings of each pool family: [outer, inner, core] table names (palette.txt remap columns, 2.4). */
 export const RINGS = {
   FIRE: ['WARM', 'HEARTH', 'EMBER'],
   BLOOD: ['SMOULDER', 'GORE', 'GORE'],
@@ -103,23 +57,10 @@ export const RINGS = {
 export const SHARE = { outer: 0.7, inner: 0.78, core: 0.75 };
 const FALL = { outer: 0.6, inner: 0.9, core: 1 }; // the share falls off as (1 - d)^FALL
 
-/** Parse LIGHT_TABLES into index tables for an art instance (cached on it). */
-function lightTables(art) {
-  if (art._lightTables) return art._lightTables;
-  const rows = LIGHT_TABLES.trim().split('\n').map((l) => l.trim().split(/\s+/));
-  const names = rows[0].slice(1);
-  const out = {};
-  for (const n of names) out[n] = new Uint8Array(art.keys.length).map((_, i) => i);
-  for (const r of rows.slice(1)) names.forEach((n, k) => { out[n][art.K(r[0])] = art.K(r[k + 1]); });
-  art._lightTables = out;
-  return out;
-}
-
 /** The three ring tables of a pool family (null where a table is missing). */
 function ringTables(art, table) {
-  const L = lightTables(art);
   const names = RINGS[table] || [table, null, null];
-  return names.map((n) => (n ? L[n] || art.tables[n] || null : null));
+  return names.map((n) => (n ? art.tables[n] || null : null));
 }
 
 /**
@@ -168,8 +109,18 @@ export function drawRings(art, ctx, cx, cy, table, radii, shares = SHARE) {
  * pool (FIRE, BLOOD, ARC; any other table falls back to a single ring of itself).
  */
 export function drawCityPool(art, ctx, cx, cy, table, tier) {
-  drawRings(art, ctx, cx, cy, table, poolRadii(tier, table));
+  const k = DAYLIGHT[table] ?? 1;
+  if (k <= 0) return;
+  drawRings(art, ctx, cx, cy, table, poolRadii(tier, table).map((r) => Math.round(r * k)));
 }
+
+/**
+ * Daylight (docs/ART.md 4.4): the map is lit by the sun, so firelight barely shows. City pools are
+ * scaled per family -- firelight none, while corruption, the arcane and ritual auras stay as faction
+ * identity, closer to the walls -- firelight point lights (lanterns, campfires) are halved, and the
+ * night's wall glow and facade light are off.
+ */
+export const DAYLIGHT = { FIRE: 0, BLOOD: 0.55, ARC: 0.55, RITE: 0.7, firePoint: 0.5, glow: false };
 
 // a ritual light is mostly its teal haze, with a sparse heart of ritual green (so a drawn ring of
 // ritual pixels still reads against it)
@@ -180,6 +131,8 @@ const RITE_SHARE = { outer: 0.8, inner: 0.6, core: 0.85 };
  * (ritual lights: r, 0.5 r, 0.22 r, the inner ring sparser).
  */
 export function drawPointLight(art, ctx, cx, cy, table, r) {
+  if (table === 'FIRE') r *= DAYLIGHT.firePoint;
+  if (r < 1) return;
   if (table === 'RITE') drawRings(art, ctx, cx, cy, table, [r, r * 0.5, r * 0.22], RITE_SHARE);
   else drawRings(art, ctx, cx, cy, table, [r, r * 0.55, r >= 6 ? r * 0.25 : 0]);
 }
@@ -291,9 +244,10 @@ export function installCityLight(art) {
     const tier = tierOfSize(city.size | 0 || 1);
     if (pool !== 'none' && city.pool !== false) drawCityPool(art, ctx, x + 16 * s, y + 28 * s, pool, tier);
     for (const l of spr?.meta.lights || []) drawPointLight(art, ctx, x + (16 - spr.ax + l.x) * s, y + (30 - spr.ay + l.y) * s, l.table, l.radius);
-    if (pool !== 'none' && city.glow !== false) drawWallGlow(art, ctx, x, y, spr, pool);
+    const glow = DAYLIGHT.glow && pool !== 'none' && city.glow !== false;
+    if (glow) drawWallGlow(art, ctx, x, y, spr, pool);
     baseCity(ctx, x, y, { ...city, layer: 'sprite', pool: false }, owner);
-    if (pool !== 'none' && city.glow !== false) drawFacadeLight(art, ctx, x, y, spr, pool, tier);
+    if (glow) drawFacadeLight(art, ctx, x, y, spr, pool, tier);
     if (layer === 'all') baseCity(ctx, x, y, { ...city, layer: 'overlay' }, owner);
   };
   art._cityLight = true;

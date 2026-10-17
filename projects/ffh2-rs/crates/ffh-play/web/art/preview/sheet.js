@@ -122,8 +122,7 @@ function improvementCell(spr) {
 function resourceCell(spr) {
   const s = (art.scale = 4);
   const [c, ctx] = canvas(15 * s, 15 * s, 'm');
-  if (spr.name !== 'res/_disc') art.drawSprite(ctx, 7 * s, 7 * s, art.pick('res/_disc').name, { remap: '#o' });
-  art.drawSprite(ctx, 7 * s, 7 * s, spr.name, spr.name === 'res/_disc' ? { remap: '#o' } : {});
+  art.drawSprite(ctx, 7 * s, 13 * s, spr.name);
   return c;
 }
 

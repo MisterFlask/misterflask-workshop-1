@@ -1,7 +1,7 @@
 /* ui/preview.css: the mock screen and the kit sheet. Every length is a multiple of the UI scale
    --u (CSS px per art px, docs/ART.md 3.2); every colour is a palette entry (--c-*, set by ui.js). */
 :root { --u: 2px; }
-html, body { margin: 0; background: var(--c-soot, #0c1115); color: var(--c-bone, #b3a28c); }
+html, body { margin: 0; background: var(--c-soot, #110f10); color: var(--c-bone, #b8a78e); }
 body {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", "URW Palladio L", Georgia, serif;
   font-size: 15px; line-height: 1.4;

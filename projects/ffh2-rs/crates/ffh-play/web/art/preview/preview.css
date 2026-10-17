@@ -1,8 +1,8 @@
 /* Preview pages for the art toolkit. Colours are palette entries (docs/ART.md 11.2). */
 :root {
-  --c-void: #05080b; --c-soot: #0c1115; --c-coal: #161c21; --c-iron: #252b2f; --c-ash: #56524c;
-  --c-stone: #7d7366; --c-bone: #b3a28c; --c-vellum: #ddcfb4; --c-ochre: #76663f; --c-scarlet: #b33a3a;
-  --c-sand: #8c8068; --c-amber: #e2913c;
+  --c-void: #140d0c; --c-soot: #14223e; --c-coal: #26334f; --c-iron: #424858; --c-ash: #848b98;
+  --c-stone: #adb3bd; --c-bone: #e9dbb3; --c-vellum: #fffaec; --c-ochre: #dba63b; --c-scarlet: #f15b47;
+  --c-sand: #ecd18c; --c-amber: #ffb63b;
 }
 html, body { margin: 0; background: var(--c-soot); color: var(--c-bone); }
 body {

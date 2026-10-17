@@ -1,292 +1,369 @@
-# ART.md: style guide for the ffh-play client ("Monastic Pixel Noir")
+# ART.md: style guide for the ffh-play client ("Cheerful Readability")
 
 This is the binding style guide for all art in the browser client (`crates/ffh-play`): map, units,
-cities, icons and UI chrome. Every asset is **original** (no Civ4 or FfH2 art, nothing downloaded).
-Sprites are authored **as text** (section 13) and turned into images by the client at load time or
-by a std-only build step.
+cities, icons and UI chrome. Sprites are authored **as text** (section 13) and turned into images
+by the client at load time. Every asset is either drawn for this game or cut from the project
+owner's own reference sheets (section 10.2); nothing is taken from Civ4 or FfH2.
 
-The direction comes from the user's mood board (`docs/art/mood-board.png`, v2). The board sets the
-**mood**, not the UX. Its words, specific symbols, icons, panel layout and resource counters are
-placeholders from the mock-up tool and are not copied. `docs/art/style-reference.png` is a
-prototype study rendered while writing this guide (palette, terrain key, unit silhouettes, owner
-pennants, a sample map). It validates the rules below. It is not final art. Section 16 is the
-status of the art as assembled (coverage, fallbacks, how the client calls the toolkit, and where
-the sets' second rounds supersede sections of this guide).
+The direction is **cheerful readability**, in the spirit of the 16-bit tactics games (Shining
+Force, the handheld Fire Emblems): a sunny, saturated world, crisp outlined figures, bold owner
+colours and gold-framed navy panels. It replaced the earlier "Monastic Pixel Noir" (a night-time
+manuscript) in the October 2026 revamp. The references are the owner's map mock-up
+(`docs/art/style-reference-map.png`) and the unit atlases (`docs/art/unit-atlas-1.png` to
+`-3.png`, "part 1 of 4": melee, recon, archers, mounted, siege, naval, animals). They set the look;
+their hex grid and hex bases are not copied (square tiles stay, section 12).
 
 ---
 
 ## 1. Direction
 
-**The map is a night-time manuscript.** It reads like an old chorographic map, lit by a candle:
-ground drawn flat, in plan view; mountains, forests, towers and figures drawn upright, in
-elevation; coasts, rivers, roads and borders inked. It should look like a page, not a game board.
+**The map is a sunny tactics board.** Ground in plan view, figures, trees, mountains and towns
+upright; everything lit by a bright sun from the upper left; every actor outlined so it reads
+against any ground.
 
 Five principles, in priority order:
 
-1. **Silhouette first.** Every unit, city and landmark must read as a dark shape with a lit edge at
-   1x. If a sprite needs colour to be recognised, the sprite is wrong.
-2. **Quiet ground.** Terrain is low-chroma colour fields with sparse marks. Emptiness and shadow
-   carry the depth. No busy tile textures, no visible tile grid.
-3. **Colour is earned.** The world is soot, ash, bone, midnight navy, weathered teal and moss. More
-   saturated hues are reserved and mean something:
-   - **firelight** (amber) is life: windows, torches, lanterns, campfires;
-   - **muted crimson** is blood and corruption: hell terrain, demons, war, Armageddon;
-   - **pale green** is ritual and the unnatural: sacred sites, undead eyes, world spells;
-   - **dusky purple** is the arcane: mana, spells, mages.
-4. **Light is local.** The moon lights everything faintly from the upper left. Warm light comes
-   only from sources you can see, and it falls off in dithered pools.
-5. **Restraint scales.** A typical screen has a dozen small lights, not a hundred. The more of
-   something there is on a map (grass, forest, units), the quieter its drawing must be.
+1. **Readability first.** Every unit, city and landmark reads at 1x on any terrain: a dark outline
+   round a bright, simply shaded interior. Who owns what reads at a glance: the team ring under
+   each unit, solid border lines, coloured plaques.
+2. **A bright, friendly world.** Daylight. Water is a friendly saturated blue, grass sunny
+   yellow-green, desert warm sand, snow white. Colour is everywhere, but it is clean, never neon
+   and never muddy.
+3. **Meaning still has colour.** This is still Fall from Heaven: hell terrain, demons and
+   Armageddon keep their colours (firelight, crimson, the ritual green, the arcane purple), drawn
+   in the same cheerful key as everything else.
+4. **Clean pixel art.** Crisp 1 px outlines, two to four tones per material, ordered dithering
+   only, no anti-aliasing, integer scaling.
+5. **Calm ground, lively actors.** Terrain texture is fine and even, so a screen of land reads as
+   land; contrast and saturation go to units, cities, borders and landmarks.
 
 ---
 
 ## 2. Palette
 
-### 2.1 The 40 colours
+### 2.1 The 56 colours
 
-The palette is closed: every pixel of every asset, and every UI colour, is one of these 40 colours.
-UI chrome may use CSS alpha only for overlays (section 11.2). Each colour has a one-character
-**key**, used in sprite text (section 13). Keys follow two patterns:
+The palette is closed: every pixel of every asset, and every UI colour, is one of these 56
+colours (UI chrome may use CSS alpha only for the modal backdrop). Each colour has a one-character
+**key** used in sprite text (section 13). The first 40 keys are the original roles, recoloured
+(digits `0`-`8` a value ladder; in each family the lower-case key is the darker partner of the
+upper-case key); the 16 after them were added for the unit atlases (skin, leather, olive cloth,
+warm greys, maroon, royal blue and gold), chosen by a constrained k-means of the downsampled atlas
+units around the fixed 40. L* is CIE lightness (0 to 100).
 
-- digits `0`-`8` are the neutral value ladder, from 0 (darkest) to 8 (lightest);
-- inside each colour family, the lower-case key is the darker partner of the upper-case key
-  (`n`/`N`, `f`/`F`, `t`/`T`, `o`/`O`, `y`/`Y`, `p`/`P`, `e`/`E`, `l`/`L`, `c`/`C`, `s`/`S`).
-
-L* is CIE lightness (0 to 100).
-
-**Neutrals: soot, ash and bone.** Darks are cool, lights are warm.
+**Neutrals: a cool steel and navy ladder, warm cream and white.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 0 | `0` | void | `#05080b` | 2 | outlines, unrevealed tiles, deepest shadow |
-| 1 | `1` | soot | `#0c1115` | 5 | panel ground, ink shadows, fog hatching |
-| 2 | `2` | coal | `#161c21` | 10 | shadow faces, dark cloth and metal |
-| 3 | `3` | iron | `#252b2f` | 17 | armour, rock in shadow, dark stone |
-| 4 | `4` | slate | `#373a3b` | 24 | tundra ground, rock, lit dark stone |
-| 5 | `5` | ash | `#56524c` | 35 | moon rim on sprites, lit stone, borders of panels |
-| 6 | `6` | stone | `#7d7366` | 49 | stone highlights, secondary text, road shadows |
-| 7 | `7` | bone | `#b3a28c` | 68 | ink lines (coast, roads), body text, bone and cloth highlights |
-| 8 | `8` | vellum | `#ddcfb4` | 84 | brightest neutral: selection, titles, specular dots |
+| 0 | `0` | void | `#140d0c` | 4 | outlines of every upright sprite, deepest shadow |
+| 1 | `1` | soot | `#14223e` | 13 | panel ground (the interface navy), unrevealed land, cool shadow |
+| 2 | `2` | coal | `#26334f` | 21 | raised panels, dark cloth and metal |
+| 3 | `3` | iron | `#424858` | 31 | steel in shadow, rock shade |
+| 4 | `4` | slate | `#5f6676` | 43 | steel, rock, tundra marks |
+| 5 | `5` | ash | `#848b98` | 58 | lit steel and stone |
+| 6 | `6` | stone | `#adb3bd` | 73 | stone highlights, bright steel |
+| 7 | `7` | bone | `#e9dbb3` | 88 | cream: body text, walls, bone, roads |
+| 8 | `8` | vellum | `#fffaec` | 98 | warm white: highlights, titles, the selection rim |
 
-**Midnight navy and frost.** Water, night, cold.
-
-| # | key | name | hex | L* | use |
-|---|---|---|---|---|---|
-| 9 | `d` | deep | `#071219` | 5 | ocean ground |
-| 10 | `n` | navy | `#0d1d2b` | 10 | coast ground, river ink |
-| 11 | `N` | tide | `#193249` | 20 | ripples, foam line |
-| 12 | `g` | glint | `#3d5868` | 36 | depth contour dots, river glints, ice and snow shadow |
-| 13 | `f` | frost | `#717f86` | 52 | snow ground, ice |
-| 14 | `F` | rime | `#aab5b6` | 73 | snow crests, ice edges, cold light |
-
-**Weathered teal.** Conifers, marsh shadow, verdigris, faith and depths.
+**Water: friendly saturated blues.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 15 | `k` | teal-dk | `#0f2224` | 12 | conifer shadow side, ancient forest mass |
-| 16 | `t` | teal | `#1c383d` | 22 | conifer body, marsh pools, priestly cloth |
-| 17 | `T` | patina | `#3d6364` | 39 | verdigris, canopy highlight, Overlords accent |
+| 9 | `d` | deep | `#0b4290` | 29 | OCEAN ground |
+| 10 | `n` | navy | `#1765b2` | 42 | COAST ground, river ink |
+| 11 | `N` | tide | `#3f8cd2` | 57 | wave crests, ripples |
 
-**Moss and olive.** Living land.
-
-| # | key | name | hex | L* | use |
-|---|---|---|---|---|---|
-| 18 | `q` | moss-dk | `#1f251c` | 14 | grass mottling, marsh ground, jungle shade |
-| 19 | `m` | moss | `#363d31` | 25 | grassland ground |
-| 20 | `o` | olive | `#4d5537` | 35 | grass tufts, reeds, jungle canopy |
-| 21 | `O` | lichen | `#6c724a` | 47 | tuft tips, tundra lichen, the Vert tincture |
-
-**Earth.** Plains, desert, wood and leather. Rust is the corrupted earth tone.
+**Frost: ice and snow.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 22 | `u` | umber | `#2e2620` | 16 | wood, leather, soil, broken lands ground |
-| 23 | `Q` | dun | `#4f483e` | 31 | plains ground |
-| 24 | `x` | rust | `#5f3a2a` | 28 | burning sands ground, rust, the Tenné tincture |
-| 25 | `y` | ochre | `#76663f` | 44 | stubble, gilt, the Or tincture |
-| 26 | `Y` | sand | `#8c8068` | 54 | desert ground |
+| 12 | `g` | glint | `#80b7e3` | 72 | glints, ice shadow, sky cloth |
+| 13 | `f` | frost | `#c6ddec` | 87 | snow shadow, ice |
+| 14 | `F` | rime | `#f2f8fc` | 97 | SNOW ground, foam |
 
-**Dusky purple.** The arcane.
+**Pine: blue-green conifers, kept apart from the grass.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 27 | `v` | bruise | `#1b1622` | 8 | shallows ground, arcane shadow |
-| 28 | `p` | dusk | `#382d45` | 21 | fields of perdition ground, mage robes |
-| 29 | `P` | lilac | `#6e5b80` | 42 | mana, spell light, the Purpure tincture |
+| 15 | `k` | pine-dk | `#163c2f` | 22 | pine shadow |
+| 16 | `t` | pine | `#215e3e` | 35 | pine body |
+| 17 | `T` | needle | `#3c8b4f` | 52 | pine highlight, the Vert field |
 
-**Firelight** (reserved).
-
-| # | key | name | hex | L* | use |
-|---|---|---|---|---|---|
-| 30 | `e` | ember | `#5a2412` | 22 | outer glow ring, embers, burnt glints |
-| 31 | `E` | flame | `#ad501d` | 45 | flame body, inner glow ring |
-| 32 | `l` | amber | `#e2913c` | 67 | lit window, lantern |
-| 33 | `L` | glow | `#f7d47e` | 86 | light core (1 to 2 px only) |
-
-**Muted crimson** (reserved).
+**Grass: sunny yellow-green.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 34 | `c` | blood | `#3a1216` | 12 | hell fissures, corruption haze |
-| 35 | `C` | crimson | `#77252b` | 28 | demons, the Gules tincture, war, damage |
-| 36 | `R` | scarlet | `#b33a3a` | 43 | corruption light core, demon eyes |
+| 18 | `q` | moss-dk | `#4a6f22` | 43 | grass shade, marsh ground |
+| 19 | `m` | moss | `#6fa534` | 62 | GRASSLAND ground |
+| 20 | `o` | olive | `#91c03d` | 72 | lit grass, tufts |
+| 21 | `O` | lichen | `#bddb5d` | 83 | tuft tips, sunlit rims of woods |
 
-**Pale green** (reserved).
+**Earth: wood, wheat, gold and sand.**
 
 | # | key | name | hex | L* | use |
 |---|---|---|---|---|---|
-| 37 | `s` | barrow | `#22463a` | 27 | ritual haze |
-| 38 | `S` | ritual | `#6aab88` | 65 | ritual circles, undead eyes |
-| 39 | `W` | wisp | `#c4efc4` | 91 | ritual light core (1 to 2 px only) |
+| 22 | `u` | umber | `#5b3a1f` | 28 | dark wood and soil, broken lands |
+| 23 | `Q` | dun | `#c2a95f` | 70 | PLAINS ground (golden wheat) |
+| 24 | `x` | rust | `#b9582a` | 49 | orange-brown, the Tenne shade |
+| 25 | `y` | ochre | `#dba63b` | 71 | ochre gold, dune undersides |
+| 26 | `Y` | sand | `#ecd18c` | 85 | DESERT ground |
 
-The same palette in machine-readable form (`index key name hex family`):
+**Purple: the arcane.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 27 | `v` | bruise | `#2f1b4b` | 15 | arcane shadow, shallows |
+| 28 | `p` | dusk | `#5c3393` | 31 | mage robes, perdition |
+| 29 | `P` | lilac | `#a276da` | 58 | mana, spell light, the Purpure field |
+
+**Firelight.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 30 | `e` | ember | `#8d2f10` | 33 | embers |
+| 31 | `E` | flame | `#ef6b1b` | 61 | flame, the Tenne field |
+| 32 | `l` | amber | `#ffb63b` | 79 | lit windows, lanterns |
+| 33 | `L` | glow | `#ffe78c` | 92 | light cores, pale gold highlights |
+
+**Crimson: blood, war and red roofs.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 34 | `c` | blood | `#561417` | 18 | blood, the maroon title ribbon |
+| 35 | `C` | crimson | `#c8272b` | 44 | crimson: roofs, demons, the Gules field |
+| 36 | `R` | scarlet | `#f15b47` | 59 | scarlet: roof rims, demon eyes |
+| 53 | `I` | maroon | `#8f1e1f` | 32 | maroon: red cloth shade, the Gules shade |
+
+**Pale green: ritual and the unnatural.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 37 | `s` | barrow | `#2a7a63` | 46 | ritual haze |
+| 38 | `S` | ritual | `#70e0b1` | 82 | ritual light, undead eyes |
+| 39 | `W` | wisp | `#d9fbe9` | 96 | ritual core |
+
+**Skin.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 40 | `a` | skin-lt | `#e8bd90` | 79 | light skin |
+| 41 | `b` | skin | `#c58b58` | 63 | skin |
+
+**Wood and leather.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 42 | `h` | bark | `#3a2314` | 16 | dark wood, doors, hair |
+| 43 | `r` | auburn | `#7a3b1c` | 33 | auburn hair, leather shade |
+| 44 | `i` | leather | `#96612f` | 46 | leather |
+| 45 | `j` | khaki | `#a9874f` | 58 | khaki leather, bronze rule, the Or shade |
+
+**Olive cloth.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 46 | `w` | olive-dk | `#2c4117` | 25 | olive cloth shade |
+| 47 | `z` | fern-dk | `#5c6c2c` | 43 | olive cloth |
+| 48 | `A` | fern | `#7f9134` | 57 | fern cloth, lichen |
+
+**Warm greys.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 49 | `B` | pewter | `#4f4a4c` | 32 | pewter: warm dark grey |
+| 50 | `D` | flint | `#77716f` | 48 | flint: warm grey, the Argent shade |
+| 51 | `G` | ash-lt | `#a8a09a` | 66 | warm light grey, tundra ground |
+| 52 | `H` | silver | `#cdcacc` | 82 | silver: the Argent field |
+
+**Royal blue.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 54 | `J` | royal | `#3356b6` | 39 | royal blue: the Azure field |
+
+**Gold.**
+
+| # | key | name | hex | L* | use |
+|---|---|---|---|---|---|
+| 55 | `K` | gold | `#f2c74b` | 82 | gold: frames, rules, gilt, the Or field |
+
+The same palette in machine-readable form (`index key name hex family`); `tools/validate.mjs`
+checks that it equals `web/art/palette.txt`:
 
 ```palette
- 0 0 void    #05080b neutral
- 1 1 soot    #0c1115 neutral
- 2 2 coal    #161c21 neutral
- 3 3 iron    #252b2f neutral
- 4 4 slate   #373a3b neutral
- 5 5 ash     #56524c neutral
- 6 6 stone   #7d7366 neutral
- 7 7 bone    #b3a28c neutral
- 8 8 vellum  #ddcfb4 neutral
- 9 d deep    #071219 navy
-10 n navy    #0d1d2b navy
-11 N tide    #193249 navy
-12 g glint   #3d5868 frost
-13 f frost   #717f86 frost
-14 F rime    #aab5b6 frost
-15 k teal-dk #0f2224 teal
-16 t teal    #1c383d teal
-17 T patina  #3d6364 teal
-18 q moss-dk #1f251c moss
-19 m moss    #363d31 moss
-20 o olive   #4d5537 moss
-21 O lichen  #6c724a moss
-22 u umber   #2e2620 earth
-23 Q dun     #4f483e earth
-24 x rust    #5f3a2a earth
-25 y ochre   #76663f earth
-26 Y sand    #8c8068 earth
-27 v bruise  #1b1622 purple
-28 p dusk    #382d45 purple
-29 P lilac   #6e5b80 purple
-30 e ember   #5a2412 fire
-31 E flame   #ad501d fire
-32 l amber   #e2913c fire
-33 L glow    #f7d47e fire
-34 c blood   #3a1216 crimson
-35 C crimson #77252b crimson
-36 R scarlet #b33a3a crimson
-37 s barrow  #22463a ritual
-38 S ritual  #6aab88 ritual
-39 W wisp    #c4efc4 ritual
+ 0 0 void     #140d0c neutral
+ 1 1 soot     #14223e neutral
+ 2 2 coal     #26334f neutral
+ 3 3 iron     #424858 neutral
+ 4 4 slate    #5f6676 neutral
+ 5 5 ash      #848b98 neutral
+ 6 6 stone    #adb3bd neutral
+ 7 7 bone     #e9dbb3 neutral
+ 8 8 vellum   #fffaec neutral
+ 9 d deep     #0b4290 navy
+10 n navy     #1765b2 navy
+11 N tide     #3f8cd2 navy
+12 g glint    #80b7e3 frost
+13 f frost    #c6ddec frost
+14 F rime     #f2f8fc frost
+15 k pine-dk  #163c2f teal
+16 t pine     #215e3e teal
+17 T needle   #3c8b4f teal
+18 q moss-dk  #4a6f22 moss
+19 m moss     #6fa534 moss
+20 o olive    #91c03d moss
+21 O lichen   #bddb5d moss
+22 u umber    #5b3a1f earth
+23 Q dun      #c2a95f earth
+24 x rust     #b9582a earth
+25 y ochre    #dba63b earth
+26 Y sand     #ecd18c earth
+27 v bruise   #2f1b4b purple
+28 p dusk     #5c3393 purple
+29 P lilac    #a276da purple
+30 e ember    #8d2f10 fire
+31 E flame    #ef6b1b fire
+32 l amber    #ffb63b fire
+33 L glow     #ffe78c fire
+34 c blood    #561417 crimson
+35 C crimson  #c8272b crimson
+36 R scarlet  #f15b47 crimson
+37 s barrow   #2a7a63 ritual
+38 S ritual   #70e0b1 ritual
+39 W wisp     #d9fbe9 ritual
+40 a skin-lt  #e8bd90 skin
+41 b skin     #c58b58 skin
+42 h bark     #3a2314 wood
+43 r auburn   #7a3b1c wood
+44 i leather  #96612f wood
+45 j khaki    #a9874f wood
+46 w olive-dk #2c4117 olive
+47 z fern-dk  #5c6c2c olive
+48 A fern     #7f9134 olive
+49 B pewter   #4f4a4c grey
+50 D flint    #77716f grey
+51 G ash-lt   #a8a09a grey
+52 H silver   #cdcacc grey
+53 I maroon   #8f1e1f crimson
+54 J royal    #3356b6 royal
+55 K gold     #f2c74b gold
 ```
 
 ### 2.2 Where each family may be used
 
-| family | allowed on the map | allowed in UI | never |
+| family | on the map | in the UI | never |
 |---|---|---|---|
-| neutrals | everything | everything | (none) |
-| navy and frost | water, rivers, snow, ice, cold metal, night sky, Illian frost | water and cold icons, the Azure and Celeste tinctures | warm-lit surfaces |
-| teal | conifers, marsh, ancient forest, verdigris, priestly cloth | Overlords and teal icons, the Cendrée tincture | large flat areas outside water and marsh |
-| moss | grass, reeds, jungle, foliage | health, nature, the Vert tincture | demons, undead |
-| earth | plains, desert, wood, leather, hills, rock, gilt (ochre) | food, commerce, gold, wood | (none) |
-| purple | arcane: mana nodes, spell effects, mage cloth, ancient forest shade, fields of perdition, shallows | mana, spells, arcane promotions, the Purpure tincture | ordinary cloth on non-arcane units |
-| firelight | light sources only: windows, lanterns, torches, forges, campfires, flames, burning sands glints, volcano | happiness, warnings, the End Turn glyph, the active-turn mark | large fills; anything that is not a light |
-| crimson | blood and corruption: hell terrain fissures, demons and Infernal or Sheaim works, Armageddon, the Gules tincture, low HP | war, danger, losses, deficits, Armageddon, delete | decoration; good-aligned things |
-| pale green | ritual and the unnatural: sacred landmarks, ritual circles, undead eye pixels, world-spell effects, Life mana | rituals (FfH projects), world spells, Life mana | vegetation; ordinary healing |
+| neutrals | outlines, steel, stone, rock, roads, walls (cream) | panels (navy `1`/`2`), text (cream `7`, white `8`) | (none) |
+| water and frost | water, rivers, snow, ice, steel-blue cloth, the Celeste field | water and cold icons, the Celeste and Azure tinctures | warm surfaces |
+| pine | conifers, ancient forest, the Vert field | the Vert tincture | open ground |
+| grass | grass, reeds, jungle, foliage | health, nature | demons, undead |
+| earth | plains, desert, wood, gilt (ochre), roads' verges | food, commerce | (none) |
+| purple | the arcane: mana, spells, mage robes, fields of perdition, shallows, the Purpure field | mana, spells, arcane promotions | ordinary cloth on non-arcane units |
+| firelight | windows, lanterns, torches, forges, flames, burning sands, the Tenne field (`E`) | happiness, warnings, the End Turn crescent | large fills that are not light or the Tenne field |
+| crimson | blood and corruption, demons, war, red roofs and cloth, the Gules field | war, danger, losses, deficits, the maroon title ribbons | good-aligned light |
+| pale green | ritual and the unnatural: sacred sites, ritual circles, undead eyes, world spells | rituals, world spells, Life mana | vegetation |
+| skin, wood, olive, warm greys | figures (faces, leather, cloth, armour) | (portraits, unit figures in panels) | ground textures |
+| royal blue, gold | cloth, banners, gilt; the Azure and Or fields | frames, rules and gilt (gold `K`, bronze `j`) | ground textures |
 
 ### 2.3 Value and colour budget
 
-Treat these as targets for any full-screen view of a typical game, measured over the visible
-(lit, not fogged) map pixels, one sample per art pixel, each pixel taken as its nearest palette
-colour.
+Daylight inverts the old budget: the map is light, with darks reserved for outlines and shade.
+Targets for a full-screen view of a typical game (visible tiles, each pixel taken as its nearest
+palette colour), with the revamp's measurement of the turn-70 test game at 2x in brackets:
 
-- At least **60%** of lit-map pixels have L* at or below 25 (the darkest 17 colours of section
-  2.1).
-- At most **12%** are above L* 40. At most **2%** are above L* 60 (bone, vellum, rime, glow, ritual,
-  wisp, amber).
-- The three reserved families together (fire, crimson, pale green) cover at most **3%** of the
-  screen. Their light cores (`l L R W`) cover at most **0.6%**.
-- A saturated colour never fills more than about 6 px in a row except in glows, rituals or hell
-  features. If it does, it is decoration.
-
-*Second round (the art director's light and ground review).* The first budget (70% dark, 10% above
-L* 40, 2% reserved, 0.3% cores) was measured on the prototype map, and the assembled sets kept well
-inside it: the sample scene measured 69% dark but only 3.5% above L* 40, firelight (`e E l L`) 0.14%
-and cores 0.09%, against the board's gameplay mock-up (same measure) at 66% dark, 11.8% above L* 40,
-2.6% above L* 60, firelight 0.5% and cores 1.3%. The map read under-lit and flat next to the board.
-The budget was revised deliberately, toward the board but short of it: the dark floor drops to 60%
-(the board is at 66%), the mid-light ceiling rises to 12% (the board's 11.8%) so moonlit clearings,
-pale paths and lit cities fit, and the reserved and core caps double so a town of several lit
-cities or a ritual site stays within them; the 2% ceiling above L* 60 stays (the board's 2.6% is
-painterly highlights that pixel art draws as edges). After the second round the sample scene
-(`preview/scene.html` at 2x, visible tiles; three cities, one of them Sheaim) measures 64% dark,
-8.1% above L* 40, 1.5% above L* 60, firelight 0.22%, cores 0.12% and 1.0% reserved; the cities
-plate's town map (`cities/preview.html?part=towns`, seven cities) firelight 0.43% and cores
-0.17%. Pixel-art light cores stay far below the board's 1.3% (its cores are soft painted glows);
-the light reads from the rings of section 4.4 instead.
+- At most **25%** of map pixels at L* 25 or below: outlines, pine shade, deep water [12%].
+- At least **30%** above L* 50 [38%]; above L* 75 only highlights, snow, sand and foam [9%].
+- The reserved families (fire, crimson, pale green) cover at most **6%** of a screen outside hell
+  terrain and cities [0.2%].
+- Outlines (`0`) about **4-8%** [5.9%]: a figure is defined by its outline, the ground has none.
+- **Per sprite**: a unit uses at most 18 colours (outline and owner slots excepted; the validator
+  warns over 20), a terrain texture at most 6, a city at most 12, an icon at most 4.
 
 ### 2.4 Remap tables: fog and light pools
 
 The palette is indexed, so darkening and lighting are **index remaps**, never alpha blends. The
-client builds a 40-entry lookup per table and applies it per pixel, using a 4x4 Bayer threshold
-where a falloff is needed (section 4.4).
+client builds one lookup per table and applies it per pixel, with a 4x4 Bayer threshold where a
+falloff is needed (section 4.4). The tables are derived from the colours, not drawn by hand
+(`tools/atlas/build_palette.py`):
 
-`FOG` darkens about two steps within the family and puts every light out. The four pool tables pull
-the ground toward one reserved family: firelight (`FIRE`), corruption (`BLOOD`), ritual (`RITE`) and
-the arcane (`ARC`).
+- **`FOG`**: remembered ground, never black: lightness x 0.8 and chroma x 0.55, the nearest colour
+  that is no lighter and is not a light (lights go out). Water steps down within its own family
+  (coast to ocean, crests to coast), so remembered sea still reads as sea.
+- **`FIRE`**, **`BLOOD`**, **`RITE`**, **`ARC`**: pull a colour toward firelight (lighter, toward
+  amber), corruption (redder, a little darker), ritual (toward the pale teal-green) and the arcane
+  (toward violet). Used by the light pass (4.4) and by mana nodes, landmarks and lairs.
 
-The sets' passes (section 16.3) add tables of their own, written in the same form in their modules
-and candidates for new columns here (palette.txt would change with them): the light pass's ring
-tables WARM, HEARTH, EMBER, SMOULDER, GORE, AURA, HALLOW and HAZE (`cities/citylight.js`, section
-4.4), and the ground pass's REMEMBER (`FOG` with frost `f` to slate `4`, rime `F` to ash `5`, glint
-`g` to iron `3`, section 8.2), MOON, GRAIN and SHADE (the moonlit clearings, section 16.4).
+The passes' own tables follow them as further columns, written by hand in `build_palette.py`
+(pairs over identity, or a row per key) rather than derived, and read from `art.tables` like the
+rest:
+
+- **`VERGE`**, **`MOON`**, **`GRAIN`**, **`SHADE`**: the ground pass (5.1): one step lighter for
+  path and river verges, the sunlit step of a clearing, its brightest grain one step further, and
+  the cloud-shade step down. Snow, water, hell purples and lights keep their colour.
+- **`REMEMBER`**: `FOG` with snow and ice sent to pale greys rather than blue, so remembered snow
+  still reads as snow (the fog pass and the vignette, 8.2, 8.3).
+- **`WARM`**, **`HEARTH`**, **`EMBER`**, **`SMOULDER`**, **`GORE`**, **`AURA`**, **`HALLOW`**,
+  **`HAZE`**: the light pass's rings (4.4): the outer, inner and core tables of each pool family
+  that the derived tables do not give (`RINGS` in `cities/citylight.js` names each family's three).
 
 ```remap
-key  FOG FIRE BLOOD RITE ARC
-0    0   u    c     s    v
-1    0   u    c     s    v
-2    1   u    c     s    v
-3    2   u    c     s    p
-4    2   Q    c     s    p
-5    3   6    C     S    p
-6    4   7    C     S    P
-7    5   8    C     S    P
-8    6   8    R     W    8
-d    0   n    c     s    v
-n    d   N    c     s    v
-N    n   g    c     s    p
-g    N   f    C     S    p
-f    g   7    C     S    P
-F    f   8    C     S    P
-k    1   u    c     s    v
-t    k   Q    c     s    p
-T    t   y    C     S    P
-q    1   u    c     s    v
-m    q   Q    c     s    p
-o    m   y    C     S    p
-O    o   Y    C     S    P
-u    1   Q    c     s    v
-Q    u   y    c     s    p
-x    u   E    C     s    p
-y    Q   Y    C     S    P
-Y    5   7    C     S    P
-v    1   u    c     s    p
-p    v   Q    c     s    P
-P    p   6    C     S    8
-e    u   E    C     s    p
-E    u   l    R     S    P
-l    x   L    R     W    P
-L    y   L    R     W    8
-c    v   x    C     s    v
-C    c   E    R     S    p
-R    C   l    R     W    P
-s    k   Q    c     S    p
-S    s   y    C     W    P
-W    T   8    R     W    8
+key  FOG      FIRE     BLOOD    RITE     ARC      VERGE    MOON     GRAIN    SHADE    REMEMBER WARM     HEARTH   EMBER    SMOULDER GORE     AURA     HALLOW   HAZE
+0    0        0        0        0        0        0        0        0        0        0        u        e        e        c        c        v        k        k
+1    1        u        c        k        v        2        1        1        1        1        u        e        e        c        c        v        s        k
+2    2        u        c        k        v        3        2        2        2        2        u        e        E        c        c        v        s        t
+3    3        i        c        s        d        4        4        4        3        3        x        e        E        c        C        p        s        t
+4    B        i        c        s        p        5        5        5        3        B        x        x        E        x        C        p        s        t
+5    4        b        r        s        P        6        6        6        4        4        y        E        l        x        C        P        S        T
+6    5        a        b        S        P        7        7        6        5        5        Y        E        l        C        R        P        S        S
+7    G        L        b        S        P        7        7        7        7        G        8        l        L        C        R        8        W        W
+8    H        Y        a        W        P        8        8        8        8        H        8        l        L        C        R        8        W        W
+d    d        B        c        k        p        d        d        d        d        d        d        d        d        d        d        d        d        d
+n    d        D        c        s        J        n        n        n        n        d        n        n        n        n        n        n        n        n
+N    n        G        D        s        J        N        N        N        N        n        N        e        E        c        C        p        s        t
+g    N        a        G        S        P        f        g        g        g        5        g        E        l        x        C        P        S        T
+f    g        7        G        S        P        f        f        f        f        6        Y        E        l        x        C        P        S        S
+F    f        a        a        W        P        F        F        F        F        H        7        l        L        C        R        8        W        W
+k    k        u        c        t        v        t        t        t        k        k        u        e        E        c        c        v        s        t
+t    k        z        u        s        v        T        T        T        k        k        x        x        E        c        C        p        s        T
+T    t        A        r        T        4        T        T        T        t        t        y        E        l        x        C        P        S        S
+q    w        A        r        T        4        m        m        o        q        w        x        x        E        c        c        p        s        t
+m    z        K        i        T        5        o        o        o        q        z        y        E        l        x        C        p        S        T
+o    A        K        b        S        5        O        O        O        m        A        Y        E        l        x        C        P        S        T
+O    A        K        b        S        6        O        O        O        o        A        Y        l        L        x        C        P        S        S
+u    h        i        c        t        v        i        i        i        u        h        x        x        E        c        C        p        s        t
+Q    j        y        x        S        P        Y        Y        Y        j        j        y        E        l        x        C        p        S        T
+x    r        E        I        z        P        y        y        y        x        r        y        E        l        C        C        P        S        T
+y    j        l        x        S        5        Y        Y        Y        j        j        Y        l        L        x        C        P        S        S
+Y    G        K        b        S        6        7        Y        Y        Q        G        7        l        L        C        R        P        W        S
+v    1        c        c        k        p        p        v        v        v        1        x        x        E        c        c        p        s        t
+p    v        c        c        3        p        p        p        p        p        v        x        E        l        x        C        P        S        T
+P    4        G        I        5        P        P        P        P        P        4        Y        l        L        C        R        8        W        S
+e    u        x        I        t        v        e        e        e        e        u        E        E        l        C        C        p        s        t
+E    i        E        C        z        P        E        E        E        E        i        l        l        L        C        R        P        S        S
+l    j        l        x        S        6        l        l        l        l        j        L        L        L        R        R        P        W        W
+L    a        K        b        S        H        L        L        L        L        a        L        L        L        R        R        8        W        W
+c    h        e        c        k        v        c        c        c        c        h        x        x        E        C        C        p        s        t
+C    r        E        I        D        p        C        C        C        C        r        E        E        l        C        R        P        S        T
+R    r        E        C        G        P        R        R        R        R        r        l        l        L        R        R        P        W        S
+s    k        j        u        s        n        s        s        s        s        k        x        x        E        c        C        p        S        T
+S    s        L        a        S        g        S        S        S        S        s        y        E        l        x        C        P        W        W
+W    H        Y        a        S        g        W        W        W        W        H        8        l        L        C        R        8        W        W
+a    G        l        b        S        P        a        a        a        a        G        a        a        a        a        a        a        a        a
+b    j        y        x        s        P        b        b        b        b        j        b        b        b        b        b        b        b        b
+h    h        r        c        k        v        u        h        h        h        h        h        h        h        h        h        h        h        h
+r    u        x        I        t        v        x        r        r        r        u        r        r        r        r        r        r        r        r
+i    u        x        I        s        p        j        j        j        u        u        i        i        i        i        i        i        i        i
+j    D        y        x        s        P        Q        Q        Y        i        D        j        j        j        j        j        j        j        j
+w    k        i        c        t        v        z        z        z        w        k        w        w        w        w        w        w        w        w
+z    w        j        r        s        4        A        A        A        w        w        z        z        z        z        z        z        z        z
+A    z        y        i        T        4        O        O        O        z        z        A        A        A        A        A        A        A        A
+B    B        i        c        s        v        B        B        B        B        B        B        B        B        B        B        B        B        B
+D    B        b        I        s        P        G        G        G        D        B        D        D        D        D        D        D        D        D
+G    D        a        r        s        P        H        H        H        D        D        G        G        G        G        G        G        G        G
+H    G        a        b        S        P        H        H        H        G        G        H        H        H        H        H        H        H        H
+I    c        x        I        t        p        I        I        I        I        c        I        I        I        I        I        I        I        I
+J    d        D        v        s        p        J        J        J        J        d        J        J        J        J        J        J        J        J
+K    Q        l        x        S        6        K        K        K        K        Q        K        K        K        K        K        K        K        K
 ```
 
 ---
@@ -296,33 +373,30 @@ W    T   8    R     W    8
 ### 3.1 Tiles and projection
 
 - **Square tiles of 32x32 art pixels**, north up, matching Civ4's square plot grid. Map widths are
-  always multiples of 4 plots, so the 64 px texture period divides every map and wrapping maps
-  repeat seamlessly.
+  multiples of 4 plots, so the 64 px texture period divides every map and wrapping maps repeat
+  seamlessly. (The references use hexes; this game does not.)
 - **Ground in plan view; objects in elevation.** Terrain, water, roads, rivers and borders are seen
   from above. Trees, hills, peaks, buildings, improvements and figures stand upright, seen from the
-  front, as on a medieval map.
-- **Overhang.** An upright sprite stands on its tile and may rise into the tile to the north:
-  - by up to **8 px**: peaks, ancient forest, cities of size tier I to III, most improvements;
-  - by up to **12 px**: volcano, city tiers IV and V, Yggdrasil and other tall landmarks, huge
-    units (dragons, giants, kraken).
-
-  Sprites never extend below their tile, and never more than 4 px past its left or right edge.
-- **Draw order.** The terrain cache (ground, water, rivers, routes, flat improvements, then upright
-  features, peaks, improvements and cities, row by row from north to south) is drawn first. Then
-  borders. Then units, again row by row from north to south, so terrain never hides a unit. Then
-  overlays: pennants, HP strips, plaques, selection, path.
+  front.
+- **Overhang.** An upright sprite stands on its tile and may rise into the tile to the north: by up
+  to 8 px (peaks, ancient forest, cities of tier I to III, most improvements), by up to 12 px
+  (volcano, tall landmarks, giants in the 40x40 frame). Sprites never extend more than 4 px past
+  their tile's left or right edge.
+- **Draw order.** The terrain cache (ground, water, rivers, routes, flat improvements, city pools,
+  then upright features, peaks, improvements and cities row by row from north to south), then
+  borders and fog, then units row by row (team ring, then figure), then overlays: count chips, health
+  bars, plaques, selection, path.
 
 ### 3.2 On-screen scale
 
 - Art is drawn at 1x and shown only at **integer scales**: one art pixel is always a whole number
-  of device pixels. Compute the factor as `zoom × devicePixelRatio`, rounded to an integer. Use
-  `imageSmoothingEnabled = false` and `image-rendering: pixelated`. Never fractional, never
-  smoothed.
+  of device pixels (`zoom x devicePixelRatio`, rounded). `imageSmoothingEnabled = false`,
+  `image-rendering: pixelated`.
 - **Zoom steps** (on-screen pixels per tile at device-pixel ratio 1):
 
   | step | px/tile | what is drawn |
   |---|---|---|
-  | chart | 8 | minimap-style: flat terrain-family colours, owner washes, city dots, stitched borders; no sprites |
+  | chart | 8 | minimap-style: flat terrain-family colours, owner colours, city dots, borders; no sprites |
   | survey | 32 (1x) | everything; plaques show the size only |
   | **default** | **64 (2x)** | everything |
   | close | 96 (3x) | everything |
@@ -335,17 +409,18 @@ W    T   8    R     W    8
 
 | asset | canvas (art px) | notes |
 |---|---|---|
-| terrain texture | 64x64 per terrain, seamless | sampled through the domain warp (section 5.1) |
-| feature, peak, hill | 32x32, plus overhang | scattered inside the tile |
-| unit | **24x24** box | feet at (11, 21); placed at tile offset (6, 7), so feet land at tile y = 28 |
-| huge unit | 32x32 box | feet at (15, 29); placed at tile offset (0, 0) with up to 12 px of overhang |
-| city | up to 32 wide x (20 + overhang) | base on tile row 30; tiers in section 9 |
-| improvement | up to 24x20 | quiet; no overhang except towers and castles (8) |
-| landmark (unique improvement) | 32x32, plus overhang | may glow (section 6.4) |
-| resource medallion | 11x11 disc, 7x7 glyph | bottom-right of the tile, centred at (25, 25) |
-| owner pennant on a unit | 6x8, with pole | top-right of the tile |
-| city banner | 7x12 | top-left of the city tile |
-| UI icon | 16x16 (8x8 for inline and map icons) | section 11.5 |
+| terrain texture | 64x64 per terrain, seamless | sampled through the domain warp (5.1) |
+| feature, peak, hill | up to 34x40, plus overhang | scattered inside the tile |
+| **unit** | **32x32** | feet at (15, 29): the figure fills the tile, as in the references |
+| giant unit | 40x40 | feet at (19, 37): rises 8 px into the tile above, 4 px over each side |
+| equipment | 24x24 | feet at (11, 21), placed at tile offset (6, 7): items lying on the tile (10.4) |
+| team ring | 24x8 (30x9 under giants) | drawn by the renderer under the feet (7.4) |
+| city | up to 34x34 | base on the bottom row; tiers in section 9 |
+| improvement | up to 24x20 | small painted objects; towers and castles may rise 8 px |
+| landmark | 32x32, plus overhang | may glow (6.2) |
+| resource | 13x13, feet at (6, 12) | an object standing in the tile's lower right, feet at (25, 30), on a soft shadow |
+| stack count chip | up to 13x9 | top-left corner of the tile (top-right in a city) |
+| UI icon | 16x16 (8x8 inline and on the map) | section 11.5 |
 | cursor | 16x16 | section 11.7 |
 
 ---
@@ -354,370 +429,261 @@ W    T   8    R     W    8
 
 ### 4.1 Light
 
-- **Moonlight from the upper left (north-west)**, cold and faint. Lit faces are one ramp step
-  lighter, shadow faces one or two steps darker. Shadow faces lean cool: toward navy, teal or
-  bruise rather than plain grey.
-- **Warm local light** only from visible sources (section 4.4).
-- **Contact shadow.** Every unit and freestanding object sits on a 50% checker ellipse of void,
-  about 14x3 px, under its base. Ground marks never cast shadows.
+- **Sunlight from the upper left.** Lit faces are one or two ramp steps lighter, shadow faces one
+  or two darker. Shadows lean cool (navy, pine, bruise) rather than grey: the classic 16-bit
+  shading.
+- **Warm local light** (windows, lanterns, fires) is a small accent by day (4.4).
+- **Contact.** Every owned unit stands on its team ring (7.4); unowned figures and animals on a 50%
+  checker shadow ellipse (14x3). Ground marks cast no shadow.
 
-### 4.2 Outlines and rims
+### 4.2 Outlines
 
-- **Sprites** (units, cities, trees, peaks, upright improvements and landmarks) have a 1 px
-  **void outline** all round. Do not use selective or coloured outlines.
-- **Moon rim on units.** Outside the outline, on the top and left edges only, units get a 1 px
-  **ash** (`5`) rim. It is what keeps a dark figure readable on dark ground (the prototype study
-  shows figures vanish on ocean and forest without it). A selected unit's rim becomes vellum on
-  all sides (section 11.7).
-- **Ground** (terrain textures, flat marks, water) has no outlines. Linework on the ground is ink:
+- **Every upright sprite** (units, cities, trees, peaks, upright improvements, landmarks) has a
+  1 px dark outline (`0`). On an atlas unit the outline is enforced: dark edge pixels become `0`,
+  and a light edge pixel gets an outline pixel outside it, so a white sail or a silver helm still
+  reads on snow.
+- There is **no moon rim** (the old ash rim on the top and left edges): the outline does that work
+  in daylight. A **selected** unit gets a 1 px white (`8`) rim on all sides.
+- **Ground** (terrain textures, flat marks, water) has no outlines; its linework is the
   shoreline, rivers, roads and borders (section 5).
 
 ### 4.3 Shading and colour count
 
-- Two or three tones per material, plus outline. No pillow shading. Hue-shift along the ramp
-  rather than blending families.
-- Colour limits, outline and owner slots excluded: unit 8 colours; city 10; terrain texture 5;
-  feature 6; icon 4 (one of them an accent).
+- Two to four tones per material, plus outline; hue-shift along the ramp (skin to auburn, gold to
+  khaki) rather than blending families; no pillow shading.
+- Colour limits (outline and owner slots excluded): unit 18; city 12; terrain texture 6; feature,
+  improvement and resource 8; peak and hill 8; icon 8 (16x16) and 6 (8x8). An atlas or composed
+  unit is quantized to the palette and then reduced to its 18 most used colours (the rarest merged
+  into their nearest kept colour); map sprites and icons are reduced the same way to their budget.
+- **Painted at the sprite's own resolution** (map sprites and icons, `tools/atlas/maplib.Px`): each
+  part is a crisp shape (at least half a pixel covered), shaded per pixel by the lit-dome normal of
+  its blurred mask and posterized to its ramp; where a part lies over an earlier one its lower and
+  right edge takes its darkest tone; one void outline closes the whole silhouette, except on thin
+  strokes (fronds, twigs, staves) and flat ground marks. Small regular things (pines, palms, dead
+  trees, bushes, motes) follow pixel rules instead: a lit edge pixel on the west, base, shade,
+  a dark underside.
 - No anti-aliasing against the background; sprites have 1-bit alpha.
 
-### 4.4 Dithering, glows and pools
+### 4.4 Dithering, glows and daylight
 
-- **Only ordered patterns**: a 50% checker, a 25% grid, and 4x4 Bayer thresholds for falloffs. No
-  noise dither, no error diffusion.
-- Where dithering is used:
-  - **Mottling** in terrain textures (25% grid or 50% checker of the next darker colour in the same
-    family, in blotches 4 to 12 px across, covering at most 30% of the tile);
-  - **glow rings**;
-  - **pools** (index remaps with Bayer falloff, section 2.4);
-  - the **fog edge** and the **vignette**;
-  - **translucency** (section 4.5).
-- No dithering inside unit, icon and improvement sprites, except for glow rings and translucency.
-  Hills, peaks and canopies may use a 50% checker on their shadow flank.
-- **Point light** (lantern, window, torch): a 1 to 2 px core of `L` or `l`, a 1 px ring of `l` or
-  `E`, then a `FIRE` pool, with a radius depending on the source:
-
-  | source | `FIRE` pool radius |
-  |---|---|
-  | window | none (a window is just the lit pixel) |
-  | lantern or torch | 5 to 6 px |
-  | campfire or forge | 8 px |
-  | city | outer 24 + 4 x size tier, inner 12 + 4 x tier, core 6 + 2 x tier (section 9.1) |
-
-  The pool is elliptical (vertical radius divided by 1.4) and centred on the source's ground point.
-- **A pool is light, not a stain** (second round). A single remap toward a family table turns moss
-  into dun or barrow green at the same value, and the ground reads as mud. Every pool is drawn by
-  the light pass (`cities/citylight.js`) as three nested rings, each remapping a pixel once from
-  its own ground colour with Bayer falloff, so the value rises toward the source:
-
-  | family | outer ring (r) | inner ring (0.55 r) | core (0.25 r, r >= 6) |
-  |---|---|---|---|
-  | `FIRE` | WARM: one step lighter and warmer (moss to ochre, dark moss to rust, ash to sand) | HEARTH: to flame `E`, dark ground to ember and rust, pale marks to amber | EMBER: to amber `l`, pale to glow `L` |
-  | `BLOOD` | SMOULDER: dark to blood, mid to rust, pale to crimson | GORE: to crimson, pale to scarlet | GORE |
-  | `ARC` | `ARC` (2.4) | AURA: to dusk and lilac | AURA |
-  | `RITE` | HAZE: to teal and patina, pale to ritual | HALLOW (0.5 r, sparse): to ritual `S`, pale to wisp | HALLOW (0.22 r) |
-
-  The outer ring covers at most 70% of its pixels at the centre and falls off as (1 - d)^0.6; the
-  inner ring 78% falling as (1 - d)^0.9; the core 75%, linearly (a ritual light: 80%, 60% and
-  85%). Open water (`d`, `n`) keeps its night under every ring; ripples and glints catch the
-  light. The tables are written as columns like 2.4's (`LIGHT_TABLES` in `cities/citylight.js`),
-  ready to move into palette.txt.
-- **Corruption** (volcano crater, Hellfire, Infernal cities, Broken Sepulcher...) uses `BLOOD`.
-  **Ritual** sites use `RITE`. **Mana** nodes and spell effects use `ARC`.
-- **Pools never cross fog.** Lights are drawn only on visible tiles: what you saw last turn is
-  remembered dark.
+- **Only ordered patterns**: a 50% checker, a 25% grid, and 4x4 Bayer thresholds for falloffs.
+  No noise dither, no error diffusion.
+- Where dithering is used: soft variation in terrain textures (small 25% grids or 50% checkers of
+  a near tone, never solid blobs); transition bands between terrains (5.1); glow rings; the fog
+  edge; translucency (4.5); a border's inner fringe (8.1).
+- **Daylight** (`DAYLIGHT` in `cities/citylight.js`): the sun outshines firelight, so
+  - a city casts **no firelight pool**, and no wall glow or facade light (the night effects of the
+    old guide);
+  - corruption (`BLOOD`, Infernal and Sheaim towns) and the arcane (`ARC`, Amurites and
+    Svartalfar) keep their pools as faction identity, at 55% of the old radii; ritual (`RITE`) at
+    70%;
+  - firelight point lights (lanterns, campfires, the tribal bonfire) are halved; `BLOOD`, `RITE`
+    and `ARC` point lights (hellfire, sacred sites, mana nodes) keep their size.
+  A pool is three nested rings (outer, inner, core), each remapping a pixel once from its own
+  ground colour with Bayer falloff; open water keeps its colour under every ring.
+- City windows stay amber (`l`, recoloured to the civilization's window light, 7.3): a few warm
+  windows on cream walls read as cosy, not as night. The stone around a window is not pre-lit.
 
 ### 4.5 Translucency and motion
 
-- 1-bit alpha only. Translucency is a 50% checker of the sprite over what is behind it. Used for:
-  - illusions and puppets;
-  - your own invisible units;
-  - ghosts (Spectre, Wraith, the ghost ship Sailor's Dirge);
-  - move and placement previews.
-- **Motion is scarce.** Allowed animations:
+- 1-bit alpha only. Translucency is a 50% checker of the sprite over what is behind it: illusions
+  and puppets, your own invisible units, ghosts (Spectre, Sailor's Dirge), move and placement
+  previews.
+- **Motion is short and purposeful** (all of it off under `prefers-reduced-motion`):
 
   | what | how |
   |---|---|
-  | fire flicker | 2 frames, 400 ms: swap the core and ring pixels |
-  | water ripples | marks shift 1 px every 800 ms |
-  | ritual glow | 3-frame pulse, 600 ms |
+  | unit move | the figure (and its ring, marks and selection) slides tile to tile, 4 tiles at most |
+  | combat | the struck tile flashes a dithered crimson |
+  | camera | glides to the selection |
+  | turn | the End Turn crescent breathes while the AIs move and flares when your turn returns |
+  | HUD numbers | count up and down to their new value |
+  | fire flicker | 2 frames, 400 ms |
   | path dots | march 1 px every 150 ms |
-  | unit move | slides tile to tile at about 8 tiles/s; no walk cycles |
-  | combat | 2-frame lunge toward the target; the loser's rim flashes crimson for 1 frame |
-  | death | Bayer-dissolve to void over 6 frames |
-
-  Nothing else moves. Idle units are still.
 
 ---
 
 ## 5. Terrain
 
-### 5.1 How ultra-minimal terrain works
+### 5.1 How terrain works
 
-1. **One seamless 64x64 texture per terrain type.** Each texture has:
-   - a **low-chroma base** colour;
-   - **mottling** in the family's darker partner;
-   - a few **signature marks**, about one mark per 40 to 80 px².
-
-   Hue comes mostly from the marks. The base stays close to grey.
-2. **A domain-warped mask picks the texture per pixel.** A pixel at `(x, y)` shows the terrain of
-   the tile under `(x + wx, y + wy)`, where `w` is smooth value noise (a deterministic hash of the
-   map coordinates): amplitude 6.5 px at cell 22 px, plus a 1.5 px detail octave at cell 7, so
-   `|w| ≤ 8 px`. Edges between terrains, and coastlines, become organic, while the centre 16x16 of
-   every tile always shows its own terrain, so the tile you click is the terrain you see. Marks
-   flow across edges because the textures are in map space.
-3. **Uprights are scattered per tile**, with a deterministic hash of the plot coordinates: trees,
-   hills, peaks.
-4. The result is cached per zoom level and invalidated per tile.
+1. **One seamless 64x64 texture per terrain type**: a clear base, soft dithered variation in a
+   near tone, and small lit marks (tufts, flowers, stubble, dune crests, wave crests) about one
+   per 40 to 80 px². The textures were baked by `tools/atlas/bake_textures.py` and are edited by
+   hand from there.
+2. **The ground pass** (`terrain/ground.js`) picks the texture per pixel: each pixel takes the
+   terrain class with the largest Gaussian weight of the 3x3 tile centres around it, sampled
+   through a three-octave domain warp, so a lone tile of one terrain becomes a blob and edges
+   wander; where two land textures meet, the winner's share rises from 50% to 100% over 4 px,
+   thresholded by the Bayer matrix (an ordered transition band, never a line). The centre of every
+   tile always shows its own terrain.
+3. **Sunlit clearings and cloud shade**: a low-frequency field lifts the land one step within its
+   own family (`MOON`: grass to lit grass, wheat to sand, greys up the ladder) by a Bayer share up
+   to 40%, adds a warm grain at its brightest (`GRAIN`, up to 15%), and lowers it one step
+   (`SHADE`) by up to 15% where it is low. Water, ink and lights are left alone.
+4. **Uprights are scattered per tile** by a hash of the plot coordinates: trees, hills, peaks.
+5. The result is cached per zoom level and invalidated per tile.
 
 ### 5.2 Base terrains
 
-Each hell terrain is the **corrupted twin** of a normal one (`TerrainUp` in the XML). The twin keeps
-its twin's mark *shapes* and swaps the colours to rust, purple and crimson, so a player can tell
-what the land used to be.
+Each hell terrain is the **corrupted twin** of a normal one (`TerrainUp` in the XML): it keeps its
+twin's layout (the same marks in the same places) in its own colours, so a player can tell what
+the land used to be.
 
-| terrain (`TERRAIN_*`) | base | mottling | signature marks | reads as |
+| terrain (`TERRAIN_*`) | base | variation | marks | reads as |
 |---|---|---|---|---|
-| GRASS | moss `m` | moss-dk `q` | three-pixel tufts `o O o` (a small inverted V) | green-grey |
-| PLAINS | dun `Q` | umber `u` | horizontal stubble dashes, 2 to 4 px, alternating `y 5`, with a `u` pixel under | warm grey-brown |
-| DESERT | sand `Y` | stone `6` | dune arcs, 5 to 8 px, crest `7`, underside `y` | pale sand: the lightest land |
-| TUNDRA | slate `4` | iron `3` | lichen dots `O`/`o`, short crack lines `2` with a `5` lip | cool grey with specks |
-| SNOW | frost `f` | slate `4` and glint `g` | wind streaks of slate and glint (about a third and a sixth), `F` crest pixels | cold grey, below the light of cities (second round: half glint read as a vivid steel-blue field) |
-| MARSH | moss-dk `q` | teal-dk `k` | water slits `n` with one `N` glint, reed ticks `o`/`O` | dark wet green |
-| BROKEN_LANDS (hell grass) | umber `u` | iron `3` | jagged cracks `1` with `c` lips, ash pebbles `5` | cracked dark earth |
-| FIELDS_OF_PERDITION (hell plains) | dusk `p` | bruise `v` | furrow dashes `c` with `P` flecks, bone-dust `6` | purple ash fields |
-| BURNING_SANDS (hell desert) | rust `x` | umber `u` | dune arcs in `e` with an `E` crest; rare 1 px `l` glints | smouldering sand |
-| SHALLOWS (hell marsh) | bruise `v` | soot `1` | stagnant slits `c` with one `C` pixel, dead reeds `4` | black-purple bog |
-| COAST | navy `n` | deep `d` streaks on every third row | ripple dashes `N`, 2 to 5 px | midnight water |
-| OCEAN | deep `d` | void `0` streaks on every third row | sparse ripple dashes `n`, rare `N` | near-black water |
+| GRASS | moss `m` | lit grass `o` checkers, shade `q` grids | lit tufts (`O` tip, `o` blades, `q` shadow); a few yellow `L` and white `8` flowers | a sunny meadow |
+| PLAINS | dun `Q` | sand `Y` and khaki `j` grids | wheat stubble dashes (`Y` over `j`); a few green tufts `o`/`A` | golden wheat |
+| DESERT | sand `Y` | cream `7`, dun `Q` | dune crests (`8` over `y`), khaki specks | warm sand: the lightest land |
+| TUNDRA | ash-lt `G` | fern `A` checkers, flint `D` grids | lichen pairs `A`/`O`, short cracks `5` | a pale lichen steppe |
+| SNOW | rime `F` | frost `f` grids | wind streaks `f` with a `g` pixel; sparkles `8` | bright snow |
+| MARSH | moss-dk `q` | moss `m`, olive-dk `w` | water slits `N` with a `g` glint, reeds `O` | wet green |
+| COAST | navy `n` | tide `N` grids | wave crests `g` (a smile of 3-6 px); foam `F` glints | friendly blue shallows |
+| OCEAN | deep `d` | navy `n` grids | sparse crests `N`, glints `g` | deep blue |
+| BROKEN_LANDS (hell grass) | umber `u` | auburn `r`, bark `h` | the tufts in maroon `I`, scarlet `R` flowers | cracked brown earth |
+| FIELDS_OF_PERDITION (hell plains) | dusk `p` | lilac `P`, bruise `v` | stubble in `P` over `v`, blood tufts | purple ash fields |
+| BURNING_SANDS (hell desert) | rust `x` | auburn `r` | dune crests in amber `l` over ember `e`, flame specks | smouldering sand |
+| SHALLOWS (hell marsh) | bruise `v` | soot `1`, dusk `p` | slits in maroon `I` with a `C` pixel, dead reeds `D` | a black-purple bog |
 
-`TERRAIN_PEAK` and `TERRAIN_HILL` are graphics-only types in the XML. On the map, peaks and hills
-are **plot types** drawn over the plot's real terrain (section 5.3).
+`TERRAIN_PEAK` and `TERRAIN_HILL` are graphics-only types; on the map, peaks and hills are **plot
+types** drawn over the plot's terrain (5.3).
 
 ### 5.3 Hills and peaks
 
-- **Hills** (`PLOT_HILLS`): two low humps per tile (about 20x8 and 18x7 px), in the terrain's own
-  colours:
-  - body one step darker than the ground;
-  - shadow flank checkered one step darker again;
-  - a lit crest line on the left two thirds of each hump (the terrain's light mark colour: `O` on
-    grass, `6` on plains, `8` on desert, `F` on snow, `P` on perdition...);
-  - no outline at the base, so the humps grow out of the ground.
-
-  Forests and other features stand on top of the humps.
-- **Peaks** (`PLOT_PEAK`): one or two pointed masses, 20 to 24 px wide, rising up to 8 px into the
-  tile to the north. Colours and marks:
-  - lit (west) face `4`/`5`, with a `6` ridge line;
-  - shadow face `3`/`2`, with `1` hatch strokes every 3 rows;
-  - void outline;
-  - a cap of 3 rows (`6`, and `4` in shadow) on most terrains; on snow and tundra the cap is 7 rows
-    (`7`, and `f` in shadow).
-
-  They are the tallest, darkest shapes on the map, after cities.
+- **Hills** (`PLOT_HILLS`): solid rounded mounds (23x11, 19x9, 27x12), lit from the upper left:
+  crest `O`, lit body `o`, the ground tone `m` at the base, shade `q` and a soft contour `w` down
+  the right side and under it. Keyed in grass colours and remapped per terrain
+  (`terrain/manifest.txt`), so a hill is its terrain raised: golden on plains (`O7,oY,mQ,qj,wi`),
+  cream on desert, pale grey on tundra, white on snow, ember on burning sands. Never mirrored.
+  Forests stand on top of them.
+- **Peaks** (`PLOT_PEAK`): faceted massifs 29 to 32 px wide rising up to 8 px into the tile above,
+  two or three peaks each: a lit west face (`4`-`7`, bone where the sun strikes) and a shaded east
+  face (`2`-`5`) split at the ridge, a few ledges, a void outline, and caps of rime `F`/vellum `8`
+  in the light and frost `f`/glint `g` in shadow, jagged at the snow line: small on `rock_*`, deep
+  on `snow_*` (snow and tundra). As in the references, peaks are the grey-and-white crests of the
+  map.
 
 ### 5.4 Water edges
 
-- **Shoreline ink.** A land pixel next to water is drawn bone `7` (with a `6` pixel every fifth
-  pixel), and the land pixel behind it coal `2`. This lit rim is the strongest line on the map; it
-  draws the continent like a pen. Water within 2 px of land gets a 50% `N` foam checker.
-- **Depth contour.** Where ocean meets coast, a dotted `g` line runs on the ocean side (one dot in
-  four pixels), like a chart's sounding line.
-- **Lakes** are coast tiles, drawn the same way.
-- Light sources on water cast a vertical reflection: 3 to 4 dashes of `E` then `e`, 2 px apart,
-  under the source.
+- **Shoreline**: a land pixel next to water is drawn cream `7`, the land pixel behind it a darker
+  step; water within 2 px of land gets a foam checker. This lit rim is the strongest line on the
+  map.
+- **Depth contour**: where ocean meets coast, a dotted line on the ocean side.
+- **Lakes** are coast tiles. Light sources on water cast a short broken reflection.
 
 ### 5.5 Features
 
-| feature (`FEATURE_*`) | on | drawing |
-|---|---|---|
-| FOREST | grass, plains, tundra | 9 to 12 conifers, 7 to 12 px tall, scattered and sorted by y, up to 3 px into neighbours. Tiers of `t`, shadow side `k`, lit edge `m`; 70% teal, 30% moss (`q m o`); umber trunk pixel. A dense dark mass, not a plantation. |
-| FOREST_ANCIENT | grass, plains, tundra | 4 to 6 huge merged canopies (`k`, lit edges `t` then `T`, underside `v` dusky purple), 3 visible trunks; rises 8 px. Old, dark, faintly arcane. |
-| FOREST_NEW | grass, plains, marsh, tundra | 2 or 3 saplings at 55% scale. |
-| FOREST_BURNT | grass, plains, marsh, tundra | 3 or 4 bare charred trunks (`2`/`3`, ash `5` tip); no embers, the fire is out. |
-| JUNGLE | grass, marsh | 8 or 9 rounded canopy clumps (`m`, shadow `q`, lit `o`), touching, with void edge pixels. Darker and rounder than forest. |
-| FLOOD_PLAINS | desert | 5 ruled bands of `o`/`m` dashes with `u` silt under; reads as green ruled lines on sand. |
-| OASIS | desert | a pool ellipse (`n`, upper rows `N`, `g` glint) plus one palm (umber trunk, `o` fronds). |
-| ICE | coast, ocean | 3 or 4 rime slabs (top row `F`, body `f`, bottom two rows `g`), black water between. |
-| SCRUB | desert | 4 dry bushes (`u` stems, `o` top pixel). |
-| FLAMES | burning sands | 2 or 3 small fires, 3x5 (`E e l L`), 4 px `FIRE` pool; 2-frame flicker. |
-| OBSIDIAN_PLAINS | burning sands | 4 black glass shards (`0`/`2`) with a `P` glint at the tip. |
-| VOLCANO | many | a soot cone 24 px wide (lit side `3`, shadow `2`), crater rim `C` with an `R` core, `BLOOD` pool radius 10, ash plume (`4`/`5`), rising 12 px. Impassable. |
-| BLIZZARD | snow, tundra | about 14 diagonal `F`/`f` pixel pairs over the tile; with ripple-speed drift if animated. |
-| FALLOUT | (not created in FfH play) | fallback: 25% `s` speckle. |
-| TORMENTED_SOULS, DOOR_*, WALLS | scenario-only | fallback glyphs: pale `S` wisps; a stone arch (closed: `0` fill; open: `n`); a `4`/`5` block wall. |
+The feature sprites are painted by `tools/atlas/compose_map.py` (4.3):
+
+- **Forest**: pines by pixel rules, two to four tiers widening a pixel a row, a lit `m`/`O` west edge,
+  needle `T` body, pine `t` shade and a dark `k` underside with drooping tips, an umber trunk;
+  the void outline closes each tier's slanted sides, but the underside rows stay `k`, not void, so
+  a stand of overlapping pines reads as green tiers, not a black lattice;
+  seven shapes (one in the mossy ramp) scattered per tile. **New forest**: saplings by the same
+  rules. **Ancient forest**: broad canopies of overlapping lit domes in deep greens over a thick
+  rooted trunk, rising into the tile above.
+- **Jungle**: palms (a ringed trunk, two-row fronds lit above and dark beneath, no outline on the
+  leaves), a bright round canopy and a low row of bushes. **Burnt forest**: charred trunks.
+- **Flood plains**: lush tufts, silt dashes and water glints, a flat ground mark. **Oasis**: a blue
+  pool in a green bank under a leaning palm. **Ice**: floes of rime and frost with glint shade
+  beneath. **Scrub**: small dry bushes. **Burning sands**: three fires (two frames) with firelight
+  pools. **Obsidian**: black glass shards with a lilac glint. **Volcano**: a faceted cone with lava
+  runs from a glowing crater and a smoke plume. **Blizzard**: driven snow streaks. **Fallout**:
+  glowing pools among dead trees.
+- The north-west rim of every wood mass catches the sun (a 1 px `O` edge where open ground lies
+  above or to the left, the ground pass).
 
 ### 5.6 Rivers and routes
 
-- **Rivers** run on tile edges (`n_of_river` gives the south edge, `w_of_river` the east edge). Each
-  is a **2 px ink line** of navy `n`, with a `g` glint pixel every 6 px and a 1 px soot `1`
-  border. The line follows the terrain warp (it is displaced by −0.8 × the warp vector), so it
-  meanders with the land. It joins water bodies; where river edges meet at corners, it rounds them.
-- **ROUTE_ROAD**: a pale path from the tile anchor (16, 18) to each neighbour that has a road
-  (8 directions). Dashes of bone `7` (2 px on, 2 px off along the line), each pixel with a coal `2`
-  shadow below-right, over a worn verge: the ground one step lighter, a 50% checker within 1.6 px of
-  the line and 25% out to 2.2 px. The line sways with a slow warp (0.55 x the 46/22/7 px warp of
-  the ground pass at its own seed), a function of the map position, so the halves two tiles draw
-  meet and a road wanders like the board's paths instead of ruling straight lines between tile
-  centres. This is the board's path motif.
-- **ROUTE_RAILROAD** (in the data, rarely seen): two parallel dotted lines 2 px apart, in stone `6`.
-- Roads enter cities to the city's gate point.
+- **Rivers** run on tile edges: a 2 px line of navy `n` with `g` glints, meandering with the warp,
+  over a pale verge (a checker one step lighter on the bank).
+- **Roads** are pale paths: dashes of cream `7` along a gently swaying line, over a worn verge one
+  step lighter (the ground pass, `VERGE`). Roads enter cities at the gate.
+- **Railroads** (rare in FfH): two dotted lines in stone `6`.
 
-### 5.7 Improvements: quiet marks
+### 5.7 Improvements and 5.8 Lairs
 
-Improvements are seen at the tile's lower half. They use at most 4 colours plus outline and stay
-below the value of the ground's light marks, except where a window or fire is lit. Unrevealed
-improvements are not drawn; fogged ones are remembered (drawn through `FOG`).
-
-| group | improvement (`IMPROVEMENT_*`) | mark |
-|---|---|---|
-| fields | FARM | 4 to 6 ruled furrow rows (`u`/`Q` dashes), flat |
-| | PASTURE | dotted stone fence loop, 2 animal pixels |
-| | PLANTATION | a dot grid of `o` in rows |
-| | WINERY | trellis: umber posts with `o` dots |
-| | CAMP | a hide lean-to (`5`/`u`) with a 1 px campfire |
-| | FISHING_BOATS, WHALING_BOATS | a tiny boat (umber), net dots; a harpoon line for whaling |
-| | PENGUINS, MUSHROOMS | 3 to 5 tiny figures or caps (`8`/`6`) |
-| works | MINE | an adit (void square, umber frame) with an ash spoil heap |
-| | QUARRY | stepped cut blocks (`6`/`5`) |
-| | LUMBERMILL | stacked logs (`u`) with a saw wheel |
-| | WORKSHOP | a small hall, ash smoke, 1 forge pixel `E` |
-| | WINDMILL | mill with 4 bone sail lines |
-| homes | COTTAGE, HAMLET, VILLAGE, TOWN | 1, 2, 3, then 5 huts (roof `5`/`3`, wall `3`/`2`), lit windows 0, 1, 2, then 3 (`l`); a TOWN adds a small spire. The growth is visible as more light. |
-| defence | FORT | a palisade square of umber dots |
-| | TOWER | a skeletal watchtower: open timber frame, one lantern, 8 px overhang |
-| | CASTLE, CITADEL | a stone keep, 2 towers for Citadel, owner pennant on top |
-| FfH | MANA_* (18) | a slate obelisk with the sphere's rune in its colour (section 11.5), `ARC` pool radius 6 |
-| | ENCLAVE | a small walled garden |
-| | PIRATE_COVE, PIRATE_HARBOR, PIRATE_PORT | a stilted shack with a sable flag, growing like cottages |
-| | NECROTOTEM | a bone totem with a skull, `S` eye pixel |
-| | JUNGLE_ALTAR | a stepped altar with a `C` top |
-| | GRAVEYARD | 4 headstones (`4`/`5`) |
-| | WARNING_POST | a stake with a skull |
-| | CAGE | an iron cage (`3` bars) |
-| | PORTAL | a stone ring with a `P` centre, `ARC` pool |
-| | SMOKE | an ash smoke column |
-| | CITY_RUINS | broken walls (`4`/`5`), with no light at all |
-| hidden | LAND_WORKED, WATER_WORKED | not drawn |
-
-### 5.8 Lairs and goody huts
-
-Lairs (`bPermanent` and spawning units) are ominous but small: no light, or a single ember.
-
-| lair | drawing |
-|---|---|
-| BARROW | an earth mound with a void door and one `S` pixel |
-| BEAR_DEN, LION_DEN | a rock cave mouth with a bone pixel |
-| GOBLIN_FORT | a spiked umber palisade with a campfire |
-| RUINS | broken columns with vine `o` |
-| DUNGEON | stairs into void, with an `e` glow |
-| HELLFIRE | a pit with a `BLOOD` pool and an `R` core |
-| SHIP_WRECK | a broken hull on the shore |
-| SNAKE_PILLAR | a coiled pillar |
-| MONSTER_SKELETON | a huge bone ribcage |
-
-GOODY_HUT is a small cairn with **one lit candle**: a point of life worth walking to.
+Improvements and lairs are small painted objects in the tile's lower half (`compose_map.py`): a
+farm is a golden field of ripe ears in green rows (a flat ground mark), a pasture a rail fence
+round two sheep, plantations and vineyards rows of shrubs and vines; homes grow from cottage to
+town (one hut, then two, three and a little town round a spire, thatch and red tile, lit windows);
+mines are an adit in a hillock beside a spoil heap with a gold fleck; forts, towers, castles and
+citadels are stone keeps and timber; each mana node is a slate obelisk carved with its sphere's
+rune. Lairs read at a glance: cave mouths in rock or sandstone, a barrow door, a goblin palisade
+round a campfire, a ribcage, ruins wrapped in vine, a dungeon stair, a portal's lilac swirl. A
+goody hut is a small cairn with a flickering candle.
 
 ---
 
 ## 6. Resources and landmarks
 
-### 6.1 Resource medallions
+### 6.1 Resources
 
-A resource (`BONUS_*`, drawn only when revealed by tech for the viewer's team) is a **seal on the
-map**: an 11x11 disc of soot `1` with a 1 px rim, at the tile's lower right, and a 7x7 glyph
-inside. The rim colour gives the class at a glance; the glyph names the resource.
-
-| class | rim | resources and glyph motifs |
-|---|---|---|
-| food | olive `o` | CORN (cob), RICE (bent sheaf), WHEAT (sheaf), COW (horned head), PIG (snout), SHEEP (curl), TOAD (frog), BANANA (bunch), DEER (antlers), FISH (fish), CLAM (shell), CRAB (crab), WHALE (fluke) |
-| strategic | stone `6` | COPPER (ingot, `x`), IRON (ingot, `4`), MITHRIL (ingot, `F`), HORSE (horse head, `7`), NIGHTMARE (horse head, `R` eye), GUNPOWDER (keg), REAGENTS (vial, `P`), SHEUT_STONE (black stone, `C` vein), MARBLE (block, `8`) |
-| luxury | ochre `y` | DYE (drop, `P`), FUR (pelt), GEMS (cut stone), GOLD (nugget, `Y`/`L` pixel), INCENSE (smoke curl), IVORY (tusk), SILK (bolt), SUGAR (cane), WINE (grapes), PEARL (pearl), COTTON (boll), ALE (tankard), FINE_CLOTHES (folded cloth), JEWELS (ring), RAZORWEED (thorn stalk), GULAGARM (sealed jar), FRUIT_OF_YGGDRASIL (fruit, `W` pixel) |
-| mana | lilac `P` | MANA (raw: a lilac crystal) and the 18 spheres (section 11.5) |
-
-Medallions are flat: no overhang, no light, except the single core pixel of FRUIT_OF_YGGDRASIL,
-GOLD and the mana glyphs.
+A revealed resource (`BONUS_*`) is a **small object** standing in the tile's lower right, as in the
+references: a 13x13 painted sprite with its feet at (6, 12), drawn with its feet at tile (25, 30)
+on a soft checker shadow. The object names the resource: a golden sheaf, a husked cob of corn, a bowl of
+rice, a cow, a pig, a sheep, a deer, a toad, a banana bunch, a fish, a clam, a crab, a whale's back
+and spout; copper, iron and mithril ingots; a horse and the nightmare; a keg, a vial of reagents, a
+veined sheut stone, a marble block, a dye pot, a pelt, cut gems, gold nuggets, a censer, a tusk, a
+bolt of silk, sugar cane, grapes, a pearl in its shell, cotton, a tankard of ale, folded fine
+clothes, a jewelled ring, razorweed, a sealed jar, the Fruit of Yggdrasil. **Mana** is a standing
+stone carved with its sphere's rune (colour the family, shape the sphere, 11.5). The category
+objects (`res/_food`, `_strategic`, `_luxury`, `_mana`) are the fallbacks for bonuses added later.
+Where painting lost the subject at this size, the object is drawn by hand as a fill that the tool
+outlines (`HAND_RES` in `compose_map.py`): the sheaf (three ears fanned over a tie, stalks
+splayed; also `res/_food`), the husked cob, cotton bolls on a shrub, a pearl in an open scallop,
+the squat frog.
 
 ### 6.2 Landmarks (unique improvements)
 
-Unique improvements are the **extraordinary** made visible. They are the only map objects, apart
-from lit windows, flames, volcanoes and mana nodes, allowed a full accent glow. Each is drawn once,
-32 px wide, with up to 8 to 12 px of overhang. Second round: the sacred sites glow wider (`RITE`
-pools of 14 to 24 px: a teal haze with a ritual heart, section 4.4), the pyre and the corrupted
-sites a little wider too (`FIRE` 14, `BLOOD` 12 to 17).
-
-| landmark | accent | pool |
-|---|---|---|
-| STANDING_STONES | 5 slate menhirs round a glowing pale-green ellipse 31 px wide (the board's ritual circle) with wisp sparks, an inner ring of barrow dots | `RITE` 24 |
-| POOL_OF_TEARS | a still pool with `S` ripples | `RITE` |
-| SEVEN_PINES | 7 tall conifers, each with a `W` mote | `RITE` |
-| YGGDRASIL | a giant tree, rising 12 px, with `S` glints in its crown | `RITE` |
-| BRADELINES_WELL | a stone well with a `W` core | `RITE` |
-| TOMB_OF_SUCELLUS | a low tomb with an `S` door glow | `RITE` |
-| AIFON_ISLE | an islet with one pale light | `RITE` |
-| MIRROR_OF_HEAVEN | a vellum pool reflecting glow `L` | `FIRE` (cold: inner radius only) |
-| PYRE_OF_THE_SERAPHIC | a pyre with a vellum flame core | `FIRE` |
-| BROKEN_SEPULCHER | a split sarcophagus, `R` crack | `BLOOD` |
-| RING_OF_CARCER | a ring of black stones, `C` centre | `BLOOD` |
-| ODIOS_PRISON | an iron cage tower, `R` within | `BLOOD` |
-| LETUM_FRIGUS | an ice cairn with `F` light | none (rime pixels only) |
-| MAELSTROM | a whirlpool spiral of `N`/`g` on water | none |
-| GUARDIAN | a colossal statue (`5`/`6`), `S` eyes | `RITE` (radius 4) |
-| DRAGON_BONES | a dragon skeleton in bone `7`, no glow | none |
-| REMNANTS_OF_PATRIA | ruined walls in ash, no glow | none |
+The 17 unique improvements (Standing Stones, Yggdrasil, Pool of Tears, Ring of Carcer, Broken
+Sepulcher, Maelstrom...) are painted once each (`compose_map.py`: Yggdrasil's vast crown of lit
+domes over a buttressed trunk, seven pines by the forest's rules, the menhir ring round a
+glowing circle, the Maelstrom's spiral), 32 px wide with up to 8-12 px of overhang, and are
+the only map objects besides lights, volcanoes and mana nodes allowed a full glow: sacred sites a
+`RITE` haze with a ritual heart, the corrupted ones `BLOOD`, the pyre `FIRE` (halved by day).
 
 ---
 
 ## 7. Owner identity
 
-Up to about 20 players must be told apart in a restricted look. Identity is **heraldic**, built
-from three parts:
-
-- a **tincture**: one of 10 muted field colours;
-- a **division** of the field, which separates players who share a tincture;
-- a **sigil**: one charge per civilization.
+Up to about 20 players are told apart by a **tincture** (one of 10 bold field colours), a
+**division** of the field that separates players sharing a tincture, and a **sigil** (one charge
+per civilization). The tinctures were re-chosen for daylight: ten clearly separate hues and values
+that hold up on grass, sand, water and snow.
 
 ### 7.1 Tinctures
 
-| tincture | field | shade | charge colour | border stitch |
-|---|---|---|---|---|
-| Argent | bone `7` | stone `6` | soot `1` | `7` over `6` |
-| Or | ochre `y` | umber `u` | soot `1` | `y` over `u` |
-| Gules | crimson `C` | blood `c` | vellum `8` | `C` over `c` |
-| Azure | glint `g` | navy `n` | vellum `8` | `g` over `n` |
-| Vert | lichen `O` | olive `o` | soot `1` | `O` over `o` |
-| Purpure | lilac `P` | dusk `p` | vellum `8` | `P` over `p` |
-| Tenné | rust `x` | umber `u` | bone `7` | `x` over `u` |
-| Celeste | frost `f` | glint `g` | soot `1` | `f` over `g` |
-| Sable | coal `2` | soot `1` | bone `7` | `2` over `1`, with a bone tick on every dash |
-| Cendrée | patina `T` | teal `t` | vellum `8` | `T` over `t` |
+| tincture | field | shade | charge | border (core over edge) | reads as |
+|---|---|---|---|---|---|
+| Argent | silver `H` | flint `D` | soot `1` | `H` over `D` | silver-white |
+| Or | gold `K` | khaki `j` | soot `1` | `K` over `j` | gold |
+| Gules | crimson `C` | maroon `I` | white `8` | `C` over `I` | red |
+| Azure | royal `J` | deep `d` | white `8` | `J` over `d` | royal blue |
+| Vert | needle `T` | pine `t` | white `8` | `T` over `t` | emerald |
+| Purpure | lilac `P` | dusk `p` | white `8` | `P` over `p` | purple |
+| Tenne | flame `E` | rust `x` | soot `1` | `E` over `x` | orange |
+| Celeste | glint `g` | tide `N` | soot `1` | `g` over `N` | sky blue |
+| Sable | coal `2` | soot `1` | cream `7` | `2` over `1`, a cream tick on every segment | navy-black |
+| Cendree | flint `D` | pewter `B` | white `8` | `D` over `B` | ash grey |
 
-Gules is the one sanctioned use of crimson as an owner colour. It goes by default to the
-blood-and-corruption civilizations.
+Gules is the sanctioned owner use of crimson; it goes by default to the blood-and-corruption
+civilizations. Argent, Cendree and Sable are told apart by value (light, mid, dark).
 
 ### 7.2 Divisions and assignment
 
-Divisions, in order:
-
-1. **plain**;
-2. **per pale**: the right half of the field is Sable, or Argent if the field is Sable;
-3. **per fess**: the same, on the lower half;
-4. **per bend**: the same, diagonally;
-5. **quarterly**.
-
-On borders, a divided owner's stitch **alternates** dashes of the field colour and the second
-colour.
-
-Assignment, at game start, in player-slot order: give each player its civilization's preferred
-tincture, plain. If that pair is taken, use the next division of the same tincture. Ten tinctures
-times five divisions gives 50 distinct identities. The sigil always follows the civilization, so
-two Bannor players are two argent banners with the same sword, one of them divided.
-
-Barbarians are not assigned. They fly **Sable with a bone skull**, draw no borders, and animals
-fly no pennant at all.
+Divisions, in order: **plain**; **per pale** (the right half of the field is Sable, or Argent if the
+field is Sable); **per fess** (the same, on the lower half); **per bend** (diagonally);
+**quarterly**. At game start, in player-slot order, each player takes its civilization's preferred
+tincture, plain; if that pair is taken, the next division of the same tincture. Ten tinctures times
+five divisions give 50 identities; the sigil always follows the civilization. Barbarians fly Sable
+with a cream skull and draw no borders; animals have no owner marks at all.
 
 ### 7.3 Civilizations
 
-Sigils are drawn in the charge colour, 5x5 (on pennants and plaques) or 7x7 (on banners and
-diplomacy screens). They are simple heraldic charges designed for this game.
+Sigils are drawn in the charge colour, 5x5 (on standards and plaques) or 7x7 (on banners and
+diplomacy screens). They are simple heraldic charges designed for this game. Window light is the
+colour of a city's lit windows (amber by default); by day there is no ground pool (4.4).
 
 | civilization | tincture | sigil | city style (section 9.2) | window light |
 |---|---|---|---|---|
@@ -746,74 +712,57 @@ diplomacy screens). They are simple heraldic charges designed for this game.
 
 ### 7.4 Where identity shows
 
-- **Borders** (section 8.1).
-- **City banner**: 7x12, top-left of the city tile, with the sigil. **City plaque**: tincture chip
-  (section 9.4).
-- **Unit pennant**: a 6x8 swallow-tail on a pole at the tile's top-right, with field and division
-  only (no sigil: it is too small). One pennant per stack. A stack containing a hero gets a gilt
-  finial (`y` with an `L` pixel) on the pole.
-- **Unit cloth**: every unit sprite marks its cloth (tabard, shield face, caparison, sail emblem,
-  robe trim) with the owner slots `#` (field), `%` (shade) and `*` (charge), filled at draw time.
-- Units with hidden nationality (privateers, pirates, assassins with the promotion) show **no
-  pennant**, and their cloth slots render as Sable.
+- **The team ring** (new in the revamp, the primary owner mark): every owned, non-animal unit
+  stands on an ellipse in its tincture's field colour with a shade lip at the front and a checker
+  shadow inside (24x8, 30x9 under giants), drawn through the owner slots with the division applied,
+  so two players sharing a tincture show two-tone rings. It replaces the contact shadow and plays
+  the part of the references' coloured bases. Units with hidden nationality show no ring.
+- **Borders** (8.1): solid lines in the tincture.
+- **The stack marks** keep to the corners and the top edge, so the figure and its ring stay clear:
+  a count chip in the top-left corner (top-right in a city), a gold pip beside it for a hero, the
+  health bar on the top edge, the state mark top-right. Your own spent stack stands on a quiet ring
+  (the tincture's shade as the field): a bright ring under your unit says it can still move. The
+  night look's 7x12 gonfalon is opt-in (`state.standard`), like the references, which mark a unit by
+  its colours and its land alone.
+- **City banner and plaque** (9.4): the size chip in the owner's field.
+- **Unit cloth**: an atlas unit's main cloth accent (its red, blue, purple or olive) is converted
+  to the owner slots `#` (field, the lighter half of the ramp) and `%` (shade); figures whose colour
+  is their identity (demons, angels, ghosts, animals, siege engines, ships) keep their own colours.
 
 ---
 
 ## 8. Political layer, fog and the edge of the world
 
-### 8.1 Borders: the stitched ribbon
+### 8.1 Borders
 
 Borders are drawn on tile edges where the revealed owner changes, **on the owner's side**, as a
-3-row ribbon:
-
-- outer row: void `0`, the underlay that keeps the stitch readable on pale ground;
-- middle row: the tincture's stitch colour;
-- inner row: the tincture's shade.
-
-The pattern is dashed, **4 on and 2 off**, phased by map coordinate, so dashes meet cleanly at
-corners. Two owners sharing an edge show two ribbons back to back: a double stitch. Borders are not
-warped; they are political, not natural.
-
-The **political layer** (toggle) adds a wash: every owned pixel of ground passes through a 25%
-grid of the owner's shade.
+**solid** 3-row line (no dashes): the tincture's shade at the very edge (so two owners meeting, or
+a pale border on pale ground, still separate), the bright stitch colour as the core, then a 50%
+checker of the stitch fading into the territory. A divided owner alternates its two tinctures every
+6 px; Sable keeps a cream tick on every segment. Two owners sharing an edge show two lines back to
+back. Borders are not warped. The **political layer** (a toggle) adds a 25% grid of the owner's
+shade over owned ground.
 
 ### 8.2 Fog of war
 
-Fogged tiles (revealed, not visible) are:
+Remembered tiles (revealed, not visible) pass through `REMEMBER`: the palette's `FOG` (dimmer and
+greyer, never black, lights out) with snow and ice sent to pale greys so remembered snow still
+reads as snow. Every pixel with `(x + y) mod 4 = 0` takes the remap twice (light diagonal
+hatching). Last-seen improvements, routes and cities are remembered; foreign units are not. The
+fog edge follows the terrain's warp in a 4 px Bayer band.
 
-- passed through `FOG` (section 2.4), so terrain keeps its family but drops two steps and every
-  light goes out; the ground pass uses REMEMBER, which is `FOG` with the frost family sent to the
-  neutrals (frost `f` to slate, rime `F` to ash, glint `g` to iron), so remembered snow and ice are
-  grey rather than the steel-blue `FOG` makes of them (second round; the vignette uses it too);
-- crossed by **ink hatching**: every pixel with `(x + y) mod 4 = 0` passes through `FOG` twice;
-- remembered: last-seen improvements, routes and cities (with their windows dark), but no foreign
-  units.
+### 8.3 Unrevealed tiles
 
-The fog edge follows the terrain warp at 0.6 × amplitude, so the line between seen and remembered
-is ragged like worn ink. (The ground pass classifies it like the terrain, full warp, and draws it as
-a 4 px Bayer band on each side; the unrevealed edge is a 3 px band: section 16.4.)
-
-### 8.3 Unrevealed tiles and the vignette
-
-- Unrevealed tiles are **void**. Their edge is ragged: an independent warp of the same amplitude
-  shifts the boundary.
-- **Viewport vignette**: beyond 75% of the half-diagonal from the screen centre, pixels pass
-  through `FOG` with a Bayer threshold rising to full at the corners. The map fades like a page read
-  by candlelight.
-- The map viewport sits in a 1 px ash `5` frame with a soot margin, like the edge of a page.
+Unrevealed land is the interface's **navy** (`1`, `GROUND.unseenKey`), not black, with a ragged
+3 px edge. There is **no vignette** by day (`GROUND.vignette`; the ground pass sets
+`art.vignetteOn`, which the live client's own vignette honours too). The map viewport sits in the
+panels' gold frame.
 
 ### 8.4 Minimap
 
-- One pixel per tile, or two on small maps.
-- Colours:
-  - water: `d` for ocean, `n` for coast;
-  - unowned land: the terrain base;
-  - owned land: the owner's field colour;
-  - cities: a vellum `8` dot;
-  - fog: through `FOG`;
-  - unrevealed: void.
-- The viewport is a 1 px vellum rectangle.
-- Frame: as for panels (section 11.2).
+One pixel per tile (two on small maps): water `d`/`n`, unowned land its terrain colour, owned land
+the owner's field, cities a white dot, fog through `FOG`, unrevealed navy-black; the viewport a
+1 px white rectangle; the frame as for panels.
 
 ---
 
@@ -821,200 +770,176 @@ a 4 px Bayer band on each side; the unrevealed edge is a 3 px band: section 16.4
 
 ### 9.1 Size tiers
 
-Cities are the brightest focal points of the map: each tier is a clearly bigger and better-lit mass
-than the one below, and a tier III town already fills its tile. Footprints include the outline;
-"top" is the tile row of the sprite's top (negative: it rises into the tile to the north).
+Cities are the map's focal points: each tier is a clearly bigger mass than the one below. "Top" is
+the tile row of the sprite's top (negative: into the tile to the north).
 
 | tier | population | footprint (px) | top | content |
 |---|---|---|---|---|
-| I | 1-3 | about 26-28 wide, 17 tall | 11 | 2 or 3 buildings and a bell-cote, with a low outskirt house behind each end; about 4 lit windows (1x2 lancets, one with the `L` core) and a lit door |
-| II | 4-7 | about 30-31 wide, 23 tall | 5 | 4 buildings, a spire, outskirts at both ends; about 6 windows |
-| III | 8-12 | about 30 wide, 30 tall: the whole tile | -2 | the main hall (the Cloister's abbey front with its rose window) and a tower; 6 or 7 windows |
-| IV | 13-19 | about 33 wide, 33 tall | -5 | a great front, the tall tower, a chapter house; about 9 windows |
-| V | 20+ | 34 wide, 34 tall | -6 | a cathedral: twin towers about the front, the crossing spire; about 12 windows |
+| I | 1-3 | about 26-28 x 17 | 11 | 2 or 3 houses and a bell-cote, outskirt houses; a few lit windows |
+| II | 4-7 | about 30 x 23 | 5 | 4 buildings, a spire, outskirts at both ends |
+| III | 8-12 | about 30 x 30 | -2 | the main hall and a tower |
+| IV | 13-19 | about 33 x 33 | -5 | a great front, the tall tower, a chapter house |
+| V | 20+ | 34 x 34 | -6 | a cathedral: twin towers, the crossing spire |
 
-- **Base clear of the plaque.** A city's ground line (its bottom outline row) is tile row 27: the
-  sprite's anchor sits 3 rows below it, on tile row 30. The plaque (9.4, tile rows 29 to 35) never
-  covers a door or the lowest windows, and tile row 28 shows the lit ground in front of the city.
-- **Height.** The validator caps a city sprite at 34x34, so tier V rises 6 px into the tile to the
-  north, not the 12 px that section 3.1 allows; with the cap raised to 40x44, tiers IV and V can
-  grow without other changes (the tallest masses keep to the middle columns: the tile's top-left
-  belongs to the city banner, its top-right to a garrison's standard).
-- **Masses and the moon rim.** Buildings are dark masses: walls lit `5`, body `4`, shade `3`;
-  roofs darker (`2`/`1`) with a **moon rim** of stone `6` on their west edges and tips, a step
-  above any ground, so the silhouette separates from dark land at 1x.
-- **Windows.** Mostly 1x2 lancets (a plain window is 1x2 since the second round; 1x1 only where
-  a style says so), in the style's light colour (section 7.3), with one `L` core on the main hall;
-  a lit house's door is a 1x2 amber doorway. The stone beside and under a window takes the
-  style's halo for 1 px (firelight: dark
-  stone to ember `e`, mid stone to rust `x`, lit stone to flame `E`), so a window reads as a small
-  hearth in the wall and the stone looks lit from within.
-- **Ground light.** A lit city sits in warm light, never in mud. Second round (the light review:
-  the pool read as a brown stain and the city as a dark speck): the pool is the three rings of
-  section 4.4 at city radii, an outer WARM glow (ochre and sand over moss and dun, radius
-  24 + 4 x tier), an inner HEARTH ring (flame, ember and rust, radius 12 + 4 x tier) and an EMBER
-  core (amber, radius 6 + 2 x tier), elliptical with Bayer falloff, each pixel remapped once from
-  its own ground colour (open water, `d` and `n`, keeps its night). Then a wall glow on the ground
-  within 4 px of the sprite's lower walls (EMBER where it is strong, HEARTH elsewhere): the sprite
-  covers the pool's middle, so this is the light that shows. Then the **facade light**: after the
-  sprite is drawn, its lowest 5 + tier rows catch the pool (HEARTH from the sprite's own dark and
-  mid colours, 80% on the ground line falling to none; outline, windows, pale stone and hide are
-  left alone), so the town stands in its light instead of on it. `BLOOD` cities (Infernal, Sheaim)
-  take SMOULDER and GORE (blood, rust, crimson), `ARC` cities (Amurites, Svartalfar) `ARC` and AURA
-  (dusk, lilac), with the outer ring at three quarters of the radius, as they turn the ground's hue
-  outright; frost, celestial and the faded Sidar cast no pool. A sprite's own `: light` (the tribal
-  and barbarian bonfire, `FIRE` radius 8) is drawn under it. `cities/citylight.js` implements this
-  (`installCityLight(art)`, the light pass) and replaces the two `FIRE` passes of 4.4 for cities and
-  every other pool.
+- The city's ground line is tile row 27 (its anchor 3 rows below, on row 30), so the plaque (rows
+  29-35) never covers a door.
+- **Daylight towns**: walls are lighter than roofs, so a town reads at 1x as warm walls under
+  coloured roofs; windows amber `l` (recoloured to the civilization's light, 7.3); no ground pool
+  for firelight towns (4.4).
+- **Garrisons**: units fill the tile, so a garrison would hide its city. In a city the client
+  draws the stack's figure only while it is selected or sliding; the count chip (top-right) marks
+  the garrison.
 
 ### 9.2 City styles
 
-Ten restrained styles are built from one kit. Each changes only roofs, the landmark piece and the
-window light.
+Sixteen styles are generated from one kit (`cities/citystyles.mjs` with `cities/citykit.mjs`;
+`node cities/citystyles.mjs` rewrites `cities.spr`). The kit's materials set walls (lit edge, body,
+shade) and roofs (rim, lit half, dark half, tip); the hand-drawn stamps (doors, gates, crags,
+frames) have their dark noir neutrals lifted two steps by day (`DAY_LIFT`), except in the styles
+meant to be dark or faded.
 
 | style | civilizations | signature |
 |---|---|---|
-| Cloister | Bannor, Elohim, Grigori, Kuriotates, Amurites, Calabim, Sidar | gothic stone, pointed roofs and spires (the board's abbey); Amurites add a mage tower with a lilac top; Calabim use darker stone (`2`/`3`); Sidar are faded |
-| Sun-domes | Malakim | flat roofs, low domes, sand stone (`Y`/`6`), a tall minaret |
-| Elven | Ljosalfar, Svartalfar | 2 or 3 great trees (`k t T`) with lit hollows and platforms; Svartalfar trees in `v p` with lilac light |
-| Dwarven | Khazad, Luchuirp | halls cut into a rock mound: carved door arches, chimneys with ember tops; Luchuirp add a gear wheel and a golem forge glow |
-| Tribal | Clan of Embers, Doviello, Hippus, barbarian | a palisade ring, hide tents and longhouses, a central bonfire (`FIRE` radius 8) |
-| Harbour | Lanun | stilt houses over water, piers and masts; on a coastal tile it extends 6 px into the water |
-| Carnival | Balseraphs | peaked tents with tincture stripes, a lantern string |
-| Infernal | Infernal, Sheaim | black jagged spires (`1`/`2`), scarlet windows, `BLOOD` pool instead of `FIRE` |
-| Celestial | Mercurians | pale slender towers (`6`/`7`), vellum light, a pool with no colour cast |
-| Frost | Illians | rime-capped stone (`F` caps on `4`/`5`), cold rime windows, no warm pool |
+| Cloister | Bannor, Elohim, Grigori, Kuriotates | cream walls (`8 7 G`) under red roofs (`R C I`) with gold tips `K`: the references' red-roofed towns |
+| Amurite | Amurites | the cloister with a mage tower crowned by a lilac crystal; lilac windows; `ARC` pool |
+| Calabim | Calabim | the cloister in darker stone under dark red roofs (not lifted) |
+| Sidar | Sidar | the cloister faded to warm greys; no lit windows above tier II (not lifted) |
+| Sun-domes | Malakim | cream walls, gold domes and a minaret |
+| Elven | Ljosalfar | great trees (brightened one step, `t T o`) with lit hollows and platforms |
+| Svartalfar | Svartalfar | the elven trees in `v p P` with lilac hollows; `ARC` pool |
+| Dwarven | Khazad | a hold built out of the mountain: a stepped gatehouse, battlemented towers and ramparts in warm grey stone with a bronze band, ember chimneys, rock shoulders with ledged tops at its flanks. Its outline is flat ledges and upright walls, never a peak's slopes, so it cannot be read as a mountain beside the cool-grey peaks |
+| Luchuirp | Luchuirp | the dwarven hold with a gear wheel on a tower and a golem forge |
+| Tribal | Clan of Embers, Doviello, Hippus | cream hide tents, a longhouse, a palisade and a bonfire (`FIRE` radius 8, halved) |
+| Barbarian | barbarian | grey pelt tents, a skull-topped palisade, a lookout, a bonfire |
+| Harbour | Lanun | stilt houses, moored ships with square sails, a pier, a lighthouse from tier IV |
+| Carnival | Balseraphs | striped pavilions in the owner colours (`#` `%`), a big top, lantern strings |
+| Infernal | Infernal, Sheaim | black thorn spires, crimson cracks, scarlet windows; `BLOOD` pool (not lifted) |
+| Celestial | Mercurians | white slender towers and domes with gold tips |
+| Frost | Illians | rime and ice: white walls, an ice spire, rime windows |
 
 ### 9.3 Modifiers
 
-- **Walls** (the Walls building): a low curtain wall line in front, 3 px tall.
-- **Castle**: adds corner towers.
-- **Capital** (Palace): the tallest spire carries a finial in the owner's field colour.
-- **Holy city**: the religion's glyph is stamped on the plaque.
-- **Disorder**: windows go dark, an ash smoke column rises.
-- **Razed or ruined**: CITY_RUINS (section 5.7).
-
-No era-based art: FfH eras are religious and change nothing visual.
+- **Walls**: a low curtain wall in front, 3 px tall; **castle**: corner towers.
+- **Capital**: the tallest spire carries a finial in the owner's field colour.
+- **Holy city**: the religion's glyph on the plaque. **Disorder**: windows dark, an ash smoke
+  column. **Razed**: CITY_RUINS.
 
 ### 9.4 Plaque
 
-Below the city, overlapping the tile's bottom edge by 3 px, sits a **plaque**: a soot `1` plate
-7 px tall, with an ash `5` 1 px border.
-
-- Left: a 5x7 **size chip** in the owner's field colour, with the population in the 3x5 tally font
-  (section 11.6), in the charge colour.
-- Middle: the name, in the Vigil bitmap font, in bone `7` (vellum `8` for your capital).
-- At default zoom, the production glyph and turns follow at the right, for your cities.
-
-At survey zoom, only the chip is drawn.
+Below the city, overlapping the tile's bottom edge by 3 px: a navy plate 7 px tall. At the left a
+5x7 **size chip** in the owner's field colour with the population in the Tally font; then the name
+in Vigil in cream (white for your capital); at default zoom your cities add the production glyph (a
+5 px mallet, `ui/plaque_production`) and the turns, so the digit cannot pass for a unit count. At
+survey zoom only the chip is drawn. This is the references' "1 Rome" label.
 
 ---
 
 ## 10. Units
 
-### 10.1 Box, anchor, facing and states
+### 10.1 Frame, anchor, facing and states
 
-- The 24x24 box has its feet at (11, 21). Figures are about **16 px** tall from feet to crown;
-  weapons, hats and banners reach up to 21 px. Mounted units are about 20 px wide.
-- All units face **right** (east). They are mirrored when their last move had a westward component.
-- **One sprite per stack**: the head unit, which is the best defender for foreign stacks and the
-  selected unit for your own. Behind it, up to 2 offset echoes (2 px up-left each), drawn as coal
-  `2` silhouettes. A stack-count chip in the tally font sits at the top-left of the tile.
-- **HP strip**: 12x1 at tile (10, 31), with a dark `2` remainder. The filled part is bone `7`
-  above 50% HP, ochre `y` from 25% to 50%, crimson `C` below 25%.
-- **Moves pip**: tile (23, 31): vellum `8` if moves remain, iron `3` if spent.
-- **State marks** (8x8, top-left of the tile when there is no stack chip):
+- **The 32x32 frame** has its feet at (15, 29): an infantryman stands about 27 px from feet to
+  crown, raised weapons reach the top rows, mounted units span the tile. Giants (war elephants,
+  demon riders, dragons, balors) use the **40x40** frame, feet at (19, 37). Equipment glyphs are
+  24x24 (feet 11, 21): items lying on the tile.
+- All units face **right** (east) and are mirrored after a westward move.
+- **One figure per stack**: the head unit (the best defender of a foreign stack, the selected unit
+  of yours), on its team ring (7.4), with up to 2 offset echoes behind it as dark silhouettes.
+- **Overlays** (`units/stack.js`), in the corners and on the top edge: the count chip (top-left,
+  top-right in a city), a gold hero pip beside it, a 12x1 health bar in a void frame on the top edge
+  (only when hurt or selected: cream above 50%, ochre from 25%, crimson below), state marks
+  (fortified, sleeping, sentry, healing, automated, promotion ready) top-right. Moves show on the
+  ring (quiet when your stack is spent); units without a ring show them as a pip bottom-right.
+- **Selection**: a white rim round the figure; **garrisons** show only when selected or moving
+  (9.1).
 
-  | state | mark |
-  |---|---|
-  | fortified | a small shield |
-  | sleeping | a crescent |
-  | sentry | an eye |
-  | healing | a sprig |
-  | automated | a gear |
-  | promotion ready | a gilt star (`y` with an `L` pixel), which takes precedence |
+### 10.2 Where the figures come from: the unit atlases
 
-### 10.2 Silhouette grammar by unit combat class
+The bespoke figures are cut from the owner's unit atlases by the pipeline in
+`web/art/tools/atlas/` (Python 3 with numpy and Pillow; an authoring aid, not part of the build:
+its `.spr` output is the source afterwards):
 
-Category is read from the **outline**, never from colour. Base materials are `2 3 4 5` for metal
-and dark cloth, `u Q y` for leather and wood. Owner slots go on cloth.
+1. **Segment** (`extract_units.py`): the atlas panel is a dark, low-chroma navy (L* 4-18,
+   chroma about 20-24), so the background is the connected navy regions that are large or touch the
+   edge, found after a morphological opening (the flood cannot leak through gaps in an outline) and
+   with every 200 px straight run cut (section rules); dark-cloaked figures survive because their
+   cloth is more saturated, redder or lighter than the panel. Touching hex bases are split by a
+   geodesic Voronoi of eroded seeds.
+2. **Strip the base**: the grass (or water) top of each hex is found in the lower half; everything
+   below the middle of its top surface goes, and grass and rim colours above it.
+3. **Downsample** (`downsample.py`, `quantize.py`): one uniform scale per atlas, so relative sizes
+   survive (a typical infantryman about 27 px), area-averaged in linear light with alpha-weighted
+   colour; coverage of 50% or more is opaque. A figure too big for its frame is scaled down to fit.
+4. **Quantize** to the palette (nearest in CIE Lab; L* under 9 is outline), clean isolated pixels,
+   drop base residue at the feet (the bottom rows keep only the body's column span, and lose grass
+   and rim colours), keep the main connected body, **enforce the outline** (4.2), reduce to 18
+   colours (4.3), convert the cloth accent to owner slots (7.4), and place the feet on the anchor.
+5. **Map** (`unit_mapping.json`): each crop to a game type, with options (`slots`, `frame`, `ship`
+   to strip the water under a hull). Writes `units/atlas.spr`; `integrate_units.py` adds the source
+   to the manifest and rewrites the variant remaps.
 
-| class (`UNITCOMBAT_*`) | silhouette | key shapes |
-|---|---|---|
-| MELEE | upright, square-shouldered, legs apart | helmet dome; shield on the front (owner field and charge); blade or axe raised behind |
-| ARCHER | upright, slimmer, hooded or capped | a bow arc ahead of the body (a 9 px curve in `y` with a `5` string); a quiver on the back |
-| MOUNTED | a horizontal mass, about 20x12, on 4 legs | horse body `3` with a `4` back line; caparison in the owner slots; rider torso and helm above; lance or bow |
-| RECON | low, leaning forward, cloak flared back | hood; short blade or bow; one foot forward (the stride) |
-| SIEGE | a wooden machine (`u Q y`) with a small crew figure | catapult arm, trebuchet beam, cannon barrel (`3`/`4`), roofed ram |
-| ADEPT (arcane) | a tall robe flaring to the ground, a pointed hood or hat | a staff with an orb in the `@` accent (default lilac `P`, with an `L` core); robe in `v`/`p` |
-| DISCIPLE (divine) | a hooded robe (the board's acolyte), or armour with a tabard | a lantern or censer (amber, `FIRE` radius 5); a stole in the `@` accent = the unit's religion colour (section 11.5) |
-| NAVAL | a hull profile on water, about 22 px long | sails `6`/`7` with an owner emblem; lantern at the stern; reflection streak |
-| ANIMAL | a natural creature in earth and ash tones | no owner slots, no pennant |
-| BEAST | a monster, often in the 32x32 huge box | exaggerated mass: giants, werewolves, manticores, dragons |
-| none (civilian) | unarmed, softer outline | worker: pick or hoe; settler: bundle on the back and a walking staff; great people: a robe and their attribute (see below) |
+81 figures come from the atlases: the melee, archer, recon, mounted, siege and naval lines, the
+civilians, the core animals, and stand-ins chosen for FfH units from unused atlas figures (adept:
+the Dreamstalker; mage: the Pathfinder; archmage: the Avatar; battlemaster: the Greatsword; stygian
+guard: the Dreadnought; mercenary: the Longswordsman; dragon slayer: the Slayer; royal guard: the
+Cuirassier; crusader: the atlas Paladin; nightwatch: the Stealth Archer; shadowrider: the Risen
+Rider; ophanim: the Unicorn Cavalry; death knight: the Dread Knight; chaos marauder: the Demon
+Rider). Atlas names with no FfH unit (pikeman, rifleman, ...) are not used. Unique units borrow
+their base unit's figure (mapping step 4, 15.2).
 
-Great people and specialists, by attribute:
+### 10.3 Variants by remap
 
-| unit | attribute |
-|---|---|
-| prophet | staff and a ring of vellum dots |
-| artist | lyre |
-| scientist | open book |
-| merchant | purse and scales |
-| engineer | square and hammer |
-| commander | standard |
+Several units are an atlas figure recoloured by a manifest remap on the new keys (skin `a b`,
+leather `i j h r`, greys `B D G H`): the polar bear (the bear in whites), the sand lion, the
+bloodpet (the warrior in blood), lizardmen (green skin and olive hoods on the scout, archer and
+beastmaster), frostlings (ice-blue skin), the ophanim's brightened steel, the shade and the eidolon
+(the spectre darkened, or in violet), Rosier (the knight in crimson) and Saverous (the demon rider
+in teal). Ghosts are the same figures through the translucency checker.
 
-### 10.3 Tier: ornament, not size
+### 10.4 Composed figures
 
-Tier (`iTier`, 1 to 4) is shown by **gear**. Silhouettes of the same class keep the same height.
+The units the atlas sheets do not show (demons, undead, golems, elementals, angels, dragons, sea
+monsters, the heroes, the faiths drawn per religion, the great people, the special ships, the
+spells and the 24 equipment glyphs) are composed by `tools/atlas/compose_units.py` at the atlases'
+own scale and go through the same quantizer (10.2, steps 3-4), so they share the atlas look: the
+same outline, ramps and colour budget. 161 sprites, in `units/composed.spr`.
 
-| tier | gear |
-|---|---|
-| 1 | bare head or hood, crude weapon (club, sling), no shield; leather `u`/`Q` |
-| 2 | helmet, standard weapon, plain shield; iron `3`/`4` |
-| 3 | crest or plume (owner field), cape (owner shade), shield with charge, better weapon |
-| 4 | full harness: tall helm or great helm, great weapon or tower shield, barding on mounts, a carried standard or aura; lit metal edges `6` |
+- **From atlas parts** wherever a figure fits: recoloured along a palette ramp by lightness rank
+  (`Layer.recolor`: a hue, chroma and lightness selection mapped onto, say, `cICR` for a demon's
+  skin), mirrored, scaled (giants and dragons into the 40x40 frame), combined (a pride of lions, a
+  pack of wolves), riders erased and the mount's back painted under the gap. The dragons are the
+  atlas dragon in four colourings (Abashi black, Acheron red, Drifa frost, Eurabatres gold); the
+  balor is the berserker grown, reddened and bat-winged; the kraken is the Eater of Dreams in sea
+  red; Auric Ascended is the Dread Knight in frost with feathered wings; the heroes are unused atlas
+  figures in their own colours with a mark of their own (Herne's antlers, Loki's gold horns, Valin's
+  plume, Auric's crown, Wilboman's frost skin).
+- **Painted** where nothing fits: ellipses, polygons and tapered strokes shaded as lit domes under
+  the top-left light, posterized to a palette ramp, each with a dark rim so overlapping parts stay
+  apart (`composelib.paint`): the skeleton, spiders, scorpion, gorilla, tortoise, golems, treant,
+  elementals, sea serpents, gargoyle, manes, wraith, hawk, vines, the workboat and supplies, the
+  spells and every equipment glyph. Accessories (feathered and bat wings, halos, horns, flames,
+  staffs, beards, plumes, crowns, antlers) are painted onto atlas figures the same way.
+- **Variants are separate sprites**, not manifest remaps: one golem per material, a disciple,
+  priest and high priest per religion (the trim in the faith's colour, the robe dark for the Veil and
+  the Overlords), a dragon per colour, the angel of death and the repentant angel, Aurealis, the ice
+  and lightning elementals, the beastman, the tar demon, Meshabber.
+- Figures with a flame or a glow carry `: light` on their brightest pixel: the fire elemental,
+  Aurealis, the pyre zombie, balor, Hyborem, Wrath, the seraph, the disciple of Acheron, fireball and
+  meteor (FIRE), the arcane barge and the lightning elemental (ARC).
 
-Unique units (civilization replacements) keep their class silhouette and change **one** prop. For
-example, the Javelin Thrower holds a javelin bundle instead of a bow, and the Boar Rider rides a
-boar instead of a horse.
-
-### 10.4 Race and nature
-
-These modifiers come from the unit's free promotions and apply on top of the class silhouette:
-
-| race or nature | modifier |
-|---|---|
-| ELF, DARK_ELF | 1 px taller and narrower; leaf-shaped helm and blade; cloak in `t` (elves) or `p` (dark elves) |
-| DWARF | 3 px shorter, 2 px broader; heavy helm; beard in `5`/`6` |
-| ORC | hunched, heavier jaw with a tusk pixel; crude gear in rust and olive |
-| LIZARDMAN | forward lean, tail; olive scales |
-| UNDEAD | bone `7`/`6` body or rags in `3`; **eye pixel `S`** (pale green: the unnatural) |
-| DEMON | horns or spines, coal `2` body, **scarlet `R` eyes**, `c`/`C` cracks; Infernal owner slots |
-| ANGEL | wings (a vellum `8` leading edge, `6` feathers), always fully rimmed in vellum; no crimson ever |
-| GOLEM | blocky, material by kind: wood `u`, clay `Q`, iron `3`, bone `7`, mithril `F`, nullstone `1`; one core pixel (`E`, or `P` for magical golems) |
-| ELEMENTAL | made of its element and self-lit: fire (`E l L`, `FIRE` radius 6), water (`N g F`), earth (`4 5 u`), air (`F` wisps, translucent); summons of the same element share the body |
-| ILLUSION, PUPPET | translucent (50% checker, section 4.5) |
-| DRAGON | huge box; wingspan; Abashi (`2`), Acheron (`C` underbelly), Drifa (`F`), Eurabatres (`y` gilt) |
-| HERO | a unique silhouette, plus the gilt finial on the stack pennant |
+`cut_missed.py` cuts figures the automatic extraction missed (they touched their card frame) by
+hand-given boxes: the elephant of sheet 3. `integrate_composed.py` writes `units/composed.spr` and
+the manifest's rules. Every unit type resolves to an atlas or a composed figure; no pre-revamp
+drawing is left in the units set.
 
 ### 10.5 Naval and air
 
-| class | units | silhouette |
-|---|---|---|
-| oared | Galley, Trireme | low hull, oar ticks below the waterline |
-| sail | Caravel, Galleon, Frigate, Man-o-War, Queen of the Line | masts from 1 to 3; gun ports as a `0` dot row on Frigate and later |
-| raider | Privateer, Pirate | sable sails, no pennant |
-| arcane | Arcane Barge | a flat hull with a lilac lantern (`ARC` radius 5) |
-| ghost | Sailor's Dirge | ragged translucent sails, an `S` lantern |
-| hero | Black Wind | a unique silhouette |
-| sea monster | Sea Serpent, Kraken, Leviathan | coils breaking the surface, `g` glints |
-| boat | Workboat | a rowboat, 10 px |
-| air | Airship | a hull hanging under a gas bag (`5`/`6`), ropes; it casts a contact shadow on the ground 4 px below |
-| bird | Hawk | a 7 px bird |
-
-Equipment units (`EQUIPMENT_*`, immobile) are items on the ground: a 12x12 glyph on a tiny void
-shadow, gilt (`y`) for treasure and relics, with a single `l` or `S` glint for magical ones.
+Ships (galley, trireme, caravel, privateer, frigate, man-o-war, sailors' dirge) come from the
+atlas with the water of their hex stripped below the waterline; the airship hangs under its gas
+bag. Ships stand on a team ring on the water. The galleon (khaki sails), queen of the line (40x40,
+a long owner pennant), black wind (black sails, dark hull) and arcane barge (violet sails and a
+glowing orb) are atlas ships recoloured; the workboat is painted. Sea monsters (kraken, sea serpent,
+leviathan) rise out of a ring of foam.
 
 ---
 
@@ -1024,82 +949,71 @@ shadow, gilt (`y`) for treasure and relics, with a single `l` or `S` glint for m
 
 - **The map dominates.** Chrome hugs the edges in narrow bands; no panel covers the centre except
   modals.
-- The look of a scriptorium at night: soot panels, double rules, bone text, small gilt
-  ornaments. **Not copied from the board**: the layout, counters and symbols here are designed for
-  this game's needs.
+- The look of the references' screens: **navy panels, gold rules, cream text, maroon title
+  ribbons**, small gilt ornaments; owner names in their tincture.
 - Information first: every number is legible at `u = 1`; ornament never sits on top of data.
 
 ### 11.2 Colours as CSS
 
-Define every palette colour as a custom property (`--c-void`, `--c-soot`, ... `--c-wisp`) and use
-only those.
+Every palette colour is a custom property (`--c-void`, `--c-soot`, ... `--c-gold`), generated from
+`palette.txt` by `ui/ui.js` (`paletteCSS`) and mirrored in `assets/app/style.css` for the moment
+before the art loads; the chrome uses only those.
 
 | role | colour |
 |---|---|
-| page background | soot |
-| panel | soot |
-| raised panel | coal |
-| hairlines | iron |
-| frames | ash |
+| page background, panels | soot (navy) |
+| raised panels | coal |
+| frames and rules | gold `K` outside, bronze `j` inside |
+| title ribbons | blood `c` with a gold rule beneath |
 | secondary text | stone |
-| body text | bone |
-| emphasis and titles | vellum |
+| body text | cream (bone `7`) |
+| emphasis and titles | white (vellum `8`) |
+| accents and links | gold |
 | disabled | ash |
-| links (Civilopedia references) | sand |
-| modal backdrop | void at 70% alpha (the only alpha allowed) |
+| modal backdrop | void at 70% alpha (the only alpha) |
 
-Civ4 text markup maps to:
-
-| markup | colour |
-|---|---|
-| `COLOR_HIGHLIGHT_TEXT` | vellum |
-| `COLOR_POSITIVE_TEXT` | lichen |
-| `COLOR_NEGATIVE_TEXT`, `COLOR_RED` | scarlet |
-| `COLOR_WARNING_TEXT` | amber |
-| `COLOR_UNIT_TEXT`, `COLOR_BUILDING_TEXT` (and other link colours) | sand |
-| `COLOR_SOMNIUM_*` | frost |
-| anything else | bone |
+Civ4 text markup maps to: highlight white; positive lichen; negative and red scarlet; warning
+amber; unit, building and other link colours gold; anything else cream.
 
 ### 11.3 Panels and frames
 
-- **Frame**: a double rule, ash `5` outside and iron `3` inside, 1 art px each with 1 art px of
-  soot between. At each corner, a 3x3 ornament: a bone `7` pixel cross with an ochre `y` centre (a
-  gilt nail).
-- **Panel title**: the Vigil bitmap font in vellum on coal `2`, with a 1 px ash rule beneath, and
-  an optional 8x8 icon at the left.
-- **Dividers**: 1 px iron, inset 4 px from the frame.
-- **Modals** (events, votes, decisions) are pages:
-  - wider frame: a third rule in ash;
-  - an **illuminated initial**: the first letter of the text in Vigil at 2x, ochre `y` with an
-    amber `l` highlight pixel, on a dusk `p` square;
-  - body in the serif;
-  - the options as a vertical list of buttons.
+- **Frame** (`ui/frame_panel`, a nine-slice): a gold `K` rule outside and a bronze `j` rule inside,
+  1 art px each, on navy, with pale-gold nails at the corners. The map page and modal pages use the
+  same rules (the modal adds a third and gilt lozenges at the corners).
+- **Title**: Vigil in white on a maroon ribbon (`ui/frame_title`) with a 1 px gold rule beneath.
+- **Dividers**: 1 px khaki, inset 4 px from the frame.
+- **Modals** are pages: the wider frame, an illuminated initial, serif body text, options as a
+  vertical list of buttons.
 
 ### 11.4 Buttons and controls
 
 | state | fill | border | text |
 |---|---|---|---|
-| normal | coal | 1 px ash | bone |
-| hover | coal | stone | vellum |
-| pressed | soot, with a 1 px void inset top-left | stone | vellum |
-| disabled | soot | iron | ash |
-| focus | (as current state) | plus a 1 px vellum dotted ring, offset 1 | (as current state) |
-| primary (End Turn, Confirm) | coal | bone, plus inner gilt nails | vellum, with an icon at left |
-| danger (declare war, delete, raze) | coal | crimson | bone; hover adds an inner blood `c` rule |
+| normal | navy, light along the top and left | ochre `y` | cream |
+| hover | navy | gold `K` | white |
+| pressed | navy with a dark inset | gold | white |
+| disabled | navy | pewter `B` | ash |
+| focus | (as current) | plus a dotted white ring, offset 1 | (as current) |
+| primary (End Turn, Confirm) | navy | gold `K` with pale-gold nails | white, with an icon at left |
+| danger (declare war, delete, raze) | navy | crimson | cream; hover adds an inner blood rule |
 
-Other controls:
-
-- **Sliders** (commerce percent): a 1 px stone track with tick dots every 10%, and a 5x7 handle in
-  bone with a void outline.
-- **Lists**: soot rows; the hover row coal; the selected row coal with a 1 px bone left bar.
-- **Tabs**: ash underline; the active tab has a vellum underline and vellum text.
-- **Scrollbars**: 2 art px, iron track, ash thumb.
+Sliders, lists (hover coal, selected coal with a 1 px cream bar), tabs (white underline when
+active) and thin dark scrollbars follow the same colours.
 
 ### 11.5 Icons
 
 **Grid.** Icons are drawn on a 16x16 grid (panel icons) and an 8x8 grid (inline in text, map
-overlays, yields on tiles). They are 1 px line-and-mass glyphs in bone `7`/`6`, with **one** accent
-colour and a void outline when placed over the map.
+overlays, yields on tiles) by `tools/atlas/compose_icons.py`: each is painted once on the 16 grid
+like the map sprites (4.3: lit shapes posterized to palette ramps, up to 8 colours, one void
+outline), and its 8x8 version is the finished 16x16 icon reduced by 2x2 blocks (the majority
+colour, the outline kept), redrawn by hand where the reduction loses the subject: the open codex,
+and the inline yields and states that blur at that size (the wheat ear for food, the mallet for
+production, a coin stack for gold, the domino mask, the lit and snuffed candles, the fist, the leaf
+and the sickly bubbles, the crescent, the broken crown, the sun and scales of the alignments, the
+crossed pick and spade).
+Promotion seals keep their family rim (the `#` slot, recoloured by the mapping) around a shaded
+navy face with the painted glyph. The mana runes are a notation, like the font, and keep their
+shapes.
 
 **Yields and commerce** (also the `[ICON_*]` set used by the game text):
 
@@ -1107,16 +1021,16 @@ colour and a void outline when placed over the map.
 |---|---|---|
 | FOOD | a bound sheaf | ochre `y` |
 | PRODUCTION | a hammer over an anvil | iron, with an `E` spark |
-| COMMERCE / TRADE | a coin on an open palm | ochre `y` |
-| GOLD | a stack of coins | ochre `y` / `Y` |
+| COMMERCE / TRADE | a coin with a square hole | ochre `y`, gold `K` |
+| GOLD | stacked coins and one standing | ochre `y`, gold `K` |
 | RESEARCH | an open codex | vellum pages |
-| CULTURE | an illuminated letter on a square | ochre `y` with a `P` square |
-| ESPIONAGE | an eye (drawn for completeness; espionage is locked off) | stone |
+| CULTURE | a gilt letter on a lilac plaque | gold on `p`/`P` |
+| ESPIONAGE | a lilac mask (drawn for completeness; espionage is locked off) | dusk `p` |
 | HAPPY | a lit candle | amber `l` flame |
 | UNHAPPY | a snuffed candle with smoke | ash smoke, `C` wick |
 | HEALTHY | a green sprig | olive `o` / lichen `O` |
-| UNHEALTHY | a bubble of miasma | dusk `p` |
-| GREATPEOPLE | a ring of vellum dots | vellum |
+| UNHEALTHY | boils of miasma | dusk `p`, lilac `P` |
+| GREATPEOPLE | a laurel round a gold star | olive, gold |
 | BULLET | a 3x3 lozenge | stone |
 | STRENGTH | a raised shield | (none) |
 | MOVES | a boot | (none) |
@@ -1152,7 +1066,7 @@ family; the rune shape identifies the sphere.
 | LAW | vellum `8` | scales |
 | LIFE | wisp `W` | an ankh-like knot |
 | METAMAGIC | lilac `P` with a vellum centre | two interlocked rings |
-| MIND | patina `T` | an eye |
+| MIND | needle `T` | an eye |
 | NATURE | lichen `O` | a leaf |
 | SHADOW | slate `4` on void | a crescent hood |
 | SPIRIT | glint `g` | a rising wisp |
@@ -1165,7 +1079,7 @@ family; the rune shape identifies the sphere.
 |---|---|---|
 | FELLOWSHIP_OF_LEAVES | an oak leaf | lichen `O` |
 | THE_ORDER | a radiant cross | vellum `8` |
-| OCTOPUS_OVERLORDS | a tentacled eye | patina `T` |
+| OCTOPUS_OVERLORDS | a tentacled eye | needle `T` |
 | RUNES_OF_KILMORPH | a carved rune stone | ochre `y` |
 | THE_ASHEN_VEIL | a veiled skull | crimson `C` |
 | THE_EMPYREAN | a sun eye | glow `L` |
@@ -1199,7 +1113,7 @@ Promotion seal rims by family:
   - proportional advance of 4 to 6 px plus 1 px tracking; word space 3 px;
   - 1 px foot serifs on stems; strokes 1 px;
   - glyphs: A-Z, digits 0-9 (lining, 5x7), and `. , : ; ' - – ( ) / + × ! ? & #`;
-  - drawn in vellum or bone, with an optional 1 px void drop shadow (down-right) over the map;
+  - drawn in vellum or cream, with an optional 1 px void drop shadow (down-right) over the map;
   - used for: panel titles, city names on plaques, modal initials (at 2x), big numbers in the top
     bar, the turn count.
 - **Tally**: a 3x5 pixel font of digits `0`-`9` and `+ − / ×`. Used for: stack counts, size chips,
@@ -1209,62 +1123,43 @@ Promotion seal rims by family:
     "URW Palladio L", Georgia, serif`;
   - sizes: 15 px body, 13 px small, line-height 1.4, `font-variant-numeric: lining-nums
     tabular-nums` in tables and the top bar;
-  - colour: bone on soot; never pure white, never below stone for anything a player must read.
+  - colour: cream on navy; never pure white, never below stone for anything a player must read.
 
 ### 11.7 Cursor, selection and path
 
-- **Pointer cursors**, 16x16 at `u`. All have a void outline.
-
-  | cursor | design |
-  |---|---|
-  | pointer | a bone quill-nib arrow |
-  | move | the arrow with a dotted trail |
-  | attack | crossed blades, crimson |
-  | cast | a lilac star |
-  | invalid | an ash ring with a bar |
-  | busy | a guttering candle |
-
-- **Tile cursor**: four corner brackets, 1 px wide, with 5 px arms; stone `6` on hover, vellum `8`
-  on the selected tile.
-- **Selected unit**: the moon rim (section 4.2) turns vellum on all four sides. No pulsing glow; the
-  path dots march instead.
-- **Path preview**:
-  - a dotted vellum line, one dot every 3 px, from tile anchor to tile anchor;
-  - at each turn boundary, a 7x7 soot roundel with a stone rim and the turn number in Tally;
-  - the part beyond this turn's moves in stone;
-  - unreachable tiles end in an ash ring with a bar;
-  - an attack ends in **crimson brackets** and crossed blades, with the odds in Tally on a soot
-    chip (vellum when odds are 50% or more, scarlet when under 50%);
-  - route-to (build road) paths are drawn in ochre dots.
-- **Range and AOE previews** (spells, bombard): tiles outlined with a dotted lilac ring and a 25%
-  `ARC` grid inside.
-- **Hover tooltip**: a soot panel with a 1 px stone border and 4 art px padding, serif text,
-  following the cursor at an offset of +12, +12 px and clamped to the viewport.
+- **Pointer cursors**, 16x16 at `u`, all with a void outline: pointer, move, attack (crossed
+  blades, crimson), cast (a lilac star), invalid, busy.
+- **Tile cursor**: four corner brackets standing 1 px outside the tile on every side (34x34
+  marks anchored at 1,1), stone on hover, white on the selected tile; the bracket rides with a
+  sliding unit. Tile marks are drawn after the unit sprites but under the city banners, plaques
+  and stack chips, so a bracket never writes over a town's name.
+- **Selected unit**: the white rim (4.2). **Path preview**: a dotted white line, a navy turn
+  roundel with the turn number in Tally at each turn boundary, the part beyond this turn in stone,
+  unreachable ends in an ash ring with a bar, attacks in crimson brackets with the odds on a chip.
+- **Hover tooltip**: a navy panel with a gold border (`ui/frame_tooltip`).
 
 ---
 
-## 12. What the board taught us (and what it did not)
+## 12. What the references taught us (and what they did not)
 
-Taken from the board:
+Taken:
 
-- the near-black teal-tinted ground of UI and night;
-- low-chroma grey-green and ash land, with darker forest masses;
-- the bone-lit shoreline;
-- dotted paths;
-- dark gothic silhouettes with amber windows and a warm ground glow;
-- the black banner with a bone charge;
-- the pale-green ritual circle and the crimson monolith as the only loud things;
-- the double-ruled frames;
-- the crescent-moon end-turn;
-- the eclipse.
+- a bright, saturated sea and sunny land with clearly separate biomes;
+- crisp dark outlines round brightly shaded figures that fill their tile;
+- bold, distinct owner colours on the units and the borders;
+- coloured bases under the figures (here: the team ring);
+- red-roofed towns with cream walls, labelled "1 Rome" on a dark plate;
+- navy panels with gold frames and maroon header ribbons;
+- the units themselves (section 10.2).
 
-Rejected:
+Not taken:
 
-- its specific icons (the faith star, war swords, crown and skull counters);
-- its panel arrangement;
-- its lettering;
-- its painterly texture density: our ground is sparser, so ~20 terrain types stay readable at 1x;
-- its mock-up resolution: everything here is native pixel art at integer scale.
+- the **hex grid** and the **hex bases**: tiles stay square (Civ4's plot grid), the ring replaces
+  the base;
+- the atlases' rendering noise: figures are quantized to the palette, cleaned and reduced to 18
+  colours;
+- the Civ4-only unit types (pikemen, riflemen, ...), the atlases' lettering, and their painted
+  panel textures.
 
 ---
 
@@ -1276,8 +1171,8 @@ many sprites:
 
 ```text
 ; comment lines start with ';'
-= unit/swordsman 24x24 11,21
-.....................0..
+= unit/swordsman 32x32 15,29
+.............00.................
 ...
 ```
 
@@ -1287,13 +1182,12 @@ many sprites:
   - a **palette key** (section 2.1);
   - `.` transparent;
   - owner slots `#` field, `%` shade, `*` charge;
-  - `@` the per-unit accent (religion or sphere colour; it defaults to lilac for adepts and patina
-    for disciples).
+  - `@` the per-unit accent (religion or sphere colour; it defaults to lilac for adepts).
 - Names are paths: `terrain/grass`, `feature/forest_tree_a`, `unit/<UNIT_TYPE lower-case>`,
   `city/cloister_3`, `icon16/food`, `icon8/food`, `font/vigil/A`...
 - Variants are suffixed: `_a`, `_b` for scatter variants; `_f1`, `_f2` for animation frames.
-- Outlines are part of the sprite (`0`). The moon rim, contact shadow, pools, owner pennants and
-  plaques are added by the renderer, not drawn into sprites.
+- Outlines are part of the sprite (`0`). The team ring, contact shadow, selection rim, pools,
+  standards and plaques are added by the renderer, not drawn into sprites.
 - Generated PNG sheets are build products and are not committed. Only small reference contact
   sheets (under 300 KB) may live in `docs/art/`.
 
@@ -1301,18 +1195,18 @@ many sprites:
 
 ## 14. Review checklist for new art
 
-1. Uses only the 40 palette colours; owner and accent slots only where cloth or charges belong.
-2. Readable at 1x as a silhouette alone (fill it with void: can you still tell what it is?).
-3. Unit: 24x24 box, feet at (11, 21), faces right, void outline, tier shown by gear, no colour-only
-   distinctions.
-4. Reserved colours (fire, crimson, pale green, purple) used only for their meaning (section 2.2),
-   within the budget (section 2.3).
-5. Light from the upper left; any warm light has a visible source and a pool, and none of it shows
-   in fog.
-6. Dithering is ordered and purposeful; no noise; no anti-aliasing; integer scaling only.
-7. Terrain marks are sparse; at 2x a screen of the terrain still reads as quiet ground with a few
-   strong shapes.
-8. Nothing copies Civ4, FfH2 or the mood board's specific symbols.
+1. Uses only the 56 palette colours; owner slots only on cloth and banners; per-sprite colour limits
+   (4.3).
+2. Reads at 1x on grass, sand, water and snow: a dark outline all round, light edges outlined
+   outside.
+3. Unit: the 32x32 frame with the feet at (15, 29) (giants 40x40 at 19, 37), facing right; no
+   colour-only distinctions between unit types.
+4. Reserved colours (fire, crimson, pale green, purple) only for their meaning (2.2), within the
+   budget (2.3).
+5. Light from the upper left; shadows lean cool; by day no firelight pools (4.4).
+6. Dithering ordered and purposeful; no noise; no anti-aliasing; integer scaling only.
+7. Terrain is calm: at 2x a screen of land reads as land, with the strong shapes on the actors.
+8. Nothing copies Civ4 or FfH2 art; atlas figures come only from the owner's own sheets.
 
 ---
 
@@ -1329,12 +1223,13 @@ web/art/
   mapping.js       game type -> sprite resolution with category fallbacks
   library.js       loads and merges palette, set list, manifests, sources, types.json
   spritefmt.js     parsers for every text format (shared by the browser and node)
-  palette.txt      the 40 colours, the remap tables (2.4) and the tinctures (7.1)
+  palette.txt      the 56 colours, the remap tables (2.4) and the tinctures (7.1)
   sets.txt         the sprite sets, in load order
   types.json       generated from data/xml: every type with the facts the mapping keys on
   terrain/ units/ cities/ ui/     one directory per set: manifest.txt + *.spr sources
   preview/         contact sheets and the sample scene (open with tools/serve.mjs)
-  tools/           validate, check.sh, screenshot, serve, gen-types, bundle, sprtool, bake-terrain
+  tools/           validate, check.sh, screenshot, serve, gen-types, bundle, sprtool, bake-terrain;
+                   atlas/ (the unit-atlas pipeline and the revamp's texture recipes, section 10.2)
 ```
 
 ### 15.1 Sprite files (`*.spr`)
@@ -1374,7 +1269,7 @@ Section 13's format, extended with metadata lines between the header and the row
   | `terrain/` | 64x64 seamless texture |
   | `hill/`, `peak/`, `feature/` | upright sprites (humps, masses, trees, single features) |
   | `route/` | the dot a road is stamped with |
-  | `unit/` | 24x24 feet 11,21, or 32x32 feet 15,29 (huge) |
+  | `unit/` | 32x32 feet 15,29 (the standard frame), 40x40 feet 19,37 (giants), 24x24 feet 11,21 (equipment) |
   | `city/<style>_<tier>` | base on the bottom row; tiers 1-5 (section 9.1) |
   | `improvement/` | at most 34x34 |
   | `res/` | 7x7 glyph centred at 3,3; `res/_disc` the 11x11 seal |
@@ -1385,9 +1280,9 @@ Section 13's format, extended with metadata lines between the header and the row
 
 - Groups: `name_a`, `name_b`... are variants of `name` (picked per tile by hash); `name_f1`,
   `name_f2`... are animation frames (picked by `art.time`, 400 ms each). A rule targets the group.
-- Names starting with `_` (`unit/_melee`) are generic: category fallbacks, not a game type.
-- Outlines are part of the sprite. Moon rims, contact shadows, pools, standards, HP strips and
-  plaques are added by the renderer.
+- Names starting with `_` (`res/_food`) are generic: category fallbacks, not a game type.
+- Outlines are part of the sprite. Team rings, contact shadows, selection rims, pools, standards,
+  HP strips and plaques are added by the renderer.
 
 ### 15.2 Sets, manifests and the mapping
 
@@ -1396,11 +1291,11 @@ in parallel without touching a shared file (only a new set edits `sets.txt`):
 
 ```text
 set units
-source generic.spr
-map unit race=UNDEAD -> unit/_undead prio=15
-map unit combat=MELEE -> unit/_melee
-map unit combat=MELEE tier=4 -> unit/_melee remap=34,45,56,u3
-map unit * -> unit/_civilian
+source atlas.spr
+map unit race=UNDEAD -> unit/skeleton prio=15
+map unit combat=MELEE -> unit/axeman
+map unit UNIT_POLAR_BEAR -> unit/bear remap=uG,hD,iH,j8,rD
+map unit * -> unit/worker
 ```
 
 A rule is `map <kind> <conditions> -> <sprite|none> [options]`. A condition is a type name
@@ -1469,13 +1364,13 @@ Drawing functions take the canvas position of the tile's top-left corner:
 | `drawFeature(ctx, x, y, plot[, type])` | scattered or single feature sprites, their pools |
 | `drawRiver(ctx, x, y, plot[, {s, e}])` | river ink on the south and east edges (meanders up to 8 px out of the tile) |
 | `drawRoad(ctx, x, y, plot[, dirs8])` | dotted road to connected neighbours (N, NE, E ... NW) |
-| `drawBorder(ctx, x, y, plot \| {n,e,s,w}, ownerStyle)` | stitched ribbons on the owner's side |
+| `drawBorder(ctx, x, y, plot \| {n,e,s,w}, ownerStyle)` | solid border lines on the owner's side (8.1) |
 | `drawResource(ctx, x, y, bonusType)` | the seal at tile 25,25 |
 | `drawImprovement(ctx, x, y, type, plot)` | improvement with its pools (dark windows when not visible) |
 | `drawCity(ctx, x, y, city, ownerStyle)` | style and tier sprite, pool, window light, finial, banner, plaque |
-| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | contact shadow, echoes, rim; the overlay (standard, count chip, health bar, mark, lantern reflections) from `units/stack.js` |
-| `drawFog(ctx, x, y, plot)` | the fog pass: FOG remap with hatching, void for unrevealed, ragged edges |
-| `drawLight(ctx, cx, cy, table, r, {inner})`, `drawVignette(ctx, x, y, w, h)` | index-remap pools and the vignette |
+| `drawUnit(ctx, x, y, unitType, ownerStyle, state)` | team ring (or contact shadow), echoes, selection rim; the overlay (count chip, hero pip, health bar, mark, lantern reflections) from `units/stack.js`; a spent own stack's quiet ring |
+| `drawFog(ctx, x, y, plot)` | the fog pass: REMEMBER remap with hatching, navy for unrevealed, ragged edges |
+| `drawLight(ctx, cx, cy, table, r, {inner})`, `drawVignette(ctx, x, y, w, h)` | index-remap pools (daylight-scaled, 4.4) and the vignette (off by day) |
 | `drawText(ctx, x, y, text, {font, color, shadow, smallCaps})`, `measureText` | Vigil and Tally |
 | `icon(name)`, `iconFor(kind, type)`, `drawIcon` | icons as small cached canvases |
 | `drawSprite(ctx, x, y, name, variant)`, `drawTileCursor` | any sprite by name; the tile cursor |
@@ -1488,7 +1383,8 @@ above every unit. `ownerStyle(civ, {division, tincture, ...})` builds an owner s
 
 Draw order matters because rivers and uprights spill into neighbouring tiles, and fog and pools
 read the canvas back: ground for every tile, then rivers, roads, flat improvements, city pools,
-uprights row by row from north to south, seals, borders, fog, vignette, units, overlays.
+uprights row by row from north to south, seals, borders, fog, vignette (none by day), units
+(sprites, then the tile marks, then the city and stack overlays), the path preview.
 `renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, tx0, ty0, cols, rows })`
 does exactly that, clipped to the view, and reports per-phase times in `timings`. With
 `only: 'terrain'` it draws what a terrain cache holds (everything up to the fog), with
@@ -1547,90 +1443,57 @@ redraw only changed tiles (3.1).
 2. Drafts may be sketched without outlines and with short rows: `node tools/sprtool.mjs outline
    draft.spr` pads rows and adds the void outline to sprites whose header ends in `+outline`;
    `sprtool.mjs stats` counts colours, `sprtool.mjs mirror` flips.
-3. New terrain textures can start from `node tools/bake-terrain.mjs <name>` (the recipes of 5.2);
-   the baked text is then the source and is edited by hand.
+3. New terrain textures can start from `tools/atlas/bake_textures.py` (the revamp's recipes, 5.2) or
+   `node tools/bake-terrain.mjs <name>` (the original night recipes); the baked text is then the source
+   and is edited by hand. New units from an atlas sheet go through `tools/atlas/` (10.2).
 4. Run `tools/check.sh`, then look: `node tools/screenshot.mjs /tmp/art` and read the set's sheet,
    `coverage.png` and `scene.png` at 1x and 2x. Review against section 14.
 
-The toolkit started from seed art (section 16 has the art as it now stands), deliberately small: 8 terrain textures (hell terrains are recoloured twins), hill
-humps, rock and snow peaks, three conifers (also ancient, burnt, new forest and jungle through
-remaps), flames, routes; 15 generic unit silhouettes that every unit falls back to by combat class,
-race, domain and tier; Cloister tiers 1-3, Infernal 2 and Tribal 2 cities; farm, cottage, hamlet,
-mine and category fallbacks for improvements and lairs; resource seals; pennant, banner and six
-sigils; the Vigil and Tally fonts; yield and category icons. Not drawn yet: bespoke units, most
-sigils and city styles, the 18 sphere runes, landmarks, walls, disorder smoke, holy-city glyphs,
-cursors and path previews.
 
 ---
 
 ## 16. Status
 
-The four sets were drawn in parallel (terrain, units, cities, ui), each revised in a second round
-after review, and merged on the branch `art-final`. `tools/check.sh` passes: every module parses,
-the unit tests pass, every sprite and rule validates, `types.json` matches `data/xml`, every game
-type of every kind resolves, and `loadArt` installs the set passes.
+The revamp (October 2026) replaced the night look with this one: the palette (40 colours
+recoloured, 16 added), the terrain textures and hills, the ground and light passes (daylight), the
+borders, the unit figures (cut from the atlases and composed) on their team rings, the stack marks,
+the city kit, every map object (features, peaks, landmarks, improvements, lairs, resources), the
+icons and the UI chrome. `tools/check.sh` passes (every module parses, the unit tests pass, every
+sprite and rule validates, every game type resolves); the client's `tools/web-check.sh` and the
+headless `tools/web-smoke.mjs` pass with it, and so does the Rust suite (the art is embedded at
+build time).
 
 ### 16.1 Coverage
 
-959 sprites (924 groups) in 25 source files: terrain 89, units 187, cities 211 (80 city sprites,
-69 improvements, 62 resource glyphs and the seal), ui 472 (192 font glyphs). How each game type
-resolves (`tools/validate.mjs`, also the table at the top of `preview/sheet.html?set=all`):
+1013 sprites (978 groups) in 19 source files. Units: 325 types, 298 exact (81 atlas figures and
+161 composed ones, some with variant remaps), 20 by their base unit, 7 by a category rule, all of
+them figures in the new look. Terrains 14/14, hills and peaks 10 each (4 deliberately none),
+features 20/20, bonuses 58/58, improvements 79 exact (2 none), civilizations 23/23, city styles 22
+(+1 category), religions 7/7, buildings 90 exact (80 by class icon), promotions 30 exact (231 by
+category), unit combats 10/10, specialists 11/11.
 
-| kind | types | exact | base unit | category | none |
-|---|---|---|---|---|---|
-| terrain | 14 | 14 | | | |
-| hill / peak | 14 / 14 | 10 / 10 | | | 4 / 4 |
-| feature | 20 | 20 | | | |
-| bonus | 58 | 58 | | | |
-| improvement | 81 | 79 | | | 2 |
-| route | 2 | 2 | | | |
-| unit | 325 | 283 | 24 | 18 | |
-| civ (sigil) | 23 | 23 | | | |
-| citystyle | 23 | 22 | | 1 | |
-| religion | 7 | 7 | | | |
-| building | 170 | 90 | | 80 | |
-| promotion | 261 | 30 | | 231 | |
-| unitcombat | 10 | 10 | | | |
-| specialist | 11 | 11 | | | |
+### 16.2 What is new, what is kept
 
-"Exact" means a rule naming the type, a sprite claiming it (`: types`) or the naming convention;
-several exact unit rules point at a shared sprite with a faith accent, a material remap or the
-ghost flag. Every land terrain has its own hill and peak rule; city styles: 16 styles x 5 tiers;
-landmarks: the 17 unique improvements, drawn by the terrain set.
-
-### 16.2 What uses fallbacks
-
-- **Units, 24 by their base unit's sprite** (unique units without a sprite of their own): Eater
-  of Dreams (archmage); Chanter, Devout, Taskmaster (assassin); Sons of Asena (axeman); Myconid,
-  Spiderkin (beastmaster); Circle of Urd (berserker); Dwarven Cannon (cannon); Battlemaster,
-  Dragon Slayer (champion); Decius (commander); Flurry (crossbowman); Luonnotar (druid); Fyrdwell,
-  Nyxkin (horse archer); Skuld (immortal); Illusionist, Wizard (mage); Verdandi (phalanx); Pirate
-  (privateer); Harlequin (ranger); Courtesan, Dwarven Shadow (shadow).
-- **Units, 18 by a category rule** (to the nearest silhouette of their class): Arquebus
-  (crossbowman); Auric, Lucian, Radiant Guard (generic melee); Demagog, Grigori Medic, Lunatic,
-  Mary, Mercenary (champion); Fawn (generic recon); Freak (warrior); Kithra, Mercenary Mounted,
-  Royal Guard (horse archer); Nightwatch (longbowman); Ratha (horseman); Revelers, Satyr (ranger).
-- **Buildings**: no building has an icon of its own; every one shows its class icon
-  (`icon16/bclass_<class>`, 20 icons: a temple per faith, shrine, government, military, defence,
-  economy, provision, health, harbour, learning, culture, arcane, forge, wonder). 90 are mapped by
-  rules naming them, the other 80 by category (world wonders, faith, defence...).
-- **Promotions**: 37 seals (19 kinds of line and the 18 spheres) with the rim colour by family;
-  30 promotions by rules naming them, 231 by category (line, sphere, race, equipment...). Levels
-  show as pips (`UI.drawPromotion`).
-- **City style**: CIVILIZATION_RANDOM falls back to the Cloister.
-- **Deliberately not drawn** (`none`): hills and peaks on water and on the graphics-only
-  TERRAIN_PEAK and TERRAIN_HILL; IMPROVEMENT_LAND_WORKED and IMPROVEMENT_WATER_WORKED.
-- Category rules remain for types added to the XML later (a new unit falls back by combat class,
-  race and domain; a new improvement or landmark to its category sprite).
+- **New in the revamp**: the palette and its remap tables; the 12 terrain textures; the hill
+  mounds and their remaps; the 81 atlas units (`units/atlas.spr`) and the 161 composed ones
+  (`units/composed.spr`, 10.4); the team ring and the corner stack marks; solid borders; daylight
+  fog, navy unrevealed ground, no vignette; the daylight light pass; the city kit's materials (and
+  the regenerated `cities.spr`); the features, peaks, landmarks, improvements and lairs
+  (`compose_map.py`); the resource objects; the icons (`compose_icons.py`); the gold-on-navy chrome
+  (`ui/chrome.spr`, `style.css`); the reference sheets.
+- **Kept as designs** (re-tinted by the palette, not redrawn, on purpose): the two fonts; the
+  heraldic sigils and the gonfalon and city banner shapes; the mana runes (a notation, stamped on
+  the new mana stones, obelisks and seals); the chrome primitives of `ui/marks.spr` (path dots and
+  turn roundels, tile brackets, odds chips, the pointer, move and invalid cursors); the road dots.
 
 ### 16.3 How the client calls the toolkit
 
 `loadArt()` loads the sprites and the mapping, then installs the sets' **passes** (`PASSES` in
 art.js): `terrain/ground.js` (the ground pass: blob terrain classes, a wider warp, Bayer transition
-bands, moonlit clearings, organic fog through REMEMBER, pale paths, river verges, wooded crests,
-moonlit wood rims), `units/stack.js` (the stack standard, count chip, health bar, marks and lantern
+bands, sunlit clearings and cloud shade, organic fog through REMEMBER, pale paths, river verges,
+wooded crests, sunlit wood rims), `units/stack.js` (the count chip, hero pip, health bar, marks, quiet rings and lantern
 reflections) and `cities/citylight.js` (the light pass: three-ring pools for cities and every other
-light, the wall glow, the facade light and the bonfires). Each wraps or replaces some `Art`
+light, scaled by its DAYLIGHT table, 4.4). Each wraps or replaces some `Art`
 methods, so the drawing
 functions of 15.3 and `renderMap` produce the final look without further calls.
 `loadArt({ passes: false })` gives the seed drawing (the set previews use it to install their own
@@ -1652,7 +1515,7 @@ UI.installCSS(art, { u, dpr });                    // chrome: frames, buttons, c
 
 // per zoom: the terrain layer into an offscreen cache (redraw only tiles that change) ...
 renderMap(art, cacheCtx, map, { plots, owners, cities, only: 'terrain' });
-// ... per frame: blit the cache, vignette, then units, city overlays and the cursor
+// ... per frame: blit the cache, the vignette (a no-op by day), then units, city overlays, cursor
 ctx.drawImage(cache, x0, y0);
 art.drawVignette(ctx, x0, y0, viewW, viewH);
 renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 'units' });
@@ -1661,7 +1524,8 @@ renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 
 - `cities`: `{ x, y, owner, size, name, capital, own, turns, disorder }`; `stacks`: one per tile,
   the head unit, `{ x, y, unit, owner, count, state }` with `state` `{ own, moves, selected, hp,
   mark, hero, facing }` (`moves` only for your own units; foreign stacks stay quiet). A stack on a
-  city tile flies its standard at the top-right (`inCity`, set by `renderMap` from `cities`).
+  city tile shows its count chip at the top-right (`inCity`, set by `renderMap` from `cities`); the
+  client draws a garrison's figure only while it is selected or sliding (10.1).
 - Canvases that fog and pools read back need `getContext('2d', { willReadFrequently: true })`.
 - Map overlays from `ui/ui.js`: `UI.drawTileMark`, `drawPath`, `drawOdds`, `drawRange`,
   `drawTileYields`; panels and text: `UI.textSpan` (Vigil, Vigil Book), `UI.iconFor(art, kind, TYPE,
@@ -1671,71 +1535,7 @@ renderMap(art, ctx, map, { plots, owners, cities, stacks, cursor, x0, y0, only: 
 - Working examples: `preview/scene.html` (`?cache=1` the cached path, `?scale=1`, `?passes=0`
   the seed) and `ui/preview.html?ground&citylight` (a mock screen) draw this way.
 
-### 16.4 Where the sets supersede this guide
+### 16.4 Open points
 
-The sets' notes (`*/manifest.txt`, `ui/README.md`) record their choices; the ones that change
-sections above:
-
-- **3.3, 7.4, 10.1: one owner mark.** A stack flies the 7x12 standard `ui/stack_banner` (pole,
-  crossbar, a 5x8 field with the civilization's 5x5 sigil, swallow tails) at the tile's top-left
-  (top-right in a city), quiet (the tincture's shade) except on your own movable or selected stack;
-  the finial pip shows moves (vellum) and heroes (gilt); the count chip hangs under it; the health
-  bar (12x2, void frame) shows only when hurt or selected; the state mark sits at the top-right
-  (top centre in a city). The 6x8 pennant is retired. The city banner `ui/banner` is the same
-  field without the pole.
-- **5.1-5.6: the ground pass** (`terrain/ground.js`) replaces the per-tile warp of 5.1 with
-  class blobs (Gaussian weights of the 3x3 tile centres, sigma 13 px, each tile's weight scaled by
-  a hash of its position, e^(+-0.5)), sampled through a three-octave warp (cells 46, 22 and 7 px;
-  the 46 px octave, amplitude 10, shaped toward its extremes; |w| <= 14 px); organic fog and
-  unrevealed edges; pale road and river verges, unmirrored hills with wooded crests and a moonlit
-  rim on woods (`terrain/manifest.txt` lists the texture choices: flecked mottling, ash desert,
-  wind-streaked snow, umber burning sands). Second round (the light and ground review: a patchwork
-  of flat mid-value fields with visible tile squares where contrasting terrains meet):
-  - **transition bands**: where two land textures meet, the winner's share rises from 50% on the
-    edge to 100% 4 px inside it, thresholded by the 4x4 Bayer matrix in map space (25/50/75%
-    ordered bands, not a line); seen and remembered meet in the same 4 px band, the unrevealed
-    edge in a 3 px band. Shorelines keep their ink;
-  - **moonlit clearings and cloud shade**: a low-frequency field (value noise, cells 88 and 30 px)
-    lifts the land one step (MOON: moss to olive, dun to ash, ash to stone) by a Bayer share up to
-    60% where it is high, adds a cold grain at its brightest (GRAIN: up to 30% to stone `6`, tufts
-    to lichen), and lowers it one step (SHADE) by up to 25% where it is low. Water, ink and lights
-    are left alone. This is the board's lighter open ground between dark woods;
-  - **pale paths** (5.6), **REMEMBER** (8.2), and snow as cold grey streaks (5.2).
-- **9.1, 4.4: the light pass** as written there (`cities/citylight.js`): three-ring pools for
-  cities and every other light, the wall glow and the facade light; its tables are candidates for
-  new columns of 2.4. Tiers I and II have outskirts (9.1) and windows are mostly 1x2.
-- **2.3: the budget** was revised in the second round (60% dark, 12% above L* 40, 3% reserved,
-  0.6% cores), with the measurements that led to it.
-- **10.5: lanterns.** Ships and settlers carry a lantern (glow over amber, FIRE radius 6); on water
-  it casts the broken reflection of 5.4 under the hull.
-- **11.5: icons.** Buildings have class icons; heroic and divine promotion seals have a double
-  gilt rim; the Armageddon eclipse under 50 is soot with an iron corona.
-- **11.6: type.** Vigil Book (lower case, 5 px x-height) is the body face for short UI text; the
-  system serif is for long prose only.
-- **3.3: city height.** City sprites stay within the validator's 34x34 (tier V rises 6 px into the
-  tile to the north, not 12).
-
-### 16.5 Reference shots
-
-`docs/art/toolkit-scene.png` (the sample scene at 2x) and `docs/art/toolkit-units.png` (the top of
-the units sheet) show the assembled art; each set keeps its own small reference sheets
-(`terrain/ref/`, `units/reference*.png`, `cities/ref-styles.png`, `ui/ref/`). Regenerate with
-`node tools/screenshot.mjs /tmp/art` and read `scene.png`, `scene-1x.png`, the four set sheets and
-`coverage.png`.
-
-The second art pass retook `terrain/ref/scene-2x.png`, `terrain/ref/relief-3x.png`,
-`cities/ref-styles.png` and `ui/ref/screen.png`; `docs/art/toolkit-scene.png` predates it.
-
-### 16.6 Open points after the second pass
-
-Changes the second pass needs outside the sets (the toolkit's and the client's files):
-
-- **palette.txt and 2.4**: the light pass's ring tables and the ground pass's REMEMBER, MOON, GRAIN
-  and SHADE live in their modules; moving them into palette.txt as columns would let the client
-  and the minimap use them (`preview/scene.js` passes fogged minimap tiles through `FOG`, so its
-  remembered snow is still steel-blue).
-- **The plaque** (`art.js` `_plaque`, tile rows 29-35) covers the front of a city's pool, the
-  brightest ground; drawing it 2 or 3 rows lower, or narrower, would show the doorway light.
-- **The validator's city cap** (34x34, `tools/validate.mjs`): tiers III-V are at it; with 40x44
-  (3.1's 12 px of overhang) they could grow as tiers I and II did.
-- **`docs/art/toolkit-scene.png`** should be retaken (`node tools/screenshot.mjs`, `scene.png`).
+None. The last one carried over from the first guide, the pass tables living in their modules, is
+closed: they are `palette.txt` remap columns (2.4).

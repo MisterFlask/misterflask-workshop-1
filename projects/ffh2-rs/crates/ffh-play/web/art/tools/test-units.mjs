@@ -3,15 +3,16 @@
 // depend on the real art, so they stay valid as sprites are added). Run by tools/check.sh.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePalette, parseSprites, parseManifest, splitName, TRANSPARENT, SLOT_FIELD, SLOT_ACCENT } from '../spritefmt.js';
+import { parsePalette, parseSprites, parseManifest, splitName, TRANSPARENT, SLOT_FIELD, SLOT_ACCENT, NUM_COLORS } from '../spritefmt.js';
 import { Mapper, conventionName } from '../mapping.js';
 import { splitBundle } from '../library.js';
 
+const KEYS = '012345678dnNgfFktTqmoOuQxyYvpPeElLcCRsSWabhrijwzABDGHIJK';
 const PALETTE = `palette
-${Array.from({ length: 40 }, (_, i) => `${i} ${'012345678dnNgfFktTqmoOuQxyYvpPeElLcCRsSW'[i]} c${i} #${i.toString(16).padStart(6, '0')} f`).join('\n')}
+${Array.from({ length: NUM_COLORS }, (_, i) => `${i} ${KEYS[i]} c${i} #${i.toString(16).padStart(6, '0')} f`).join('\n')}
 remap
 key FOG
-${[...'012345678dnNgfFktTqmoOuQxyYvpPeElLcCRsSW'].map((k) => `${k} 0`).join('\n')}
+${[...KEYS].map((k) => `${k} 0`).join('\n')}
 tinctures
 Argent 7 6 1 7 6
 `;
@@ -19,7 +20,8 @@ Argent 7 6 1 7 6
 test('palette parses', () => {
   const p = parsePalette(PALETTE);
   assert.deepEqual(p.errors, []);
-  assert.equal(p.colors.length, 40);
+  assert.equal(KEYS.length, NUM_COLORS);
+  assert.equal(p.colors.length, NUM_COLORS);
   assert.equal(p.keyIndex.get('W'), 39);
   assert.equal(p.remaps.FOG[39], 0);
   assert.equal(p.tinctures.Argent.field, p.keyIndex.get('7'));

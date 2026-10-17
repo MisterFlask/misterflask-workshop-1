@@ -29,9 +29,10 @@ game…" lists the saves). Each game gets a directory in `./saves` (`--saves DIR
 `--load saves/game-3/auto/T0040.ffhsave` resumes one). Use a current Chrome, Firefox or Safari;
 nothing is fetched from the internet.
 
-**The look.** The client draws with the game's own pixel art (docs/ART.md, "Monastic Pixel
-Noir", embedded in the binary like the rest of the page): the map is a night-time manuscript and
-the interface a scriptorium at night: soot panels with double rules and gilt nails, the Vigil
+**The look.** The client draws with the game's own pixel art (docs/ART.md, "cheerful
+readability", embedded in the binary like the rest of the page): a bright daylight map in the
+spirit of the old Shining Force games, figures standing on team-coloured rings, and an interface of
+navy panels with gold rules, gilt nails and maroon title ribbons, the Vigil
 bitmap capitals for titles and numbers, the Vigil Book face for buttons and short labels (long
 texts, such as events and help, stay in the system serif), the game's yield, commerce, mana and
 Armageddon icons (and in the screens those of promotions, unit classes, buildings, specialists,
@@ -87,6 +88,27 @@ renderer** of P5 (colours, glyphs and labels: lettered dots for resources, boxes
 improvements, units and cities) is kept for debugging: open the page as
 `http://127.0.0.1:8642/?renderer=flat`, or untick Tools → Options → "Draw the map with the pixel
 art" (this browser remembers it).
+
+**Motion.** The interface moves quietly, in keeping with the manuscript look (docs/ART.md 4.5):
+
+- **The camera glides.** When the view jumps to a plot it is not already near — centring on the
+  selection (`C`), the next waiting group (`W`, `Enter`), a city (`Home` / `End`, `F10`, the cities
+  list), a message's "Show on the map" — it glides there across the page the short way round a
+  wrapping map, rather than cutting. Dragging, zooming and the minimap stay immediate (you are
+  moving the view yourself), and a new game opens on its start with no glide.
+- **Units slide.** A unit that moves glides from its old tile to the new one (about 8 tiles a
+  second), for your own moves within your turn; a long or multi-tile hop, and every unit on turn
+  rollover, jumps.
+- **Combat flashes.** When a fight resolves, the struck tile flashes a brief muted crimson — a
+  little brighter and rising as a unit is lost.
+- **The numbers ease.** Gold, score and the research bar count to their new value rather than
+  snapping.
+- **The turn breathes.** While the other players move, the turn crescent and its dot breathe
+  slowly; when control returns to you the crescent warms for a moment.
+- **Dialogs and toasts ease in.**
+
+All of this is off under the system's "reduce motion" setting (`prefers-reduced-motion`): the view
+and units jump, no flash or breathe plays, the numbers snap, and the dialogs appear at once.
 
 **Mouse and keys** (also under `?`). The keys are Civ4's: the orders' keys come from the game's
 XML (each button shows its key), and the global keys are Civ4's controls

@@ -1,0 +1,182 @@
+; mana sphere runes (docs/ART.md 11.5: colour = family, shape = sphere), 7x7, kept from the
+; first resource set as symbols; compose_map.py stamps them on the new mana stones and obelisks.
+
+= res/mana_air 7x7 3,3
+: note three wind strokes
+.FFFF..
+.....F.
+FFFFF..
+......F
+.FFF.F.
+....F..
+.......
+
+= res/mana_body 7x7 3,3
+: note a hand
+.Y.Y.Y.
+.Y.Y.Y.
+.YYYYY.
+YYYYYY.
+.YYYYY.
+..YYY..
+.......
+
+= res/mana_chaos 7x7 3,3
+: note an eight-pointed burst
+R..R..R
+.R.R.R.
+..RRR..
+RRRLRRR
+..RRR..
+.R.R.R.
+R..R..R
+
+= res/mana_death 7x7 3,3
+: note a skull
+.77777.
+7777777
+7077707
+7777777
+.77077.
+.7.7.7.
+.......
+
+= res/mana_earth 7x7 3,3
+: note a mountain
+.......
+..y....
+.yyy...
+.yyyyy.
+yyyyyyy
+.......
+yyyyyyy
+
+= res/mana_enchantment 7x7 3,3
+: note a star in a circle
+..PPP..
+.P.P.P.
+P.PPP.P
+PPP8PPP
+P.PPP.P
+.PP.PP.
+..PPP..
+
+= res/mana_entropy 7x7 3,3
+: note a spiral turning inward
+pPPPPPp
+......P
+.pPPp.P
+.P..P.P
+.P.PP.P
+.P....P
+.pPPPPp
+
+= res/mana_fire 7x7 3,3
+: note a flame
+...l...
+...ll..
+..lll..
+.llLll.
+.lllll.
+..lll..
+.......
+
+= res/mana_law 7x7 3,3
+: note scales
+...8...
+8888888
+8..8..8
+8..8..8
+77.8.77
+...8...
+..888..
+
+= res/mana_life 7x7 3,3
+: note an ankh-like knot
+..SSS..
+.S...S.
+.S...S.
+..SWS..
+SSSSSSS
+...S...
+...S...
+
+= res/mana_metamagic 7x7 3,3
+: note two interlocked rings
+.......
+.PP.PP.
+P..8..P
+P.8.8.P
+P..8..P
+.PP.PP.
+.......
+
+= res/mana_mind 7x7 3,3
+: note an eye
+.......
+..TTT..
+.TT.TT.
+TT.8.TT
+.TT.TT.
+..TTT..
+.......
+
+= res/mana_nature 7x7 3,3
+: note a leaf
+....OO.
+...OOO.
+..OOoO.
+.OOoOO.
+.OoOO..
+.oOO...
+o......
+
+= res/mana_shadow 7x7 3,3
+: note a hood with a void face
+..444..
+.44444.
+4400044
+4400044
+440004.
+.4...4.
+.......
+
+= res/mana_spirit 7x7 3,3
+: note a rising wisp
+....F..
+...g.g.
+..g..g.
+..g.g..
+...g...
+..ggg..
+.g...g.
+
+= res/mana_sun 7x7 3,3
+: note a rayed disc
+...l...
+.l.l.l.
+..lll..
+lllLlll
+..lll..
+.l.l.l.
+...l...
+
+= res/mana_water 7x7 3,3
+: note waves
+.......
+.g...g.
+gNg.gNg
+N.NgN.N
+.......
+.g...g.
+gNg.gNg
+
+= res/mana_ice 7x7 3,3
+: note a six-rayed crystal
+...F...
+.f.f.f.
+..fff..
+FffFffF
+..fff..
+.f.f.f.
+...F...

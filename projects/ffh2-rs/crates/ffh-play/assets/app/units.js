@@ -34,6 +34,11 @@ let mode = null;
 /** After a command on the selection: the plot the selection was on (C++ `getOriginalPlot`),
  *  to move on from once the group no longer waits for orders (`updateSelection`); else null. */
 let advance = null;
+/** An attack whose outcome is inferred from the view diff (the server sends no combat result):
+ *  the target tile, the attacker's plot, and the defenders'/attackers' HP before the attack,
+ *  snapshotted when the command is applied (S.units is still pre-combat then) and consumed in
+ *  `viewChanged` to flash the struck tile. Null when the last command was not an attack. */
+let pendingCombat = null;
 /** Shift-right-click waypoints, held while Shift is down and sent when it is released
  *  (`flushWaypoints`): `{units, points: [[x, y]]}` or null. The exe sends each one at once but
  *  no AutoMoves while Shift is down (CvGame::updateTestEndTurn `if (!gDLL->shiftKey())`), and
@@ -59,8 +64,49 @@ export function initUnits(view, panelEl) {
   mapView = view;
   panel = panelEl;
   on("applied", (c) => {
-    if (c.units && S.sel && c.units.some((u) => S.sel.units.includes(u))) advance = { x: S.sel.x, y: S.sel.y };
+    if (c?.units && S.sel && c.units.some((u) => S.sel.units.includes(u))) advance = { x: S.sel.x, y: S.sel.y };
+    // Combat carries no result, so snapshot an attack now (S.units is still pre-combat) and infer
+    // the outcome from the diff in viewChanged. An attack is a move onto a tile with a foreign
+    // unit (the same gate the combat-odds preview uses).
+    pendingCombat = null;
+    if (c?.c === "move" && typeof c.x === "number" && typeof c.y === "number") {
+      const mep = me()?.player;
+      const defenders = unitsAt(c.x, c.y).filter((u) => u.owner !== mep);
+      if (defenders.length) {
+        pendingCombat = {
+          tx: c.x,
+          ty: c.y,
+          ax: S.sel?.x,
+          ay: S.sel?.y,
+          defenders: defenders.map((u) => ({ id: u.id, hp: u.hp })),
+          attackers: (c.units ?? []).map((id) => S.units.get(id)).filter(Boolean).map((u) => ({ id: u.id, hp: u.hp })),
+        };
+      }
+    }
   });
+}
+
+/** Flashes the struck tile when a snapshotted attack (`pendingCombat`) resolved: a defender lost
+ *  (death) or was hurt (hit), else the attacker if it took the loss. Best-effort; a stale or
+ *  unmatched snapshot just clears. */
+function flashCombat() {
+  const pc = pendingCombat;
+  pendingCombat = null;
+  if (!pc || !mapView) return;
+  try {
+    const gone = (id) => !S.units.has(id);
+    const hpNow = (id) => S.units.get(id)?.hp;
+    const defDied = pc.defenders.some((d) => gone(d.id));
+    const defHit = !defDied && pc.defenders.some((d) => hpNow(d.id) < d.hp);
+    const atkDied = pc.attackers.some((a) => gone(a.id));
+    const atkHit = !atkDied && pc.attackers.some((a) => hpNow(a.id) < a.hp);
+    if (defDied) mapView.flashTile(pc.tx, pc.ty, "death");
+    else if (defHit) mapView.flashTile(pc.tx, pc.ty, "hit");
+    else if (atkDied && pc.ax != null) mapView.flashTile(pc.ax, pc.ay, "death");
+    else if (atkHit && pc.ax != null) mapView.flashTile(pc.ax, pc.ay, "hit");
+  } catch {
+    /* a flash is never worth a thrown handler */
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -180,6 +226,7 @@ function currentGroup() {
 /** Called when a new view arrived: keeps the selection on the units that still exist (they may
  *  have moved), or moves on to the next ready group after a command finished with it. */
 export function viewChanged() {
+  if (pendingCombat) flashCombat();
   if (S.sel) {
     const alive = S.sel.units.map((id) => S.units.get(id)).filter((u) => u && u.owner === me()?.player);
     if (alive.length === 0) {
