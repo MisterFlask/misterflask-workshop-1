@@ -43,6 +43,10 @@ const FEATURE_SPRITE = {
 
 const FEATURE_FILES = ["forest"];
 
+/** Relief sprites (under app/iso/relief), drawn as tall overlays for a plot's relief: a peak plot
+ *  gets the mountain. */
+const RELIEF_FILES = ["peak"];
+
 /** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token. */
 function unitSpriteKey(type) {
   const t = type ?? "";
@@ -73,6 +77,7 @@ export class IsoMap {
     };
     for (const name of TERRAIN_FILES) load(`t_${name}`, `./iso/terrain/${name}.png`);
     for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
+    for (const name of RELIEF_FILES) load(`r_${name}`, `./iso/relief/${name}.png`);
     for (const name of ["knight", "lich", "archer", "spider"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
@@ -183,28 +188,18 @@ export class IsoMap {
     if (vis === 0) return; // unrevealed: the dark background shows
     const TW = v.cam.ts;
     const TH = TW / 2;
-    const PLOT = this.plotTypes();
-    const pt = map.plot_type[c.k];
     const terrain = tname("TerrainType", map.terrain[c.k]);
     const tileKey = TERRAIN_TILE[terrain];
-    const img = pt === PLOT.peak ? null : tileKey && this.imgs[`t_${tileKey}`];
+    const img = tileKey && this.imgs[`t_${tileKey}`];
     if (img) {
       // A 1px bleed closes the thin seams between adjacent diamonds (a resized tile's
-      // anti-aliased edge does not quite cover otherwise).
+      // anti-aliased edge does not quite cover otherwise). A peak draws its terrain base here
+      // and the mountain relief on top in drawFeatures.
       g.drawImage(img, Math.round(c.sx - TW / 2) - 1, Math.round(c.sy - TH / 2) - 1, TW + 2, TH + 2);
     } else {
       this.diamond(g, c.sx, c.sy);
-      g.fillStyle = pt === PLOT.peak ? "#6c6863" : T.terrainColor(terrain);
+      g.fillStyle = T.terrainColor(terrain);
       g.fill();
-      if (pt === PLOT.peak) {
-        g.fillStyle = "#cfc9c0";
-        g.beginPath();
-        g.moveTo(c.sx, c.sy - TH * 0.5);
-        g.lineTo(c.sx + TW * 0.22, c.sy + TH * 0.1);
-        g.lineTo(c.sx - TW * 0.22, c.sy + TH * 0.1);
-        g.closePath();
-        g.fill();
-      }
     }
     // A faint tile outline keeps the grid legible without reading as a hard lattice.
     this.diamond(g, c.sx, c.sy);
@@ -218,24 +213,36 @@ export class IsoMap {
     }
   }
 
-  /** Feature overlays (forests, ...) drawn on top of the terrain tiles. Anchored so the clump's
-   *  base sits just below the tile centre and it rises upward, like a shorter unit sprite. */
+  /** Relief and feature overlays drawn on top of the terrain tiles. A peak plot gets the mountain
+   *  sprite; otherwise a mapped feature (forest, ...) is drawn. Anchored so the sprite's base sits
+   *  just below the tile centre and it rises upward, like a unit sprite; iterated in the same
+   *  back-to-front cell order so a nearer overlay occludes a farther one. */
   drawFeatures(g, cells) {
     const v = this.view;
     const map = v.map;
     const TW = v.cam.ts;
     const TH = TW / 2;
+    const PLOT = this.plotTypes();
     for (const c of cells) {
       const vis = map.vis[c.k];
       if (vis === 0) continue; // unrevealed
-      const feat = tname("FeatureType", map.feature[c.k]);
-      const key = feat && FEATURE_SPRITE[feat];
-      const img = key && this.imgs[`f_${key}`];
+      let img = null;
+      let scale = 0.92;
+      let lift = 0.18;
+      if (map.plot_type[c.k] === PLOT.peak) {
+        img = this.imgs.r_peak;
+        scale = 1.08; // mountains overhang the tile and rise highest
+        lift = 0.12;
+      } else {
+        const feat = tname("FeatureType", map.feature[c.k]);
+        const key = feat && FEATURE_SPRITE[feat];
+        img = key ? this.imgs[`f_${key}`] : null;
+      }
       if (!img) continue;
-      const fw = TW * 0.92;
+      const fw = TW * scale;
       const fh = fw * (img.height / img.width);
       const bx = Math.round(c.sx - fw / 2);
-      const by = Math.round(c.sy + TH * 0.18 - fh);
+      const by = Math.round(c.sy + TH * lift - fh);
       if (vis === 1) g.globalAlpha = 0.5; // remembered-but-fogged: muted
       g.drawImage(img, bx, by, Math.round(fw), Math.round(fh));
       g.globalAlpha = 1;

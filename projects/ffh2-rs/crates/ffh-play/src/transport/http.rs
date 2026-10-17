@@ -95,6 +95,7 @@ pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[
     ("app/iso/terrain/burning.png", PNG, include_bytes!("../../assets/app/iso/terrain/burning.png")),
     ("app/iso/terrain/perdition.png", PNG, include_bytes!("../../assets/app/iso/terrain/perdition.png")),
     ("app/iso/features/forest.png", PNG, include_bytes!("../../assets/app/iso/features/forest.png")),
+    ("app/iso/relief/peak.png", PNG, include_bytes!("../../assets/app/iso/relief/peak.png")),
     ("app/iso/units/knight.png", PNG, include_bytes!("../../assets/app/iso/units/knight.png")),
     ("app/iso/units/lich.png", PNG, include_bytes!("../../assets/app/iso/units/lich.png")),
     ("app/iso/units/archer.png", PNG, include_bytes!("../../assets/app/iso/units/archer.png")),
