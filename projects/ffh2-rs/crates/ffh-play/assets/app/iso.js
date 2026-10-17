@@ -42,12 +42,22 @@ const FEATURE_SPRITE = {
   FEATURE_JUNGLE: "jungle",
   FEATURE_FOREST_ANCIENT: "ancient",
   FEATURE_FOREST_BURNT: "burnt",
+  FEATURE_OASIS: "oasis",
+  FEATURE_ICE: "ice",
+  FEATURE_SCRUB: "scrub",
+  FEATURE_FLOOD_PLAINS: "flood",
+  FEATURE_VOLCANO: "volcano",
+  FEATURE_FLAMES: "flames",
 };
 
-/** Per-sprite on-screen width as a fraction of the tile; the ancient grove reads bigger. */
-const FEATURE_SCALE = { forest: 0.92, jungle: 0.94, ancient: 1.04, burnt: 0.9 };
+/** Per-sprite on-screen width as a fraction of the tile; the ancient grove and volcano read big,
+ *  the low ground features (scrub, flood, flames) smaller. */
+const FEATURE_SCALE = {
+  forest: 0.92, jungle: 0.94, ancient: 1.04, burnt: 0.9,
+  oasis: 0.95, ice: 0.95, scrub: 0.8, flood: 0.82, volcano: 1.05, flames: 0.78,
+};
 
-const FEATURE_FILES = ["forest", "jungle", "ancient", "burnt"];
+const FEATURE_FILES = ["forest", "jungle", "ancient", "burnt", "oasis", "ice", "scrub", "flood", "volcano", "flames"];
 
 /** Relief sprites (under app/iso/relief), drawn as tall overlays for a plot's relief: a peak plot
  *  gets the mountain. */
