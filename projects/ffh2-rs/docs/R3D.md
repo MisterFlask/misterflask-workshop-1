@@ -191,7 +191,21 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
   resource markers 0.10-0.20, a city within ~0.48 of its plot centre. Foundations, roots and trunk
   flares reach below y = 0 so nothing floats on sloping ground.
 
-(The recipe modules, what they model and their budgets: §6.1 below, filled in from the modules.)
+### 6.1 The recipe modules
+
+| module | what it models | entries it fills |
+|---|---|---|
+| `basic.js` | the fallbacks: a tree, a pine, a figure, a house, a rock, a bridge | — |
+| `vegetation.js` | oak, birch, pine (and snowy), jungle, palm, ancient (mallorn-like giants with lantern fruit), willow, dead and blighted trees, saplings, bushes, reeds, dry shrubs and cacti, ferns, mushrooms (and glowing), grass tufts | `forest` (a wooded plot's species mix by feature, ground and relief, with undergrowth), `flora` |
+| `units.js` | humanoid figures assembled from a race table (human, elf, dwarf, orc, goblin, lizard, undead, demon; `-dark` garb) with body types, headgear, hair, capes, wings, 18 weapons and shields, posed by archetype (warrior, soldier, spearman, archer, mage, priest, worker, hero, scout, settler, cavalry on horse, wolf, boar or nightmare); creatures (wolf, bear, spider, dragon, demon, golem, elemental, skeleton, serpent, angel, bird and fifteen beasts); galleys, ships, catapults | `unit` (every unit type of the game: ~110 name rules, then race by name or civilization, then a fallback by combat class, domain and tier) |
+| `architecture.js` | seven architectural families mapped from the civilizations (human, elven, dwarven, infernal, tribal, desert, coastal, with arcane, dark, gothic and northern variants): houses, halls, towers, keeps, walls, gates, wall towers, wells, stalls, banners | `family`, `city` (a layout from size, capital, walls and family: a ring street, a square before the landmark, walls), `settlement` (cottage to town, forts, castles, citadels, towers, pirate ports, goblin forts) |
+| `props.js` | rocks by ground (boulders, strata outcrops, crags, obsidian, sandstone), terrain features (oasis, volcano, flames, ice floes, flood silt, scrub, souls, fallout), every improvement (farms, pastures with livestock, camps, mines, quarries, mills, vineyards, boats, lairs and ruins, mana nodes per school), distinct landmarks (Yggdrasil, the Maelstrom, the Dragon Bones, the Pool of Tears, standing stones, ...) and a marker for every resource | `rocks`, `feature`, `improvement`, `bonus` |
+| `fx.js` | particle emitters: hell embers, fire and volcano sparks and ash, soul wisps, ancient-forest motes, city sparks by family | `emitters` |
+
+Budgets (triangles, full detail): trees ≤ ~700 (great trees ~2100), units ≤ ~2000, houses ≤ ~250,
+keeps ≤ ~1800, a walled size-12 capital ~3–11k, rocks ≤ 200, improvements ~600, resource markers
+≤ ~340, landmarks ≤ ~2500. A recipe also gets the generic simplified copy (`buildAssetLOD`) for
+distance and shadows whenever simplifying saves at least a third of its triangles.
 
 ### 6.2 Extending it
 
