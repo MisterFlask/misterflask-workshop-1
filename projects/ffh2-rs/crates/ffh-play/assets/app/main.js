@@ -158,6 +158,10 @@ function clearGame() {
   units.renderPanel();
 }
 
+/** The dialogs that belong to one game (closed when another game arrives); the load, options,
+ *  tools and crash dialogs stay. */
+const GAME_DIALOGS = ["city", "decision", "election", "event", "research", "vote", "promotions", "spells", "trade", "diplomacy", "cities", "civics", "finance", "religion", "techtree", "inspect", "gate", "over", "stuck", "takeover", "save"];
+
 /** Fetches the view (and the map when its revision changed) when the status says it changed. */
 async function refreshView(st) {
   const gk = st.game?.journal ?? st.game?.dir ?? "memory";
@@ -177,6 +181,12 @@ async function refreshView(st) {
     // were the last game's.
     clearDismissed();
     units.clearWaypoints();
+    // The last game's dialogs are about its cities, units and questions, which this game does
+    // not have: close them. A deferred popup still open (the city just founded asking what to
+    // build, when a game is loaded over it) asked the server about a city that is gone ("no
+    // such object") and, open, held back the new game's own popups. The popup loop then
+    // carries on with this game's queue.
+    for (const tag of GAME_DIALOGS) closeTag(tag);
   }
   setView(view);
   if (newGame || !S.map || st.map_rev !== S.map.map_rev) {
