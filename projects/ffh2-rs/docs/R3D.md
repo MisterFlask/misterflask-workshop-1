@@ -252,9 +252,12 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
 ## 10. The lab, tests and tools
 
 * **Lab** (`crates/ffh-play/r3d-lab`, `tools/r3d-lab.mjs`): the real renderer on synthetic scenes
-  (the vertical-slice `showcase`, recipe grids, overlays) without a game server. 
-  `node tools/r3d-lab.mjs --out a.png --query "scene=showcase&ts=96"`; `--serve` to open it in a
-  browser.
+  without a game server: the vertical-slice `showcase`, recipe grids
+  (`grid=tree.oak,tree.pine&variants=6`, `&params=a,b` a param per row, `&float=1` on water),
+  settlements side by side (`scene=cities&civs=CIVILIZATION_BANNOR,CIVILIZATION_KHAZAD&sizes=2,6,12&imps=IMPROVEMENT_TOWN`),
+  overlays (`&sel=x,y&path=...`), any pipeline override (`&r3d={...}`).
+  `node tools/r3d-lab.mjs --out a.png --query "scene=showcase&ts=96"`; `--shots FILE` for many;
+  `--serve` to open it in a browser; `--stability` for the panning test (§11).
 * **Browser smoke test** (`tools/web-smoke.mjs`, run by `tools/web-check.sh --browser`): a
   `?renderer=3d` step checks the frame is drawn and not blank, that picking through the relief finds
   every in-view plot under its own screen point, click-select, hover, the zoom steps, pan, the
