@@ -3,7 +3,7 @@
 // badges (count, moves, health), the Yields layer's numbers and the combat flashes. Each is
 // anchored to a world point and projected with the frame's camera, so it tracks the 3D scene.
 
-import { S, me, dname } from "../state.js";
+import { S, me, dname, tname } from "../state.js";
 import * as T from "../tiles.js";
 
 const FONT = "system-ui, 'DejaVu Sans', 'Segoe UI', sans-serif";
@@ -135,6 +135,48 @@ export function drawHud(r3d, cam) {
       g.stroke();
     }
     g.globalAlpha = 1;
+  }
+
+  // Resource chips: a small HUD marker on each revealed resource, so resources read where the tiny
+  // 3D props disappear among the rocks and shrubs (F12). Fades out above ~160 px, where the prop
+  // carries it; dimmed on remembered (fogged) plots, as the city plates are. Fog of war is intact:
+  // the server sends -1 for unrevealed plots and the remembered bonus for fogged ones.
+  if (ts >= 36 && v.map.bonus) {
+    const map = v.map;
+    const rr = r3d.visibleRect(cam);
+    const chipA = Math.max(0, Math.min(1, (160 - ts) / 40));
+    if (chipA > 0) {
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      for (let y = Math.max(0, Math.floor(rr.y0)); y <= Math.min(map.h - 1, Math.ceil(rr.y1)); y++) {
+        for (let xx = Math.floor(rr.x0); xx <= Math.ceil(rr.x1); xx++) {
+          const x = T.wrapCoord(xx, map.w, map.wrap_x);
+          if (x === null) continue;
+          const i = y * map.w + x;
+          const b = map.bonus[i];
+          if (b == null || b < 0) continue;
+          if (map.vis && map.vis[i] === 0) continue;
+          const fogged = map.vis && map.vis[i] !== 2;
+          // At the resource prop's spot (dress.js BONUS_SPOT = [-0.26, 0.2]).
+          const p = r3d.project(cam, [xx + 0.5 - 0.26, r3d.world.plotHeight(x, y) + 0.18, -(y + 0.5 - 0.2)]);
+          if (!inView(p)) continue;
+          const mana = (tname("BonusType", b) ?? "").startsWith("BONUS_MANA");
+          const rad = Math.max(9, ts * 0.15);
+          g.globalAlpha = (fogged ? 0.55 : 1) * chipA;
+          g.beginPath();
+          g.arc(p.x, p.y, rad, 0, Math.PI * 2);
+          g.fillStyle = mana ? "#8e5cd6" : "#f0e2b6";
+          g.fill();
+          g.lineWidth = 1.5;
+          g.strokeStyle = "rgba(20,14,8,0.85)";
+          g.stroke();
+          g.fillStyle = mana ? "#fff" : "#3a2a10";
+          g.font = `700 ${Math.round(rad)}px ${FONT}`;
+          g.fillText(T.abbrev(dname("BonusType", b)), p.x, p.y + 0.5);
+          g.globalAlpha = 1;
+        }
+      }
+    }
   }
 
   // Stack badges: over the figure's head.
