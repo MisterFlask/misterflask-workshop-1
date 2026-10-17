@@ -299,14 +299,16 @@ export class Scene {
       this.ringWorld = world;
     }
     const v = [];
-    const ground = (mx, my) => world.heightAt(mx, my);
+    // Draped on the surface the player sees: on a sea plot heightAt is the sea floor, so clamp to
+    // the water level so rings and the path ribbon sit on the water, not under it (F7).
+    const ground = (mx, my) => Math.max(SEA, world.heightAt(mx, my));
     const push = (mx, my, lift, c, a, H = ground) => v.push(mx, H(mx, my) + lift, -my, c[0], c[1], c[2], a);
     // A ring is draped on a 5 x 5 patch of the ground's height under it (bilinear), not on a
     // height lookup per vertex: hundreds of stacks re-ring on every move.
     const patch = (cx, cy, R) => {
       const N = 4;
       const hs = new Float64Array((N + 1) * (N + 1));
-      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) hs[j * (N + 1) + i] = world.heightAt(cx - R + (2 * R * i) / N, cy - R + (2 * R * j) / N);
+      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) hs[j * (N + 1) + i] = Math.max(SEA, world.heightAt(cx - R + (2 * R * i) / N, cy - R + (2 * R * j) / N));
       return (mx, my) => {
         const u = Math.min(N - 1e-6, Math.max(0, ((mx - cx + R) / (2 * R)) * N));
         const t = Math.min(N - 1e-6, Math.max(0, ((my - cy + R) / (2 * R)) * N));

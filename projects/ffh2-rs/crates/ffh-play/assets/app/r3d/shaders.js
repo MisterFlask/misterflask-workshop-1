@@ -268,6 +268,24 @@ void main() {
   gl_Position = uViewProj * vec4(w, 1.0);
 }`;
 
+// The ground overlays (borders, grid, selection/hover/target frames) draw on the terrain chunk
+// meshes; under water those meshes are the sea floor, so the marks sank below the water and only
+// the faded ghost pass showed them, shifted down the screen from the ships and from picking (F7).
+// This VS lifts a submerged vertex to the water surface (SEA = 0); land vertices are unchanged, and
+// the overlay pass's polygonOffset keeps them in front of the terrain on land.
+export const OVERLAY_VS = `
+in vec3 aPos;
+in vec3 aNormal;
+out vec3 vWorld;
+out vec3 vNormal;
+void main() {
+  vec3 w = aPos + vec3(uCopyX, 0.0, 0.0);
+  w.y = max(w.y, 0.004);
+  vWorld = w;
+  vNormal = aNormal;
+  gl_Position = uViewProj * vec4(w, 1.0);
+}`;
+
 export const TERRAIN_FS = `
 in vec3 vWorld;
 in vec3 vNormal;

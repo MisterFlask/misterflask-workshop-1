@@ -46,7 +46,7 @@ export class Pipeline {
       tensor: P("tensor", FULLSCREEN_VS, SH.TENSOR_FS),
       kuwahara: P("kuwahara", FULLSCREEN_VS, SH.KUWAHARA_FS),
       finish: P("finish", FULLSCREEN_VS, C + SH.FINISH_FS),
-      overlay: P("overlay", C + SH.TERRAIN_VS, C + SH.OVERLAY_FS),
+      overlay: P("overlay", C + SH.OVERLAY_VS, C + SH.OVERLAY_FS),
       marker: P("marker", C + SH.MARKER_VS, C + SH.MARKER_FS),
       ghost: P("ghost", C + SH.PROP_VS, C + SH.GHOST_FS),
       particle: P("particle", C + SH.PARTICLE_VS, SH.PARTICLE_FS),
