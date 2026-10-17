@@ -125,6 +125,10 @@ pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[
     ("app/iso/units/settler.png", PNG, include_bytes!("../../assets/app/iso/units/settler.png")),
     ("app/iso/units/scout.png", PNG, include_bytes!("../../assets/app/iso/units/scout.png")),
     ("app/iso/units/worker.png", PNG, include_bytes!("../../assets/app/iso/units/worker.png")),
+    ("app/iso/units/cavalry.png", PNG, include_bytes!("../../assets/app/iso/units/cavalry.png")),
+    ("app/iso/units/siege.png", PNG, include_bytes!("../../assets/app/iso/units/siege.png")),
+    ("app/iso/units/ship.png", PNG, include_bytes!("../../assets/app/iso/units/ship.png")),
+    ("app/iso/units/demon.png", PNG, include_bytes!("../../assets/app/iso/units/demon.png")),
 ];
 
 // `ART_MODULES`: the art toolkit's modules (`web/art`, docs/ART.md 15-16), embedded by `build.rs`

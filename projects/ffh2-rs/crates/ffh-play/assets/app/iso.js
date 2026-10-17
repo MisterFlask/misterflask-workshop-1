@@ -104,10 +104,14 @@ function unitSpriteKey(type) {
   if (/SETTLER/.test(t)) return "settler";
   if (/WORKER|SLAVE|LABORER/.test(t)) return "worker";
   if (/SCOUT|EXPLORER/.test(t)) return "scout";
+  if (/CATAPULT|BALLISTA|CANNON|TREBUCHET|SIEGE|BATTERING|ONAGER/.test(t)) return "siege";
+  if (/GALLEY|GALLEON|FRIGATE|WARSHIP|TRIREME|CARAVEL|PRIVATEER|LONGSHIP|MAN_O_WAR|SHIP|BOAT|BARGE/.test(t)) return "ship";
+  if (/HORSEMAN|HORSE|CHARIOT|RIDER|LANCE|CAVALR|KNIGHT|CRUSADER|PALADIN/.test(t)) return "cavalry";
+  if (/DEMON|MANES|\bIMP|BALOR|SUCCUBUS|HELLHOUND|REVELER|MISTRESS|INFERNAL|CHAOS_MARAUDER|PIT_BEAST|FIEND|TAR_/.test(t)) return "demon";
   if (/ARCHER|HUNTER|RANGER|MARKSMAN|LONGBOW|CROSSBOW/.test(t)) return "archer";
   if (/MAGE|ADEPT|LICH|WIZARD|SORCER|ARCHMAGE|PRIEST|SUMMONER|DRUID|CONJUR|NECROMANCER/.test(t)) return "lich";
   if (/SPIDER|BEAST|WOLF|LION|BEAR|TIGER|GORILLA|SCORPION|BROOD|ANIMAL/.test(t)) return "spider";
-  if (/WARRIOR|SWORD|AXE|MACE|KNIGHT|CHAMPION|SOLDIER|MELEE|HORSE|HORSEMAN|LANCE|PHALANX|SPEAR|DISCIPLE|PALADIN|GUARD/.test(t)) return "knight";
+  if (/WARRIOR|SWORD|AXE|MACE|CHAMPION|SOLDIER|MELEE|PHALANX|SPEAR|DISCIPLE|GUARD/.test(t)) return "knight";
   return null;
 }
 
@@ -135,7 +139,7 @@ export class IsoMap {
     for (const name of RESOURCE_FILES) load(`b_${name}`, `./iso/resources/${name}.png`);
     for (const name of IMPROVEMENT_FILES) load(`i_${name}`, `./iso/improvements/${name}.png`);
     load("c_town", "./iso/cities/town.png");
-    for (const name of ["knight", "lich", "archer", "spider", "settler", "scout", "worker"]) load(`u_${name}`, `./iso/units/${name}.png`);
+    for (const name of ["knight", "lich", "archer", "spider", "settler", "scout", "worker", "cavalry", "siege", "ship", "demon"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
 
   dispose() {}
