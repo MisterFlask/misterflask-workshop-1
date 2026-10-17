@@ -76,8 +76,16 @@ entity by entity:
   the broken-lands/burning-sands/fields-of-perdition hell terrains (shallows reuses coast).
 - **Relief:** peaks as snow-capped mountain sprites; hills as a convex dome shaded over any
   terrain (the plot centre stays flat so units/overlays anchor where hit-testing expects).
-- **Features:** forest, jungle, ancient forest, burnt forest, oasis, ice, scrub, flood plains,
-  volcano and flames as depth-sorted overlays, sized per sprite.
+- **Features:** oasis, ice, scrub, flood plains, volcano and flames as one sprite per plot, sized
+  per sprite. The wooded features (forest, young forest, jungle, ancient and burnt forest) are
+  individual trees (pine, palm, great tree, dead tree; two variants each) scattered over the plot
+  and jittered per plot, so a forest reads as one continuous stand.
+- **Depth:** everything that stands up (trees, mountains, structures, resources, cities, units) is
+  drawn in one pass sorted by where it touches the ground. A unit in a forest therefore stands
+  among the trees: the ones behind it are drawn first, the ones in front over its legs. Trees stop
+  below a unit's shoulders, and the front arc of its team ring is redrawn over them so ownership
+  still shows. A tree that would hide much of a structure or resource icon is left out, opening a
+  glade around it.
 - **Rivers & roads:** rivers along the south/east plot edges (the diamond's lower-left/-right
   edges), roads/railroads connecting plot centres to routed neighbours.
 - **Resources:** one icon per visual class (mana, crop, animal, fish, ore, goods) covering all
