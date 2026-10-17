@@ -11,7 +11,7 @@
       "command": "node",
       "args": ["plugins/openai-image/dist/index.js"],
       "env": {
-        "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY:-proxy-injected}",
         "NODE_USE_ENV_PROXY": "1"
       }
     }
