@@ -50,7 +50,7 @@ camera/hit-testing map to iso, units/rings anchor to diamond centres).
 | D0 | **Projection** | 32×32 square, plan view | 2.5D isometric diamonds | 2:1 diamond, **64×32 px** tile footprint at 1× |
 | D1 | **Unit size** | 32×32, fills tile | **Civ4-like: roughly tile-scaled, only slight overhang** | drawn ~1 tile tall (~52–64 px on screen at default zoom), the figure barely rises into the tile above; author ~96 px and downscale |
 | D2 | **Palette** | closed 56-colour indexed | open / near-true colour for figures | open for units; terrain can reuse indexed passes at first |
-| D3 | **Authoring** | text `.spr`, JS-drawn | AI-generated + downscaled **PNG sprites** | add a PNG sprite path; workflow in §6 |
+| D3 | **Authoring** | text `.spr`, JS-drawn | AI-generated **native-64 PNG sprites** | 64×64 template (`soc/unit-prompt-template.md`) → quantize; §6 |
 | D4 | **Mood** | cheerful daylight | **bright sunny daylight (CHOSEN)** | sunny base key; golden-hour kept as an optional later lighting pass |
 
 Owner identity keeps the **team ring**, now drawn as an **isometric ellipse** under the figure's
@@ -77,13 +77,19 @@ a blurred shrink.
    borders, fog, hit-testing, camera), the unit roster as PNG sprites, zoom fallback (§4).
 4. **Rewrite `ART.md`** to this direction once the look is proven on screen.
 
-## 6. Generation workflow (as used for the references)
+## 6. Generation workflow
 
-`edit_image` (OpenAI `gpt-image`) locked to `soc/style-anchor-reference.png` + a per-unit prompt,
-1024², transparent background, then trim + LANCZOS downscale to target height with a light
-edge/outline cleanup. `gpt-image-2.5-sunburst` was intermittently 502-ing; `flare` is the reliable
-default. The banner is one neutral asset tinted per team by a luminance→team-colour ramp over its
-low-saturation cloth.
+Units use the **canonical 64×64 unit prompt template** (`soc/unit-prompt-template.md`): fill the
+brackets, `generate_image` with `gpt-image-2.5-flare` at 1024² transparent (the chunky/low-colour
+constraints keep the render blocky, not a smooth illustration), then downscale to a true **64×64**,
+quantize to ~24 colours and crisp the alpha, and confirm it reads at 64/48/32 px. Draw it on the map
+pixelated at ~62 px. This replaced an earlier style-anchored 1024-illustration approach that drifted
+smooth and lost the pixel craft. (`gpt-image-2.5-sunburst` was intermittently 502-ing; `flare` is
+the reliable default.) The optional banner is one neutral asset tinted per team by a
+luminance→team-colour ramp over its low-saturation cloth.
+
+Reference outputs: `soc/knight-native-64.png` (native sprite), `soc/readability-native-64.png`
+(reads at 64/48/32), `soc/board-native-64.png` (on the isometric board at Civ4 scale).
 
 ## 7. Open decisions for the owner
 
