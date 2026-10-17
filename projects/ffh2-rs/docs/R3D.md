@@ -337,7 +337,43 @@ Two scenes, the same renderer:
 
 ## 11. Performance
 
-(Filled in from `tools/r3d-perf.mjs`.)
+Measured in headless Chromium with SwiftShader (a CPU rasteriser; WebGL renderer: ANGLE / Vulkan
+1.3 SwiftShader), on the real-game slice (`stage corrupt`, centred on the corrupted heartland).
+**These are a CPU rasteriser's times -- several seconds a frame -- and say nothing about a real GPU;
+only the _relative_ costs of the passes carry over.** `--gpu` measures on the machine's GPU; the
+owner can run `node tools/r3d-perf.mjs --gpu --save DIR/corrupt.ffhsave --x 48 --y 15`.
+
+Per-pass GPU cost (SwiftShader, painterly preset, one run), with each pass's share of the frame:
+
+| pass | ts 40 (far) | ts 96 (gameplay) |
+|---|---|---|
+| scene (geometry + shading) | 2903 ms (~67%) | 5309 ms (~66%) |
+| kuwahara (paint filter) | 857 ms (~20%) | 2164 ms (~27%) |
+| shadow | 224 ms | 211 ms |
+| overlay | 118 ms | 161 ms |
+| glow | 63 ms | 55 ms |
+| finish (ink + grade) | 57 ms | 49 ms |
+| ssao | 41 ms | 59 ms |
+| fxaa | 42 ms | 24 ms |
+| compose | 26 ms | 19 ms |
+| **whole frame** | **4364 ms** | **8083 ms** |
+
+The scene pass dominates and the Kuwahara paint filter is the clear second; FXAA (§5, F17) and the
+other post passes are cheap. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
+first and the render scale (which scales the scene pass) second.
+
+Initial world sync (CPU, this slice): textures 195 ms + dressing 425 ms + instance upload 436 ms +
+paint layers 236 ms + world 41 ms, about 1.3 s for the full redress of ~10.8k props and 123 unit
+figures; per-move redressing is incremental. On a more crowded map this is the ~2 s of start-up
+JavaScript noted in §14 -- spreading it over frames or onto a worker is a next step.
+
+Panning stability (`tools/r3d-lab.mjs --stability`, showcase at 96 px; pan, then re-align by the best
+whole-pixel shift and compare): mean |diff| about 1.5 of 255 with 1.6% of pixels off by more than 24
+for the painterly preset (1.2% plain, 1.7% painterly with the paint filter off) -- low crawl, from
+the texel-snapped shadow frustum and the world-anchored paint and grain. FXAA is on in the painterly
+figure.
+
+GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 
 ## 12. Configuration
 
