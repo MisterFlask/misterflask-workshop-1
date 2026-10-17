@@ -228,7 +228,8 @@ export class Scene {
       const h1 = world.heightAt(pts[pts.length - 1][0], pts[pts.length - 1][1]);
       if (h0 < h1) pts.reverse();
       let along = 0;
-      const width = 0.085;
+      // Wider than the bed: the banks cut the water's edge (an organic shore line).
+      const width = 0.15;
       const ring = [];
       for (let k = 0; k < pts.length; k++) {
         const p = pts[k];
@@ -238,7 +239,7 @@ export class Scene {
         tx /= l;
         ty /= l;
         if (k > 0) along += Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]);
-        const y = Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.05);
+        const y = Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
         ring.push([[p[0] - ty * width, y, -(p[1] + tx * width)], [p[0] + ty * width, y, -(p[1] - tx * width)], along]);
       }
       for (let k = 0; k + 1 < ring.length; k++) {

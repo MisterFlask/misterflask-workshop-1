@@ -306,11 +306,11 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   if (g == G_MARSH) {
     vec3 c = masses(m, vec3(0.20, 0.24, 0.17), vec3(0.29, 0.34, 0.21), vec3(0.40, 0.42, 0.26), 1.3);
     // Shallow pools among the reeds, catching the sky; a darker muddy rim around each.
-    float pn = mfbm(m + 7.0, 2.2);
+    float pn = mfbm(m + 7.0, 2.6) + 0.03;
     float rimM = smoothstep(0.56, 0.62, pn) * (1.0 - smoothstep(0.62, 0.66, pn));
     float pool = smoothstep(0.63, 0.67, pn);
-    c = mix(c, c * 0.62, rimM);
-    return srgb(mix(c, vec3(0.34, 0.42, 0.46), pool * 0.9));
+    c = mix(c, c * 0.7, rimM);
+    return srgb(mix(c, vec3(0.16, 0.24, 0.26), pool * 0.85));
   }
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
     // Corrupted ground: ash and scorched earth (the fields of perdition festering purple-red),
@@ -711,7 +711,7 @@ void main() {
     along = vExtra.y;
     float streak = pnoise(vec2(vExtra.x * 3.0, along * 2.5 - t * 1.2), vec2(4096.0));
     n = normalize(n + vec3(0.0, 0.0, (streak - 0.5) * 0.3));
-    depth = 0.06 * (1.0 - abs(vExtra.x));
+    depth = 0.11 * (1.0 - vExtra.x * vExtra.x);
   }
   // Colour by depth: clear teal over the shelf, deepening to indigo over the ocean.
   vec3 shallow = srgb(vec3(0.20, 0.42, 0.40));
@@ -734,7 +734,8 @@ void main() {
   float shore = 1.0 - smoothstep(0.0, 0.035 + 0.02 * mnoise(m, 6.0), depth);
   float wave = smoothstep(0.75, 1.0, sin(depth * 70.0 - t * 1.4 + mnoise(m, 2.0) * 6.0)) * (1.0 - smoothstep(0.02, 0.09, depth));
   float foam = clamp(shore * 0.9 + wave * 0.45, 0.0, 1.0);
-  if (uRiver > 0.5) foam = smoothstep(0.7, 1.0, abs(vExtra.x)) * 0.6 + smoothstep(0.75, 0.95, pnoise(vec2(vExtra.x * 4.0, along * 6.0 - t * 2.0), vec2(4096.0))) * 0.25;
+  // A river: no surf; light flecks drifting downstream in the current.
+  if (uRiver > 0.5) foam = smoothstep(0.8, 0.95, pnoise(vec2(vExtra.x * 5.0, along * 7.0 - t * 2.2), vec2(4096.0))) * 0.3 * (1.0 - abs(vExtra.x));
   col = mix(col, srgb(vec3(0.86, 0.85, 0.78)) * (0.6 + 0.4 * sun), foam * 0.85);
   col = fogOfWar(col, v);
   col = atmosphere(col, vWorld);

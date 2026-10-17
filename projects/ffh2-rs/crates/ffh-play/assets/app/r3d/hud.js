@@ -90,6 +90,40 @@ export function drawHud(r3d, cam) {
     g.globalAlpha = 1;
   }
 
+  // Zoomed far out the figures are too small to tell apart: each stack also gets a counter, a
+  // small shield in its owner's colour on a stem over the figure (the strategy map's pieces).
+  if (ts < 60) {
+    const k = Math.max(0, Math.min(1, (60 - ts) / 16));
+    for (const s of r3d.stacks ?? []) {
+      const a = s.anchor;
+      if (!a) continue;
+      const base = r3d.project(cam, [r3d.nearX(a.x), a.y + a.height, a.z]);
+      if (!inView(base)) continue;
+      const r = 4 + 2 * k;
+      const x = base.x, y = base.y - 7 - 5 * k;
+      g.globalAlpha = 0.55 + 0.45 * k;
+      g.strokeStyle = "rgba(15,10,8,0.85)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(base.x, base.y);
+      g.lineTo(x, y + r);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(x - r, y - r);
+      g.lineTo(x + r, y - r);
+      g.lineTo(x + r, y + r * 0.2);
+      g.quadraticCurveTo(x + r, y + r * 0.9, x, y + r * 1.5);
+      g.quadraticCurveTo(x - r, y + r * 0.9, x - r, y + r * 0.2);
+      g.closePath();
+      g.fillStyle = s.team;
+      g.fill();
+      g.strokeStyle = s.picked ? "#fff2a8" : "rgba(15,10,8,0.9)";
+      g.lineWidth = s.picked ? 2 : 1.2;
+      g.stroke();
+      g.globalAlpha = 1;
+    }
+  }
+
   // Stack badges: over the figure's head.
   for (const s of r3d.stacks ?? []) {
     const a = s.anchor;

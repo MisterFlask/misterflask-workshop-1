@@ -214,9 +214,10 @@ export class World {
     // Rivers carve their channel.
     if (this.riverCells.size) {
       const d = this.riverDist(mx, my);
-      if (d < 0.3) {
-        const carve = 1 - smoothstep(0.035, 0.2, d);
-        h = Math.min(h, h - 0.075 * carve);
+      if (d < 0.32) {
+        // A channel with sloping banks: full depth across the bed, easing out to the bank tops.
+        const carve = 1 - smoothstep(0.05, 0.24, d);
+        h = Math.min(h, h - 0.08 * carve * carve * (3 - 2 * carve));
         // A river's bed never rises over its banks' sea level side.
         if (carve > 0.5) h = Math.max(h, -0.06);
       }

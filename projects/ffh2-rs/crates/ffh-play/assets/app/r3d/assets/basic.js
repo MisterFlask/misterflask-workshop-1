@@ -163,3 +163,40 @@ recipe("basic.rock", {
     });
   },
 });
+
+/** A humpbacked stone bridge along z (deck at y = 0, the banks' height; the arch and the piers
+ *  reach down to the water), for a road crossing a river edge. Length ~0.42 plot. */
+recipe("basic.bridge", {
+  variants: 2,
+  build(mb, r) {
+    const L = 0.42, W = 0.085, N = 10;
+    const stone = jitter(pal("stone"), r, 0.05);
+    const top = (z) => 0.012 + 0.018 * Math.cos((Math.PI * z) / L);
+    const arch = (z) => Math.min(top(z) - 0.02, -0.075 + 0.07 * Math.cos((Math.PI * z) / (L * 0.62)));
+    mb.color = stone;
+    for (let i = 0; i < N; i++) {
+      const z0 = -L / 2 + (L * i) / N, z1 = -L / 2 + (L * (i + 1)) / N;
+      const t0 = top(z0), t1 = top(z1), a0 = arch(z0), a1 = arch(z1);
+      // Deck, the arch's underside, and the two side walls with the arch cut out.
+      mb.color = jitter(pal("stoneLight"), r, 0.05);
+      mb.quad([-W / 2, t0, z0], [-W / 2, t1, z1], [W / 2, t1, z1], [W / 2, t0, z0]);
+      mb.color = jitter(stone, r, 0.08);
+      mb.quad([-W / 2, a0, z0], [W / 2, a0, z0], [W / 2, a1, z1], [-W / 2, a1, z1]);
+      for (const s of [-1, 1]) {
+        const x = (s * W) / 2;
+        mb.quad([x, a0, z0], [x, a1, z1], [x, t1, z1], [x, t0, z0]);
+        // A low parapet.
+        mb.quad([x, t0, z0], [x, t1, z1], [x, t1 + 0.014, z1], [x, t0 + 0.014, z0]);
+        mb.quad([x * 0.8, t0 + 0.014, z0], [x * 0.8, t1 + 0.014, z1], [x, t1 + 0.014, z1], [x, t0 + 0.014, z0]);
+      }
+    }
+    // Abutments into the banks.
+    for (const s of [-1, 1]) {
+      mb.part(() => {
+        mb.translate(0, -0.09, (s * L) / 2);
+        mb.box(W * 1.25, 0.1, 0.06);
+      });
+    }
+    mb.heightAO(0, -0.09, 0.01, 0.55);
+  },
+});

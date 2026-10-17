@@ -160,6 +160,18 @@ export function dressStatic(world, map) {
       }
       // Particles of the ground itself (hell's embers, ancient forests' motes).
       for (const e of CATALOG.emitters?.("plot", ctx) ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5, y + 0.5) + (e.dy ?? 0.05), z: -(y + 0.5 - (e.dz ?? 0)) });
+      // Bridges where a road crosses a river edge to a routed neighbour (south and east edges;
+      // each crossing belongs to one plot).
+      if (map.route[i] >= 0 && map.river[i] > 0) {
+        const bridge = (nx, ny, mx, my, yaw) => {
+          const j = world.index(nx, ny);
+          if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) return;
+          const bank = Math.max(H(mx + Math.sin(yaw) * 0.22, my - Math.cos(yaw) * 0.22), H(mx - Math.sin(yaw) * 0.22, my + Math.cos(yaw) * 0.22), SEA + 0.01);
+          out.push(inst(pick(CATALOG.bridge?.(ctx) ?? "basic.bridge", "basic.bridge"), mx, bank - 0.006, -my, { yaw, variant: r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
+        };
+        if (map.river[i] & 1) bridge(x, y - 1, x + 0.5, y, 0);
+        if (map.river[i] & 2) bridge(x + 1, y, x + 1, y + 0.5, Math.PI / 2);
+      }
       // A settlement.
       if (city) {
         const owner = S.players.get(city.owner);
