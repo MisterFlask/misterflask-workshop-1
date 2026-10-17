@@ -9,6 +9,7 @@
 
 import { S, tname, me, isBarbarian } from "../state.js";
 import * as T from "../tiles.js";
+import { headUnit } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
 import { KIND, FEAT, GROUND, SEA } from "./world.js";
@@ -370,15 +371,19 @@ export function dressUnits(world, map) {
   const w = world.w;
   const mine = me()?.player;
   const sel = S.sel?.units ?? [];
+  // The stack's face is its best defender, as the 2D art shows (F4): topUnit returned units[0] for
+  // a foreign stack, so a worker hid the armed unit behind it. headUnit picks the strongest.
+  const strength = (u) => S.data?.tables?.UnitType?.[u.type]?.combat ?? 0;
   for (const units of S.unitsAt.values()) {
     const u0 = units[0];
     const i = u0.y * w + u0.x;
-    const top = T.topUnit(units, mine, sel);
+    const top = headUnit(units, mine, sel, strength);
     const onCity = map.city[i] >= 0;
     // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera.
     const spot = onCity ? CITY_UNIT_SPOT : world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
     const team = hexRgb(teamColour(top.owner));
-    const order = [top, ...units.filter((u) => u !== top)].slice(0, 3);
+    // Company behind the head, strongest first (the badge count is unchanged).
+    const order = [top, ...units.filter((u) => u !== top).sort((a, b) => strength(b) - strength(a))].slice(0, 3);
     const slots = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
     let anchor = null;
     order.forEach((u, k) => {
