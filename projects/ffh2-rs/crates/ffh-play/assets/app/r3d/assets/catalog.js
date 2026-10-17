@@ -6,13 +6,16 @@
 //   forest(feat, ctx)      -> [{asset, variant?, param?, scale, weight?}]  species mix of a wooded plot
 //   flora(ctx)             -> [{asset, scale, count, param?, variant?}]  loose plants on open
 //                              ground (bushes, reeds); a forest mix's `under` entries take the same
-//   rocks(ctx)             -> [{asset, scale, count}]    boulders/outcrops on hills, peaks, tundra
+//   rocks(ctx)             -> [{asset, scale, count, param?, variant?}]  boulders/outcrops on
+//                              hills, peaks, tundra
 //   settlement(type, ctx)  -> part or [parts]  a settlement-like improvement (cottage, hamlet,
 //                              village, town, fort, tower, castle) in the plot owner's family
 //                              (ctx.family); asked before `improvement`
 //   improvement(type, ctx) -> part or [parts]  any other improvement's structure (farm, mine,
 //                              lair, mana node, unique feature); part: {asset, param?, variant?,
-//                              scale?, dx?, dz?, yaw?, float?, emit?: [emitter]}
+//                              scale?, sx?, sy?, sz? (stretch), dx?, dz?, yaw?, float?,
+//                              emit?: [emitter] (offsets in the part's frame: turned and scaled
+//                              with it)}
 //   bonus(type, ctx)       -> {asset, param?, scale?, water?}   a resource's marker
 //   feature(feat, ctx)     -> [{asset, param?, scale?, dx?, dz?}] one-off features (oasis, volcano)
 //   family(civType)        -> string   a civilization's architectural family
@@ -26,7 +29,10 @@
 //   emitters(kind, ctx)    -> [emitter]  particles of a "plot" (plot ctx) or a "city" (city ctx)
 //
 // An emitter: {dx?, dy?, dz? (offsets from the plot centre / part, x east, z south, y up), color
-// "#hex", size (world units, ~0.01-0.04), rise (cycles per second), count, spread (radius)}.
+// "#hex", size (world units, ~0.01-0.04), rise (cycles per second), count, spread (radius),
+// smoke?}. Particles glow (premultiplied over the frame, after the paint passes); `smoke: true`
+// makes soft puffs instead that swell, rise higher and lean with the wind (chimneys, volcanoes:
+// a grey `color`, size ~0.03-0.06, rise ~0.1).
 //
 // Plot ctx (forest, flora, rocks, feature, settlement, improvement, bonus, emitters "plot"): r, x,
 // y, i (plot index), kind (world.js KIND), feat (FEAT), ground (GROUND), hills, peak, held

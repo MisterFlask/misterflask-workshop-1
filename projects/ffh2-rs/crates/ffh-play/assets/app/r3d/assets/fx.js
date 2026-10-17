@@ -1,14 +1,14 @@
 // fx.js: the particles of the 3D map -- the catalog's `emitters` entry (docs/R3D.md "Asset
-// recipes"). Particles are additive, soft glowing points that rise and drift (scene.js
-// setParticles, shaders.js PARTICLE_*), so they can only add light: embers, sparks, motes, wisps,
-// fireflies -- never smoke. They are spent sparingly, a few points per plot at most, where they
+// recipes"). Particles are soft glowing points that rise and drift (scene.js setParticles,
+// shaders.js PARTICLE_*): embers, sparks, motes, wisps, fireflies; an emitter with `smoke: true`
+// gives soft grey puffs instead that swell and lean with the wind. They are spent sparingly, a few points per plot at most, where they
 // tell something: the hells smoulder, flames and volcanoes throw sparks, the ancient forests and
 // marshes hold a few drifting lights, tormented souls rise as pale wisps, and cities glow by their
 // nature (warm sparks for most, red embers for the infernal, arcane motes for the Amurites).
 // Mana nodes, lairs and landmarks carry their own emitters (props.js, the improvement's `emit`).
 //
 // An emitter: {dx, dy, dz (offsets from the plot or city centre; x east, z south, y up), color,
-// size (world units), rise (cycles per second), count, spread (radius)}.
+// size (world units), rise (cycles per second), count, spread (radius), smoke?}.
 
 import { extendCatalog } from "./catalog.js";
 import { KIND, FEAT, GROUND, isHell } from "../world.js";
@@ -23,6 +23,8 @@ function plotEmitters(ctx) {
     // Sparks thrown up from the crater (the summit stands ~0.18 over the plot centre).
     out.push({ dy: 0.2, color: "#ff7a2a", size: 0.014, rise: 0.32, count: 6, spread: 0.06 });
     out.push({ dy: 0.24, color: "#ffb060", size: 0.009, rise: 0.5, count: 3, spread: 0.04 });
+    // A slow plume of ash over the crater.
+    out.push({ dy: 0.26, color: "#6e666c", size: 0.05, rise: 0.09, count: 6, spread: 0.05, smoke: true });
     return out;
   }
   if (feat === FEAT.FLAMES) {

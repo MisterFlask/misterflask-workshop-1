@@ -125,6 +125,13 @@ export function dressStatic(world, map) {
       // Something stands on the plot behind this one (north): its trees in front of it keep low.
       const north = world.index(x, y + 1);
       ctx.northHeld = north >= 0 && (unitAt.has(north) || cityAt.has(north));
+      // A city behind this plot (north, or north-east / north-west): the trees here stand between
+      // it and the camera, and a stand of great trees would hide it whole.
+      const cityN = (dx) => {
+        const j = world.index(x + dx, y + 1);
+        return j >= 0 && cityAt.has(j);
+      };
+      ctx.cityBehind = { n: cityN(0), e: cityN(1), w: cityN(-1) };
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
         const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);
@@ -154,7 +161,7 @@ export function dressStatic(world, map) {
         for (let k = 0; k < (rk.count ?? 1); k++) {
           const lx = r.range(-0.4, 0.4), lz = r.range(-0.4, 0.4);
           if (held && Math.hypot(lx, lz) < 0.32) continue;
-          place(pick(rk.asset, "basic.rock"), lx, lz, { variant: r.int(0, 7), scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
+          place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }
       }
       // One-off features (oasis, volcano, flood reeds, ice floes, flames).
@@ -172,8 +179,10 @@ export function dressStatic(world, map) {
         const spot = unitAt.has(i) ? STRUCTURE_SPOT : [0, -0.02];
         const iid = idOf(`imp${i}`);
         for (const im of parts) {
-          place(im.asset, im.dx ?? spot[0], im.dz ?? spot[1], { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: im.scale ?? 1, yaw: im.yaw ?? r.range(-0.4, 0.4), float: im.float, id: im.id ?? iid, team, tint: im.tint });
-          for (const e of im.emit ?? []) emitters.push({ ...e, x: x + 0.5 + (im.dx ?? spot[0]) + (e.dx ?? 0), y: H(x + 0.5, y + 0.5) + (e.dy ?? 0.1), z: -(y + 0.5 - (im.dz ?? spot[1]) - (e.dz ?? 0)) });
+          const px = im.dx ?? spot[0], pz = im.dz ?? spot[1];
+          const yaw = im.yaw ?? r.range(-0.4, 0.4), sc = im.scale ?? 1;
+          place(im.asset, px, pz, { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: sc, sx: im.sx, sy: im.sy, sz: im.sz, yaw, float: im.float, id: im.id ?? iid, team, tint: im.tint });
+          for (const e of im.emit ?? []) emitters.push(partEmitter(e, x, y, px, pz, yaw, sc, im.float, H));
         }
       }
       // The resource's marker.
@@ -222,6 +231,17 @@ export function dressStatic(world, map) {
   return { list: out, emitters, cities };
 }
 
+/** An emitter carried by an improvement's part (`e.dx/dy/dz` in the part's own frame), placed in
+ *  the world: turned with the part's yaw (as the prop shader turns it) and scaled with it. */
+function partEmitter(e, x, y, px, pz, yaw, sc, float, H) {
+  const ex = (e.dx ?? 0) * sc, ez = (e.dz ?? 0) * sc;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const wx = px + c * ex + s * ez, wz = pz - s * ex + c * ez;
+  const mx = x + 0.5 + wx, my = y + 0.5 - wz;
+  const ground = float ? Math.max(SEA, H(mx, my)) : H(mx, my);
+  return { ...e, x: mx, y: ground + (e.dy ?? 0.1) * sc, z: -my };
+}
+
 /** A wooded plot's trees: a jittered grid of slots, each a tree of the plot's species mix, thinned
  *  toward open neighbours (soft forest edges) and cleared around the centre when the plot is held. */
 function placeTrees(world, ctx, place) {
@@ -260,6 +280,13 @@ function placeTrees(world, ctx, place) {
       let s = (m.scale ?? 1) * r.range(0.8, 1.2);
       // The back row of this plot stands just in front of whatever holds the plot behind it.
       if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.3) s *= 0.6;
+      // In front of a city the wood opens and keeps low toward it.
+      const cb = ctx.cityBehind;
+      if (cb && (cb.n || cb.e || cb.w)) {
+        const toward = (cb.n ? 1 : 0) * clamp(0.5 - lz, 0, 1) + (cb.e ? clamp(lx + 0.1, 0, 1) * clamp(0.3 - lz, 0, 1) : 0) + (cb.w ? clamp(0.1 - lx, 0, 1) * clamp(0.3 - lz, 0, 1) : 0);
+        if (r() < Math.min(0.75, toward * 0.9)) continue;
+        s *= 1 - Math.min(0.5, toward * 0.6);
+      }
       place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint: m.tint, lift: -0.008 });
     }
   }

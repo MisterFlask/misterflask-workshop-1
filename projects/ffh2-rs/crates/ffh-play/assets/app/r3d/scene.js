@@ -320,7 +320,9 @@ export class Scene {
     if (v.length) this.markers = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT);
   }
 
-  /** Particles from the emitters (dress.js): [{x, y, z, color, size, rise, count, spread}]. */
+  /** Particles from the emitters (dress.js): [{x, y, z, color, size, rise, count, spread, smoke}]
+   *  (`smoke`: soft puffs that swell, rise higher and drift, composited over the frame instead of
+   *  glowing; the shader tells them by a negative size). */
   setParticles(emitters) {
     const gl = this.gl;
     this.particles?.dispose();
@@ -332,7 +334,8 @@ export class Scene {
       const r = rng(k++ * 131 + 7);
       for (let i = 0; i < (e.count ?? 6); i++) {
         const sp = e.spread ?? 0.3;
-        v.push(e.x + r.range(-sp, sp), e.y + r.range(0, 0.05), e.z + r.range(-sp, sp), r(), (e.rise ?? 0.25) * r.range(0.6, 1.4), r(), c[0], c[1], c[2], (e.size ?? 0.02) * r.range(0.7, 1.3));
+        const size = (e.size ?? 0.02) * r.range(0.7, 1.3);
+        v.push(e.x + r.range(-sp, sp), e.y + r.range(0, 0.05), e.z + r.range(-sp, sp), r(), (e.rise ?? 0.25) * r.range(0.6, 1.4), r(), c[0], c[1], c[2], e.smoke ? -size : size);
       }
     }
     if (v.length) this.particles = new Mesh(gl, new Float32Array(v), PARTICLE_LAYOUT, { mode: gl.POINTS });

@@ -220,8 +220,11 @@ export function rasterLight(world, map, cities, strength = 1) {
       if (f === FEAT.ANCIENT) pool(x + 0.5, y + 0.5, 0.6, "#9affc0", 0.06);
       const b = map.bonus[i] >= 0 ? tname("BonusType", map.bonus[i]) ?? "" : "";
       const im = map.improvement[i] >= 0 ? tname("ImprovementType", map.improvement[i]) ?? "" : "";
-      const school = /MANA_?(\w*)/.exec(im)?.[1] ?? /MANA_?(\w*)/.exec(b)?.[1];
-      if (school !== undefined) pool(x + 0.24, y + 0.3, 0.55, MANA[school] ?? MANA[""], 0.2);
+      // A built mana node glows where it stands (by the plot's centre); raw mana at its marker.
+      const node = /MANA_?(\w*)/.exec(im)?.[1];
+      const school = node ?? /MANA_?(\w*)/.exec(b)?.[1];
+      if (node !== undefined) pool(x + 0.5, y + 0.52, 0.6, MANA[school] ?? MANA[""], 0.22);
+      else if (school !== undefined) pool(x + 0.24, y + 0.3, 0.55, MANA[school] ?? MANA[""], 0.2);
     }
   }
   const px = g.getImageData(0, 0, W, Hh).data;

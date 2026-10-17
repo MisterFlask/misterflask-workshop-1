@@ -8,6 +8,7 @@
 //            &ground=.  &spacing=1
 //   &cx=..&cy=..&ts=..                         camera (map point, pixels per plot)
 //   &r3d=painterly|plain|{json}                pipeline overrides (as in the client)
+//   &float=1                                   (grid) things stand on the water, not the sea floor
 //   &sel=x,y&select=1&hover=x,y&targets=x,y;x,y&path=x,y;x,y&attack=1&layer=political  overlays
 
 import { S, setData, setView, setMap } from "/app/state.js";
@@ -70,7 +71,8 @@ async function main() {
       variant: it.variant,
       param: (q.get("params") ? q.get("params").split(",")[it.row] : null) ?? q.get("param") ?? "",
       x: it.mx,
-      y: r3d.world.heightAt(it.mx, it.my),
+      // &float=1: things that float (boats, whales, ice) on the water of a "-" or "~" ground.
+      y: q.get("float") ? Math.max(0, r3d.world.heightAt(it.mx, it.my)) : r3d.world.heightAt(it.mx, it.my),
       z: -it.my,
       yaw: Number(q.get("yaw") ?? 0),
       sx: 1, sy: 1, sz: 1,

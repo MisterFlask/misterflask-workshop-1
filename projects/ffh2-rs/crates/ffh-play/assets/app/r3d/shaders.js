@@ -335,16 +335,17 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     vec3 c = masses(m, dark, base, light, 1.4);
     float scorch = smoothstep(0.5, 0.82, mstroke(m, 3.0, 4.0));
     c = mix(c, dark * 0.7, scorch * 0.45);
-    float live = smoothstep(0.3, 0.65, mfbm(m + 3.3, 0.5));
+    // (Restrained: thin lines where the corruption runs deepest, not a neon network.)
+    float live = smoothstep(0.42, 0.72, mfbm(m + 3.3, 0.5));
     float r1 = 1.0 - abs(mfbm(m + 7.7, 1.1) - 0.5) * 2.0;
     float r2 = 1.0 - abs(mfbm(m - 3.1, 2.3) - 0.5) * 2.0;
-    float fis = max(smoothstep(0.978, 0.996, r1), smoothstep(0.986, 0.998, r2) * 0.6) * live;
-    c = mix(c, vec3(0.03, 0.02, 0.02), max(smoothstep(0.9, 0.975, r1), smoothstep(0.95, 0.985, r2) * 0.6) * live * 0.75);
+    float fis = max(smoothstep(0.986, 0.998, r1), smoothstep(0.99, 0.999, r2) * 0.5) * live;
+    c = mix(c, vec3(0.03, 0.02, 0.02), max(smoothstep(0.93, 0.985, r1), smoothstep(0.96, 0.99, r2) * 0.5) * live * 0.7);
     float pulse = 0.72 + 0.28 * sin(uTime * 1.1 + mnoise(m, 0.7) * 9.0);
-    emit += srgb(hot) * fis * pulse * 1.7;
+    emit += srgb(hot) * fis * pulse * 1.1;
     // A low halo of heat around the cracks, and a few embers.
-    c += srgb(hot) * smoothstep(0.82, 0.975, r1) * live * 0.05;
-    emit += srgb(hot) * smoothstep(0.95, 0.985, mnoise(m, 14.0)) * live * 0.35;
+    c += srgb(hot) * smoothstep(0.88, 0.985, r1) * live * 0.03;
+    emit += srgb(hot) * smoothstep(0.965, 0.99, mnoise(m, 14.0)) * live * 0.25;
     return srgb(c);
   }
   if (g == G_SHALLOWS || g == G_COAST) return srgb(masses(m, vec3(0.45, 0.40, 0.30), vec3(0.62, 0.55, 0.40), vec3(0.72, 0.66, 0.50), 1.0));
@@ -436,6 +437,9 @@ void main() {
   // Each distinct ground among the four is painted once, with the summed weight of its plots.
   int gs[4] = int[](p00.x, p10.x, p01.x, p11.x);
   float ws[4] = float[](w.x, w.y, w.z, w.w);
+  // How much of the point is hell ground: its rock is basalt and it takes no snow.
+  float hellW = 0.0;
+  for (int k = 0; k < 4; k++) if (gs[k] == G_BURNING || gs[k] == G_BROKEN || gs[k] == G_PERDITION) hellW += ws[k];
   vec3 alb = vec3(0.0);
   for (int k = 0; k < 4; k++) {
     if (ws[k] < 0.0) continue;
@@ -485,6 +489,7 @@ void main() {
       float strata = 0.5 + 0.5 * sin(h * 30.0 + (m.x - m.y) * 1.3 + mnoise(m, 2.5) * 7.0);
       strata *= smoothstep(0.3, 0.7, mnoise(m + 2.0, 1.2));
       vec3 rock = mix(vec3(0.22, 0.21, 0.24), vec3(0.42, 0.40, 0.38), mfbm(m, 1.7));
+      rock = mix(rock, mix(vec3(0.09, 0.07, 0.08), vec3(0.2, 0.15, 0.14), mfbm(m, 1.7)), hellW);
       rock = mix(rock, vec3(0.16, 0.15, 0.19), strata * 0.22);
       // Lit faces of the rock read warm, the shaded ones cool (painted massing of a mountain).
       rock = mix(rock, rock * vec3(1.12, 1.02, 0.9), clamp(dot(n, uSunDir), 0.0, 1.0) * 0.5);
@@ -497,6 +502,7 @@ void main() {
     float sn = mnoise(m, 3.0) - 0.5 + (mdabs(m, 5.0) - 0.5) * 0.6;
     float snow = smoothstep(0.92, 1.08, h + sn * 0.22) * smoothstep(0.3, 0.75, n.y);
     snow = max(snow, smoothstep(1.15, 1.3, h + sn * 0.1));
+    snow *= 1.0 - hellW;
     alb = mix(alb, srgb(vec3(0.88, 0.91, 0.95)), snow);
     // Wet ground along rivers and the shore line.
     vec4 dec = texture(uDecal, mapUV(m));
@@ -1244,12 +1250,18 @@ out float vLife;
 uniform float uPx; // pixels per world unit at the target distance
 void main() {
   float life = fract(uTime * aNormal.y + aNormal.z);
-  vec3 p = aPos + vec3(sin(uTime * 0.7 + aNormal.x * 6.28) * 0.06, life * 0.35, cos(uTime * 0.5 + aNormal.x * 4.0) * 0.06);
+  // Smoke (negative size): rises higher, leans with the wind, swells and thins as it goes.
+  bool smoke = aExtra.a < 0.0;
+  float size = abs(aExtra.a);
+  vec3 p = smoke
+    ? aPos + vec3(life * 0.12 + sin(uTime * 0.4 + aNormal.x * 6.28) * 0.03, life * 0.6, -life * 0.05)
+    : aPos + vec3(sin(uTime * 0.7 + aNormal.x * 6.28) * 0.06, life * 0.35, cos(uTime * 0.5 + aNormal.x * 4.0) * 0.06);
   vec3 w = p + vec3(uCopyX, 0.0, 0.0);
   vec4 c = uViewProj * vec4(w, 1.0);
   gl_Position = c;
-  gl_PointSize = clamp(aExtra.a * uPx / max(c.w, 0.1) * 30.0, 1.0, 24.0);
-  vCol = vec4(aExtra.rgb, 1.0);
+  if (smoke) size *= 0.6 + 1.6 * life;
+  gl_PointSize = clamp(size * uPx / max(c.w, 0.1) * 30.0, 1.0, smoke ? 64.0 : 24.0);
+  vCol = vec4(aExtra.rgb, smoke ? 0.7 * (1.0 - life) : 1.0);
   vLife = life;
   float v = texture(uVis, vec2(aPos.x, -aPos.z) / uMapSize).r;
   vCol.a *= smoothstep(0.6, 0.95, v);
