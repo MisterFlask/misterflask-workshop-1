@@ -251,14 +251,29 @@ export class MeshBuilder {
       const dy = b[1] - a[1];
       return [dy, -dr]; // outward (radial, up) normal of the profile tangent (dr, dy)
     };
+    const prof = (i, s) => {
+      const sl = slope(i), a = phase + (s / seg) * Math.PI * 2;
+      return vnorm([Math.cos(a) * sl[0], sl[1], Math.sin(a) * sl[0]]);
+    };
+    // With a wobble the surface is lobed: its normals come from the wobbled grid itself (central
+    // differences around and along it, turned outward, a little of the profile's mixed in), so
+    // the lobes shade as lobes.
+    const grid = (i, s) => {
+      const nr = profile.length;
+      const around = vsub(rings[i][(s + 1) % seg], rings[i][(s + seg - 1) % seg]);
+      const along = vsub(rings[Math.min(nr - 1, i + 1)][s % seg], rings[Math.max(0, i - 1)][s % seg]);
+      const p = prof(i, s);
+      let n = vcross(along, around);
+      if (vlen(n) < 1e-9) return p;
+      n = vnorm(n);
+      if (n[0] * p[0] + n[1] * p[1] + n[2] * p[2] < 0) n = vscale(n, -1);
+      return vnorm(vadd(vscale(n, 0.75), vscale(p, 0.25)));
+    };
+    const nrm = wobble ? grid : prof;
     for (let i = 0; i + 1 < profile.length; i++) {
-      const s0 = slope(i), s1 = slope(i + 1);
       for (let s = 0; s < seg; s++) {
-        const a0 = phase + (s / seg) * Math.PI * 2;
-        const a1 = phase + ((s + 1) / seg) * Math.PI * 2;
-        const n = (sl, a) => vnorm([Math.cos(a) * sl[0], sl[1], Math.sin(a) * sl[0]]);
         const p00 = rings[i][s], p01 = rings[i][s + 1], p10 = rings[i + 1][s], p11 = rings[i + 1][s + 1];
-        this.quadN(p00, p10, p11, p01, n(s0, a0), n(s1, a0), n(s1, a1), n(s0, a1));
+        this.quadN(p00, p10, p11, p01, nrm(i, s), nrm(i + 1, s), nrm(i + 1, s + 1), nrm(i, s + 1));
       }
     }
     if (caps) {
@@ -497,6 +512,39 @@ export class MeshBuilder {
       v[i] += d[0];
       v[i + 1] += d[1];
       v[i + 2] += d[2];
+    }
+    return this;
+  }
+
+  /** Smooth normals for the vertices from `from` on, recomputed from their triangles (area-
+   *  weighted, shared between vertices at the same position): after `displace` has bent a part,
+   *  so it shades as its new shape. Hard edges within the part are smoothed too. */
+  smoothNormals(from) {
+    const v = this.v;
+    const acc = new Map();
+    const key = (i) => `${Math.round(v[i] * 1e5)},${Math.round(v[i + 1] * 1e5)},${Math.round(v[i + 2] * 1e5)}`;
+    const n0 = from * FLOATS, nv = (v.length - n0) / FLOATS;
+    for (let t = 0; t + 2 < nv; t += 3) {
+      const a = n0 + t * FLOATS, b = a + FLOATS, c = b + FLOATS;
+      const e1 = [v[b] - v[a], v[b + 1] - v[a + 1], v[b + 2] - v[a + 2]];
+      const e2 = [v[c] - v[a], v[c + 1] - v[a + 1], v[c + 2] - v[a + 2]];
+      const fn = vcross(e1, e2);
+      for (const i of [a, b, c]) {
+        const k = key(i);
+        const s = acc.get(k) ?? [0, 0, 0];
+        s[0] += fn[0];
+        s[1] += fn[1];
+        s[2] += fn[2];
+        acc.set(k, s);
+      }
+    }
+    for (let i = n0; i < v.length; i += FLOATS) {
+      const s = acc.get(key(i));
+      if (!s || vlen(s) < 1e-12) continue;
+      const n = vnorm(s);
+      v[i + 3] = n[0];
+      v[i + 4] = n[1];
+      v[i + 5] = n[2];
     }
     return this;
   }
