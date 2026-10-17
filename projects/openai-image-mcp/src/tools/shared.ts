@@ -8,11 +8,11 @@ import { DEFAULT_MODEL, DEFAULT_OUTPUT_DIR, MAX_INLINE_BYTES } from '../config/d
 // Options accepted by both generate_image and edit_image
 export const imageOptionsShape = {
   model: z.string().optional()
-    .describe(`GPT Image model id (default: ${DEFAULT_MODEL}). Others include gpt-image-1.5 and gpt-image-1-mini.`),
+    .describe(`GPT Image model id (default: ${DEFAULT_MODEL}, fast everyday generation). Others include gpt-image-2.5-sunburst (most precise edits) and gpt-image-2.`),
   size: z.string().optional()
-    .describe('"auto" or WIDTHxHEIGHT, e.g. "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait). gpt-image-2 also accepts custom sizes: both edges multiples of 16, longest edge at most 3840, aspect ratio at most 3:1.'),
-  quality: z.enum(['low', 'medium', 'high', 'auto']).optional()
-    .describe('Rendering quality. Cost and latency rise steeply with quality; use low or medium for drafts.'),
+    .describe('"auto" or WIDTHxHEIGHT, e.g. "1024x1024", "1536x1024" (landscape), "1024x1536" (portrait). gpt-image-2 and the 2.5 models also accept custom sizes: both edges multiples of 16, longest edge at most 3840, aspect ratio at most 3:1.'),
+  quality: z.enum(['low', 'medium', 'high', 'xhigh', 'max', 'auto']).optional()
+    .describe('Rendering quality (xhigh and max: 2.5 models only). Cost and latency rise steeply with quality; use low or medium for drafts.'),
   background: z.enum(['transparent', 'opaque', 'auto']).optional()
     .describe('Background handling. "transparent" needs png or webp output and a model that supports it.'),
   output_format: z.enum(['png', 'jpeg', 'webp']).optional()

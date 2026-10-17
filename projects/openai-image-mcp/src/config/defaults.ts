@@ -13,7 +13,7 @@ export function readEnv(name: string): string | undefined {
 }
 
 // Default model; any GPT Image model id the account can use is accepted
-export const DEFAULT_MODEL = readEnv('OPENAI_IMAGE_MODEL') ?? 'gpt-image-2';
+export const DEFAULT_MODEL = readEnv('OPENAI_IMAGE_MODEL') ?? 'gpt-image-2.5-flare';
 
 // OpenAI-compatible API base URL
 export const API_BASE_URL = (readEnv('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1').replace(/\/+$/, '');

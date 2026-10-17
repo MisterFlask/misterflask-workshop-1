@@ -11,8 +11,8 @@ export const editImageShape = {
     .describe('Paths to input images (.png, .jpg, .jpeg or .webp), relative to the project root or absolute. Up to 16.'),
   mask: z.string().optional()
     .describe('Path to a PNG mask the same size as the first image; fully transparent pixels mark the area to edit.'),
-  input_fidelity: z.enum(['high', 'low']).optional()
-    .describe('How closely to preserve input details such as faces (gpt-image-1 and gpt-image-1.5 only; omit for gpt-image-2, which always uses high).'),
+  input_fidelity: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional()
+    .describe('How closely to preserve input details such as faces. Supported values vary by model (xhigh and max: 2.5 models only); omit for gpt-image-2, which always uses high.'),
   ...imageOptionsShape,
 };
 

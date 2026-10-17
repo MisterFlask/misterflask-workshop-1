@@ -15,14 +15,18 @@ Both tools save every result to disk and return the file paths. Claude views a r
 `Read` on the path. Pass `inline: true` to get the image back in the tool result as well (files
 over 1 MB are skipped).
 
-Options shared by both tools: `model`, `size`, `quality` (`low` / `medium` / `high` / `auto`),
+The default model is `gpt-image-2.5-flare`, OpenAI's fast everyday model. Pass
+`model: "gpt-image-2.5-sunburst"` when edit precision matters more than speed.
+
+Options shared by both tools: `model`, `size`, `quality` (`low` / `medium` / `high` / `xhigh` /
+`max` / `auto`; `xhigh` and `max` are 2.5-only),
 `background` (`transparent` / `opaque` / `auto`), `output_format` (`png` / `jpeg` / `webp`),
 `output_compression`, `n`, `output_dir`, `filename`, `inline`. The server only sends options the
 call sets, so the API applies its own per-model defaults and rejects anything the chosen model
 doesn't support. The error message comes straight back to the tool result.
 
 `generate_image` also takes `moderation` (`low` / `auto`). `edit_image` takes `images` (paths),
-`mask` (path) and `input_fidelity` (gpt-image-1 and gpt-image-1.5 only).
+`mask` (path) and `input_fidelity` (values vary by model; omit for gpt-image-2).
 
 Every call is billed to the OpenAI account behind the key. Higher quality and larger sizes cost
 noticeably more, so use `low` or `medium` for drafts.
@@ -46,7 +50,7 @@ included, no native modules), so it runs on any OS with Node 20+ and no `node_mo
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `OPENAI_API_KEY` | — | Required |
-| `OPENAI_IMAGE_MODEL` | `gpt-image-2` | Model used when a call doesn't name one |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare` | Model used when a call doesn't name one |
 | `OPENAI_IMAGE_OUTPUT_DIR` | `<project root>/generated-images` | Where images go when a call doesn't set `output_dir` (gitignored) |
 | `OPENAI_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint, e.g. a gateway |
 | `NODE_USE_ENV_PROXY` | `1` (set in `.mcp.json`) | Makes Node's `fetch` honor `HTTPS_PROXY` (Node ≥ 22.21). Cloud sessions need it. Elsewhere it does nothing. |

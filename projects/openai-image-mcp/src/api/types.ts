@@ -1,6 +1,7 @@
 // OpenAI Images API types
 
-export type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
+export type ImageQuality = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'auto';
+export type InputFidelity = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type ImageBackground = 'transparent' | 'opaque' | 'auto';
 export type ImageFormat = 'png' | 'jpeg' | 'webp';
 
@@ -31,7 +32,7 @@ export interface EditImageRequest extends ImageOptions {
   prompt: string;
   images: InputImage[];
   mask?: InputImage;
-  input_fidelity?: 'high' | 'low';
+  input_fidelity?: InputFidelity;
 }
 
 export interface GeneratedImage {
