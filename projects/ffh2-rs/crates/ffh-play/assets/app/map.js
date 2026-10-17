@@ -88,6 +88,9 @@ export class MapView {
     this.art = null;
     /** The isometric renderer (`IsoMap`, `?renderer=iso`) when it draws the map, else null. */
     this.iso = null;
+    /** The experimental 3D renderer (`r3d/map3d.js`, `?renderer=3d`, docs/R3D.md) when it draws
+     *  the map, else null. Loaded on demand: the page never fetches it otherwise. */
+    this.r3d = null;
     this.queued = false;
     /** An in-flight camera glide (`glideTo`): `{ sx, sy, dx, dy, t0, dur }`, else null. Direct
      *  manipulation (drag, zoom, pan) cancels it; `prefers-reduced-motion` skips it. */
@@ -120,8 +123,9 @@ export class MapView {
         if (!down.dragged && Math.hypot(dx, dy) > 5) down.dragged = true;
         if (down.dragged) {
           this.cancelGlide();
-          const pan = this.iso
-            ? this.iso.panDelta(down.cx, down.cy, dx, dy)
+          const alt = this.iso ?? this.r3d;
+          const pan = alt
+            ? alt.panDelta(down.cx, down.cy, dx, dy)
             : { cx: down.cx - dx / this.cam.ts, cy: down.cy + dy / this.cam.ts };
           this.cam = T.clampCamera({ ...this.cam, ...pan }, this.map ?? { w: 1, h: 1 });
           this.hideTip();
@@ -186,6 +190,7 @@ export class MapView {
     if (!this.map) return null;
     const r = this.canvas.getBoundingClientRect();
     if (this.iso) return this.iso.screenToMap(ev.clientX - r.left, ev.clientY - r.top);
+    if (this.r3d) return this.r3d.screenToMap(ev.clientX - r.left, ev.clientY - r.top);
     return T.screenToMap(this.cam, this.map, this.vw, this.vh, ev.clientX - r.left, ev.clientY - r.top);
   }
 
@@ -231,6 +236,7 @@ export class MapView {
    *  of device pixels per art pixel (docs/ART.md 3.2). */
   zooms() {
     if (this.iso) return this.iso.zooms();
+    if (this.r3d) return this.r3d.zooms();
     return this.art ? artZooms(this.dpr) : ZOOMS;
   }
 
@@ -240,7 +246,7 @@ export class MapView {
     const next = zs[Math.min(zs.length - 1, Math.max(0, (i < 0 ? 3 : i) + step))];
     if (next === this.cam.ts) return;
     this.cancelGlide();
-    if (this.iso) {
+    if (this.iso || this.r3d) {
       this.cam = { ...this.cam, ts: next };
       this.hideTip();
       this.request();
@@ -384,6 +390,7 @@ export class MapView {
   screenOf(x, y) {
     if (!this.map) return null;
     if (this.iso) return this.iso.screenOf(x, y);
+    if (this.r3d) return this.r3d.screenOf(x, y);
     const p = T.mapToScreen(this.cam, this.map, this.vw, this.vh, x, y);
     return { x: p.sx + this.cam.ts / 2, y: p.sy + this.cam.ts / 2, ts: this.cam.ts };
   }
@@ -430,6 +437,39 @@ export class MapView {
     this.request();
   }
 
+  /** Switches to the experimental 3D renderer (`?renderer=3d`, docs/R3D.md) or back. Its module
+   *  is imported here, on first use; resolves to false when it cannot run (no WebGL2), leaving the
+   *  renderer as it was. */
+  async useR3d(on) {
+    if (!!on === !!this.r3d) return true;
+    if (on) {
+      let mod;
+      try {
+        mod = await import("./r3d/map3d.js");
+        if (this.iso) this.useIso(false);
+        if (this.art) {
+          this.art.dispose();
+          this.art = null;
+        }
+        this.r3d = new mod.Map3D(this);
+      } catch (e) {
+        console.error("3d map:", e);
+        return false;
+      }
+      this.snapZoom(mod.DEFAULT_ZOOM);
+    } else {
+      this.r3d.dispose();
+      this.r3d = null;
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    this.chunks.clear();
+    this.pixels = 0;
+    this.miniImage = null;
+    this.request();
+    return true;
+  }
+
   /** The zoom moved to the renderer's nearest step (or `ts` when given). */
   snapZoom(ts = null) {
     const zs = this.zooms();
@@ -440,7 +480,7 @@ export class MapView {
 
   /** The renderer drawing the map: "art" or "flat". */
   renderer() {
-    return this.iso ? "iso" : this.art ? "art" : "flat";
+    return this.r3d ? "3d" : this.iso ? "iso" : this.art ? "art" : "flat";
   }
 
   /** A new map (the `map` reply, or the map a delta brought up to date): redraws the chunks
@@ -501,6 +541,15 @@ export class MapView {
   }
 
   draw() {
+    if (this.r3d) {
+      try {
+        this.r3d.draw();
+      } catch (e) {
+        console.error("3d map:", e);
+      }
+      this.drawMini();
+      return;
+    }
     if (this.iso) {
       try {
         this.iso.draw();

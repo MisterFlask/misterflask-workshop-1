@@ -580,6 +580,8 @@ async function boot() {
   // unit sprites on team rings. It owns its own projection, so the art/flat switches leave it be.
   // Chosen with `?renderer=iso` or the remembered Tools → Options choice.
   if (rendererChoice() === "iso") mapView.useIso(true);
+  // The experimental 3D renderer (docs/R3D.md): loaded on demand; without WebGL2 it falls back.
+  if (rendererChoice() === "3d") use3d();
   // The art loads beside the data; the page works meanwhile (and without it). lookLoaded() builds
   // the art worker, which bakes in the engine's type ordering (from /api/data) once, so it must run
   // after setLookData(): otherwise, if the static art bundle wins the race against the server-
@@ -611,12 +613,24 @@ function lookLoaded() {
 /** Switches the map's renderer ("art", "iso" or "flat"; Tools → Options). The isometric renderer
  *  owns the map on its own; leaving it turns it off and falls back to art or flat. */
 function setRenderer(r) {
+  if (r === "3d") {
+    use3d();
+    return;
+  }
+  if (mapView.r3d) mapView.useR3d(false);
   if (r === "iso") {
     mapView.useIso(true);
     return;
   }
   if (mapView.iso) mapView.useIso(false);
   mapView.useArt(r === "art" && !!look.art);
+}
+
+/** Turns the 3D renderer on; when it cannot run, says so and draws with the art (or flat). */
+async function use3d() {
+  if (await mapView.useR3d(true)) return;
+  toast("The 3D renderer cannot run in this browser (it needs WebGL2); using the 2D map.", "error");
+  if (look.art) mapView.useArt(true);
 }
 
 window.ffh = { S, get mapView() { return mapView; }, units, screens, empire, tools, api, emit, ready: false, tab: currentTab, setLayer, openScreen, look, setRenderer };

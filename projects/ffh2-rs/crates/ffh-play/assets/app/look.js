@@ -24,6 +24,14 @@ export const look = { art: null, error: null, u: 2, dpr: 1, ms: 0, data: null, b
 
 const RENDERER_KEY = "ffh.renderer";
 
+/** The experimental 3D renderer (docs/R3D.md): offered in Tools -> Options and by `?renderer=3d`
+ *  while this is true. Off, the client never loads its module. */
+export const EXPERIMENTAL_3D = true;
+
+function known(r) {
+  return r === "flat" || r === "art" || r === "iso" || (EXPERIMENTAL_3D && r === "3d");
+}
+
 /** The map renderer asked for: "flat" from `?renderer=flat` (or `?renderer=art`), else the
  *  remembered Tools → Options choice, else "art". */
 export function rendererChoice() {
@@ -33,10 +41,10 @@ export function rendererChoice() {
   } catch {
     q = null;
   }
-  if (q === "flat" || q === "art" || q === "iso") return q;
+  if (known(q)) return q;
   try {
     const v = globalThis.localStorage?.getItem(RENDERER_KEY);
-    if (v === "flat" || v === "art" || v === "iso") return v;
+    if (known(v)) return v;
   } catch {
     /* no storage */
   }
