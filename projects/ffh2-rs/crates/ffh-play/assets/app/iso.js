@@ -53,6 +53,21 @@ const FEATURE_FILES = ["forest", "jungle", "ancient", "burnt"];
  *  gets the mountain. */
 const RELIEF_FILES = ["peak"];
 
+/** A BonusType name -> resource icon file (under app/iso/resources), by category. With ~58
+ *  bonuses (over 20 of them mana nodes), one icon per visual class keeps the set small while
+ *  covering every resource; the specific identity still shows on tile hover/inspect. */
+function resourceSprite(type) {
+  const t = type ?? "";
+  if (/MANA/.test(t)) return "mana";
+  if (/CLAM|CRAB|FISH|WHALE|PEARL/.test(t)) return "fish";
+  if (/COW|PIG|SHEEP|DEER|HORSE|TOAD|NIGHTMARE|GULAGARM/.test(t)) return "animal";
+  if (/COPPER|IRON|GOLD|GEM|JEWEL|MITHRIL|MARBLE|SHEUT|GUNPOWDER/.test(t)) return "ore";
+  if (/BANANA|CORN|RICE|WHEAT|SUGAR|COTTON|YGGDRASIL|FRUIT|REAGENT|RAZORWEED/.test(t)) return "crop";
+  return "goods"; // DYE, FUR, INCENSE, IVORY, SILK, WINE, ALE, FINE_CLOTHES, ...
+}
+
+const RESOURCE_FILES = ["mana", "crop", "animal", "fish", "ore", "goods"];
+
 /** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token.
  *  Civilian keywords are matched first so e.g. a scout never falls through to a combat archetype. */
 function unitSpriteKey(type) {
@@ -88,6 +103,7 @@ export class IsoMap {
     for (const name of TERRAIN_FILES) load(`t_${name}`, `./iso/terrain/${name}.png`);
     for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
     for (const name of RELIEF_FILES) load(`r_${name}`, `./iso/relief/${name}.png`);
+    for (const name of RESOURCE_FILES) load(`b_${name}`, `./iso/resources/${name}.png`);
     load("c_town", "./iso/cities/town.png");
     for (const name of ["knight", "lich", "archer", "spider", "settler", "scout", "worker"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
@@ -190,6 +206,8 @@ export class IsoMap {
     // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
     // clump occludes a farther one.
     this.drawFeatures(g, cells);
+    // Resource icons sit at the front of their tile, over any feature, under cities and units.
+    this.drawResources(g, cells);
     // Cities then units, back to front (units already sorted by their plot's sy via a fresh pass).
     this.drawCities(g, cells);
     this.drawUnits(g);
@@ -371,6 +389,31 @@ export class IsoMap {
       const by = Math.round(c.sy + TH * lift - fh);
       if (vis === 1) g.globalAlpha = 0.5; // remembered-but-fogged: muted
       g.drawImage(img, bx, by, Math.round(fw), Math.round(fh));
+      g.globalAlpha = 1;
+    }
+  }
+
+  /** Resource (bonus) icons, drawn small at the front of their tile so they stay visible over a
+   *  feature. A revealed bonus the team cannot yet see is still shown dimmed, matching the tile. */
+  drawResources(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const TH = TW / 2;
+    for (const c of cells) {
+      const vis = map.vis[c.k];
+      if (vis === 0) continue;
+      const b = map.bonus[c.k];
+      if (b == null || b < 0) continue;
+      const key = resourceSprite(tname("BonusType", b));
+      const img = this.imgs[`b_${key}`];
+      if (!img) continue;
+      const iw = TW * 0.42;
+      const ih = iw * (img.height / img.width);
+      const bx = Math.round(c.sx - iw / 2);
+      const by = Math.round(c.sy + TH * 0.3 - ih);
+      if (vis === 1) g.globalAlpha = 0.5;
+      g.drawImage(img, bx, by, Math.round(iw), Math.round(ih));
       g.globalAlpha = 1;
     }
   }
