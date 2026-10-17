@@ -613,6 +613,9 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
     let (hx, hy) = g.map.xy(here);
     let tp = amph.plot;
     let (tx, ty) = g.map.xy(tp);
+    // The target city's name for tracing: another of our stacks may capture or raze it earlier this
+    // turn, leaving `amph.city` a stale slab index, so guard the read (only ever hit under tracing).
+    let city_name = |g: &Game| if g.cities.contains(amph.city) { g.cities[amph.city].name.clone() } else { "a lost city".to_string() };
     // Land plots beside the city a land unit can disembark onto.
     let sample = cargo.iter().copied().find(|&c| g.unit_get_domain_type(c) == DomainType::DOMAIN_LAND);
     let army_on = |l: PlotIdx| g.map.plots[l].units.iter().filter(|&&o| g.units[o].owner == p && crate::military::is_army_unit(g, o)).count() as i32;
@@ -661,7 +664,7 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
             let (rx, ry) = g.map.xy(r.plot);
             (g.plot_distance(rx, ry, tx, ty), r.turns, r.plot)
         }) {
-            crate::trace!(g, p, "assault transport {:?} sails toward {} at {:?}", u, g.cities[amph.city].name, g.map.xy(tp));
+            crate::trace!(g, p, "assault transport {:?} sails toward {} at {:?}", u, city_name(g), g.map.xy(tp));
             move_to(g, grp, r.plot, 0);
         }
         if alive(g, grp) && g.group_ready_to_move(grp, false) {
@@ -670,7 +673,7 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
         return;
     };
     if water == here {
-        crate::trace!(g, p, "assault transport {:?} lands its army on {:?} next to {}", u, g.map.xy(site), g.cities[amph.city].name);
+        crate::trace!(g, p, "assault transport {:?} lands its army on {:?} next to {}", u, g.map.xy(site), city_name(g));
         for c in cargo.iter().copied() {
             if !g.units.contains(c) {
                 continue;
@@ -685,7 +688,7 @@ fn transport_assault(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: 
         }
         return;
     }
-    crate::trace!(g, p, "assault transport {:?} sails toward the coast of {} ({:?})", u, g.cities[amph.city].name, g.map.xy(site));
+    crate::trace!(g, p, "assault transport {:?} sails toward the coast of {} ({:?})", u, city_name(g), g.map.xy(site));
     move_to(g, grp, water, 0);
     if alive(g, grp) && g.group_ready_to_move(grp, false) {
         skip(g, grp);
