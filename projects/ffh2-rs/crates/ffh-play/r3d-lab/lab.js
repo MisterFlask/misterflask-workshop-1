@@ -9,6 +9,7 @@
 //   &cx=..&cy=..&ts=..                         camera (map point, pixels per plot)
 //   &r3d=painterly|plain|{json}                pipeline overrides (as in the client)
 //   &float=1                                   (grid) things stand on the water, not the sea floor
+//   &scale=1.4                                 (grid) every item at this scale (a catalog's scale)
 //   scene=cities&civs=CIVILIZATION_A,CIVILIZATION_B&sizes=2,6,12&imps=IMPROVEMENT_COTTAGE,...
 //        &walls=8&coast=1                      settlements side by side: a row per civilization
 //                                              (coast=1: water south of each row)
@@ -85,7 +86,7 @@ async function main() {
       y: q.get("float") ? Math.max(0, r3d.world.heightAt(it.mx, it.my)) : r3d.world.heightAt(it.mx, it.my),
       z: -it.my,
       yaw: Number(q.get("yaw") ?? 0),
-      sx: 1, sy: 1, sz: 1,
+      sx: Number(q.get("scale") ?? 1), sy: Number(q.get("scale") ?? 1), sz: Number(q.get("scale") ?? 1),
       phase: k * 0.13,
       tint: [1, 1, 1],
       id: (k + 1) / (scene.items.length + 2),

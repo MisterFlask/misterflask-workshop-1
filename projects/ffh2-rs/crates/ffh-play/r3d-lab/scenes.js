@@ -156,10 +156,10 @@ export function showcase(data) {
       [8, Y(8), "IMPROVEMENT_FARM"], [6, Y(8), "IMPROVEMENT_FARM"], [9, Y(7), "IMPROVEMENT_FARM"], [6, Y(5), "IMPROVEMENT_COTTAGE"],
       [8, Y(5), "IMPROVEMENT_HAMLET"], [5, Y(7), "IMPROVEMENT_VILLAGE"], [14, Y(2), "IMPROVEMENT_MINE"], [16, Y(3), "IMPROVEMENT_MINE"],
       [10, Y(4), "IMPROVEMENT_PASTURE"], [20, Y(1), "IMPROVEMENT_DUNGEON"], [14, Y(9), "IMPROVEMENT_MANA_FIRE"], [22, Y(4), "IMPROVEMENT_FORT"],
-      [19, Y(12), "IMPROVEMENT_RUINS"], [3, Y(8), "IMPROVEMENT_FISHING_BOATS"], [12, Y(11), "IMPROVEMENT_TOWER"],
+      [19, Y(12), "IMPROVEMENT_RUINS"], [2, Y(8), "IMPROVEMENT_FISHING_BOATS"], [12, Y(11), "IMPROVEMENT_TOWER"],
     ],
     bonuses: [
-      [8, Y(8), "BONUS_WHEAT"], [10, Y(4), "BONUS_HORSE"], [14, Y(2), "BONUS_GOLD"], [16, Y(3), "BONUS_IRON"], [3, Y(8), "BONUS_FISH"],
+      [8, Y(8), "BONUS_WHEAT"], [10, Y(4), "BONUS_HORSE"], [14, Y(2), "BONUS_GOLD"], [16, Y(3), "BONUS_IRON"], [2, Y(8), "BONUS_FISH"],
       [14, Y(9), "BONUS_MANA"], [21, Y(6), "BONUS_MANA"], [11, Y(10), "BONUS_COW"], [2, Y(4), "BONUS_WHALE"], [20, Y(8), "BONUS_GEMS"],
     ],
     owners: [[2, Y(11), 11, Y(3), 0], [15, Y(7), 23, Y(2), 1], [18, Y(13), 23, Y(8), 2]],

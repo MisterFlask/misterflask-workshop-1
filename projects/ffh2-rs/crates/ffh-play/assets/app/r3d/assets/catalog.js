@@ -6,8 +6,8 @@
 //   forest(feat, ctx)      -> [{asset, variant?, param?, scale, weight?}]  species mix of a wooded plot
 //   flora(ctx)             -> [{asset, scale, count, param?, variant?}]  loose plants on open
 //                              ground (bushes, reeds); a forest mix's `under` entries take the same
-//   rocks(ctx)             -> [{asset, scale, count, param?, variant?}]  boulders/outcrops on
-//                              hills, peaks, tundra
+//   rocks(ctx)             -> [{asset, scale, count, param?, variant?, prefer?}]  boulders/
+//                              outcrops on hills, peaks, tundra (prefer "ridge": on high ground)
 //   settlement(type, ctx)  -> part or [parts]  a settlement-like improvement (cottage, hamlet,
 //                              village, town, fort, tower, castle) in the plot owner's family
 //                              (ctx.family); asked before `improvement`

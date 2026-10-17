@@ -180,7 +180,17 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       const rocks = CATALOG.rocks?.(ctx) ?? (kind === KIND.HILLS || kind === KIND.PEAK ? [{ asset: "basic.rock", scale: 1, count: kind === KIND.PEAK ? 3 : 1 }] : []);
       for (const rk of rocks) {
         for (let k = 0; k < (rk.count ?? 1); k++) {
-          const lx = r.range(-0.4, 0.4), lz = r.range(-0.4, 0.4);
+          let lx = r.range(-0.4, 0.4), lz = r.range(-0.4, 0.4);
+          // prefer "ridge": the highest of a few spots, so crags crown the ridge line instead of
+          // dotting the flanks.
+          if (rk.prefer === "ridge") {
+            let best = H(...at(lx, lz));
+            for (let t = 0; t < 5; t++) {
+              const cx = r.range(-0.4, 0.4), cz = r.range(-0.4, 0.4);
+              const hh = H(...at(cx, cz));
+              if (hh > best) [best, lx, lz] = [hh, cx, cz];
+            }
+          }
           if (held && Math.hypot(lx, lz) < 0.32) continue;
           place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }

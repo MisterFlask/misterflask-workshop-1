@@ -4222,9 +4222,9 @@ function rocksOf(ctx) {
   if (kind === KIND.PEAK) {
     // Crags break the mountain's silhouette; scree and boulders on the flanks.
     if (feat === FEAT.VOLCANO) return [{ asset: "rock.basalt", scale: 1.2, count: 3 }, { asset: "rock.shard", scale: 1.1, count: 1 }];
-    if (hell) return [{ asset: "rock.crag", scale: 1.0, count: 2, tint: [0.62, 0.55, 0.58] }, { asset: "rock.thorn", scale: 1.3, count: 1 }, { asset: "rock.shard", scale: 1.2, count: 1 }];
+    if (hell) return [{ asset: "rock.crag", scale: 1.0, count: 2, tint: [0.62, 0.55, 0.58], prefer: "ridge" }, { asset: "rock.thorn", scale: 1.3, count: 1 }, { asset: "rock.shard", scale: 1.2, count: 1 }];
     return [
-      { asset: cold ? "rock.crag.snow" : "rock.crag", scale: 1.0, count: 2 + (r() < 0.4 ? 1 : 0) },
+      { asset: cold ? "rock.crag.snow" : "rock.crag", scale: 1.0, count: 2 + (r() < 0.4 ? 1 : 0), prefer: "ridge" },
       { asset: cold ? "rock.boulder.snow" : "rock.boulder", scale: 0.9, count: r() < 0.6 ? 1 : 0 },
     ];
   }

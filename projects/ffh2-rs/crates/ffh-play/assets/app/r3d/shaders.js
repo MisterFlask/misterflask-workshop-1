@@ -207,6 +207,10 @@ vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   sun = d * sh;
   vec3 amb = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
   vec3 L = uSunColor * sun + amb * ao;
+  // A painter's fill from the side away from the sun: a roof or a cliff turned from it stays a
+  // readable cool shade, never a black slab (the stylized look only).
+  vec3 fd = normalize(vec3(-uSunDir.x, 0.4, -uSunDir.z));
+  L += uSkyColor * 0.24 * max(0.0, dot(n, fd)) * ao * uStylize;
   vec3 pool = texture(uLight, mapUV(mapOf(wp))).rgb;
   L += pool * (0.55 + 0.45 * ao);
   return L;
