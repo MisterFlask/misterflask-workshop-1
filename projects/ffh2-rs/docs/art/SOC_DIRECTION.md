@@ -48,7 +48,7 @@ camera/hit-testing map to iso, units/rings anchor to diamond centres).
 | # | What | Old (discarded) | New | Recommended default |
 |---|------|-----------------|-----|---------------------|
 | D0 | **Projection** | 32×32 square, plan view | 2.5D isometric diamonds | 2:1 diamond, **64×32 px** tile footprint at 1× |
-| D1 | **Unit resolution** | 32×32, fills tile | larger, overflows upward (~1.5–2 tiles tall) | author **128 px tall**, draw ~2 tiles tall at default zoom |
+| D1 | **Unit size** | 32×32, fills tile | **Civ4-like: roughly tile-scaled, only slight overhang** | drawn ~1 tile tall (~52–64 px on screen at default zoom), the figure barely rises into the tile above; author ~96 px and downscale |
 | D2 | **Palette** | closed 56-colour indexed | open / near-true colour for figures | open for units; terrain can reuse indexed passes at first |
 | D3 | **Authoring** | text `.spr`, JS-drawn | AI-generated + downscaled **PNG sprites** | add a PNG sprite path; workflow in §6 |
 | D4 | **Mood** | cheerful daylight | **bright sunny daylight (CHOSEN)** | sunny base key; golden-hour kept as an optional later lighting pass |
@@ -92,7 +92,8 @@ low-saturation cloth.
   possible time-of-day toggle), not the base board. Figures must be **daylight-keyed** (lit from the
   upper-left, bright) to sit on a sunny board, so the earlier dark reference units are re-generated
   in this key.
-- **D0 — iso tile footprint** (64×32 default) and **D1 — unit authored height** (128 px default).
+- **D0 — iso tile footprint** (64×32 default) and **D1 — on-screen unit size** (Civ4 proportions:
+  ~1 tile tall, slight overhang — default ~56 px at 64-px tiles, not the towering SoC height).
 - **D2 — how far the open palette extends** (units only, or terrain too from the start).
 
 D4 is set (sunny). The remaining defaults stand unless changed; proceeding to §5 step 1 (the
