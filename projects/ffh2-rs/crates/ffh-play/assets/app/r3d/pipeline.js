@@ -128,15 +128,36 @@ export class Pipeline {
     this.fs();
   }
 
-  /** GPU time of a stage (when timer queries exist): wraps `f`. */
+  /** GPU time of a stage while measuring: wraps `f`. With timer queries, the GPU's own count;
+   *  without (software rendering), wall time with the pipeline drained before and after (a
+   *  one-pixel read waits for all work in flight), so each stage is timed alone. */
   timed(name, f) {
     const gl = this.gl;
-    if (!this.timer || !this.measure) return f();
+    if (!this.measure) return f();
+    if (!this.timer) {
+      this.drain();
+      const t0 = performance.now();
+      f();
+      this.drain();
+      const s = this.stats.ms[name] ?? { sum: 0, n: 0 };
+      s.sum += performance.now() - t0;
+      s.n++;
+      this.stats.ms[name] = s;
+      this.stats.method = "wall";
+      return;
+    }
+    this.stats.method = "timer";
     const q = gl.createQuery();
     gl.beginQuery(this.timer.TIME_ELAPSED_EXT, q);
     f();
     gl.endQuery(this.timer.TIME_ELAPSED_EXT);
     this.queries.push([name, q]);
+  }
+
+  drain() {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, (this.px1 ??= new Uint8Array(4)));
   }
 
   collectTimings() {

@@ -86,24 +86,41 @@ export function standHeight(world, mx, my, foot = 0) {
   return h;
 }
 
+/** What the static dressing reads from the view: the cities and where units stand (by plot). */
+export function staticEnv(world) {
+  const cityAt = new Map();
+  for (const c of S.cities.values()) cityAt.set(c.y * world.w + c.x, c);
+  const unitAt = new Set();
+  for (const units of S.unitsAt.values()) unitAt.add(units[0].y * world.w + units[0].x);
+  return { cityAt, unitAt };
+}
+
 /** The static dressing of the map: trees, plants, rocks, features, structures, resources and
- *  settlements, and the particle emitters. `world`: world.js; returns `{list, emitters, cities}`. */
-export function dressStatic(world, map) {
+ *  settlements, and the particle emitters. `world`: world.js; `plots`: only these plot indices
+ *  (all when null). Each plot's dressing depends only on the state of the plot and its
+ *  neighbours, so a change redresses the plots around it (map3d.js). Returns `{list, emitters,
+ *  cities, byPlot}` (byPlot: plot index -> {list, emitters, city}). */
+export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
   const out = [];
   const emitters = [];
   const cities = [];
+  const byPlot = new Map();
   const w = world.w;
-  const cityAt = new Map();
-  for (const c of S.cities.values()) cityAt.set(c.y * w + c.x, c);
-  const unitAt = new Set();
-  for (const units of S.unitsAt.values()) unitAt.add(units[0].y * w + units[0].x);
+  const { cityAt, unitAt } = env;
   const H = (mx, my) => world.heightAt(mx, my);
+  const visit = plots ?? Array.from({ length: w * world.h }, (_, k) => k);
+  let base = 0;
 
-  for (let y = 0; y < world.h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = y * w + x;
+  for (const i of visit) {
+    const x = i % w, y = (i - x) / w;
+    const o0 = out.length, e0 = emitters.length, c0 = cities.length;
+    base = o0;
+    dressPlot();
+    byPlot.set(i, { list: out.slice(o0), emitters: emitters.slice(e0), city: cities.length > c0 ? cities[c0] : null });
+
+    function dressPlot() {
       const kind = world.kind[i];
-      if (kind === KIND.VOID) continue;
+      if (kind === KIND.VOID) return;
       const feat = world.feat[i];
       const ground = world.ground[i];
       const city = cityAt.get(i);
@@ -135,7 +152,7 @@ export function dressStatic(world, map) {
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
         const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);
-        out.push(inst(asset, mx, yy + (o.lift ?? 0), -my, { plot: i, id: o.id ?? idOf(`s${i}:${out.length}`), ...o }));
+        out.push(inst(asset, mx, yy + (o.lift ?? 0), -my, { plot: i, id: o.id ?? idOf(`s${i}:${out.length - base}`), ...o }));
       };
 
       // Wooded plots: a stand of trees, thinned toward open neighbours, with a glade where a unit,
@@ -228,7 +245,7 @@ export function dressStatic(world, map) {
       }
     }
   }
-  return { list: out, emitters, cities };
+  return { list: out, emitters, cities, byPlot };
 }
 
 /** Where the water is around plot (x, y): the plot-local directions ([dx, dz], x east, z south)

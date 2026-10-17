@@ -13,8 +13,8 @@ import * as T from "../tiles.js";
 import { mul, perspective, lookAt, invert, xform4, ortho, vnorm, clamp, lerp, smoothstep } from "./math.js";
 import { World, SEA } from "./world.js";
 import { Pipeline } from "./pipeline.js";
-import { Scene } from "./scene.js";
-import { dressStatic, dressUnits, teamColour, standHeight } from "./dress.js";
+import { Scene, bucketOf } from "./scene.js";
+import { dressStatic, dressUnits, staticEnv, teamColour, standHeight } from "./dress.js";
 import { loadConfig, saveConfig, withPreset, LIGHTING, PANEL } from "./config.js";
 import { drawHud } from "./hud.js";
 import "./assets/index.js";
@@ -202,10 +202,12 @@ export class Map3D {
     const map = this.view.map;
     if (!map) return false;
     let mapChanged = false;
+    let mapDirty = null;
     const T0 = performance.now();
     if (map !== this.mapSeen) {
       const prev = this.mapSeen;
       const dirty = prev && prev.w === map.w && prev.h === map.h ? changedPlots(prev, map) : null;
+      mapDirty = dirty;
       if (!prev || !dirty || dirty.length) {
         const before = this.world;
         this.world = new World(map);
@@ -227,18 +229,67 @@ export class Map3D {
       for (let i = 0; i < 64; i++) if (!colors[i]) colors[i] = T.playerColor(i);
       this.scene.setOwnerColors(colors);
       const T2 = performance.now();
-      const st = dressStatic(this.world, map);
+      // The static dressing, redressed where something changed: a plot's dressing depends on the
+      // plot and its neighbours (glades where units stand, a city's wood opening in front of it),
+      // and the ground's height on the plots around (two plots after a map change). A unit's
+      // move then rebuilds a few instance buckets instead of the whole map's.
+      const env = staticEnv(this.world);
+      const n = map.w * map.h;
+      const cityKey = new Map();
+      for (const [i, c] of env.cityAt) cityKey.set(i, `${c.id}|${c.owner}|${c.size}|${c.walls}|${c.capital}|${c.name}`);
+      const civKey = [...S.players.values()].map((p) => `${p.id}:${p.civ}`).join(",");
+      const seen = this.dressSeen;
+      let plots = null;
+      if (seen && seen.n === n && seen.civKey === civKey && this.byPlot && (!mapChanged || mapDirty)) {
+        const changed = new Set(mapChanged ? mapDirty : []);
+        for (const i of env.unitAt) if (!seen.unitAt.has(i)) changed.add(i);
+        for (const i of seen.unitAt) if (!env.unitAt.has(i)) changed.add(i);
+        for (const [i, k] of cityKey) if (seen.cityKey.get(i) !== k) changed.add(i);
+        for (const i of seen.cityKey.keys()) if (!cityKey.has(i)) changed.add(i);
+        plots = this.around(changed, mapChanged ? 2 : 1);
+      }
+      const st = dressStatic(this.world, map, plots, env);
       const T3 = performance.now();
-      this.cities = st.cities;
-      this.scene.setInstances("static", st.list);
-      this.emitters = st.emitters;
-      this.scene.setParticles(st.emitters);
+      if (!plots) {
+        this.byPlot = new Array(n);
+        for (const [i, d] of st.byPlot) this.byPlot[i] = d;
+        this.scene.setInstances("static", st.list);
+      } else if (plots.length) {
+        const chunks = new Set();
+        for (const i of plots) for (const it of this.byPlot[i]?.list ?? []) chunks.add(bucketOf(it));
+        for (const [i, d] of st.byPlot) {
+          this.byPlot[i] = d;
+          for (const it of d.list) chunks.add(bucketOf(it));
+        }
+        const items = [];
+        for (const d of this.byPlot) if (d) for (const it of d.list) if (chunks.has(bucketOf(it))) items.push(it);
+        this.scene.setInstances("static", items, chunks);
+      }
+      const emitters = [], cities = [];
+      let count = 0;
+      for (const d of this.byPlot) {
+        if (!d) continue;
+        for (const e of d.emitters) emitters.push(e);
+        if (d.city) cities.push(d.city);
+        count += d.list.length;
+      }
+      this.cities = cities;
+      this.emitters = emitters;
+      this.scene.setParticles(emitters);
       const T4 = performance.now();
-      this.scene.setPaint(this.world, map, st.cities, this.cfg.lighting === "dusk" ? 1.6 : 1);
+      // The paint layers (roads, fields, settlement ground, light pools) change with the map, the
+      // cities and the light.
+      const paintKey = `${this.cfg.lighting};${[...cityKey].join(";")}`;
+      if (mapChanged || paintKey !== this.paintSeen) {
+        this.scene.setPaint(this.world, map, cities, this.cfg.lighting === "dusk" ? 1.6 : 1);
+        this.paintSeen = paintKey;
+      }
+      this.dressSeen = { n, civKey, unitAt: env.unitAt, cityKey };
       this.syncMs.dress = T3 - T2;
       this.syncMs.instances = T4 - T3;
       this.syncMs.paint = performance.now() - T4;
-      this.staticCount = st.list.length;
+      this.syncMs.redressed = plots ? plots.length : n;
+      this.staticCount = count;
       this.viewSeen = S.view;
       this.selSeen = null;
     }
@@ -289,6 +340,22 @@ export class Map3D {
 
   nearXMap(mx) {
     return mx;
+  }
+
+  /** The plots within `r` (Chebyshev) of the plots in `set`, as an array of plot indices. */
+  around(set, r) {
+    const out = new Set();
+    const w = this.world.w;
+    for (const i of set) {
+      const x = i % w, y = (i - x) / w;
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          const j = this.world.index(x + dx, y + dy);
+          if (j >= 0) out.add(j);
+        }
+      }
+    }
+    return [...out];
   }
 
   // --- unit movement --------------------------------------------------------------------------

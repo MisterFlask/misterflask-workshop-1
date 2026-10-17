@@ -127,3 +127,33 @@ test("the dressing of a scene is deterministic and only uses what is known", () 
   const view2 = buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }] });
   assert.ok(view2.players.length === 1);
 });
+
+test("a plot's dressing depends only on its neighbourhood: a moving unit redresses the plots around it", () => {
+  const scene = showcase(data);
+  St.setView(scene.view);
+  St.setMap(scene.map);
+  const w = new World(scene.map);
+  const full = dressStatic(w, scene.map);
+  const key = (d) => JSON.stringify((d?.list ?? []).map((i) => [i.asset, i.variant, i.param, +i.x.toFixed(5), +i.y.toFixed(5), +i.z.toFixed(5), +i.sx.toFixed(4), i.id]));
+  // Dressing some plots alone gives what the full dressing gave them.
+  const some = [5, 77, 140, 200, 301];
+  const part = dressStatic(w, scene.map, some);
+  for (const i of some) assert.equal(key(part.byPlot.get(i)), key(full.byPlot.get(i)), `plot ${i}`);
+  // The elven archer walks two plots on through the great forest: only the plots within one of
+  // where it was and where it is change (the glade follows it).
+  const view = structuredClone(scene.view);
+  const u = view.units.find((u) => u.owner === 1 && u.type === data.tables.UnitType.findIndex((t) => t.type === "UNIT_ARCHER"));
+  const from = [u.x, u.y];
+  u.x += 2;
+  St.setView(view);
+  const after = dressStatic(w, scene.map);
+  const near = (i, [x, y]) => Math.abs((i % w.w) - x) <= 1 && Math.abs(Math.floor(i / w.w) - y) <= 1;
+  let changed = 0;
+  for (let i = 0; i < w.w * w.h; i++) {
+    if (key(after.byPlot.get(i)) === key(full.byPlot.get(i))) continue;
+    changed++;
+    assert.ok(near(i, from) || near(i, [u.x, u.y]), `plot ${i} (${i % w.w}, ${Math.floor(i / w.w)}) changed though the unit was not next to it`);
+  }
+  assert.ok(changed > 0, "the move changed the dressing around the unit");
+  St.setView(scene.view);
+});

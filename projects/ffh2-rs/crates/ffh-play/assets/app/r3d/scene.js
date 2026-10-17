@@ -65,11 +65,16 @@ class AssetBatch {
   }
 }
 
+/** The bucket key ("cx,cy") of an instance record. */
+export function bucketOf(it) {
+  return `${Math.floor(it.x / BUCKET)},${Math.floor(-it.z / BUCKET)}`;
+}
+
 /** Instance records (dress.js) -> buckets by asset and chunk. */
 function packBuckets(list) {
   const by = new Map();
   for (const it of list) {
-    const ck = `${Math.floor(it.x / BUCKET)},${Math.floor(-it.z / BUCKET)}`;
+    const ck = bucketOf(it);
     const key = `${it.asset}#${it.variant}#${it.param}`;
     let m = by.get(key);
     if (!m) by.set(key, (m = new Map()));
@@ -158,14 +163,20 @@ export class Scene {
   }
 
   /** Replaces a layer's instances ("static" dressing or "units"). */
-  setInstances(layer, list) {
+  setInstances(layer, list, chunks = null) {
     const gl = this.gl;
+    // `chunks` (a Set of "cx,cy" bucket keys): only those chunks are replaced, by `list` (which
+    // then holds exactly their instances); the rest of the layer stays as it is.
+    const out = [];
     for (const b of this.layers[layer]) {
+      if (chunks && !chunks.has(`${b.cx},${b.cy}`)) {
+        out.push(b);
+        continue;
+      }
       gl.deleteVertexArray(b.bucket.vao);
       gl.deleteBuffer(b.bucket.ibuf);
       if (b.lodBucket) gl.deleteVertexArray(b.lodBucket.vao);
     }
-    const out = [];
     for (const [key, chunks] of packBuckets(list)) {
       let batch = this.assets.get(key);
       if (!batch) {
@@ -278,15 +289,33 @@ export class Scene {
     const world = this.world;
     if (!world) return;
     const v = [];
-    const push = (mx, my, lift, c, a) => v.push(mx, world.heightAt(mx, my) + lift, -my, c[0], c[1], c[2], a);
-    const annulus = (cx, cy, r0, r1, c, a, lift) => {
-      const n = 40;
-      for (let k = 0; k < n; k++) {
-        const a0 = (k / n) * Math.PI * 2, a1 = ((k + 1) / n) * Math.PI * 2;
-        const p = (r, t) => [cx + Math.cos(t) * r, cy + Math.sin(t) * r * 0.92];
-        const q = [p(r0, a0), p(r1, a0), p(r1, a1), p(r0, a1)];
-        const tri = [q[0], q[1], q[2], q[0], q[2], q[3]];
-        for (const [mx, my] of tri) push(mx, my, lift, c, a);
+    const ground = (mx, my) => world.heightAt(mx, my);
+    const push = (mx, my, lift, c, a, H = ground) => v.push(mx, H(mx, my) + lift, -my, c[0], c[1], c[2], a);
+    // A ring is draped on a 5 x 5 patch of the ground's height under it (bilinear), not on a
+    // height lookup per vertex: hundreds of stacks re-ring on every move.
+    const patch = (cx, cy, R) => {
+      const N = 4;
+      const hs = new Float64Array((N + 1) * (N + 1));
+      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) hs[j * (N + 1) + i] = world.heightAt(cx - R + (2 * R * i) / N, cy - R + (2 * R * j) / N);
+      return (mx, my) => {
+        const u = Math.min(N - 1e-6, Math.max(0, ((mx - cx + R) / (2 * R)) * N));
+        const t = Math.min(N - 1e-6, Math.max(0, ((my - cy + R) / (2 * R)) * N));
+        const i = Math.floor(u), j = Math.floor(t), fu = u - i, ft = t - j;
+        const h = (a, b) => hs[b * (N + 1) + a];
+        return (h(i, j) * (1 - fu) + h(i + 1, j) * fu) * (1 - ft) + (h(i, j + 1) * (1 - fu) + h(i + 1, j + 1) * fu) * ft;
+      };
+    };
+    const N = 28;
+    const cs = Array.from({ length: N + 1 }, (_, k) => [Math.cos((k / N) * Math.PI * 2), Math.sin((k / N) * Math.PI * 2) * 0.92]);
+    const annulus = (cx, cy, r0, r1, c, a, lift, H) => {
+      const corner = (r, k) => push(cx + cs[k][0] * r, cy + cs[k][1] * r, lift, c, a, H);
+      for (let k = 0; k < N; k++) {
+        corner(r0, k);
+        corner(r1, k);
+        corner(r1, k + 1);
+        corner(r0, k);
+        corner(r1, k + 1);
+        corner(r0, k + 1);
       }
     };
     for (const g of rings) {
@@ -294,9 +323,10 @@ export class Scene {
       const rim = hexRgbArr(g.rim ?? "#1a1410");
       const r = g.r ?? 0.3;
       const wd = g.width ?? 0.045;
-      annulus(g.x, g.y, r - wd * 0.5, r + wd * 0.5, rim, 0.75, 0.014);
-      annulus(g.x, g.y, r - wd * 0.32, r + wd * 0.32, c, 0.95, 0.016);
-      if (g.fill) annulus(g.x, g.y, 0, r - wd * 0.5, c, g.fill, 0.012);
+      const H = patch(g.x, g.y, r + wd);
+      annulus(g.x, g.y, r - wd * 0.5, r + wd * 0.5, rim, 0.75, 0.014, H);
+      annulus(g.x, g.y, r - wd * 0.32, r + wd * 0.32, c, 0.95, 0.016, H);
+      if (g.fill) annulus(g.x, g.y, 0, r - wd * 0.5, c, g.fill, 0.012, H);
     }
     if (path && path.length > 1) {
       const c = hexRgbArr(pathColor ?? "#ffe9a0");
