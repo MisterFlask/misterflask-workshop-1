@@ -686,9 +686,12 @@ void main() {
       col += alb * uSunColor * 0.12 * max(0.0, dot(n, uSunDir) + 0.4);
     }
     col = shadowColour(col, sun);
-    // A rim of sky light lifts silhouettes off the ground (units most: alpha protect).
+    // A rim of sky light lifts silhouettes off the ground (units most: alpha protect). It is light
+    // on the surface, so it follows the surface's brightness: a dark cloak or a wing membrane seen
+    // edge-on catches a little of it, not a blue sheen; the back of a thin card less still.
     vec3 V = normalize(uEye - vWorld);
     float rim = pow(1.0 - max(dot(n, V), 0.0), 3.0) * uRim * (0.5 + vTeam.a);
+    rim *= mix(0.35, 1.0, clamp(lum(alb) * 2.5, 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : 0.5);
     col += uSkyColor * rim * 0.6 * ao;
   }
   col = fogOfWar(col, vVis);

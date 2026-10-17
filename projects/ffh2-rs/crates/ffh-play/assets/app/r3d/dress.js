@@ -18,6 +18,7 @@ import { hasRecipe, buildAsset } from "./assets/registry.js";
 /** Where on a plot things stand (plot-local, x east / z south, plot half-size 0.5). */
 const UNIT_SPOT = [0, 0.04];
 const CITY_UNIT_SPOT = [0.0, 0.3];
+const VOLCANO_UNIT_SPOT = [-0.14, 0.38];
 const STRUCTURE_SPOT = [0.02, -0.12];
 const BONUS_SPOT = [-0.26, 0.2];
 
@@ -359,7 +360,8 @@ export function dressUnits(world, map) {
     const i = u0.y * w + u0.x;
     const top = T.topUnit(units, mine, sel);
     const onCity = map.city[i] >= 0;
-    const spot = onCity ? CITY_UNIT_SPOT : UNIT_SPOT;
+    // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera.
+    const spot = onCity ? CITY_UNIT_SPOT : world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
     const team = hexRgb(teamColour(top.owner));
     const order = [top, ...units.filter((u) => u !== top)].slice(0, 3);
     const slots = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
