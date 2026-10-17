@@ -3,15 +3,19 @@
 The C++ AI (CvPlayerAI/CvCityAI/CvUnitAI/CvTeamAI, ~60k lines, plus the Python AI hooks
 in CvGameUtils.py such as `AI_chooseTech`/`AI_chooseProduction`) is not ported. It is the
 main cause of FFH2's late-game turn times (per-unit re-evaluation of every plot, repeated A*
-searches, Python callbacks). `ffh-ai` is a new design with three hard requirements:
+searches, Python callbacks). `ffh-ai` is a new design with two hard requirements -- legal play
+and determinism -- and a standing cost preference:
 
 - **Legal play only.** It acts through the same rules APIs a human would: missions pushed on
   selection groups (`group_push_mission`), city orders (`city_push_order`), research
   (`player_push_research`), civics/religion/sliders, deals (`implement_deal`), spells
   (`unit_cast`), upgrades/promotions, scrapping. The rules decide what is allowed; a rules
   bug is reported, never worked around in the AI.
-- **Bounded cost per turn.** No per-unit full-map scans and no path search per candidate
-  target: at most a few bounded floods per group, one real path for the chosen target.
+- **Cost is a deferred concern, not a hard gate.** Prefer cheap shapes -- a few bounded floods
+  per group, one real path for the chosen target, no per-unit full-map scans -- but do not reject
+  a feature on cost alone: richer deterministic computation is allowed, and optimized (a
+  behaviour-preserving bounding pass that computes the same decisions faster) only once a
+  benchmark shows a real problem at the scale the game reaches. Determinism below is still hard.
 - **Deterministic.** Decisions are pure functions of the game state. The AI never draws from
   the game RNG (its "random" war rolls hash the turn and player), never iterates a
   HashMap/HashSet, never reads the clock. Its only memory outside `Game` is a shortcut a fresh
