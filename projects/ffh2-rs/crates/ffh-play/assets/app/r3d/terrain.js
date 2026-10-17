@@ -41,10 +41,15 @@ export function buildChunk(world, cx, cy, res = RES) {
   const n = CHUNK * res;
   const N = n + 3;
   const hs = chunkHeights(world, cx, cy, res);
-  // Chunks at the map's east/north end may hold fewer plots.
+  // Chunks at the map's east end may hold fewer plots (no parchment chunk is drawn past the east
+  // edge, so there is no gap there).
   const pw = Math.min(CHUNK, world.w - cx * CHUNK);
-  // The rows beyond the map's north and south edges (blank parchment) are whole chunks.
-  const ph = cy < 0 || cy * CHUNK >= world.h ? CHUNK : Math.min(CHUNK, world.h - cy * CHUNK);
+  // Every chunk is a full CHUNK of rows tall (F15). The last in-map chunk used to stop at row
+  // world.h while the north parchment chunk began at ceil(h/CHUNK)*CHUNK, leaving an unmeshed band
+  // (12 rows when h = 52). A full-height chunk runs through to the next chunk boundary, meeting the
+  // parchment with no gap; its off-map rows read as parchment (heightAt and the textures default
+  // there), and chunkVisible already culls each chunk as CHUNK rows tall.
+  const ph = CHUNK;
   const vw = pw * res + 1;
   const vh = ph * res + 1;
   const data = new Float32Array(vw * vh * 6);
