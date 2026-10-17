@@ -609,7 +609,13 @@ sides' `end_war_val` funds reparations: when clearly winning, an AI now *initiat
 tribute (the costliest tech the loser can give, then gold) instead of a valueless white peace, and a
 losing AI *sweetens* its peace offer with tribute of its own so the winner will accept -- converting
 military success into economy. A civ pursuing conquest/domination against that enemy presses on
-rather than cashing out (victory-pursuit override in both the offer and `consider_offer`). The old
+rather than cashing out (victory-pursuit override in both the offer and `consider_offer`), and so does
+a civ *overwhelmingly* winning any war (`press_conquest`: our power >= 200% of the enemy's defensive
+power) -- it takes cities instead of selling the war for a token tribute. The latter guard keys on the
+war's power edge, not the civ's victory goal, because an adversarial check of the first A/B found
+strong civs (2-5x power) tribute-farming weak victims for whole games instead of finishing them -- the
+primary (conquest) traded for a secondary tech. Below 2x the enemy's cities are not reliably stormable,
+so a tribute peace is a sensible outcome and the guard does not fire. The old
 willingness (take a bare peace unless clearly winning, and always past a 60-turn exhaustion floor)
 stays as the fallback, so even/stalemated wars still resolve and research is not starved.
 **Deliberate deviation from the C++ quirk:** `AI_doDiplo` adds tribute gold at *face* value because

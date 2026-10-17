@@ -142,13 +142,15 @@ pub fn manage(g: &mut Game, v: &View) {
     // Peace when the war goes badly or drags on without gains -- or, when we are clearly winning and
     // the war has run its course (>10 turns), a peace that converts our edge into reparations (tech +
     // gold) instead of a valueless white peace (C++ `AI_doDiplo` peace build). A winner pursuing
-    // conquest/domination against this enemy keeps fighting rather than cashing out.
+    // conquest/domination against this enemy, or winning a total war (press_conquest), keeps fighting
+    // to take cities rather than cashing out.
     for &enemy in &v.civ_enemies {
         let Some(other) = team_leader(g, enemy).filter(|&q| !g.players[q].human) else { continue };
         let our_want = end_war_val(g, team, enemy); // iOurValue: how much WE want peace
         let their_want = end_war_val(g, enemy, team); // iTheirValue: how much THEY want peace
         let victory_war = crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(enemy);
-        let winner_initiated = their_want > our_want && g.teams[team].ai_at_war_counter[enemy] > 10 && !victory_war;
+        // Don't sell a conquest war we are winning: press on to take cities instead (see press_conquest).
+        let winner_initiated = their_want > our_want && g.teams[team].ai_at_war_counter[enemy] > 10 && !victory_war && !press_conquest(g, team, enemy);
         if !want_peace(g, team, enemy, &plan) && !winner_initiated {
             continue;
         }
@@ -496,6 +498,30 @@ fn victory_war(g: &Game, p: PlayerId, plan: &crate::victory::Plan) -> Option<(Te
     best.map(|(t, _)| (t, "domination or conquest"))
 }
 
+/// Power ratio (ours * 100 / their defensive power) at or above which a winner should press a war to
+/// taking cities (conquest) rather than cash out for a token tribute -- an *overwhelming* edge (2x),
+/// well above the `TOTAL_WAR_RATIO` = 140 bar for merely committing to a war. Below it (a 1-2x edge)
+/// the enemy's cities are not reliably stormable, so a tribute peace is a sensible outcome and this
+/// does not fire; at or above it, conquest is achievable and selling it for a tech forfeits the
+/// primary goal. Tunable by A/B (the siege/launch bar is deliberately lower).
+pub(crate) const PRESS_CONQUEST_RATIO: i64 = 200;
+
+/// Are we overwhelmingly winning this war and should press it to taking cities rather than cashing
+/// out for tribute? True when our power is at least `PRESS_CONQUEST_RATIO`% of the enemy's defensive
+/// power -- a civ this far ahead can take cities, and conquest (the primary goal) must not be sold
+/// for a secondary tech. Without this a strong civ tribute-farms a weak victim for the whole game
+/// instead of finishing it; the plain victory-plan guard misses it because it keys on the civ's
+/// overall victory goal, not on this war's power edge. The war plan is *not* used: an AI's active war
+/// plan is overwritten to LIMITED/DOGPILE on declaration (never TOTAL), and the cash-out fires at the
+/// first legal turn before war success accrues, so only the immediate power ratio is reliable. Both
+/// the offer path (`manage`) and the acceptance path (`consider_offer`) consult this so a winner
+/// neither offers nor accepts a peace that abandons a conquest it is winning.
+fn press_conquest(g: &Game, team: TeamId, enemy: TeamId) -> bool {
+    let ours = g.team_get_power(team, true).max(1) as i64;
+    let theirs = g.team_get_defensive_power(enemy).max(1) as i64;
+    ours * 100 >= theirs * PRESS_CONQUEST_RATIO
+}
+
 /// C++ `CvTeamAI::AI_endWarVal` (CvTeamAI.cpp:992): value to `team` of ending its war with `enemy`.
 /// Large when we are weak / losing, cut to a fifth once we dominate (>120% power) -- this gap is
 /// what funds reparations at peace. Integer math throughout (each `/` truncates). The
@@ -606,10 +632,12 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
         let theirs = g.team_get_power(their_team, true).max(1) as i64;
         let success = g.teams[team].ai_war_success[their_team] as i64;
         let their_success = g.teams[their_team].ai_war_success[team] as i64;
-        // victory-pursuit OVERRIDE: a war for our domination or conquest, or against a rival about to
-        // win, is not sold for tribute -- it ends only when it is lost (or after 80 turns).
+        // victory-pursuit / press-conquest OVERRIDE: a war for our domination or conquest, against a
+        // rival about to win, or a total war we are winning (press_conquest), is not sold for tribute
+        // -- it ends only when it is lost (or after 80 turns). Without the press_conquest arm a winning
+        // conqueror would simply re-buy peace from the loser's sweetened side of the deal.
         let plan = crate::victory::plan(g, p);
-        if crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(their_team) {
+        if crate::victory::wants_conquest(&plan) || crate::victory::rival_team(g, &plan) == Some(their_team) || press_conquest(g, team, their_team) {
             let losing = their_success > success + 10 && ours * 10 < theirs * 12;
             return losing || counter >= 80;
         }
