@@ -602,7 +602,30 @@ export class IsoMap {
       if (img) {
         const cw = TW * 1.02;
         const ch = cw * (img.height / img.width);
-        g.drawImage(img, Math.round(c.sx - cw / 2), Math.round(c.sy + TH * 0.12 - ch), Math.round(cw), Math.round(ch));
+        const top = c.sy + TH * 0.12 - ch;
+        g.drawImage(img, Math.round(c.sx - cw / 2), Math.round(top), Math.round(cw), Math.round(ch));
+        // Owner banner: a per-team pennant (the neutral flag tinted to the owner's colour) flying
+        // from a short pole at the settlement's shoulder, reinforcing the team ring.
+        const px = c.sx - cw * 0.22;
+        const poleTop = top + ch * 0.1;
+        g.strokeStyle = "#2c241a";
+        g.lineWidth = Math.max(1.5, TW * 0.022);
+        g.beginPath();
+        g.moveTo(px, poleTop);
+        g.lineTo(px, top + ch * 0.46);
+        g.stroke();
+        const pw = TW * 0.22;
+        const ph = TW * 0.15;
+        g.beginPath();
+        g.moveTo(px, poleTop);
+        g.lineTo(px + pw, poleTop + ph * 0.38);
+        g.lineTo(px, poleTop + ph);
+        g.closePath();
+        g.fillStyle = col;
+        g.fill();
+        g.strokeStyle = "rgba(0,0,0,0.55)";
+        g.lineWidth = 1;
+        g.stroke();
       } else {
         const s = TW * 0.5;
         g.fillStyle = "rgba(12,14,20,0.82)";
