@@ -161,12 +161,14 @@ export class MapTextures {
     this.h = 0;
   }
 
-  /** Rebuilds the textures from the world and the cities/owners (`owners(i) -> id + 1 or 0`). */
-  update(world, map) {
+  /** Rebuilds the textures from the world and the map reply; `dirty` (plot indices) limits the
+   *  height samples recomputed to the plots around them. */
+  update(world, map, dirty = null) {
     const gl = this.gl;
     const w = world.w, h = world.h, n = w * h;
     if (w !== this.w || h !== this.h) {
       this.dispose();
+      dirty = null;
       this.w = w;
       this.h = h;
       const nearest = { filter: gl.NEAREST, wrapS: world.wrapX ? gl.REPEAT : gl.CLAMP_TO_EDGE };
@@ -193,11 +195,30 @@ export class MapTextures {
     upload(gl, this.terrain, t);
     upload(gl, this.owner, o);
     upload(gl, this.vis, v);
-    const H = new Float32Array(w * HRES * h * HRES);
-    for (let j = 0; j < h * HRES; j++) {
-      for (let i = 0; i < w * HRES; i++) H[j * w * HRES + i] = world.heightAt((i + 0.5) / HRES, (j + 0.5) / HRES);
+    const W = w * HRES;
+    if (!dirty || !this.H) {
+      this.H = new Float32Array(W * h * HRES);
+      for (let j = 0; j < h * HRES; j++) {
+        for (let i = 0; i < W; i++) this.H[j * W + i] = world.heightAt((i + 0.5) / HRES, (j + 0.5) / HRES);
+      }
+    } else {
+      // A plot's change reaches the height one plot (plus the warp) around it.
+      const redo = new Set();
+      for (const p of dirty) {
+        const x = p % w, y = Math.floor(p / w);
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const k = world.index(x + dx, y + dy);
+          if (k >= 0) redo.add(k);
+        }
+      }
+      for (const k of redo) {
+        const x = k % w, y = Math.floor(k / w);
+        for (let j = y * HRES; j < (y + 1) * HRES; j++) {
+          for (let i = x * HRES; i < (x + 1) * HRES; i++) this.H[j * W + i] = world.heightAt((i + 0.5) / HRES, (j + 0.5) / HRES);
+        }
+      }
     }
-    upload(gl, this.height, H);
+    upload(gl, this.height, this.H);
   }
 
   dispose() {

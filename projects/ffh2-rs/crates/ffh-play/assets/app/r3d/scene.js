@@ -110,7 +110,7 @@ export class Scene {
     const sizeChanged = !this.world || this.world.w !== world.w || this.world.h !== world.h;
     this.world = world;
     this.terrain.setWorld(world, sizeChanged ? null : dirty);
-    this.tex.update(world, map);
+    this.tex.update(world, map, sizeChanged ? null : dirty);
     if (sizeChanged || !this.water) this.buildWater();
     this.buildRivers();
   }

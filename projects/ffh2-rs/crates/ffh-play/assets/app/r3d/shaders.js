@@ -379,11 +379,29 @@ vec3 featureFloor(int f, vec3 c, vec2 m, inout vec3 emit) {
   return c;
 }
 
+// Bump from a height field given per pixel (derivative bump mapping, Mikkelsen 2010): the brush
+// strokes' impasto catching the light. The field is world-anchored; only its derivatives are taken
+// on screen, so it does not swim.
+vec3 bump(vec3 n, vec3 p, float hgt, float k) {
+  vec3 dpdx = dFdx(p), dpdy = dFdy(p);
+  float dhdx = dFdx(hgt), dhdy = dFdy(hgt);
+  vec3 r1 = cross(dpdy, n), r2 = cross(n, dpdx);
+  float det = dot(dpdx, r1);
+  vec3 grad = sign(det) * (dhdx * r1 + dhdy * r2);
+  return normalize(abs(det) * n - k * grad);
+}
+
 void main() {
   vec3 n = normalize(vNormal);
   vec2 m = mapOf(vWorld);
   float h = vWorld.y;
   vec3 emit = vec3(0.0);
+  // Impasto: the dabs raise the paint a little (close up only: it fades out with distance).
+  float near = 1.0 - smoothstep(14.0, 30.0, length(vWorld - uEye));
+  if (near > 0.0 && uStylize > 0.0) {
+    float imp = (mdabs(m + 7.3, 6.5) - 0.5) * 0.6 + (mdabs(m, 2.4) - 0.5) * 0.4;
+    n = bump(n, vWorld, imp * 0.012 * near * uStylize, 1.0);
+  }
 
   // The ground of the four plots around the point, blended by bilinear weights sharpened and
   // broken up by noise (irregular, painted borders between terrains; the plot centre is pure).
