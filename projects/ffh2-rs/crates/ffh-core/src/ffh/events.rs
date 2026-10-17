@@ -15,7 +15,7 @@
 //! - Human-only popup choice without an AI branch: after the Mercurian Gate and the Infernal
 //!   Pact a human founder is offered control of the new player (`reassignPlayer`); there is
 //!   no controller hook for it, so it is not ported.
-//! - AI policy (docs/PORTING.md, "Deliberate deviations"): `cf.warScript` (onBeginPlayerTurn)
+//! - AI policy (docs/PORTING.md, "Changes from FFH2"): `cf.warScript` (onBeginPlayerTurn)
 //!   and the Sephi UNITAI choice for AI-built adepts, devouts and priests of leaves
 //!   (onUnitBuilt) are left to the new AI. AI bookkeeping applied to every player (player
 //!   conquest mode, the unit group flag set by `CyUnit.startConquestMode`, the vampires'

@@ -9,7 +9,7 @@
 //!
 //! AI-only branches (`if not pPlayer.isHuman(): ...` build restrictions in cannotTrain,
 //! cannotConstruct, cannotCreate, cannotResearch, canBuild) are AI policy, not rules:
-//! they are omitted here and left to the new AI (docs/PORTING.md, "Deliberate deviations").
+//! they are omitted here and left to the new AI (docs/PORTING.md, "Changes from FFH2").
 //!
 //! NOTE: Python 2 `/` on ints is floor division; use `py_div` for faithful results.
 

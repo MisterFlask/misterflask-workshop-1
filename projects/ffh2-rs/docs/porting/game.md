@@ -124,7 +124,7 @@ used in the C++. `m_bScoreDirty` is kept (rank update timing feeds the FfH chall
 | C++ | lines | n | Rust | status |
 |---|---|---:|---|---|
 | `update` | 2230-2294 | 65 | `update` | ported |
-| `updateScore` | 2297-2384 | 88 | `update_score(force)` | ported; scores are score v2 (`world_scores`, deliberate deviation: docs/SCORE.md) |
+| `updateScore` | 2297-2384 | 88 | `update_score(force)` | ported; scores are score v2 (`world_scores`, a change from FFH2: docs/SCORE.md) |
 | `updatePlotGroups` | 2386-2399 | 14 | `update_plot_groups` | ported |
 | `updateBuildingCommerce` | 2402-2413 | 12 | `update_building_commerce` | ported |
 | `updateCitySight` | 2416-2429 | 14 | `update_city_sight` | ported |
@@ -498,7 +498,7 @@ out-of-range exponents the C++ leaves undefined.
   ids (`m_iCurrentID + slot`) and keeps the `Vec`s in slot order; a new entry takes the highest
   free slot, which equals the C++ free-list head except when a lower slot is freed after a higher
   one (only if a vote waits an extra turn and two votes are added in one later turn). Deals
-  (`m_deals`) iterate in creation order (see "Deliberate deviations" in `docs/PORTING.md`).
+  (`m_deals`) iterate in creation order (see "Changes from FFH2" in `docs/PORTING.md`).
 - **AI autoplay.** `update` ends the game (`GAMESTATE_OVER`) when no human is alive unless
   `ai_auto_play > 0`, `autorun` (the exe's autorun flag) is set or the game is in extended state.
   `reviveActivePlayer` (end of autoplay) is not ported: there is no active player headless.

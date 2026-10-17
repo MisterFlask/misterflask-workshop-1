@@ -2,8 +2,9 @@
 
 ## Goals
 
-1. Rules-faithful port of FFH2 0.41 (base mod): same formulas, same data, same
-   order of effects as the C++ DLL and the rules Python.
+1. A known, working starting point: FFH2 0.41 (base mod), ported from the C++ DLL and the
+   rules Python. Equivalence to FFH2 is temporary, not an invariant: once the base is stable
+   and attractive, the rules will change sweepingly (goal 3).
 2. Much faster than the original: native code, no Python callbacks, 64-bit
    (no memory-allocation crashes), cache-friendly state, parallel AI analysis.
 3. A stable base for further changes: plain-data state, explicit module

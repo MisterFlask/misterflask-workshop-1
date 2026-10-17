@@ -775,7 +775,7 @@ Totals: about **7.5k lines** of Rust library and binary code, **1.6k** of Rust t
   * new `docs/HUMAN.md`: how to play, protocol, decision policy, journal and replay, known gaps;
   * a "Human play" section in `docs/ARCHITECTURE.md`;
   * a crate row in `README.md` and in the `projects/ffh2-rs/CLAUDE.md` layout;
-  * `docs/PORTING.md` "Deliberate deviations": UI-level human timing, Kuriotates still unanswered, no gift button.
+  * `docs/PORTING.md` "Changes from FFH2": UI-level human timing, Kuriotates still unanswered, no gift button.
 * **`.gitignore` (repo root):** add `projects/ffh2-rs/saves/`. The default `--saves` directory is `./saves`.
 
 **Not edited in the MVP:**
@@ -1150,7 +1150,7 @@ All run with `cargo test --release -p ffh-play`. None needs node or the network.
 
 ## 10. What docs say after this work
 
-**docs/PORTING.md**, "Deliberate deviations", new "Human play" items:
+**docs/PORTING.md**, "Changes from FFH2", new "Human play" items:
 * Human popups whose rules answer can be deferred are answered at the next control point, as in C++: production, events, diplomatic votes, the research popup.
 * Free tech, keep/raze/disband and elections are answered during the rules call that raises them.
 * The keep/raze and disband popups share one modal.
