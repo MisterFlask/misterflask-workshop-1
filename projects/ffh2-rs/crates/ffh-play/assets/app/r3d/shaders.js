@@ -530,7 +530,12 @@ void main() {
 
   if (known) {
     // Beaches: the land's lowest rim by the water.
+    // Polar ice keeps its own blue-white floor at the waterline instead of being painted as beach
+    // sand (F16). The ice weight uses the original bilinear weights (w.*); wf[] was mutated above.
+    float iceW = (fs[0] == F_ICE ? max(0.0, w.x) : 0.0) + (fs[1] == F_ICE ? max(0.0, w.y) : 0.0)
+               + (fs[2] == F_ICE ? max(0.0, w.z) : 0.0) + (fs[3] == F_ICE ? max(0.0, w.w) : 0.0);
     float beach = (1.0 - smoothstep(0.02, 0.075, h)) * smoothstep(-0.05, 0.0, h);
+    beach *= 1.0 - smoothstep(0.15, 0.5, iceW);
     vec3 sand = srgb(mix(vec3(0.66, 0.57, 0.40), vec3(0.78, 0.70, 0.52), mnoise(m, 6.0)));
     alb = mix(alb, sand, beach * 0.85);
     // Rock on steep ground: cliffs and the flanks of the mountains, with strata.
