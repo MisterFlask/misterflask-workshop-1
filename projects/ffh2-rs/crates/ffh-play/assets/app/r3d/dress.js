@@ -13,7 +13,7 @@ import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
 import { KIND, FEAT, GROUND, SEA } from "./world.js";
 import { CATALOG } from "./assets/catalog.js";
-import { hasRecipe } from "./assets/registry.js";
+import { hasRecipe, buildAsset } from "./assets/registry.js";
 
 /** Where on a plot things stand (plot-local, x east / z south, plot half-size 0.5). */
 const UNIT_SPOT = [0, 0.04];
@@ -65,6 +65,26 @@ function inst(asset, x, y, z, o = {}) {
 }
 
 const pick = (name, fallback) => (name && hasRecipe(name) ? name : fallback);
+
+/** How far a figure's feet (or paws, or coils) reach from its centre, in plots: about half its
+ *  modelled width and depth. Wings and tails reach further but stand in the air. */
+function footOf(asset, variant, param, scale) {
+  const m = buildAsset(asset, variant, param);
+  const ext = Math.max(-m.lo[0], m.hi[0], -m.lo[2], m.hi[2]);
+  return Math.min(0.42, ext * 0.5 * scale);
+}
+
+/** The height a figure with feet reaching `foot` from (mx, my) stands at: the highest ground under
+ *  its feet, so that a big creature on a mountainside stands on the slope instead of in it. */
+export function standHeight(world, mx, my, foot = 0) {
+  let h = world.heightAt(mx, my);
+  if (foot < 0.03) return h;
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    h = Math.max(h, world.heightAt(mx + Math.cos(a) * foot, my + Math.sin(a) * foot));
+  }
+  return h;
+}
 
 /** The static dressing of the map: trees, plants, rocks, features, structures, resources and
  *  settlements, and the particle emitters. `world`: world.js; returns `{list, emitters, cities}`. */
@@ -298,12 +318,15 @@ export function dressUnits(world, map) {
       const lz = spot[1] + slots[k][1];
       const mx = u0.x + 0.5 + lx;
       const my = u0.y + 0.5 - lz;
-      const ground = world.heightAt(mx, my);
-      const yy = look.float ? Math.max(SEA + 0.005, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
       const s = (look.scale ?? 1) * (k === 0 ? 1 : 0.78);
-      const it = inst(pick(look.asset, "basic.unit"), mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
+      const asset = pick(look.asset, "basic.unit");
+      const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
+      const ground = standHeight(world, mx, my, foot);
+      const yy = look.float ? Math.max(SEA + 0.005, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
+      const it = inst(asset, mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
       it.uid = u.id;
       it.ground = !look.float && !look.fly;
+      it.foot = foot;
       out.push(it);
       if (k === 0) anchor = { x: mx, y: yy, z: -my, height: (look.height ?? 0.5) * s };
     });

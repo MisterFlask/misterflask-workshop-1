@@ -14,7 +14,7 @@ import { mul, perspective, lookAt, invert, xform4, ortho, vnorm, clamp, lerp, sm
 import { World, SEA } from "./world.js";
 import { Pipeline } from "./pipeline.js";
 import { Scene } from "./scene.js";
-import { dressStatic, dressUnits, teamColour } from "./dress.js";
+import { dressStatic, dressUnits, teamColour, standHeight } from "./dress.js";
 import { loadConfig, saveConfig, withPreset, LIGHTING, PANEL } from "./config.js";
 import { drawHud } from "./hud.js";
 import "./assets/index.js";
@@ -332,7 +332,7 @@ export class Map3D {
           const x = tw.fx + (it.x - tw.fx) * e;
           const z = tw.fz + (it.z - tw.fz) * e;
           // On foot over the ground's relief; ships and fliers straight between their heights.
-          const y = it.ground && this.world ? this.world.heightAt(x, -z) : tw.fy + (it.y - tw.fy) * e;
+          const y = it.ground && this.world ? standHeight(this.world, x, -z, it.foot) : tw.fy + (it.y - tw.fy) * e;
           o = { ...o, x, z, y: y + (it.ground ? Math.abs(Math.sin(t * Math.PI * 3)) * 0.012 : 0) };
         }
       }
