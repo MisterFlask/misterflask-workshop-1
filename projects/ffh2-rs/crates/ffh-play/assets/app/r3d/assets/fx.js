@@ -29,6 +29,8 @@ function plotEmitters(ctx) {
   }
   if (feat === FEAT.FLAMES) {
     out.push({ dy: 0.04, color: "#ff8a30", size: 0.012, rise: 0.45, count: 5, spread: 0.3 });
+    // A thin pall of smoke drifting off the burning ground.
+    out.push({ dy: 0.14, color: "#5e5654", size: 0.04, rise: 0.1, count: 3, spread: 0.22, smoke: true });
     return out;
   }
   if (!water && isHell(ground)) {

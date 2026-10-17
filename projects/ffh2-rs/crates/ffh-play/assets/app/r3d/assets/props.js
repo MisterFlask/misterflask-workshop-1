@@ -14,15 +14,20 @@
 //   rocks     rock.boulder (6; param "" | "lichen" | "moss" | "snow" | "sand" | "basalt"),
 //             rock.boulder.lichen / .moss / .snow (aliases: the rocks entry cannot pass a param),
 //             rock.outcrop (6, layered strata; param "" | "moss" | "sand" | "snow"),
-//             rock.outcrop.moss, rock.crag (4, tall jagged; param "snow"), rock.crag.snow,
-//             rock.shard (4, obsidian), rock.sandstone (4, wind-carved), rock.basalt (4)
+//             rock.outcrop.moss, rock.crag (4, splintered rock towers; param "snow"),
+//             rock.crag.snow, rock.shard (4, obsidian), rock.sandstone (4, wind-carved),
+//             rock.basalt (4), rock.thorn (4, infernal horns of rock, ember at the roots)
 //   features  feat.pool (oasis), feat.palm (fallback palm), feat.volcano, feat.flames,
 //             feat.icefloe, feat.silt, feat.tuft, feat.wisp, feat.fallout
 //   (more below: improvements imp.*, landmarks lm.*, resource markers res.*)
+//
+// Sizes: rocks, improvements and landmarks are modelled at map scale and the catalog scales the
+// parts of a composition; resource markers (res.*) carry their full map size in the recipe
+// (markerRecipe), so the lab's grid shows them as the map does and the bonus entry needs no scale.
 
 import { recipe, hasRecipe } from "./registry.js";
 import { extendCatalog } from "./catalog.js";
-import { MAT, icosphere } from "../mesh.js";
+import { MAT, icosphere, MeshBuilder } from "../mesh.js";
 import { pal, jitter, MANA } from "./palette.js";
 import { noise3, hashf } from "../noise.js";
 import { vnorm, vsub, vcross, vadd, vscale, clamp } from "../math.js";
@@ -58,9 +63,9 @@ const T = {
   rockWarm: "#8a8070",
   rockCool: "#5a5860",
   rockDeep: "#3a383e",
-  sandLight: "#c9ae82",
-  sandBand: "#9c7650",
-  sandDeep: "#7a5a3e",
+  sandLight: "#bea886",
+  sandBand: "#957a5a",
+  sandDeep: "#735a44",
   basaltLit: "#4a4650",
   obsidianLit: "#4a4060",
   obsidianEdge: "#6a5a88",
@@ -184,19 +189,22 @@ function slab(mb, poly, y0, y1, { top = 0.9, skew = [0, 0], shade, cap = true })
 
 /** A jagged spire from below the ground up to `h`: rings of `sides` points shrinking upward,
  *  leaning by `lean` [x, z] at the top, ending in an off-centre point. */
-function spire(mb, r, { x = 0, z = 0, h = 0.2, rad = 0.05, sides = 5, rings = 3, lean = [0, 0], twist = 0.5, taper = 0.85, base = -0.09, cut = 0, shade }) {
+function spire(mb, r, { x = 0, z = 0, h = 0.2, rad = 0.05, sides = 5, rings = 3, lean = [0, 0], twist = 0.5, taper = 0.85, tp = 1, base = -0.09, cut = 0, sq = 1, rot = 0, shade }) {
   const R = [];
+  const cr = Math.cos(rot), sr = Math.sin(rot);
   for (let j = 0; j <= rings; j++) {
     const t = j / rings;
     const y = base + (h * 0.88 - base) * t;
     const k = Math.pow(t, 1.6);
     const cx = x + lean[0] * k, cz = z + lean[1] * k;
-    const rad0 = rad * (1 - taper * t) * r.range(0.85, 1.1);
+    const rad0 = rad * (1 - taper * Math.pow(t, tp)) * r.range(0.85, 1.1);
     const ring = [];
     for (let s = 0; s < sides; s++) {
       const a = (s / sides) * TAU + twist * t + r.range(-0.25, 0.25);
       const rr = rad0 * r.range(0.7, 1.2);
-      ring.push([cx + Math.cos(a) * rr, y + r.range(-0.01, 0.01) * (j ? 1 : 0), cz + Math.sin(a) * rr]);
+      // A blade (sq < 1): the ring squashed across `rot`.
+      const u = Math.cos(a) * rr, v = Math.sin(a) * rr * sq;
+      ring.push([cx + u * cr - v * sr, y + r.range(-0.01, 0.01) * (j ? 1 : 0), cz + u * sr + v * cr]);
     }
     R.push(ring);
   }
@@ -245,6 +253,23 @@ function crystal(mb, base, dir, len, rad, sides = 6, { tip = 0.3, foot = 0.12, p
   mb.color = keep;
 }
 
+/** A resource marker's recipe: modelled at a small working scale, then enlarged to its size on
+ *  the map (`k`) as a whole, so its per-vertex effects (tints, sway, occlusion by height) keep
+ *  their modelled proportions, and the lab's grid shows a marker at the size the map does. */
+function markerRecipe(name, k, def) {
+  recipe(name, {
+    ...def,
+    build(mb, r, ctx) {
+      const inner = new MeshBuilder();
+      def.build(inner, r, ctx);
+      mb.part(() => {
+        mb.scale(k);
+        mb.append(inner);
+      });
+    },
+  });
+}
+
 /** Darkens vertices from `m0` on toward the ground (contact occlusion), y0 = darkest. */
 function groundAO(mb, m0, y0 = -0.02, y1 = 0.05, min = 0.5) {
   mb.heightAO(m0, y0, y1, min);
@@ -257,19 +282,22 @@ function groundAO(mb, m0, y0 = -0.02, y1 = 0.05, min = 0.5) {
 /** The paint of a rock kind: base, lit-top, underside colours and a top coat (lichen, moss, snow,
  *  dust) with its coverage. */
 function rockPaint(kind, r) {
+  // Stone of the same family as the terrain's own rock (shaders.js: cool grey-violet in shadow,
+  // warm grey where lit); the coats are muted (the low sun saturates greens and yellows a lot:
+  // moss stays a dark olive, lichen a pale grey-ochre, never lime).
   switch (kind) {
     case "lichen":
-      return { base: J("#4a494e", r, 0.05), top: J("#66625c", r), coat: [T.lichen, T.lichenOrange, "#8a8668"], cover: 0.5 };
+      return { base: J("#4e4d52", r, 0.05), top: J("#7a756c", r), coat: ["#7e7a5c", "#8a6e4c", "#6e6e5e"], cover: 0.42 };
     case "moss":
-      return { base: J("#4c4a4c", r, 0.05), top: J("#66625a", r), coat: [T.moss, T.grass, "#7a8238"], cover: 0.45 };
+      return { base: J("#4e4c4c", r, 0.05), top: J("#77716a", r), coat: ["#3e4826", "#47522a", "#525a34"], cover: 0.36 };
     case "snow":
-      return { base: J("#4a4850", r, 0.05), top: J("#66646c", r), coat: [T.snow, T.snow, T.snowShade], cover: 0.85 };
+      return { base: J("#4a4850", r, 0.05), top: J("#6e6c74", r), coat: [T.snow, T.snow, T.snowShade], cover: 0.6 };
     case "sand":
-      return { base: J(T.sandBand, r, 0.05), top: J(T.sandLight, r), coat: ["#d2b88c"], cover: 0.25 };
+      return { base: J(T.sandBand, r, 0.05), top: J(T.sandLight, r), coat: ["#c8ad84"], cover: 0.25 };
     case "basalt":
       return { base: J("#252228", r, 0.05), top: J("#3a3640", r), coat: ["#4a2e26", "#3e3836"], cover: 0.25 };
     default:
-      return { base: J("#4c4a4e", r, 0.05), top: J("#6a665e", r), coat: ["#6c6a50", T.moss], cover: 0.18 };
+      return { base: J("#504e50", r, 0.05), top: J("#7c766c", r), coat: ["#5e5e46", "#444c2a"], cover: 0.16 };
   }
 }
 
@@ -303,7 +331,7 @@ function buildBoulder(mb, r, variant, kind = "") {
   const p = rockPaint(kind, r);
   const sh = rockShader(p, r.range(0, 50));
   const m0 = mb.mark();
-  const R = r.range(0.055, 0.07);
+  const R = r.range(0.068, 0.084);
   const put = (rad, x, z, o = {}) => {
     const sy = o.sy ?? 0.85;
     rockMass(mb, r, { rad, sx: o.sx ?? r.range(0.95, 1.2), sy, sz: o.sz ?? r.range(0.85, 1.05), amp: o.amp ?? 0.2, cuts: o.cuts ?? 5, cut: o.cut ?? 0.66, detail: o.detail ?? 1, extra: o.extra ?? [], c: [x, rad * sy * (o.lift ?? 0.3), z], shade: sh });
@@ -348,35 +376,44 @@ for (const [name, kind] of [["rock.boulder", null], ["rock.boulder.lichen", "lic
 function buildOutcrop(mb, r, variant, kind = "") {
   const sand = kind === "sand";
   const p = rockPaint(kind || "moss", r);
-  if (!kind) p.cover = 0.32;
-  const strata = sand ? [T.sandLight, T.sandBand, "#b08a60", T.sandDeep] : [mixl(p.base, "#8a8070", 0.5), mulc(p.base, 0.82), mixl(p.base, "#6e6a70", 0.6), mixl(p.base, "#958b78", 0.5)];
+  if (!kind) p.cover = 0.22;
+  // Beds alternating in value (a pale bed, a dark one): the strata must read at a glance.
+  const strata = sand ? [T.sandLight, T.sandDeep, "#b08a60", T.sandBand] : [mixl(p.base, "#958b7a", 0.55), mulc(p.base, 0.78), mixl(p.base, "#a09482", 0.45), mixl(p.base, "#5e5a60", 0.5)];
   const m0 = mb.mark();
-  const layers = r.int(3, 5);
-  const R = r.range(0.085, 0.12);
+  const layers = r.int(3, 4);
+  const R = r.range(0.11, 0.14);
   const dip = r.range(0, TAU);
   const dx = Math.cos(dip), dz = Math.sin(dip);
-  let y = -0.06;
+  const mseed = r.range(0, 50);
+  let y = -0.07;
   mb.part(() => {
-    // The beds dip: tilt the stack about a horizontal axis across the dip direction.
-    const tilt = r.range(0.12, 0.3) * (variant % 2 ? 1 : 0.6);
+    // The beds dip: tilt the stack about a horizontal axis across the dip direction, so one side
+    // is a stepped scarp and the other sinks into the hill.
+    const tilt = r.range(0.22, 0.4) * (variant % 2 ? 1 : 0.7);
     mb.rotateY(-dip);
     mb.rotateZ(tilt);
     mb.rotateY(dip);
     for (let i = 0; i < layers; i++) {
       const t = i / layers;
-      const rad = R * (1 - t * 0.55) * r.range(0.9, 1.08);
-      const th = (i === 0 ? 0.075 : r.range(0.022, 0.038)) * (variant >= 4 ? 1.25 : 1);
-      const off = R * 0.35 * t;
-      const poly = jagPoly(r, r.int(7, 9), rad, 0.22, r.range(1.0, 1.4), 1).map(([x, z]) => [x + dx * off, z + dz * off]);
+      const rad = R * (1 - t * 0.45) * r.range(0.9, 1.08);
+      const th = (i === 0 ? 0.072 : r.range(0.022, 0.034)) * (variant >= 4 ? 1.2 : 1);
+      const off = R * 0.5 * t;
+      const poly = jagPoly(r, r.int(6, 8), rad, 0.24, r.range(1.0, 1.45), 1).map(([x, z]) => [x + dx * off, z + dz * off]);
       const band = strata[(i + variant) % strata.length];
-      const top = kind === "snow" ? T.snow : sand ? "#d2b88c" : i === layers - 1 || r() < 0.5 ? p.coat[0] : band;
-      const seed = r.range(0, 50);
+      // Bed tops: weathered pale stone, a few patches of dark moss (or snow, or sand dust).
+      const topStone = sand ? mixl(band, "#d8c09a", 0.4) : mixl(band, "#aaa08e", 0.4);
       slab(mb, poly, y, y + th, {
-        top: r.range(0.82, 0.94),
+        top: r.range(0.8, 0.92),
         skew: [-dx * 0.006, -dz * 0.006],
         shade: (n, yy, a, b, c) => {
-          let col = faceShade(band, n, { top: n[1] > 0.7 ? top : null, under: mulc(band, 0.45), lit: 0.25 });
-          const v = 0.93 + 0.14 * hashf(Math.round(a[0] * 1e4 + seed), Math.round(c[2] * 1e4));
+          let col = faceShade(band, n, { top: n[1] > 0.7 ? topStone : null, under: mulc(band, 0.4), lit: 0.3 });
+          if (n[1] > 0.7) {
+            const cx = (a[0] + b[0] + c[0]) / 3, cz = (a[2] + b[2] + c[2]) / 3;
+            const k = noise3(cx * 30 + mseed, yy * 30, cz * 30) * 0.5 + 0.5;
+            if (kind === "snow") col = mixl(col, faceShade(T.snow, n, { lit: 0.08 }), 0.9);
+            else if (k < p.cover * 1.5) col = mixl(col, faceShade(p.coat[Math.floor(k * 7) % p.coat.length], n, { lit: 0.1 }), 0.85);
+          }
+          const v = 0.92 + 0.16 * hashf(Math.round(a[0] * 1e4 + mseed), Math.round(c[2] * 1e4));
           return [col[0] * v, col[1] * v, col[2] * v];
         },
       });
@@ -402,31 +439,39 @@ recipe("rock.outcrop.sand", { variants: 6, build: (mb, r, { variant }) => buildO
 function buildCrag(mb, r, variant, snow = false) {
   // The mountain's own rock (terrain.js paints its flanks grey with a faint violet): cool grey,
   // warm only where the sun strikes, dark in the clefts.
-  const base = J(mixl("#45434a", "#4e4a48", r()), r, 0.04);
-  const lit = mixl(base, "#9a948a", 0.5);
-  const dark = mixl(base, "#24222a", 0.6);
+  // A cluster of tall, splintered rock blades (aiguilles) leaning out from one master tooth, set
+  // deep in the slope (a peak's flank falls away fast, so the roots reach far below y = 0).
+  const base = J(mixl("#58555c", "#605a56", r()), r, 0.04);
+  const lit = mixl(base, "#b0a696", 0.55);
+  const dark = mixl(base, "#24222a", 0.5);
   const seed = r.range(0, 50);
   const sh = (n, y, a, b, c) => {
-    const band = Math.sin(y * 55 + seed) > 0.6 ? 0.85 : 1;
-    let col = faceShade(mixl(dark, base, clamp((y + 0.06) / 0.16, 0, 1)), n, { top: lit, under: dark, lit: 0.35 });
-    if (snow && n[1] > 0.45 && y > 0.04) col = mixl(col, faceShade(T.snow, n, { lit: 0.12 }), clamp((n[1] - 0.45) * 3, 0, 0.95));
-    const v = band * (0.93 + 0.14 * hashf(Math.round(a[0] * 1e4), Math.round(b[2] * 1e4), Math.round(c[1] * 1e4)));
+    // Strata across the blades, darker toward the roots, lit tops warm.
+    const band = Math.sin(y * 46 + seed) > 0.55 ? 0.84 : 1;
+    let col = faceShade(mixl(dark, base, clamp((y + 0.08) / 0.18, 0, 1)), n, { top: lit, under: dark, lit: 0.4 });
+    // Snow lodges on every upward ledge; the steep faces stay dark rock.
+    if (snow && n[1] > 0.22) col = mixl(col, faceShade(T.snow, n, { lit: 0.08 }), clamp((n[1] - 0.22) * 3, 0, 0.94) * clamp((y + 0.02) / 0.08, 0, 1));
+    const v = band * (0.92 + 0.16 * hashf(Math.round(a[0] * 1e4), Math.round(b[2] * 1e4), Math.round(c[1] * 1e4)));
     return [col[0] * v, col[1] * v, col[2] * v];
   };
   const m0 = mb.mark();
-  // A broad, broken shoulder of rock with a few leaning teeth on it.
-  rockMass(mb, r, { rad: 0.1, detail: 1, sx: 1.35, sy: 0.75, sz: 1.1, amp: 0.2, cuts: 6, cut: 0.55, c: [0, -0.01, 0], floor: -0.14, shade: sh });
-  const n = variant === 0 ? 2 : variant === 3 ? 4 : 3;
-  const H = r.range(0.17, 0.22) * (variant === 3 ? 0.85 : 1);
+  const n = [2, 3, 3, 4][variant] ?? 3;
+  const H = r.range(0.18, 0.23) * (variant === 3 ? 0.9 : 1);
   const la = r.range(0, TAU);
+  const grain = r.range(0, Math.PI); // the blades share the rock's cleavage
   for (let i = 0; i < n; i++) {
-    const a = la + (i / n) * TAU + r.range(-0.4, 0.4);
-    const d = i === 0 ? r.range(0, 0.02) : r.range(0.05, 0.08);
-    const h = i === 0 ? H : H * r.range(0.5, 0.75);
-    const lean = [Math.cos(a) * h * (i ? 0.3 : 0.12), Math.sin(a) * h * (i ? 0.3 : 0.12)];
-    spire(mb, r, { x: Math.cos(a) * d, z: Math.sin(a) * d, h, rad: (i === 0 ? 0.07 : 0.05) * r.range(0.9, 1.15), sides: 5, rings: 2, lean, twist: r.range(-0.5, 0.5), taper: 0.7, base: -0.12, cut: r.range(0.004, 0.02), shade: sh });
+    const a = la + (i / n) * TAU + r.range(-0.5, 0.5);
+    const d = i === 0 ? 0 : r.range(0.045, 0.065);
+    const h = i === 0 ? H : H * r.range(0.45, 0.7);
+    const lean = [Math.cos(a) * h * (i ? 0.28 : 0.1), Math.sin(a) * h * (i ? 0.28 : 0.1)];
+    spire(mb, r, { x: Math.cos(a) * d, z: Math.sin(a) * d, h, rad: (i === 0 ? 0.1 : 0.068) * r.range(0.9, 1.12), sides: i === 0 ? 5 : 4, rings: 3, lean, twist: r.range(-0.3, 0.3), taper: i === 0 ? 0.72 : 0.86, tp: 1.7, base: -0.2, cut: i === 0 ? r.range(0.004, 0.012) : i % 2 ? r.range(0.006, 0.02) : 0, sq: i === 0 ? r.range(0.75, 0.9) : r.range(0.6, 0.8), rot: grain + r.range(-0.3, 0.3), shade: sh });
   }
-  groundAO(mb, m0, -0.05, 0.12, 0.5);
+  // Broken scree at the foot, half buried (the blades must not stand on the slope like pegs).
+  for (let k = 0; k < 2; k++) {
+    const a = la + Math.PI * (0.6 + k * 0.8) + r.range(-0.3, 0.3), d = r.range(0.06, 0.085);
+    rockMass(mb, r, { rad: r.range(0.026, 0.034), detail: 0, sx: 1.3, sy: 0.7, sz: 1.0, amp: 0.2, cuts: 3, cut: 0.55, c: [Math.cos(a) * d, -0.01, Math.sin(a) * d], floor: -0.1, shade: sh });
+  }
+  groundAO(mb, m0, -0.06, 0.1, 0.5);
 }
 
 recipe("rock.crag", { variants: 4, build: (mb, r, { variant, param }) => buildCrag(mb, r, variant, param === "snow") });
@@ -470,11 +515,51 @@ function buildShard(mb, r, variant) {
 
 recipe("rock.shard", { variants: 4, build: (mb, r, { variant }) => buildShard(mb, r, variant) });
 
+/** Infernal thorns: great black horns of rock curling up out of the hell ground like the claws
+ *  of something buried, ember-red in the cracks at their roots -- the hells' own silhouette. */
+function buildThorns(mb, r, variant) {
+  const m0 = mb.mark();
+  const n = 2 + (variant % 3);
+  const a0 = r.range(0, TAU);
+  for (let k = 0; k < n; k++) {
+    const a = a0 + (k / n) * TAU + r.range(-0.4, 0.4);
+    const d = k ? r.range(0.025, 0.045) : 0;
+    const h = (k ? r.range(0.08, 0.13) : r.range(0.16, 0.21)) * (variant === 3 ? 0.85 : 1);
+    const bend = r.range(0.35, 0.6) * h;
+    const dir = [Math.cos(a), Math.sin(a)];
+    const pts = [], radii = [], cols = [];
+    for (let i = 0; i <= 4; i++) {
+      const t = i / 4;
+      const out = d + bend * t * t;
+      pts.push([dir[0] * out, -0.04 + (h + 0.04) * Math.sin(t * Math.PI * 0.5), dir[1] * out]);
+      radii.push((k ? 0.024 : 0.034) * (1 - t * 0.9) + 0.001);
+      cols.push(mixl("#1c1416", "#5e4844", t * 0.85));
+    }
+    // Curl the tip back over (a hook).
+    pts[4] = vadd(pts[4], [-dir[0] * bend * 0.25, -0.012, -dir[1] * bend * 0.25]);
+    mb.color = C("#2a2224");
+    mb.tube(pts, radii, 4, { caps: true, colors: cols });
+  }
+  rockMass(mb, r, { rad: 0.04, detail: 0, sx: 1.3, sy: 0.45, sz: 1.2, amp: 0.2, cuts: 3, cut: 0.6, c: [0, -0.004, 0], shade: rockShader(rockPaint("basalt", r), 5) });
+  // Ember in the cracks at the roots.
+  mb.part(() => {
+    mb.mat = MAT.EMISSIVE;
+    mb.color = C("#a82a12");
+    for (let k = 0; k < 3; k++) {
+      const a = a0 + (k / 3) * TAU + 0.5;
+      at(mb, Math.cos(a) * 0.035, 0.006, Math.sin(a) * 0.035, -a, () => mb.quad([-0.014, 0, -0.002], [0.014, 0, -0.002], [0.014, 0.002, 0.002], [-0.014, 0.002, 0.002]));
+    }
+  });
+  groundAO(mb, m0, -0.03, 0.06, 0.55);
+}
+
+recipe("rock.thorn", { variants: 4, build: (mb, r, { variant }) => buildThorns(mb, r, variant) });
+
 /** Wind-carved sandstone: banded, undercut forms -- a mushroom rock, a hoodoo, a low mesa block
  *  and a natural arch. */
 function buildSandstone(mb, r, variant) {
   const m0 = mb.mark();
-  const bands = [T.sandLight, T.sandBand, "#b8956a", T.sandDeep, "#c4a578"];
+  const bands = [T.sandLight, T.sandBand, "#aa906c", T.sandDeep, "#b8a07a"];
   const ph = r.range(0, TAU), ph2 = r.range(0, TAU);
   const bandAt = (y) => bands[Math.floor(clamp((y + 0.05) * 38 + Math.sin(y * 90 + ph) * 0.4, 0, 99)) % bands.length];
   const wob = (a, y) => 0.12 * Math.sin(a * 3 + ph + y * 20) + 0.07 * Math.sin(a * 5 + ph2);
@@ -790,20 +875,24 @@ recipe("feat.icefloe", { variants: 4, build: (mb, r, { variant }) => buildIceFlo
 
 /** A silt bank of a flood plain: a low, wet-edged mound with a few blades of grass. */
 function buildSilt(mb, r) {
+  // A low bank of river silt left by the flood: dark and wet at its rim, drying paler on its
+  // crown, sprouting fresh green (the flood plain's fertility, not a pebble).
   const seed = r.range(0, 50);
   mb.color = C(T.silt);
   const m0 = mb.mark();
   mb.part(() => {
-    mb.translate(0, -0.006, 0);
-    mb.scale(r.range(1.2, 1.8), 1, 1);
-    mb.blob(r.range(0.06, 0.085), { detail: 1, amp: 0.25, squash: 0.28, noise: (v) => noise3(v[0] * 2 + seed, v[1] * 2, v[2] * 2) });
+    mb.translate(0, -0.008, 0);
+    mb.scale(r.range(1.4, 1.9), 1, 1);
+    mb.blob(r.range(0.065, 0.085), { detail: 1, amp: 0.25, squash: 0.18, noise: (v) => noise3(v[0] * 2 + seed, v[1] * 2, v[2] * 2) });
   });
   mb.tint(m0, (x, y) => {
-    const t = clamp((y + 0.004) / 0.014, 0, 1);
-    const wet = C(T.mudWet), dry = C("#a39274"), b = C(T.silt);
+    const t = clamp((y + 0.004) / 0.012, 0, 1);
+    const wet = C("#3e3326"), dry = C("#7e6e52"), b = C(T.silt);
     return [(wet[0] + (dry[0] - wet[0]) * t) / b[0], (wet[1] + (dry[1] - wet[1]) * t) / b[1], (wet[2] + (dry[2] - wet[2]) * t) / b[2]];
   });
-  tufts(mb, r, 3, 0.05, 0.035, [T.grass, "#7a8238"]);
+  mb.mat = MAT.FOLIAGE;
+  tufts(mb, r, 4, 0.06, 0.04, ["#5e7a2e", "#6e8a34", "#7a8238"]);
+  mb.mat = MAT.MATTE;
 }
 
 /** Grass tufts: `n` clumps of blades within `spread` of the centre, blades up to `h` tall. */
@@ -1002,7 +1091,7 @@ function roofGable(mb, w, d, h, { over = 0.012, col, ends = null, edge = null, s
     mb.quad([x0, eave, Z], [x0, eave - 0.006, Z], [x1, eave - 0.006, Z], [x1, eave, Z]);
     mb.quad([x0, eave, -Z], [x1, eave, -Z], [x1, eave - 0.006, -Z], [x0, eave - 0.006, -Z]);
   }
-  mb.tint(m0, (x, y) => 0.6 + 0.45 * clamp((y - eave) / (h - eave), 0, 1));
+  mb.tint(m0, (x, y) => 0.76 + 0.3 * clamp((y - eave) / (h - eave), 0, 1));
   mb.color = C(ends ?? col);
   for (const e of [-1, 1]) {
     const x = (e * w) / 2;
@@ -1057,7 +1146,7 @@ function cottage(mb, r, F, w, d, h, { roof = null, roofH = null, door = true, li
 }
 
 /** A line of fence: posts along the polyline `pts` ([x, z] ...) with two rails between them. */
-function fenceLine(mb, pts, { h = 0.034, col = "#5a4632", post = 0.0035, step = 0.05 } = {}) {
+function fenceLine(mb, pts, { h = 0.042, col = "#857358", post = 0.005, step = 0.05 } = {}) {
   mb.color = C(col);
   const P = [];
   for (let i = 0; i + 1 < pts.length; i++) {
@@ -1068,9 +1157,10 @@ function fenceLine(mb, pts, { h = 0.034, col = "#5a4632", post = 0.0035, step = 
   }
   P.push(pts[pts.length - 1]);
   for (const [x, z] of P) stick(mb, [x, -0.02, z], [x, h, z], post, 3);
-  mb.color = mulc(col, 1.25);
-  for (let i = 0; i + 1 < P.length; i++) {
-    for (const y of [h * 0.45, h * 0.85]) stick(mb, [P[i][0], y, P[i][1]], [P[i + 1][0], y + 0.001, P[i + 1][1]], post * 0.6, 3);
+  // Two rails along the polyline (one member per leg of it: cheap, and they read as lines).
+  mb.color = mulc(col, 1.2);
+  for (let i = 0; i + 1 < pts.length; i++) {
+    for (const y of [h * 0.45, h * 0.85]) stick(mb, [pts[i][0], y, pts[i][1]], [pts[i + 1][0], y + 0.001, pts[i + 1][1]], post * 0.65, 3);
   }
 }
 
@@ -1081,39 +1171,40 @@ function fenceLine(mb, pts, { h = 0.034, col = "#5a4632", post = 0.0035, step = 
 function buildBarn(mb, r, variant, param) {
   const F = famOf(param);
   // Weathered thatch: grey-brown, not straw-yellow (the low sun warms it enough).
-  const thatch = F.key === "human" || F.key === "tribal" ? J(variant === 1 ? "#5e5440" : "#706448", r, 0.05) : J(F.roof, r, 0.05);
+  const thatch = F.key === "human" || F.key === "tribal" ? J(variant === 1 ? "#9a8a62" : "#ac9866", r, 0.05) : J(F.roof, r, 0.05);
   if (variant <= 1) {
-    const w = r.range(0.15, 0.17), d = r.range(0.095, 0.105), h = 0.082;
-    block(mb, w + 0.01, d + 0.01, -0.05, 0.008, J(F.stone, r, 0.04));
-    // Weatherboarded walls in timber, a darker lower course.
-    block(mb, w, d, 0.006, h, J(variant ? "#6e4c34" : F.key === "human" ? "#7a5a3c" : F.wall, r, 0.05));
-    block(mb, w + 0.002, d + 0.002, 0.006, 0.02, J(F.stone, r, 0.05));
+    // The barn stands gable-end on to the viewer: its ridge runs north-south, so both slopes of
+    // the big roof show (one sunlit, one in shade) over the great doors -- the farm's emblem.
+    const w = r.range(0.105, 0.115), d = r.range(0.16, 0.18), h = 0.078, rh = 0.1;
+    const boards = J(variant ? "#6a4630" : F.key === "human" ? "#7c4632" : F.wall, r, 0.05);
+    block(mb, w + 0.012, d + 0.012, -0.05, 0.01, J(F.stone, r, 0.04));
+    block(mb, w, d, 0.008, h, boards);
     mb.color = C(F.timber);
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) at(mb, (sx * w) / 2, 0.006, (sz * d) / 2, 0, () => mb.box(0.009, h - 0.006, 0.009));
-    // Big double doors with a cross brace, and a hay loft hatch.
-    plate(mb, -0.026, 0.008, 0.026, 0.06, d / 2 + 0.002, "#3a281c");
-    mb.color = C("#8a6a46");
-    for (const s of [-1, 1]) stick(mb, [-0.024, 0.01, d / 2 + 0.003], [0.024, 0.058, d / 2 + 0.003].map((v, i) => (i === 0 ? v * s : v)).map((v, i) => (i === 0 && s < 0 ? -v : v)), 0.0018, 3);
-    stick(mb, [-0.024, 0.01, d / 2 + 0.003], [0.024, 0.058, d / 2 + 0.003], 0.0018, 3);
-    stick(mb, [0.024, 0.01, d / 2 + 0.003], [-0.024, 0.058, d / 2 + 0.003], 0.0018, 3);
-    plate(mb, w / 2 - 0.0, 0, w / 2, 0, 0, F.timber);
-    at(mb, 0, h, 0, 0, () => roofGable(mb, w, d, 0.09, { col: thatch, ends: "#6e4c34", over: 0.014, sag: 0.005 }));
-    // A side lean-to.
-    at(mb, (w / 2 + 0.03) * (variant ? -1 : 1), 0, 0.005, 0, () => {
-      block(mb, 0.05, d * 0.8, 0.0, 0.045, J("#6a4a32", r, 0.05));
-      mb.color = mulc(thatch, 0.9);
-      const x0 = variant ? 0.027 : -0.027, x1 = -x0;
-      mb.quad([x0, 0.058, -d * 0.45], [x1, 0.04, -d * 0.45], [x1, 0.04, d * 0.45], [x0, 0.058, d * 0.45]);
-      mb.quad([x0, 0.058, -d * 0.45], [x0, 0.058, d * 0.45], [x1, 0.04, d * 0.45], [x1, 0.04, -d * 0.45]);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) at(mb, (sx * w) / 2, 0.008, (sz * d) / 2, 0, () => mb.box(0.011, h - 0.008, 0.011));
+    // Great doors (dark, framed) and the hay loft's hatch in the gable above them.
+    plate(mb, -0.03, 0.009, 0.03, 0.066, d / 2 + 0.002, "#2a1c14");
+    mb.color = C("#a08058");
+    for (const x of [-0.032, 0.032]) at(mb, x, 0.009, d / 2 + 0.002, 0, () => mb.box(0.006, 0.06, 0.004));
+    at(mb, 0, 0.066, d / 2 + 0.002, 0, () => mb.box(0.07, 0.006, 0.004));
+    plate(mb, -0.012, h + 0.018, 0.012, h + 0.042, d / 2 + 0.002, "#2a1c14");
+    at(mb, 0, h, 0, Math.PI / 2, () => roofGable(mb, d, w, rh, { col: thatch, ends: mixl(boards, "#000000", 0.12), over: 0.016, sag: 0.006 }));
+    // A low lean-to along one side.
+    const s = variant ? -1 : 1;
+    at(mb, s * (w / 2 + 0.028), 0, -0.01, 0, () => {
+      block(mb, 0.05, d * 0.7, 0.0, 0.045, J("#5e4430", r, 0.05));
+      mb.color = mulc(thatch, 0.85);
+      const x0 = -s * 0.03, x1 = s * 0.032;
+      mb.quad([x0, 0.066, -d * 0.38], [x1, 0.042, -d * 0.38], [x1, 0.042, d * 0.38], [x0, 0.066, d * 0.38]);
+      mb.quad([x0, 0.066, -d * 0.38], [x0, 0.066, d * 0.38], [x1, 0.042, d * 0.38], [x1, 0.042, -d * 0.38]);
     });
   } else if (variant === 2) {
     // Granary on staddle stones (keeps the grain from the rats).
     const w = 0.1, d = 0.08;
     mb.color = C("#7e7a72");
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [0, 1]]) {
-      at(mb, sx * w * 0.4, 0, sz * d * 0.38, 0, () => {
-        mb.lathe([[0.008, -0.03], [0.006, 0.018], [0, 0.018]], 5);
-        mb.lathe([[0.014, 0.018], [0.014, 0.024], [0, 0.024]], 6);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      at(mb, sx * w * 0.4, 0, sz * d * 0.38, 0.4, () => {
+        mb.lathe([[0.009, -0.03], [0.006, 0.018], [0, 0.018]], 4);
+        mb.lathe([[0.015, 0.018], [0.015, 0.024], [0, 0.024]], 5);
       });
     }
     block(mb, w, d, 0.024, 0.075, J("#7a5a3c", r, 0.05));
@@ -1140,11 +1231,12 @@ recipe("imp.barn", { variants: 4, build: (mb, r, { variant, param }) => buildBar
 
 /** Haystacks: two or three domed ricks and a few sheaves. */
 function buildHaystacks(mb, r, variant) {
-  const hay = J("#b49a52", r, 0.05);
+  // The brightest thing on a farm: fat golden ricks (they say "farm" from far away).
+  const hay = J("#c4a454", r, 0.05);
   const n = 2 + (variant % 2);
   for (let k = 0; k < n; k++) {
-    const a = (k / n) * TAU + r.range(-0.3, 0.3), d = k ? r.range(0.05, 0.065) : 0;
-    const s = k ? r.range(0.75, 0.9) : 1;
+    const a = (k / n) * TAU + r.range(-0.3, 0.3), d = k ? r.range(0.06, 0.075) : 0;
+    const s = (k ? r.range(0.75, 0.9) : 1) * 1.25;
     at(mb, Math.cos(a) * d, 0, Math.sin(a) * d, r.range(0, TAU), () => {
       mb.color = hay;
       const m0 = mb.mark();
@@ -1307,7 +1399,7 @@ function buildPaddock(mb, r, variant, param) {
     const a = Math.PI / 2 + gap / 2 + (k / 12) * (TAU - gap);
     pts.push([Math.cos(a) * 0.36 * (1 + 0.04 * Math.sin(a * 3)), Math.sin(a) * 0.3 * (1 + 0.04 * Math.cos(a * 2))]);
   }
-  fenceLine(mb, pts, { col: F.key === "infernal" ? "#2e2220" : "#5a4632", step: 0.1 });
+  fenceLine(mb, pts, { col: F.key === "infernal" ? "#3a2c28" : "#8a785c", step: 0.11 });
   // Lean-to shelter and trough.
   at(mb, r.range(-0.12, 0.12), 0, -0.22, 0, () => {
     mb.color = C(F.timber);
@@ -1421,12 +1513,13 @@ recipe("imp.firepit", { variants: 2, build: (mb, r, { variant }) => buildFirePit
 
 /** Ore colours by metal (resource markers and the mine's cart): [rock, vein, metallic]. */
 const ORES = {
-  copper: ["#5a4e46", "#c07040", true],
-  iron: ["#4e4442", "#8a4a32", false],
-  gold: ["#55504a", "#e0b040", true],
-  silver: ["#56565c", "#d8dce4", true],
-  mithril: ["#4a5058", "#a8e0f0", true],
-  gems: ["#4c4850", "#c03a6a", false],
+  // Dark host rock so the metal's colour is what one sees (it must name the metal at a glance).
+  copper: ["#3e3a3a", "#d8783a", true],
+  iron: ["#3a3638", "#b4552c", false],
+  gold: ["#3c3836", "#e4a41c", true],
+  silver: ["#3a3a42", "#e4e8f0", true],
+  mithril: ["#363a44", "#a0e4f8", true],
+  gems: ["#3c3840", "#c03a6a", false],
   coal: ["#3a3638", "#1a1818", false],
   "": ["#4e4a48", "#8a7a6a", false],
 };
@@ -1487,7 +1580,7 @@ function buildMine(mb, r, variant, param) {
     }
     mb.color = C("#3a3634");
     const wheel = [];
-    for (let i = 0; i <= 10; i++) wheel.push([Math.cos((i / 10) * TAU) * 0.026, H + 0.012 + Math.sin((i / 10) * TAU) * 0.026, 0]);
+    for (let i = 0; i <= 8; i++) wheel.push([Math.cos((i / 8) * TAU) * 0.026, H + 0.012 + Math.sin((i / 8) * TAU) * 0.026, 0]);
     mb.tube(wheel, 0.003, 3);
     stick(mb, [-0.022, H + 0.012, 0], [0.022, H + 0.012, 0], 0.002, 3);
     stick(mb, [0, H - 0.01, 0], [0, H + 0.034, 0], 0.002, 3);
@@ -1507,14 +1600,14 @@ function buildMine(mb, r, variant, param) {
     path.push([0.06 * t * t, 0.003, fz + 0.01 + 0.15 * t]);
   }
   mb.color = C("#5a4a3a");
-  for (let i = 0; i < path.length; i++) at(mb, path[i][0], -0.002, path[i][2], -Math.atan2(0.12 * (i / 5), 0.15), () => mb.box(0.034, 0.004, 0.006));
+  for (let i = 1; i < path.length; i += 1.4) { const k = Math.round(i); at(mb, path[k][0], -0.002, path[k][2], -Math.atan2(0.12 * (k / 5), 0.15), () => mb.box(0.034, 0.004, 0.006)); }
   mb.color = C("#3a3a3e");
   for (const s of [-1, 1]) mb.tube(path.map(([x, y, z]) => [x + s * 0.011, y + 0.002, z]), 0.0018, 3);
   // The ore cart, heaped with ore.
   const cp = path[5];
   at(mb, cp[0], 0, cp[2] - 0.01, -0.35, () => {
     mb.color = C("#2e2a28");
-    for (const [x, z] of [[-0.013, -0.012], [0.013, -0.012], [-0.013, 0.012], [0.013, 0.012]]) at(mb, x * 1.15, 0.008, z, 0, () => { mb.rotateZ(Math.PI / 2); mb.cylinder(0.0075, 0.0075, 0.004, 6); });
+    for (const [x, z] of [[0.013, -0.012], [0.013, 0.012]]) at(mb, x * 1.15, 0.008, z, 0, () => { mb.rotateZ(Math.PI / 2); mb.cylinder(0.0075, 0.0075, 0.004, 6); });
     block(mb, 0.03, 0.036, 0.008, 0.03, "#5a4030", 1.15);
     mb.color = C("#3a3634");
     at(mb, 0, 0.026, 0, 0, () => mb.box(0.036, 0.004, 0.042));
@@ -1574,7 +1667,7 @@ recipe("imp.quarry", { variants: 2, build: (mb, r, { variant }) => buildQuarry(m
 /** A sawmill: a timber shed, an open saw-pit with a log on trestles under a lean-to, planks. */
 function buildSawmill(mb, r, variant, param) {
   const F = famOf(param);
-  at(mb, -0.05, 0, -0.02, 0, () => cottage(mb, r, { ...F, wall: "#6e5038", wall2: "#5a4030" }, 0.11, 0.085, 0.07, { roof: F.key === "human" ? "#5a4a3a" : F.roof, posts: true }));
+  at(mb, -0.05, 0, -0.02, 0, () => cottage(mb, r, { ...F, wall: "#9a7a56", wall2: "#7a5e42" }, 0.11, 0.085, 0.07, { roof: F.key === "human" ? "#57504a" : F.roof, posts: true }));
   // Lean-to over the saw-pit.
   at(mb, 0.07, 0, 0.0, 0, () => {
     mb.color = C(F.timber);
@@ -1715,7 +1808,7 @@ recipe("imp.workshop", { variants: 2, build: (mb, r, { variant, param }) => buil
 
 /** Rows of vines on stakes and wires: leafy masses heavy with dark grapes. */
 function buildVines(mb, r, variant) {
-  const rows = 3, posts = 5, len = 0.26, gap = 0.08;
+  const rows = 3, posts = 4, len = 0.26, gap = 0.08;
   for (let j = 0; j < rows; j++) {
     const z = (j - (rows - 1) / 2) * gap;
     mb.color = C("#4a3a2a");
@@ -1864,35 +1957,51 @@ function hull(mb, L, W, H, col, { sink = 0.018, rake = 0.012 } = {}) {
 /** A fishing boat: a small hull, a stubby mast with a furled sail, nets heaped over the side and
  *  a line of floats; variant 2 is a bigger whaler with a harpoon at the bow. */
 function buildBoat(mb, r, variant) {
+  // A fishing smack seen side-on: a tarred hull, a mast with its lateen sail set (pale canvas with
+  // a band in the owner's colour -- what makes a boat read on dark water), nets over the side.
   const whaler = variant >= 2;
-  const L = whaler ? 0.19 : 0.15, W = whaler ? 0.06 : 0.05, H = 0.028;
+  const L = whaler ? 0.22 : 0.19, W = whaler ? 0.07 : 0.062, H = 0.034;
   mb.part(() => {
     mb.rotateY(Math.PI / 2 - 0.4);
-    hull(mb, L, W, H, J(r.pick(["#6a4a30", "#5a4632", "#7a5636"]), r, 0.05));
+    hull(mb, L, W, H, J(r.pick(["#5e4430", "#56402e", "#6a4c32"]), r, 0.05), { sink: 0.02 });
     mb.color = C("#8a6a46");
-    for (const z of [-0.03, 0.02]) at(mb, 0, H - 0.024, z, 0, () => mb.box(W * 0.85, 0.003, 0.012));
-    mb.color = C("#4a3424");
-    stick(mb, [0, 0.0, 0.01], [0, 0.13 + (whaler ? 0.02 : 0), 0.01], 0.0028, 4);
-    mb.color = J("#cfc2a2", r, 0.04);
-    stick(mb, [-0.035, 0.11, 0.012], [0.035, 0.11, 0.012], 0.005, 5, true);
-    mb.color = C("#4a3424");
-    stick(mb, [0, 0.03, 0.012], [0, 0.03, -0.07], 0.0018, 3);
+    for (const z of [-0.035, 0.025]) at(mb, 0, H - 0.028, z, 0, () => mb.box(W * 0.85, 0.004, 0.014));
+    const mz = 0.012, mh = whaler ? 0.21 : 0.19;
+    mb.color = C("#3e2c20");
+    stick(mb, [0, -0.01, mz], [0, mh, mz], 0.0035, 4);
+    // The lateen yard, slanting from low at the bow to high over the stern, and the sail under it.
+    const y0 = [0, 0.05, mz + L * 0.42], y1 = [0, mh + 0.03, mz - L * 0.36];
+    stick(mb, y0, y1, 0.0025, 3);
+    const foot = [0, 0.04, mz - L * 0.3];
+    const s0 = mb.mark();
+    mb.color = J("#d8ceb4", r, 0.04);
+    mb.card(vadd(y0, [0, -0.004, 0]), vadd(y1, [0, -0.006, 0]), foot, foot);
+    mb.tint(s0, (x, y) => 0.8 + 0.25 * clamp(y / mh, 0, 1));
+    mb.heightSway(s0, 0.05, mh, 0.35);
+    // A band of the owner's colour across the sail.
+    mb.part(() => {
+      mb.mat = MAT.TEAM;
+      mb.color = TEAM;
+      const lerp = (a, b, t) => vadd(a, vscale(vsub(b, a), t));
+      const p0 = lerp(y0, y1, 0.42), p1 = lerp(y0, y1, 0.62), q0 = lerp(foot, y0, 0.08), q1 = lerp(foot, y1, 0.32);
+      for (const o of [0.0015, -0.0015]) mb.quad(vadd(p0, [o, -0.006, 0]), vadd(p1, [o, -0.006, 0]), vadd(q1, [o, 0, 0]), vadd(q0, [o, 0, 0]));
+    });
     // Heaped nets over the gunwale.
     mb.color = C("#3e3a30");
     const nm = mb.mark();
-    mb.quad([-W * 0.4, H - 0.012, -0.05], [-W * 0.4, H - 0.012, -0.01], [-W * 0.62, -0.006, -0.0], [-W * 0.62, -0.006, -0.06]);
-    mb.quad([-W * 0.4, H - 0.012, -0.05], [-W * 0.62, -0.006, -0.06], [-W * 0.62, -0.006, -0.0], [-W * 0.4, H - 0.012, -0.01]);
+    mb.quad([-W * 0.4, H - 0.014, -0.06], [-W * 0.4, H - 0.014, -0.01], [-W * 0.62, -0.006, -0.0], [-W * 0.62, -0.006, -0.07]);
+    mb.quad([-W * 0.4, H - 0.014, -0.06], [-W * 0.62, -0.006, -0.07], [-W * 0.62, -0.006, -0.0], [-W * 0.4, H - 0.014, -0.01]);
     mb.tint(nm, (x, y) => 0.8 + 0.4 * clamp(y / 0.02, 0, 1));
     if (whaler) {
       mb.color = C("#6a6e74");
       mb.mat = MAT.METAL;
-      stick(mb, [0, 0.03, L / 2 - 0.01], [0, 0.05, L / 2 + 0.05], 0.0018, 3);
+      stick(mb, [0, 0.03, L / 2 - 0.01], [0, 0.05, L / 2 + 0.05], 0.0022, 3);
       mb.mat = MAT.MATTE;
     }
   });
   // Floats on the water.
   mb.color = C("#c8b890");
-  for (let k = 0; k < 4; k++) at(mb, -0.07 - k * 0.025, 0.002, 0.04 + k * 0.012, 0, () => mb.sphere(0.0045, 0, { squash: 0.7 }));
+  for (let k = 0; k < 4; k++) at(mb, -0.08 - k * 0.026, 0.002, 0.045 + k * 0.012, 0, () => mb.sphere(0.005, 0, { squash: 0.7 }));
 }
 
 recipe("imp.boat", { variants: 3, build: (mb, r, { variant }) => buildBoat(mb, r, variant) });
@@ -2602,26 +2711,45 @@ function manaCrystal(mb, c, len, rad, glow, { sides = 5, tilt = 0, phase = 0 } =
 function buildManaNode(mb, r, variant, school) {
   const S = SCHOOLS[school] ?? SCHOOLS[""];
   const glow = MANA[school] ?? MANA[""];
-  const st = stoneShade(J(S.stone, r, 0.04), { moss: S.extra === "moss" || S.extra === "flowers" ? 0.7 : 0.25, seed: variant });
-  // The dais: a low round step of fitted stone, its rim sunk in the turf.
-  mb.color = J(mixl(S.stone, "#5a5650", 0.6), r, 0.03);
+  const g = C(glow);
+  const stoneC = J(S.stone, r, 0.04);
+  const st0 = stoneShade(stoneC, { moss: S.extra === "moss" || S.extra === "flowers" ? 0.7 : 0.25, seed: variant });
+  // The stones' inner faces (local -z, toward the crystal) catch its light: a wash of the school's
+  // colour on the faces that look in -- the ring reads as lit from within.
+  const st = (n, y, a, b, c) => {
+    const k = st0(n, y, a, b, c);
+    const t = clamp(-n[2] * 0.9 - 0.1, 0, 1) * clamp((y + 0.02) / 0.12, 0.3, 1) * 0.42;
+    return mixl(k, mixl(g, k, 0.35), t);
+  };
+  // The dais: a stepped round platform of fitted stone sunk in the turf, darker than the stones
+  // so the inlaid ring of runes stands out on it.
+  const daisC = J(mixl(S.stone, "#2e2c30", 0.55), r, 0.03);
+  mb.color = daisC;
   const d0 = mb.mark();
-  mb.lathe([[0.13, -0.04], [0.125, 0.01], [0.105, 0.018], [0, 0.018]], 12);
-  mb.tint(d0, (x, y, z) => (y > 0.02 ? 1.0 + 0.12 * Math.sin(Math.atan2(z, x) * 7) : 0.7));
-  // The rune circle (dim) and the pool / embers / frost by school.
+  mb.lathe([[0.168, -0.05], [0.164, 0.012], [0.152, 0.017], [0.112, 0.017], [0.108, 0.034], [0.096, 0.038], [0, 0.038]], 14);
+  mb.tint(d0, (x, y, z) => (y < 0.0 ? 0.55 : y < 0.02 ? 0.85 : 1.08) * (1 + 0.08 * Math.sin(Math.atan2(z, x) * 7)));
   mb.part(() => {
     mb.mat = MAT.EMISSIVE;
-    mb.color = mixl(glow, "#000000", 0.55);
-    for (let k = 0; k < 16; k++) {
-      const a0 = (k / 16) * TAU, a1 = ((k + 0.6) / 16) * TAU;
-      const R0 = 0.078, R1 = 0.088;
-      mb.quad([Math.cos(a0) * R0, 0.0195, Math.sin(a0) * R0], [Math.cos(a1) * R0, 0.0195, Math.sin(a1) * R0], [Math.cos(a1) * R1, 0.0195, Math.sin(a1) * R1], [Math.cos(a0) * R1, 0.0195, Math.sin(a0) * R1]);
+    // The rune ring on the lower step (bright: it is the node's signature from afar), and a fine
+    // inner circle on the upper.
+    mb.color = mixl(g, "#000000", 0.5);
+    const N = 14;
+    for (let k = 0; k < N; k++) {
+      const a0 = ((k + 0.2) / N) * TAU, a1 = ((k + 0.7) / N) * TAU;
+      const R0 = 0.126, R1 = 0.138, y = 0.0175;
+      mb.quad([Math.cos(a0) * R0, y, Math.sin(a0) * R0], [Math.cos(a1) * R0, y, Math.sin(a1) * R0], [Math.cos(a1) * R1, y, Math.sin(a1) * R1], [Math.cos(a0) * R1, y, Math.sin(a0) * R1]);
+    }
+    mb.color = mixl(g, "#000000", 0.6);
+    for (let k = 0; k < 12; k++) {
+      const a0 = (k / 12) * TAU, a1 = ((k + 1) / 12) * TAU;
+      const R0 = 0.058, R1 = 0.066, y = 0.0385;
+      mb.quad([Math.cos(a0) * R0, y, Math.sin(a0) * R0], [Math.cos(a1) * R0, y, Math.sin(a1) * R0], [Math.cos(a1) * R1, y, Math.sin(a1) * R1], [Math.cos(a0) * R1, y, Math.sin(a0) * R1]);
     }
     if (S.extra === "embers") {
       mb.color = C(T.ember);
       for (let k = 0; k < 6; k++) {
-        const a = r.range(0, TAU), d = r.range(0.03, 0.07);
-        at(mb, Math.cos(a) * d, 0.0195, Math.sin(a) * d, a, () => mb.quad([-0.012, 0, -0.0015], [0.012, 0, -0.0015], [0.012, 0, 0.0015], [-0.012, 0, 0.0015]));
+        const a = r.range(0, TAU), d = r.range(0.03, 0.09);
+        at(mb, Math.cos(a) * d, d > 0.1 ? 0.018 : 0.0388, Math.sin(a) * d, a, () => mb.quad([-0.014, 0, -0.002], [0.014, 0, -0.002], [0.014, 0, 0.002], [-0.014, 0, 0.002]));
       }
     }
   });
@@ -2629,76 +2757,98 @@ function buildManaNode(mb, r, variant, school) {
     mb.part(() => {
       mb.mat = MAT.METAL;
       mb.color = C("#1a4050");
-      mb.lathe([[0.07, 0.0198], [0, 0.0198]], 12, { caps: false });
+      mb.lathe([[0.054, 0.0388], [0, 0.0388]], 12, { caps: false });
     });
+  } else {
+    // A squat altar-stone at the heart, the crystal hanging over it.
+    mb.color = J(mixl(S.stone, "#3a383c", 0.35), r, 0.03);
+    const p0 = mb.mark();
+    mb.lathe([[0.042, 0.03], [0.04, 0.05], [0.033, 0.066], [0.036, 0.072], [0, 0.072]], 6, { phase: r.range(0, 1) });
+    mb.tint(p0, (x, y) => 0.75 + 0.35 * clamp((y - 0.03) / 0.04, 0, 1));
   }
-  // The standing stones.
-  const n = S.shape === "pillar" ? 6 : 5 + (variant % 3 === 2 ? 2 : 0);
-  const R = 0.19;
+  // The standing stones: heavy monoliths leaning in toward the crystal.
+  const n = S.shape === "pillar" ? 6 : 5 + (variant === 2 ? 2 : 0);
+  const R = 0.2;
   const a0 = r.range(0, TAU);
   for (let k = 0; k < n; k++) {
     const a = a0 + (k / n) * TAU + r.range(-0.12, 0.12);
-    const x = Math.cos(a) * R, z = Math.sin(a) * R * 0.92;
-    const h = r.range(0.17, 0.22) * (S.shape === "pillar" ? 1.1 : 1);
+    const x = Math.cos(a) * R, z = Math.sin(a) * R * 0.94;
+    const h = r.range(0.18, 0.24) * (S.shape === "pillar" ? 1.08 : 1) * (k % 2 ? 0.88 : 1);
     mb.part(() => {
       mb.translate(x, 0, z);
       mb.rotateY(-a + Math.PI / 2);
+      let face = -0.022, topK = 0.7, hh = h;
       if (S.shape === "rough") {
-        rockMass(mb, r, { rad: 0.045, sx: 0.9, sy: 1.9, sz: 0.8, amp: 0.15, cuts: 4, cut: 0.6, c: [0, 0.045, 0], shade: st });
+        rockMass(mb, r, { rad: 0.054, detail: 0, sx: 0.95, sy: 2.1, sz: 0.8, amp: 0.12, cuts: 3, cut: 0.62, c: [0, 0.05, 0], shade: st });
+        face = -0.04;
+        hh = 0.15;
       } else if (S.shape === "spike" || S.shape === "shard") {
-        const lean = [0, -0.012];
-        spire(mb, r, { h: h * 1.1, rad: 0.03, sides: S.shape === "shard" ? 4 : 5, rings: 2, base: -0.04, lean, taper: 0.9, twist: r.range(-0.6, 0.6), shade: S.shape === "shard" ? (nn, y) => faceShade(mixl(S.stone, "#e8f4ff", clamp(y / h, 0, 0.6)), nn, { lit: 0.35 }) : st });
+        mb.rotateX(-0.12);
+        spire(mb, r, { h: h * 1.15, rad: 0.054, sides: S.shape === "shard" ? 4 : 5, rings: 2, base: -0.05, lean: [0, -0.018], taper: 0.92, tp: 1.3, twist: r.range(-0.6, 0.6), sq: 0.75, shade: S.shape === "shard" ? (nn, y) => faceShade(mixl(S.stone, "#e8f4ff", clamp(y / h, 0, 0.6)), nn, { lit: 0.35 }) : st });
+        face = -0.02;
+        topK = 0.3;
       } else if (S.shape === "broken" && k % 2) {
-        mb.rotateX(r.range(0.6, 1.2));
-        sblock(mb, 0.04, 0.022, -0.02, h * 0.6, st, 0.85);
+        // A fallen stone, half buried.
+        mb.translate(0, 0.012, 0);
+        mb.rotateX(r.range(1.2, 1.45));
+        sblock(mb, 0.058, 0.04, -0.02, h * 0.75, st, 0.85);
+        return;
       } else {
-        const w = S.shape === "pillar" ? 0.038 : 0.052;
-        mb.rotateX(-0.06);
-        sblock(mb, w, 0.03, -0.04, h, st, S.shape === "pillar" ? 0.85 : 0.75);
+        const pillar = S.shape === "pillar";
+        const w = pillar ? 0.05 : 0.066, d = pillar ? 0.05 : 0.044;
+        topK = pillar ? 0.85 : 0.68;
+        mb.rotateX(-0.13);
+        sblock(mb, w, d, -0.05, h, st, topK);
+        face = -d / 2;
         if (S.extra === "gold") {
           mb.color = C("gold");
           mb.mat = MAT.METAL;
-          at(mb, 0, h, 0, 0, () => mb.box(w * 0.85, 0.008, 0.02, { top: 0.6 }));
+          at(mb, 0, h, 0, 0, () => mb.box(w * topK * 1.1, 0.01, d * topK * 1.1, { top: 0.6 }));
           mb.mat = MAT.MATTE;
         }
       }
-      // A rune on the inner face (toward the crystal), faint.
+      // A rune cut into the inner face, glowing: a stem and two strokes.
       mb.mat = MAT.EMISSIVE;
-      mb.color = mixl(glow, "#000000", 0.3);
-      const rz = -0.0165;
-      mb.quad([-0.002, h * 0.45, rz], [0.002, h * 0.45, rz], [0.002, h * 0.75, rz], [-0.002, h * 0.75, rz]);
-      mb.quad([-0.008, h * 0.62, rz], [0.008, h * 0.66, rz], [0.008, h * 0.69, rz], [-0.008, h * 0.65, rz]);
+      mb.color = mixl(g, "#000000", 0.1);
+      const zf = (y) => (face * (1 - (1 - topK) * clamp(y / hh, 0, 1))) - 0.0015;
+      const y0 = hh * 0.32, y1 = hh * 0.74, ym = hh * 0.56;
+      mb.quad([-0.004, y0, zf(y0)], [0.004, y0, zf(y0)], [0.004, y1, zf(y1)], [-0.004, y1, zf(y1)]);
+      mb.quad([-0.013, ym - 0.012, zf(ym)], [-0.004, ym - 0.004, zf(ym)], [-0.004, ym + 0.004, zf(ym)], [-0.013, ym - 0.004, zf(ym)]);
+      mb.quad([0.004, ym + 0.012, zf(ym)], [0.013, ym + 0.02, zf(ym)], [0.013, ym + 0.028, zf(ym)], [0.004, ym + 0.02, zf(ym)]);
       mb.mat = MAT.MATTE;
     });
   }
   // School extras round the ring.
   if (S.extra === "bones") {
-    for (let k = 0; k < 3; k++) at(mb, Math.cos(a0 + k * 2.1 + 0.5) * 0.12, 0.024, Math.sin(a0 + k * 2.1 + 0.5) * 0.12, -(a0 + k * 2.1 + 0.5) - Math.PI / 2, () => skull(mb, 0.01));
+    for (let k = 0; k < 3; k++) at(mb, Math.cos(a0 + k * 2.1 + 0.5) * 0.135, 0.028, Math.sin(a0 + k * 2.1 + 0.5) * 0.135, -(a0 + k * 2.1 + 0.5) - Math.PI / 2, () => skull(mb, 0.014));
   } else if (S.extra === "moss" || S.extra === "flowers") {
     mb.mat = MAT.FOLIAGE;
-    tufts(mb, r, 5, 0.2, 0.035, [T.grass, "#5a7a30"]);
+    tufts(mb, r, 4, 0.22, 0.04, ["#4e6a2a", "#5a7a30"]);
     if (S.extra === "flowers") {
       mb.mat = MAT.MATTE;
       mb.color = C("#e8e0b0");
-      for (let k = 0; k < 6; k++) at(mb, r.range(-0.2, 0.2), 0.02, r.range(-0.2, 0.2), 0, () => mb.sphere(0.005, 0));
+      for (let k = 0; k < 7; k++) {
+        const a = r.range(0, TAU), d = r.range(0.17, 0.24);
+        at(mb, Math.cos(a) * d, 0.01, Math.sin(a) * d, 0, () => mb.sphere(0.007, 0));
+      }
     }
     mb.mat = MAT.MATTE;
   } else if (S.extra === "frost") {
     mb.mat = MAT.METAL;
-    for (let k = 0; k < 4; k++) {
-      const a = r.range(0, TAU), d = r.range(0.06, 0.12);
-      crystal(mb, [Math.cos(a) * d, 0.0, Math.sin(a) * d], [Math.cos(a) * 0.3, 1, Math.sin(a) * 0.3], r.range(0.03, 0.05), 0.008, 4, { tip: 0.4, foot: 0, shade: (nn) => faceShade("#cfe6f0", nn, { lit: 0.3 }) });
+    for (let k = 0; k < 5; k++) {
+      const a = r.range(0, TAU), d = r.range(0.11, 0.16);
+      crystal(mb, [Math.cos(a) * d, 0.0, Math.sin(a) * d], [Math.cos(a) * 0.35, 1, Math.sin(a) * 0.35], r.range(0.04, 0.065), 0.011, 4, { tip: 0.4, foot: 0, shade: (nn) => faceShade("#cfe6f0", nn, { lit: 0.3 }) });
     }
     mb.mat = MAT.MATTE;
   }
-  // The crystal, and its satellites.
-  const lift = (S.lift ?? 0.17) + 0.03;
+  // The crystal, and its satellites, hanging over the dais.
+  const lift = (S.lift ?? 0.2) + 0.05;
   const cl = S.crystal === "cluster";
-  manaCrystal(mb, [0, lift, 0], cl ? 0.1 : 0.125, cl ? 0.024 : 0.028, glow, { sides: 5, phase: r.range(0, TAU) });
-  const sat = cl ? 4 : 2;
+  manaCrystal(mb, [0, lift, 0], cl ? 0.13 : 0.16, cl ? 0.03 : 0.036, glow, { sides: 5, phase: r.range(0, TAU) });
+  const sat = cl ? 4 : 3;
   for (let k = 0; k < sat; k++) {
-    const a = r.range(0, TAU), d = r.range(0.055, 0.07);
-    manaCrystal(mb, [Math.cos(a) * d, lift + r.range(-0.05, 0.02), Math.sin(a) * d], 0.04, 0.009, glow, { sides: 4, tilt: r.range(-0.5, 0.5) });
+    const a = a0 + (k / sat) * TAU + r.range(-0.4, 0.4), d = r.range(0.07, 0.085);
+    manaCrystal(mb, [Math.cos(a) * d, lift + r.range(-0.06, 0.03), Math.sin(a) * d], 0.05, 0.012, glow, { sides: 4, tilt: r.range(-0.5, 0.5) });
   }
   if (S.extra === "ring") {
     // A slow ring of light round the crystal (a thin emissive band).
@@ -2708,8 +2858,8 @@ function buildManaNode(mb, r, variant, school) {
       mb.translate(0, lift, 0);
       mb.rotateX(0.35);
       const pts = [];
-      for (let i = 0; i <= 16; i++) pts.push([Math.cos((i / 16) * TAU) * 0.055, 0, Math.sin((i / 16) * TAU) * 0.055]);
-      mb.tube(pts, 0.0022, 3);
+      for (let i = 0; i <= 16; i++) pts.push([Math.cos((i / 16) * TAU) * 0.075, 0, Math.sin((i / 16) * TAU) * 0.075]);
+      mb.tube(pts, 0.003, 3);
     });
   }
 }
@@ -2735,7 +2885,7 @@ function buildManaShard(mb, r, variant, school) {
   }
 }
 
-recipe("res.mana", { variants: 4, build: (mb, r, { variant, param }) => buildManaShard(mb, r, variant, param ?? "") });
+markerRecipe("res.mana", 1.45, { variants: 4, build: (mb, r, { variant, param }) => buildManaShard(mb, r, variant, param ?? "") });
 
 // ================================================================================================
 // Landmarks (unique features): small dioramas with a focal point, up to ~0.9 of a plot
@@ -2886,21 +3036,24 @@ recipe("lm.maelstrom", { variants: 1, build: (mb, r) => buildMaelstrom(mb, r) })
 /** Yggdrasil: the World Tree -- a trunk of twisting strands rising from roots that sprawl over the
  *  plot, a vast tiered crown of silver-green leaf masses, and golden fruit glowing in its shade. */
 function buildYggdrasil(mb, r) {
-  const bark = J("#6e6658", r, 0.04);
+  // The World Tree: an ash of pale, silvered bark whose roots sprawl over the plot, a bole of
+  // twisting strands, and great limbs spreading level to hold its crown as separate tiers of
+  // foliage -- a broad, layered, umbrella silhouette no ordinary tree has -- hung with golden fruit.
+  const bark = J("#8e887a", r, 0.04);
   // Roots arching over the ground.
-  mb.color = mulc(bark, 0.85);
+  mb.color = mulc(bark, 0.8);
   for (let k = 0; k < 7; k++) {
     const a = (k / 7) * TAU + r.range(-0.2, 0.2);
     const L = r.range(0.3, 0.42);
     const pts = [];
     for (let i = 0; i <= 5; i++) {
       const t = i / 5;
-      pts.push([Math.cos(a + t * 0.3) * (0.06 + L * t), 0.06 * (1 - t) + 0.025 * Math.sin(t * Math.PI * 2) - 0.012 * t, Math.sin(a + t * 0.3) * (0.06 + L * t)]);
+      pts.push([Math.cos(a + t * 0.3) * (0.06 + L * t), 0.06 * (1 - t) + 0.025 * Math.sin(t * Math.PI * 2) - 0.014 * t, Math.sin(a + t * 0.3) * (0.06 + L * t)]);
     }
-    mb.tube(pts, pts.map((_, i) => 0.028 * (1 - i / 6) + 0.003), 4);
+    mb.tube(pts, pts.map((_, i) => 0.03 * (1 - i / 6) + 0.003), 4);
   }
   // The trunk: five strands twisting about each other into one great bole.
-  const H = 0.46;
+  const H = 0.42;
   const tr = mb.mark();
   mb.color = bark;
   for (let k = 0; k < 5; k++) {
@@ -2908,49 +3061,59 @@ function buildYggdrasil(mb, r) {
     for (let i = 0; i <= 7; i++) {
       const t = i / 7;
       const a = (k / 5) * TAU + t * 1.9;
-      const d = 0.07 * (1 - t * 0.5) + (t > 0.78 ? (t - 0.78) * 0.7 : 0);
-      pts.push([Math.cos(a) * d, -0.03 + (H + 0.06) * t, Math.sin(a) * d]);
-      radii.push(0.05 * (1 - t * 0.5));
+      const d = 0.072 * (1 - t * 0.5) + (t > 0.78 ? (t - 0.78) * 0.6 : 0);
+      pts.push([Math.cos(a) * d, -0.03 + (H + 0.04) * t, Math.sin(a) * d]);
+      radii.push(0.052 * (1 - t * 0.5));
     }
     mb.tube(pts, radii, 5);
   }
-  mb.tint(tr, (x, y, z) => (0.62 + 0.5 * clamp(y / H, 0, 1)) * (0.85 + 0.3 * clamp(0.5 - z * 4 + x * 2, 0, 1)));
-  // Great limbs.
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * TAU + 0.3;
-    mb.tube([[0, H * 0.8, 0], [Math.cos(a) * 0.15, H + 0.03, Math.sin(a) * 0.15], [Math.cos(a) * 0.3, H + 0.07, Math.sin(a) * 0.3]], [0.03, 0.02, 0.01], 4);
+  // Great limbs, each reaching out level to a tier of the crown.
+  const ends = [];
+  const n = 6, a0 = r.range(0, TAU);
+  for (let k = 0; k < n; k++) {
+    const a = a0 + (k / n) * TAU + r.range(-0.2, 0.2);
+    const reach = k % 2 ? r.range(0.3, 0.37) : r.range(0.22, 0.28);
+    const top = H + (k % 2 ? r.range(-0.02, 0.04) : r.range(0.08, 0.13));
+    const mid = [Math.cos(a) * reach * 0.5, top - 0.035, Math.sin(a) * reach * 0.5];
+    const end = [Math.cos(a) * reach, top, Math.sin(a) * reach];
+    mb.tube([[0, H * 0.72 + k * 0.012, 0], mid, end], [0.034, 0.022, 0.012], 4);
+    ends.push(end);
   }
-  // The crown: broad, flat-bottomed tiers of leaf masses (silver-green below, gold-lit on top).
+  ends.push([0, H + 0.24, 0]);
+  mb.tint(tr, (x, y, z) => (0.66 + 0.45 * clamp(y / H, 0, 1)) * (0.85 + 0.3 * clamp(0.5 - z * 4 - x * 2, 0, 1)));
+  // The crown: a flattened cloud of leaf at each limb's end (and one over the bole): deep
+  // blue-green beneath, lit gold-green on top.
   mb.mat = MAT.FOLIAGE;
   const cr = mb.mark();
-  const tiers = [[0.33, H + 0.1, 8, 0.15], [0.19, H + 0.22, 6, 0.14], [0.06, H + 0.33, 3, 0.12]];
-  for (const [rad, y, n, sz] of tiers) {
-    for (let k = 0; k < n; k++) {
-      const a = (k / n) * TAU + r.range(-0.2, 0.2) + y * 3;
-      const c = [Math.cos(a) * rad, y + r.range(-0.02, 0.02), Math.sin(a) * rad];
+  ends.forEach((c, k) => {
+    const m = mb.mark();
+    const top = k === ends.length - 1;
+    const parts = top || k % 2 ? 3 : 2;
+    for (let j = 0; j < parts; j++) {
+      const b = r.range(0, TAU), d = j ? r.range(0.045, 0.07) : 0;
       const seed = r.range(0, 9);
-      mb.color = J(r.pick(["#4a6a58", "#56765a", "#62805e"]), r, 0.05);
-      at(mb, ...c, a, () => {
-        mb.scale(1.3, 1, 1);
-        mb.blob(sz * r.range(0.85, 1.05), { detail: 1, amp: 0.22, squash: 0.48, noise: (v) => noise3(v[0] * 2.6 + seed, v[1] * 2.6, v[2] * 2.6) });
+      mb.color = J(r.pick(["#3c6250", "#466c56", "#527458"]), r, 0.05);
+      at(mb, c[0] + Math.cos(b) * d, c[1] + 0.02 + r.range(-0.012, 0.012), c[2] + Math.sin(b) * d, b, () => {
+        mb.scale(1.3, 1, 1.15);
+        mb.blob((top ? 0.1 : 0.088) * r.range(0.9, 1.08), { detail: 1, amp: 0.24, squash: 0.46, noise: (v) => noise3(v[0] * 2.6 + seed, v[1] * 2.6, v[2] * 2.6) });
       });
     }
-  }
-  mb.displace(cr, (x, y) => [0, y < H + 0.06 ? (H + 0.06 - y) * 0.6 : 0, 0]);
-  mb.sphereNormals(cr, [0, H + 0.05, 0], 0.6);
-  mb.tint(cr, (x, y) => {
-    const t = clamp((y - H - 0.03) / 0.38, 0, 1);
-    return [0.5 + 0.8 * t * t, 0.55 + 0.7 * t * t, 0.62 + 0.4 * t * t];
+    mb.sphereNormals(m, [c[0], c[1] - 0.03, c[2]], 0.65);
+    mb.tint(m, (x, y) => {
+      const t = clamp((y - c[1] + 0.01) / 0.07, 0, 1);
+      return [0.55 + 0.75 * t * t, 0.6 + 0.62 * t * t, 0.7 + 0.25 * t * t];
+    });
   });
-  mb.heightSway(cr, H + 0.1, H + 0.45, 0.2);
+  mb.heightSway(cr, H, H + 0.36, 0.18);
   mb.mat = MAT.MATTE;
-  // Golden fruit hanging under the crown.
+  // Golden fruit hanging under the tiers.
   mb.part(() => {
     mb.mat = MAT.EMISSIVE;
-    mb.color = C("#ffd060");
-    for (let k = 0; k < 7; k++) {
-      const a = r.range(0, TAU), d = r.range(0.12, 0.34);
-      at(mb, Math.cos(a) * d, H + 0.04 + r.range(-0.02, 0.03), Math.sin(a) * d, 0, () => mb.sphere(0.009, 0));
+    mb.color = C("#ffc850");
+    for (let k = 0; k < 9; k++) {
+      const c = ends[k % (ends.length - 1)];
+      const b = r.range(0, TAU), d = r.range(0.03, 0.08);
+      at(mb, c[0] + Math.cos(b) * d, c[1] - 0.025 + r.range(-0.01, 0.01), c[2] + Math.sin(b) * d, 0, () => mb.sphere(0.01, 0));
     }
   });
 }
@@ -2996,33 +3159,49 @@ function buildPyre(mb, r) {
 
 recipe("lm.pyre", { variants: 1, build: (mb, r) => buildPyre(mb, r) });
 
-/** The Mirror of Heaven: a great round mirror of polished silver laid in a ring of white marble
- *  and gold on a stepped dais, holding the sky; four slender pillars keep watch. */
+/** The Mirror of Heaven: a great round mirror of polished silver in a gold frame, raised upright on
+ *  a white dais and tilted back to hold the sky (it faces the viewer and the heavens at once), a
+ *  star of light at its heart; slender pillars crowned with crystals keep watch around it. */
 function buildMirror(mb, r) {
-  const marble = stoneShade("#a8a090", { moss: 0.05, seed: 2 });
-  mb.color = C("#8a8478");
+  const marble = stoneShade("#b4ac9c", { moss: 0.05, seed: 2 });
+  mb.color = C("#8e887c");
   const d0 = mb.mark();
-  mb.lathe([[0.3, -0.05], [0.295, 0.012], [0.25, 0.016], [0.245, 0.034], [0.2, 0.038], [0.195, 0.05], [0, 0.05]], 18);
+  mb.lathe([[0.26, -0.05], [0.255, 0.012], [0.215, 0.016], [0.21, 0.034], [0.17, 0.038], [0, 0.038]], 16);
   mb.tint(d0, (x, y) => (y > 0.03 ? 1.15 : 0.85));
-  mb.color = C("gold");
-  mb.mat = MAT.METAL;
-  mb.lathe([[0.19, 0.05], [0.186, 0.058], [0.174, 0.058], [0.17, 0.052]], 18, { caps: false });
-  // The mirror holds the sky: pale at the rim, deepening to a clear blue at its heart.
-  mb.color = C("#8aa8c8");
-  const m1 = mb.mark();
-  mb.lathe([[0.172, 0.053], [0.1, 0.0535], [0, 0.054]], 18, { caps: false });
-  mb.tint(m1, (x, y, z) => 0.7 + 0.5 * clamp(Math.hypot(x, z) / 0.17, 0, 1));
-  mb.mat = MAT.EMISSIVE;
-  mb.color = C("#3a5a80");
-  mb.lathe([[0.06, 0.0545], [0, 0.0548]], 12, { caps: false });
+  const R = 0.12, tilt = 0.5, cy = 0.215, cz = -0.03;
+  // The pedestal under it and two marble posts holding the frame at its sides.
+  at(mb, 0, 0.038, cz - 0.01, 0, () => sblock(mb, 0.09, 0.06, -0.01, 0.07, marble, 0.8));
+  for (const sx of [-1, 1]) at(mb, sx * (R + 0.03), 0.038, cz, 0, () => column(mb, r, cy - 0.03, 0.014, marble, false));
+  mb.part(() => {
+    mb.translate(0, cy, cz);
+    mb.rotateX(Math.PI / 2 - tilt);
+    // The gold frame (a deep ring round the glass) ...
+    mb.mat = MAT.METAL;
+    mb.color = C("#c8a048");
+    const f0 = mb.mark();
+    mb.lathe([[R * 0.85, -0.016], [R + 0.02, -0.01], [R + 0.022, 0.004], [R + 0.008, 0.01], [R, 0.005]], 20);
+    mb.tint(f0, (x, y, z) => 0.8 + 0.3 * clamp(y + 0.5, 0, 1));
+    // ... and the glass: the sky in it, pale at the rim, a clear deep blue at its heart.
+    mb.color = C("#7c9ec4");
+    const m1 = mb.mark();
+    mb.lathe([[R, 0.005], [R * 0.55, 0.006], [0, 0.0065]], 20, { caps: false });
+    mb.tint(m1, (x, y, z) => 0.55 + 0.6 * clamp(Math.hypot(x, z) / R, 0, 1) ** 2);
+    // The star of heaven at its centre (small: the one bright thing).
+    mb.mat = MAT.EMISSIVE;
+    mb.color = C("#fff2c8");
+    for (const a of [0, Math.PI / 2]) {
+      const c = Math.cos(a), sn = Math.sin(a);
+      mb.quad([-0.032 * c, 0.008, -0.032 * sn], [0.006 * sn, 0.008, -0.006 * c], [0.032 * c, 0.008, 0.032 * sn], [-0.006 * sn, 0.008, 0.006 * c]);
+    }
+    mb.color = C("#c8dcf0");
+    mb.lathe([[0.016, 0.0085], [0, 0.009]], 8, { caps: false });
+  });
   mb.mat = MAT.MATTE;
   for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + (k / 4) * TAU;
-    at(mb, Math.cos(a) * 0.235, 0.016, Math.sin(a) * 0.235, 0, () => {
-      column(mb, r, 0.24, 0.013, marble, false);
-      mb.mat = MAT.EMISSIVE;
-      mb.color = C("#c8e0ff");
-      at(mb, 0, 0.255, 0, 0, () => manaCrystal(mb, [0, 0.015, 0], 0.03, 0.008, "#c8e0ff", { sides: 4 }));
+    at(mb, Math.cos(a) * 0.215, 0.016, Math.sin(a) * 0.215, 0, () => {
+      column(mb, r, k < 2 ? 0.2 : 0.26, 0.012, marble, false);
+      at(mb, 0, k < 2 ? 0.215 : 0.275, 0, 0, () => manaCrystal(mb, [0, 0.015, 0], 0.03, 0.008, "#c8e0ff", { sides: 4 }));
       mb.mat = MAT.MATTE;
     });
   }
@@ -3325,7 +3504,11 @@ function buildOdiosPrison(mb, r, variant, carcer = false) {
         mb.quad([-w * 0.5, y, z + 0.0035], [w * 0.5, y + 0.005, z + 0.0035], [w * 0.5, y + 0.02, z + 0.0028], [-w * 0.5, y + 0.015, z + 0.0028]);
       }
     } else {
-      mb.lathe([[0.1, 0.008], [0, 0.009]], 12, { caps: false });
+      // A seal of runes round a smouldering pit (a ring, not a glowing plate).
+      mb.color = C("#a02a14");
+      mb.lathe([[0.105, 0.008], [0.088, 0.0085]], 14, { caps: false });
+      mb.color = C("#3e0e08");
+      mb.lathe([[0.088, 0.0085], [0, 0.009]], 14, { caps: false });
     }
   });
   // The ring of stakes (iron) or of black pillars (Carcer), chained to the heart.
@@ -3433,36 +3616,39 @@ function buildOre(mb, r, variant, metal) {
   const vein = C(o[1]);
   const base = J(o[0], r, 0.04);
   const seed = r.range(0, 9);
+  const metallic = o[2];
+  // Lodes: broad bands of the metal across the broken faces, so the split rock shows its ore from
+  // afar; the bands (and the nuggets) take the metal's sheen, the rock stays matte.
   const sh = (n, y, a, b, c) => {
     const cx = (a[0] + b[0] + c[0]) / 3, cz = (a[2] + b[2] + c[2]) / 3;
-    const v = Math.abs(noise3(cx * 24 + seed, y * 24, cz * 24) + 0.25 * Math.sin((cx + y) * 90 + seed));
-    const k = faceShade(base, n, { top: mixl(base, "#7a746a", 0.3), lit: 0.25 });
-    return v < 0.24 && n[1] > -0.2 ? faceShade(vein, n, { lit: 0.2 }) : k;
+    const band = Math.sin((cx * 0.8 + y * 1.5 + cz * 0.5) * 105 + seed + 2.2 * noise3(cx * 22 + seed, y * 22, cz * 22));
+    const lode = band > 0.15 - 0.5 * clamp(n[1] - 0.4, 0, 1) && n[1] > -0.35;
+    mb.mat = lode && metallic ? MAT.METAL : MAT.MATTE;
+    return lode ? faceShade(vein, n, { top: mixl(vein, "#ffffff", 0.06), lit: 0.3 }) : faceShade(base, n, { top: mixl(base, "#6a6460", 0.3), lit: 0.3 });
   };
-  mb.mat = o[2] ? MAT.METAL : MAT.MATTE;
-  rockMass(mb, r, { rad: 0.065, sx: 1.25, sy: 0.85, sz: 1.0, cuts: 5, cut: 0.62, c: [0, 0.018, 0], shade: sh });
-  rockMass(mb, r, { rad: 0.035, detail: 0, sx: 1.1, sy: 0.9, cuts: 3, cut: 0.6, c: [0.07, 0.006, 0.03], shade: sh });
-  // Nuggets / crystals of the metal.
-  mb.mat = o[2] ? MAT.METAL : MAT.MATTE;
+  rockMass(mb, r, { rad: 0.062, sx: 1.25, sy: 0.95, sz: 1.0, cuts: 5, cut: 0.6, c: [0, 0.016, 0], floor: -0.045, shade: sh });
+  rockMass(mb, r, { rad: 0.036, detail: 0, sx: 1.1, sy: 0.9, cuts: 3, cut: 0.6, c: [0.07, 0.004, 0.03], floor: -0.045, shade: sh });
+  // Nuggets / crystals of the metal broken out at the foot and on the shoulders.
+  mb.mat = metallic ? MAT.METAL : MAT.MATTE;
   const shine = mixl(vein, "#ffffff", 0.25);
-  for (let k = 0; k < 3; k++) {
-    const a = r.range(-1.2, 1.2) + Math.PI / 2, d = r.range(0.05, 0.075);
-    const p0 = [Math.cos(a) * d, 0.02 + r.range(0, 0.03), Math.sin(a) * d * 0.8];
-    if (metal === "mithril" || metal === "silver") crystal(mb, p0, [Math.cos(a) * 0.5, 1, Math.sin(a) * 0.5], r.range(0.03, 0.05), 0.008, 5, { tip: 0.4, foot: 0, shade: (n) => faceShade(shine, n, { lit: 0.4 }) });
-    else rockMass(mb, r, { rad: 0.012, detail: 0, sy: 0.8, cuts: 2, cut: 0.6, c: p0, floor: -0.1, shade: (n) => faceShade(shine, n, { lit: 0.35 }) });
+  for (let k = 0; k < 4; k++) {
+    const a = r.range(-1.3, 1.3) + Math.PI / 2, d = r.range(0.045, 0.075);
+    const p0 = [Math.cos(a) * d, 0.012 + r.range(0, 0.035), Math.sin(a) * d * 0.8];
+    if (metal === "mithril" || metal === "silver") crystal(mb, p0, [Math.cos(a) * 0.5, 1, Math.sin(a) * 0.5], r.range(0.035, 0.055), 0.01, 5, { tip: 0.4, foot: 0, shade: (n) => faceShade(shine, n, { lit: 0.4 }) });
+    else rockMass(mb, r, { rad: r.range(0.012, 0.017), detail: 0, sy: 0.8, cuts: 2, cut: 0.6, c: p0, floor: -0.1, shade: (n) => faceShade(shine, n, { lit: 0.4 }) });
   }
   mb.mat = MAT.MATTE;
   if (metal === "mithril") {
     mb.part(() => {
       mb.mat = MAT.EMISSIVE;
       mb.color = C("#5a8aa0");
-      crystal(mb, [0.0, 0.05, 0.03], [0.1, 1, 0.3], 0.05, 0.007, 4, { tip: 0.4, foot: 0 });
+      crystal(mb, [0.0, 0.05, 0.03], [0.1, 1, 0.3], 0.05, 0.008, 4, { tip: 0.4, foot: 0 });
     });
   }
-  groundAO(mb, 0, -0.01, 0.06, 0.6);
+  groundAO(mb, 0, -0.02, 0.06, 0.6);
 }
 
-recipe("res.ore", { variants: 4, build: (mb, r, { variant, param }) => buildOre(mb, r, variant, param || "iron") });
+markerRecipe("res.ore", 1.4, { variants: 4, build: (mb, r, { variant, param }) => buildOre(mb, r, variant, param || "iron") });
 
 /** Gems: a cluster of coloured crystals breaking out of dark rock. */
 function buildGems(mb, r, variant, kind) {
@@ -3482,7 +3668,7 @@ function buildGems(mb, r, variant, kind) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.gems", { variants: 4, build: (mb, r, { variant, param }) => buildGems(mb, r, variant, param) });
+markerRecipe("res.gems", 1.5, { variants: 4, build: (mb, r, { variant, param }) => buildGems(mb, r, variant, param) });
 
 /** Marble: cut white blocks stacked by a raw, veined outcrop. */
 function buildMarble(mb, r, variant) {
@@ -3496,7 +3682,7 @@ function buildMarble(mb, r, variant) {
   for (const [x, z, y, yaw] of [[0.05, 0.03, 0, 0.2], [0.035, 0.065, 0, -0.1], [0.045, 0.045, 0.032, 0.5]]) at(mb, x, y, z, yaw, () => sblock(mb, 0.04, 0.03, y ? 0 : -0.01, 0.032, sh));
 }
 
-recipe("res.marble", { variants: 2, build: (mb, r, { variant }) => buildMarble(mb, r, variant) });
+markerRecipe("res.marble", 1.4, { variants: 2, build: (mb, r, { variant }) => buildMarble(mb, r, variant) });
 
 /** A stook of wheat: sheaves leaned together in a little tent, their ears flaring golden at the
  *  top, and a sheaf lying in the stubble. */
@@ -3523,7 +3709,7 @@ function buildWheat(mb, r, variant) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.wheat", { variants: 2, build: (mb, r, { variant }) => buildWheat(mb, r, variant) });
+markerRecipe("res.wheat", 1.8, { variants: 2, build: (mb, r, { variant }) => buildWheat(mb, r, variant) });
 
 /** Corn: a few tall stalks with drooping leaves and yellow cobs. */
 function buildCorn(mb, r) {
@@ -3532,48 +3718,49 @@ function buildCorn(mb, r) {
     const a = (k / 5) * TAU + r.range(-0.3, 0.3), d = k ? r.range(0.025, 0.04) : 0;
     const x = Math.cos(a) * d, z = Math.sin(a) * d, h = r.range(0.11, 0.14);
     const m0 = mb.mark();
-    mb.color = J("#6a8a36", r, 0.06);
-    stick(mb, [x, -0.01, z], [x + r.range(-0.006, 0.006), h, z], 0.003, 3);
+    mb.color = J("#7e9a3c", r, 0.06);
+    stick(mb, [x, -0.01, z], [x + r.range(-0.006, 0.006), h, z], 0.0035, 3);
+    // A pale tassel at the top.
+    mb.color = J("#c8b060", r, 0.06);
+    mb.tri([x - 0.004, h, z], [x + 0.004, h, z], [x + r.range(-0.006, 0.006), h + 0.022, z + r.range(-0.006, 0.006)]);
+    mb.color = J("#7e9a3c", r, 0.06);
     for (let l = 0; l < 3; l++) {
       const b = r.range(0, TAU), y = h * (0.35 + l * 0.2);
       mb.tri([x, y, z], [x + Math.cos(b) * 0.04, y - 0.02, z + Math.sin(b) * 0.04], [x + Math.cos(b + 0.3) * 0.02, y + 0.008, z + Math.sin(b + 0.3) * 0.02]);
     }
     mb.heightSway(m0, 0.03, h, 0.5);
     mb.mat = MAT.MATTE;
-    mb.color = C("#e0b840");
-    at(mb, x + 0.006, h * 0.55, z + 0.004, 0, () => { mb.rotateZ(-0.4); mb.lathe([[0.005, 0], [0.006, 0.012], [0, 0.026]], 5); });
+    mb.color = C("#ecc040");
+    at(mb, x + 0.006, h * 0.5, z + 0.004, 0, () => { mb.rotateZ(-0.45); mb.lathe([[0.0075, 0], [0.009, 0.016], [0, 0.034]], 5); });
     mb.mat = MAT.FOLIAGE;
   }
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.corn", { variants: 2, build: (mb, r) => buildCorn(mb, r) });
+markerRecipe("res.corn", 1.45, { variants: 2, build: (mb, r) => buildCorn(mb, r) });
 
 /** Rice: a little flooded paddy in a mud bank, green shoots in rows. */
 function buildRice(mb, r) {
-  sblock(mb, 0.16, 0.12, -0.03, 0.012, (n) => faceShade("#5a4a36", n, { lit: 0.2 }));
-  mb.part(() => {
-    mb.mat = MAT.METAL;
-    mb.color = C("#3a5a58");
-    mb.quad([-0.07, 0.0125, -0.05], [-0.07, 0.0125, 0.05], [0.07, 0.0125, 0.05], [0.07, 0.0125, -0.05]);
-  });
+  // A flooded paddy in its earth bank (the sky in the water), shoots of vivid young green in rows.
+  pool(mb, r, { rad: 0.062, water: "#3e6a6e", outer: "#6a6a36", bank: "#5a4834" });
   mb.mat = MAT.FOLIAGE;
   const m0 = mb.mark();
   for (let j = 0; j < 4; j++) {
-    for (let k = 0; k < 6; k++) {
-      const x = -0.055 + k * 0.022, z = -0.036 + j * 0.024;
-      mb.color = J("#7a9a3a", r, 0.08);
-      for (let l = 0; l < 2; l++) {
+    for (let k = 0; k < 5; k++) {
+      const x = -0.044 + k * 0.022 + r.range(-0.003, 0.003), z = -0.033 + j * 0.022;
+      if (Math.hypot(x / 1.0, z / 0.9) > 0.058) continue;
+      mb.color = J(j % 2 ? "#86a83c" : "#7a9e36", r, 0.08);
+      for (let l = 0; l < 3; l++) {
         const b = r.range(0, TAU);
-        mb.tri([x - 0.003, 0.012, z], [x + 0.003, 0.012, z], [x + Math.cos(b) * 0.008, 0.04, z + Math.sin(b) * 0.008]);
+        mb.tri([x - 0.003, 0.004, z], [x + 0.003, 0.004, z], [x + Math.cos(b) * 0.009, 0.034, z + Math.sin(b) * 0.009]);
       }
     }
   }
-  mb.heightSway(m0, 0.012, 0.04, 0.5);
+  mb.heightSway(m0, 0.006, 0.034, 0.5);
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.rice", { variants: 1, build: (mb, r) => buildRice(mb, r) });
+markerRecipe("res.rice", 1.35, { variants: 1, build: (mb, r) => buildRice(mb, r) });
 
 /** A banana plant with a heavy yellow bunch. */
 function buildBanana(mb, r) {
@@ -3595,7 +3782,7 @@ function buildBanana(mb, r) {
   at(mb, 0.02, 0.06, 0.018, 0, () => mb.blob(0.016, { detail: 0, amp: 0.25, squash: 1.4, noise: (v) => Math.sin(v[1] * 9) }));
 }
 
-recipe("res.banana", { variants: 2, build: (mb, r) => buildBanana(mb, r) });
+markerRecipe("res.banana", 1.45, { variants: 2, build: (mb, r) => buildBanana(mb, r) });
 
 /** Sugar cane: a stand of tall jointed canes, cut stalks bundled at its foot. */
 function buildSugar(mb, r) {
@@ -3615,7 +3802,7 @@ function buildSugar(mb, r) {
   for (let k = 0; k < 4; k++) stick(mb, [0.03 + k * 0.006, 0.006, 0.045], [-0.03 + k * 0.006, 0.006, 0.065], 0.003, 3);
 }
 
-recipe("res.sugar", { variants: 2, build: (mb, r) => buildSugar(mb, r) });
+markerRecipe("res.sugar", 1.45, { variants: 2, build: (mb, r) => buildSugar(mb, r) });
 
 /** Cotton: bushes starred with white bolls, a bale beside them. */
 function buildCotton(mb, r) {
@@ -3629,7 +3816,7 @@ function buildCotton(mb, r) {
     mb.sphereNormals(m0, [Math.cos(a) * d, 0, Math.sin(a) * d], 0.6);
     mb.mat = MAT.MATTE;
     mb.color = C("#eee8dc");
-    for (let l = 0; l < 4; l++) at(mb, Math.cos(a) * d + r.range(-0.02, 0.02), 0.03 + r.range(0, 0.016), Math.sin(a) * d + r.range(-0.018, 0.022), 0, () => mb.sphere(0.0065, 0));
+    for (let l = 0; l < 3; l++) at(mb, Math.cos(a) * d + r.range(-0.02, 0.02), 0.03 + r.range(0, 0.016), Math.sin(a) * d + r.range(-0.018, 0.022), 0, () => mb.sphere(0.0075, 0));
     mb.mat = MAT.FOLIAGE;
   }
   mb.mat = MAT.MATTE;
@@ -3646,11 +3833,11 @@ function bale(mb, col, s = 1) {
   });
 }
 
-recipe("res.cotton", { variants: 2, build: (mb, r) => buildCotton(mb, r) });
+markerRecipe("res.cotton", 1.6, { variants: 2, build: (mb, r) => buildCotton(mb, r) });
 
 // Livestock markers: one beast, larger than in a pasture, on a tuft of grass.
 for (const k of ["cow", "horse", "sheep", "pig", "deer"]) {
-  recipe(`res.${k}`, {
+  markerRecipe(`res.${k}`, 1.2, {
     variants: 2,
     build: (mb, r, { variant }) => {
       mb.part(() => {
@@ -3670,7 +3857,7 @@ function buildFish(mb, r, variant) {
   mb.color = C("#c8d8d8");
   for (const [rad, y] of [[0.05, 0.003], [0.075, 0.002]]) {
     const pts = [];
-    for (let i = 0; i <= 14; i++) pts.push([Math.cos((i / 14) * TAU) * rad, y, Math.sin((i / 14) * TAU) * rad * 0.8]);
+    for (let i = 0; i <= 10; i++) pts.push([Math.cos((i / 10) * TAU) * rad, y, Math.sin((i / 10) * TAU) * rad * 0.8]);
     mb.tube(pts, 0.0035, 3);
   }
   // The fish arcs out of the water.
@@ -3681,7 +3868,7 @@ function buildFish(mb, r, variant) {
     radii.push(0.013 * Math.sin(Math.PI * (0.12 + t * 0.8)) + 0.002);
   }
   mb.mat = MAT.METAL;
-  mb.color = C(variant % 2 ? "#7a8a90" : "#8a7a60");
+  mb.color = C(variant % 2 ? "#a4b2b8" : "#b4aa8c");
   const m0 = mb.mark();
   mb.tube(pts, radii, 5, { caps: true });
   mb.tint(m0, (x, y, z) => (y > 0.045 ? 0.7 : 1.15));
@@ -3694,19 +3881,23 @@ function buildFish(mb, r, variant) {
   for (let k = 0; k < 4; k++) at(mb, 0.05 + r.range(-0.01, 0.01), 0.01 + k * 0.006, r.range(-0.01, 0.01), 0, () => mb.sphere(0.004, 0));
 }
 
-recipe("res.fish", { variants: 2, build: (mb, r, { variant }) => buildFish(mb, r, variant) });
+markerRecipe("res.fish", 1.45, { variants: 2, build: (mb, r, { variant }) => buildFish(mb, r, variant) });
 
 /** Clams: a cluster of ribbed shells on a sandbar just breaking the water. */
 function buildClams(mb, r, pearl = false) {
-  mb.color = C("#b8a47e");
+  // A pale sandbar breaking the water (wet and dark at the waterline), the shells heaped on it.
+  mb.color = C("#c4b08a");
+  const s0 = mb.mark();
   mb.part(() => {
+    mb.translate(0, -0.008, 0);
     mb.scale(1.4, 1, 1);
-    mb.blob(0.045, { detail: 1, amp: 0.15, squash: 0.25, noise: (v) => noise3(v[0] * 3, v[1] * 3, v[2] * 3) });
+    mb.blob(0.045, { detail: 1, amp: 0.15, squash: 0.5, noise: (v) => noise3(v[0] * 3, v[1] * 3, v[2] * 3) });
   });
+  mb.tint(s0, (x, y) => 0.62 + 0.45 * clamp((y + 0.002) / 0.016, 0, 1));
   const n = pearl ? 1 : 4;
   for (let k = 0; k < n; k++) {
     const a = (k / n) * TAU + 0.4, d = pearl ? 0 : 0.035;
-    at(mb, Math.cos(a) * d, 0.008, Math.sin(a) * d, r.range(0, TAU), () => {
+    at(mb, Math.cos(a) * d, pearl ? 0.012 : 0.01, Math.sin(a) * d, r.range(0, TAU), () => {
       const s = pearl ? 1.5 : r.range(0.8, 1.1);
       mb.scale(s);
       mb.color = J("#d8c8b0", r, 0.06);
@@ -3730,8 +3921,8 @@ function buildClams(mb, r, pearl = false) {
   }
 }
 
-recipe("res.clam", { variants: 2, build: (mb, r) => buildClams(mb, r, false) });
-recipe("res.pearl", { variants: 1, build: (mb, r) => buildClams(mb, r, true) });
+markerRecipe("res.clam", 1.6, { variants: 2, build: (mb, r) => buildClams(mb, r, false) });
+markerRecipe("res.pearl", 1.7, { variants: 1, build: (mb, r) => buildClams(mb, r, true) });
 
 /** A crab on a wet rock, claws raised. */
 function buildCrab(mb, r) {
@@ -3756,7 +3947,7 @@ function buildCrab(mb, r) {
   });
 }
 
-recipe("res.crab", { variants: 1, build: (mb, r) => buildCrab(mb, r) });
+markerRecipe("res.crab", 1.6, { variants: 1, build: (mb, r) => buildCrab(mb, r) });
 
 /** A whale's back breaking the sea, its tail fluke raised behind and a spout of spray. */
 function buildWhale(mb, r) {
@@ -3784,7 +3975,7 @@ function buildWhale(mb, r) {
   mb.tube(pts, 0.004, 3);
 }
 
-recipe("res.whale", { variants: 1, build: (mb, r) => buildWhale(mb, r) });
+markerRecipe("res.whale", 1.2, { variants: 1, build: (mb, r) => buildWhale(mb, r) });
 
 /** Trade goods by kind (param): bolts of silk, dye vats, incense jars, wine, furs, ivory tusks,
  *  reagents, gunpowder kegs, ale, fine clothes. */
@@ -3894,7 +4085,7 @@ function buildGoods(mb, r, variant, kind) {
   }
 }
 
-recipe("res.goods", { variants: 2, build: (mb, r, { variant, param }) => buildGoods(mb, r, variant, param) });
+markerRecipe("res.goods", 1.9, { variants: 2, build: (mb, r, { variant, param }) => buildGoods(mb, r, variant, param) });
 
 /** A giant toad squatting on a lily pad of the infernal marshes (warty, sickly). */
 function buildToad(mb, r) {
@@ -3916,7 +4107,7 @@ function buildToad(mb, r) {
   }
 }
 
-recipe("res.toad", { variants: 1, build: (mb, r) => buildToad(mb, r) });
+markerRecipe("res.toad", 1.6, { variants: 1, build: (mb, r) => buildToad(mb, r) });
 
 /** A nightmare: a black horse of smoke and shadow, its mane and eyes burning red. */
 function buildNightmare(mb, r, variant) {
@@ -3937,7 +4128,7 @@ function buildNightmare(mb, r, variant) {
   });
 }
 
-recipe("res.nightmare", { variants: 1, build: (mb, r, { variant }) => buildNightmare(mb, r, variant) });
+markerRecipe("res.nightmare", 1.2, { variants: 1, build: (mb, r, { variant }) => buildNightmare(mb, r, variant) });
 
 /** Razorweed: a clump of black, blade-edged leaves with red-hot edges. */
 function buildRazorweed(mb, r) {
@@ -3949,7 +4140,7 @@ function buildRazorweed(mb, r) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.razorweed", { variants: 2, build: (mb, r) => buildRazorweed(mb, r) });
+markerRecipe("res.razorweed", 1.7, { variants: 2, build: (mb, r) => buildRazorweed(mb, r) });
 
 /** Gulagarm: a fleshy, spined pod of the hells, veined with a dull inner glow. */
 function buildGulagarm(mb, r) {
@@ -3975,7 +4166,7 @@ function buildGulagarm(mb, r) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.gulagarm", { variants: 1, build: (mb, r) => buildGulagarm(mb, r) });
+markerRecipe("res.gulagarm", 1.7, { variants: 1, build: (mb, r) => buildGulagarm(mb, r) });
 
 /** The Fruit of Yggdrasil: a silver bough bent under glowing golden fruit. */
 function buildYggFruit(mb, r) {
@@ -3993,7 +4184,7 @@ function buildYggFruit(mb, r) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.yggfruit", { variants: 1, build: (mb, r) => buildYggFruit(mb, r) });
+markerRecipe("res.yggfruit", 1.6, { variants: 1, build: (mb, r) => buildYggFruit(mb, r) });
 
 /** A Sheut stone: a black, egg-smooth stone veined with violet light. */
 function buildSheut(mb, r) {
@@ -4016,7 +4207,7 @@ function buildSheut(mb, r) {
   mb.mat = MAT.MATTE;
 }
 
-recipe("res.sheut", { variants: 1, build: (mb, r) => buildSheut(mb, r) });
+markerRecipe("res.sheut", 1.7, { variants: 1, build: (mb, r) => buildSheut(mb, r) });
 
 // ------------------------------------------------------------------------------------------------
 // Catalog: rocks
@@ -4031,14 +4222,14 @@ function rocksOf(ctx) {
   if (kind === KIND.PEAK) {
     // Crags break the mountain's silhouette; scree and boulders on the flanks.
     if (feat === FEAT.VOLCANO) return [{ asset: "rock.basalt", scale: 1.2, count: 3 }, { asset: "rock.shard", scale: 1.1, count: 1 }];
-    if (hell) return [{ asset: "rock.crag", scale: 1.0, count: 2, tint: [0.62, 0.55, 0.58] }, { asset: "rock.shard", scale: 1.2, count: 2 }];
+    if (hell) return [{ asset: "rock.crag", scale: 1.0, count: 2, tint: [0.62, 0.55, 0.58] }, { asset: "rock.thorn", scale: 1.3, count: 1 }, { asset: "rock.shard", scale: 1.2, count: 1 }];
     return [
-      { asset: cold ? "rock.crag.snow" : "rock.crag", scale: 1.05, count: 2 + (r() < 0.5 ? 1 : 0) },
-      { asset: cold ? "rock.boulder.snow" : "rock.boulder", scale: 1.1, count: 2 },
+      { asset: cold ? "rock.crag.snow" : "rock.crag", scale: 1.0, count: 2 + (r() < 0.4 ? 1 : 0) },
+      { asset: cold ? "rock.boulder.snow" : "rock.boulder", scale: 0.9, count: r() < 0.6 ? 1 : 0 },
     ];
   }
   if (kind === KIND.HILLS) {
-    if (hell) return [{ asset: "rock.shard", scale: 1.0, count: 1 + (r() < 0.5 ? 1 : 0) }, { asset: "rock.basalt", scale: 1.1, count: 1 }];
+    if (hell) return [{ asset: "rock.thorn", scale: 1.25, count: 1 }, { asset: "rock.shard", scale: 1.1, count: r() < 0.5 ? 1 : 0 }, { asset: "rock.basalt", scale: 1.1, count: 1 }];
     if (sand) return [{ asset: r() < 0.6 ? "rock.outcrop.sand" : "rock.sandstone", scale: 1.0, count: 1 }, { asset: "rock.sandstone", scale: 0.8, count: r() < 0.5 ? 1 : 0 }];
     if (cold) return [{ asset: "rock.outcrop", scale: 0.95, count: 1 }, { asset: "rock.boulder.lichen", scale: 1.0, count: 1 + (r() < 0.4 ? 1 : 0) }];
     if (wooded) return [{ asset: "rock.boulder.moss", scale: 0.9, count: r() < 0.6 ? 1 : 0 }];
@@ -4047,7 +4238,8 @@ function rocksOf(ctx) {
   // Flat land: sparse.
   if (hell) {
     if (feat === FEAT.OBSIDIAN) return [];
-    return [{ asset: r() < 0.5 ? "rock.shard" : "rock.basalt", scale: 0.85, count: r() < 0.55 ? 1 : 0 }];
+    const k = r();
+    return [{ asset: k < 0.45 ? "rock.thorn" : k < 0.7 ? "rock.shard" : "rock.basalt", scale: k < 0.45 ? 1.35 : 1.0, count: r() < 0.75 ? 1 + (r() < 0.25 ? 1 : 0) : 0 }];
   }
   if (ground === GROUND.TUNDRA) return [{ asset: "rock.boulder.lichen", scale: 0.95, count: r() < 0.55 ? 1 + (r() < 0.3 ? 1 : 0) : 0 }];
   if (ground === GROUND.SNOW) return [{ asset: "rock.boulder.snow", scale: 0.9, count: r() < 0.4 ? 1 : 0 }];
@@ -4083,7 +4275,9 @@ function improvementOf(type, ctx) {
   const r = ctx.r;
   const unit = !!ctx.unit;
   const yj = (a = 0.25) => r.range(-a, a);
-  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.emit ? { emit: o.emit } : {}) });
+  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.emit ? { emit: o.emit } : {}), ...(o.tint ? { tint: o.tint } : {}) });
+  // Old stone in the hells is scorched dark (pale ruins would glare on the black ground).
+  const scorch = isHell(ctx.ground) ? [0.5, 0.44, 0.42] : undefined;
   // Mirror the layout now and then (never onto the resource marker's front-left corner).
   const flip = !ctx.bonus && r() < 0.5 ? -1 : 1;
   const water = ctx.world?.isWater?.(ctx.i) ?? false;
@@ -4096,63 +4290,66 @@ function improvementOf(type, ctx) {
   switch (t) {
     case "FARM":
       return [
-        part("imp.barn", -0.17 * flip, -0.2, { variant: r.int(0, 3), yaw: yj(0.3) + (flip < 0 ? 0.3 : -0.3) }),
-        part("imp.haystacks", 0.2 * flip, -0.17),
-        part("imp.scarecrow", 0.2 * flip, 0.17, { yaw: yj(0.5) }),
+        part("imp.barn", -0.18 * flip, -0.19, { variant: r.int(0, 3), yaw: yj(0.35), scale: 1.15 }),
+        part("imp.haystacks", 0.17 * flip, -0.2),
+        part("imp.scarecrow", 0.22 * flip, 0.16, { yaw: yj(0.5), scale: 1.35 }),
       ];
     case "PLANTATION": {
       const b = (ctx.bonus ?? "").replace("BONUS_", "");
       const crop = { BANANA: "banana", SUGAR: "sugar", COTTON: "cotton", DYE: "dye", SILK: "tea", INCENSE: "tea", SPICES: "tea" }[b] ?? "tea";
-      return [part("imp.croprows", 0.08 * flip, 0.12, { param: crop, yaw: yj(0.15) }), part("imp.shed", -0.18 * flip, -0.2)];
+      return [part("imp.croprows", 0.06 * flip, 0.1, { param: crop, yaw: yj(0.12), scale: 1.55 }), part("imp.shed", -0.2 * flip, -0.22, { scale: 1.45 })];
     }
     case "WINERY":
-      return [part("imp.vines", 0.08 * flip, 0.1, { yaw: yj(0.15) }), part("imp.press", -0.17 * flip, -0.2)];
+      return [part("imp.vines", 0.06 * flip, 0.1, { yaw: yj(0.12), scale: 1.5 }), part("imp.press", -0.19 * flip, -0.21, { scale: 1.4 })];
     case "PASTURE": {
       const herd = herdOf(ctx.bonus);
       const kinds = herd ? [herd, herd] : ["sheep", "cow"];
-      const spots = unit ? [[-0.22, -0.1], [0.22, -0.04], [0.04, -0.2]] : [[-0.16, -0.06], [0.15, -0.12], [0.08, 0.1]];
-      return [part("imp.paddock", 0, 0, { yaw: yj(0.1) }), ...kinds.map((k, i) => part(`anim.${k}`, spots[i][0], spots[i][1], { yaw: r.range(0, TAU), scale: 0.85 }))];
+      const spots = unit ? [[-0.22, -0.1], [0.22, -0.04], [0.06, -0.22]] : [[-0.17, -0.04], [0.15, -0.12], [0.06, 0.1]];
+      // Side-on (their readable profile), a few turned the other way.
+      return [part("imp.paddock", 0, 0, { yaw: yj(0.1) }), ...kinds.map((k, i) => part(`anim.${k}`, spots[i][0], spots[i][1], { variant: i, yaw: yj(0.5), scale: 1.15 }))];
     }
     case "CAMP":
       return [
-        part("imp.tent", -0.18 * flip, -0.17, { variant: r.int(0, 1) }),
-        part("imp.tent", 0.06 * flip, -0.25, { variant: 2, scale: 0.9 }),
-        part("imp.hiderack", 0.24 * flip, -0.02, { yaw: -0.4 * flip }),
-        part("imp.firepit", unit ? 0.18 * flip : -0.04, unit ? -0.06 : -0.05, { variant: 0, emit: [{ color: "#ff9a40", size: 0.008, rise: 0.5, count: 3, spread: 0.02, dy: 0.03 }] }),
+        // A ring of hide tents round the fire, the drying rack at the edge.
+        part("imp.tent", -0.15 * flip, -0.16, { variant: 0, scale: 1.75 }),
+        part("imp.tent", 0.11 * flip, -0.2, { variant: 1, scale: 1.55 }),
+        part("imp.tent", -0.25 * flip, -0.01, { variant: 2, scale: 1.45, yaw: 0.9 * flip + yj(0.3) }),
+        part("imp.hiderack", 0.21 * flip, 0.02, { yaw: -0.4 * flip, scale: 1.45 }),
+        part("imp.firepit", unit ? 0.18 * flip : -0.03, unit ? -0.06 : -0.04, { variant: 0, scale: 1.4, emit: [{ color: "#ff9a40", size: 0.008, rise: 0.5, count: 3, spread: 0.02, dy: 0.03 }, { color: "#8a8078", size: 0.03, rise: 0.12, count: 3, spread: 0.01, dy: 0.06, smoke: true }] }),
       ];
     case "MINE":
       return part("imp.mine", 0, unit ? -0.18 : -0.06, { param: oreOf(ctx.bonus), scale: 1.2, yaw: yj(0.3) });
     case "QUARRY":
       return part("imp.quarry", 0, unit ? -0.18 : -0.06, { scale: 1.15, yaw: yj(0.3) });
     case "LUMBERMILL":
-      return [part("imp.sawmill", -0.12 * flip, -0.17), part("imp.logpile", 0.2 * flip, -0.06, { yaw: yj(0.3) + 0.3 * flip })];
+      return [part("imp.sawmill", -0.1 * flip, -0.17, { scale: 1.4 }), part("imp.logpile", 0.2 * flip, 0.04, { yaw: yj(0.3) + 0.3 * flip, scale: 1.4 })];
     case "WINDMILL":
-      return part("imp.windmill", 0.12 * flip, unit ? -0.22 : -0.12, { yaw: yj(0.2) });
+      return part("imp.windmill", 0.12 * flip, unit ? -0.22 : -0.12, { yaw: yj(0.2), scale: 1.15 });
     case "WORKSHOP":
-      return [part("imp.workshop", -0.08 * flip, unit ? -0.22 : -0.14, { emit: [{ dx: 0.07, dy: 0.2, dz: -0.01, color: "#ff8a30", size: 0.007, rise: 0.6, count: 3, spread: 0.01 }] })];
+      return [part("imp.workshop", -0.08 * flip, unit ? -0.22 : -0.14, { scale: 1.4, emit: [{ dx: 0.07, dy: 0.18, dz: -0.01, color: "#ff8a30", size: 0.007, rise: 0.6, count: 3, spread: 0.01 }, { dx: 0.07, dy: 0.19, dz: -0.01, color: "#8a8480", size: 0.035, rise: 0.1, count: 4, spread: 0.01, smoke: true }] })];
     case "FISHING_BOATS":
-      return [part("imp.boat", -0.17, -0.12, { variant: r.int(0, 1), yaw: r.range(0, TAU), float: true, scale: 1.35 }), part("imp.boat", 0.2, 0.06, { variant: r.int(0, 1), yaw: r.range(0, TAU), float: true, scale: 1.2 })];
+      return [part("imp.boat", -0.16, -0.12, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5), float: true, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5) + Math.PI * (r() < 0.5 ? 1 : 0), float: true, scale: 1.1 })];
     case "WHALING_BOATS":
-      return [part("imp.boat", -0.15, -0.1, { variant: 2, yaw: r.range(0, TAU), float: true, scale: 1.3 }), part("imp.boat", 0.2, 0.08, { variant: 0, yaw: r.range(0, TAU), float: true, scale: 1.1 })];
+      return [part("imp.boat", -0.15, -0.1, { variant: 2, yaw: r.range(-0.5, 0.5), float: true, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: 0, yaw: r.range(-0.5, 0.5) + Math.PI, float: true, scale: 1.05 })];
     case "DUNGEON":
-      return part("imp.dungeon", 0, unit ? -0.2 : -0.08, { yaw: yj(0.2), emit: [{ dy: 0.05, dz: 0.12, color: "#7ad870", size: 0.01, rise: 0.15, count: 3, spread: 0.05 }] });
+      return part("imp.dungeon", 0, unit ? -0.2 : -0.08, { yaw: yj(0.2), scale: 1.25, emit: [{ dy: 0.05, dz: 0.12, color: "#7ad870", size: 0.01, rise: 0.15, count: 3, spread: 0.05 }] });
     case "BARROW":
-      return part("imp.barrow", 0, unit ? -0.2 : -0.08, { yaw: yj(0.2) });
+      return part("imp.barrow", 0, unit ? -0.2 : -0.08, { yaw: yj(0.2), scale: 1.3, tint: scorch });
     case "GRAVEYARD":
-      return [part("imp.graveyard", 0, unit ? -0.12 : -0.04, { yaw: yj(0.15), emit: [{ dy: 0.04, color: "#a8c8c0", size: 0.01, rise: 0.12, count: 3, spread: 0.18 }] }), part(hasRecipe("tree.dead") ? "tree.dead" : "rock.boulder", 0.26 * flip, -0.22, { scale: 0.8, yaw: r.range(0, TAU) })];
+      return [part("imp.graveyard", 0, unit ? -0.14 : -0.04, { yaw: yj(0.15), scale: 1.3, emit: [{ dy: 0.04, color: "#a8c8c0", size: 0.01, rise: 0.12, count: 3, spread: 0.18 }] }), part(hasRecipe("tree.dead") ? "tree.dead" : "rock.boulder", 0.26 * flip, -0.22, { scale: 0.8, yaw: r.range(0, TAU) })];
     case "RUINS":
-      return part("imp.ruins", 0, unit ? -0.17 : -0.05, { yaw: yj(0.3), scale: 1.4 });
+      return part("imp.ruins", 0, unit ? -0.17 : -0.05, { yaw: yj(0.3), scale: 1.5, tint: scorch });
     case "CITY_RUINS":
-      return part("imp.cityruins", 0, unit ? -0.15 : -0.03, { yaw: yj(0.2), scale: 1.1 });
+      return part("imp.cityruins", 0, unit ? -0.15 : -0.03, { yaw: yj(0.2), scale: 1.1, tint: scorch });
     case "MONSTER_SKELETON":
-      return part("imp.bones", 0, unit ? -0.2 : -0.04, { yaw: r.range(0, TAU), scale: 1.2 });
+      return part("imp.bones", 0, unit ? -0.2 : -0.04, { yaw: r.range(0, TAU), scale: 1.35, tint: scorch });
     case "SHIP_WRECK":
       return part("imp.wreck", 0.05, -0.08, { yaw: r.range(0, TAU), float: true, scale: 1.2 });
     case "BEAR_DEN":
     case "LION_DEN":
-      return part("imp.den", 0, unit ? -0.2 : -0.08, { param: t === "LION_DEN" ? "lion" : "bear", yaw: yj(0.3), scale: 1.15 });
+      return part("imp.den", 0, unit ? -0.2 : -0.08, { param: t === "LION_DEN" ? "lion" : "bear", yaw: yj(0.3), scale: 1.35 });
     case "GOODY_HUT":
-      return part("imp.goodyhut", 0.02, unit ? -0.2 : -0.06, { yaw: yj(0.4), scale: 1.2 });
+      return part("imp.goodyhut", 0.02, unit ? -0.2 : -0.06, { yaw: yj(0.4), scale: 1.45 });
     case "CAGE":
       return part("imp.cage", 0.12, unit ? -0.2 : -0.06, { yaw: yj(0.5), scale: 1.3 });
     case "NECROTOTEM":
@@ -4162,7 +4359,7 @@ function improvementOf(type, ctx) {
     case "JUNGLE_ALTAR":
       return part("imp.junglealtar", 0, unit ? -0.18 : -0.06, { yaw: yj(0.2), scale: 1.25 });
     case "GUARDIAN":
-      return part("imp.guardian", 0, unit ? -0.2 : -0.06, { yaw: yj(0.15), scale: 1.25 });
+      return part("imp.guardian", 0, unit ? -0.2 : -0.06, { yaw: yj(0.15), scale: unit ? 1.4 : 1.7 });
     case "PORTAL":
       return part("imp.portal", 0, unit ? -0.2 : -0.06, { yaw: yj(0.15), scale: 1.5, emit: [{ dy: 0.14, color: "#b08aff", size: 0.012, rise: 0.25, count: 4, spread: 0.06 }] });
     case "HELLFIRE":
@@ -4191,7 +4388,7 @@ function improvementOf(type, ctx) {
     case "POOL_OF_TEARS":
       return [lm("lm.pooloftears", { emit: [{ dy: 0.03, color: "#8ac8ff", size: 0.012, rise: 0.15, count: 4, spread: 0.12 }] }), part(hasRecipe("tree.willow") ? "tree.willow" : "basic.tree", 0.3, -0.3, { scale: 1.1, yaw: r.range(0, TAU) })];
     case "BRADELINES_WELL":
-      return lm("lm.bradeline", { emit: [{ dy: 0.06, color: "#9a5aff", size: 0.012, rise: 0.18, count: 4, spread: 0.04 }] });
+      return lm("lm.bradeline", { scale: 1.35, emit: [{ dy: 0.06, color: "#9a5aff", size: 0.012, rise: 0.18, count: 4, spread: 0.04 }] });
     case "BROKEN_SEPULCHER":
       return lm("lm.sepulcher", { scale: 1.3, emit: [{ dy: 0.1, color: "#7ad870", size: 0.012, rise: 0.15, count: 3, spread: 0.06 }] });
     case "LETUM_FRIGUS":
@@ -4213,7 +4410,7 @@ function improvementOf(type, ctx) {
     case "TOMB_OF_SUCELLUS":
       return lm("lm.sucellus", { scale: 1.25, emit: [{ dy: 0.08, dz: 0.06, color: "#c8e890", size: 0.012, rise: 0.15, count: 3, spread: 0.08 }] });
     case "YGGDRASIL":
-      return part("lm.yggdrasil", 0, unit ? -0.2 : -0.04, { scale: unit ? 0.8 : 1, yaw: r.range(0, TAU), emit: [{ dy: 0.4, color: "#ffe08a", size: 0.014, rise: 0.12, count: 6, spread: 0.3 }] });
+      return part("lm.yggdrasil", 0, unit ? -0.2 : -0.04, { scale: unit ? 1.0 : 1.22, yaw: r.range(0, TAU), emit: [{ dy: 0.4, color: "#ffe08a", size: 0.014, rise: 0.12, count: 6, spread: 0.3 }] });
     default:
       return lm("lm.monument", { variant: r.int(0, 2), scale: 1.2 });
   }
@@ -4230,35 +4427,35 @@ function bonusOf(type, ctx) {
     // A built node shows the school's crystal itself.
     if (ctx.improvement && /MANA/.test(ctx.improvement)) return null;
     const school = t === "MANA" ? "" : t.slice(5);
-    return { asset: "res.mana", param: school, scale: 1.15, emit: [{ color: glowOf(school), size: 0.012, rise: 0.25, count: 2, spread: 0.04, dy: 0.08 }] };
+    return { asset: "res.mana", param: school, emit: [{ color: glowOf(school), size: 0.012, rise: 0.25, count: 2, spread: 0.04, dy: 0.08 }] };
   }
   const ore = oreOf(type);
-  if (ore && ore !== "gems") return { asset: "res.ore", param: ore, scale: 1.0 };
-  if (t === "GEMS") return { asset: "res.gems", scale: 1.25 };
-  if (t === "JEWELS") return { asset: "res.gems", param: "jewels", scale: 1.25 };
-  if (GOODS[t]) return { asset: "res.goods", param: GOODS[t], scale: 1.8 };
+  if (ore && ore !== "gems") return { asset: "res.ore", param: ore };
+  if (t === "GEMS") return { asset: "res.gems" };
+  if (t === "JEWELS") return { asset: "res.gems", param: "jewels" };
+  if (GOODS[t]) return { asset: "res.goods", param: GOODS[t] };
   switch (t) {
-    case "MARBLE": return { asset: "res.marble", scale: 1.05 };
-    case "WHEAT": return { asset: "res.wheat", scale: 1.7 };
-    case "CORN": return { asset: "res.corn", scale: 1.2 };
-    case "RICE": return { asset: "res.rice", scale: 1.05 };
-    case "BANANA": return { asset: "res.banana", scale: 1.2 };
-    case "SUGAR": return { asset: "res.sugar", scale: 1.15 };
-    case "COTTON": return { asset: "res.cotton", scale: 1.2 };
+    case "MARBLE": return { asset: "res.marble" };
+    case "WHEAT": return { asset: "res.wheat" };
+    case "CORN": return { asset: "res.corn" };
+    case "RICE": return { asset: "res.rice" };
+    case "BANANA": return { asset: "res.banana" };
+    case "SUGAR": return { asset: "res.sugar" };
+    case "COTTON": return { asset: "res.cotton" };
     case "COW": case "HORSE": case "SHEEP": case "PIG": case "DEER":
-      return { asset: `res.${t.toLowerCase()}`, scale: 1.0 };
-    case "FISH": return { asset: "res.fish", scale: 1.2 };
-    case "CLAM": return { asset: "res.clam", scale: 1.3 };
-    case "PEARL": return { asset: "res.pearl", scale: 1.4 };
-    case "CRAB": return { asset: "res.crab", scale: 1.35 };
-    case "WHALE": return { asset: "res.whale", scale: 1.05 };
-    case "TOAD": return { asset: "res.toad", scale: 1.3 };
-    case "NIGHTMARE": return { asset: "res.nightmare", scale: 1.0, emit: [{ color: "#ff4a20", size: 0.008, rise: 0.3, count: 2, spread: 0.04, dy: 0.1 }] };
-    case "RAZORWEED": return { asset: "res.razorweed", scale: 1.4 };
-    case "GULAGARM": return { asset: "res.gulagarm", scale: 1.5 };
-    case "FRUIT_OF_YGGDRASIL": return { asset: "res.yggfruit", scale: 1.4, emit: [{ color: "#ffd060", size: 0.01, rise: 0.15, count: 2, spread: 0.04, dy: 0.12 }] };
-    case "SHEUT_STONE": return { asset: "res.sheut", scale: 1.5 };
-    default: return { asset: "res.goods", param: "", scale: 1.4 };
+      return { asset: `res.${t.toLowerCase()}` };
+    case "FISH": return { asset: "res.fish" };
+    case "CLAM": return { asset: "res.clam" };
+    case "PEARL": return { asset: "res.pearl" };
+    case "CRAB": return { asset: "res.crab" };
+    case "WHALE": return { asset: "res.whale" };
+    case "TOAD": return { asset: "res.toad" };
+    case "NIGHTMARE": return { asset: "res.nightmare", emit: [{ color: "#ff4a20", size: 0.008, rise: 0.3, count: 2, spread: 0.04, dy: 0.1 }] };
+    case "RAZORWEED": return { asset: "res.razorweed" };
+    case "GULAGARM": return { asset: "res.gulagarm" };
+    case "FRUIT_OF_YGGDRASIL": return { asset: "res.yggfruit", emit: [{ color: "#ffd060", size: 0.01, rise: 0.15, count: 2, spread: 0.04, dy: 0.12 }] };
+    case "SHEUT_STONE": return { asset: "res.sheut" };
+    default: return { asset: "res.goods", param: "", scale: 0.8 };
   }
 }
 
