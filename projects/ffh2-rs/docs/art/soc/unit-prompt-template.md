@@ -44,11 +44,14 @@ post-process below. Reference result: `knight_native64.png` (native sprite),
 
 The OpenAI `gpt-image` API cannot emit a literal 64×64 native sprite, so:
 
-1. `generate_image`, model `gpt-image-2.5-flare`, `size 1024x1024`, `quality high`,
-   `background transparent`, `n 2`. The prompt's chunky/low-color constraints keep the 1024 render
-   blocky so it downsamples cleanly (NOT a smooth illustration being shrunk).
+1. `generate_image`, model `gpt-image-2.5-flare`, `size 1024x1024`, **`quality low`**
+   (canonical default — the chunky style gains nothing from `high`, which only adds finer detail
+   that fights the 64px target and costs ~9× more; use `medium` when a unit needs more shading
+   finesse), `background transparent`, `n 2`. The prompt's chunky/low-color constraints keep the
+   1024 render blocky so it downsamples cleanly (NOT a smooth illustration being shrunk).
 2. Trim to the alpha bounding box; fit to a **64×64** canvas (feet near the bottom row).
-3. **Quantize to ~24 colors** (octree) and crisp the alpha (threshold ~80 → 1-bit-ish edge).
+3. Crisp the alpha (threshold ~80 → 1-bit-ish edge). Palette quantization is **optional** — skip it
+   unless a specific target needs it.
 4. Verify at native: it must still read at **64, 48 and 32 px** (see `_native_readability.png`).
    On the map, draw it pixelated (`imageSmoothingEnabled = false`) at ~62 px (Civ4 scale).
 

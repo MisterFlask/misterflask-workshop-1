@@ -80,9 +80,10 @@ a blurred shrink.
 ## 6. Generation workflow
 
 Units use the **canonical 64×64 unit prompt template** (`soc/unit-prompt-template.md`): fill the
-brackets, `generate_image` with `gpt-image-2.5-flare` at 1024² transparent (the chunky/low-colour
-constraints keep the render blocky, not a smooth illustration), then downscale to a true **64×64**,
-quantize to ~24 colours and crisp the alpha, and confirm it reads at 64/48/32 px. Draw it on the map
+brackets, `generate_image` with `gpt-image-2.5-flare` at 1024² transparent, **quality `low`** (the
+chunky style gains nothing from `high` — `low` is the chunkiest *and* ~9× cheaper; use `medium` when
+a unit needs more shading), then downscale to a true **64×64** and crisp the alpha (palette
+quantization optional), and confirm it reads at 64/48/32 px. Draw it on the map
 pixelated at ~62 px. This replaced an earlier style-anchored 1024-illustration approach that drifted
 smooth and lost the pixel craft. (`gpt-image-2.5-sunburst` was intermittently 502-ing; `flare` is
 the reliable default.) The optional banner is one neutral asset tinted per team by a
