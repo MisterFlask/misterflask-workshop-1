@@ -66,6 +66,13 @@ a blurred shrink.
 
 ## 5. Phased path (de-risk first)
 
+**Implemented:** the isometric renderer is in the browser client as `?renderer=iso`
+(`crates/ffh-play/assets/app/iso.js`, a third renderer beside flat and art). It draws the real
+`/api/map` + `/api/view` with PNG terrain tiles and unit sprites on team rings, owns its own
+projection/hit-testing, and embeds its PNGs via `http::ASSET_BYTES`. Run `ffh-play serve --new`
+and open `/?renderer=iso`. Remaining: water/forest/hills/feature tiles, per-terrain variants, the
+full unit roster, and promoting iso to a Tools → Options choice.
+
 1. **Isometric bake test in the real client.** Add a minimal iso projection + a PNG-unit draw path:
    render a small patch of SoC diamond terrain, place one generated unit (Knight, 128 px) on its
    iso team ring, screenshot it. Proves projection + resolution + palette + the look together,

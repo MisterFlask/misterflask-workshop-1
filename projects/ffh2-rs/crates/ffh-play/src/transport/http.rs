@@ -45,6 +45,7 @@ const HTML: &str = "text/html; charset=utf-8";
 const JS: &str = "text/javascript; charset=utf-8";
 const CSS: &str = "text/css; charset=utf-8";
 const TEXT: &str = "text/plain; charset=utf-8";
+const PNG: &str = "image/png";
 
 /// The client files compiled into the binary: `(path, content type, content)`, served at
 /// `/<path>` (`/` is `index.html`). The layout of `assets/` is the URL layout, so that
@@ -62,6 +63,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/modals.js", JS, include_str!("../../assets/app/modals.js")),
     ("app/commands.js", JS, include_str!("../../assets/app/commands.js")),
     ("app/map.js", JS, include_str!("../../assets/app/map.js")),
+    ("app/iso.js", JS, include_str!("../../assets/app/iso.js")),
     ("app/units.js", JS, include_str!("../../assets/app/units.js")),
     ("app/city.js", JS, include_str!("../../assets/app/city.js")),
     ("app/screens.js", JS, include_str!("../../assets/app/screens.js")),
@@ -75,6 +77,22 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/stacks.js", JS, include_str!("../../assets/app/stacks.js")),
     ("app/chunks.js", JS, include_str!("../../assets/app/chunks.js")),
     ("app/artworker.js", JS, include_str!("../../assets/app/artworker.js")),
+];
+
+/// Binary client files (the isometric renderer's PNG tiles and unit sprites,
+/// docs/art/SOC_DIRECTION.md): `(path, content type, bytes)`, served like [`ASSETS`] but from raw
+/// bytes. `tests/web.rs` checks that every non-text file under `assets/app/` is listed here.
+pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[
+    ("app/iso/terrain/grass.png", PNG, include_bytes!("../../assets/app/iso/terrain/grass.png")),
+    ("app/iso/terrain/plains.png", PNG, include_bytes!("../../assets/app/iso/terrain/plains.png")),
+    ("app/iso/terrain/desert.png", PNG, include_bytes!("../../assets/app/iso/terrain/desert.png")),
+    ("app/iso/terrain/snow.png", PNG, include_bytes!("../../assets/app/iso/terrain/snow.png")),
+    ("app/iso/terrain/marsh.png", PNG, include_bytes!("../../assets/app/iso/terrain/marsh.png")),
+    ("app/iso/terrain/hell.png", PNG, include_bytes!("../../assets/app/iso/terrain/hell.png")),
+    ("app/iso/units/knight.png", PNG, include_bytes!("../../assets/app/iso/units/knight.png")),
+    ("app/iso/units/lich.png", PNG, include_bytes!("../../assets/app/iso/units/lich.png")),
+    ("app/iso/units/archer.png", PNG, include_bytes!("../../assets/app/iso/units/archer.png")),
+    ("app/iso/units/spider.png", PNG, include_bytes!("../../assets/app/iso/units/spider.png")),
 ];
 
 // `ART_MODULES`: the art toolkit's modules (`web/art`, docs/ART.md 15-16), embedded by `build.rs`
@@ -511,10 +529,15 @@ fn asset(path: &str, ctx: &HttpCtx) -> Response {
             Ok(bytes) => Response { status: 200, content_type, headers: Vec::new(), body: Body::Bytes(bytes) },
             Err(_) => Response::error(404, "not_found", format!("no /{path} in {}", dir.display())),
         },
-        None => match ASSETS.iter().find(|(p, _, _)| *p == path) {
-            Some((_, ct, body)) => Response { status: 200, content_type: ct, headers: Vec::new(), body: Body::Static(body) },
-            None => Response::error(404, "not_found", format!("no /{path}")),
-        },
+        None => {
+            if let Some((_, ct, body)) = ASSETS.iter().find(|(p, _, _)| *p == path) {
+                Response { status: 200, content_type: ct, headers: Vec::new(), body: Body::Static(body) }
+            } else if let Some((_, ct, bytes)) = ASSET_BYTES.iter().find(|(p, _, _)| *p == path) {
+                Response { status: 200, content_type: ct, headers: Vec::new(), body: Body::Bytes(bytes.to_vec()) }
+            } else {
+                Response::error(404, "not_found", format!("no /{path}"))
+            }
+        }
     }
 }
 
