@@ -312,12 +312,14 @@ function placeTrees(world, ctx, place) {
       let s = (m.scale ?? 1) * r.range(0.8, 1.2);
       // The back row of this plot stands just in front of whatever holds the plot behind it.
       if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.3) s *= 0.6;
-      // In front of a city the wood opens and keeps low toward it.
+      // In front of a city the wood opens: clear on the half of the plot toward it, low beyond
+      // (a tree here hides what stands up to about its own height behind it, and a city's houses
+      // are a sixth of a plot tall).
       const cb = ctx.cityBehind;
       if (cb && (cb.n || cb.e || cb.w)) {
         const toward = (cb.n ? 1 : 0) * clamp(0.5 - lz, 0, 1) + (cb.e ? clamp(lx + 0.1, 0, 1) * clamp(0.3 - lz, 0, 1) : 0) + (cb.w ? clamp(0.1 - lx, 0, 1) * clamp(0.3 - lz, 0, 1) : 0);
-        if (r() < Math.min(0.75, toward * 0.9)) continue;
-        s *= 1 - Math.min(0.5, toward * 0.6);
+        if (toward > 0.5) continue;
+        s *= 1 - toward * 0.9;
       }
       place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint: m.tint, lift: -0.008 });
     }

@@ -206,11 +206,13 @@ export function grid(data, names, variants = 6, { ground = ".", spacing = 1 } = 
 /** Settlements side by side, for the architecture: a row per civilization (its cities at `sizes`,
  *  then its improvements `imps`, all on its own land so they take its family), two plots apart on
  *  flat grass. Capital on the first city; walls from size `walls` up. */
-export function settlements(data, civs, sizes = [2, 6, 12], imps = [], { walls = 8, ground = "." } = {}) {
+export function settlements(data, civs, sizes = [2, 6, 12], imps = [], { walls = 8, ground = ".", coast = false } = {}) {
   const cols = sizes.length + imps.length;
   const w = Math.max(6, cols * 2 + 1);
   const h = Math.max(4, civs.length * 2 + 1);
-  const rows = Array.from({ length: h }, () => ground.repeat(w));
+  // coast: a strip of coastal water just south of each civilization's row (harbours face it).
+  const wet = new Set(coast ? civs.map((_, k) => h - 3 - k * 2) : []);
+  const rows = Array.from({ length: h }, (_, row) => (wet.has(h - 1 - row) ? "-" : ground).repeat(w));
   const cities = [], improvements = [], owners = [];
   let id = 1;
   civs.forEach((civ, k) => {

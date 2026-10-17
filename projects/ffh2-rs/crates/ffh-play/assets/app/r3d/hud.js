@@ -77,7 +77,8 @@ export function drawHud(r3d, cam) {
   // name matters more than the pins crowding round it), under the stack badges.
   for (const c of r3d.cities ?? []) {
     const city = c.city;
-    const p = r3d.project(cam, [r3d.nearX(c.x), c.y, c.z + 0.46]);
+    // At the plot's front edge, clear of the gate where the garrison stands.
+    const p = r3d.project(cam, [r3d.nearX(c.x), c.y, c.z + 0.56]);
     if (!inView(p, 120)) continue;
     const col = T.playerColor(city.owner, S.players.get(city.owner)?.barbarian);
     const seen = city.visible !== false;
