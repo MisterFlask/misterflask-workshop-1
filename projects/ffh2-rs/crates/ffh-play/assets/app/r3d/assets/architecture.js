@@ -9,21 +9,26 @@
 // eaves. Detail is spent where it reads at gameplay zoom: chimneys, gables turned to the street,
 // towers with conical and spire roofs, a few lit windows, banners in the owner's colour; fine
 // detail (timber studs, merlons, slits) only adds texture up close. Each family has its own palette
-// and shape grammar: human (half-timber, steep tile and slate, spires), elven (pods with petal-bud
-// roofs held in living wood, a golden-crowned great tree), dwarven (battered stone, earth berms,
-// heavy low slate, forge glow), infernal (faceted obsidian shards, bone, chains, lava-lit slits, a
-// planar rift), tribal (hide tents, round huts, horned longhouses, palisades, totems, skulls),
-// desert (sandstone cubes, domes, minarets) and coastal (planks on stilts, sails, crow's nests).
+// and shape grammar: human (half-timber, steep tile and slate, spires, terracotta turrets), elven
+// (pods with petal-bud roofs held in living wood, a great tiered mallorn lit gold at its crown),
+// dwarven (battered stone, earth berms, heavy low slate, forge glow), infernal (faceted obsidian
+// shards with a cold painted sheen, bone, chains, lava-lit slits, a planar rift), tribal (pale hide
+// tents with smoke-dark tops, round huts, horned longhouses, palisades, totems, skulls), desert
+// (sandstone cubes, domes, minarets) and coastal (planks on stilts, sails, crow's nests).
 //
 // Settlements are composed, not scattered (`cityLayout`, with the `Plan` packer below): a focal
 // landmark at the back (north, so it never hides the square), an open square in front where the
-// garrison stands (plot-local (0, 0.3) and the way in kept clear), a ring street with buildings
-// lined up wall to wall along both sides and turned to face it (oriented footprints from the
-// meshes' own bounds, so roofs do not run into each other), halls on the square, towers at the
-// back, and a wall ring with towers and a gate toward the camera (+z). Families differ in gaps,
-// how freely buildings turn, the square's furniture (stalls and a well; a fire and totems; braziers;
-// trees from vegetation.js among elven pods) and particles (embers, forge sparks, lantern motes,
-// arcane motes).
+// garrison stands (plot-local (0, 0.3) and the way in kept clear), a main street to the gate and a
+// lane or two out from the square, and the houses packed densely from the square outward -- each
+// into the best of many candidate spots (fronting a street, wall to wall beside a neighbour, back
+// to back behind one, or with its back to the town wall), scored by closeness to the heart, a front
+// on a street and neighbours touched -- so roofs close into one mass instead of a ring of boxes.
+// Footprints are the meshes' own oriented bounds, so roofs do not run into each other. Halls stand
+// on the square, towers at the back, a wall ring with towers and a gate toward the camera (+z), and
+// a pier on the water side of a coastal town. Families differ in spacing, how freely buildings turn
+// (a camp's tents turn their doors to its fire), the square's furniture (stalls and a well; a fire
+// and totems; braziers; trees from vegetation.js among elven pods) and particles (embers, forge
+// sparks, lantern motes, arcane motes). A town deep in the woods raises its landmark and spires.
 //
 // Families (the recipes' param, from `family(civType)`; a ".sub" suffix picks a sub-style that
 // `city` and `settlement` derive from the civilization): human ("human.arcane" for the Amurites and
@@ -35,13 +40,15 @@
 // (2: keep / landmark, capital palace), bld.wall (2: a segment along x of length 0.2, outer face +z;
 // a half segment), bld.gate (width 0.2, outer face +z), bld.walltower (2), and the common pieces
 // bld.well, bld.stall (3), bld.banner (2: hanging banner, swallow-tailed standard), bld.fence
-// (along x, length 0.2), bld.totem, bld.brazier.
+// (along x, length 0.2), bld.totem, bld.brazier, bld.pier (2: jetty with a rowboat, quay with a
+// sailing boat; sea level at y = 0, along +z from the shore).
 
 import { recipe, buildAsset, hasRecipe } from "./registry.js";
 import { extendCatalog } from "./catalog.js";
 import { MAT, FLOATS } from "../mesh.js";
 import { pal, jitter } from "./palette.js";
 import { noise3 } from "../noise.js";
+import { FEAT } from "../world.js";
 
 const TAU = Math.PI * 2;
 const QT = Math.PI / 2;
@@ -385,9 +392,10 @@ const STY = {
   human: {
     wall: ["#d8cbac", "#dccfb4", "#cfc0a0", "#d4cab2", "#d8c8a2"],
     stone: ["#958c80", "#8a8278", "#9c9282"],
-    stoneLight: ["#b4ab9a", "#aea594", "#b8ae9a"],
+    stoneLight: ["#b8a98f", "#b0a189", "#bcac92"],
     timber: "#3e2c20",
-    roof: [["#7a4636", 3.2], ["#6a3c2e", 2], ["#7e5a40", 1.2], ["#566070", 1.4], ["#847250", 1.3]],
+    roof: [["#844832", 3.2], ["#70402e", 2], ["#7e5a40", 1], ["#566070", 1.3], ["#847250", 1]],
+    tile: "#86452f",
     slate: "#5c6676",
     slateDark: "#4a5464",
     thatch: "#8a7650",
@@ -400,21 +408,21 @@ const STY = {
     litP: 0.32,
   },
   gothic: {
-    wall: ["#6e6468", "#625a60", "#74686a"],
-    stone: ["#4a4448", "#423c42", "#504a4c"],
-    stoneLight: ["#6e6668", "#625a5e"],
+    wall: ["#7c7276", "#70686e", "#847a7a"],
+    stone: ["#565056", "#4c464e", "#5c5658"],
+    stoneLight: ["#7e7678", "#726a70"],
     timber: "#24181c",
-    roof: [["#2c2c38", 3], ["#34262e", 2], ["#3a3440", 1.5]],
-    slate: "#2c2c38",
-    slateDark: "#22222c",
-    thatch: "#3a3440",
+    roof: [["#363646", 3], ["#40303a", 2], ["#46404e", 1.5]],
+    slate: "#343442",
+    slateDark: "#282834",
+    thatch: "#46404e",
     glass: "#1c1418",
-    lit: "#d8704e",
+    lit: "#e07a50",
     door: "#2a1416",
-    chimney: "#3e383c",
-    spire: "#26242e",
+    chimney: "#46404a",
+    spire: "#2c2a36",
     pitch: 1.5,
-    litP: 0.2,
+    litP: 0.34,
   },
 };
 
@@ -514,7 +522,7 @@ function humanRoof(mb, r, S, b, kind, pitch, o = {}) {
     const ends = o.ends ?? S.wallC;
     if (kind === "x" || kind === "thatch") {
       const th = kind === "thatch";
-      gableRoof(mb, b.w, b.d, P, { over: th ? 0.018 : 0.014, overX: th ? 0.01 : 0.012, thick: th ? 0.012 : 0.006, sag: o.sag ?? (th ? 0.006 : r.range(0, 0.004)), ends });
+      gableRoof(mb, b.w, b.d, P, { over: th ? 0.013 : 0.011, overX: th ? 0.01 : 0.012, thick: th ? 0.011 : 0.006, sag: o.sag ?? (th ? 0.006 : r.range(0, 0.004)), ends, shade: 0.36 });
       if (th) {
         mb.color = mulc(S.roofC, 0.7);
         mb.tube([[-b.w / 2 - 0.006, P - 0.002, 0], [0, P - 0.006, 0], [b.w / 2 + 0.006, P - 0.002, 0]], 0.0065, 4);
@@ -537,12 +545,12 @@ function humanHouse(mb, r, v, sub) {
     case 0: {
       // A cottage: low plastered walls under a deep thatch (or tile) roof, a stone end chimney.
       const w = r.range(0.11, 0.125), d = r.range(0.078, 0.088);
-      const b = humanBody(mb, r, S, w, d, { h1: r.range(0.056, 0.064), doorX: r.range(-0.02, 0.02) });
+      const b = humanBody(mb, r, S, w, d, { h1: r.range(0.068, 0.074), doorX: r.range(-0.02, 0.02) });
       const thatch = !S.gothic && r() < 0.65;
       if (thatch) S.roofC = J(S.thatch, r, 0.06);
-      humanRoof(mb, r, S, b, thatch ? "thatch" : "x", 0.085);
+      humanRoof(mb, r, S, b, thatch ? "thatch" : "x", 0.09);
       mb.color = S.stoneC;
-      at(mb, (r.sign() * w) / 2 + 0.0, 0, r.range(-0.01, 0.01), 0, () => blk(mb, 0.022, 0.024, -0.04, b.y + 0.085 * S.pitch + 0.012, 0.85));
+      at(mb, (r.sign() * w) / 2 + 0.0, 0, r.range(-0.01, 0.01), 0, () => blk(mb, 0.022, 0.024, -0.04, b.y + 0.09 * S.pitch + 0.014, 0.85));
       break;
     }
     case 1: {
@@ -584,8 +592,8 @@ function humanHouse(mb, r, v, sub) {
       // A long house with a dormer gable over the door.
       const w = r.range(0.145, 0.16), d = r.range(0.078, 0.086);
       const dx = r.range(-0.02, 0.02);
-      const b = humanBody(mb, r, S, w, d, { h1: 0.064, doorX: dx, lower: r() < 0.4 ? "stone" : "wall" });
-      humanRoof(mb, r, S, b, "x", 0.08);
+      const b = humanBody(mb, r, S, w, d, { h1: 0.072, doorX: dx, lower: r() < 0.4 ? "stone" : "wall" });
+      humanRoof(mb, r, S, b, "x", 0.086);
       // The dormer: a small front wall and its own gable, set into the front slope.
       mb.part(() => {
         mb.translate(dx, b.y - 0.01, d / 2 - 0.012);
@@ -661,10 +669,10 @@ function humanTower(mb, r, v, sub) {
   if (sub === "arcane" && v === 0) v = 2;
   if (v === 0) {
     // A round watchtower under a steep conical slate roof.
-    roundTower(mb, r, S, { rad: 0.046, h: 0.3, roofH: 0.15 * S.pitch, roofC: J(S.slate, r, 0.05), seg: 10 });
+    roundTower(mb, r, S, { rad: 0.058, h: 0.27, roofH: 0.16 * S.pitch, roofC: J(S.slate, r, 0.05), seg: 10, slits: 4 });
   } else if (v === 1) {
     // A square keep-tower: battlements around a small pyramid roof, a banner on its face.
-    const w = 0.088, h = 0.3;
+    const w = 0.1, h = 0.28;
     mb.color = mulc(S.lightC, 0.85);
     blk(mb, w + 0.012, w + 0.012, -0.05, 0.016, 0.96);
     mb.color = S.lightC;
@@ -698,9 +706,9 @@ function humanTower(mb, r, v, sub) {
     const arc = sub === "arcane";
     const wallC = J(arc ? "#b8b0c4" : "#a8a092", r, 0.04);
     mb.color = mulc(wallC, 0.85);
-    drum(mb, 0.05, 0.046, -0.05, 0.02, 9);
+    drum(mb, 0.056, 0.052, -0.05, 0.02, 9);
     mb.color = wallC;
-    drum(mb, 0.04, 0.032, 0.02, 0.3, 9);
+    drum(mb, 0.046, 0.034, 0.02, 0.3, 9);
     mb.lathe([[0.032, 0.3], [0.046, 0.33], [0.048, 0.38], [0.042, 0.395]], 9, { caps: false });
     for (let k = 0; k < 5; k++) {
       const a = (k / 5) * TAU + 0.3;
@@ -1046,7 +1054,7 @@ function humanWall(mb, r, sub) {
 /** A gatehouse (width 0.2 along x, outer face +z): two towers flanking an arched passage, banners. */
 function humanGate(mb, r, sub) {
   const S = humanStyle(r, sub === "gothic");
-  const L = S.lightC, slate = J(S.slate, r, 0.04);
+  const L = S.lightC, slate = J(S.gothic ? S.slate : S.tile, r, 0.04);
   const t = 0.05;
   // The passage block.
   mb.color = mulc(L, 0.82);
@@ -1097,7 +1105,7 @@ function humanGate(mb, r, sub) {
 /** A round wall tower (v0 battlements, v1 a conical roof). */
 function humanWallTower(mb, r, v, sub) {
   const S = humanStyle(r, sub === "gothic");
-  roundTower(mb, r, S, { rad: 0.038, h: 0.11, roofH: v ? 0.08 * S.pitch : 0, roofC: J(S.slate, r, 0.04), crenel: !v, seg: 9, flag: v === 1, slits: 1, taper: 0.95 });
+  roundTower(mb, r, S, { rad: 0.04, h: 0.11, roofH: v ? 0.085 * S.pitch : 0, roofC: J(S.gothic ? S.slate : S.tile, r, 0.04), crenel: !v, seg: 9, flag: v === 1, slits: 1, taper: 0.95 });
   ground(mb, 0, 0.04, 0.6);
 }
 
@@ -1216,7 +1224,6 @@ const ELF = {
     roof: [["#3f5f52", 3], ["#4c6648", 2.2], ["#7e6a40", 1.4], ["#5a6e5a", 1]],
     gold: "#76643c",
     leaf: ["#173d37", "#2a5a48", "#4a7a4a", "#8aab6a"],
-    mallorn: ["#2e3a22", "#56562a", "#8e803a", "#bca452"],
     lit: "#ffd68a", glass: "#2a3028", door: "#5a4630", moss: "#4a5a38",
   },
   dark: {
@@ -1224,7 +1231,6 @@ const ELF = {
     roof: [["#2c2836", 3], ["#382c42", 2], ["#46283a", 1]],
     gold: "#4a3a5a",
     leaf: ["#121418", "#1e2228", "#2e3440", "#4a5262"],
-    mallorn: ["#120e16", "#221a28", "#362a40", "#54465e"],
     lit: "#a8b4ff", glass: "#141218", door: "#201a1e", moss: "#2a3030",
   },
 };
@@ -1341,31 +1347,6 @@ function elvenHouse(mb, r, v, sub) {
     }
   }
   ground(mb, 0, 0.04, 0.6);
-}
-
-/** A great tree: a flared trunk with roots, boughs each ending in a broad, flat-bellied mass of
- *  leaves, a dome over the leader; one soft crown in light and shade. Returns the boughs' ends. */
-function greatTree(mb, r, S, { h = 0.7, rad = 0.07, limbs = 4, crown = 0.13, detail = 1, masses = 1, dome = masses, seg = 9, nroots = -1, ramp = S.leaf } = {}) {
-  mb.color = S.barkC;
-  const fork = h * 0.4;
-  mb.lathe([[rad * 1.6, -0.05], [rad * 1.25, 0.02], [rad, 0.07], [rad * 0.82, fork * 0.6], [rad * 0.72, fork], [rad * 0.4, h * 0.8]], seg, { caps: false, wobble: (a, y) => 0.1 * Math.sin(a * 5 + y * 30) * Math.max(0, 1 - y / 0.1) });
-  roots(mb, r, nroots >= 0 ? nroots : h > 0.5 ? 4 : 3, rad * 1.1, rad * 1.4, r.range(0, TAU));
-  const tips = [];
-  const ph = r.range(0, TAU);
-  for (let k = 0; k < limbs; k++) {
-    const a = ph + (k / limbs) * TAU + r.range(-0.3, 0.3);
-    const ca = Math.sin(a), sa = Math.cos(a);
-    const out = r.range(0.13, 0.17) * (h / 0.7);
-    const tip = [ca * out, fork + h * r.range(0.12, 0.3), sa * out];
-    mb.color = S.barkC;
-    mb.tube([[0, fork - 0.03, 0], [ca * out * 0.45, fork + (tip[1] - fork) * 0.55, sa * out * 0.45], tip], [rad * 0.5, rad * 0.34, rad * 0.18], 5);
-    tips.push(tip);
-  }
-  const C0 = [0, fork + h * 0.28, 0];
-  const range = [fork + h * 0.05, h * 1.08];
-  for (const t of tips) leaves(mb, r, [t[0], t[1] + 0.02, t[2]], crown * r.range(1.1, 1.3), masses, ramp, { detail, spread: 0.8, squash: 0.42, flat: 0.55, sway: 0.3, centre: C0, range, blend: 0.5 });
-  for (let k = 0; k < dome; k++) leaves(mb, r, [r.range(-0.03, 0.03), h * (0.8 + 0.12 * k), r.range(-0.03, 0.03)], crown * (1.05 - 0.25 * k), 1, ramp, { detail, spread: 0.6, squash: 0.5, flat: 0.5, sway: 0.35, centre: C0, range, blend: 0.55 });
-  return tips;
 }
 
 function elvenHall(mb, r, v, sub) {
@@ -1486,46 +1467,177 @@ function elvenTower(mb, r, v, sub) {
   ground(mb, 0, 0.04, 0.6);
 }
 
+/** A canopy plate: a broad, flat-bellied, gently domed disc of foliage around `c` (its waist),
+ *  radius R, thickness T, its rim scalloped into lobes and drooping, its top lumpy (the tiers of
+ *  the ancient forest's mallorns, so the elves' great tree is one of their kind). Returns its mark. */
+function canopyPlate(mb, r, c, R, T, { seg = 12, lobes = 4, scallop = 0.2, lump = 0.4, droop = 0.35, dome = 1.1 } = {}) {
+  const m = mb.mark();
+  const ph = r.range(0, TAU), seed = r.range(0, 50), lp = r.range(0, TAU);
+  const prof = [[0, -0.32], [0.7, -0.48], [1, -0.06], [0.74, 0.34 * dome], [0, 0.56 * dome]].map(([x, y]) => [x * R, y * T]);
+  const lobe = (a) => scallop * (0.6 * Math.cos(lobes * a + lp) + 0.6 * noise3(Math.cos(a) * 1.7 + seed, Math.sin(a) * 1.7, seed * 0.3));
+  mb.part(() => {
+    mb.translate(c[0], c[1], c[2]);
+    mb.lathe(prof, seg, { caps: false, phase: ph, wobble: (ang, y, i) => (i === 0 || i === prof.length - 1 ? 0 : lobe(ang) * (i === 2 ? 1 : 0.6)) });
+  });
+  mb.displace(m, (x, y, z) => {
+    const d = Math.hypot(x - c[0], z - c[2]) / R;
+    const up = Math.max(0, Math.min(1, (y - c[1]) / T + 0.2));
+    const n = noise3(x * 12 + seed, z * 12 - seed, seed) + 0.5 * noise3(x * 27 - seed, z * 27 + seed, seed * 0.7);
+    return [0, T * (lump * up * n - droop * d * d), 0];
+  });
+  return m;
+}
+
+/** Paints foliage from m0 on through a colour ramp: by height (lo..hi), facing up, and brush
+ *  noise, darker toward the crown's heart (occlusion). */
+function paintCrown(mb, m0, ramp, lo, hi, { bias = 0, centre = null, rad = 1, seed = 0 } = {}) {
+  const cols = ramp.map(C);
+  const v = mb.v;
+  for (let i = m0 * FLOATS; i < v.length; i += FLOATS) {
+    const x = v[i], y = v[i + 1], z = v[i + 2];
+    const h = Math.max(0, Math.min(1, (y - lo) / (hi - lo)));
+    let t = 0.05 + 0.36 * h + 0.24 * v[i + 4] + 0.22 * noise3(x * 11 + seed, y * 11 + 3.1, z * 11 - seed) + bias;
+    t = Math.max(0, Math.min(0.999, t)) * (cols.length - 1);
+    const k = Math.floor(t), f = t - k;
+    const a = cols[k], b = cols[Math.min(cols.length - 1, k + 1)];
+    v[i + 6] *= a[0] + (b[0] - a[0]) * f;
+    v[i + 7] *= a[1] + (b[1] - a[1]) * f;
+    v[i + 8] *= a[2] + (b[2] - a[2]) * f;
+    if (centre) {
+      const d = Math.hypot(x - centre[0], (y - centre[1]) * 1.25, z - centre[2]) / rad;
+      v[i + 12] *= 0.5 + 0.5 * Math.max(0, Math.min(1, (d - 0.25) / 0.7));
+    }
+  }
+}
+
 function elvenKeep(mb, r, v, sub) {
   const S = elfStyle(r, sub === "dark");
-  // The great tree hall: a giant tree, a hall wrapped around its foot, platforms and pods in its
-  // limbs, lanterns everywhere; the capital's tree is taller and crowned with a golden bud.
+  // The great tree hall: the eldest of the ancient forest's mallorns -- a vast silver trunk of
+  // twisted strands on buttress roots, a stair winding up it, a crown of broad tiers lit gold at
+  // the top (cold violet for the Svartalfar) with houses (flets) sitting on the tiers and lanterns
+  // hung from their rims, and the hall wrapped around its foot. The capital's tree is taller and
+  // carries a gilded bud on its crown.
   const big = v === 1;
-  const H = big ? 1.12 : 1.0;
-  const tips = greatTree(mb, r, S, { h: H, rad: big ? 0.09 : 0.082, limbs: 5, crown: big ? 0.13 : 0.12, detail: 1, masses: 1, dome: 2, ramp: S.mallorn });
-  elfPod(mb, r, S, { rad: 0.11, h: 0.07, roofH: 0.085, open: 0.06, seg: 11, windows: 5, petals: 9 });
-  // Two wings: smaller pods against the trunk hall.
-  for (const s of [-1, 1]) at(mb, s * 0.13, 0, 0.03, 0, () => elfPod(mb, r, S, { rad: 0.04, h: 0.05, roofH: 0.08, seg: 7, windows: 2, door: false, roofC: J(S.gold, r, 0.05) }));
-  // Platforms around the trunk, pods in the limbs.
-  for (const [y, rr] of [[0.2, 0.075], [0.31, 0.06]]) {
-    mb.part(() => {
-      mb.translate(0, y, 0);
-      mb.color = mulc(S.barkC, 0.85);
-      mb.lathe([[0.03, -0.014], [rr, -0.002], [rr * 1.04, 0.004], [rr, 0.006]], 10, { caps: false });
-      mb.color = mulc(S.barkC, 1.05);
-      mb.lathe([[rr * 1.02, 0.006], [rr * 1.02, 0.018]], 10, { caps: false });
-    });
+  const H = big ? 1.2 : 1.05;
+  const Rc = big ? 0.37 : 0.34;
+  const R0 = big ? 0.095 : 0.086;
+  const forkY = H * 0.36;
+  const w0 = mb.mark();
+  const bark = J(S.dark ? "#4a4450" : "#8a877a", r, 0.03);
+  // Buttress roots and the flared foot.
+  mb.color = bark;
+  mb.lathe([[R0 * 1.9, -0.05], [R0 * 1.5, 0.0], [R0 * 1.08, 0.07], [R0 * 0.9, 0.16]], 10, { caps: false, wobble: (a, y, i) => (i < 2 ? 0.22 * Math.cos(a * 5 + 0.7) : 0) });
+  const rph = r.range(0, TAU);
+  for (let k = 0; k < 5; k++) {
+    const a = rph + (k / 5) * TAU + r.range(-0.2, 0.2);
+    const ca = Math.sin(a), sa = Math.cos(a), L = r.range(0.17, 0.22);
+    mb.tube([[ca * R0 * 0.7, 0.13, sa * R0 * 0.7], [ca * R0 * 1.5, 0.05, sa * R0 * 1.5], [ca * L * 0.65, 0.008, sa * L * 0.65], [ca * L, -0.05, sa * L]], [R0 * 0.42, R0 * 0.34, R0 * 0.2, R0 * 0.08], 4);
   }
+  // The trunk: a core and three strands twisting up into the boughs of the first tier.
+  mb.tube([[0, 0.1, 0], [0, forkY * 0.6, 0], [0, forkY + 0.05, 0], [0, H * 0.7, 0], [0, H - 0.08, 0]], [R0 * 0.8, R0 * 0.68, R0 * 0.55, R0 * 0.34, R0 * 0.16], 8);
+  // The tiers: broad plates, each tier's in the gaps of the one below.
+  const nt = 3, y0 = forkY + 0.08, topY = H - 0.1;
+  const tiers = [];
+  let ph = r.range(0, TAU);
+  for (let k = 0; k < nt; k++) {
+    const u = k / (nt - 1), top = k === nt - 1;
+    const y = y0 + (topY - y0) * Math.pow(u, 0.85);
+    const Rk = Rc * (1 - 0.32 * u);
+    const np = top ? 2 : k === 0 ? 4 : 3;
+    const plates = [];
+    for (let j = 0; j < np; j++) {
+      const a = ph + (j / np) * TAU + r.range(-0.25, 0.25);
+      const d = Rk * (top ? r.range(0.18, 0.26) : r.range(0.5, 0.6));
+      const pr = Rk * (top ? r.range(0.6, 0.68) : r.range(0.52, 0.6));
+      plates.push({ a, c: [Math.cos(a) * d, y + r.range(-0.02, 0.02), Math.sin(a) * d], R: pr, T: pr * (top ? 0.6 : 0.46), top });
+    }
+    tiers.push({ y, R: Rk, plates });
+    ph += Math.PI / np + r.range(-0.3, 0.3);
+  }
+  const twist = r.range(0.9, 1.4) * r.sign();
+  for (const m of tiers[0].plates) {
+    const P = [], Rr = [];
+    for (let j = 0; j <= 3; j++) {
+      const t = j / 3, th = m.a - twist + twist * t, rr = R0 * (0.6 + 0.7 * Math.pow(1 - t, 2));
+      P.push([Math.cos(th) * rr, 0.06 + (forkY + 0.02 - 0.06) * t, Math.sin(th) * rr]);
+      Rr.push(R0 * 0.45 * (1 - 0.3 * t));
+    }
+    P.push([m.c[0] * 0.55, m.c[1] - m.T * 0.4, m.c[2] * 0.55], [m.c[0] * 0.85, m.c[1] - m.T * 0.25, m.c[2] * 0.85]);
+    Rr.push(R0 * 0.22, R0 * 0.1);
+    mb.tube(P, Rr, 4);
+  }
+  for (const t of tiers.slice(1))
+    for (const m of t.plates) mb.tube([[0, t.y - 0.08, 0], [m.c[0] * 0.5, m.c[1] - m.T * 0.25, m.c[2] * 0.5], [m.c[0] * 0.8, m.c[1] - m.T * 0.2, m.c[2] * 0.8]], [R0 * 0.28, R0 * 0.18, R0 * 0.08], 4);
+  // A stair winding up the trunk to a gallery ring under the first tier.
+  mb.color = J(S.dark ? "#3a3440" : "#a89a7a", r, 0.03);
+  const stair = [];
+  for (let k = 0; k <= 8; k++) {
+    const t = k / 8, a = 0.6 + t * TAU * 1.25, rr = R0 * (1.25 - 0.4 * t) + 0.008;
+    stair.push([Math.sin(a) * rr, 0.07 + t * (forkY - 0.08), Math.cos(a) * rr]);
+  }
+  mb.tube(stair, 0.0055, 3);
+  mb.part(() => {
+    mb.translate(0, forkY - 0.01, 0);
+    mb.lathe([[R0 * 0.6, -0.012], [R0 * 1.6, -0.002], [R0 * 1.55, 0.008]], 10, { caps: false });
+  });
+  // Silvered bark lit on its upper faces, moss at the foot.
+  const pale = C(S.dark ? "#6a6474" : "#c4c2b2"), moss = C(S.dark ? "#1e1c24" : "#2e3a26");
   {
-    const t = tips[0];
-    at(mb, t[0] * 0.7, t[1] - 0.06, t[2] * 0.7, r.range(0, TAU), () => elfPod(mb, r, S, { rad: 0.03, h: 0.035, roofH: 0.06, seg: 6, windows: 1, door: false, roofC: J(S.gold, r, 0.05) }));
+    const vv = mb.v;
+    for (let i = w0 * FLOATS; i < vv.length; i += FLOATS) {
+      const y = vv[i + 1], up = Math.max(0, Math.min(1, vv[i + 4] + 0.3));
+      const kp = 0.4 * up * Math.max(0, Math.min(1, (y - 0.08) / 0.15)), km = 0.8 * (1 - Math.max(0, Math.min(1, (y + 0.02) / 0.16)));
+      for (let q = 0; q < 3; q++) vv[i + 6 + q] = vv[i + 6 + q] * (1 - kp) + pale[q] * kp, vv[i + 6 + q] = vv[i + 6 + q] * (1 - km) + moss[q] * km;
+    }
   }
-  at(mb, 0.05, 0.2, 0.04, 0.8, () => elfPod(mb, r, S, { rad: 0.028, h: 0.034, roofH: 0.07, y: 0.006, seg: 6, windows: 1, door: false }));
+  mb.heightAO(w0, -0.04, forkY * 0.7, 0.5);
+  // The crown: dark olive and teal in the lower tiers, lit gold at the top (Ljosalfar); slate and
+  // violet under a cold sheen (Svartalfar).
+  const ramp = S.dark ? ["#0a0a12", "#14172a", "#222840", "#363e60", "#5a6488", "#9098bc"] : ["#121c16", "#20301e", "#3e4a26", "#6e6c32", "#a8964c", "#d8c486"];
+  const f0 = mb.mark();
+  mb.mat = MAT.FOLIAGE;
+  tiers.forEach((t, k) => {
+    const tm = mb.mark();
+    for (const m of t.plates) {
+      mb.color = J([1, 1, 1], r, 0.06);
+      canopyPlate(mb, r, m.c, m.R, m.T, { seg: m.top ? 9 : 10, lobes: r.int(3, 4), scallop: m.top ? 0.16 : 0.22, dome: m.top ? 1.3 : 1.1, droop: m.top ? 0.15 : 0.4 });
+    }
+    mb.sphereNormals(tm, [0, t.y - t.R * 0.5, 0], 0.4);
+    paintCrown(mb, tm, ramp, t.y - t.R * 0.25, t.y + t.R * 0.25, { bias: [-0.2, -0.04, 0.14][k], centre: [0, t.y - t.R * 0.1, 0], rad: t.R * 1.1, seed: r.range(0, 9) });
+  });
+  mb.heightSway(f0, forkY, H, 0.25);
+  mb.mat = MAT.MATTE;
+  // Flets: houses sitting on the tiers (seen over the canopy of the wood around), lit.
+  const seats = [...tiers[0].plates.slice(0, 2), tiers[1].plates[0]];
+  seats.forEach((m, k) => {
+    const d = m.R * 0.35, a = m.a + r.range(-0.4, 0.4);
+    const p = [m.c[0] + Math.cos(a) * d, m.c[1] + m.T * 0.42, m.c[2] + Math.sin(a) * d];
+    at(mb, p[0], p[1], p[2], r.range(0, TAU), () => elfPod(mb, r, S, { rad: k === 2 ? 0.026 : 0.03, h: 0.032, roofH: k === 2 ? 0.075 : 0.06, y: 0.0, seg: 6, windows: 1, door: false, curl: k === 2, roofC: J(k === 1 ? S.roofC : S.gold, r, 0.05) }));
+  });
+  // The hall wrapped around the foot, a gilded wing beside it.
+  elfPod(mb, r, S, { rad: 0.125, h: 0.075, roofH: 0.085, open: 0.075, seg: 11, windows: 5, petals: 9 });
+  at(mb, r.sign() * 0.155, 0, 0.04, 0, () => elfPod(mb, r, S, { rad: 0.04, h: 0.05, roofH: 0.085, seg: 6, windows: 1, door: false, curl: false, roofC: J(S.gold, r, 0.05) }));
   if (big)
     mb.part(() => {
-      mb.translate(0, H + 0.1, 0);
-      mb.color = S.dark ? S.roofC : C("#c8a048");
+      mb.translate(0, H - 0.02, 0);
+      mb.color = S.dark ? C("#5a5a7a") : C("#c8a048");
       mb.mat = MAT.METAL;
-      petalRoof(mb, 0.04, 0.09, { petals: 6, seg: 8 });
+      mb.cylinder(0.008, 0.005, 0.06, 5, { caps: false });
+      mb.translate(0, 0.055, 0);
+      petalRoof(mb, 0.036, 0.1, { petals: 6, seg: 6 });
     });
-  // Lanterns hung in the limbs and at the hall.
+  // Lanterns hung from the tiers' rims, where they show from the camera's height.
   for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * TAU + r.range(-0.3, 0.3);
-    const d = r.range(0.08, 0.15), y = r.range(0.16, 0.42);
-    lantern(mb, Math.sin(a) * d, y, Math.cos(a) * d, S.lit, 0.0065);
+    const t = tiers[k < 4 ? 0 : 1], m = t.plates[k % t.plates.length];
+    const a = m.a + r.range(-0.7, 0.7), d = m.R * r.range(0.8, 0.95);
+    const top = [m.c[0] + Math.cos(a) * d, m.c[1] - m.T * 0.3, m.c[2] + Math.sin(a) * d];
+    const drop = r.range(0.02, 0.04);
+    mb.color = C(S.dark ? "#2a2830" : "#4a4434");
+    mb.tube([top, [top[0], top[1] - drop, top[2]]], 0.0015, 3);
+    lantern(mb, top[0], top[1] - drop - 0.004, top[2], S.lit, 0.0075);
   }
   // A team banner on the trunk's front.
-  at(mb, 0, 0, 0.075, 0, () => wallBanner(mb, 0, 0.19, 0.03, 0.07));
+  at(mb, 0, 0, R0 * 1.15, 0, () => wallBanner(mb, 0, 0.27, 0.032, 0.08));
   ground(mb, 0, 0.04, 0.6);
 }
 
@@ -1533,20 +1645,20 @@ function elvenKeep(mb, r, v, sub) {
 function elvenWall(mb, r, sub) {
   const S = elfStyle(r, sub === "dark");
   mb.color = mulc(S.barkC, 0.9);
-  for (let k = 0; k < 3; k++) {
+  for (let k = 0; k < 2; k++) {
     const pts = [];
-    for (let i = 0; i <= 6; i++) {
-      const x = -0.105 + (0.21 * i) / 6;
-      pts.push([x, 0.012 + k * 0.022 + 0.008 * Math.sin(i * 1.9 + k * 2.1), 0.006 * Math.cos(i * 2.3 + k)]);
+    for (let i = 0; i <= 5; i++) {
+      const x = -0.105 + (0.21 * i) / 5;
+      pts.push([x, 0.016 + k * 0.03 + 0.009 * Math.sin(i * 1.9 + k * 2.1), 0.006 * Math.cos(i * 2.3 + k)]);
     }
-    mb.tube(pts, 0.008, 4);
+    mb.tube(pts, 0.0095, 4);
   }
   mb.color = S.barkC;
-  for (let i = 0; i < 5; i++) {
-    const x = -0.09 + i * 0.045;
+  for (let i = 0; i < 4; i++) {
+    const x = -0.08 + i * 0.053;
     mb.tube([[x, -0.04, 0], [x + 0.004, 0.04, 0.003], [x - 0.003, 0.085, -0.002]], [0.008, 0.006, 0.003], 4);
   }
-  for (let i = 0; i < 3; i++) leaves(mb, r, [-0.07 + i * 0.07, 0.08, 0], 0.03, 2, S.leaf, { squash: 0.6, spread: 1.2, sway: 0.3 });
+  for (let i = 0; i < 2; i++) leaves(mb, r, [-0.045 + i * 0.09, 0.08, 0], 0.034, 2, S.leaf, { squash: 0.6, spread: 1.2, sway: 0.3 });
   if (S.dark) thorns(mb, r, [[-0.06, 0.06, 0.008, 0, 1], [0.02, 0.05, 0.008, 0, 1], [0.07, 0.065, 0.008, 0, 1]], 0.02);
   ground(mb, 0, 0.03, 0.6);
 }
@@ -1573,16 +1685,16 @@ function elvenWallTower(mb, r, v, sub) {
   mb.color = S.barkC;
   mb.tube([[0, -0.04, 0], [0.004, y * 0.6, 0], [0, y, 0]], [0.024, 0.018, 0.022], 6);
   roots(mb, r, 3, 0.022, 0.04, r.range(0, TAU));
-  elfPod(mb, r, S, { rad: 0.035, h: 0.035, roofH: 0.07, y, seg: 7, windows: 2, door: false, roofC: v ? J(S.gold, r, 0.05) : S.roofC });
+  elfPod(mb, r, S, { rad: 0.035, h: 0.035, roofH: 0.07, y, seg: 6, windows: 1, door: false, curl: v === 1, roofC: v ? J(S.gold, r, 0.05) : S.roofC });
   ground(mb, 0, 0.03, 0.6);
 }
 
 // --- dwarven: heavy stone halls set into the ground, dark slate, forge glow ------------------------
 
 const DWARF = {
-  stone: ["#7a746e", "#706a64", "#837c74", "#766f66"],
-  dark: "#4a4644",
-  roof: [["#3b3b42", 3], ["#34343c", 2], ["#46403c", 1]],
+  stone: ["#958c80", "#8a8276", "#9c9285", "#8e8579"],
+  dark: "#4e4a48",
+  roof: [["#4e5562", 3], ["#464c58", 2], ["#5a524c", 1]],
   turf: "#4e5a36",
   earth: "#5a4632",
   bronze: "#9a6a3a",
@@ -1670,7 +1782,7 @@ function dwarvenHouse(mb, r, v) {
       const w = r.range(0.11, 0.125), d = r.range(0.085, 0.095);
       const b = dwarfBlock(mb, r, S, w, d, 0.06, { doorX: r.range(-0.02, 0.02) });
       berm(mb, r, S, w, d, 0.03);
-      dwarfRoof(mb, r, S, b, "x", 0.05);
+      dwarfRoof(mb, r, S, b, "x", 0.062);
       chimney(mb, S.chimney, r.sign() * w * 0.3, -d * 0.15, 0.05, 0.14, 0.024, glow);
       break;
     }
@@ -1732,7 +1844,7 @@ function dwarvenHouse(mb, r, v) {
           rect(mb, -0.022, 0.014, 0.022, 0.03, 0.0006);
         });
       });
-      dwarfRoof(mb, r, S, b, "x", 0.05);
+      dwarfRoof(mb, r, S, b, "x", 0.06);
       chimney(mb, S.chimney, 0.035, -0.02, 0.04, 0.17, 0.03, glow);
       mb.part(() => {
         mb.mat = MAT.METAL;
@@ -1750,8 +1862,8 @@ function dwarvenHouse(mb, r, v) {
       const b = dwarfBlock(mb, r, S, w, d, 0.055, { doorX: r.range(-0.03, 0.03) });
       mb.color = mulc(S.stoneC, 0.9);
       for (const z of [-1, 1]) for (let i = 0; i < 3; i++) at(mb, -w * 0.33 + i * w * 0.33, 0, (z * d) / 2 + z * 0.006, 0, () => blk(mb, 0.014, 0.014, -0.04, 0.05, 0.7));
-      dwarfRoof(mb, r, S, b, "x", 0.065);
-      chimney(mb, S.chimney, -w * 0.3, 0, 0.05, 0.15, 0.022, glow);
+      dwarfRoof(mb, r, S, b, "x", 0.075);
+      chimney(mb, S.chimney, -w * 0.3, 0, 0.05, 0.16, 0.022, glow);
       break;
     }
   }
@@ -1997,8 +2109,8 @@ function dwarvenWallTower(mb, r, v) {
 // --- infernal: obsidian shards, bone, chains, lava-lit slits, the planar gate -------------------------
 
 const HELL = {
-  obs: ["#1e1a22", "#24202a", "#1a161c"],
-  basalt: ["#3a343a", "#423a40", "#36302e"],
+  obs: ["#28222e", "#2e2834", "#241e28"],
+  basalt: ["#4a4248", "#524850", "#463e3c"],
   hide: "#3a2622",
   bone: "#a89c82",
   iron: "#46484e",
@@ -2016,6 +2128,8 @@ function hellStyle(r) {
 
 /** A glowing slit (lava light through a crack) on a face. */
 function slit(mb, x, y, w, h, c = HELL.glow) {
+  w *= 1.4;
+  h *= 1.25;
   mb.part(() => {
     mb.mat = MAT.EMISSIVE;
     mb.color = C(c);
@@ -2073,7 +2187,12 @@ function infernalHouse(mb, r, v) {
         door(mb, S, 0, 0.018, 0.03, 0.012, 0.0, HELL.door);
         slit(mb, 0.024, 0.035, 0.006, 0.02);
       });
-      spikes(mb, r, S, 3, 0.03, 0.12, 0.06, 0.025);
+      at(mb, 0, 0, 0, TAU / 5, () => at(mb, 0, 0, fz * 0.97 + 0.002, 0, () => slit(mb, 0, 0.03, 0.006, 0.022)));
+      spikes(mb, r, S, 3, 0.032, 0.16, 0.06, 0.025);
+      // Bone tusks either side of the door, a skull over it.
+      mb.color = S.boneC;
+      for (const s2 of [-1, 1]) horn(mb, [s2 * 0.026, -0.01, fz + 0.006], [s2 * 0.6, 0.8], 0.06, 0.006, 0.9);
+      at(mb, 0, 0.052, fz + 0.004, 0, () => mb.sphere(0.009, 0, { squash: 0.9 }));
       break;
     }
     case 1: {
@@ -2104,9 +2223,9 @@ function infernalHouse(mb, r, v) {
       mb.part(() => {
         mb.translate(0, 0.06, 0);
         mb.color = S.obsC;
-        hipRoof(mb, w * 0.94, d * 0.94, 0.1, { over: 0.012 });
+        hipRoof(mb, w * 0.94, d * 0.94, 0.14, { over: 0.012 });
         mb.color = S.boneC;
-        for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) horn(mb, [x * 0.05, -0.006, z * 0.045], [x * 0.7, z * 0.7], 0.06, 0.006, 0.9);
+        for (const [x, z] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) horn(mb, [x * 0.05, -0.006, z * 0.045], [x * 0.7, z * 0.7], 0.07, 0.0065, 0.9);
       });
       break;
     }
@@ -2126,22 +2245,30 @@ function infernalHouse(mb, r, v) {
       break;
     }
     case 4: {
-      // A lava pit: a jagged ring of leaning shards around a glowing pool, chained bone stakes.
-      for (let k = 0; k < 7; k++) {
-        const a = (k / 7) * TAU + r.range(-0.2, 0.2);
-        mb.color = k % 2 ? S.obsC : S.basaltC;
-        at(mb, Math.sin(a) * 0.05, 0, Math.cos(a) * 0.05, 0, () => shard(mb, 4, 0.016, -0.04, r.range(0.04, 0.08), { lean: [Math.sin(a) * 0.02, Math.cos(a) * 0.02], phase: a }));
+      // A spire-house: a squat basalt drum under a tall, leaning, faceted obsidian spire, ringed by
+      // bone claws, a lava-lit doorway and a small glowing pit before it.
+      mb.color = mulc(S.basaltC, 0.85);
+      shard(mb, 6, 0.056, -0.05, 0.012, { top: 0.98, phase: 0.2 });
+      mb.color = S.basaltC;
+      shard(mb, 6, 0.052, 0.012, 0.055, { top: 0.92, phase: 0.2 });
+      mb.color = S.obsC;
+      const lean = [r.range(-0.012, 0.012), -r.range(0.008, 0.016)];
+      shard(mb, 6, 0.058, 0.05, 0.22, { top: 0, lean, phase: 0.2 + 0.25, twist: 0.3 });
+      at(mb, 0, 0, 0.049, 0, () => {
+        door(mb, S, 0, 0.018, 0.03, 0.012, 0.004, HELL.door);
+        slit(mb, 0, 0.004, 0.012, 0.004, "#c83a14");
+      });
+      for (const a of [1.6, -1.5]) at(mb, Math.sin(a) * 0.05, 0, Math.cos(a) * 0.05, a, () => slit(mb, 0, 0.025, 0.006, 0.02));
+      mb.color = S.boneC;
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * TAU + 0.6;
+        horn(mb, [Math.sin(a) * 0.058, 0.03, Math.cos(a) * 0.058], [Math.sin(a), Math.cos(a)], 0.07, 0.0055, 0.8);
       }
       mb.part(() => {
         mb.mat = MAT.EMISSIVE;
-        mb.color = C("#e0400e");
-        mb.lathe([[0.042, 0.004], [0, 0.008]], 8, { caps: false });
+        mb.color = C("#d8400e");
+        at(mb, r.range(-0.02, 0.02), 0.004, 0.085, 0, () => mb.lathe([[0.016, 0], [0, 0.002]], 6, { caps: false }));
       });
-      mb.color = S.boneC;
-      const p0 = [0.07, 0.07, 0.03], p1 = [-0.065, 0.06, 0.04];
-      pole(mb, [0.07, -0.03, 0.03], p0, 0.005, 0.003, 4);
-      pole(mb, [-0.065, -0.03, 0.04], p1, 0.005, 0.003, 4);
-      chain(mb, p0, p1, 0.035);
       break;
     }
     default: {
@@ -2184,7 +2311,9 @@ function planarGate(mb, r, S, R, y0) {
   shard(mb, 8, R * 1.5, -0.05, y0 * 0.5, { top: 0.92, phase: TAU / 16 });
   shard(mb, 8, R * 1.3, y0 * 0.5, y0, { top: 0.94, phase: TAU / 16 });
   mb.part(() => {
-    mb.translate(0, y0 + R + 0.004, 0);
+    // A tear in the world, taller than wide.
+    mb.translate(0, y0 + R * 1.3 + 0.004, 0);
+    mb.scale(0.78, 1.3, 1);
     const n = 9;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * TAU;
@@ -2438,12 +2567,12 @@ function infernalWallTower(mb, r, v) {
 // --- tribal: hide tents, round huts, longhouses, palisades, totems and skulls ---------------------
 
 const TRIBE = {
-  hide: ["#7e6a52", "#74604a", "#86705a"],
+  hide: ["#a48d6a", "#998260", "#ad9574"],
   hideDark: "#5e4634",
   fur: "#6e6052",
   wood: "#5a4232",
   woodLight: "#7a5e44",
-  thatch: ["#6e6242", "#665a3c", "#74684a"],
+  thatch: ["#857650", "#7c6e4a", "#8a7b56"],
   turf: "#566036",
   bone: "#cabd9e",
   ochre: "#8a3a22",
@@ -2491,9 +2620,11 @@ function tribalHouse(mb, r, v, sub) {
     case 0: {
       // A hide tent: a tall sagging cone of hide with a painted band and its poles crossing out
       // of the smoke hole.
-      const R = r.range(0.05, 0.056), H = r.range(0.11, 0.13);
+      const R = r.range(0.05, 0.056), H = r.range(0.12, 0.14);
       mb.color = S.hideC;
+      const t0 = mb.mark();
       mb.lathe([[R * 1.06, -0.04], [R, 0.004], [R * 0.66, H * 0.36], [R * 0.3, H * 0.7], [R * 0.08, H * 0.94]], 7, { caps: false, wobble: (a, y, i) => (i === 2 ? 0.05 * Math.cos(a * 7) : 0) });
+      mb.tint(t0, (x, y) => 1 - 0.5 * Math.max(0, Math.min(1, (y - H * 0.5) / (H * 0.4))));
       mb.part(() => {
         mb.mat = MAT.TEAM;
         mb.color = C(TEAM_SHADE);
@@ -2515,9 +2646,12 @@ function tribalHouse(mb, r, v, sub) {
       mb.part(() => {
         mb.translate(0, 0.045, 0);
         mb.color = S.thatchC;
-        mb.lathe([[R * 1.32, -0.014], [R * 1.22, 0.0], [R * 0.95, 0.04], [R * 0.5, 0.072], [R * 0.12, 0.082]], 8, { caps: false });
-        mb.color = mulc(S.thatchC, 0.6);
-        mb.lathe([[R * 0.13, 0.08], [R * 0.1, 0.092], [0, 0.094]], 8, { caps: false });
+        const t0 = mb.mark();
+        mb.lathe([[R * 1.34, -0.016], [R * 1.24, 0.0], [R * 0.9, 0.036], [R * 0.5, 0.074], [R * 0.14, 0.1]], 8, { caps: false, wobble: (a, y, i) => (i === 0 ? 0.06 * Math.cos(a * 5) : 0) });
+        roofShade(mb, t0, mb.xp([0, -0.016, 0])[1], mb.xp([0, 0.1, 0])[1], 0.3);
+        mb.color = mulc(S.thatchC, 0.55);
+        mb.lathe([[R * 0.15, 0.098], [R * 0.08, 0.116], [0, 0.12]], 8, { caps: false });
+        tentPoles(mb, S, 3, R * 0.08, 0.1, 0.13, 0.012);
       });
       break;
     }
@@ -2533,7 +2667,9 @@ function tribalHouse(mb, r, v, sub) {
       mb.part(() => {
         mb.translate(0, 0.035, 0);
         mb.color = S.north ? J(S.turf, r, 0.06) : S.thatchC;
-        gableRoof(mb, w, d, 0.075, { over: 0.02, overX: 0.008, thick: 0.01, sag: 0.012, kick: 0.25, ends: S.woodC });
+        gableRoof(mb, w, d, 0.08, { over: 0.02, overX: 0.008, thick: 0.01, sag: 0.014, kick: 0.25, ends: S.woodC, shade: 0.42 });
+        mb.color = mulc(S.north ? S.turf : S.thatchC, 0.55);
+        mb.tube([[-w / 2 - 0.006, 0.079, 0], [0, 0.068, 0], [w / 2 + 0.006, 0.079, 0]], 0.006, 4);
         for (const s of [-1, 1]) gableHorns(mb, S, s * (w / 2 + 0.008), 0.075, 0.04);
       });
       break;
@@ -2558,17 +2694,23 @@ function tribalHouse(mb, r, v, sub) {
     case 4: {
       // A yurt: a felt drum with a dark band, a low cone of fur and hide, a smoke hole.
       const R = r.range(0.055, 0.06);
-      mb.color = J("#a08a6a", r, 0.05);
+      mb.color = J("#b09a76", r, 0.05);
       drum(mb, R, R * 0.98, -0.03, 0.045, 9);
-      mb.color = J(S.hideDark, r, 0.05);
-      drum(mb, R + 0.0008, R * 0.98 + 0.0008, 0.024, 0.032, 9);
+      mb.part(() => {
+        mb.mat = MAT.TEAM;
+        mb.color = C(TEAM_SHADE);
+        drum(mb, R + 0.0008, R * 0.98 + 0.0008, 0.024, 0.033, 9);
+      });
       at(mb, 0, 0, R + 0.001, 0, () => door(mb, S, 0, 0.018, 0.03, 0.0, 0.0, "#6a2a1a"));
       mb.part(() => {
         mb.translate(0, 0.045, 0);
         mb.color = J(S.fur, r, 0.05);
-        mb.lathe([[R * 1.1, -0.006], [R * 0.6, 0.03], [R * 0.16, 0.048]], 9, { caps: false });
-        mb.color = mulc(S.woodC, 0.8);
-        mb.lathe([[R * 0.16, 0.048], [R * 0.13, 0.054]], 9, { caps: false });
+        const t0 = mb.mark();
+        mb.lathe([[R * 1.12, -0.006], [R * 0.72, 0.03], [R * 0.2, 0.066]], 9, { caps: false });
+        mb.tint(t0, (x, y) => 1 - 0.4 * Math.max(0, Math.min(1, (y - 0.06) / 0.05)));
+        mb.color = mulc(S.woodC, 0.7);
+        mb.lathe([[R * 0.2, 0.066], [R * 0.15, 0.074]], 9, { caps: false });
+        tentPoles(mb, S, 3, R * 0.12, 0.064, 0.09, 0.008);
       });
       break;
     }
@@ -3642,6 +3784,59 @@ function fence(mb, r, f) {
   ground(mb, 0, 0.02, 0.6);
 }
 
+/** A pier (a harbour's jetty): a plank deck along +z from the shore (z = 0) out over the water,
+ *  modelled with sea level at y = 0 (the city lifts it there), on posts down to the sea floor,
+ *  bollards at its end and a boat moored alongside (v1 a longer quay and a small sailing boat
+ *  with a sail in the owner's colour). Timber in the family's key. */
+function pier(mb, r, v, f) {
+  const wood = J(f === "infernal" ? "#3a3034" : f === "elven" ? "#8a7a60" : f === "desert" ? "#8a6e4c" : "#6a5038", r, 0.05);
+  const L = v ? 0.32 : 0.25, W = v ? 0.066 : 0.056, y = 0.016;
+  // Posts in pairs, down into the sea floor, darker below the waterline.
+  for (let z = 0.03; z <= L; z += 0.055)
+    for (const s of [-1, 1]) {
+      mb.color = mulc(wood, 0.6);
+      pole(mb, [s * (W / 2 + 0.002), -0.2, z], [s * (W / 2 + 0.002), y + 0.008, z], 0.0045, 0.004, 4);
+    }
+  // The deck, its planks' seams across it, and a darker edge.
+  mb.color = wood;
+  at(mb, 0, 0, L / 2 - 0.01, 0, () => blk(mb, W, L + 0.02, y - 0.006, y));
+  mb.color = mulc(wood, 0.7);
+  for (let z = 0.0; z < L; z += 0.022) mb.quad([-W / 2, y + 0.0004, z - 0.001], [-W / 2, y + 0.0004, z + 0.001], [W / 2, y + 0.0004, z + 0.001], [W / 2, y + 0.0004, z - 0.001]);
+  // The shore end rests on a few stones.
+  mb.color = J("#7d766e", r, 0.05);
+  at(mb, 0, 0, -0.01, 0, () => blk(mb, W + 0.016, 0.03, -0.05, y - 0.004, 0.8));
+  // Bollards and a coil of rope at the end.
+  mb.color = mulc(wood, 0.8);
+  for (const s of [-1, 1]) at(mb, s * (W / 2 - 0.006), 0, L - 0.008, 0, () => mb.cylinder(0.004, 0.0035, y + 0.014, 5));
+  mb.color = J("#9a8460", r, 0.05);
+  at(mb, -W * 0.2, y, L - 0.03, 0, () => mb.lathe([[0.006, 0], [0.008, 0.002], [0.006, 0.004]], 6, { caps: false }));
+  // The boat moored alongside.
+  const side = r.sign(), bz = L * 0.6;
+  mb.part(() => {
+    mb.translate(side * (W / 2 + 0.03), 0, bz);
+    mb.rotateY(r.range(-0.12, 0.12));
+    mb.scale(1.2, 1.2, v ? 2.9 : 2.5);
+    mb.color = J(f === "infernal" ? "#2a2226" : "#4a3628", r, 0.05);
+    mb.lathe([[0.0, -0.01], [0.012, -0.008], [0.018, 0.0], [0.02, 0.008]], 8, { caps: false });
+    mb.color = J("#8a6a48", r, 0.05);
+    mb.lathe([[0.02, 0.008], [0.017, 0.009]], 8, { caps: false });
+  });
+  if (v) {
+    // Mast and a furled-then-loosed sail in the owner's colour.
+    const mx = side * (W / 2 + 0.03);
+    mb.color = J("#5a4230", r, 0.05);
+    pole(mb, [mx, 0.0, bz], [mx, 0.13, bz], 0.003, 0.002, 4);
+    const m0 = mb.mark();
+    mb.part(() => {
+      mb.mat = MAT.TEAM;
+      mb.color = C(TEAM);
+      mb.card([mx, 0.12, bz - 0.002], [mx, 0.035, bz - 0.002], [mx + side * 0.005, 0.035, bz + 0.05], [mx + side * 0.002, 0.12, bz + 0.036]);
+    });
+    clothSway(mb, m0, [mx, 0.12, bz], 0.07, 0.5);
+  }
+  ground(mb, 0, 0.02, 0.6);
+}
+
 /** A totem: a carved pole with stacked heads, horns and a skull (tribal camps). */
 function totem(mb, r, sc = 1) {
   const m0 = mb.mark();
@@ -3704,10 +3899,36 @@ function builder(kind, param) {
   return { fn: fam[kind] ?? BUILD.human[kind], sub, f };
 }
 
-recipe("bld.house", { variants: 6, build: (mb, r, { variant, param }) => { const b = builder("house", param); b.fn(mb, r, variant, b.sub); } });
-recipe("bld.hall", { variants: 3, build: (mb, r, { variant, param }) => { const b = builder("hall", param); b.fn(mb, r, variant, b.sub); } });
-recipe("bld.tower", { variants: 3, build: (mb, r, { variant, param }) => { const b = builder("tower", param); b.fn(mb, r, variant, b.sub); } });
-recipe("bld.keep", { variants: 2, build: (mb, r, { variant, param }) => { const b = builder("keep", param); b.fn(mb, r, variant, b.sub); } });
+/** Obsidian is glass: the infernal family's darkest faces get a painted cold sheen where they face
+ *  the sky and the sun's side (west), so black shards read as polished facets on black ground. */
+function obsidianSheen(mb, f) {
+  if (f !== "infernal") return;
+  const v = mb.v;
+  const hi = C("#5a4c6a");
+  for (let i = 0; i < v.length; i += FLOATS) {
+    if (v[i + 9] !== MAT.MATTE) continue;
+    const l = 0.2126 * v[i + 6] + 0.7152 * v[i + 7] + 0.0722 * v[i + 8];
+    if (l >= 0.03) continue;
+    const k = 0.55 * Math.max(0, Math.min(1, v[i + 4] * 0.8 - v[i + 3] * 0.35 + 0.05));
+    for (let q = 0; q < 3; q++) v[i + 6 + q] += (hi[q] - v[i + 6 + q]) * k * k;
+  }
+}
+
+/** A building recipe of `kind`, switched on its family param. */
+function bldRecipe(kind, variants) {
+  recipe(`bld.${kind}`, {
+    variants,
+    build: (mb, r, { variant, param }) => {
+      const b = builder(kind, param);
+      b.fn(mb, r, variant, b.sub);
+      obsidianSheen(mb, b.f);
+    },
+  });
+}
+bldRecipe("house", 6);
+bldRecipe("hall", 3);
+bldRecipe("tower", 3);
+bldRecipe("keep", 2);
 recipe("bld.wall", {
   variants: 2,
   build: (mb, r, { variant, param }) => {
@@ -3725,6 +3946,7 @@ recipe("bld.banner", { variants: 2, build: (mb, r, { variant, param }) => banner
 recipe("bld.fence", { variants: 2, build: (mb, r, { param }) => fence(mb, r, famOf(param).f) });
 recipe("bld.totem", { variants: 2, build: (mb, r) => totem(mb, r) });
 recipe("bld.brazier", { variants: 1, build: (mb, r, { param }) => brazier(mb, r, famOf(param).f) });
+recipe("bld.pier", { variants: 2, build: (mb, r, { variant, param }) => pier(mb, r, variant, famOf(param).f) });
 
 // --- the catalog: families, cities, settlements ---------------------------------------------------------
 
@@ -3819,7 +4041,17 @@ class Plan {
     this.r = r;
     this.P = P;
     this.Rmax = Rmax;
-    this.height = height;
+    // The ground's height, remembered on a fine grid (candidate spots cluster; the terrain's
+    // height lookup is not free).
+    if (height) {
+      const memo = new Map();
+      this.height = (x, z) => {
+        const k = Math.round(x * 200) * 4096 + Math.round(z * 200);
+        let h = memo.get(k);
+        if (h === undefined) memo.set(k, (h = height(Math.round(x * 200) / 200, Math.round(z * 200) / 200)));
+        return h;
+      };
+    } else this.height = null;
     this.out = [];
     this.out.emit = [];
     this.boxes = [];
@@ -3843,9 +4075,12 @@ class Plan {
 
   fits(A, tol = 0.004, rmax = this.Rmax) {
     for (const [x, z] of corners(A)) if (Math.hypot(x, z) > rmax) return false;
-    for (const [x, z, rad] of this.zones) if (nearPoint(A, x, z, rad)) return false;
-    for (const [x, z, rad] of this.lanes) if (nearPoint(A, x, z, rad)) return false;
-    for (const B of this.boxes) if (overlap(A, B, tol)) return false;
+    // Broad phase by bounding circles before the exact tests.
+    const ra = Math.hypot(A.hw, A.hd);
+    const near = (x, z, rad) => (x - A.x) ** 2 + (z - A.z) ** 2 < (ra + rad) ** 2;
+    for (const [x, z, rad] of this.zones) if (near(x, z, rad) && nearPoint(A, x, z, rad)) return false;
+    for (const [x, z, rad] of this.lanes) if (near(x, z, rad) && nearPoint(A, x, z, rad)) return false;
+    for (const B of this.boxes) if (near(B.x, B.z, Math.hypot(B.hw, B.hd)) && overlap(A, B, tol)) return false;
     // Dry, fairly level ground: no footing in the sea or across a river bank.
     if (this.height) {
       let lo = Infinity, hi = -Infinity;
@@ -3854,7 +4089,7 @@ class Plan {
         lo = Math.min(lo, h);
         hi = Math.max(hi, h);
       }
-      if (lo < 0.015 || hi - lo > 0.065) return false;
+      if (lo < 0.015 || hi - lo > 0.085) return false;
     }
     return true;
   }
@@ -3888,52 +4123,6 @@ class Plan {
     return null;
   }
 
-  /** Lines one side (+1 left, -1 right) of a street with items (consumed from the front of the
-   *  list), fronts on the street edge, wall to wall with small gaps; at most `quota` items. */
-  row(pts, side, items, { half = 0.022, start = 0.02, quota = 99, gap = 0.008, setback = 0.006, jitter = 0.06 } = {}) {
-    const r = this.r;
-    const segs = [];
-    let L = 0;
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
-      segs.push([pts[i], pts[i + 1], L, l]);
-      L += l;
-    }
-    const at = (s) => {
-      for (const [a, b, s0, l] of segs) {
-        if (s <= s0 + l || b === pts[pts.length - 1]) {
-          const t = Math.min(1, Math.max(0, (s - s0) / l));
-          return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, (b[0] - a[0]) / l, (b[1] - a[1]) / l];
-        }
-      }
-      return null;
-    };
-    let s = start, n = 0;
-    while (s < L && items.length && n < quota) {
-      // The first of the next few items that fits here (a big hall waits for a big gap).
-      let done = 0;
-      for (let k = 0; k < Math.min(4, items.length) && !done; k++) {
-        const it = items[k];
-        const b = buildAsset(it.asset, it.variant, it.param ?? this.P);
-        const sc = it.scale ?? 1;
-        const hw = ((b.hi[0] - b.lo[0]) / 2) * sc;
-        const q = at(Math.min(L, s + hw));
-        if (!q) break;
-        const [px, pz, tx, tz] = q;
-        const nx = -tz * side, nz = tx * side;
-        const off = half + b.hi[2] * sc + 0.002 + r.range(0, setback);
-        const x = px + nx * off, z = pz + nz * off;
-        const yaw = yawTo(-nx, -nz) + r.range(-jitter, jitter);
-        if (this.try(it.asset, it.variant, x, z, yaw, sc, it)) {
-          items.splice(k, 1);
-          n++;
-          done = 2 * hw + r.range(0, gap) + (r() < 0.1 ? r.range(0.03, 0.06) : 0);
-        }
-      }
-      s += done || 0.016;
-    }
-  }
-
   /** A street that buildings front onto (also kept clear): a polyline of half-width `half`. */
   street(pts, half = 0.014) {
     this.lane(pts, half);
@@ -3958,56 +4147,95 @@ class Plan {
   }
 
   /** Packs `items` densely, one at a time, each into the best of many candidate spots: fronts on
-   *  a street edge (turned to face it) or wherever it fits (turned to the nearest street), scored
-   *  by closeness to the `heart` (the town grows outward from its square), how squarely its front
-   *  meets a street and how many neighbours it touches (wall to wall, not scattered). `gap` keeps
-   *  a family's spacing (wider for camps and elven groves); `jitter` turns them off the street. */
-  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null } = {}) {
+   *  a street edge (turned to face it), wall to wall beside or back to back behind a building
+   *  already placed, or anywhere it fits (turned to the nearest street); scored by closeness to
+   *  the `heart` (the town grows outward from its square), how squarely its front meets a street
+   *  and how many neighbours it touches. `gap` keeps a family's spacing (wider for camps and
+   *  elven groves); `jitter` turns them off true. An item that finds no spot tries again smaller. */
+  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null, rows = true, rim = false, faceHeart = false } = {}) {
     const r = this.r;
     const S = this.streets ?? [];
     const total = S.reduce((a, s) => a + s.l, 0);
     const placed = [];
-    for (const it of items) {
-      const b = buildAsset(it.asset, it.variant, it.param ?? this.P);
-      const sc = it.scale ?? 1;
-      const hd = b.hi[2] * sc;
-      let best = null, bestScore = Infinity;
-      for (let k = 0; k < cands; k++) {
-        let x, z, yaw;
-        if (total > 0 && k % 3 !== 2) {
-          // A street front: a point along a street, a side, the front just off the street edge.
-          let t = r() * total, s = S[0];
-          for (const q of S) if ((t -= q.l) <= 0) { s = q; break; }
-          const u = r() * s.l, side = r() < 0.5 ? 1 : -1;
-          const nx = -s.tz * side, nz = s.tx * side;
-          const off = s.half + hd + gap / 2 + 0.004 + r.range(0, 0.008);
-          x = s.ax + s.tx * u + nx * off;
-          z = s.az + s.tz * u + nz * off;
-          yaw = yawTo(-nx, -nz);
-        } else {
-          const a = r.range(0, TAU), d = Math.sqrt(r.range((rmin / rmax) ** 2, 1)) * rmax;
-          x = Math.sin(a) * d;
-          z = Math.cos(a) * d;
-          const ns = this.nearestStreet(x, z);
-          yaw = ns && ns.d > 1e-3 ? yawTo(ns.px - x, ns.pz - z) : yawTo(heart[0] - x, heart[1] - z);
+    const homes = [];
+    for (const it0 of items) {
+      let done = null;
+      for (const shrink of [1, 0.88, 0.78]) {
+        const it = { ...it0, scale: (it0.scale ?? 1) * shrink };
+        const b = buildAsset(it.asset, it.variant, it.param ?? this.P);
+        const sc = it.scale;
+        const hd = b.hi[2] * sc;
+        let best = null, bestScore = Infinity;
+        for (let k = 0; k < cands; k++) {
+          let x, z, yaw;
+          const kind = k % 5;
+          if (rim && kind === 4 && k % 10 === 4) {
+            // Backs to the town wall, fronts turned in: the row inside a walled town's ring.
+            const a = r.range(0, TAU), hw = Math.max(-b.lo[0], b.hi[0]) * sc + gap / 2;
+            const back = Math.sqrt(Math.max(0, (rmax - 0.003) ** 2 - hw * hw)) + b.lo[2] * sc - gap / 2;
+            x = Math.sin(a) * back;
+            z = Math.cos(a) * back;
+            yaw = a + Math.PI;
+          } else if (rows && homes.length && (kind === 1 || kind === 3)) {
+            // Beside a neighbour (wall to wall, fronts in line) or back to back behind it.
+            const h = homes[Math.floor(r() * homes.length)];
+            const c = Math.cos(h.yaw), s = Math.sin(h.yaw);
+            let u, v;
+            yaw = h.yaw;
+            if (r() < 0.75) {
+              const side = r() < 0.5 ? 1 : -1;
+              u = side > 0 ? h.b.hi[0] * h.sc - b.lo[0] * sc + gap + r.range(0, 0.004) : h.b.lo[0] * h.sc - b.hi[0] * sc - gap - r.range(0, 0.004);
+              v = h.b.hi[2] * h.sc - hd;
+            } else {
+              yaw = h.yaw + Math.PI;
+              u = r.range(-0.02, 0.02);
+              v = h.b.lo[2] * h.sc - hd - gap - r.range(0, 0.004);
+            }
+            x = h.x + c * u + s * v;
+            z = h.z - s * u + c * v;
+          } else if (total > 0 && kind !== 4) {
+            // A street front: a point along a street, a side, the front just off the street edge.
+            let t = r() * total, q = S[0];
+            for (const e of S) if ((t -= e.l) <= 0) { q = e; break; }
+            const u = r() * q.l, side = r() < 0.5 ? 1 : -1;
+            const nx = -q.tz * side, nz = q.tx * side;
+            const off = q.half + hd + gap / 2 + 0.004 + r.range(0, 0.008);
+            x = q.ax + q.tx * u + nx * off;
+            z = q.az + q.tz * u + nz * off;
+            yaw = yawTo(-nx, -nz);
+          } else {
+            const a = r.range(0, TAU), d = Math.sqrt(r.range((rmin / rmax) ** 2, 1)) * rmax;
+            x = Math.sin(a) * d;
+            z = Math.cos(a) * d;
+            const ns = this.nearestStreet(x, z);
+            yaw = ns && ns.d > 1e-3 ? yawTo(ns.px - x, ns.pz - z) : yawTo(heart[0] - x, heart[1] - z);
+          }
+          const rad = Math.hypot(x, z);
+          if (rad < rmin || rad > rmax) continue;
+          if (front !== null && z > front) continue;
+          // A camp's tents turn their doors to the fire.
+          if (faceHeart && !(rows && homes.length && (kind === 1 || kind === 3))) yaw = yawTo(heart[0] - x, heart[1] - z);
+          yaw += r.range(-jitter, jitter) * (rim && kind === 4 ? 0.3 : 1);
+          const A = obb(it.asset, it.variant, it.param ?? this.P, x, z, yaw, sc, gap / 2);
+          if (!this.fits(A, 0)) continue;
+          // Closeness to the heart, a front meeting a street, neighbours touched.
+          let score = Math.hypot(x - heart[0], (z - heart[1]) * 0.9) * spread;
+          if (rim) score = Math.min(score, (rmax - rad) * 0.8 + 0.03);
+          const fx = x + Math.sin(yaw) * hd, fz = z + Math.cos(yaw) * hd;
+          const ns = this.nearestStreet(fx, fz);
+          if (ns) score += street * 0.5 * Math.max(0, ns.d - ns.half - 0.008);
+          let touch = 0;
+          for (const B of this.boxes) if (overlap(A, B, -0.02)) touch++;
+          score -= 0.02 * Math.min(4, touch) + r() * 0.012;
+          if (score < bestScore) [bestScore, best] = [score, { x, z, yaw }];
         }
-        const rad = Math.hypot(x, z);
-        if (rad < rmin || rad > rmax) continue;
-        if (front !== null && z > front) continue;
-        yaw += r.range(-jitter, jitter);
-        const A = obb(it.asset, it.variant, it.param ?? this.P, x, z, yaw, sc, gap / 2);
-        if (!this.fits(A, 0)) continue;
-        // Closeness to the heart, a front meeting a street, neighbours touched.
-        let score = Math.hypot(x - heart[0], (z - heart[1]) * 0.9) * spread;
-        const fx = x + Math.sin(yaw) * hd, fz = z + Math.cos(yaw) * hd;
-        const ns = this.nearestStreet(fx, fz);
-        if (ns) score += street * 0.6 * Math.max(0, ns.d - ns.half - 0.006);
-        let touch = 0;
-        for (const B of this.boxes) if (overlap(A, B, -0.022)) touch++;
-        score -= 0.018 * Math.min(4, touch) + r() * 0.01;
-        if (score < bestScore) [bestScore, best] = [score, { x, z, yaw }];
+        if (best) {
+          done = this.add(it.asset, it.variant, best.x, best.z, best.yaw, sc, { ...it, pad: gap / 2 });
+          homes.push({ x: best.x, z: best.z, yaw: best.yaw, sc, b });
+          break;
+        }
       }
-      if (best) placed.push(this.add(it.asset, it.variant, best.x, best.z, best.yaw, sc, { ...it, pad: gap / 2 }));
+      if (done) placed.push(done);
     }
     return placed;
   }
@@ -4022,20 +4250,6 @@ function street(r, x, z, a, turn, R, step = 0.05) {
     pts.push([x, z]);
     a += turn;
     if (Math.hypot(x, z) > R) break;
-  }
-  return pts;
-}
-
-/** A ring street around (cx, cz) of radius R (wobbling), from angle a0 to a1 (from +z, clockwise
- *  seen from above). */
-function ringStreet(r, cx, cz, R, a0, a1) {
-  const ph = r.range(0, TAU), wob = r.range(0.02, 0.05);
-  const n = Math.max(8, Math.round(((a1 - a0) * R) / 0.04));
-  const pts = [];
-  for (let k = 0; k <= n; k++) {
-    const a = a0 + ((a1 - a0) * k) / n;
-    const rr = R * (1 + wob * Math.sin(2 * a + ph));
-    pts.push([cx + Math.sin(a) * rr, cz + Math.cos(a) * rr]);
   }
   return pts;
 }
@@ -4067,7 +4281,7 @@ const LAY = {
   desert: { gap: 0.004, jitter: 0.04, stalls: true, well: true, banner: 0 },
   coastal: { gap: 0.02, jitter: 0.2, stalls: true, well: false, banner: 1 },
   elven: { gap: 0.022, jitter: 0.25, stalls: false, well: false, banner: 1, trees: true, motes: true },
-  tribal: { gap: 0.03, jitter: 0.5, stalls: false, well: false, banner: 1, fire: true },
+  tribal: { gap: 0.022, jitter: 0.5, stalls: false, well: false, banner: 1, fire: true },
   infernal: { gap: 0.012, jitter: 0.25, stalls: false, well: true, banner: 0, braziers: true },
 };
 
@@ -4080,7 +4294,7 @@ function cityLayout(ctx) {
   const L = sub === "gothic" ? { ...LAY.human, stalls: false, braziers: true } : LAY[f] ?? LAY.human;
   const walls = !!ctx.walls;
   const Rw = walls ? Math.min(0.445, 0.37 + size * 0.01) : 0;
-  const Rmax = walls ? Rw - 0.03 : Math.min(0.46, 0.38 + size * 0.008);
+  const Rmax = walls ? Rw - 0.024 : Math.min(0.46, 0.38 + size * 0.008);
   const plan = new Plan(r, P, Rmax, typeof ctx.height === "function" ? (x, z) => ctx.height(x, z) : null);
   const out = plan.out;
   const N = cityCounts(size);
@@ -4089,7 +4303,18 @@ function cityLayout(ctx) {
   plan.lane([[0, 0.12], [0, 0.6]], 0.03);
 
   // The landmark at the back of the square (a great tree's crown may spread over the houses).
-  const lmScale = ctx.capital ? 1 : Math.min(0.92, 0.7 + size * 0.025);
+  // A town in deep woods (most of its neighbours wooded): its landmark and spires grow taller, to
+  // show over the canopy around it.
+  let woods = 0;
+  if (ctx.world?.feat && ctx.world.index)
+    for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) {
+      const j = ctx.world.index(ctx.x + dx, ctx.y + dy);
+      const ft = j >= 0 ? ctx.world.feat[j] : 0;
+      if (ft === FEAT.ANCIENT) woods += 1;
+      else if (ft === FEAT.FOREST || ft === FEAT.JUNGLE) woods += 0.6;
+    }
+  const deep = woods >= 3.5;
+  const lmScale = (ctx.capital ? 1 : Math.min(0.92, 0.7 + size * 0.025)) * (deep ? 1.12 : 1) * (f === "tribal" ? 0.8 : 1);
   const lm = { x: r.range(-0.05, 0.05), z: ctx.capital ? r.range(-0.12, -0.09) : r.range(-0.14, -0.1) };
   if (size <= 3 && !ctx.capital && f !== "elven") plan.add("bld.hall", r.int(0, 2), lm.x, lm.z + 0.03, r.range(-0.15, 0.15), 1);
   else {
@@ -4097,7 +4322,7 @@ function cityLayout(ctx) {
     if (f === "elven") plan.boxes.push({ x: lm.x, z: lm.z, hw: 0.14 * p.scale, hd: 0.12 * p.scale, c: 1, s: 0 });
   }
   const towerV = sub === "arcane" ? [2, 0] : f === "elven" ? [2, 0, 1] : [0, 1];
-  const cityTower = (k) => ({ asset: "bld.tower", variant: towerV[k % towerV.length], scale: f === "elven" ? 0.9 : 0.82 });
+  const cityTower = (k) => ({ asset: "bld.tower", variant: towerV[k % towerV.length], scale: (f === "elven" ? 0.9 : 0.82) * (deep ? 1.45 : 1) });
 
   // The square: a well, stalls, banners flanking the way to the landmark; a fire for a camp,
   // braziers for an infernal court.
@@ -4113,7 +4338,7 @@ function cityLayout(ctx) {
     }
   if (L.fire) {
     plan.add("bld.brazier", 0, sq.x, sq.z, 0, 1.2, { ghost: true });
-    out.emit.push({ dx: sq.x, dz: sq.z, dy: 0.07, color: "#ff9a40", size: 0.008, rise: 0.3, count: 6, spread: 0.02 });
+    out.emit.push({ dx: sq.x, dz: sq.z, dy: 0.07, color: "#ff9a40", size: 0.0055, rise: 0.32, count: 4, spread: 0.018 });
     for (const s of [-1, 1]) plan.try("bld.totem", 0, sq.x + s * 0.085, sq.z - 0.02, 0, 0.8, { tol: 0 });
   }
   if (L.braziers)
@@ -4121,24 +4346,42 @@ function cityLayout(ctx) {
       for (const z of [0.2, 0.42]) {
         if (!walls && z > 0.4) continue;
         plan.add("bld.brazier", 0, s * 0.075, z, 0, 1.1, { ghost: true });
-        out.emit.push({ dx: s * 0.075, dz: z, dy: 0.08, color: "#ff5a1a", size: 0.007, rise: 0.3, count: 4, spread: 0.015 });
+        out.emit.push({ dx: s * 0.075, dz: z, dy: 0.08, color: "#ff6a20", size: 0.0045, rise: 0.34, count: 2, spread: 0.012 });
       }
 
-  // Streets: a ring around the heart of the town (wobbling, a little off-centre, open toward the
-  // gate) and lanes out from it; buildings front onto them.
-  const hsc = Math.max(0.8, Math.min(0.97, 1.02 - size * 0.018));
-  const Rs = Math.max(0.17, Math.min(0.25, Rmax - 0.17));
-  const ring = ringStreet(r, lm.x * 0.3, 0.0, Rs, 0.5, TAU - 0.5);
-  plan.street(ring, 0.013);
-  plan.street([[0, 0.1], [0, Rmax + 0.06]], 0.024);
-  const dirs = [QT, -QT, Math.PI * 0.8 * r.sign()].slice(0, size < 6 ? 2 : 3);
-  for (const a of dirs) {
-    const a1 = a + r.range(-0.25, 0.25);
-    plan.street(street(r, Math.sin(a1) * (Rs - 0.04), Math.cos(a1) * (Rs - 0.04), a1, r.range(-0.08, 0.08), Rmax + 0.06), 0.014);
+  // Streets: the main street from the gate to the square and a lane or two out from the square
+  // (bent a little, so they wander like old streets); few and narrow, as in a walled town, so the
+  // roofs close into one mass. Houses shrink a little as the town crowds.
+  const hsc = Math.max(0.76, Math.min(0.97, 1.0 - size * 0.02));
+  plan.street([[0, 0.1], [0, Rmax + 0.06]], 0.02);
+  const camp = f === "tribal";
+  const fan = camp || size < 4 ? [] : size < 10 ? [QT * r.sign()] : [QT, -QT];
+  if (size >= 7 && !camp) fan.push(2.5 * r.sign());
+  for (const a of fan) {
+    const a1 = a + r.range(-0.2, 0.2);
+    plan.street(street(r, sq.x + Math.sin(a1) * 0.07, sq.z - 0.02 + Math.cos(a1) * 0.07, a1, r.range(-0.1, 0.1), Rmax + 0.06, 0.04), 0.011);
+  }
+  // A harbour: a pier out from the shore on the water side (the flanks and the front first, where
+  // the camera sees it), its landward approach kept clear. Its deck is lifted to sea level.
+  if (Array.isArray(ctx.coast) && ctx.coast.length && plan.height) {
+    const edges = ctx.coast.filter(([dx, dz]) => Math.abs(dx) + Math.abs(dz) === 1);
+    const rank = ([dx, dz]) => (dz === 0 ? 0 : dz > 0 ? 1 : 2) + (Math.abs(dx) + Math.abs(dz) === 1 ? 0 : 0.5);
+    const order = (edges.length ? edges : ctx.coast).slice().sort((a, b) => rank(a) - rank(b));
+    for (const [dx, dz] of order) {
+      const l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
+      let shore = null;
+      for (let d = 0.14; d <= 0.66 && shore === null; d += 0.02) if (plan.height(ux * d, uz * d) < 0.004) shore = d;
+      if (shore === null) continue;
+      const x = ux * (shore - 0.035), z = uz * (shore - 0.035);
+      const p = plan.add("bld.pier", f === "coastal" || size >= 5 ? 1 : 0, x, z, yawTo(ux, uz), 1);
+      p.lift = -plan.height(x, z);
+      plan.lane([[x - ux * 0.14, z - uz * 0.14], [x, z]], 0.02);
+      break;
+    }
   }
   // Halls face the square from its sides; towers stand toward the back.
   const halls = [];
-  for (let k = 0; k < N.halls; k++) halls.push({ asset: "bld.hall", variant: (k + r.int(0, 2)) % 3, scale: 0.86 });
+  for (let k = 0; k < (f === "tribal" ? Math.min(1, N.halls) : N.halls); k++) halls.push({ asset: "bld.hall", variant: (k + r.int(0, 2)) % 3, scale: 0.86 });
   const hallSide = r.sign();
   halls.forEach((h, k) => {
     const s = k % 2 ? -hallSide : hallSide;
@@ -4150,28 +4393,32 @@ function cityLayout(ctx) {
       }
     }
   });
-  for (let k = 0; k < N.towers; k++) plan.scatter(cityTower(k), { rmin: Rs - 0.02, rmax: Rmax - 0.02, back: -0.04, face: (x, z) => yawTo(-x, -z) });
+  for (let k = 0; k < N.towers + (deep && f === "elven" ? 1 : 0); k++) plan.scatter(cityTower(k), { rmin: 0.2, rmax: Rmax - 0.02, back: -0.04, face: (x, z) => yawTo(-x, -z) });
   // The houses, packed from the square outward: the bigger first, the town's front rows (toward
   // the camera) a little lower so that the square and the landmark stay in view.
   const items = halls.filter((h) => !h.done);
   const hv = shuffle(r, [0, 1, 2, 3, 4, 5]);
-  for (let k = 0; k < N.houses; k++) items.push({ asset: "bld.house", variant: hv[k % 6], scale: r.range(0.93, 1.05) * hsc });
-  plan.pack(items, { heart: [sq.x, sq.z - 0.06], gap: L.gap, jitter: L.jitter, cands: 160, rmin: 0.06 });
+  // (The infernal spire-houses are slender: a little bigger, so the town keeps its mass.)
+  const fam = f === "infernal" && sub !== "gothic" ? 1.15 : 1;
+  for (let k = 0; k < N.houses; k++) items.push({ asset: "bld.house", variant: hv[k % 6], scale: r.range(0.93, 1.05) * hsc * fam });
+  plan.pack(items, camp ? { heart: [sq.x, sq.z], gap: L.gap, jitter: 0.25, cands: 160, rmin: 0.1, rows: false, rim: walls, faceHeart: true } : { heart: [sq.x, sq.z - 0.06], gap: L.gap, jitter: L.jitter, cands: 200, rmin: 0.06, rim: walls });
   // Trees among an elven town's houses (the vegetation's, when it is loaded).
   if (L.trees) {
     const dark = sub === "dark";
-    const kinds = (dark ? ["tree.pine", "tree.dead"] : ["tree.ancient", "tree.oak", "tree.birch"]).filter((k) => hasRecipe(k));
-    for (let k = 0; kinds.length && k < 4 + Math.floor(size / 3); k++) {
+    // (Broadleaves and birches only, a few: the great tree is the town's; an ancient tree's
+    // tiers would cost as much as half the town.)
+    const kinds = (dark ? ["tree.pine", "tree.dead"] : ["tree.oak", "tree.birch"]).filter((k) => hasRecipe(k));
+    for (let k = 0; kinds.length && k < Math.min(4, 1 + Math.floor(size / 4)); k++) {
       const kind = kinds[k % kinds.length];
-      const sc = kind === "tree.ancient" ? r.range(0.32, 0.4) : r.range(0.75, 0.95);
+      const sc = r.range(0.75, 0.95);
       plan.scatter({ asset: kind, variant: r.int(0, 7), scale: sc, pad: -0.04, param: "" }, { rmin: 0.12, rmax: Rmax, tries: 30 });
     }
   }
-  if (L.motes) out.emit.push({ dx: lm.x, dz: lm.z, dy: 0.22, color: sub === "dark" ? "#a8b0ff" : "#ffe2a0", size: 0.007, rise: 0.06, count: 12, spread: 0.24 });
+  if (L.motes) out.emit.push({ dx: lm.x, dz: lm.z, dy: 0.22, color: sub === "dark" ? "#a8b0ff" : "#ffe2a0", size: 0.0055, rise: 0.06, count: 7, spread: 0.26 });
   if (L.sparks)
     for (const p of out)
-      if (p.asset === "bld.keep") for (const s of [-1, 1]) out.emit.push({ dx: p.x + s * 0.06 * p.scale, dz: p.z - 0.07 * p.scale, dy: 0.31 * p.scale, color: "#ffb050", size: 0.006, rise: 0.35, count: 4, spread: 0.01 });
-  if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.46, color: "#b89aff", size: 0.009, rise: 0.12, count: 8, spread: 0.05 });
+      if (p.asset === "bld.keep") for (const s of [-1, 1]) out.emit.push({ dx: p.x + s * 0.06 * p.scale, dz: p.z - 0.07 * p.scale, dy: 0.31 * p.scale, color: "#ffb050", size: 0.0045, rise: 0.4, count: 3, spread: 0.01 });
+  if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.46, color: "#b89aff", size: 0.0065, rise: 0.12, count: 5, spread: 0.05 });
   if (walls) wallRing(out, r, P, Rw, plan.height);
   return out;
 }
@@ -4226,11 +4473,14 @@ function settlementOf(type, ctx) {
   const scatter = (items, rmin, rmax) => {
     for (const it of items) plan.scatter(it, { rmin, rmax, face, tries: 80 });
   };
-  const ringRow = (items, R) => {
-    const ring = ringStreet(r, 0, -0.02, R, 0.5, TAU - 0.5);
-    plan.lane(ring, 0.012);
-    plan.row(ring, 1, items, { gap: f === "elven" || f === "tribal" ? 0.03 : 0.012, jitter: LAY[f]?.jitter ?? 0.1 });
-    plan.row(ring, -1, items, { gap: 0.02, jitter: LAY[f]?.jitter ?? 0.1 });
+  // A lane across the plot (east to west, wandering; a crossing lane for a town), which houses
+  // front onto; the family's spacing and how freely its houses turn.
+  const gapF = f === "elven" || f === "tribal" ? 0.026 : f === "coastal" ? 0.016 : 0.008;
+  const jitF = LAY[f]?.jitter ?? 0.1;
+  const track = (cross = false) => {
+    const z0 = ctx.unit ? r.range(-0.2, -0.14) : r.range(-0.06, 0.06);
+    plan.street(street(r, -0.55, z0, QT + r.range(-0.15, 0.15), r.range(-0.06, 0.06), 0.55, 0.05), 0.012);
+    if (cross) plan.street(street(r, r.range(-0.08, 0.08), 0.55, Math.PI + r.range(-0.15, 0.15), r.range(-0.05, 0.05), 0.55, 0.05), 0.011);
   };
   switch (t) {
     case "COTTAGE": {
@@ -4243,21 +4493,27 @@ function settlementOf(type, ctx) {
       plan.add("bld.fence", 0, x + s * 0.13, z + 0.05, QT + r.range(-0.15, 0.15), 0.6, { ghost: true });
       break;
     }
-    case "HAMLET":
-      scatter(houses(r.int(2, 3)), 0.1, 0.32);
+    case "HAMLET": {
+      // Two or three houses gathered on a track, a garden fence.
+      track();
+      plan.pack(houses(r.int(2, 3)), { heart: [r.range(-0.08, 0.08), -0.06], gap: Math.max(0.016, gapF), jitter: jitF, cands: 90, rmin: 0, rmax: 0.4 });
       plan.add("bld.fence", 0, r.range(-0.15, 0.15), 0.3, r.range(-0.3, 0.3), 0.8, { ghost: true });
       break;
+    }
     case "VILLAGE":
     case "ENCLAVE":
-      if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), r.range(-0.02, 0.03), r.range(0, TAU), 1);
-      ringRow(houses(r.int(4, 6), 0.88), 0.2);
+      // Houses packed along a lane around a well on its green.
+      track();
+      if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), r.range(0.02, 0.06), r.range(0, TAU), 1);
+      plan.pack(houses(r.int(5, 6), 0.88), { heart: [0, -0.04], gap: gapF, jitter: jitF, cands: 110, rmin: 0, rmax: 0.43 });
       if (ctx.unit) plan.try("bld.well", 0, r.range(-0.2, 0.2), 0.3, 0, 1);
       break;
     case "TOWN": {
-      if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), 0.02, r.range(0, TAU), 1);
-      const items = [{ asset: "bld.hall", variant: r.int(0, 2), scale: 0.8 }, ...houses(r.int(8, 10), 0.8)];
-      ringRow(items, 0.22);
-      scatter(items.splice(0), 0.12, 0.42);
+      // A hall (chapel, moot hall) at the back, houses packed close around it along the lanes.
+      track(true);
+      if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), 0.06, r.range(0, TAU), 1);
+      plan.try("bld.hall", r.int(0, 2), r.range(-0.06, 0.06), -0.2, r.range(-0.2, 0.2), 0.8) ?? plan.scatter({ asset: "bld.hall", variant: r.int(0, 2), scale: 0.78 }, { rmin: 0.1, rmax: 0.4, face, tries: 60 });
+      plan.pack(houses(r.int(9, 11), 0.8), { heart: [0, -0.08], gap: gapF, jitter: jitF, cands: 120, rmin: 0, rmax: 0.44 });
       break;
     }
     case "TOWER":
