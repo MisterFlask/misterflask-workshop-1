@@ -19,6 +19,10 @@ import { Program, texture, framebuffer, depthBuffer, depthTexture, fullscreen, F
 import * as SH from "./shaders.js";
 
 const SHADOW_SIZE = 2048;
+// The terrain casts into a map of its own, coarser (its shadows are broad and soft) and applied at
+// part strength (cfg.terrainShadow): a hill's far side is shaded by the light model, its cast
+// shadow on the plain behind only darkens it a little, as a painter would keep it.
+const TERRAIN_SHADOW_SIZE = 1024;
 
 export class Pipeline {
   constructor(gl) {
@@ -50,6 +54,8 @@ export class Pipeline {
     };
     this.shadowMap = depthTexture(gl, SHADOW_SIZE, SHADOW_SIZE);
     this.shadowFbo = framebuffer(gl, [], this.shadowMap);
+    this.shadowMapT = depthTexture(gl, TERRAIN_SHADOW_SIZE, TERRAIN_SHADOW_SIZE);
+    this.shadowFboT = framebuffer(gl, [], this.shadowMapT);
     this.w = 0;
     this.h = 0;
     this.stats = { frames: 0, ms: {}, cpu: 0 };
@@ -108,6 +114,8 @@ export class Pipeline {
     const gl = this.gl;
     gl.deleteTexture(this.shadowMap);
     gl.deleteFramebuffer(this.shadowFbo);
+    gl.deleteTexture(this.shadowMapT);
+    gl.deleteFramebuffer(this.shadowFboT);
     for (const p of Object.values(this.p)) p.dispose();
   }
 
@@ -164,14 +172,17 @@ export class Pipeline {
     // --- shadow map
     if (cfg.shadows) {
       this.timed("shadow", () => {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFbo);
-        gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
-        gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.enable(gl.POLYGON_OFFSET_FILL);
         gl.polygonOffset(1.5, 3);
         const SU = { ...U, uViewProj: fr.lightViewProj };
-        scene.drawTerrain(this.p.shadowTerrain, SU, true);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFbo);
+        gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
         scene.drawProps(this.p.shadowProp, SU, true);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFboT);
+        gl.viewport(0, 0, TERRAIN_SHADOW_SIZE, TERRAIN_SHADOW_SIZE);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+        scene.drawTerrain(this.p.shadowTerrain, SU, true);
         gl.disable(gl.POLYGON_OFFSET_FILL);
       });
     }
@@ -193,7 +204,7 @@ export class Pipeline {
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);
-      const SU = { ...U, uShadowMap: this.shadowMap, uShadowOn: cfg.shadows ? 1 : 0 };
+      const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
       scene.drawTerrain(this.p.terrain, SU, false);
       scene.drawWater(this.p.water, SU);
       scene.drawProps(this.p.prop, SU, false);

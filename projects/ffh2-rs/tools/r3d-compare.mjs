@@ -7,7 +7,7 @@
 // the close and far zooms (`3d-close.png`, `3d-far.png`).
 //
 //   node tools/r3d-compare.mjs --save SAVE --x X --y Y [--out DIR] [--w 1440 --h 900] [--fog]
-//        [--only 3d-painterly,3d-far]
+//        [--only 3d-painterly,3d-far] [--cfg '{"clouds":0}'] (merged into the painterly shots)
 //
 // The page's side and bottom panels stay (this is the game's screen); the bottom panel is folded.
 // The 3D frames are rendered synchronously before each capture (software WebGL is slow).
@@ -17,7 +17,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { ROOT, parseArgs, findBin, tempDir, startServer } from "./web-lib.mjs";
 
-const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", out: "v", w: "v", h: "v", fog: "flag", bin: "v", only: "v" });
+const args = parseArgs(process.argv.slice(2), { save: "v", x: "v", y: "v", out: "v", w: "v", h: "v", fog: "flag", bin: "v", only: "v", cfg: "v" });
 if (!args.save || args.x === undefined || args.y === undefined) {
   console.error("r3d-compare: --save SAVE --x X --y Y are required");
   process.exit(2);
@@ -59,7 +59,7 @@ for (const s of SHOTS) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  const cfg = s.cfg === "plain" ? "plain" : s.cfg ? { animate: false, ...s.cfg } : null;
+  const cfg = s.cfg === "plain" ? "plain" : s.cfg ? { animate: false, ...s.cfg, ...JSON.parse(args.cfg ?? "{}") } : null;
   await page.goto(`${server.url}/?renderer=${s.renderer}${cfg ? `&r3d=${enc(cfg)}` : ""}`);
   await page.waitForFunction(() => window.ffh?.ready && window.ffh.S.map, null, { timeout: 300000 });
   await page.evaluate(() => {

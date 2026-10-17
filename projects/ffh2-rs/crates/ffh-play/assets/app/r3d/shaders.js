@@ -35,6 +35,8 @@ uniform float uStylize;
 uniform float uClouds;
 uniform float uDabs;
 uniform sampler2D uShadowMap;
+uniform sampler2D uShadowMapT;
+uniform float uTerrainShadow;
 uniform mat4 uShadowMat;
 uniform float uShadowOn;
 uniform vec2 uShadowTexel;
@@ -177,7 +179,13 @@ float shadowAt(vec3 wp, vec3 n) {
     float d = texture(uShadowMap, c.xy + r * POISSON[i] * uShadowTexel * 1.6).r;
     s += c.z - 0.0012 > d ? 0.0 : 1.0;
   }
-  return s / 12.0;
+  // The terrain's own map: wider, fewer taps (soft), at part strength.
+  float t = 0.0;
+  for (int i = 0; i < 6; i++) {
+    float d = texture(uShadowMapT, c.xy + r * POISSON[i * 2 + 1] * uShadowTexel * 5.0).r;
+    t += c.z - 0.002 > d ? 0.0 : 1.0;
+  }
+  return s / 12.0 * mix(1.0, t / 6.0, uTerrainShadow);
 }
 
 // The painterly light model: a wrapped, softly stepped sun term (broad light masses), coloured
@@ -191,9 +199,11 @@ vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   float sh = shadowAt(wp, n);
   // Cloud shadows drifting over the land: broad, soft masses of light and shade (fixed to the
   // world, slowly moving), the painter's way of composing a wide landscape.
+  // Two octaves only: a cloud's shadow spans several plots and has no small blots in it.
   vec2 cm = mapOf(wp) + vec2(uTime * 0.03, uTime * 0.012);
-  float cloud = smoothstep(0.42, 0.68, mfbm(cm + 31.0, 0.16));
-  sh *= 1.0 - cloud * uClouds;
+  float cn = mnoise(cm + 31.0, 0.11) * 0.7 + mnoise(cm - 13.0, 0.23) * 0.3;
+  float cloud = smoothstep(0.5, 0.72, cn);
+  sh *= 1.0 - cloud * uClouds * 0.75;
   sun = d * sh;
   vec3 amb = mix(uGroundColor, uSkyColor, n.y * 0.5 + 0.5);
   vec3 L = uSunColor * sun + amb * ao;
@@ -290,8 +300,8 @@ vec3 masses(vec2 m, vec3 dark, vec3 base, vec3 light, float scale) {
 }
 
 vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
-  if (g == G_GRASS) return srgb(masses(m, vec3(0.19, 0.27, 0.17), vec3(0.30, 0.39, 0.21), vec3(0.47, 0.52, 0.28), 1.0));
-  if (g == G_PLAINS) return srgb(masses(m, vec3(0.36, 0.35, 0.21), vec3(0.50, 0.46, 0.27), vec3(0.66, 0.58, 0.36), 1.0));
+  if (g == G_GRASS) return srgb(masses(m, vec3(0.16, 0.24, 0.17), vec3(0.27, 0.36, 0.21), vec3(0.43, 0.49, 0.28), 1.0));
+  if (g == G_PLAINS) return srgb(masses(m, vec3(0.34, 0.31, 0.21), vec3(0.48, 0.42, 0.28), vec3(0.62, 0.54, 0.37), 1.0));
   if (g == G_DESERT) {
     vec3 c = masses(m, vec3(0.58, 0.46, 0.32), vec3(0.71, 0.59, 0.42), vec3(0.82, 0.72, 0.55), 0.8);
     float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
@@ -406,7 +416,13 @@ void main() {
 
   // The ground of the four plots around the point, blended by bilinear weights sharpened and
   // broken up by noise (irregular, painted borders between terrains; the plot centre is pure).
-  vec2 q = m + (vec2(mnoise(m, 0.9), mnoise(m + 17.3, 0.9)) - 0.5) * 0.6 + (vec2(mnoise(m + 5.1, 3.2), mnoise(m - 8.7, 3.2)) - 0.5) * 0.2;
+  // The lookup is warped most between plots and not at all at their centres, so a plot's centre
+  // always shows its own ground while the borders wander well off the plot edges (organic regions
+  // instead of a board of squares).
+  vec2 fc = abs(fract(m) - 0.5);
+  float freeW = smoothstep(0.1, 0.42, max(fc.x, fc.y));
+  vec2 warp = (vec2(mnoise(m, 0.45), mnoise(m + 17.3, 0.45)) - 0.5) * 1.3 + (vec2(mnoise(m + 3.3, 1.1), mnoise(m - 4.4, 1.1)) - 0.5) * 0.5;
+  vec2 q = m + warp * freeW + (vec2(mnoise(m + 5.1, 3.2), mnoise(m - 8.7, 3.2)) - 0.5) * 0.2;
   vec2 gq = q - 0.5;
   vec2 c0 = floor(gq);
   vec2 f = fract(gq);

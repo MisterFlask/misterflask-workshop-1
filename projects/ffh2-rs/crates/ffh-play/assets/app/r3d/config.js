@@ -11,8 +11,8 @@ const KEY = "ffh.r3d.config";
 export const LIGHTING = {
   afternoon: {
     sunDir: [-0.78, 0.46, 0.42],
-    sun: [hexLinear("#ffd6a0"), 3.1],
-    sky: [hexLinear("#7489b8"), 0.5],
+    sun: [hexLinear("#ffd9ac"), 2.9],
+    sky: [hexLinear("#7489b8"), 0.56],
     ground: [hexLinear("#6a5640"), 0.24],
     haze: hexLinear("#b4aab0"),
     shadowTint: [0.62, 0.68, 1.05],
@@ -61,6 +61,7 @@ export const PRESETS = {
     rim: 0.35,
     stylize: 1,
     clouds: 0.45,
+    terrainShadow: 0.45,
     dabs: 1.6,
     haze: 0.32,
     mist: 0.35,
@@ -81,6 +82,7 @@ export const PRESETS = {
     rim: 0,
     stylize: 0,
     clouds: 0,
+    terrainShadow: 1,
     dabs: 0,
     haze: 0,
     mist: 0,
@@ -106,6 +108,7 @@ export const DEFAULTS = {
 /** The switches the debug panel shows: [key, label, kind, min, max, step]. */
 export const PANEL = [
   ["shadows", "Shadows", "bool"],
+  ["terrainShadow", "  shadows cast by the land", "range", 0, 1, 0.05],
   ["ssao", "Ambient occlusion", "range", 0, 1, 0.05],
   ["glow", "Glow (emissive)", "range", 0, 1.5, 0.05],
   ["kuwahara", "Painterly filter (Kuwahara)", "range", 0, 1, 0.05],

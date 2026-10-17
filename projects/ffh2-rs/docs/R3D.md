@@ -183,6 +183,28 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 
 (The recipe modules, what they model and their budgets: §6.1 below, filled in from the modules.)
 
+### 6.2 Extending it
+
+* **A new model.** Add a `recipe(...)` to the module of its family (or a new module imported by
+  `assets/index.js`; each module is imported on its own, so a broken one costs only its own
+  models). Look at it in the lab grid:
+  `node tools/r3d-lab.mjs --out a.png --query "grid=my.thing&variants=6&ts=168"` (`&params=a,b` gives
+  each row a param). `node --test assets/test/r3d.test.mjs` checks every recipe builds the same
+  twice, has whole, finite triangles and simplifies for distance.
+* **A game type to a model.** Catalog entries (`assets/catalog.js` lists the contract of each) map
+  the game's types to recipes; a module fills them with `extendCatalog({ unit(name, ctx) {...} })`
+  (later modules override earlier ones per entry). Whatever the catalog leaves unanswered, or names
+  without a recipe, falls back to `basic.js`, so a new unit or improvement in the game's tables
+  never breaks the map.
+* **Particles.** `emitters("plot" | "city", ctx)` returns emitters
+  (`{dx, dy, dz, color, size, rise, count, spread}`); structures carry theirs as an `.emit` list;
+  `scene.js` turns them into GPU point sprites.
+* **A light or a preset.** Add an entry to `LIGHTING` or `PRESETS` in `config.js`; the panel lists
+  them. A new pipeline switch: a key in `DEFAULTS`/`PRESETS`, a row in `PANEL`, and its use in
+  `pipeline.js` or as a uniform in `map3d.js` `frameState()`.
+* **A pass.** Passes are methods of `Pipeline` drawing full-screen programs between the targets it
+  owns (`this.t`); `render()` lists them in order and times each one (shown in the panel).
+
 ## 7. Placement (`dress.js`, `assets/catalog.js`)
 
 The catalog maps the game's types to recipes: `forest` (a wooded plot's species mix by feature,
@@ -230,6 +252,12 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
   every in-view plot under its own screen point, click-select, hover, the zoom steps, pan, the
   political layer and switching back to the art.
 * **Web test** (`tests/web.rs`): every module is embedded and reached (the on-demand import counts).
+* **Node tests** (`assets/test/r3d.test.mjs`, run by `tools/web-check.sh`): the ground is seamless
+  across a wrapping map's seam and a pure function of the map; unrevealed plots shape nothing
+  (pretending the server had sent a hidden mountain and river changes no height); river edges chain
+  into continuous, carved lines; every recipe is deterministic, finite and simplifies for distance;
+  every unit type of the game gets a figure that builds; a scene's dressing is deterministic, uses
+  only registered recipes and places nothing on an unrevealed plot.
 * `tools/r3d-perf.mjs` (§11) and `tools/r3d-compare.mjs` (the same scene in every renderer).
 * `ffh-play stage corrupt DIR`: the vertical slice's real game (§14).
 

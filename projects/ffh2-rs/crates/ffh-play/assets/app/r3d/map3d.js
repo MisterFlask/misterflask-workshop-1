@@ -430,6 +430,7 @@ export class Map3D {
       uFogWar: cfg.fogWar,
       uStylize: cfg.stylize,
       uClouds: cfg.clouds,
+      uTerrainShadow: cfg.terrainShadow ?? 1,
       uDabs: cfg.dabs ?? 1,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
