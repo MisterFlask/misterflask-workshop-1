@@ -9,7 +9,7 @@
 
 import { S, tname, me, isBarbarian } from "../state.js";
 import * as T from "../tiles.js";
-import { headUnit } from "../stacks.js";
+import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
 import { KIND, FEAT, GROUND, SEA } from "./world.js";
@@ -376,10 +376,21 @@ export function dressUnits(world, map) {
   // The stack's face is its best defender, as the 2D art shows (F4): topUnit returned units[0] for
   // a foreign stack, so a worker hid the armed unit behind it. headUnit picks the strongest.
   const strength = (u) => S.data?.tables?.UnitType?.[u.type]?.combat ?? 0;
+  // The same ctx the art view builds, so stackState also gives the activity mark and hero for the
+  // player's own stacks (F19). combat here is a proxy string (fights when its strength > 0); the
+  // hero pip needs the art catalog and is left for later.
+  const sctx = {
+    me: mine,
+    selected: sel,
+    unitInfo: (t) => { const s = strength({ type: t }); return { hero: false, combat: s > 0 ? "COMBAT" : "NONE", strength: s }; },
+    activity: (a) => tname("ActivityType", a),
+    automated: (g) => { const grp = S.groups?.get?.(g); return !!grp && grp.automated !== null && grp.automated !== undefined; },
+  };
   for (const units of S.unitsAt.values()) {
     const u0 = units[0];
     const i = u0.y * w + u0.x;
-    const top = headUnit(units, mine, sel, strength);
+    const st = stackState(units, sctx);
+    const top = st?.head ?? units[0];
     const onCity = map.city[i] >= 0;
     // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera.
     const spot = onCity ? CITY_UNIT_SPOT : world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
@@ -412,7 +423,7 @@ export function dressUnits(world, map) {
       out.push(it);
       if (k === 0) anchor = { x: mx, y: yy, z: -my, height: (look.height ?? 0.5) * s };
     });
-    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot });
+    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot, mark: st?.state?.mark ?? null, hero: st?.state?.hero ?? false });
   }
   return { list: out, stacks };
 }

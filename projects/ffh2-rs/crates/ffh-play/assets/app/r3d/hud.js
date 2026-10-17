@@ -246,13 +246,28 @@ export function drawHud(r3d, cam) {
       g.globalAlpha = 1;
     }
     if (top.owner === mine) {
+      // A resting stack (fortified, sentried, sleeping, healing) is greyed, not green, so it is not
+      // mistaken for one awaiting orders; a small letter names the state (F19).
+      const resting = s.mark === "fortify" || s.mark === "sleep" || s.mark === "sentry" || s.mark === "heal";
+      const dotX = p.x + ts * 0.14, dotY = p.y - 6, dotR = Math.max(2.5, ts * 0.035);
       g.beginPath();
-      g.arc(p.x + ts * 0.14, p.y - 6, Math.max(2.5, ts * 0.035), 0, Math.PI * 2);
-      g.fillStyle = top.moves > 0 ? "#4fe06a" : "#d8402c";
+      g.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+      g.fillStyle = resting ? "#9aa2ac" : top.moves > 0 ? "#4fe06a" : "#d8402c";
       g.fill();
       g.strokeStyle = "rgba(10,8,6,0.8)";
       g.lineWidth = 1;
       g.stroke();
+      const glyph = { fortify: "F", sleep: "Z", sentry: "S", heal: "H", auto: "A", promote: "↑" }[s.mark];
+      if (glyph && ts >= 54) {
+        g.font = `700 ${Math.max(9, Math.round(ts * 0.11))}px ${FONT}`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.lineWidth = 2;
+        g.strokeStyle = "rgba(12,8,6,0.85)";
+        g.strokeText(glyph, dotX + dotR + ts * 0.06, dotY);
+        g.fillStyle = s.mark === "promote" ? "#ffd75a" : "#f4ecd8";
+        g.fillText(glyph, dotX + dotR + ts * 0.06, dotY);
+      }
     }
   }
 
