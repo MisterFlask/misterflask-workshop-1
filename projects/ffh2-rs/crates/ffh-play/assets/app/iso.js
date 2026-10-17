@@ -68,6 +68,25 @@ function resourceSprite(type) {
 
 const RESOURCE_FILES = ["mana", "crop", "animal", "fish", "ore", "goods"];
 
+/** An ImprovementType name -> structure sprite (under app/iso/improvements), by category. FFH has
+ *  ~81 improvements (18 of them mana nodes); one sprite per class covers them all, the exact kind
+ *  showing on hover/inspect. The fallback 'lair' fits the dungeons/dens/ruins that spawn on the
+ *  map. */
+function improvementSprite(type) {
+  const t = type ?? "";
+  if (/MANA_/.test(t)) return "mananode";
+  if (/FORT|CASTLE|CITADEL|TOWER|ENCLAVE|GUARDIAN|PIRATE/.test(t)) return "fort";
+  if (/COTTAGE|HAMLET|VILLAGE|TOWN|CAMP|GOODY_HUT/.test(t)) return "cottage";
+  if (/FARM|PASTURE|PLANTATION|FISHING_BOATS|MUSHROOM|LAND_WORKED|WINERY|VINEYARD/.test(t)) return "farm";
+  if (/MINE|QUARRY|LUMBERMILL|WORKSHOP|WINDMILL|WATERMILL|SMOKEHOUSE/.test(t)) return "mine";
+  return "lair"; // dungeon, barrow, dens, sepulcher, graveyard, ruins, bones, altars, ...
+}
+
+const IMPROVEMENT_FILES = ["lair", "fort", "mananode", "cottage", "farm", "mine"];
+
+/** Per-class on-screen height as a fraction of the tile width (a farm lies flat, an obelisk rises). */
+const IMPROVEMENT_SCALE = { lair: 0.78, fort: 0.72, mananode: 0.92, cottage: 0.72, farm: 0.42, mine: 0.66 };
+
 /** A UnitType name -> unit sprite file (under app/iso/units), by keyword; else a drawn token.
  *  Civilian keywords are matched first so e.g. a scout never falls through to a combat archetype. */
 function unitSpriteKey(type) {
@@ -104,6 +123,7 @@ export class IsoMap {
     for (const name of FEATURE_FILES) load(`f_${name}`, `./iso/features/${name}.png`);
     for (const name of RELIEF_FILES) load(`r_${name}`, `./iso/relief/${name}.png`);
     for (const name of RESOURCE_FILES) load(`b_${name}`, `./iso/resources/${name}.png`);
+    for (const name of IMPROVEMENT_FILES) load(`i_${name}`, `./iso/improvements/${name}.png`);
     load("c_town", "./iso/cities/town.png");
     for (const name of ["knight", "lich", "archer", "spider", "settler", "scout", "worker"]) load(`u_${name}`, `./iso/units/${name}.png`);
   }
@@ -206,6 +226,9 @@ export class IsoMap {
     // Features (forests, ...) overlay their tile, in the same back-to-front order so a nearer
     // clump occludes a farther one.
     this.drawFeatures(g, cells);
+    // Built structures (lairs, forts, mana nodes, farms, ...) sit on the tile, under the resource
+    // icon so a worked resource shows in front of its improvement.
+    this.drawImprovements(g, cells);
     // Resource icons sit at the front of their tile, over any feature, under cities and units.
     this.drawResources(g, cells);
     // Cities then units, back to front (units already sorted by their plot's sy via a fresh pass).
@@ -388,6 +411,31 @@ export class IsoMap {
       const bx = Math.round(c.sx - fw / 2);
       const by = Math.round(c.sy + TH * lift - fh);
       if (vis === 1) g.globalAlpha = 0.5; // remembered-but-fogged: muted
+      g.drawImage(img, bx, by, Math.round(fw), Math.round(fh));
+      g.globalAlpha = 1;
+    }
+  }
+
+  /** Improvement structures, anchored at the tile centre and rising upward, sized per class so a
+   *  farm lies flat and a mana obelisk towers. Dimmed on remembered-but-fogged tiles. */
+  drawImprovements(g, cells) {
+    const v = this.view;
+    const map = v.map;
+    const TW = v.cam.ts;
+    const TH = TW / 2;
+    for (const c of cells) {
+      const vis = map.vis[c.k];
+      if (vis === 0) continue;
+      const imp = map.improvement[c.k];
+      if (imp == null || imp < 0) continue;
+      const key = improvementSprite(tname("ImprovementType", imp));
+      const img = this.imgs[`i_${key}`];
+      if (!img) continue;
+      const fh = TW * (IMPROVEMENT_SCALE[key] ?? 0.72);
+      const fw = fh * (img.width / img.height);
+      const bx = Math.round(c.sx - fw / 2);
+      const by = Math.round(c.sy + TH * 0.16 - fh);
+      if (vis === 1) g.globalAlpha = 0.5;
       g.drawImage(img, bx, by, Math.round(fw), Math.round(fh));
       g.globalAlpha = 1;
     }
