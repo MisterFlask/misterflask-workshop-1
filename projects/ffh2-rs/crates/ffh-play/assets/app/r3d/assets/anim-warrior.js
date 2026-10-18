@@ -235,7 +235,7 @@ const chopArm = armPath([
 // rebound as it lands, the arms flop to the ground a beat after the body and the left leg drops
 // flat; then it lies still.
 const LIE = [-1.57, 1.57, 0];
-const topple = fallKeys(0.3, 0.733, LIE);
+const topple = fallKeys(0.3, 0.8, LIE);
 topple[topple.length - 1].i = { rootRot: "out" };
 
 clips("unit.warrior", {
@@ -299,7 +299,7 @@ clips("unit.warrior", {
     fall: [-1, 0, 0],
     // The back of the rear (right) heel: the fall rotates over it; lying, the back rests on the ground.
     pivot: [-0.048, 0, -0.08],
-    events: { hit: 0.0, ground: 0.733, rest: 1.0 },
+    events: { hit: 0.0, ground: 0.767, rest: 1.0 },
     contacts: { L: [[0, 0.3]], R: [[0, 0.3]] },
     keys: merged([
       // The blow: the chest thrown back and the head snapped back first...
@@ -309,12 +309,16 @@ clips("unit.warrior", {
       // The knees give, sagging back onto the rear heel; the feet still planted.
       { t: 0.3, i: { pelvis: "in" }, pose: { pelvis: [0, -0.012, -0.018], lean: -0.17, twist: -0.14, headTilt: -0.18, fl: [0, 0, 0] } },
       { t: 0.36, pose: { rHand: [-0.045, 0.012, -0.022], lHand: [0.042, 0.012, -0.032] } },
-      // The topple, gathering speed until the ground stops it.
+      // The topple, gathering speed until the ground stops it. `settle` lays the body on the
+      // ground as it lands, whatever its race's girth (or tail).
       ...topple,
-      { t: 0.733, pose: { pelvis: [0, -0.05, 0], lean: -0.2, twist: -0.12, headTilt: -0.24, rHand: [-0.06, 0.03, 0], lHand: [0.06, 0.03, -0.06] } },
+      { t: 0.22, pose: { settle: 0 } },
+      { t: 0.3, pose: { settle: 1 } },
+      { t: 0.8, pose: { pelvis: [0, -0.05, 0], lean: -0.2, twist: -0.12, headTilt: -0.24, rHand: [-0.06, 0.03, 0], lHand: [0.06, 0.03, -0.06] } },
       // A small rebound; the arms land a beat later and the left leg drops flat.
-      { t: 0.81, i: { rootRot: "in" }, pose: { rootRot: [-1.545, 1.57, 0], twist: -0.1, headTilt: -0.3, rHand: [-0.085, 0.015, -0.02], rElbow: [0, 0, 1], rRot: turn(AXE, [-0.6, 0.8, 0.03]), lHand: [0.08, 0.04, -0.12], lElbow: [0, 0, 1], fl: [0, 0, -0.1] } },
-      { t: 0.93, pose: { rootRot: LIE } },
+      { t: 0.833, pose: { rHand: [-0.085, 0.015, -0.02], rElbow: [0, 0, 1], rRot: turn(AXE, [-0.95, 0.1, 0.12]), lHand: [0.08, 0.04, -0.12], lElbow: [0, 0, 1], fl: [0, 0, -0.1] } },
+      { t: 0.877, i: { rootRot: "in" }, pose: { rootRot: [-1.545, 1.57, 0], twist: -0.1, headTilt: -0.3 } },
+      { t: 0.997, pose: { rootRot: LIE } },
     ]),
   },
 });

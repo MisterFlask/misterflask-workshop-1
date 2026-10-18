@@ -6,6 +6,7 @@ import { MAT } from "../mesh.js";
 import { pal } from "./palette.js";
 import "./anim-warrior.js";
 import "./anim-archer.js";
+import "./anim-spearman.js";
 
 // --- fx.arrow: a loosed arrow in flight (map3d.js spawns it at an archer's release) -------------
 // Drawn larger than the nocked arrow (a true-scale shaft is half a pixel wide at the gameplay zoom)
