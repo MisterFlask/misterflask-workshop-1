@@ -214,7 +214,7 @@ test("worked land keeps to a river's banks: no field, fence or crop in the water
     for (const it of d.byPlot.get(i).list) {
       const lx = it.x - (x + 0.5), lz = y + 0.5 + it.z;
       if (/^(imp|anim)\./.test(it.asset)) dry(lx, lz, it.asset);
-      else if (/rock|reeds|plant\.grass/.test(it.asset)) assert.ok(!inField(i, t, b, rv, lx, lz), `${it.asset} on the fields of ${t} at (${x}, ${y})`);
+      else if (/rock|reeds|plant\.grass|feat\.overhang/.test(it.asset)) assert.ok(!inField(i, t, b, rv, lx, lz), `${it.asset} on the fields of ${t} at (${x}, ${y})`);
     }
     worked++;
   }
