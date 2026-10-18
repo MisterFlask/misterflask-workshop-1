@@ -155,6 +155,16 @@ split by a few meandering smouldering fissures (iso-lines of broad noise, emissi
 All patterns are anchored to the map, periodic over its width when it wraps (no seam), so nothing
 swims when the camera moves.
 
+**The meadow.** Grassland and prairie are painted as one ground: green grass broken by golden dry
+grass where a noise field (about 1, 0.5 and 0.3 plots) passes a threshold set by the prairie's share
+of the point (the smooth plot weights), so about a sixth of grassland lies golden and five sixths of
+prairie, a plot's centre still reads as its own terrain, and the plot grid no longer shows in the
+ground (no noise is broader than a plot, so a whole region never flips). Patch edges fray along the
+wind and blend through interleaved marks. Green blades are lit at the tip and dark at the root; a
+streak hatch (17 and 38 a plot) carries fine texture even where the marks are below a few pixels,
+with sparse drifts of white, yellow and violet flower flecks; golden grass is wind-combed straw over
+olive ochre. The meadow keeps 0.8 of its paint from the paint filter.
+
 **Water.** The sea is one plane at sea level; its shader reads the sea floor's height (a texture at
 4 samples a plot) through a warped, averaged lookup, so the shelf's colour bands follow soft
 contours: teal over the shelf to indigo over the deep. Rivers are ribbons wider than their carved
@@ -183,7 +193,8 @@ nodes, ancient forests) that light the terrain and the props.
 
 The light model (scene pass): a wrapped, softly stepped sun term (broad light masses) whose boundary
 the brush marks break (§5.1), coloured
-shadows (a cool sky ambient and a shadow tint), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
+shadows (a cool sky ambient and a shadow tint; a cast shadow's floor is lit by a cooler sky fill
+rather than a dimmed sun, so shade stays saturated), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
 light pools, rim light on silhouettes (stronger on units), soft metal highlights, light through
 leaves, an aerial haze with distance and valley mist, and the fog of war (§9). HUD text and the
 interface marks are never filtered: the strategic overlays draw after the post passes and the
@@ -228,6 +239,22 @@ ribbons along their beds (`vExtra` = across the channel, -1..1, and the distance
 water is drawn last, over a grab of the scene (`Pipeline.grab`), so `WATER_FS` can read what lies
 under and around it:
 
+* **Rivers** are broad: `world.js` `RIVER_HALF` (0.19) from the river line to the water's edge, which
+  wanders by up to `RIVER_WANDER` (0.03; at most 0.44 plot of water), and `RIVER_BANK` (0.3) to the
+  bank tops. The lines are Chaikin-smoothed from the plot corners (turns of radius ~0.35, so the wide
+  ribbon never folds), with a long low meander that fades at the ends; at a junction the main line
+  runs straight through and the tributary ends inside its water. The bed is flat under the water,
+  then a steep cut bank; the terrain mesh is too coarse to draw that shoreline, so `WATER_FS` draws
+  it (a world-anchored wandering edge, antialiased, rounded where a river is capped). Ribbons carry
+  the bend and the distance past the river's end (`aFlow`). River water is painted rather than seen
+  into (`riverDeep`): turquoise at the banks, blue mid-channel, deep blue in the deepest band, with
+  bands and short ripple strokes drifting with the current and lighter water on the inside of bends.
+  Foam (`riverFoam`): thin tapered streaks down the channel swinging into swirls, white water piled
+  against the outer bank of bends, a foam line along the banks, rings round rocks and wakes behind
+  them (from the grabbed depth); each layer moves at one speed, and remembered water stays still.
+  Banks: dark wet earth under grass (no sand), and `dress.js` `placeBank` lays clusters of boulders
+  at the water's edge, a few out in the stream, reeds and grass, clear of road crossings, towns and
+  held plot centres.
 * **Seen through**: the floor (and a hull's keel, a pier's legs) bent by the waves and absorbed along
   the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
   turquoise, then the deep's own blue. Only the waves' tilt bends the view (a flat surface is seen
@@ -306,9 +333,17 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 * **Palette** (`assets/palette.js`): every recipe takes its colours from one designed palette
   (warm daylight key; saturation spent on owner colours, magic and fire), plus the mana schools'
   colours.
-* **Scale contract**: one unit = one plot; a humanoid ~0.48 tall, broadleaf trees 0.30-0.42,
-  conifers 0.34-0.50, great ancient trees 0.8-1.1, houses ~0.15, keeps 0.3-0.4, towers 0.4-0.55,
-  resource markers 0.10-0.20, a city within ~0.48 of its plot centre. Foundations, roots and trunk
+* **Scale contract**: one unit = one plot; a humanoid ~0.48 tall, broadleaf trees modelled 0.30-0.36
+  and conifers 0.36-0.45 but placed at 1.2-1.3x (on the map a broadleaf stands ~0.38-0.46, a conifer
+  ~0.43-0.52, x0.75-1.25 in woods and x0.8-1.15 in the open), a grass tuft ~0.11, a bush ~0.1 tall
+  and 0.15 across, great ancient trees 0.8-1.1, houses ~0.15, keeps 0.3-0.4, towers 0.4-0.55,
+  resource markers 0.10-0.20. A city reaches `CATALOG.cityReach` from its plot centre, growing
+  with its size s (+1 for a capital): a wall ring at min(0.85, 0.34 + 0.04 s), an unwalled town at
+  min(0.78, 0.33 + 0.035 s), its buildings scaled 1.06-1.42 (size 2: ~0.4; size 6: ~0.54; a walled
+  size-9 capital ~0.79 with its wall; a size-12+ capital ~0.9), so a great town spills onto its
+  neighbours' plots; their trees, clutter, rocks and bank dressing keep out of its reach (`dress.js`
+  `ctx.inTown`), its houses keep off the garrison's spot (`CITY_UNIT_SPOT`, mirrored by the
+  `GARRISON` zones of architecture.js) and its plate stands in front of its walls. Foundations, roots and trunk
   flares reach below y = 0 so nothing floats on sloping ground.
 
 ### 6.1 The recipe modules
@@ -323,7 +358,8 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 | `fx.js` | particle emitters: hell embers, fire and volcano sparks and ash, soul wisps, ancient-forest motes, city sparks by family | `emitters` |
 
 Budgets (triangles, full detail): trees ≤ ~700 (great trees ~2100), units ≤ ~2000, houses ≤ ~250,
-keeps ≤ ~1800, a walled size-12 capital ~3–11k, rocks ≤ 200, improvements ~600, resource markers
+keeps ≤ ~1800, a walled size-12 capital ~3–15k (simplified ~6k), ground clutter (tufts, flowers) ≤ 40
+and bushes ≤ 150 and cast no shadow-map shadow (a recipe's `shadow: false`), rocks ≤ 200, improvements ~600, resource markers
 ≤ ~340, landmarks ≤ ~2500. A recipe also gets the generic simplified copy (`buildAssetLOD`) for
 distance and shadows whenever simplifying saves at least a third of its triangles.
 
@@ -357,8 +393,16 @@ plot owner's architectural family), `improvement`, `bonus`, `family` (civilizati
 `city` (a settlement's layout from its size, capital, walls, family), `unit` (unit type, combat
 class, domain and the owner's civilization → figure and race), `emitters` (particles). Recipe
 modules fill entries; anything unfilled falls back to `basic.js`. Placement is a pure function of
-the state and the plot index: trees on a jittered grid thinned toward open neighbours, with a glade
-where a unit, city or structure holds the plot; a structure moves to the back of its plot when a
+the state and the plot index: woods on a jittered grid (4x4 bigger trees in temperate woods, sizes
+x0.75-1.25, the shorter ones tinted darker as the wood's interior) thinned toward open neighbours,
+whose thinned edge slots take the catalog's `edge` bushes and saplings, with a glade where a unit,
+city or structure holds the plot; open ground scattered by `scatterFlora`: each flora entry in
+clumps (`clump`, `spread`) that survive by world-anchored density fields (a meadow field for clutter,
+a grove field for trees, `dense` setting how strongly), ~20-30 instances on a grass plot, straw
+drifts and bare ground between them on plains, clear of a unit's ring, an improvement's fields,
+the roads (`roadsOf` traces them as decals.js paints them), the river, the beach, the resource
+marker and a town's reach, trees also out of the line of sight to what stands on the plot, behind
+it, or a city; a structure moves to the back of its plot when a
 unit stands there; resources at the front-left; bridges where a road crosses a river edge; a unit
 stack shows its top unit with up to two of its company behind it (at a city, at its gate).
 
@@ -512,7 +556,7 @@ GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 `r3d/config.js`: `PRESETS.painterly` (default) and `PRESETS.plain` (every stylisation off: an
 ordinary real-time render of the same geometry, for comparison; it keeps the water's reflections,
 transparency and caustics, which are ordinary rendering, not stylisation), `LIGHTING` (one `daylight` look:
-always daylight by design, a warm high sun at about 42 degrees; a saved light that is no longer
+always daylight by design, a warm high sun at about 48 degrees, shadows ~0.9x an object's height; a saved light that is no longer
 offered -- a "dusk", "afternoon" or "day" -- falls back to it), and the switches of the panel
 (`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width, inkLost: lost-and-found
 line weight, inkColour: coloured ink), paint (pigment variation), dabs (brush dabs on the ground),
