@@ -38,7 +38,7 @@ const TAU = Math.PI * 2;
 const OAK = ["#0f1f19", "#1c3a26", "#33562c", "#6e8c3e"];
 const OAK_AUTUMN = ["#16261e", "#2c4127", "#4e5c2e", "#868340"];
 const BIRCH = ["#1a3222", "#2e4f30", "#527a3a", "#92ac58"];
-const PINE = ["#0b1e17", "#163522", "#284f33", "#5a7e48"];
+const PINE = ["#0a1b14", "#13301f", "#22472d", "#4f7340"];
 const JUNGLE = ["#08191a", "#112e22", "#1d4630", "#456a3c"];
 const WILLOW = ["#1b2a23", "#2e4330", "#4b6244", "#7e8e68"];
 const ANCIENT = ["#0b1d1f", "#15322f", "#244840", "#486a53", "#aab27e"];
@@ -1600,12 +1600,12 @@ function floraOf(ctx) {
     case GROUND.PLAINS:
       // Golden grass: dry tufts in drifts, a few bushes and flowers, lone conifers.
       return [
-        grass(r.int(18, 30), { param: "dry", scale: 1.65, clump: [2, 6], spread: 0.09 }),
+        grass(r.int(18, 30), { param: "dry", scale: 1.65, clump: [3, 7], spread: 0.1, dense: 0.9 }),
         grass(r.int(1, 4), { clump: [1, 3] }),
         flowers(r.int(0, 4), [2, 3, 0]),
         bushes(r.int(0, 2) + (woods ? 1 : 0) + (ctx.hills ? 1 : 0), { scale: 1.15 }),
         scrub(r.int(0, 2)),
-        grove(ctx.hills ? OPEN_TREES.hills : OPEN_TREES.plains, trees(0.32, 3), [1, 2]),
+        grove(ctx.hills ? OPEN_TREES.hills : OPEN_TREES.plains, trees(0.42, 3), [1, 2]),
       ];
     case GROUND.TUNDRA:
       return [
