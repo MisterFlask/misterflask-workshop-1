@@ -6,6 +6,7 @@
 
 import { ATTR, Mesh, texture, upload, INSTANCE_FLOATS, PROP_LAYOUT } from "./gl.js";
 import { TerrainMeshes, MapTextures, CHUNK, RES, LOW_RES } from "./terrain.js";
+import { materialTexture } from "./materials.js";
 import { buildAsset, buildAssetLOD } from "./assets/registry.js";
 import { rasterDecals, rasterLight } from "./decals.js";
 import { SEA, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
@@ -100,6 +101,8 @@ export class Scene {
     this.gl = gl;
     this.terrain = new TerrainMeshes(gl);
     this.tex = new MapTextures(gl);
+    // The ground's material textures (materials.js), painted once: {tex, mean, bakeMs, uploadMs, bytes}.
+    this.materials = materialTexture(gl);
     this.assets = new Map(); // asset key -> AssetBatch
     this.layers = { static: [], units: [] }; // [{batch, chunk: [cx, cy], top, bucket}]
     this.world = null;
@@ -492,6 +495,8 @@ export class Scene {
       uDecal: this.decal,
       uOwner: this.tex.owner,
       uHeight: this.tex.height,
+      uMat: this.materials.tex,
+      uMatMean: this.materials.mean,
     };
   }
 
@@ -641,7 +646,7 @@ export class Scene {
     }
     this.assets.clear();
     for (const m of [this.water, this.rivers, this.markers, this.ringMesh, this.particles]) m?.dispose();
-    for (const t of [this.decal, this.light, this.marks]) if (t) gl.deleteTexture(t);
+    for (const t of [this.decal, this.light, this.marks, this.materials.tex]) if (t) gl.deleteTexture(t);
   }
 }
 

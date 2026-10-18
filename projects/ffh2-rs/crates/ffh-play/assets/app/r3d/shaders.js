@@ -7,7 +7,10 @@
 //
 // World-anchored detail: every procedural pattern on the ground is a function of the map point
 // (plot units), periodic over the map's width when it wraps (no seam where the map joins), so the
-// painting is fixed to the world and never swims under a moving camera.
+// painting is fixed to the world and never swims under a moving camera. The ground's fine detail is
+// sampled from material textures painted at start-up (materials.js), laid the same way.
+
+import { MAT } from "./materials.js";
 
 // --------------------------------------------------------------------------------------------
 // Shared pieces
@@ -393,9 +396,15 @@ in vec3 vNormal;
 uniform sampler2D uTerrain;
 uniform sampler2D uDecal;
 uniform sampler2D uOwner;
+// The ground's materials (materials.js): rgb albedo, a height; and each layer's mean albedo.
+uniform highp sampler2DArray uMat;
+uniform vec3 uMatMean[16];
 layout(location = 0) out vec4 oColor;
 layout(location = 1) out vec4 oND;
 layout(location = 2) out vec4 oEmit;
+
+const int M_GRASS = ${MAT.GRASS}, M_STRAW = ${MAT.STRAW}, M_DIRT = ${MAT.DIRT}, M_SOIL = ${MAT.SOIL}, M_GRAIN = ${MAT.GRAIN},
+  M_VEG = ${MAT.VEG}, M_NOISE = ${MAT.NOISE};
 
 // Ground ids (world.js GROUND) and feature ids (FEAT).
 const int G_VOID = 0, G_GRASS = 1, G_PLAINS = 2, G_DESERT = 3, G_TUNDRA = 4, G_SNOW = 5, G_MARSH = 6,
@@ -412,6 +421,33 @@ ivec4 plotAt(vec2 cell) {
   if (c.x < 0 || c.x >= w || c.y < 0 || c.y >= h) return ivec4(0);
   return ivec4(texelFetch(uTerrain, c, 0) * 255.0 + 0.5);
 }
+
+// --- Materials. The map point's screen derivatives (dFdx/dFdy of m), set in main before any
+// branch: every material tap passes them explicitly (textureGrad), so taps may sit in branches and
+// the mipmaps fade the detail with the zoom. gBias: a broad noise (main) that tips which of a
+// material's two scales shows. gH: the height of the material just painted (the relief the light
+// picks out).
+vec2 gDx = vec2(0.0), gDy = vec2(0.0);
+float gBias = 0.0;
+float gH = 0.0;
+// Layer 'l' at about f tiles a plot -- a whole number of tiles over a wrapping map's width, so no
+// seam -- shifted by 'off', mirrored east-west when 'mir' is -1 (still seamless).
+vec4 matAt(vec2 m, int l, float f, vec2 off, float mir) {
+  float fx = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) / uMapSize.x : f;
+  vec2 s = vec2(fx * mir, f);
+  return textureGrad(uMat, vec3(m * s + off, float(l)), gDx * s, gDy * s);
+}
+// A material at two scales (f, and 1.37 f mirrored and shifted), each texel the taller of the two,
+// the second raised or lowered by gBias: the detail stays crisp (not a washed-out average of two
+// textures) and the tile's repeat is broken up.
+vec4 matPair(vec2 m, int l, float f) {
+  vec4 a = matAt(m, l, f, vec2(0.0), 1.0);
+  vec4 b = matAt(m, l, f * 1.37, vec2(0.31, 0.57), -1.0);
+  return mix(a, b, smoothstep(-0.08, 0.08, b.a - a.a + gBias));
+}
+// A material's albedo scaled to a broad colour: the tile's detail over the painted masses (their
+// light and dark design and slow drifts stay), the tile's mean taken out.
+vec3 matTint(vec4 t, int l, vec3 broadC) { return t.rgb * broadC / max(uMatMean[l], vec3(0.02)); }
 
 // A three-tone painted mass: broad, soft shapes of base and dark, the lighter tone where the
 // broad shapes rise, then brush dabs at two sizes lightening or darkening the paint.
@@ -481,17 +517,17 @@ vec4 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float
   return vec4(pick, best, along);
 }
 
-// --- Laid marks on the open ground. Each ground: its broad masses (as masses(), without the soft
-// dabs) -- the meadow's green and golden grass, desert and tundra with a slow drift between a warm
-// and a cool colour of their own -- then marks laid over them at up
-// to three sizes (4.5, 11 and 26 a plot) -- each fading in once its marks are a few pixels and out
-// before they would swell into blots, so at the gameplay zoom the two larger are laid and close up
-// the finest joins them -- each mark one of four related colours, so the ground reads as strokes of
-// broken colour while its value stays quiet round roads, rings and figures. Every ground its own
-// hand: upright blades on the meadow's green and in reed beds, long strokes swept along the wind
-// on its golden grass and on snow, round clumps on tundra and in perdition, strokes along the
-// dunes' crests in the deserts, each basalt plate its own direction. A ground holding only a
-// sliver of a blend lays none (gMarkW: no muddy double layer at borders).
+// --- Laid marks on the open ground that has no baked material yet (the meadow's grass and straw
+// are materials). Each ground: its broad masses (as masses(), without the soft dabs) -- desert and
+// tundra with a slow drift between a warm and a cool colour of their own -- then marks laid over
+// them at up to three sizes (4.5, 11 and 26 a plot) -- each fading in once its marks are a few
+// pixels and out before they would swell into blots, so at the gameplay zoom the two larger are
+// laid and close up the finest joins them -- each mark one of four related colours, so the ground
+// reads as strokes of broken colour while its value stays quiet round roads, rings and figures.
+// Every ground its own hand: upright strokes in reed beds, long strokes swept along the wind on
+// snow, round clumps on tundra and in perdition, strokes along the dunes' crests in the deserts,
+// each basalt plate its own direction. A ground holding only a sliver of a blend lays none (gMarkW:
+// no muddy double layer at borders).
 float gMarkW = 1.0;
 float gK() { return uStylize * min(uDabs / 1.6, 1.5); }
 // Three tones by the broad shapes ('big') and a finer noise ('mid'): dark where the broad shapes
@@ -511,11 +547,6 @@ vec3 drift(vec2 m, vec3 c, vec3 ca, vec3 cb, float a) {
 float gWind(vec2 m) { return 0.35 + (mnoise(m + 41.0, 0.3) - 0.5) * 1.6; }
 // A palette: four colours and the cumulative pick thresholds of the first three.
 mat4 P4(vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 cuts) { return mat4(vec4(c0, cuts.x), vec4(c1, cuts.y), vec4(c2, cuts.z), vec4(c3, 1.0)); }
-// The meadow's second palette (golden dry grass) and how much of the point lies golden (0 on every
-// other ground): a mark takes the second palette where gSplit passes a threshold of its own, so the
-// edge of a golden patch is a band of interleaved green and golden strokes, not an olive mix.
-mat4 gPalB;
-float gSplit = 0.0;
 // How much of the meadow at this fragment is prairie rather than grassland (set in main).
 float gDry = 0.0;
 // One size of marks laid over c: 'str' how firmly, 'tone' the value spread of the marks (+-),
@@ -530,32 +561,10 @@ vec3 lay(vec2 m, vec3 c, mat4 pal, float f, float str, float ang, float jit, flo
   s *= smoothstep(0.015, 0.05, s);
   if (s <= 0.0) return c;
   vec4 mk = gmarks(m + seed, f, ang, jit, elong, rad, lobe, aa);
-  if (gSplit > hash12(mk.xy * 61.0)) pal = gPalB;
   vec3 pc = mk.x < pal[0].w ? pal[0].rgb : mk.x < pal[1].w ? pal[1].rgb : mk.x < pal[2].w ? pal[2].rgb : pal[3].rgb;
   pc = mix(pc, pc * lum(c) / max(lum(pc), 1e-4), hue);
   pc *= 1.0 + tip * mk.w;
   return mix(c, pc * (1.0 - tone + 2.0 * tone * mk.y), mk.z * s);
-}
-// The meadow's hatching, finer than its marks: value noise drawn out into short streaks -- upright
-// on the green (f across, a third of that along the map's y), along the wind on the golden (mstroke:
-// the map's diagonal, near enough the wind's mean heading) -- at two sizes, each fading out before
-// it would shimmer, so the sward reads as grass even where the marks are too small to lay.
-vec3 hatch(vec2 m, vec3 c, float dry) {
-  float k = 0.0;
-  for (int o = 0; o < 2; o++) {
-    float f = o == 0 ? 17.0 : 38.0;
-    float a = (1.0 - smoothstep(0.2, 0.4, gPpx * f)) * gK() * gMarkW;
-    if (a <= 0.0) continue;
-    float h = 0.0;
-    if (dry < 0.99) {
-      float P = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) : 4096.0;
-      h = pnoise(vec2(uWrapX > 0.5 ? m.x * P / uMapSize.x : m.x * f, m.y * f / 3.0) + float(o) * 7.7, vec2(P, 4096.0)) * (1.0 - dry);
-    }
-    if (dry > 0.01) h += mstroke(m + float(o) * 5.3, f, 4.0) * dry;
-    // The green carries more of it than the straw (its marks vary less in value).
-    k += (h - 0.5) * a * (o == 0 ? 0.32 : 0.26) * mix(1.4, 1.0, dry);
-  }
-  return c * (1.0 + k);
 }
 // The meadow's flowers: on a fine lattice (17 a plot) a few cells, in loose drifts, hold a fleck --
 // white, butter yellow or a cool violet -- a pixel or two across at the gameplay zoom, gone before
@@ -619,6 +628,7 @@ vec3 blankAlbedo(vec2 m) {
 }
 
 vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
+  gH = 0.5;
   if (g == G_SHALLOWS || g == G_COAST) return srgb(masses(m, vec3(0.45, 0.40, 0.30), vec3(0.62, 0.55, 0.40), vec3(0.72, 0.66, 0.50), 1.0));
   if (g == G_OCEAN) return srgb(vec3(0.22, 0.26, 0.28));
   bool hell = g == G_BURNING || g == G_BROKEN || g == G_PERDITION;
@@ -637,7 +647,6 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   vec3 tip = vec3(0.0);
   float rimW = 0.0, poolW = 0.0, seam = 0.0;
   vec3 hot = vec3(1.0, 0.4, 0.1);
-  gSplit = 0.0;
   if (g == G_GRASS) {
     // The meadow: grassland and prairie painted as one ground (main folds the prairie in), green
     // grass broken by golden dry grass. Where it lies golden: organic patches (about 1, 0.5 and 0.3
@@ -652,7 +661,6 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     if (abs(dn - t) < 0.12) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
     dry = smoothstep(t - 0.06, t + 0.06, dn);
     dry = mix(gDry, dry, smoothstep(0.16, 0.34, length(fract(m) - 0.5)));
-    gSplit = dry;
     big = mfbm(m, 0.45);
     float mid = mnoise(m + 11.0, 1.6), mot = mnoise(m + 5.0, 2.4);
     // Green: yellow-green with darker blue-green mottling at two sizes (the broad shapes and
@@ -667,19 +675,16 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     cd = mix(cd, vec3(0.38, 0.31, 0.185), smoothstep(0.55, 0.8, mstroke(m - 3.0, 5.0, 4.0)) * 0.5);
     cd = mix(cd, vec3(0.64, 0.56, 0.385), smoothstep(0.6, 0.85, mstroke(m + 9.0, 3.5, 5.0)) * 0.3);
     cd = mix(cd, vec3(0.43, 0.40, 0.255), smoothstep(0.55, 0.8, mot) * 0.4);
-    c = mix(cg, cd, dry);
-    // Marks: short upright blades on the green (each mark's value from the masses under it, only its
-    // hue from the palette -- yellow-green, blue-green, olive, sap -- lighter at the tip), long strokes
-    // swept along the wind on the golden (light straw, ochre, gold and a green fleck); a mark between
-    // the two is bent between their headings, as grass bends.
-    P0 = P4(vec3(0.33, 0.41, 0.21), vec3(0.22, 0.32, 0.21), vec3(0.30, 0.36, 0.20), vec3(0.25, 0.34, 0.18), vec3(0.3, 0.55, 0.8)); P1 = P0; P2 = P0;
-    gPalB = P4(vec3(0.60, 0.53, 0.365), vec3(0.46, 0.37, 0.235), vec3(0.53, 0.46, 0.295), vec3(0.34, 0.38, 0.23), vec3(0.35, 0.62, 0.88));
-    // The finest blades thin and thicken (smoother sward between thicker tufts), so the grass is not
-    // one even pile -- but never vanish: the target's grass is textured everywhere.
-    str = mix(vec3(0.35, 0.6, mix(0.45, 0.75, smoothstep(0.25, 0.6, mid))), vec3(0.45, 0.6, 0.7), dry);
-    ang = mix(1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6, gWind(m), dry);
-    jit = vec3(mix(0.8, 0.35, dry)); elong = mix(vec3(2.0, 4.5, 3.5), vec3(4.0, 5.0, 5.5), dry); rad = vec3(0.55, 0.55, 0.6); lobe = vec3(0.0);
-    tone = mix(vec3(0.18), vec3(0.16, 0.2, 0.24), dry); hue = mix(0.5, 0.3, dry); tip = mix(vec3(0.1, 0.22, 0.3), vec3(0.0, 0.1, 0.2), dry);
+    // The sward's detail is baked (materials.js): tufts of upright blades on the green, long straw
+    // combed along the wind on the golden, each over its masses. Where the meadow turns golden each
+    // texel takes the taller of the two, the straw raised by how dry the point is, so a patch's edge
+    // is blades of green standing through straw rather than an olive mix; the green there yellows a
+    // little.
+    vec4 tg = matPair(m, M_GRASS, 1.0);
+    vec4 tw = matPair(m + 7.3, M_STRAW, 0.8);
+    float k = smoothstep(-0.3, 0.3, tw.a - tg.a + (dry - 0.5) * 2.6);
+    c = mix(matTint(tg, M_GRASS, mix(cg, cd, dry * 0.35)), matTint(tw, M_STRAW, cd), k);
+    gH = mix(tg.a, tw.a, k);
   } else if (g == G_DESERT) {
     // Desert: pale sand cut by sinuous dune crests -- the back slope brightening to the crest, a cool
     // rose shadow behind it (the sun is from the south-west) -- with long low sheets of sand laid
@@ -770,7 +775,7 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     float f = o == 0 ? 4.5 : o == 1 ? 11.0 : 26.0;
     c = lay(m, c, o == 0 ? P0 : o == 1 ? P1 : P2, f, str[o], ang, jit[o], elong[o], rad[o], lobe[o], tone[o], hue, tip[o], float(o) * 13.1);
   }
-  if (g == G_GRASS) return srgb(flowers(m, hatch(m, c, dry), 1.0 - dry * 0.7));
+  if (g == G_GRASS) return srgb(flowers(m, c, 1.0 - dry * 0.7));
   if (g == G_MARSH) {
     c = mix(c, c * 0.7, rimW);
     // The pools are peaty, darker and greener than open water (marsh is land), with a faint
@@ -865,14 +870,11 @@ void main() {
   vec2 m = mapOf(vWorld);
   float h = vWorld.y;
   vec3 emit = vec3(0.0);
-  // Impasto: the dabs raise the paint a little (close up only: it fades out with distance). Its
-  // derivatives are taken here, before the deep floor's early return below.
   float near = 1.0 - smoothstep(14.0, 30.0, length(vWorld - uEye));
-  float imp = 0.0;
-  if (near > 0.0 && uStylize > 0.0 && h > -0.32) imp = ((mdabs(m + 7.3, 6.5) - 0.5) * 0.6 + (mdabs(m, 2.4) - 0.5) * 0.4) * 0.012 * near * uStylize;
-  vec3 dpx = dFdx(vWorld), dpy = dFdy(vWorld);
-  float dix = dFdx(imp), diy = dFdy(imp);
-  gPpx = length(fwidth(m));
+  // The map point's derivatives, before any branch (the material taps take them).
+  gDx = dFdx(m);
+  gDy = dFdy(m);
+  gPpx = length(abs(gDx) + abs(gDy));
   // The deep sea floor is deeper than the water lets anyone see (the water, drawn over it, shows at
   // most a dark trace of it), so it is shaded cheaply -- but with its true depth, which the water
   // reads for its thickness. Not where unexplored: no water is drawn there, and the blank
@@ -887,7 +889,6 @@ void main() {
       return;
     }
   }
-  if (near > 0.0 && uStylize > 0.0) n = bumpD(n, dpx, dpy, dix, diy, 1.0);
 
   // The ground of the four plots around the point, blended by bilinear weights sharpened and
   // broken up by noise (irregular, painted borders between terrains; the plot centre is pure).
@@ -916,7 +917,8 @@ void main() {
   gDry = meadW > 0.0 ? dryW / meadW : 0.0;
   // Painted edges: the weights are pushed by stroke noise, so a border between two grounds is a
   // band of interleaved brush strokes rather than a gradient.
-  float brk = mdabs(m - 2.1, 4.5);
+  // (The utility layer's dab tones: 4.5 dabs a plot, as the GLSL mdabs, for one tap.)
+  float brk = matAt(m, M_NOISE, 0.75, vec2(0.13, 0.29), 1.0).r;
   w = pow(w, vec4(2.2 + 4.0 * brk));
   w /= dot(w, vec4(1.0));
   // Each distinct ground among the four is painted once, with the summed weight of its plots.
@@ -926,6 +928,9 @@ void main() {
   for (int k = 0; k < 4; k++) if (gs[k] == G_BURNING || gs[k] == G_BROKEN || gs[k] == G_PERDITION) hellW += ws[k];
   vec3 alb = vec3(0.0);
   float keepG = 0.0;
+  // The relief of the ground's materials, by the same weights.
+  gBias = (mnoise(m + 71.0, 0.6) - 0.5) * 1.2;
+  float hG = 0.0;
   for (int k = 0; k < 4; k++) {
     if (ws[k] < 0.0) continue;
     float wk = ws[k];
@@ -938,6 +943,7 @@ void main() {
     gMarkW = smoothstep(0.08, 0.2, wk);
     alb += groundAlbedo(gs[k], m, h, e) * wk;
     keepG += gKeep * wk;
+    hG += gH * wk;
     emit += e * wk;
   }
   // Features' floors, by the same weights.
@@ -993,9 +999,12 @@ void main() {
     }
     // Snow on the high peaks (and their sunlit ledges).
     // Snow on the summits and caught on the gentler ledges below them, streaked by the wind.
-    float sn = mnoise(m, 3.0) - 0.5 + (mdabs(m, 5.0) - 0.5) * 0.6;
-    float snow = smoothstep(0.92, 1.08, h + sn * 0.22) * smoothstep(0.3, 0.75, n.y);
-    snow = max(snow, smoothstep(1.15, 1.3, h + sn * 0.1));
+    float snow = 0.0;
+    if (h > 0.72) {
+      float sn = mnoise(m, 3.0) - 0.5 + (matAt(m, M_NOISE, 0.83, vec2(0.0), 1.0).r - 0.5) * 0.6;
+      snow = smoothstep(0.92, 1.08, h + sn * 0.22) * smoothstep(0.3, 0.75, n.y);
+      snow = max(snow, smoothstep(1.15, 1.3, h + sn * 0.1));
+    }
     snow *= 1.0 - hellW;
     alb = mix(alb, srgb(vec3(0.88, 0.91, 0.95)), snow);
     // Wet banks along the rivers (decals.js b: full under the water and on the cut bank, fading
@@ -1007,16 +1016,20 @@ void main() {
     float mud = smoothstep(0.8 + (mudN - 0.5) * 0.16, 0.95, dec.b);
     alb = mix(alb, srgb(mix(vec3(0.25, 0.2, 0.13), vec3(0.19, 0.23, 0.12), mudN)), mud * 0.9);
     // Settlement ground, fields and roads (rasterised per plot, see decals.js).
-    vec3 earth = srgb(mix(vec3(0.36, 0.29, 0.21), vec3(0.47, 0.39, 0.29), mnoise(m, 8.0)));
-    alb = mix(alb, earth, dec.a * 0.8);
+    // Trodden ground (settlements, yards): the road's packed dirt, laid on with the decal's strength.
+    float earthW = dec.a * 0.8;
+    if (earthW > 0.0) {
+      vec4 te = matPair(m + 3.1, M_DIRT, 1.2);
+      alb = mix(alb, srgb(matTint(te, M_DIRT, mix(vec3(0.36, 0.29, 0.21), vec3(0.47, 0.39, 0.29), mnoise(m, 8.0)))), earthW);
+      hG = mix(hG, te.a, earthW);
+    }
     // Fields (decals.js, fields.js): g holds the crop -- 0.2 a paddock's grazed turf, ~0.33 vegetable
     // beds (green rows on tilled soil, 14 a plot, running east-west), ~0.67 bare tilled soil, 1
     // golden grain (18 rows a plot, running north-south). The filtered value fades the field in; the
     // crop is the highest of the four texels around (a field's soft edge would pass through the
-    // levels below its own). The rows fade to their mean colour once they are finer than the
-    // pixels, and raise a bump.
+    // levels below its own). Each crop is a material laid once a plot, its rows where the props'
+    // rows stand (materials.js GRAIN_ROWS, BED_ROWS); only the crops present are sampled.
     float fieldW = smoothstep(0.08, 0.2, dec.g);
-    float rowH = 0.0;
     if (fieldW > 0.0) {
       ivec2 dsz = textureSize(uDecal, 0);
       ivec2 t0 = ivec2(floor(mapUV(m) * vec2(dsz) - 0.5));
@@ -1027,31 +1040,35 @@ void main() {
         gk = max(gk, texelFetch(uDecal, tk, 0).g);
       }
       float soilK = smoothstep(0.42, 0.56, gk), grainK = smoothstep(0.78, 0.9, gk), turfK = 1.0 - smoothstep(0.23, 0.29, gk);
-      // Each pattern fades once its period is under a few pixels (gPpx: map units a pixel).
-      float fineF = 1.0 - smoothstep(0.01, 0.018, gPpx), fineB = 1.0 - smoothstep(0.022, 0.04, gPpx), fineG = 1.0 - smoothstep(0.018, 0.03, gPpx);
-      float clod = mnoise(m, 30.0);
-      float furrow = 0.5 + 0.5 * sin(m.y * 175.9 + mnoise(m, 4.0) * 3.0 + (clod - 0.5) * 1.6);
-      vec3 soil = mix(vec3(0.30, 0.25, 0.185), vec3(0.41, 0.34, 0.25), mix(0.5, furrow * (0.6 + 0.6 * clod), fineF)) * (0.86 + 0.28 * mnoise(m, 9.0));
-      float leaf = mnoise(m, 55.0);
-      float bed = 1.0 - abs(fract(m.y * 14.0) - 0.5) * 2.0;
-      float bedK = smoothstep(0.32, 0.56, bed + (leaf - 0.5) * 0.35);
-      vec3 green = mix(vec3(0.24, 0.38, 0.14), vec3(0.42, 0.56, 0.22), leaf * 0.6 + bed * 0.4);
-      vec3 veg = mix(soil, green, mix(0.6, bedK, fineB));
-      float row = 1.0 - abs(fract(m.x * 18.0) - 0.5) * 2.0;
-      float ears = mnoise(vec2(m.x, m.y * 0.25), 40.0);
-      float ridge = smoothstep(0.05, 0.75, row) * (0.7 + 0.6 * ears);
-      vec3 grain = mix(vec3(0.62, 0.42, 0.15), vec3(0.88, 0.69, 0.33), mix(0.62, ridge, fineG));
-      // Grazed turf: the meadow cropped short -- an even, paler green (a straw olive on the prairie)
-      // without the long grass's strokes, mottled by the hooves.
-      float sward = mnoise(m, 3.0);
-      vec3 turf = mix(mix(vec3(0.35, 0.42, 0.21), vec3(0.43, 0.48, 0.25), sward), mix(vec3(0.49, 0.44, 0.27), vec3(0.56, 0.5, 0.31), sward), gDry);
-      turf *= 0.92 + 0.16 * mix(0.5, mnoise(m, 34.0), fineB);
-      vec3 crop = mix(mix(mix(veg, soil, soilK), grain, grainK), turf, turfK);
-      alb = mix(alb, srgb(crop), fieldW);
-      rowH = fieldW * (1.0 - turfK) * mix(mix(bedK * fineB, furrow * 0.4 * fineF, soilK), ridge * 0.8 * fineG, grainK);
+      float wT = turfK, wG = grainK * (1.0 - wT), wS = soilK * (1.0 - grainK) * (1.0 - wT), wV = 1.0 - wT - wG - wS;
+      vec4 crop = vec4(0.0);
+      if (wV > 0.0) {
+        // Vegetable beds: rows of leafy rosettes on dark tilled earth.
+        vec4 tv = matAt(m, M_VEG, 1.0, vec2(0.0), 1.0);
+        crop += wV * vec4(matTint(tv, M_VEG, vec3(0.30, 0.38, 0.18) * (0.9 + 0.2 * mnoise(m, 3.0))), tv.a);
+      }
+      if (wS > 0.0) {
+        // Tilled soil: furrows running east-west, broken into clods.
+        vec4 tsl = matAt(m, M_SOIL, 1.0, vec2(0.0), 1.0);
+        crop += wS * vec4(matTint(tsl, M_SOIL, vec3(0.355, 0.295, 0.215) * (0.86 + 0.28 * mnoise(m, 3.0))), tsl.a);
+      }
+      if (wG > 0.0) {
+        // Ripe grain: rows of stalks crowned with pale ears, running north-south.
+        vec4 tgr = matAt(m, M_GRAIN, 1.0, vec2(0.0), 1.0);
+        crop += wG * vec4(matTint(tgr, M_GRAIN, vec3(0.78, 0.58, 0.26) * (0.92 + 0.16 * mnoise(m, 3.0))), tgr.a);
+      }
+      if (wT > 0.0) {
+        // Grazed turf: the meadow cropped short -- finer blades, an even, paler green (a straw olive on
+        // the prairie), mottled by the hooves.
+        float sward = mnoise(m, 3.0);
+        vec3 turf = mix(mix(vec3(0.35, 0.42, 0.21), vec3(0.43, 0.48, 0.25), sward), mix(vec3(0.49, 0.44, 0.27), vec3(0.56, 0.5, 0.31), sward), gDry);
+        vec4 tt = matAt(m, M_GRASS, 2.3, vec2(0.21, 0.47), -1.0);
+        crop += wT * vec4(mix(turf, matTint(tt, M_GRASS, turf), 0.6), tt.a * 0.5);
+      }
+      alb = mix(alb, srgb(crop.rgb), fieldW);
+      hG = mix(hG, crop.a, fieldW);
       keepG = max(keepG, fieldW * 0.45);
     }
-    n = bump(n, vWorld, rowH * 0.007, 1.0);
     // Roads: r is a ramp falling from 1 on a track's centre line to 0 at 0.3 plots (decals.js
     // ROAD_RAMP), cut here into a packed-dirt track ~0.14 plots wide: a crisp edge, a lighter crown,
     // darker margins and wheel ruts, and a verge of worn, dry grass beside it.
@@ -1061,21 +1078,28 @@ void main() {
       float aa = max(gPpx * 0.75, 0.002);
       float on = 1.0 - smoothstep(hw - aa, hw + aa, rd);
       float t = rd / hw;
-      // Mottled packed dirt (kept below the tone curve's shoulder, where mottling would wash out),
-      // its margins and ruts broken along the road rather than drawn as unbroken parallel stripes.
-      vec3 dirt = mix(vec3(0.545, 0.435, 0.31), vec3(0.615, 0.505, 0.36), mnoise(m, 10.0)) * (0.9 + 0.2 * mnoise(m + 5.1, 30.0));
+      // Packed dirt with grit and pebbles (the material), mottled broadly (kept below the tone
+      // curve's shoulder, where mottling would wash out), its margins and ruts broken along the road
+      // rather than drawn as unbroken parallel stripes.
+      vec4 td = matPair(m, M_DIRT, 1.0);
+      vec3 dirt = matTint(td, M_DIRT, mix(vec3(0.545, 0.435, 0.31), vec3(0.615, 0.505, 0.36), mnoise(m, 4.0)));
       float broken = smoothstep(0.25, 0.65, mnoise(m + 9.7, 6.0));
-      dirt = mix(dirt, vec3(0.47, 0.35, 0.23), smoothstep(0.5, 0.95, t) * mix(0.15, 0.4, broken));
-      dirt = mix(dirt, vec3(0.36, 0.26, 0.17), smoothstep(0.86, 1.0, t) * mix(0.1, 0.3, broken));
+      dirt *= mix(vec3(1.0), vec3(0.81, 0.74, 0.69), smoothstep(0.5, 0.95, t) * mix(0.15, 0.4, broken));
+      dirt *= mix(vec3(1.0), vec3(0.62, 0.55, 0.51), smoothstep(0.86, 1.0, t) * mix(0.1, 0.3, broken));
+      // Wheel ruts: lines along the track, faded once they are thinner than a pixel.
       float rut = (1.0 - smoothstep(0.05, 0.13, abs(t - 0.58))) * (1.0 - smoothstep(0.006, 0.013, gPpx)) * broken;
-      dirt = mix(dirt, vec3(0.45, 0.34, 0.22), rut * 0.55);
-      float cob = smoothstep(0.2, 0.5, mcells(m, 26.0).x);
-      dirt = mix(dirt, dirt * (0.8 + 0.3 * cob), dec.a);
-      float verge = (1.0 - smoothstep(hw, hw + 0.05, rd)) * smoothstep(0.3, 0.7, mnoise(m, 30.0) + 0.2);
+      dirt *= 1.0 - rut * 0.12;
+      // Cobbles where a road runs through a settlement (the utility layer's cells, 24 a plot).
+      float cob = smoothstep(0.03, 0.25, matAt(m, M_NOISE, 1.0, vec2(0.0), 1.0).b);
+      dirt = mix(dirt, dirt * (0.72 + 0.38 * cob), dec.a);
+      float verge = (1.0 - smoothstep(hw, hw + 0.05, rd)) * smoothstep(0.3, 0.7, mnoise(m, 9.0) + 0.2);
       alb = mix(alb, alb * vec3(1.12, 1.0, 0.7), verge * (1.0 - on) * 0.7);
       alb = mix(alb, srgb(dirt), on);
+      hG = mix(hG, td.a, on);
       keepG = max(keepG, on * 0.6);
     }
+    // The materials' relief, picked out by the light (the mipmaps flatten it with distance).
+    n = bump(n, vWorld, hG * 0.004, 1.0);
   }
 
   // Painter's pigment: a broad hue/value drift that keeps large areas from reading flat.
@@ -1093,9 +1117,13 @@ void main() {
   float v = visAt(vWorld);
   // The unexplored: the map's blank, dark parchment. The frontier is a brushy edge (the smooth
   // visibility field pushed by brush dabs), with a scorched rim like the edge of burnt paper.
-  float edgeN = (mdabs(m + 1.7, 3.0) - 0.5) * 0.35 + (mnoise(m, 2.0) - 0.5) * 0.15;
-  float blankT = 1.0 - smoothstep(0.12, 0.4, v + edgeN);
-  if (!known) blankT = max(blankT, 1.0 - smoothstep(0.08, 0.3, v + edgeN));
+  // (Only near the unknown: well inside what is seen, v + edgeN cannot fall to the edge.)
+  float blankT = 0.0;
+  if (v < 0.7) {
+    float edgeN = (matAt(m + 1.7, M_NOISE, 0.5, vec2(0.0), 1.0).r - 0.5) * 0.35 + (mnoise(m, 2.0) - 0.5) * 0.15;
+    blankT = 1.0 - smoothstep(0.12, 0.4, v + edgeN);
+    if (!known) blankT = max(blankT, 1.0 - smoothstep(0.08, 0.3, v + edgeN));
+  }
   if (blankT > 0.0) {
     vec3 blank = blankAlbedo(m) * 1.5;
     float rim = smoothstep(0.0, 0.5, blankT) * (1.0 - smoothstep(0.5, 1.0, blankT));
