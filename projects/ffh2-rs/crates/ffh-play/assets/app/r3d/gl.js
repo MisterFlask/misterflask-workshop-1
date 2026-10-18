@@ -43,7 +43,7 @@ export class Program {
       const info = gl.getActiveUniform(p, i);
       const key = info.name.replace(/\[0\]$/, "");
       const loc = gl.getUniformLocation(p, info.name);
-      const isSampler = info.type === gl.SAMPLER_2D || info.type === gl.SAMPLER_3D || info.type === gl.UNSIGNED_INT_SAMPLER_2D || info.type === gl.INT_SAMPLER_2D;
+      const isSampler = info.type === gl.SAMPLER_2D || info.type === gl.SAMPLER_3D || info.type === gl.SAMPLER_2D_ARRAY || info.type === gl.UNSIGNED_INT_SAMPLER_2D || info.type === gl.INT_SAMPLER_2D;
       if (isSampler) this.units[key] = unit++;
       this.u[key] = { loc, type: info.type, size: info.size };
     }
@@ -94,7 +94,7 @@ export class Program {
           const unit = this.units[k];
           if (unit === undefined) break;
           gl.activeTexture(gl.TEXTURE0 + unit);
-          gl.bindTexture(u.type === gl.SAMPLER_3D ? gl.TEXTURE_3D : gl.TEXTURE_2D, v);
+          gl.bindTexture(u.type === gl.SAMPLER_3D ? gl.TEXTURE_3D : u.type === gl.SAMPLER_2D_ARRAY ? gl.TEXTURE_2D_ARRAY : gl.TEXTURE_2D, v);
           gl.uniform1i(u.loc, unit);
         }
       }
