@@ -943,6 +943,27 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   for want of most of the 16 manas. The estimate now requires the manas, so no civ beelines
   the arcane techs for nothing.
 
+## Looked promising on development seeds, failed on fresh ones
+
+Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-944 at 300 turns,
+901-916 full games) against the tip it would go on; none survived, so none was merged.
+
+- **Promote every unit of a moving stack** (`units::play` promotes only the head of a group ready
+  to move, and C++ `AI_doTurnUnitsPost` promotes every unit each turn: 37% of promotion-ready
+  unit-turns are members behind the head). Seeds 1-48: civ cities captured +38% (t 2.1). Fresh
+  seeds: captures -5.8%, legacy -1.0%, every |t| < 1.4; full games flat. With the Mobility value
+  cut from 60 to 20 a move for non-explorers as well: seeds 1-96 captures +23% (t 2.3); fresh
+  seeds legacy -1.7%, techs -2.7% (t -1.8), research slider -4.7% (t -2.4), eliminations +20%.
+  The promotion gap is real but costs nothing measurable.
+- **Value the building effects `building_value` ignores**: the Lighthouse's sea-plot food, the
+  Harbor's and Inn's trade-route modifier, the Brewery's, Tailor's and Jeweler's free happiness
+  resource (Lighthouses 2 -> 29 and Breweries 0 -> 15 over four games). Seeds 1-80 with the
+  Conquest change: legacy +6-7% at turn 300 (t 3). Fresh seeds on top of the Conquest change:
+  legacy +1.0% (t 0.9), eliminations +27% (t 2.2); full games power -5.8% at turn 300 (t -2.1),
+  military -12% at turn 450 (t -3.6), civ cities captured -23%, cities lost to barbarians +68%,
+  supremacy wins 9 -> 5 of 16. Alone, full games: wars -26% (t -2.2), captures -18%. The new
+  buildings take production from the army, and the civs that build them lose cities.
+
 ## Cost control
 
 - **Reachability**: `reach.rs` floods once from a unit (Dijkstra on movement points, bounded
