@@ -1292,9 +1292,9 @@ float riverFoam(float u, float s, float bend, float t, float aa) {
   float lb = phaseLine(u * 4.4 + 0.37 + wv * 1.6 - wv2 * 1.1, 0.065 * mb, aa * 4.4) * (0.4 + 0.6 * outer);
   // White water: churned foam in broken cells, packed against the outer bank of a bend.
   vec2 c = mcells(vec2(u * 1.7, s * 2.0 - t * 0.35 * 2.0), 2.4);
-  float churn = smoothstep(0.35, 0.75, pnoise(vec2(u * 2.0, s * 2.5 - t * 0.35), P) + outer * 0.3);
-  float lace = (1.0 - smoothstep(0.04, 0.2 + 0.25 * outer, c.y - c.x)) * churn * smoothstep(0.1, 0.8, u * sign(bend));
-  return clamp(max(la, lb * 0.7) * (0.75 + 0.5 * outer) + lace * outer * 0.9, 0.0, 1.0);
+  float churn = smoothstep(0.3, 0.7, pnoise(vec2(u * 2.0, s * 2.5 - t * 0.35), P) + outer * 0.35);
+  float lace = (1.0 - smoothstep(0.04, 0.24 + 0.3 * outer, c.y - c.x)) * churn * smoothstep(0.1, 0.8, u * sign(bend));
+  return clamp(max(la, lb * 0.7) * (0.75 + 0.5 * outer) + lace * outer, 0.0, 1.0);
 }
 
 // Where a river's water ends: its edge (in RIVER_HALFs from its line, world.js) wanders with the
