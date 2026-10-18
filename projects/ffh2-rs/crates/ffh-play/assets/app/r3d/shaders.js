@@ -1201,6 +1201,15 @@ void main() {
   vec2 m = mapOf(vWorld);
   vec2 cell = floor(m);
   vec2 f = m - cell;
+  // The last terrain chunk is a full CHUNK tall, so the overlay mesh reaches past the map's north
+  // edge; those off-map fragments must draw nothing (F15). ownerAt/marksAt already return 0 off the
+  // map, but the grid branch has no bounds guard, so without this the grid bleeds over the parchment
+  // band when the top row is revealed (uVis clamps to it). Guard once here, mirroring ownerAt.
+  int mw = int(uMapSize.x);
+  int mh = int(uMapSize.y);
+  ivec2 ci = ivec2(floor(cell));
+  if (uWrapX > 0.5) ci.x = ((ci.x % mw) + mw) % mw;
+  if (ci.x < 0 || ci.x >= mw || ci.y < 0 || ci.y >= mh) discard;
   vec4 acc = vec4(0.0);
   float v = visAt(vWorld);
   if (v < 0.2) discard;
