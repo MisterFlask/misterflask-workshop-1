@@ -269,10 +269,13 @@ export class Scene {
         const y = Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
         ring.push([[p[0] - ty * width, y, -(p[1] + tx * width)], [p[0] + ty * width, y, -(p[1] - tx * width)], along]);
       }
+      // aExtra.z: 1 where the ribbon runs out over the sea (the ground under it, uncut by the
+      // channel, is below sea level): the water shader leaves the sea there (WATER_FS).
+      const sea = (p) => (world.heightAt(p[0], -p[2], false) < SEA - 0.005 ? 1 : 0);
       for (let k = 0; k + 1 < ring.length; k++) {
         const [a0, a1, s0] = ring[k];
         const [b0, b1, s1] = ring[k + 1];
-        const V = (p, u, s) => v.push(p[0], p[1], p[2], u, s, 0, 0);
+        const V = (p, u, s) => v.push(p[0], p[1], p[2], u, s, sea(p), 0);
         V(a0, -1, s0); V(b0, -1, s1); V(a1, 1, s0);
         V(a1, 1, s0); V(b0, -1, s1); V(b1, 1, s1);
       }

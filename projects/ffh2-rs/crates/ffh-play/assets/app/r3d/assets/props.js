@@ -1881,6 +1881,7 @@ function buildCropRows(mb, r, variant, crop) {
         }
         mb.heightSway(m0, 0.03, 0.06, 0.5);
       } else if (crop === "sugar") {
+        mb.mat = MAT.BLADE;
         for (let l = 0; l < 4; l++) {
           const dx = r.range(-0.012, 0.012), dz = r.range(-0.008, 0.008);
           mb.color = J("#8a9a4a", r, 0.08);
@@ -1889,6 +1890,7 @@ function buildCropRows(mb, r, variant, crop) {
           mb.tri([x + dx * 1.6, 0.07, z + dz * 1.6], [x + dx * 1.6 + 0.02, 0.05, z + dz], [x + dx * 1.6 + 0.004, 0.055, z + dz + 0.004]);
         }
         mb.heightSway(m0, 0.02, 0.07, 0.5);
+        mb.mat = MAT.FOLIAGE;
       } else {
         const seed = r.range(0, 9);
         mb.color = J(crop === "tea" ? "#3a5a2a" : "#4a6230", r, 0.06);
@@ -3716,7 +3718,8 @@ markerRecipe("res.wheat", 1.8, { variants: 2, build: (mb, r, { variant }) => bui
 
 /** Corn: a few tall stalks with drooping leaves and yellow cobs. */
 function buildCorn(mb, r) {
-  mb.mat = MAT.FOLIAGE;
+  // Stalks, tassels and leaves are blades (drawn as lines, not massed like a crown).
+  mb.mat = MAT.BLADE;
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * TAU + r.range(-0.3, 0.3), d = k ? r.range(0.025, 0.04) : 0;
     const x = Math.cos(a) * d, z = Math.sin(a) * d, h = r.range(0.11, 0.14);
@@ -3735,7 +3738,7 @@ function buildCorn(mb, r) {
     mb.mat = MAT.MATTE;
     mb.color = C("#ecc040");
     at(mb, x + 0.006, h * 0.5, z + 0.004, 0, () => { mb.rotateZ(-0.45); mb.lathe([[0.0075, 0], [0.009, 0.016], [0, 0.034]], 5); });
-    mb.mat = MAT.FOLIAGE;
+    mb.mat = MAT.BLADE;
   }
   mb.mat = MAT.MATTE;
 }
@@ -3746,7 +3749,7 @@ markerRecipe("res.corn", 1.45, { variants: 2, build: (mb, r) => buildCorn(mb, r)
 function buildRice(mb, r) {
   // A flooded paddy in its earth bank (the sky in the water), shoots of vivid young green in rows.
   pool(mb, r, { rad: 0.062, water: "#3e6a6e", outer: "#6a6a36", bank: "#5a4834" });
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.BLADE;
   const m0 = mb.mark();
   for (let j = 0; j < 4; j++) {
     for (let k = 0; k < 5; k++) {
@@ -3789,7 +3792,7 @@ markerRecipe("res.banana", 1.45, { variants: 2, build: (mb, r) => buildBanana(mb
 
 /** Sugar cane: a stand of tall jointed canes, cut stalks bundled at its foot. */
 function buildSugar(mb, r) {
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.BLADE;
   for (let k = 0; k < 8; k++) {
     const x = r.range(-0.035, 0.035), z = r.range(-0.03, 0.03), h = r.range(0.11, 0.15);
     const m0 = mb.mark();

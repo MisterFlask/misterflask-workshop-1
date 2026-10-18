@@ -416,8 +416,9 @@ export function dressUnits(world, map) {
       const asset = pick(look.asset, "basic.unit");
       const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
       const ground = standHeight(world, mx, my, foot);
-      // Every floating unit is a hull or a swimmer: it sits at the draft.
-      const yy = look.float ? Math.max(SEA - DRAFT, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
+      // Every floating unit is a hull or a swimmer: it sits at the draft. A land unit on a sea plot
+      // is cargo: it stands at the waterline (on the deck), not on the sea floor.
+      const yy = look.float ? Math.max(SEA - DRAFT, ground) : look.fly ? Math.max(SEA, ground) + look.fly : Math.max(SEA, ground);
       const it = inst(asset, mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
       it.uid = u.id;
       it.ground = !look.float && !look.fly;

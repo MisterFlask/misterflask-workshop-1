@@ -150,13 +150,13 @@ nodes, ancient forests) that light the terrain and the props.
 | pass | what | optional |
 |---|---|---|
 | shadow | sun depth maps over the ground in view, texel-snapped (no shimmer when panning): the props in a 2048² map (crisp, 12-tap rotated Poisson PCF), the terrain in a 1024² one (6 wide taps, soft) applied at part strength, so a hill's cast shadow darkens the plain behind it a little instead of punching a hole in it | `shadows`, `terrainShadow` |
-| scene | depth pre-pass of terrain and props (each pixel shaded once), then the terrain (the sea floor and river beds too; the deep floor, which no one can see through the water, cheaply) and the props, with their brushwork (§5.1), into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id (negated on foliage) | `brush` |
+| scene | depth pre-pass of terrain and props (each pixel shaded once), then the terrain (the sea floor and river beds too; the deep floor, which no one can see through the water, cheaply) and the props, with their brushwork (§5.1), into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id (negated on a prop's crown) | `brush` |
 | water | the scene's colour and normal/depth grabbed (blit), then the sea and rivers drawn over them, writing depth (the overlays sit on the surface): seen through to the floor, mirroring what stands round them or a painted sky with drifting clouds, waves, glitter and surf (§5.2) | `refraction`, `reflections`, `caustics` |
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
 | paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared, foliage partly (its own marks, anchored to the world, are the paint there) | `kuwahara`, `kuwaharaRadius` |
-| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance; no line where one crown's lobes overlap and a light one between crowns (leaves' ids are negated), so a wood reads as a mass; lost and found (the weight wanders along a line, anchored to the world, and lightens in the light; firmer on buildings and rock than on foliage) and coloured (a deep version of the paint below, not one sepia), units keeping their whole line; split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `inkLost`, `inkColour`, `grade`, `grain`, `vignette` |
+| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance; no line where one crown's lobes overlap and a light one between crowns (a prop's crown writes its object id negated), so a wood reads as a mass; lost and found (the weight wanders along a line, anchored to the world, and lightens in the light; firmer on buildings and rock than on foliage) and coloured (a deep version of the paint below, not one sepia), units keeping their whole line; split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `inkLost`, `inkColour`, `grade`, `grain`, `vignette` |
 | aa | FXAA (Timothy Lottes' console variant) on the finished colour before the overlays: takes the stair-step off silhouettes and the ink outlines and stops them crawling when panning (the HUD is a separate 2D canvas, so it stays crisp) | `fxaa` |
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
@@ -211,8 +211,8 @@ under and around it:
   the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
   turquoise, then the deep's own blue. Only the waves' tilt bends the view (a flat surface is seen
   straight through), and less in the shallows. Rivers carry silt and close over their beds sooner;
-  their edges dissolve into the banks, and where a ribbon runs out over the sea the sea shows
-  instead. At the far zooms the ground is coarse, so the water never reads clearer than the height
+  their edges dissolve into the banks, and where a ribbon runs out over the sea (the ground under it,
+  uncut by the channel, is below sea level) the sea shows instead, along a broken edge. At the far zooms the ground is coarse, so the water never reads clearer than the height
   field's true depth (else a small lake reads as a pale salt pan). The floor carries **caustics**
   where it is seen: two drifting cellular nets, warped into curves, found where the view ray meets
   the floor and added through the water (`WATER_FS`), dimmed at the gameplay zoom (a close-up
@@ -232,25 +232,27 @@ under and around it:
   further every second).
 * **Glitter**: the sun is on the camera's side, so a flat sea never reflects it; small steep facets
   on the swell's crests do, flashing as short level marks that twinkle -- in the sun only, in sight
-  only. Each has its own length; as the zoom shrinks the cells a glint keeps about a pixel's width,
+  only. Each has its own length, width and slant; as the zoom shrinks the cells a glint keeps about a pixel's width,
   and fades out only once even its length would be a few pixels. They bloom a little and the paint
   filter spares them.
 * **Surf**: the swash breathes up and down the beach in lacy foam and rollers run in to it (only
   where the floor shelves toward a shore: over a flat or bumpy floor the depth's contours would close
-  into rings offshore); rivers lace their banks and carry flecks; a foam collar laps wherever
+  into rings offshore, and the floor must keep rising toward land across the pixel's neighbourhood,
+  else a bump's flank makes a lens); rivers lace their banks and carry flecks; a foam collar laps wherever
   something breaks the surface offshore (found from the grabbed depth round the pixel). The edge of
   the unexplored is no coast, so no surf is drawn within half a plot of it. Hulls sit at a small
   draft (`world.js` `DRAFT`: ships, boats, wrecks, swimmers), so their keels are in the water; what
   lies on the surface (a resource's ripples, a whirlpool, a floe) floats at the sea's level.
-* Remembered water calms: its surface lies flat, without glitter, caustics, the swash's breathing,
-  rolling surf or lapping (only the slow drift of what it mirrors goes on, as cloud shadows drift
-  over remembered land). Across the frontier the moving and the calm values are mixed, never the
+* Remembered water calms: its surface lies flat, without glitter or caustics, its surf, lace, mottle
+  and the strokes breaking its mirror at rest (only the mirrored clouds drift on, as cloud shadows
+  drift over remembered land). Across the frontier the moving and the calm values are mixed, never the
   time itself (time scaled by the fog would shear the waves further every second). The fog of war
   and the haze apply to what the water adds, not twice to what is seen through it (the grab has
   them already). Marsh pools (painted in the terrain) are peaty, darker and greener than open water
   (marsh is land), with a faint drifting sheen.
 * Seeing into the water and the mirror read the grabbed view depth, which only a float target holds:
-  without float colour buffers the water is drawn opaque and unmirrored.
+  without float colour buffers the water is drawn opaque, mirroring only the painted sky (no
+  reflected banks or ships).
 
 ## 6. Asset recipes
 
@@ -449,19 +451,21 @@ rasteriser -- only the shares carry over):
 
 | pass | ts 40 (far) | ts 96 (gameplay) |
 |---|---|---|
-| scene (geometry + shading) | 2903 ms (~67%) | 5309 ms (~66%) |
-| kuwahara (paint filter) | 857 ms (~20%) | 2164 ms (~27%) |
-| shadow | 224 ms | 211 ms |
-| overlay | 118 ms | 161 ms |
-| glow | 63 ms | 55 ms |
-| finish (ink + grade) | 57 ms | 49 ms |
-| ssao | 41 ms | 59 ms |
-| fxaa | 42 ms | 24 ms |
-| compose | 26 ms | 19 ms |
-| **whole frame** | **4364 ms** | **8083 ms** |
+| scene (geometry + shading, brushwork) | 2213 ms (~53%) | 3162 ms (~57%) |
+| kuwahara (paint filter) | 843 ms (~20%) | 1484 ms (~27%) |
+| water (grab + sea and rivers) | 419 ms (~10%) | 378 ms (~7%) |
+| shadow | 313 ms | 147 ms |
+| overlay | 104 ms | 134 ms |
+| finish (ink + grade) | 97 ms | 43 ms |
+| compose | 59 ms | 11 ms |
+| glow | 49 ms | 56 ms |
+| ssao | 48 ms | 36 ms |
+| fxaa | 20 ms | 14 ms |
+| **whole frame** | **4201 ms** | **5531 ms** |
 
-The scene pass dominates and the Kuwahara paint filter is the clear second; FXAA (§5, F17) and the
-other post passes are cheap. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
+The scene pass dominates and the Kuwahara paint filter is the clear second; the water (one
+full-screen-ish pass over the sea: refraction, a 20-step mirror march, glitter, surf) is a distant
+third, and FXAA (§5, F17) and the other post passes are cheap. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
 first and the render scale (which scales the scene pass) second.
 
 Initial world sync (CPU, this slice): textures 195 ms + dressing 425 ms + instance upload 436 ms +
@@ -470,10 +474,12 @@ figures; per-move redressing is incremental. On a more crowded map this is the ~
 JavaScript noted in §14 -- spreading it over frames or onto a worker is a next step.
 
 Panning stability (`tools/r3d-lab.mjs --stability`, showcase at 96 px; pan, then re-align by the best
-whole-pixel shift and compare): mean |diff| about 1.5 of 255 with 1.6% of pixels off by more than 24
-for the painterly preset (1.2% plain, 1.7% painterly with the paint filter off) -- low crawl, from
-the texel-snapped shadow frustum and the world-anchored paint and grain. FXAA is on in the painterly
-figure.
+whole-pixel shift and compare): mean |diff| about 1.4 of 255 with 1.1% of pixels off by more than 24
+for the painterly preset (1.1 / 1.2% plain, 1.5 / 1.3% painterly with the paint filter off) -- low
+crawl, from the texel-snapped shadow frustum and the world-anchored paint, brush marks and grain.
+Over water (`--query "scene=showcase&cx=3&cy=6&ts=150"`): 0.8 / 0.4% painterly, 0.6 / 0.4% plain;
+what is left sits on parallax edges and ship rigging, from the screen-space refraction and mirror
+taps. FXAA is on in the painterly figures.
 
 GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 
@@ -522,7 +528,13 @@ What is not there, or not good enough yet, as of this prototype:
   (a point sprite is depth-tested at its centre).
 * **Water** mirrors only what is on screen (a screen-space march; past the frame's edge it falls back
   to the painted sky), has no waterfalls where rivers drop (nothing along a river records a drop),
-  and lakes share the sea's surface and colours (only their floor differs).
+  and lakes share the sea's surface and colours (only their floor differs). The rollers follow the
+  depth's contours, gated to where the floor rises toward land; a baked distance-to-shore field would
+  run them parallel to every coast by construction. Where a river crosses the beach into the sea a
+  short sliver of river colour can remain (the ribbon is cut where the uncut ground is below sea
+  level, not exactly at the waterline).
+* **Flat-faced props** (rocks, mines, plaster walls) carry only moderate brushwork: stronger marks
+  on their small facets sank shaded flanks into dark streaks, so the marks are bounded there.
 * **Crown silhouettes** are the outlines of the leaf masses (lumpy lobes, painted, but not ragged
   with leaves). Cutting the silhouette band into leaf clusters in the depth prepass was tried and
   dropped: the soft lighting normals do not track the true silhouette of the mallorn and jungle

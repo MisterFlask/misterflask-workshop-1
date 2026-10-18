@@ -572,7 +572,7 @@ void main() {
   // derivatives are taken here, before the deep floor's early return below.
   float near = 1.0 - smoothstep(14.0, 30.0, length(vWorld - uEye));
   float imp = 0.0;
-  if (near > 0.0 && uStylize > 0.0) imp = ((mdabs(m + 7.3, 6.5) - 0.5) * 0.6 + (mdabs(m, 2.4) - 0.5) * 0.4) * 0.012 * near * uStylize;
+  if (near > 0.0 && uStylize > 0.0 && h > -0.32) imp = ((mdabs(m + 7.3, 6.5) - 0.5) * 0.6 + (mdabs(m, 2.4) - 0.5) * 0.4) * 0.012 * near * uStylize;
   vec3 dpx = dFdx(vWorld), dpy = dFdy(vWorld);
   float dix = dFdx(imp), diy = dFdy(imp);
   // The deep sea floor is deeper than the water lets anyone see (the water, drawn over it, shows at
@@ -864,17 +864,23 @@ void main() {
   // plaster) take the strokes strongest: flat facets are where the brush must show.
   float tone = 0.0, jit = 0.0;
   float matte = (kind == 0 || kind == 3) ? 1.0 - vTeam.a : 0.0;
+  // How squarely the plane faces the sun (before the shadows): where a mark may go dark or light.
+  float d0 = clamp((dot(n, uSunDir) + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
   if (uBrush > 0.0 && kind != 4 && kind != 6) {
     if (crown) {
       tone = leafMarks(po, nO, dpo).x * uBrush;
-      // A dark mark fades toward the fully lit planes and a light one toward the turned-away ones:
-      // the marks turn the form at its turning, rather than punch holes in the light mass.
-      float d0 = clamp((dot(n, uSunDir) + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
-      tone *= mix(0.4, 1.0, tone < 0.0 ? 1.0 - smoothstep(0.55, 0.95, d0) : smoothstep(0.05, 0.45, d0));
+      // A dark mark fades toward the lit planes and a light one toward the turned-away ones: the
+      // marks turn the form at its turning, rather than punch holes in the light mass.
+      tone *= tone < 0.0 ? mix(0.25, 1.0, 1.0 - smoothstep(0.4, 0.85, d0)) : mix(0.4, 1.0, smoothstep(0.05, 0.45, d0));
       jit = tone * 0.75;
       alb *= 1.0 + tone * 0.6;
     } else {
-      tone = strokeMarks(po, nO, dpo) * uBrush * (1.0 - 0.6 * vTeam.a) * (1.0 + 0.6 * matte);
+      tone = strokeMarks(po, nO, dpo) * uBrush * (1.0 - 0.6 * vTeam.a) * (1.0 + matte);
+      // On a matte prop a dark mark fades where the plane already turns from the sun, and no mark
+      // goes past a bound: the doubled strokes would otherwise sink a tower's shaded flank into a
+      // near-black streak.
+      if (tone < 0.0) tone *= mix(1.0, mix(0.4, 1.0, smoothstep(0.05, 0.4, d0)), matte);
+      tone = mix(tone, clamp(tone, -0.3, 0.6), matte);
       jit = tone * mix(0.5, 0.7, matte) * (1.0 - vTeam.a);
       alb *= 1.0 + tone * 0.6;
     }
@@ -924,15 +930,19 @@ void main() {
     // ball -- the baked colour ramp, the ambient and the occlusion gradients are all flattened
     // alike, while the hues (warm lights, cool shade, each mass's own) stay broken. Other props
     // get a gentler version (flat-painted planes); units none, so they keep their modelling.
-    float amt = (crown ? 0.85 : 0.55 * (1.0 - vTeam.a)) * uBrush * uStylize;
+    // Matte props keep more of the marks' variation inside a step (a lower amount).
+    float amt = (crown ? 0.85 : mix(0.55, 0.45, matte) * (1.0 - vTeam.a)) * uBrush * uStylize;
     if (amt > 0.0) {
       float S = crown ? 2.0 : 1.5;
       float Lc = max(lum(col), 1e-5);
       // The mark already pushed its own value (alb, jit): here it only moves where the steps fall
-      // -- most on the flat-faced props, where the steps would otherwise follow the facets.
-      float q = (log2(Lc) + tone * (crown ? 0.6 : mix(1.2, 1.8, matte))) * S + 32.0;
+      // -- light marks most on the flat-faced props, where the steps would otherwise follow the
+      // facets.
+      float q = (log2(Lc) + tone * (crown ? 0.6 : tone > 0.0 ? mix(1.2, 1.8, matte) : 1.2)) * S + 32.0;
       float qf = floor(q) + smoothstep(0.3, 0.7, fract(q));
-      col *= mix(1.0, exp2((qf - 32.0) / S) / Lc, amt);
+      float gm = mix(1.0, exp2((qf - 32.0) / S) / Lc, amt);
+      // A prop's step never darkens it by more than about half a stop (a crown's steps may).
+      col *= crown ? gm : max(gm, 0.7);
     }
   }
   col = fogOfWar(col, vVis);
@@ -1034,6 +1044,19 @@ vec3 skyRefl(vec3 P, vec3 R) {
   return mix(c, mix(vec3(1.0, 0.98, 0.94), uSunColor * 0.4, 0.3), cloud * 0.45);
 }
 
+// The surface's slow drifts at time t -- the mirror's break-up strokes (level on the sea, along
+// the current on a river), the foam's lace, the body's mottle -- so remembered water can hold them
+// at rest (t = 0) and the frontier mix the two.
+float brkAt(vec2 m, vec2 bw, bool river, vec2 us, float t) {
+  return river ? pnoise(vec2(us.x * 2.0, us.y * 5.0 - t * 1.5), vec2(4096.0))
+               : mstrokeH(m + bw + vec2(t * 0.04, -t * 0.05), 9.0, 6.0) * 0.65 + mstrokeH(m - bw + vec2(-t * 0.03, t * 0.04) + 2.7, 17.0, 5.0) * 0.35;
+}
+float laceAt(vec2 m, float t) {
+  vec2 cl = mcells(m + vec2(t * 0.02, -t * 0.014), 10.0);
+  return 1.0 - smoothstep(0.03, 0.12, cl.y - cl.x);
+}
+float bodyAt(vec2 m, float t) { return 0.9 + 0.2 * mfbm(m + t * 0.01, 0.5); }
+
 void main() {
   vec2 m = mapOf(vWorld);
   float v = visAt(vWorld);
@@ -1045,6 +1068,8 @@ void main() {
   // remembered land). Across the frontier the moving and the calm values are mixed, never the time
   // itself (a time scaled by the fog would shear the waves further every second).
   float live = smoothstep(0.62, 0.97, v);
+  float tl = live > 0.0 ? t : 0.0;    // the drifts' time: at rest where remembered
+  bool band = live > 0.0 && live < 1.0; // the frontier: the moving and the resting values mixed
   // The sea floor's depth, read through a warp and averaged over a small footprint, so the
   // colour bands of the shelf follow soft, irregular contours instead of the plot grid.
   // Only samples under water count: around a small lake most of the footprint is dry land, which
@@ -1116,14 +1141,18 @@ void main() {
   // pyramid: there, never let the water read clearer than its true bed (uHeight) allows.
   path = max(path, uCoarse * depth / max(V.y, 0.3));
   vec3 floorCol = texture(uSceneColor, ruv).rgb;
+  // Sand under the sea is wet, darker from the very waterline: the shore keeps a crisp edge.
+  if (!river) floorCol *= mix(1.0, 0.65, smoothstep(0.0, 0.008, depth));
   // A river carries silt: it closes over its bed sooner than the clear sea over the shelf. Even at
-  // the waterline the water tints what it covers a little.
-  vec3 T = exp(-vec3(22.0, 10.0, 7.5) * (path + 0.012) * (river ? 4.0 : 1.0)) * uRefract;
+  // the waterline the water tints what it covers.
+  vec3 T = exp(-vec3(22.0, 10.0, 7.5) * (path + (river ? 0.012 : 0.06)) * (river ? 4.0 : 1.0)) * uRefract;
   // The water's own colour where it is deep (scattered light): teal over the shelf to indigo.
-  float dcol = river ? 0.1 + path * 1.2 : depth;
+  float dcol = river ? 0.2 + path * 1.5 : depth;
   vec3 body = mix(srgb(vec3(0.15, 0.45, 0.45)), srgb(vec3(0.07, 0.3, 0.4)), smoothstep(0.0, 0.12, dcol));
   body = mix(body, srgb(vec3(0.05, 0.17, 0.34)), smoothstep(0.12, 0.4, dcol));
-  body *= 0.9 + 0.2 * mfbm(m + t * 0.01, 0.5);
+  float bm = bodyAt(m, tl);
+  if (band) bm = mix(bodyAt(m, 0.0), bm, live);
+  body *= bm;
   float sun;
   vec3 Lb = lightAt(vec3(0.0, 1.0, 0.0), vWorld, 1.0, sun);
   body *= Lb * 0.7 + 0.1;
@@ -1160,13 +1189,14 @@ void main() {
   // river.
   float fres = pow(1.0 - max(dot(n, V), 0.0), 3.0);
   vec2 bw = (vec2(mnoise(m, 1.1), mnoise(m + 5.3, 1.1)) - 0.5) * 0.5;
-  float brk = river ? pnoise(vec2(vExtra.x * 2.0, vExtra.y * 5.0 - t * 1.5), vec2(4096.0))
-                    : mstrokeH(m + bw + vec2(t * 0.04, -t * 0.05), 9.0, 6.0) * 0.65 + mstrokeH(m - bw + vec2(-t * 0.03, t * 0.04) + 2.7, 17.0, 5.0) * 0.35;
+  float brk = brkAt(m, bw, river, vExtra.xy, tl);
+  if (band) brk = mix(brkAt(m, bw, river, vExtra.xy, 0.0), brk, live);
   // The deep mirrors less, and its own blue tints what it mirrors: ocean must stay darker than the
-  // shelf, coast against open sea read by value.
-  float dk = river ? 0.0 : smoothstep(0.12, 0.4, dcol);
+  // shelf, coast against open sea read by value. A river a little too: it must read darker than
+  // its banks.
+  float dk = river ? 0.3 : smoothstep(0.12, 0.4, dcol);
   sky *= mix(vec3(1.0), vec3(0.45, 0.7, 1.1), dk);
-  float rw = clamp(mix(mix(0.15, 0.04, dk), 0.85, fres) * mix(0.3, 1.45, smoothstep(0.25, 0.8, brk)), 0.0, 0.85);
+  float rw = clamp(mix(mix(river ? 0.08 : 0.15, 0.04, dk), 0.85, fres) * mix(0.3, 1.45, smoothstep(0.25, 0.8, brk)), 0.0, 0.85);
   rw *= mix(1.0, 0.6, dk);
 
   // --- Glitter: the ripples' small steep facets catch the sun and flash -- short bright marks
@@ -1194,9 +1224,12 @@ void main() {
         if (hash12(cell + 5.5) > share) continue;
         vec2 tilt = (hash22(cell + floor(ph) * 7.13) - 0.5) * 1.7;
         float spec = pow(max(dot(normalize(vec3(tilt.x, 1.0, -tilt.y)), H), 0.0), 140.0);
-        // Each glint its own length: not a row of stamped lozenges.
+        // Each glint its own length, width and slant: not a row of stamped lozenges.
         float sz = mix(0.7, 1.4, hash12(cell + 8.1));
-        float shape = 1.0 - smoothstep(0.1, 0.22, length(o * vec2(0.38 / sz, 1.7 / thin)));
+        float wd = thin * mix(0.7, 1.3, hash12(cell + 11.3));
+        float ang = (hash12(cell + 4.7) - 0.5) * 0.5;
+        vec2 orot = vec2(cos(ang) * o.x - sin(ang) * o.y, sin(ang) * o.x + cos(ang) * o.y);
+        float shape = 1.0 - smoothstep(0.1, 0.22, length(orot * vec2(0.38 / sz, 1.7 / wd)));
         glit = max(glit, spec * shape * sin(fract(ph) * PI));
       }
     }
@@ -1206,8 +1239,8 @@ void main() {
   // --- Surf: the swash runs up the beach and draws back (a slow breathing), its foam a lace;
   // rollers come in from offshore and break into it. A river: lace along its banks and flecks
   // carried down mid-channel.
-  vec2 cl = mcells(m + vec2(t * 0.02, -t * 0.014), 10.0);
-  float lace = 1.0 - smoothstep(0.03, 0.12, cl.y - cl.x);
+  float lace = laceAt(m, tl);
+  if (band) lace = mix(laceAt(m, 0.0), lace, live);
   float sph = mnoise(m, 1.3) * 6.2831;
   float swash = 0.03 + 0.016 * mix(sin(sph), sin(t * 0.8 + sph), live);
   float shore = 1.0 - smoothstep(swash * 0.35, swash, depth);
@@ -1217,6 +1250,11 @@ void main() {
   float roll = mix(smoothstep(0.72, 1.0, sin(rph)), smoothstep(0.72, 1.0, sin(rph + t * 1.5)), live);
   roll *= smoothstep(0.012, 0.03, depth) * (1.0 - smoothstep(0.05, 0.11, depth));
   roll *= smoothstep(0.08, 0.2, shelf) * (1.0 - smoothstep(0.8, 1.6, fwidth(rph)));
+  // ... and only where the floor keeps rising toward land across the pixel's neighbourhood (a
+  // bump's flank rises one way and falls the other: its contours would close into a lens).
+  vec2 up = normalize(vec2(gt[1] - gt[3], gt[0] - gt[2]) + vec2(1e-6, 0.0));
+  float hA = texture(uHeight, mapUV(m + up * 0.15)).r, hB = texture(uHeight, mapUV(m - up * 0.15)).r;
+  roll *= smoothstep(0.0, 0.006, hA - near) * smoothstep(0.0, 0.006, near - hB);
   // The edge of the unexplored is no coast: the blank's floor stands above the sea (world.js BASE),
   // so the water shallows against it, but surf there would say land. The height's lookup is warped
   // up to ~0.45 plot, so the blank is looked for half a plot round.
@@ -1264,13 +1302,13 @@ void main() {
   // The cells' edges are warped (light gathered by waves runs in curves, not a crazed glaze), and
   // the net dims once its lines would be hairlines: a close-up detail.
   float cLod = mix(0.3, 1.0, 1.0 - smoothstep(0.006, 0.011, ppx));
-  if (!river && uCaustics > 0.0 && live > 0.0 && sun > 0.05) {
+  float fadeC = smoothstep(0.004, 0.025, depth) * (1.0 - smoothstep(0.1, 0.25, depth));
+  if (!river && uCaustics > 0.0 && live > 0.0 && sun > 0.05 && fadeC > 0.0) {
     vec2 fm = mapOf(vWorld - V * min(path, 0.6));
     fm += (vec2(mnoise(fm, 1.7), mnoise(fm + 4.1, 1.7)) - 0.5) * 0.3;
     vec2 ca = mcells(fm + vec2(t * 0.05, t * 0.031), 4.2);
     vec2 cb = mcells(fm + vec2(-t * 0.036, t * 0.047) + 3.7, 5.6);
     float web = (1.0 - smoothstep(0.0, 0.1, ca.y - ca.x)) * 0.6 + (1.0 - smoothstep(0.0, 0.08, cb.y - cb.x)) * 0.5;
-    float fadeC = smoothstep(0.004, 0.025, depth) * (1.0 - smoothstep(0.1, 0.25, depth));
     floorCol *= 1.0 + web * fadeC * sun * live * cLod * 1.1 * uCaustics;
   }
   vec3 foamCol = srgb(vec3(0.9, 0.89, 0.83)) * (Lb * 0.32 + 0.08);
@@ -1285,11 +1323,11 @@ void main() {
   vec3 col = atmosphere(fogOfWar(own, v), vWorld) + seen;
   // A river's edge dissolves into its bank (the ribbon's straight edge would otherwise show) -- not
   // over the sea, whose floor would rim the river in sand.
-  float openSea = 1.0 - smoothstep(-0.095, -0.068, near + 0.01 * (mnoise(m, 6.0) - 0.5));
-  if (river) col = mix(col, floorCol, smoothstep(0.8, 1.0, abs(vExtra.x)) * 0.7 * uRefract * (1.0 - openSea));
-  // Where a river's ribbon runs out over the sea (below any carved bed, world.js), the sea already
-  // drawn there shows instead: its colours and its surf.
-  if (river && openSea > 0.5) discard;
+  // vExtra.z is 1 where the ribbon runs out over the sea (Scene.buildRivers): there the sea already
+  // drawn shows instead, its colours and its surf, along a broken edge.
+  float overSea = vExtra.z + 0.3 * (mnoise(m, 6.0) - 0.5);
+  if (river) col = mix(col, floorCol, smoothstep(0.8, 1.0, abs(vExtra.x)) * 0.7 * uRefract * (1.0 - step(0.5, overSea)));
+  if (river && overSea > 0.5) discard;
   // The paint filter spares the glitter (it would erase so small a mark); it blooms a little.
   oColor = vec4(col, clamp(glit * 3.0, 0.0, 0.9));
   oND = vec4(normalize((uView * vec4(0.0, 1.0, 0.0, 0.0)).xyz), zW);
@@ -1586,7 +1624,9 @@ void main() {
       vec3 wp = (uInvView * vec4(vp, 1.0)).xyz;
       // Periodic over a wrapping map's width, like the ink's wobble.
       bool wr = uWrapX > 0.5;
-      float gr = hash12(mod(floor(vec2(wp.x, wp.z) * 90.0), vec2(wr ? 90.0 * uMapSize.x : 1e7, 1e7))) - 0.5;
+      vec2 gc = floor(vec2(wp.x, wp.z) * 90.0);
+      if (wr) gc.x = mod(gc.x, 90.0 * uMapSize.x);
+      float gr = hash12(gc) - 0.5;
       float fib = pnoise(vec2(wp.x * 20.0 + wp.z * 7.0, wp.z * 60.0 - wp.x * 11.0), wr ? vec2(20.0, 11.0) * uMapSize.x : vec2(4096.0)) - 0.5;
       g *= 1.0 + (gr * 0.6 + fib) * uGrain;
     }

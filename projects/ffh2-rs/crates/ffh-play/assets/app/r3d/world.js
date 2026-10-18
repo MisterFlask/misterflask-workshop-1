@@ -222,7 +222,7 @@ export class World {
   }
 
   /** The ground height at map point (mx, my). */
-  heightAt(mx, my) {
+  heightAt(mx, my, carve = true) {
     // Warp the blend lookup so coastlines and hill feet wander off the grid lines.
     // Two octaves: broad bays and headlands, then a ragged edge (plot centres stay inside their
     // plot: the warp never reaches half a plot).
@@ -288,14 +288,16 @@ export class World {
     }
     if (voidW > 0) h = h * (1 - voidW) + BASE[KIND.VOID] * voidW;
     // Rivers carve their channel.
-    if (this.riverCells.size) {
+    // Rivers carve their channel (`carve` false: the ground the river runs over, uncut).
+    if (carve && this.riverCells.size) {
       const d = this.riverDist(mx, my);
       if (d < 0.32) {
         // A channel with sloping banks: full depth across the bed, easing out to the bank tops.
-        const carve = 1 - smoothstep(0.05, 0.24, d);
-        h = Math.min(h, h - 0.08 * carve * carve * (3 - 2 * carve));
-        // A river's bed never rises over its banks' sea level side.
-        if (carve > 0.5) h = Math.max(h, -0.06);
+        const cv = 1 - smoothstep(0.05, 0.24, d);
+        h = Math.min(h, h - 0.08 * cv * cv * (3 - 2 * cv));
+        // A river's bed never sinks deep under sea level -- on land: over the sea the floor stays
+        // the sea's (raised, it would show through the clear water as a sandbar along the river).
+        if (cv > 0.5) h = Math.max(h, -0.06 - 0.5 * smoothstep(0.3, 0.7, water));
       }
     }
     return h;
