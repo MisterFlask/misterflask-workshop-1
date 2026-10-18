@@ -20,9 +20,13 @@
 //   feature(feat, ctx)     -> [{asset, param?, scale?, dx?, dz?}] one-off features (oasis, volcano)
 //   family(civType)        -> string   a civilization's architectural family
 //   city(ctx)              -> [{asset, variant?, param?, x, z, yaw, scale, lift?}] (+ optional
-//                              `.emit` array property: chimney smoke, braziers) a settlement's
-//                              buildings around its plot centre (ctx: size, capital, walls,
-//                              family, civ, seed, height(dx, dz), coast, river)
+//                              `.emit` array property: chimney smoke, braziers; `.reach`: how far
+//                              from the plot centre it stands) a settlement's buildings around its
+//                              plot centre (ctx: size, capital, walls, family, civ, seed,
+//                              height(dx, dz), coast, river); a great city spills over its plot
+//   cityReach(ctx)         -> number  how far a city's buildings reach from its plot centre (ctx:
+//                              size, capital, walls): ~0.4 for a small town to ~0.9 for a great
+//                              walled capital (its plate, its neighbours' woods keep clear of it)
 //   unit(type, ctx)        -> {asset, param?, variant?, scale?, height?, float?, fly?}  a unit's
 //                              figure (ctx: info, civ, family, domain "DOMAIN_SEA"/"DOMAIN_LAND"/
 //                              "DOMAIN_AIR", combat "UNITCOMBAT_MELEE"..., unit, name)

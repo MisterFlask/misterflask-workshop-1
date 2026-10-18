@@ -9,7 +9,10 @@
 // eaves. Detail is spent where it reads at gameplay zoom: chimneys, gables turned to the street,
 // towers with conical and spire roofs, a few lit windows, banners in the owner's colour; fine
 // detail (timber studs, merlons, slits) only adds texture up close. Each family has its own palette
-// and shape grammar: human (half-timber, steep tile and slate, spires, terracotta turrets), elven
+// and shape grammar: human (whitewashed plaster and cream stone, half-timber, steep red-brown tile
+// and some blue slate, thatched cottages, a skyline of slender blue spires, round wall towers under
+// tile, slate and plum cones; lilac stone and violet slate for the arcane, grey stone and
+// frost-blue slate for the north), elven
 // (pods with petal-bud roofs held in living wood, a great tiered mallorn lit gold at its crown),
 // dwarven (battered stone, earth berms, heavy low slate, forge glow), infernal (faceted obsidian
 // shards with a cold painted sheen, bone, chains, lava-lit slits, a planar rift), tribal (pale hide
@@ -17,18 +20,22 @@
 // (sandstone cubes, domes, minarets) and coastal (planks on stilts, sails, crow's nests).
 //
 // Settlements are composed, not scattered (`cityLayout`, with the `Plan` packer below): a focal
-// landmark at the back (north, so it never hides the square), an open square in front where the
-// garrison stands (plot-local (0, 0.3) and the way in kept clear), a main street to the gate and a
-// lane or two out from the square, and the houses packed densely from the square outward -- each
-// into the best of many candidate spots (fronting a street, wall to wall beside a neighbour, back
-// to back behind one, or with its back to the town wall), scored by closeness to the heart, a front
-// on a street and neighbours touched -- so roofs close into one mass instead of a ring of boxes.
+// landmark at the back (north, so it never hides the square), an open square in front, the
+// garrison's ground (where dress.js stands a city's units) and the way in kept clear, a main
+// street to the gate and a lane or two out from the square, and the houses packed densely from
+// the square outward -- each into the best of many candidate spots (fronting a street, wall to
+// wall beside a neighbour, back to back behind one, or with its back to the town wall), scored by
+// closeness to the heart, a front on a street and neighbours touched -- so roofs close into one
+// mass instead of a ring of boxes.
 // Footprints are the meshes' own oriented bounds, so roofs do not run into each other. Halls stand
 // on the square, towers at the back, a wall ring with towers and a gate toward the camera (+z), and
 // a pier on the water side of a coastal town. Families differ in spacing, how freely buildings turn
 // (a camp's tents turn their doors to its fire), the square's furniture (stalls and a well; a fire
 // and totems; braziers; trees from vegetation.js among elven pods) and particles (embers, forge
 // sparks, lantern motes, arcane motes). A town deep in the woods raises its landmark and spires.
+// A town grows with its size (`cityReach`): a small one keeps within its plot, a great walled
+// capital spills over it to ~0.85 from the centre, its buildings up to 1.4 times their size, so it
+// dominates the country around it as the walled town of the look target does.
 //
 // Families (the recipes' param, from `family(civType)`; a ".sub" suffix picks a sub-style that
 // `city` and `settlement` derive from the civilization): human ("human.arcane" for the Amurites and
@@ -38,7 +45,7 @@
 //
 // Recipes (param = family[.sub]): bld.house (6 variants), bld.hall (3), bld.tower (3), bld.keep
 // (2: keep / landmark, capital palace), bld.wall (2: a segment along x of length 0.2, outer face +z;
-// a half segment), bld.gate (width 0.2, outer face +z), bld.walltower (2), and the common pieces
+// a half segment), bld.gate (width 0.2, outer face +z), bld.walltower (4), and the common pieces
 // bld.well, bld.stall (3), bld.banner (2: hanging banner, swallow-tailed standard), bld.fence
 // (along x, length 0.2), bld.totem, bld.brazier, bld.pier (2: jetty with a rowboat, quay with a
 // sailing boat; sea level at y = 0, along +z from the shore).
@@ -389,23 +396,65 @@ function gem(mb, r, h = r * 1.6) {
 // Each family's palette (sRGB hex; resolved per building with a little jitter).
 
 const STY = {
+  // Whitewashed plaster and cream stone under red-brown tile, some orange and blue slate.
   human: {
-    wall: ["#d8cbac", "#dccfb4", "#cfc0a0", "#d4cab2", "#d8c8a2"],
-    stone: ["#958c80", "#8a8278", "#9c9282"],
-    stoneLight: ["#b8a98f", "#b0a189", "#bcac92"],
-    timber: "#3e2c20",
-    roof: [["#844832", 3.2], ["#70402e", 2], ["#7e5a40", 1], ["#566070", 1.3], ["#847250", 1]],
-    tile: "#86452f",
-    slate: "#5c6676",
-    slateDark: "#4a5464",
-    thatch: "#8a7650",
+    wall: ["#e0d4b8", "#e2d4b4", "#d8cbac", "#ded2ba", "#e0d0ac"],
+    stone: ["#a39a8a", "#968e82", "#a89c88"],
+    stoneLight: ["#d8cbae", "#d0c3a6", "#dccfb2"],
+    timber: "#4a3022",
+    roof: [["#8e4436", 3.2], ["#7a3a32", 2], ["#985640", 1.6], ["#a0684a", 0.6], ["#4c5884", 0.55], ["#5e4660", 0.3]],
+    tile: "#8e4436",
+    slate: "#4c5884",
+    slateDark: "#303c6c",
+    thatch: "#d2b67c",
     glass: "#2a282c",
     lit: "#ffbf6a",
     door: "#4a3020",
-    chimney: "#857c72",
-    spire: "#505a6a",
+    chimney: "#8e8478",
+    board: "#74462f",
+    spire: "#4a5a90",
     pitch: 1,
     litP: 0.32,
+  },
+  // The Amurites and Sidar: pale lilac stone under violet and blue slate (a little copper green).
+  arcane: {
+    wall: ["#e2dcd4", "#dcd4cc", "#e6e0d6"],
+    stone: ["#8e8a96", "#848090", "#96909a"],
+    stoneLight: ["#cfc8d2", "#c8c0cc", "#d6d0d6"],
+    timber: "#3a2e3a",
+    roof: [["#4a3c7a", 3], ["#3a4a84", 2.4], ["#5a3c6c", 1.2], ["#3e7470", 0.9], ["#9c4a3a", 0.6]],
+    tile: "#4a3c7a",
+    slate: "#3a3c7a",
+    slateDark: "#2e2e62",
+    thatch: "#8a7c74",
+    glass: "#262236",
+    lit: "#d8b8ff",
+    door: "#3a2a38",
+    chimney: "#86808c",
+    board: "#5e4a58",
+    spire: "#45387e",
+    pitch: 1.1,
+    litP: 0.36,
+  },
+  // The Illians: grey fieldstone and dark timber under steep frost-blue slate and turf-dark shingle.
+  north: {
+    wall: ["#d2d0c8", "#c8c6be", "#d8d4ca"],
+    stone: ["#7c7a78", "#727070", "#84807a"],
+    stoneLight: ["#b4b4b0", "#aaaaa8", "#bcbab4"],
+    timber: "#2e2622",
+    roof: [["#465468", 3], ["#3c4a5a", 2], ["#5a5e66", 1.4], ["#6a4434", 0.6]],
+    tile: "#5a4a40",
+    slate: "#3e4c62",
+    slateDark: "#323e50",
+    thatch: "#7a6e58",
+    glass: "#202430",
+    lit: "#b8dcff",
+    door: "#2e2622",
+    chimney: "#6e6c6a",
+    board: "#4e3c30",
+    spire: "#34465e",
+    pitch: 1.3,
+    litP: 0.3,
   },
   gothic: {
     wall: ["#7c7276", "#70686e", "#847a7a"],
@@ -413,6 +462,7 @@ const STY = {
     stoneLight: ["#7e7678", "#726a70"],
     timber: "#24181c",
     roof: [["#363646", 3], ["#40303a", 2], ["#46404e", 1.5]],
+    tile: "#40303a",
     slate: "#343442",
     slateDark: "#282834",
     thatch: "#46404e",
@@ -420,6 +470,7 @@ const STY = {
     lit: "#e07a50",
     door: "#2a1416",
     chimney: "#46404a",
+    board: "#2e2024",
     spire: "#2c2a36",
     pitch: 1.5,
     litP: 0.34,
@@ -436,9 +487,11 @@ function famOf(param) {
 
 // --- human: half-timbered towns, stone keeps, slate spires --------------------------------------------
 
-/** The palette of one human building (gothic for the Calabim). */
-function humanStyle(r, gothic) {
-  const B = gothic ? STY.gothic : STY.human;
+/** The palette of one human building by sub-style (gothic for the Calabim, arcane for the
+ *  Amurites and Sidar, north for the Illians). */
+function humanStyle(r, sub = "") {
+  const B = STY[sub] ?? STY.human;
+  const gothic = sub === "gothic";
   return {
     ...B,
     wallC: J(r.pick(B.wall), r, 0.04),
@@ -513,19 +566,22 @@ function humanBody(mb, r, S, w, d, o) {
 }
 
 /** A roof on a body {w, d, y}: kind "x" (gable, ridge along x), "z" (gable facing front), "hip",
- *  "pyr", "thatch" (soft gable). */
+ *  "pyr", "thatch" (soft gable, ridge along x), "zthatch" (soft gable facing front). */
 function humanRoof(mb, r, S, b, kind, pitch, o = {}) {
   const P = pitch * S.pitch;
   mb.part(() => {
     mb.translate(0, b.y, 0);
     mb.color = o.color ?? S.roofC;
     const ends = o.ends ?? S.wallC;
-    if (kind === "x" || kind === "thatch") {
-      const th = kind === "thatch";
-      gableRoof(mb, b.w, b.d, P, { over: th ? 0.013 : 0.011, overX: th ? 0.01 : 0.012, thick: th ? 0.011 : 0.006, sag: o.sag ?? (th ? 0.006 : r.range(0, 0.004)), ends, shade: 0.36 });
+    if (kind === "x" || kind === "thatch" || kind === "zthatch") {
+      const th = kind !== "x";
+      const turn = kind === "zthatch";
+      if (turn) mb.rotateY(QT);
+      const W = turn ? b.d : b.w, D = turn ? b.w : b.d;
+      gableRoof(mb, W, D, P, { over: th ? 0.015 : 0.011, overX: 0.012, thick: th ? 0.012 : 0.006, sag: o.sag ?? (th ? 0.006 : r.range(0, 0.004)), ends, shade: th ? 0.22 : 0.36 });
       if (th) {
-        mb.color = mulc(S.roofC, 0.7);
-        mb.tube([[-b.w / 2 - 0.006, P - 0.002, 0], [0, P - 0.006, 0], [b.w / 2 + 0.006, P - 0.002, 0]], 0.0065, 4);
+        mb.color = mulc(mb.color, 0.72);
+        mb.tube([[-W / 2 - 0.008, P - 0.002, 0], [0, P - 0.006, 0], [W / 2 + 0.008, P - 0.002, 0]], 0.0068, 4);
       }
     } else if (kind === "z") {
       mb.rotateY(QT);
@@ -538,19 +594,44 @@ function humanRoof(mb, r, S, b, kind, pitch, o = {}) {
   });
 }
 
+/** Which of a style's roof colours each house variant takes (a variant is one model everywhere,
+ *  so a town's mix of roofs is the mix of its variants): the cottage is thatched, the gable-fronted
+ *  stone house and the long house take the tile reds and orange, the tower-house slate. */
+const HOUSE_ROOF = [0, 0, 2, 3, 1, -1];
+
 function humanHouse(mb, r, v, sub) {
-  const S = humanStyle(r, sub === "gothic");
+  const S = humanStyle(r, sub);
+  const ri = HOUSE_ROOF[v] ?? 0;
+  S.roofC = J(ri < 0 ? S.slate : S.roof[ri % S.roof.length][0], r, 0.06);
   const chim = (x, z, y0, y1) => chimney(mb, S.chimney, x, z, y0, y1, 0.016);
   switch (v) {
     case 0: {
-      // A cottage: low plastered walls under a deep thatch (or tile) roof, a stone end chimney.
-      const w = r.range(0.11, 0.125), d = r.range(0.078, 0.088);
-      const b = humanBody(mb, r, S, w, d, { h1: r.range(0.068, 0.074), doorX: r.range(-0.02, 0.02) });
-      const thatch = !S.gothic && r() < 0.65;
+      // A cottage with its gable to the street (as in the look target): timber-framed plaster on a
+      // stone footing, the gable boarded in timber, a deep, steep straw thatch with a ridge roll
+      // (tile for the gothic), a stone chimney at the back of the ridge and a lean-to shed on one
+      // side under a plank roof.
+      const w = r.range(0.086, 0.096), d = r.range(0.115, 0.128);
+      // (Always thatched but for the gothic: a variant is one model everywhere, so a draw here
+      // would make every cottage of a style tiled or every one thatched.)
+      const thatch = !S.gothic;
       if (thatch) S.roofC = J(S.thatch, r, 0.06);
-      humanRoof(mb, r, S, b, thatch ? "thatch" : "x", 0.09);
+      const b = humanBody(mb, r, S, w, d, { h1: r.range(0.064, 0.07), gableZ: true, doorX: r.range(-0.012, 0.012) });
+      const board = J(S.board, r, 0.06);
+      humanRoof(mb, r, S, b, thatch ? "zthatch" : "z", 0.1, { ends: board });
+      const P = 0.1 * S.pitch;
       mb.color = S.stoneC;
-      at(mb, (r.sign() * w) / 2 + 0.0, 0, r.range(-0.01, 0.01), 0, () => blk(mb, 0.022, 0.024, -0.04, b.y + 0.09 * S.pitch + 0.014, 0.85));
+      at(mb, r.range(-0.006, 0.006), 0, -d * 0.3, 0, () => blk(mb, 0.02, 0.024, b.y + P * 0.4, b.y + P * 0.82 + 0.03, 0.85));
+      const s = r.sign(), sd = d * 0.55, yi = b.y - 0.004, yo = 0.04;
+      mb.part(() => {
+        mb.translate(s * (w / 2 + 0.019), 0, -d * 0.1);
+        mb.color = board;
+        blk(mb, 0.038, sd, -0.04, yo);
+        for (const e of [-1, 1]) mb.tri([-s * 0.019, yo, (e * sd) / 2], [-s * 0.019, yi, (e * sd) / 2], [s * 0.019, yo, (e * sd) / 2]);
+        mb.color = mulc(thatch ? S.roofC : board, 0.86);
+        const dd = sd / 2 + 0.006;
+        mb.quad([-s * 0.021, yi + 0.002, -dd], [-s * 0.021, yi + 0.002, dd], [s * 0.026, yo - 0.004, dd], [s * 0.026, yo - 0.004, -dd]);
+        face(mb, 0, 0.038, sd, () => door(mb, S, s * 0.004, 0.014, 0.026, 0, 0.004, board));
+      });
       break;
     }
     case 1: {
@@ -579,9 +660,8 @@ function humanHouse(mb, r, v, sub) {
       break;
     }
     case 3: {
-      // A gable-fronted stone house under slate, a heavy chimney stack on its back gable.
+      // A gable-fronted stone house, a heavy chimney stack on its back gable.
       const w = r.range(0.09, 0.1), d = r.range(0.115, 0.125);
-      S.roofC = J(r() < 0.6 ? S.slate : S.roofC, r, 0.05);
       const b = humanBody(mb, r, S, w, d, { h1: 0.075, lower: "light", frame: false, gableZ: true, doorX: r.range(-0.015, 0.015) });
       humanRoof(mb, r, S, b, "z", 0.08, { ends: S.lightC });
       mb.color = S.lightC;
@@ -611,7 +691,6 @@ function humanHouse(mb, r, v, sub) {
     default: {
       // A narrow tower-house: two storeys under a steep pyramid of slate.
       const w = r.range(0.082, 0.09), d = r.range(0.082, 0.09);
-      S.roofC = J(r() < 0.55 ? S.slate : S.roofC, r, 0.05);
       const b = humanBody(mb, r, S, w, d, { h1: 0.05, h2: 0.05, jetty: 0.006, lower: "stone", doorX: 0 });
       humanRoof(mb, r, S, b, "pyr", 0.085);
       mb.part(() => {
@@ -664,8 +743,25 @@ function roundTower(mb, r, S, o) {
   }
 }
 
+/** A slender round turret (radius rad) from y0 to y1, corbelled out at its top, under a tall
+ *  witch's-hat roof of height rh with a finial: the spires of a town's skyline. */
+function turret(mb, r, S, rad, y0, y1, rh, roofC, { flag = false, lit = true, seg = 8 } = {}) {
+  mb.part(() => {
+    mb.color = S.lightC;
+    drum(mb, rad, rad, y0, y1, seg);
+    mb.lathe([[rad, y1 - 0.006], [rad * 1.2, y1 + 0.006]], seg, { caps: false });
+    if (lit) at(mb, 0, 0, rad + 0.001, 0, () => win(mb, S, 0, y1 - 0.04, 0.007, 0.018, r() < 0.6, 0.005));
+    mb.translate(0, y1 + 0.006, 0);
+    mb.color = roofC;
+    coneRoof(mb, rad * 1.32, rh, { seg, curve: 0.5, drop: 0.008, kick: 0.2 });
+    mb.translate(0, rh - 0.003, 0);
+    finial(mb, 0, 0.016);
+    if (flag) pennant(mb, 0.016, 0.036, 0.013);
+  });
+}
+
 function humanTower(mb, r, v, sub) {
-  const S = humanStyle(r, sub === "gothic");
+  const S = humanStyle(r, sub);
   if (sub === "arcane" && v === 0) v = 2;
   if (v === 0) {
     // A round watchtower under a steep conical slate roof.
@@ -742,7 +838,7 @@ function humanTower(mb, r, v, sub) {
 }
 
 function humanHall(mb, r, v, sub) {
-  const S = humanStyle(r, sub === "gothic");
+  const S = humanStyle(r, sub);
   if (v === 0) {
     // A manor: a two-storey range under a hipped roof between two gable-fronted wings.
     const w = 0.13, d = 0.085;
@@ -871,7 +967,7 @@ function humanHall(mb, r, v, sub) {
 }
 
 function humanKeep(mb, r, v, sub) {
-  const S = humanStyle(r, sub === "gothic");
+  const S = humanStyle(r, sub);
   const slate = J(S.slate, r, 0.04);
   if (v === 0) {
     // A castle keep: a tall square donjon with a hipped roof inside its battlements, four corner
@@ -910,13 +1006,14 @@ function humanKeep(mb, r, v, sub) {
       mb.part(() => {
         mb.translate((sx * w) / 2, 0, (sz * d) / 2);
         mb.color = S.lightC;
-        drum(mb, 0.027, 0.027, 0.06, h + 0.04, 8);
+        drum(mb, 0.027, 0.027, 0.06, h + 0.05, 8);
         mb.lathe([[0.02, 0.04], [0.027, 0.06]], 8, { caps: false });
-        mb.translate(0, h + 0.04, 0);
-        mb.color = slate;
-        coneRoof(mb, 0.034, 0.09 * S.pitch, { seg: 8, curve: 0.3, drop: 0.006 });
+        mb.lathe([[0.027, h + 0.044], [0.032, h + 0.056]], 8, { caps: false });
+        mb.translate(0, h + 0.056, 0);
+        mb.color = J(S.spire, r, 0.04);
+        coneRoof(mb, 0.038, 0.13 * Math.sqrt(S.pitch), { seg: 8, curve: 0.45, drop: 0.006, kick: 0.2 });
         if (sz > 0) {
-          mb.translate(0, 0.09 * S.pitch, 0);
+          mb.translate(0, 0.13 * Math.sqrt(S.pitch), 0);
           finial(mb, 0, 0.014);
           pennant(mb, 0.014, 0.035, 0.012);
         }
@@ -931,10 +1028,20 @@ function humanKeep(mb, r, v, sub) {
       face(mb, 0, 0.05, 0.04, () => door(mb, S, 0, 0.022, 0.036, 0.011));
     });
   } else {
-    // A palace-cathedral (capitals): a lofty nave under a steep roof, twin spired towers on its
-    // front, a crossing tower, buttresses, a great lit rose window.
-    const w = 0.1, d = 0.22, h = 0.13;
+    // A palace-cathedral (capitals), the skyline of the town: a lofty nave under a steep slate
+    // roof, twin west towers and a taller crossing tower under slender needle spires, slender
+    // round turrets with witch's-hat roofs at the transepts and the apse, aisles, banners down the
+    // towers, a great lit rose window.
+    const w = 0.1, d = 0.22, h = 0.14;
     const L = S.lightC;
+    const spire = J(S.spire, r, 0.04);
+    // A needle spire of radius R and height H on a tower top: a concave octagonal cone.
+    const needle = (R, H) => {
+      mb.color = spire;
+      mb.lathe([[R, -0.002], [R * 0.6, H * 0.3], [R * 0.28, H * 0.66], [0, H]], 8, { caps: false, phase: TAU / 16 });
+      mb.translate(0, H - 0.004, 0);
+      finial(mb, 0, 0.02);
+    };
     mb.part(() => {
       mb.translate(0, 0, -0.03);
       mb.color = mulc(L, 0.84);
@@ -960,18 +1067,23 @@ function humanKeep(mb, r, v, sub) {
           for (let i = 0; i < 5; i++) win(mb, S, -span / 2 + (span * (i + 0.5)) / 5, h * 0.66, 0.01, 0.028, r() < 0.6, 0.008);
         });
       humanRoof(mb, r, S, { w, d, y: h }, "z", 0.1, { color: slate, ends: L });
-      // Crossing tower with a spire.
+      // The crossing tower: clear of the ridge, under the tallest spire.
+      const ct = 0.058, ch = 0.1 * S.pitch + 0.08;
       mb.part(() => {
-        mb.translate(0, h + 0.05, -0.03);
+        mb.translate(0, h, -0.03);
         mb.color = L;
-        blk(mb, 0.05, 0.05, -0.03, 0.06);
-        for (let s = 0; s < 4; s++) face(mb, s, 0.05, 0.05, () => win(mb, S, 0, 0.012, 0.012, 0.026, r() < 0.5, 0.008));
-        mb.translate(0, 0.06, 0);
-        mb.color = slate;
-        mb.lathe([[0.036, -0.002], [0, 0.14 * S.pitch]], 8, { caps: false, phase: TAU / 16 });
-        mb.translate(0, 0.14 * S.pitch, 0);
-        finial(mb, 0, 0.02);
+        blk(mb, ct, ct, -0.02, ch);
+        for (let s = 0; s < 4; s++) face(mb, s, ct, ct, () => win(mb, S, 0, ch - 0.05, 0.013, 0.03, r() < 0.5, 0.008));
+        mb.color = mulc(L, 0.95);
+        blk(mb, ct + 0.008, ct + 0.008, ch, ch + 0.008);
+        mb.translate(0, ch + 0.008, 0);
+        needle(0.038, 0.26 * Math.sqrt(S.pitch));
       });
+      // Turrets at the transepts and flanking the apse.
+      for (const s of [-1, 1]) {
+        at(mb, s * (w / 2 + 0.024), 0, -0.03, 0, () => turret(mb, r, S, 0.019, -0.04, h + 0.075, 0.13 * Math.sqrt(S.pitch), spire));
+        at(mb, s * 0.04, 0, -d / 2 + 0.012, 0, () => turret(mb, r, S, 0.017, -0.04, h + 0.02, 0.1 * Math.sqrt(S.pitch), spire, { lit: false }));
+      }
       // The apse.
       at(mb, 0, 0, -d / 2, 0, () => {
         mb.color = L;
@@ -986,7 +1098,7 @@ function humanKeep(mb, r, v, sub) {
     for (const s of [-1, 1]) {
       mb.part(() => {
         mb.translate(s * 0.058, 0, fz);
-        const tw = 0.052, th = 0.25;
+        const tw = 0.052, th = 0.28;
         mb.color = mulc(L, 0.84);
         blk(mb, tw + 0.01, tw + 0.01, -0.05, 0.016);
         mb.color = L;
@@ -996,15 +1108,12 @@ function humanKeep(mb, r, v, sub) {
             win(mb, S, 0, th - 0.06, 0.012, 0.03, false, 0.008);
             if (q === 0) win(mb, S, 0, th * 0.42, 0.009, 0.024, r() < 0.5, 0.006);
           });
-        face(mb, 0, tw, tw, () => wallBanner(mb, 0, th * 0.66, 0.028, 0.06));
+        face(mb, 0, tw, tw, () => wallBanner(mb, 0, th * 0.7, 0.03, 0.075));
         mb.translate(0, th, 0);
         mb.color = mulc(L, 0.95);
-        blk(mb, tw + 0.004, tw + 0.004, -0.008, 0.006);
-        mb.color = slate;
-        mb.lathe([[0.036, 0], [0.0, 0.15 * S.pitch]], 8, { caps: false, phase: TAU / 16 });
-        mb.translate(0, 0.15 * S.pitch, 0);
-        finial(mb, 0, 0.018);
-        pennant(mb, 0.018, 0.04, 0.014);
+        blk(mb, tw + 0.006, tw + 0.006, -0.008, 0.006);
+        needle(0.035, 0.2 * Math.sqrt(S.pitch));
+        pennant(mb, 0.02, 0.045, 0.016);
       });
     }
     // The west front between the towers.
@@ -1035,25 +1144,25 @@ function humanKeep(mb, r, v, sub) {
 /** A curtain wall segment along x (length 0.2, outer face +z): battered plinth, walls, a walkway
  *  and merlons on the outer edge. */
 function humanWall(mb, r, sub) {
-  const S = humanStyle(r, sub === "gothic");
-  const L = 0.205, t = 0.034, h = 0.07;
+  const S = humanStyle(r, sub);
+  const L = 0.205, t = 0.04, h = 0.09;
   mb.color = mulc(S.lightC, 0.8);
   blk(mb, L, t + 0.014, -0.05, 0.016, 0.98);
   mb.color = S.lightC;
   shell(mb, L, t, 0.016, h);
   mb.color = mulc(S.lightC, 0.9);
-  shell(mb, L + 0.0005, t + 0.0015, 0.04, 0.045);
+  shell(mb, L + 0.0005, t + 0.0015, 0.05, 0.056);
   mb.color = mulc(S.lightC, 0.78);
   mb.quad([-L / 2, h, -t / 2], [-L / 2, h, t / 2], [L / 2, h, t / 2], [L / 2, h, -t / 2]);
   mb.color = S.lightC;
-  merlonsLine(mb, -L / 2 + 0.01, L / 2 - 0.01, h, t / 2 - 0.004, { mw: 0.02, mh: 0.016, md: 0.008, n: 5 });
+  merlonsLine(mb, -L / 2 + 0.01, L / 2 - 0.01, h, t / 2 - 0.004, { mw: 0.022, mh: 0.018, md: 0.009, n: 5 });
   at(mb, 0, 0, -t / 2 + 0.003, 0, () => blk(mb, L, 0.006, h, h + 0.007));
   ground(mb, 0, 0.04, 0.6);
 }
 
 /** A gatehouse (width 0.2 along x, outer face +z): two towers flanking an arched passage, banners. */
 function humanGate(mb, r, sub) {
-  const S = humanStyle(r, sub === "gothic");
+  const S = humanStyle(r, sub);
   const L = S.lightC, slate = J(S.gothic ? S.slate : S.tile, r, 0.04);
   const t = 0.05;
   // The passage block.
@@ -1077,13 +1186,13 @@ function humanGate(mb, r, sub) {
   for (const s of [-1, 1]) {
     mb.part(() => {
       mb.translate(s * 0.072, 0, 0.004);
-      const tw = 0.06, th = 0.16;
+      const tw = 0.062, th = 0.185;
       mb.color = mulc(L, 0.82);
       blk(mb, tw + 0.012, tw + 0.012, -0.05, 0.016, 0.96);
       mb.color = L;
       shell(mb, tw, tw, 0.016, th, 0.94);
       face(mb, 0, tw * 0.97, tw * 0.97, () => {
-        wallBanner(mb, 0, th * 0.86, 0.026, 0.06);
+        wallBanner(mb, 0, th * 0.88, 0.032, 0.074);
         win(mb, S, 0, th * 0.25, 0.007, 0.016, r() < 0.4, 0.004);
       });
       const top = tw * 0.94;
@@ -1102,10 +1211,13 @@ function humanGate(mb, r, sub) {
   ground(mb, 0, 0.04, 0.6);
 }
 
-/** A round wall tower (v0 battlements, v1 a conical roof). */
+/** A round wall tower (v0 battlements around a low cone, v1 a tall conical roof; v2 and v3 the
+ *  same under other roof colours, so that a ring of towers mixes tile, slate and plum). */
 function humanWallTower(mb, r, v, sub) {
-  const S = humanStyle(r, sub === "gothic");
-  roundTower(mb, r, S, { rad: 0.04, h: 0.11, roofH: v ? 0.085 * S.pitch : 0, roofC: J(S.gothic ? S.slate : S.tile, r, 0.04), crenel: !v, seg: 9, flag: v === 1, slits: 1, taper: 0.95 });
+  const S = humanStyle(r, sub);
+  const cone = v % 2 === 1;
+  const roofC = J([S.tile, S.tile, S.slate, S.roof[S.roof.length - 1][0]][v] ?? S.tile, r, 0.04);
+  roundTower(mb, r, S, { rad: 0.048, h: 0.155, roofH: (cone ? 0.13 : 0.08) * S.pitch, roofC, crenel: !cone, seg: 9, flag: cone, slits: 1, taper: 0.95 });
   ground(mb, 0, 0.04, 0.6);
 }
 
@@ -3943,7 +4055,8 @@ recipe("bld.wall", {
   },
 });
 recipe("bld.gate", { variants: 1, build: (mb, r, { param }) => { const b = builder("gate", param); b.fn(mb, r, b.sub); } });
-recipe("bld.walltower", { variants: 2, build: (mb, r, { variant, param }) => { const b = builder("walltower", param); b.fn(mb, r, variant, b.sub); } });
+// (Four variants: the human towers vary their roofs' colour by variant; the others take v % 2.)
+recipe("bld.walltower", { variants: 4, build: (mb, r, { variant, param }) => { const b = builder("walltower", param); b.fn(mb, r, b.f === "human" ? variant : variant % 2, b.sub); } });
 recipe("bld.well", { variants: 1, build: (mb, r, { param }) => well(mb, r, famOf(param).f) });
 recipe("bld.stall", { variants: 3, build: (mb, r, { param }) => stall(mb, r, famOf(param).f) });
 recipe("bld.banner", { variants: 2, build: (mb, r, { variant, param }) => bannerPole(mb, r, variant, famOf(param).f) });
@@ -4155,8 +4268,9 @@ class Plan {
    *  already placed, or anywhere it fits (turned to the nearest street); scored by closeness to
    *  the `heart` (the town grows outward from its square), how squarely its front meets a street
    *  and how many neighbours it touches. `gap` keeps a family's spacing (wider for camps and
-   *  elven groves); `jitter` turns them off true. An item that finds no spot tries again smaller. */
-  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null, rows = true, rim = false, faceHeart = false } = {}) {
+   *  elven groves); `eaves` lets neighbours' eaves overlap by that much (a close-built town);
+   *  `jitter` turns them off true. An item that finds no spot tries again smaller. */
+  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null, rows = true, rim = false, faceHeart = false, eaves = 0 } = {}) {
     const r = this.r;
     const S = this.streets ?? [];
     const total = S.reduce((a, s) => a + s.l, 0);
@@ -4221,7 +4335,7 @@ class Plan {
           if (faceHeart && !(rows && homes.length && (kind === 1 || kind === 3))) yaw = yawTo(heart[0] - x, heart[1] - z);
           yaw += r.range(-jitter, jitter) * (rim && kind === 4 ? 0.3 : 1);
           const A = obb(it.asset, it.variant, it.param ?? this.P, x, z, yaw, sc, gap / 2);
-          if (!this.fits(A, 0)) continue;
+          if (!this.fits(A, eaves)) continue;
           // Closeness to the heart, a front meeting a street, neighbours touched.
           let score = Math.hypot(x - heart[0], (z - heart[1]) * 0.9) * spread;
           if (rim) score = Math.min(score, (rmax - rad) * 0.8 + 0.03);
@@ -4267,10 +4381,28 @@ function shuffle(r, list) {
   return list;
 }
 
-/** How many of each kind a settlement of `size` has. */
-function cityCounts(size) {
+/** Where a city's garrison stands, kept clear of houses: dress.js's CITY_UNIT_SPOT (-0.27, 0.32)
+ *  and the two of its company behind it (at -/+0.17, -0.12 from it), as [x, z, radius]. */
+const GARRISON = [[-0.27, 0.32, 0.09], [-0.44, 0.2, 0.07], [-0.1, 0.2, 0.07]];
+
+/** How far a city reaches and how big it builds (the scale contract, docs/R3D.md §6): `R` the
+ *  radius of its wall ring (unwalled, the radius its buildings keep within), `k` the scale of its
+ *  buildings. A small city stays within its plot; a great one spills over its edges, up to ~0.85
+ *  from the plot centre, with buildings up to 1.4 times their own size, so that a capital
+ *  dominates the country around it (the look target: a walled town of 1.5-1.7 plots). A capital
+ *  counts one size larger. */
+export function cityReach(size, walls, capital) {
+  const s = Math.max(1, size ?? 1) + (capital ? 1 : 0);
+  const R = walls ? Math.min(0.85, 0.34 + s * 0.04) : Math.min(0.78, 0.33 + s * 0.035);
+  const k = 1.06 + 0.36 * Math.max(0, Math.min(1, (s - 2) / 10));
+  return { R, k };
+}
+
+/** How many of each kind a settlement of `size` has; `fill` scales the houses with the room the
+ *  town has (its area over the houses' footprint, 1 for a town of the old fixed radius). */
+function cityCounts(size, fill = 1) {
   return {
-    houses: Math.min(32, Math.round(4 + size * 2.2)),
+    houses: Math.min(42, Math.round((4 + size * 2.2) * fill)),
     halls: size >= 9 ? 2 : size >= 4 ? 1 : 0,
     towers: size >= 11 ? 2 : size >= 5 ? 1 : 0,
     stalls: Math.min(4, 1 + Math.floor(size / 3)),
@@ -4280,14 +4412,41 @@ function cityCounts(size) {
 /** How each family lays out a settlement: gaps between buildings on a street front, how freely
  *  they turn, the square's furniture, trees among the houses, and its particles. */
 const LAY = {
-  human: { gap: 0.008, jitter: 0.06, stalls: true, well: true, banner: 0 },
-  dwarven: { gap: 0.004, jitter: 0.0, stalls: true, well: true, banner: 0, sparks: true },
-  desert: { gap: 0.004, jitter: 0.04, stalls: true, well: true, banner: 0 },
+  human: { gap: 0.008, jitter: 0.06, stalls: true, well: true, banner: 0, eaves: 0.012 },
+  dwarven: { gap: 0.004, jitter: 0.0, stalls: true, well: true, banner: 0, sparks: true, eaves: 0.01 },
+  desert: { gap: 0.004, jitter: 0.04, stalls: true, well: true, banner: 0, eaves: 0.008 },
   coastal: { gap: 0.02, jitter: 0.2, stalls: true, well: false, banner: 1 },
   elven: { gap: 0.022, jitter: 0.25, stalls: false, well: false, banner: 1, trees: true, motes: true },
   tribal: { gap: 0.022, jitter: 0.5, stalls: false, well: false, banner: 1, fire: true },
   infernal: { gap: 0.012, jitter: 0.25, stalls: false, well: true, banner: 0, braziers: true },
 };
+
+/** Layouts already planned, by everything they depend on: a great town takes a tenth of a second
+ *  to plan, and its plot is dressed again whenever a unit moves next to it. The key holds the
+ *  ground's height at a few points (and the neighbours' features), so a town is planned again when
+ *  the land under it changes. `ctx.seed` must seed `ctx.r` (dress.js: the city's id). */
+const LAYOUTS = new Map();
+function cityLayoutMemo(ctx) {
+  if (ctx.seed === undefined || ctx.seed === null) return cityLayout(ctx);
+  const key = [ctx.civ, ctx.family, ctx.size, !!ctx.capital, !!ctx.walls, ctx.seed, ctx.x, ctx.y, JSON.stringify(ctx.coast ?? null)];
+  if (typeof ctx.height === "function")
+    for (let i = 0; i < 9; i++) {
+      const a = (i * TAU) / 8, d = i ? 0.62 : 0;
+      key.push(Math.round(ctx.height(Math.sin(a) * d, Math.cos(a) * d) * 1e4));
+    }
+  if (ctx.world?.feat && ctx.world.index)
+    for (const [dx, dy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) {
+      const j = ctx.world.index(ctx.x + dx, ctx.y + dy);
+      key.push(j >= 0 ? ctx.world.feat[j] : -1);
+    }
+  const k = key.join("|");
+  let out = LAYOUTS.get(k);
+  if (!out) {
+    if (LAYOUTS.size >= 256) LAYOUTS.clear();
+    LAYOUTS.set(k, (out = cityLayout(ctx)));
+  }
+  return out;
+}
 
 /** A settlement's layout around its plot centre (the catalog's `city`). */
 function cityLayout(ctx) {
@@ -4297,14 +4456,20 @@ function cityLayout(ctx) {
   const { f, sub } = famOf(P);
   const L = sub === "gothic" ? { ...LAY.human, stalls: false, braziers: true } : LAY[f] ?? LAY.human;
   const walls = !!ctx.walls;
-  const Rw = walls ? Math.min(0.445, 0.37 + size * 0.01) : 0;
-  const Rmax = walls ? Rw - 0.024 : Math.min(0.46, 0.38 + size * 0.008);
+  // The town's reach and building scale (cityReach); `q` stretches the plan's distances (the
+  // square, the halls, the landmark) with the reach, `k` the buildings and what stands by them.
+  const { R: reach, k } = cityReach(size, walls, ctx.capital);
+  const Rw = walls ? reach : 0;
+  const Rmax = walls ? Rw - 0.03 * k : reach;
+  const q = Math.max(1, Rmax / 0.42);
   const plan = new Plan(r, P, Rmax, typeof ctx.height === "function" ? (x, z) => ctx.height(x, z) : null);
   const out = plan.out;
-  const N = cityCounts(size);
-  // The garrison's place by the gate, and the way in.
-  plan.zone(0, 0.3, 0.09);
-  plan.lane([[0, 0.12], [0, 0.6]], 0.03);
+  out.reach = reach + (walls ? 0.04 * k : 0.03);
+  const N = cityCounts(size, Math.max(1, Math.min(1.9, ((q * q) / (k * k)) * 0.72)));
+  // The garrison's place (dress.js CITY_UNIT_SPOT: the front-left corner, its company behind it)
+  // and the way in from the gate.
+  for (const [x, z, rad] of GARRISON) plan.zone(x, z, rad);
+  plan.lane([[0, 0.12 * q], [0, Rmax + 0.2]], 0.03 * k);
 
   // The landmark at the back of the square (a great tree's crown may spread over the houses).
   // A town in deep woods (most of its neighbours wooded): its landmark and spires grow taller, to
@@ -4318,12 +4483,13 @@ function cityLayout(ctx) {
       else if (ft === FEAT.FOREST || ft === FEAT.JUNGLE) woods += 0.6;
     }
   const deep = woods >= 3.5;
-  const lmScale = (ctx.capital ? 1 : Math.min(0.92, 0.7 + size * 0.025)) * (deep ? 1.12 : 1) * (f === "tribal" ? 0.8 : 1);
-  const lm = { x: r.range(-0.05, 0.05), z: ctx.capital ? r.range(-0.12, -0.09) : r.range(-0.14, -0.1) };
+  // (An elven great tree grows less with the town: its crown spreads over the houses.)
+  const lmScale = (ctx.capital ? (f === "human" || sub === "gothic" ? 1.1 : 1) : Math.min(0.92, 0.7 + size * 0.025)) * (deep ? 1.12 : 1) * (f === "tribal" ? 0.8 : 1) * (f === "elven" ? Math.min(k, 1.12) : k);
+  const lm = { x: r.range(-0.05, 0.05), z: (ctx.capital ? r.range(-0.12, -0.09) : r.range(-0.14, -0.1)) * q };
   // A small city gets a vertical landmark a TOWN improvement never has (F10): a low keep, so it
   // reads as a city, not a cluster of houses. A tribal camp keeps its moot hall.
   if (size <= 3 && !ctx.capital && f !== "elven")
-    plan.add(f === "tribal" ? "bld.hall" : "bld.keep", f === "tribal" ? r.int(0, 2) : 0, lm.x, f === "tribal" ? lm.z + 0.03 : lm.z, r.range(-0.12, 0.12), f === "tribal" ? 1 : 0.66);
+    plan.add(f === "tribal" ? "bld.hall" : "bld.keep", f === "tribal" ? r.int(0, 2) : 0, lm.x, f === "tribal" ? lm.z + 0.03 : lm.z, r.range(-0.12, 0.12), (f === "tribal" ? 1 : 0.66) * k);
   else {
     // Elven cities keep the great tree as their landmark, but let it grow with size (F2): the old
     // Math.max(0.9, ...) floored every non-capital tree at 0.9, so a size-1 town looked as big as a
@@ -4332,44 +4498,44 @@ function cityLayout(ctx) {
     if (f === "elven") plan.boxes.push({ x: lm.x, z: lm.z, hw: 0.14 * p.scale, hd: 0.12 * p.scale, c: 1, s: 0 });
   }
   const towerV = sub === "arcane" ? [2, 0] : f === "elven" ? [2, 0, 1] : [0, 1];
-  const cityTower = (k) => ({ asset: "bld.tower", variant: towerV[k % towerV.length], scale: (f === "elven" ? 0.9 : 0.82) * (deep ? 1.45 : 1) });
+  const cityTower = (n) => ({ asset: "bld.tower", variant: towerV[n % towerV.length], scale: (f === "elven" ? 0.9 : 0.82) * (deep ? 1.45 : 1) * k });
 
   // The square: a well, stalls, banners flanking the way to the landmark; a fire for a camp,
   // braziers for an infernal court.
-  const sq = { x: lm.x * 0.5, z: 0.12 };
-  plan.zone(sq.x, sq.z, 0.075);
-  for (const s of [-1, 1]) plan.add("bld.banner", L.banner, lm.x + s * 0.09, lm.z + 0.16, L.banner ? -0.4 : 0, 1, { ghost: true });
-  if (L.well) plan.try("bld.well", 0, sq.x + r.sign() * r.range(0.05, 0.08), sq.z - r.range(0.02, 0.05), r.range(0, TAU), 1, { tol: 0 });
+  const sq = { x: lm.x * 0.5, z: 0.12 * q };
+  plan.zone(sq.x, sq.z, 0.075 * (1 + (q - 1) * 0.3));
+  for (const s of [-1, 1]) plan.add("bld.banner", L.banner, lm.x + s * 0.09 * k, lm.z + 0.16 * k, L.banner ? -0.4 : 0, k, { ghost: true });
+  if (L.well) plan.try("bld.well", 0, sq.x + r.sign() * r.range(0.05, 0.08) * q, sq.z - r.range(0.02, 0.05) * q, r.range(0, TAU), k, { tol: 0 });
   if (L.stalls)
-    for (let k = 0; k < (f === "dwarven" ? 1 : N.stalls); k++) {
-      const s = k % 2 ? 1 : -1;
-      const x = sq.x + s * r.range(0.09, 0.13), z = sq.z + r.range(-0.04, 0.08);
-      plan.try("bld.stall", k % 3, x, z, yawTo(-s, 0) + r.range(-0.3, 0.3), 1, { tol: 0 });
+    for (let n = 0; n < (f === "dwarven" ? 1 : N.stalls); n++) {
+      const s = n % 2 ? 1 : -1;
+      const x = sq.x + s * r.range(0.09, 0.13) * q, z = sq.z + r.range(-0.04, 0.08) * q;
+      plan.try("bld.stall", n % 3, x, z, yawTo(-s, 0) + r.range(-0.3, 0.3), k, { tol: 0 });
     }
   if (L.fire) {
-    plan.add("bld.brazier", 0, sq.x, sq.z, 0, 1.2, { ghost: true });
-    out.emit.push({ dx: sq.x, dz: sq.z, dy: 0.07, color: "#ff9a40", size: 0.0055, rise: 0.32, count: 4, spread: 0.018 });
-    for (const s of [-1, 1]) plan.try("bld.totem", 0, sq.x + s * 0.085, sq.z - 0.02, 0, 0.8, { tol: 0 });
+    plan.add("bld.brazier", 0, sq.x, sq.z, 0, 1.2 * k, { ghost: true });
+    out.emit.push({ dx: sq.x, dz: sq.z, dy: 0.07 * k, color: "#ff9a40", size: 0.0055 * k, rise: 0.32, count: 4, spread: 0.018 * k });
+    for (const s of [-1, 1]) plan.try("bld.totem", 0, sq.x + s * 0.085 * q, sq.z - 0.02, 0, 0.8 * k, { tol: 0 });
   }
   if (L.braziers)
     for (const s of [-1, 1])
-      for (const z of [0.2, 0.42]) {
-        if (!walls && z > 0.4) continue;
-        plan.add("bld.brazier", 0, s * 0.075, z, 0, 1.1, { ghost: true });
-        out.emit.push({ dx: s * 0.075, dz: z, dy: 0.08, color: "#ff6a20", size: 0.0045, rise: 0.34, count: 2, spread: 0.012 });
+      for (const z of [0.2 * q, 0.42 * q]) {
+        if (z > Rmax - 0.02 && !(walls && z < Rw)) continue;
+        plan.add("bld.brazier", 0, s * 0.075 * k, z, 0, 1.1 * k, { ghost: true });
+        out.emit.push({ dx: s * 0.075 * k, dz: z, dy: 0.08 * k, color: "#ff6a20", size: 0.0045 * k, rise: 0.34, count: 2, spread: 0.012 * k });
       }
 
   // Streets: the main street from the gate to the square and a lane or two out from the square
   // (bent a little, so they wander like old streets); few and narrow, as in a walled town, so the
   // roofs close into one mass. Houses shrink a little as the town crowds.
-  const hsc = Math.max(0.76, Math.min(0.97, 1.0 - size * 0.02));
-  plan.street([[0, 0.1], [0, Rmax + 0.06]], 0.02);
+  const hsc = Math.max(0.86, Math.min(0.98, 1.0 - size * 0.012)) * k;
+  plan.street([[0, 0.1 * q], [0, Rmax + 0.06]], 0.02 * k);
   const camp = f === "tribal";
   const fan = camp || size < 4 ? [] : size < 10 ? [QT * r.sign()] : [QT, -QT];
   if (size >= 7 && !camp) fan.push(2.5 * r.sign());
   for (const a of fan) {
     const a1 = a + r.range(-0.2, 0.2);
-    plan.street(street(r, sq.x + Math.sin(a1) * 0.07, sq.z - 0.02 + Math.cos(a1) * 0.07, a1, r.range(-0.1, 0.1), Rmax + 0.06, 0.04), 0.011);
+    plan.street(street(r, sq.x + Math.sin(a1) * 0.07 * q, sq.z - 0.02 + Math.cos(a1) * 0.07 * q, a1, r.range(-0.1, 0.1), Rmax + 0.06, 0.04 * Math.min(1.5, q)), 0.011 * k);
   }
   // A harbour: a pier out from the shore on the water side (the flanks and the front first, where
   // the camera sees it), its landward approach kept clear. Its deck is lifted to sea level.
@@ -4380,10 +4546,10 @@ function cityLayout(ctx) {
     for (const [dx, dz] of order) {
       const l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
       let shore = null;
-      for (let d = 0.14; d <= 0.66 && shore === null; d += 0.02) if (plan.height(ux * d, uz * d) < 0.004) shore = d;
+      for (let d = 0.14; d <= Math.max(0.66, Rmax + 0.12) && shore === null; d += 0.02) if (plan.height(ux * d, uz * d) < 0.004) shore = d;
       if (shore === null) continue;
       const x = ux * (shore - 0.035), z = uz * (shore - 0.035);
-      const p = plan.add("bld.pier", f === "coastal" || size >= 5 ? 1 : 0, x, z, yawTo(ux, uz), 1);
+      const p = plan.add("bld.pier", f === "coastal" || size >= 5 ? 1 : 0, x, z, yawTo(ux, uz), Math.min(1.2, k));
       p.lift = -plan.height(x, z);
       plan.lane([[x - ux * 0.14, z - uz * 0.14], [x, z]], 0.02);
       break;
@@ -4391,74 +4557,84 @@ function cityLayout(ctx) {
   }
   // Halls face the square from its sides; towers stand toward the back.
   const halls = [];
-  for (let k = 0; k < (f === "tribal" ? Math.min(1, N.halls) : N.halls); k++) halls.push({ asset: "bld.hall", variant: (k + r.int(0, 2)) % 3, scale: 0.86 });
+  for (let n = 0; n < (f === "tribal" ? Math.min(1, N.halls) : N.halls); n++) halls.push({ asset: "bld.hall", variant: (n + r.int(0, 2)) % 3, scale: 0.86 * k });
   const hallSide = r.sign();
-  halls.forEach((h, k) => {
-    const s = k % 2 ? -hallSide : hallSide;
+  halls.forEach((h, n) => {
+    const s = n % 2 ? -hallSide : hallSide;
     for (let t = 0; t < 16; t++) {
-      const x = sq.x + s * r.range(0.15, 0.24), z = sq.z + r.range(-0.08, 0.06);
+      const x = sq.x + s * r.range(0.15, 0.24) * q, z = sq.z + r.range(-0.08, 0.06) * q;
       if (plan.try(h.asset, h.variant, x, z, yawTo(sq.x - x, 0) + r.range(-0.15, 0.15), h.scale, { pad: 0.003 })) {
         h.done = true;
         break;
       }
     }
   });
-  for (let k = 0; k < N.towers + (deep && f === "elven" ? 1 : 0); k++) plan.scatter(cityTower(k), { rmin: 0.2, rmax: Rmax - 0.02, back: -0.04, face: (x, z) => yawTo(-x, -z) });
+  for (let n = 0; n < N.towers + (deep && f === "elven" ? 1 : 0); n++) plan.scatter(cityTower(n), { rmin: 0.2 * q, rmax: Rmax - 0.02, back: -0.04 * q, face: (x, z) => yawTo(-x, -z) });
   // The houses, packed from the square outward: the bigger first, the town's front rows (toward
   // the camera) a little lower so that the square and the landmark stay in view.
   const items = halls.filter((h) => !h.done);
   const hv = shuffle(r, [0, 1, 2, 3, 4, 5]);
   // (The infernal spire-houses are slender: a little bigger, so the town keeps its mass.)
   const fam = f === "infernal" && sub !== "gothic" ? 1.15 : 1;
-  for (let k = 0; k < N.houses; k++) items.push({ asset: "bld.house", variant: hv[k % 6], scale: r.range(0.93, 1.05) * hsc * fam });
-  plan.pack(items, camp ? { heart: [sq.x, sq.z], gap: L.gap, jitter: 0.25, cands: 160, rmin: 0.1, rows: false, rim: walls, faceHeart: true } : { heart: [sq.x, sq.z - 0.06], gap: L.gap, jitter: L.jitter, cands: 200, rmin: 0.06, rim: walls });
+  for (let n = 0; n < N.houses; n++) items.push({ asset: "bld.house", variant: hv[n % 6], scale: r.range(0.93, 1.05) * hsc * fam });
+  plan.pack(items, camp ? { heart: [sq.x, sq.z], gap: L.gap * k, jitter: 0.25, cands: 160, rmin: 0.1 * q, rows: false, rim: walls, faceHeart: true } : { heart: [sq.x, sq.z - 0.06 * q], gap: L.gap * k, jitter: L.jitter, cands: 200, rmin: 0.06 * q, rim: walls, eaves: (L.eaves ?? 0) * k });
   // Trees among an elven town's houses (the vegetation's, when it is loaded).
   if (L.trees) {
     const dark = sub === "dark";
     // (Broadleaves and birches only, a few: the great tree is the town's; an ancient tree's
     // tiers would cost as much as half the town.)
-    const kinds = (dark ? ["tree.pine", "tree.dead"] : ["tree.oak", "tree.birch"]).filter((k) => hasRecipe(k));
-    for (let k = 0; kinds.length && k < Math.min(4, 1 + Math.floor(size / 4)); k++) {
-      const kind = kinds[k % kinds.length];
-      const sc = r.range(0.75, 0.95);
-      plan.scatter({ asset: kind, variant: r.int(0, 7), scale: sc, pad: -0.04, param: "" }, { rmin: 0.12, rmax: Rmax, tries: 30 });
+    const kinds = (dark ? ["tree.pine", "tree.dead"] : ["tree.oak", "tree.birch"]).filter((t) => hasRecipe(t));
+    for (let n = 0; kinds.length && n < Math.min(6, 1 + Math.floor(size / 3)); n++) {
+      const kind = kinds[n % kinds.length];
+      const sc = r.range(0.75, 0.95) * Math.min(1.2, k);
+      plan.scatter({ asset: kind, variant: r.int(0, 7), scale: sc, pad: -0.04, param: "" }, { rmin: 0.12 * q, rmax: Rmax, tries: 30 });
     }
   }
-  if (L.motes) out.emit.push({ dx: lm.x, dz: lm.z, dy: 0.22, color: sub === "dark" ? "#a8b0ff" : "#ffe2a0", size: 0.0055, rise: 0.06, count: 7, spread: 0.26 });
+  // A few garden trees in the gaps a town of the human builders leaves between its roofs (dark
+  // conifers and a broadleaf, as in the look target), from a middling town up.
+  if (f === "human" && sub !== "gothic" && size >= 5) {
+    const kinds = (sub === "north" ? ["tree.pine"] : sub === "arcane" ? ["tree.birch", "tree.pine"] : ["tree.pine", "tree.oak", "tree.pine"]).filter((t) => hasRecipe(t));
+    for (let n = 0; kinds.length && n < Math.min(4, Math.floor(size / 3)); n++)
+      plan.scatter({ asset: kinds[n % kinds.length], variant: r.int(0, 7), scale: r.range(0.55, 0.7) * k, pad: -0.06, param: "" }, { rmin: 0.15 * q, rmax: Rmax - 0.02, tries: 60 });
+  }
+  if (L.motes) out.emit.push({ dx: lm.x, dz: lm.z, dy: 0.22 * k, color: sub === "dark" ? "#a8b0ff" : "#ffe2a0", size: 0.0055, rise: 0.06, count: 7, spread: 0.26 * q });
   if (L.sparks)
     for (const p of out)
       if (p.asset === "bld.keep") for (const s of [-1, 1]) out.emit.push({ dx: p.x + s * 0.06 * p.scale, dz: p.z - 0.07 * p.scale, dy: 0.31 * p.scale, color: "#ffb050", size: 0.0045, rise: 0.4, count: 3, spread: 0.01 });
-  if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.46, color: "#b89aff", size: 0.0065, rise: 0.12, count: 5, spread: 0.05 });
-  if (walls) wallRing(out, r, P, Rw, plan.height);
+  if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.56 * p.scale, color: "#b89aff", size: 0.0065, rise: 0.12, count: 5, spread: 0.05 });
+  if (walls) wallRing(out, r, P, Rw, plan.height, k);
   return out;
 }
 
-/** A ring of wall segments of radius R with towers and a gate at +z (none standing in water). */
-function wallRing(out, r, P, R, height = null) {
+/** A ring of wall segments of radius R with towers and a gate at +z, its pieces `k` times their
+ *  size (a segment's length is the ring's own): none standing in water, nor across a slope too
+ *  steep to wall (the cliff is the wall there). */
+function wallRing(out, r, P, R, height = null, k = 1) {
   const wet = (x, z) => !!height && height(x, z) < 0.005;
-  const N = Math.max(8, Math.round((TAU * R) / 0.2));
+  const steep = (p, q) => !!height && Math.abs(height(p[0], p[1]) - height(q[0], q[1])) > 0.07 * k;
+  const N = Math.max(8, Math.round((TAU * R) / (0.2 * k)));
   const D = TAU / N;
   const V = [];
-  for (let k = 0; k < N; k++) {
-    const a = (k + 0.5) * D;
-    const rr = R * (1 + (k === 0 || k === N - 1 ? 0 : r.range(-0.035, 0.02)));
+  for (let i = 0; i < N; i++) {
+    const a = (i + 0.5) * D;
+    const rr = R * (1 + (i === 0 || i === N - 1 ? 0 : r.range(-0.035, 0.02)));
     V.push([Math.sin(a) * rr, Math.cos(a) * rr]);
   }
-  for (let k = 0; k < N; k++) {
-    const p = V[(k + N - 1) % N], q = V[k];
+  for (let i = 0; i < N; i++) {
+    const p = V[(i + N - 1) % N], q = V[i];
     const cx = (p[0] + q[0]) / 2, cz = (p[1] + q[1]) / 2;
     const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
     const yaw = Math.atan2(-(q[1] - p[1]), q[0] - p[0]);
-    if (wet(cx, cz)) continue;
-    if (k === 0) out.push({ asset: "bld.gate", param: P, x: cx, z: cz, yaw, scale: 1, sx: L / 0.2 });
-    else out.push({ asset: "bld.wall", param: P, x: cx, z: cz, yaw, scale: 1, sx: (L / 0.2) * 1.02 });
+    if (wet(cx, cz) || (i && steep(p, q))) continue;
+    if (i === 0) out.push({ asset: "bld.gate", param: P, x: cx, z: cz, yaw, scale: k, sx: L / 0.2 });
+    else out.push({ asset: "bld.wall", param: P, x: cx, z: cz, yaw, scale: k, sx: (L / 0.2) * 1.02 });
   }
-  for (let k = 0; k < N; k++) {
-    if (k === 0 || k === N - 1) continue;
-    if (k % 2 === 1 && k !== N - 2) continue;
-    const [x, z] = V[k];
+  for (let i = 0; i < N; i++) {
+    if (i === 0 || i === N - 1) continue;
+    if (i % 2 === 1 && i !== N - 2) continue;
+    const [x, z] = V[i];
     if (wet(x, z)) continue;
-    out.push({ asset: "bld.walltower", param: P, variant: k % 4 === 0 ? 1 : 0, x, z, yaw: Math.atan2(x, z), scale: 1 });
+    out.push({ asset: "bld.walltower", param: P, variant: (i % 4 === 0 ? 1 : 0) + 2 * (Math.floor(i / 4) % 2), x, z, yaw: Math.atan2(x, z), scale: k });
   }
 }
 
@@ -4476,9 +4652,9 @@ function settlementOf(type, ctx) {
   const plan = new Plan(r, P, 0.45, land ? (x, z) => ctx.world.heightAt(ctx.x + 0.5 + x, ctx.y + 0.5 - z) : null);
   if (ctx.unit) plan.zone(0, 0.04, 0.14);
   const face = (x, z) => yawTo(-x, -z) + r.range(-0.5, 0.5);
-  const houses = (n, sc = 0.92) => {
-    const vs = shuffle(r, [0, 1, 2, 3, 4, 5]);
-    return Array.from({ length: n }, (_, k) => ({ asset: "bld.house", variant: vs[k % 6], scale: sc * r.range(0.92, 1.05) }));
+  const houses = (n, sc = 0.92, pool = [0, 1, 2, 3, 4, 5]) => {
+    const vs = shuffle(r, pool.slice());
+    return Array.from({ length: n }, (_, k) => ({ asset: "bld.house", variant: vs[k % vs.length], scale: sc * r.range(0.92, 1.05) }));
   };
   const scatter = (items, rmin, rmax) => {
     for (const it of items) plan.scatter(it, { rmin, rmax, face, tries: 80 });
@@ -4494,20 +4670,21 @@ function settlementOf(type, ctx) {
   };
   switch (t) {
     case "COTTAGE": {
-      // One small house and its garden fence.
-      const z = ctx.unit ? -0.2 : -0.05, x = r.range(-0.1, 0.1);
-      const v = f === "human" ? r.pick([0, 0, 2, 3, 4]) : r.int(0, 5);
-      plan.add("bld.house", v, x, z, r.range(-0.35, 0.35), 0.95);
+      // One cottage, big enough to read at the gameplay zoom (the look target's farmhouse), turned a
+      // little off the camera so its gable and one slope of its roof show, and its garden fence.
+      const z = ctx.unit ? -0.22 : -0.06, x = r.range(-0.08, 0.08);
+      const v = f === "human" ? r.pick([0, 0, 0, 2, 4]) : r.int(0, 5);
+      plan.add("bld.house", v, x, z, r.sign() * r.range(0.2, 0.5), f === "human" ? 1.65 : 1.45);
       const s = r.sign();
-      plan.add("bld.fence", 0, x + s * 0.06, z + 0.12, r.range(-0.15, 0.15), 0.7, { ghost: true });
-      plan.add("bld.fence", 0, x + s * 0.13, z + 0.05, QT + r.range(-0.15, 0.15), 0.6, { ghost: true });
+      plan.add("bld.fence", 0, x + s * 0.12, z + 0.2, r.range(-0.15, 0.15), 0.8, { ghost: true });
+      plan.add("bld.fence", 0, x + s * 0.22, z + 0.09, QT + r.range(-0.15, 0.15), 0.7, { ghost: true });
       break;
     }
     case "HAMLET": {
-      // Two or three houses gathered on a track, a garden fence.
+      // Two or three cottages gathered on a track, a garden fence.
       track();
-      plan.pack(houses(r.int(2, 3)), { heart: [r.range(-0.08, 0.08), -0.06], gap: Math.max(0.016, gapF), jitter: jitF, cands: 90, rmin: 0, rmax: 0.4 });
-      plan.add("bld.fence", 0, r.range(-0.15, 0.15), 0.3, r.range(-0.3, 0.3), 0.8, { ghost: true });
+      plan.pack(houses(r.int(2, 3), 1.3, f === "human" ? [0, 0, 0, 4] : undefined), { heart: [r.range(-0.08, 0.08), -0.06], gap: Math.max(0.02, gapF), jitter: jitF, cands: 90, rmin: 0, rmax: 0.44 });
+      plan.add("bld.fence", 0, r.range(-0.15, 0.15), 0.32, r.range(-0.3, 0.3), 0.9, { ghost: true });
       break;
     }
     case "VILLAGE":
@@ -4515,7 +4692,7 @@ function settlementOf(type, ctx) {
       // Houses packed along a lane around a well on its green.
       track();
       if (!ctx.unit) plan.try("bld.well", 0, r.range(-0.03, 0.03), r.range(0.02, 0.06), r.range(0, TAU), 1);
-      plan.pack(houses(r.int(5, 6), 0.88), { heart: [0, -0.04], gap: gapF, jitter: jitF, cands: 110, rmin: 0, rmax: 0.43 });
+      plan.pack(houses(r.int(5, 6), 1.08), { heart: [0, -0.04], gap: gapF, jitter: jitF, cands: 110, rmin: 0, rmax: 0.45 });
       if (ctx.unit) plan.try("bld.well", 0, r.range(-0.2, 0.2), 0.3, 0, 1);
       break;
     case "TOWN": {
@@ -4587,7 +4764,11 @@ function settlementOf(type, ctx) {
 
 extendCatalog({
   family: (civ) => familyOf(civ),
-  city: (ctx) => cityLayout(ctx),
+  city: (ctx) => cityLayoutMemo(ctx),
+  cityReach: (ctx) => {
+    const { R, k } = cityReach(ctx.size, !!ctx.walls, !!ctx.capital);
+    return R + (ctx.walls ? 0.04 * k : 0.03);
+  },
   settlement: (type, ctx) => settlementOf(type, ctx),
 });
 

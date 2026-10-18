@@ -5,6 +5,7 @@
 
 import { S, me, dname, tname } from "../state.js";
 import * as T from "../tiles.js";
+import { CATALOG } from "./assets/catalog.js";
 
 const FONT = "system-ui, 'DejaVu Sans', 'Segoe UI', sans-serif";
 
@@ -96,8 +97,10 @@ export function drawHud(r3d, cam) {
   // name matters more than the pins crowding round it), under the stack badges.
   for (const c of r3d.cities ?? []) {
     const city = c.city;
-    // At the plot's front edge, clear of the gate where the garrison stands.
-    const p = r3d.project(cam, [r3d.nearX(c.x), c.y, c.z + 0.56]);
+    // At the plot's front edge, clear of the gate where the garrison stands; in front of the walls
+    // of a great city that spills over its plot (the catalog's cityReach).
+    const reach = CATALOG.cityReach?.({ size: city.size ?? 1, walls: !!city.walls, capital: !!city.capital }) ?? 0.5;
+    const p = r3d.project(cam, [r3d.nearX(c.x), c.y, c.z + Math.min(0.92, Math.max(0.56, reach + 0.05))]);
     if (!inView(p, 120)) continue;
     const col = T.playerColor(city.owner, S.players.get(city.owner)?.barbarian);
     const seen = city.visible !== false;
