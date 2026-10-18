@@ -195,6 +195,13 @@ the differences; it does not ask for them to be undone.
   units whose per-player slot was below the unit count, so some lair events silently failed.
 - **Unspecified C++ evaluation order** (two RNG draws in one expression) follows MSVC x86:
   call arguments right to left, binary operands left to right (see CLAUDE.md).
+- **`convert` never makes a unit its own transport.** `initUnit` places a new unit before its free
+  promotions, so the Kuriotates Airship (a land unit that flies by its free Flying promotion, with
+  room for land units) made by upgrading a Frigate at sea boards that Frigate; `convert` then hands
+  the Frigate's cargo, the Airship included, to the Airship, which in FFH2 becomes its own
+  transport (`isHiddenNationality` then recurses without end; FFH2's AI never got there, as
+  `cannotTrain` keeps AI players from Airships, but a human could). The port takes the new unit
+  off the unit it replaces first: the Airship stays on the water plot with the Frigate's cargo.
 
 **Human play (ffh-play; docs/PLAY_DESIGN.md §10)**
 
