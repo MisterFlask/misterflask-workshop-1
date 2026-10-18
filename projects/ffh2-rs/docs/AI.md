@@ -861,6 +861,31 @@ unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-37
 41-52: score (dead as 0) +15 (t 2.0), 16% fewer civ cities lost to barbarians; seeds 379-426:
 -7, 4% more lost; all 120 seeds: +6 (t 1.2), techs +0.2 (t 1.7), eliminations unchanged.
 
+### Round 4 (2026-10-18): event choice, Conquest, settler, hammers, worker flee, transport
+
+Six changes from a diagnosis of the whole AI (one finder per dimension, each candidate re-checked
+by a skeptic, every merge verified on reserved seeds against the tip it went on), measured together
+against the AI before them on seeds none of the work used:
+
+| | 300 turns, seeds 1101-1244 (144 games) | full games, seeds 1301-1332 (32) |
+|---|---|---|
+| legacy score | +8.0% (t 4.6) | +9.0% at turn 300 (t 2.4), +1.8% at turn 450 |
+| techs / research | +5.6% (t 3.0) / +7.5% (t 2.6) | +6.5% / +8.5% at turn 300; research -10.5% at turn 450 (t -1.8) |
+| population / production | +14.6% (t 7.2) / +11.2% (t 5.3) | population +14.2% at turn 300 (t 3.5) |
+| cities / land / power | +4.2% / +3.8% / +5.5% (t 2.3-2.6) | power +14.7% at turn 450 (t 1.9) |
+| civs eliminated; civ cities captured | -26% (t -1.9); -16.5% (t -2.1) | captures +26% (t 1.2) |
+| outcome | | supremacy 22 -> 17, cultural 9 -> 9, last standing 1 -> 0, time limit 0 -> 6 |
+
+The cost is decisiveness: 6 of 32 full games now reach the time limit, each a world of two or three
+near-equal powers (the leader 34-51% of the world but only 1.04-1.32x the runner-up). No single
+change causes it; leaving one out of the tip (same 32 games) gives time-limit games: without event
+choice 4, without Conquest 3 (and legacy -4.0% at turn 300, t -5.2), without the settler fix 6,
+without the hammers 6, without worker flee 3, without transport 5. It is the general effect of
+civs that grow evenly meeting a war gate that wants a clear power edge (see "War conversion vs.
+decisive wars" under Known gaps) and a cultural pursuit reserved for a clear front-runner. Endgame
+play between equals -- a long war of attrition, a coalition against the leader, or a culture race
+when no one is a front-runner -- is the next strategic gap.
+
 ### Round 3b: goal-directed research + victory pursuit together
 
 Re-measured on fresh seeds (601-648 at 300 turns, 601-624 at full 690-turn games with

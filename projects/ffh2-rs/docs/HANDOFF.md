@@ -8,6 +8,29 @@ touch (`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`,
 temporary: once the base is stable and attractive, the game will change sweepingly. Rules
 changes are made deliberately and listed in `docs/PORTING.md` ("Changes from FFH2").
 
+## Update, session `session_01RVFohb7FefbibSXFuVfcRN` (2026-10-18): AI round 4
+
+On branch `ccr-875bd6ad-shu1bx` (not yet merged to master; it also carries the r3d renderer work
+and the diplomacy/trade AI that master lacks). A diagnosis of the whole AI by dimension, each
+candidate re-checked by a skeptic and verified on reserved seeds before merging:
+- merged: random events chosen by value (`events.rs`), Conquest without its flat AIWeight, a first
+  settler that cannot reach its site founds in place, Luchuirp Golden Hammers become Engineers,
+  threatened workers actually flee, research seeks a buildable transport for settlers stuck in
+  port; plus a behaviour-identical speed-up (`unit_update_bonus_affinity`, -15% time per game).
+  Together on unused seeds: legacy score +8% at turn 300 (t 4.6), population +15%, power +5.5%.
+- the cost and the next strategic gap: 6 of 32 full games now reach the time limit between two or
+  three near-equal powers (0 before); no single change causes it (docs/AI.md, "Round 4").
+- measured and not kept (docs/AI.md "Looked promising on development seeds, failed on fresh
+  ones", "Workers", the Conquest section): promoting every stack member, valuing Lighthouse/
+  Harbor/free-resource buildings, reachable worker build targets, no early idle workers, two
+  Conquest variants.
+- tooling: `crates/ffh-cli/scripts/ab_compare.py` (paired per-seed t over two `ai_metrics.py`
+  results; handles full games stopped early). The shared build cache keeps 12 outputs: long A/B
+  queues lose their binaries to garbage collection unless rebuilt (`build-tree.sh` is cheap).
+- not touched, worth a look: council votes and elections (every AI abstains; an AI secretary never
+  picks a resolution, so the Overcouncil/Undercouncil are inert); pathfinding is ~30% of late-game
+  time.
+
 ## What is on master (merged, tested)
 
 `master` == `ccr-17ac9b54-lbgjpn` (the integration branch used so far). Everything below passes
