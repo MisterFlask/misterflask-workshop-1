@@ -33,13 +33,6 @@ impl CivPlay for Sheaim {
         mage_guild(g, c).or_else(|| adept(g, c))
     }
 
-    fn building_value(&self, g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
-        if g.d.ty::<BuildingType>("BUILDING_PLANAR_GATE") == Some(b) {
-            return value.max(planar_gate_value(g, c, b));
-        }
-        value
-    }
-
     fn promotion_value(&self, g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
         if !matches!(g.units[u].ai_type, Some(UnitAIType::UNITAI_MAGE) | Some(UnitAIType::UNITAI_WARWIZARD)) {
             return value;
@@ -100,40 +93,4 @@ fn adept(g: &Game, c: CityId) -> Option<Choice> {
     }
     crate::trace!(g, p, "{}: {} (sheaim caster {}/{})", g.cities[c].name, g.d.units[u].base.type_, mages, target);
     Some(Choice::Train(u, UnitAIType::UNITAI_MAGE))
-}
-
-/// The Planar Gate (`ev_planar_gate`): each turn, a 6% chance (more once the Armageddon counter
-/// reaches 50) of a free creature whose building is in this city and whose class count is below
-/// the cap (1 per gate below counter 50). Valued by the creatures this city can call: about 100
-/// per eligible class (a tier 2-3 unit every ~17 turns per class while there is room), for one
-/// gate, while one more unit is affordable (the creatures pay unit support).
-fn planar_gate_value(g: &Game, c: CityId, gate: BuildingType) -> i32 {
-    const SUMMONS: [(&str, &str); 7] = [
-        ("BUILDING_GAMBLING_HOUSE", "UNITCLASS_REVELERS"),
-        ("BUILDING_MAGE_GUILD", "UNITCLASS_MOBIUS_WITCH"),
-        ("BUILDING_CARNIVAL", "UNITCLASS_CHAOS_MARAUDER"),
-        ("BUILDING_GROVE", "UNITCLASS_MANTICORE"),
-        ("BUILDING_PUBLIC_BATHS", "UNITCLASS_SUCCUBUS"),
-        ("BUILDING_OBSIDIAN_GATE", "UNITCLASS_MINOTAUR"),
-        ("BUILDING_TEMPLE_OF_THE_VEIL", "UNITCLASS_TAR_DEMON"),
-    ];
-    let d = g.d;
-    let p = g.cities[c].owner;
-    if g.player_count_num_buildings(p, gate) > 0 || g.players[p].cities.iter().any(|&o| g.city_production_building(o) == Some(gate)) {
-        return 0;
-    }
-    if !crate::economy::can_afford_unit(g, p, true, false) {
-        return 0;
-    }
-    let eligible = SUMMONS
-        .iter()
-        .filter(|(b, uc)| {
-            d.ty::<BuildingType>(b).is_some_and(|b| g.city_num_building(c, b) > 0)
-                && d.ty::<UnitClassType>(uc).is_some_and(|uc| g.players[p].unit_class_count[uc] < 1)
-        })
-        .count() as i32;
-    if eligible < 2 {
-        return 0;
-    }
-    100 * eligible
 }
