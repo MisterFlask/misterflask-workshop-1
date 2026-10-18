@@ -14,7 +14,8 @@
 //! - [`spell_value`]: `casting::choose_spell`, the value of each castable spell (0 or less: not
 //!   cast by the end-of-turn spell choice);
 //! - [`building_value`]: `production::building_value` (what production, research and spells use);
-//! - [`tech_value`]: `research::tech_value`.
+//! - [`tech_value`]: `research::tech_value`;
+//! - [`promotion_value`]: `units::best_promotion`, the value of each promotion a unit can take.
 //!
 //! What each civilization does is described in its module (docs/AI.md, "Civilization-specific").
 
@@ -47,6 +48,7 @@ mod mercurians;
 mod sheaim;
 mod sidar;
 mod svartalfar;
+mod world_spell;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Civ {
@@ -168,6 +170,11 @@ pub trait CivPlay: Sync {
     fn tech_value(&self, g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
         value
     }
+    /// What promotion `promo` is worth to unit `u` when it picks one (`value` is the generic
+    /// estimate, `units::promotion_value`).
+    fn promotion_value(&self, g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
+        value
+    }
 }
 
 struct Generic;
@@ -234,4 +241,8 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
 
 pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
     of(g, p).tech_value(g, p, t, value)
+}
+
+pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
+    of(g, g.units[u].owner).promotion_value(g, u, promo, value)
 }

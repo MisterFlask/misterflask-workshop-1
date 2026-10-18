@@ -287,7 +287,7 @@ fn best_promotion(g: &Game, u: UnitId) -> Option<PromotionType> {
         if !g.unit_can_promote(u, Some(promo), None) {
             continue;
         }
-        let v = promotion_value(g, u, promo);
+        let v = crate::civs::promotion_value(g, u, promo, promotion_value(g, u, promo)); // civ-mechanics
         if best.map_or(true, |(_, b)| v > b) {
             best = Some((promo, v));
         }
