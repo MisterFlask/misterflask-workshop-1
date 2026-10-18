@@ -4,8 +4,13 @@
 //
 // Entries (all optional; each returns null when it has nothing to say):
 //   forest(feat, ctx)      -> [{asset, variant?, param?, scale, weight?}]  species mix of a wooded plot
-//   flora(ctx)             -> [{asset, scale, count, param?, variant?}]  loose plants on open
-//                              ground (bushes, reeds); a forest mix's `under` entries take the same
+//   flora(ctx)             -> [{asset, scale, count, param?, variant?, clump?, spread?, size?,
+//                              dense?, mix?}]  open ground's plants, scattered in clumps of
+//                              `clump` ([min, max]) within `spread`, `count` at most (a density
+//                              field anchored to the map thins it by `dense`, 0..1); `size` 0 low
+//                              clutter, 1 bushes, 2 trees (`mix`: [{asset, scale, weight}] per
+//                              tree); a forest mix's `under` and `edge` entries take {asset, scale,
+//                              count?, param?, variant?}
 //   rocks(ctx)             -> [{asset, scale, count, param?, variant?, prefer?}]  boulders/
 //                              outcrops on hills, peaks, tundra (prefer "ridge": on high ground)
 //   settlement(type, ctx)  -> part or [parts]  a settlement-like improvement (cottage, hamlet,
@@ -44,7 +49,8 @@
 // improvement (type names or null), world, coast ([[dx, dz], ...] plot-local directions of the
 // water around the plot: a harbour faces them; empty inland), river (a river runs along the plot),
 // cityNear (a city stands on a neighbouring plot), cityBehind ({n, e, w}: a city on the plot north,
-// north-east, north-west: this plot stands between it and the camera).
+// north-east, north-west: this plot stands between it and the camera), woods (how many of the
+// eight neighbours are wooded), roadDist(lx, lz) (distance to the road through the plot).
 //
 // ctx always carries `r` (a seeded generator for the plot or object) and `name` (the type name).
 
