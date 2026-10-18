@@ -16,7 +16,7 @@ const RECIPES = new Map();
 const BUILT = new Map();
 
 /** Registers recipe `name`: `{variants, build(mb, r, ctx)}`; optional `lod` (a simpler recipe
- *  name for far zooms). */
+ *  name for far zooms) and `shadow: false` (ground clutter too small to cast into the shadow map). */
 export function recipe(name, def) {
   RECIPES.set(name, { variants: 1, ...def });
 }
@@ -45,6 +45,7 @@ export function buildAsset(name, variant = 0, param = "") {
     const seed = hash32(hash32(strHash(name)) ^ (v * 7919 + 1) ^ strHash(param));
     def.build(mb, rng(seed), { variant: v, param, name });
     out = mb.build();
+    out.shadow = def.shadow !== false;
     BUILT.set(key, out);
   }
   return out;

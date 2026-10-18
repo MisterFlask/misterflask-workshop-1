@@ -11,7 +11,7 @@ import { S, tname, me, isBarbarian } from "../state.js";
 import * as T from "../tiles.js";
 import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
-import { hexLinear, clamp } from "./math.js";
+import { hexLinear, clamp, smoothstep } from "./math.js";
 import { KIND, FEAT, GROUND, SEA, DRAFT } from "./world.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
@@ -156,6 +156,12 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // A city on any neighbouring plot (wide crowns keep clear of its buildings).
       ctx.cityNear = false;
       for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
+      // Wooded neighbours (open ground next to a wood takes more trees and bushes: the wood's
+      // edge spills over) and the road through the plot (plants keep off it).
+      ctx.woods = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && WOODED.has(world.feat[world.index(x + dx, y + dy)])) ctx.woods++;
+      const roads = roadsOf(world, map, x, y, i);
+      ctx.roadDist = (lx, lz) => roadDist(roads, lx, lz);
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
         // A floating thing rides at the sea's level, a hull a little under it (its draft).
@@ -167,20 +173,12 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // city or structure holds the plot.
       if (feat === FEAT.FOREST || feat === FEAT.JUNGLE || feat === FEAT.ANCIENT || feat === FEAT.BURNT || feat === FEAT.YOUNG) {
         if (!city) placeTrees(world, ctx, place);
-      } else if (kind === KIND.LAND || kind === KIND.HILLS) {
-        // Open ground: a few loose plants.
-        const flora = CATALOG.flora?.(ctx) ?? [{ asset: "basic.tree", scale: 0.45, count: r() < 0.25 ? 1 : 0 }];
-        for (const f of flora) {
-          for (let k = 0; k < (f.count ?? 1); k++) {
-            const lx = r.range(-0.42, 0.42), lz = r.range(-0.42, 0.42);
-            if (held && Math.hypot(lx, lz) < 0.3) continue;
-            if (city) continue;
-            if (nearRiver(lx, lz)) continue;
-            place(pick(f.asset, "basic.tree"), lx, lz, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: (f.scale ?? 1) * r.range(0.8, 1.15), yaw: r.range(0, 6.28), phase: r(), tint: f.tint });
-          }
-        }
+      } else if ((kind === KIND.LAND || kind === KIND.HILLS) && !city) {
+        // Open ground: plants scattered in clumps, thick in some places and bare in others.
+        const flora = CATALOG.flora?.(ctx) ?? [{ asset: "basic.tree", scale: 0.45, count: r() < 0.25 ? 1 : 0, size: 2 }];
+        scatterFlora(world, ctx, place, flora);
       }
-      // Rocks on hills, peaks and rough ground.
+      // Rocks on hills, peaks and rough ground (off the roads and out of the river).
       const rocks = CATALOG.rocks?.(ctx) ?? (kind === KIND.HILLS || kind === KIND.PEAK ? [{ asset: "basic.rock", scale: 1, count: kind === KIND.PEAK ? 3 : 1 }] : []);
       for (const rk of rocks) {
         for (let k = 0; k < (rk.count ?? 1); k++) {
@@ -196,6 +194,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
             }
           }
           if (held && Math.hypot(lx, lz) < 0.32) continue;
+          if (ctx.roadDist(lx, lz) < 0.12 || nearRiver(lx, lz)) continue;
           place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }
       }
@@ -288,8 +287,118 @@ function partEmitter(e, x, y, px, pz, yaw, sc, float, H) {
   return { ...e, x: mx, y: ground + (e.dy ?? 0.1) * sc, z: -my };
 }
 
+const WOODED = new Set([FEAT.FOREST, FEAT.JUNGLE, FEAT.ANCIENT, FEAT.BURNT, FEAT.YOUNG]);
+const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+
+/** The road through plot (x, y) as the decal layer paints it (decals.js: from the plot's centre to
+ *  the edge midpoint toward each routed neighbour, bowed by a hash of the pair), as plot-local
+ *  polylines (x east, z south); a routed plot with no routed neighbour is a dot at its centre. */
+function roadsOf(world, map, x, y, i) {
+  if (map.route[i] < 0) return [];
+  const out = [];
+  for (const [dx, dy] of DIRS8) {
+    const j = world.index(x + dx, y + dy);
+    if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) continue;
+    const bow = (hashf(Math.min(i, j), Math.max(i, j)) - 0.5) * 0.16 * (i < j ? 1 : -1);
+    const l = Math.hypot(dx, dy);
+    const kx = dx * 0.25 - (dy / l) * bow, ky = dy * 0.25 + (dx / l) * bow;
+    const line = [];
+    for (let k = 0; k <= 4; k++) {
+      const t = k / 4;
+      line.push([2 * (1 - t) * t * kx + t * t * dx * 0.5, -(2 * (1 - t) * t * ky + t * t * dy * 0.5)]);
+    }
+    out.push(line);
+  }
+  return out.length ? out : [[[0, 0]]];
+}
+
+/** The distance from plot-local (lx, lz) to the nearest of `roads` (roadsOf); Infinity off them. */
+function roadDist(roads, lx, lz) {
+  let best = Infinity;
+  for (const line of roads) {
+    if (line.length === 1) best = Math.min(best, Math.hypot(lx - line[0][0], lz - line[0][1]));
+    for (let k = 0; k + 1 < line.length; k++) {
+      const [ax, az] = line[k], [bx, bz] = line[k + 1];
+      const ex = bx - ax, ez = bz - az;
+      const t = clamp(((lx - ax) * ex + (lz - az) * ez) / (ex * ex + ez * ez || 1), 0, 1);
+      best = Math.min(best, Math.hypot(lx - ax - ex * t, lz - az - ez * t));
+    }
+  }
+  return best;
+}
+
+/** How far each size of plant keeps from things (flora `size`: 0 low clutter -- grass, flowers --
+ *  1 bushes, 2 trees): its footprint, and its clearance from the unit's spot at the plot centre. */
+const FOOT = [0.03, 0.055, 0.09];
+const UNIT_CLEAR = [0.25, 0.32, 0.36];
+
+/** Open ground's plants (the catalog's flora entries, catalog.js): each entry's `count` in clumps
+ *  of `clump` ([min, max]) within `spread` of a centre, a clump kept or dropped by a slow density
+ *  field anchored to the map (`dense`: how much it follows it), so meadows run thick in some places
+ *  and bare in others across plot borders and trees gather in groves. Nothing stands on a road, in
+ *  a river, on a beach or on a resource's marker; on an improved plot plants keep to its rim (its
+ *  fields and buildings fill the rest); round a unit only low clutter, outside its ring; trees keep
+ *  out of the way of what stands on the plot, behind it and in front of it. */
+function scatterFlora(world, ctx, place, flora) {
+  const { r, x, y } = ctx;
+  const field = (lx, lz, f, o) => world.n2(x + 0.5 + lx, y + 0.5 - lz, f, o, o * 0.7);
+  const meadow = (lx, lz) => smoothstep(-0.55, 0.45, field(lx, lz, 0.75, 3.1) + 0.5 * field(lx, lz, 2.1, 7.7));
+  const grove = (lx, lz) => smoothstep(-0.3, 0.4, field(lx, lz, 0.4, 11.3) + 0.3 * field(lx, lz, 1.3, 5.9));
+  const cityBehind = ctx.cityBehind.n || ctx.cityBehind.e || ctx.cityBehind.w;
+  // The low clutter of a plot is one object to the ink (no outline between overlapping tufts).
+  const low = idOf(`fl${ctx.i}`);
+  const free = (lx, lz, size) => {
+    if (Math.abs(lx) > 0.49 || Math.abs(lz) > 0.49) return false;
+    const foot = FOOT[size];
+    if (ctx.unit && Math.hypot(lx - UNIT_SPOT[0], lz - UNIT_SPOT[1]) < UNIT_CLEAR[size]) return false;
+    if (ctx.improvement && Math.max(Math.abs(lx), Math.abs(lz)) < 0.38) return false;
+    if (ctx.bonus && Math.hypot(lx - BONUS_SPOT[0], lz - BONUS_SPOT[1]) < 0.09 + foot) return false;
+    if (ctx.roadDist(lx, lz) < 0.08 + foot) return false;
+    if (world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < 0.17 + foot) return false;
+    if (ctx.coast.length && world.heightAt(x + 0.5 + lx, y + 0.5 - lz) < SEA + 0.02) return false;
+    if (size === 2) {
+      // A tree hides what stands up to about its height behind it: none in front of a unit or a
+      // structure on this plot, in front of whatever holds the plot behind, or before a city.
+      if ((ctx.unit || ctx.improvement) && lz > -0.12 && Math.abs(lx) < 0.32) return false;
+      if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.32) return false;
+      if (cityBehind && lz < 0.15) return false;
+    }
+    return true;
+  };
+  for (const f of flora) {
+    const size = f.size ?? 0;
+    const [c0, c1] = Array.isArray(f.clump) ? f.clump : [f.clump ?? 1, f.clump ?? 1];
+    const spread = f.spread ?? 0.06, dense = f.dense ?? 0.7;
+    const total = f.mix ? f.mix.reduce((a, m) => a + (m.weight ?? 1), 0) : 0;
+    for (let left = f.count ?? 1; left > 0; ) {
+      const n = Math.min(left, r.int(c0, c1));
+      left -= n;
+      const cx = r.range(-0.44, 0.44), cz = r.range(-0.44, 0.44);
+      if (r() > 1 - dense + dense * (size === 2 ? grove(cx, cz) : meadow(cx, cz))) continue;
+      for (let k = 0; k < n; k++) {
+        // The first of a clump near its centre, the rest round it (trees a trunk's width apart).
+        const a = r.range(0, Math.PI * 2), d = spread * (k ? 0.45 + 0.55 * Math.sqrt(r()) : 0.3 * r());
+        const lx = cx + Math.cos(a) * d, lz = cz + Math.sin(a) * d;
+        let m = f;
+        if (f.mix) {
+          let t = r() * total;
+          for (const e of f.mix) if ((t -= e.weight ?? 1) <= 0) { m = e; break; }
+        }
+        const s = (m.scale ?? 1) * (f.mix ? f.scale ?? 1 : 1) * r.range(0.8, 1.15) * (size === 2 && ctx.cityNear ? 0.8 : 1);
+        const yaw = r.range(0, 6.28), phase = r(), variant = m.variant ?? r.int(0, 7);
+        if (!free(lx, lz, size)) continue;
+        const o = { variant, param: m.param, scale: s, yaw, phase, tint: m.tint, lift: size === 2 ? -0.008 : 0 };
+        if (size === 0) o.id = low;
+        place(pick(m.asset, "basic.tree"), lx, lz, o);
+      }
+    }
+  }
+}
+
 /** A wooded plot's trees: a jittered grid of slots, each a tree of the plot's species mix, thinned
- *  toward open neighbours (soft forest edges) and cleared around the centre when the plot is held. */
+ *  toward open neighbours (soft forest edges, where bushes and saplings stand instead), shorter
+ *  trees darker (in the shade of the canopy), and cleared around the centre when the plot is held
+ *  and off the road through it. */
 function placeTrees(world, ctx, place) {
   const { r, x, y, feat } = ctx;
   const mix = CATALOG.forest?.(feat, ctx) ?? [{ asset: feat === FEAT.FOREST && (ctx.ground === GROUND.TUNDRA || ctx.ground === GROUND.SNOW || ctx.hills) ? "basic.pine" : "basic.tree", scale: feat === FEAT.YOUNG ? 0.6 : 1 }];
@@ -306,6 +415,7 @@ function placeTrees(world, ctx, place) {
     return f === FEAT.FOREST || f === FEAT.JUNGLE || f === FEAT.ANCIENT || f === FEAT.BURNT || f === FEAT.YOUNG;
   };
   const open = { e: !wooded(1, 0), w: !wooded(-1, 0), n: !wooded(0, 1), s: !wooded(0, -1) };
+  const edge = mix.edge ?? [];
   const grid = mix[0].grid ?? (feat === FEAT.ANCIENT ? 2 : 4);
   const cell = 1 / grid;
   for (let gy = 0; gy < grid; gy++) {
@@ -318,12 +428,21 @@ function placeTrees(world, ctx, place) {
       if (open.w) keep *= clamp((lx + 0.5) / 0.35, 0.25, 1);
       if (open.s) keep *= clamp((0.5 - lz) / 0.35, 0.25, 1);
       if (open.n) keep *= clamp((lz + 0.5) / 0.35, 0.25, 1);
-      if (r() > keep) continue;
       // A glade where something holds the plot (and in front of it, toward the camera).
-      if (ctx.held && (Math.hypot(lx, lz) < 0.26 || (lz > 0 && Math.abs(lx) < 0.2))) continue;
-      if (ctx.nearRiver(lx, lz)) continue;
+      const glade = ctx.held && (Math.hypot(lx, lz) < 0.26 || (lz > 0 && Math.abs(lx) < 0.2));
+      if (r() > keep) {
+        // The wood's edge: bushes and saplings where the trees thin out.
+        const e = edge.length && r() < 0.75 ? edge[r.int(0, edge.length - 1)] : null;
+        if (e && !glade && !ctx.nearRiver(lx, lz) && ctx.roadDist(lx, lz) > 0.12) place(e.asset, lx, lz, { variant: e.variant ?? r.int(0, 7), param: e.param, scale: (e.scale ?? 1) * r.range(0.8, 1.2), yaw: r.range(0, 6.28), phase: r() });
+        continue;
+      }
+      if (glade) continue;
+      if (ctx.nearRiver(lx, lz) || ctx.roadDist(lx, lz) < 0.1) continue;
       const m = choose();
-      let s = (m.scale ?? 1) * r.range(0.8, 1.2);
+      const v = r.range(0.75, 1.25);
+      let s = (m.scale ?? 1) * v;
+      // The shorter trees stand in the shade of the canopy: darker, the wood's interior.
+      const dark = 0.78 + 0.22 * smoothstep(0.75, 1.15, v);
       // Adjacent to a city, keep the trees shorter so the town (and its own great tree) shows over
       // the canopy instead of being buried (F2: Evermore in the ancient wood).
       if (ctx.cityNear) s *= 0.75;
@@ -338,7 +457,8 @@ function placeTrees(world, ctx, place) {
         if (toward > 0.5) continue;
         s *= 1 - toward * 0.9;
       }
-      place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint: m.tint, lift: -0.008 });
+      const tint = (m.tint ?? [1, 1, 1]).map((c) => c * dark);
+      place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint, lift: -0.008 });
     }
   }
   // Undergrowth between the trunks.
@@ -346,7 +466,7 @@ function placeTrees(world, ctx, place) {
     for (let k = 0; k < (u.count ?? 2); k++) {
       const lx = r.range(-0.45, 0.45), lz = r.range(-0.45, 0.45);
       if (ctx.held && Math.hypot(lx, lz) < 0.26) continue;
-      if (ctx.nearRiver(lx, lz)) continue;
+      if (ctx.nearRiver(lx, lz) || ctx.roadDist(lx, lz) < 0.1) continue;
       place(u.asset, lx, lz, { variant: u.variant ?? r.int(0, 7), param: u.param, scale: (u.scale ?? 1) * r.range(0.7, 1.2), yaw: r.range(0, 6.28), phase: r() });
     }
   }

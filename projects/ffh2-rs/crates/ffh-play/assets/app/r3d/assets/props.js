@@ -4239,7 +4239,7 @@ function rocksOf(ctx) {
     if (sand) return [{ asset: r() < 0.6 ? "rock.outcrop.sand" : "rock.sandstone", scale: 1.0, count: 1 }, { asset: "rock.sandstone", scale: 0.8, count: r() < 0.5 ? 1 : 0 }];
     if (cold) return [{ asset: "rock.outcrop", scale: 0.95, count: 1 }, { asset: "rock.boulder.lichen", scale: 1.0, count: 1 + (r() < 0.4 ? 1 : 0) }];
     if (wooded) return [{ asset: "rock.boulder.moss", scale: 0.9, count: r() < 0.6 ? 1 : 0 }];
-    return [{ asset: r() < 0.7 ? "rock.outcrop.moss" : "rock.outcrop", scale: 1.0, count: 1 + (r() < 0.35 ? 1 : 0) }, { asset: "rock.boulder.moss", scale: 0.85, count: r() < 0.5 ? 1 : 0 }];
+    return [{ asset: r() < 0.7 ? "rock.outcrop.moss" : "rock.outcrop", scale: 1.0, count: 1 + (r() < 0.35 ? 1 : 0) }, { asset: "rock.boulder.moss", scale: 0.85, count: r() < 0.5 ? 1 : 0 }, { asset: "rock.boulder.moss", scale: 0.42, count: ctx.improvement ? 0 : r.int(0, 3) }];
   }
   // Flat land: sparse.
   if (hell) {
@@ -4247,10 +4247,12 @@ function rocksOf(ctx) {
     const k = r();
     return [{ asset: k < 0.45 ? "rock.thorn" : k < 0.7 ? "rock.shard" : "rock.basalt", scale: k < 0.45 ? 1.35 : 1.0, count: r() < 0.75 ? 1 + (r() < 0.25 ? 1 : 0) : 0 }];
   }
-  if (ground === GROUND.TUNDRA) return [{ asset: "rock.boulder.lichen", scale: 0.95, count: r() < 0.55 ? 1 + (r() < 0.3 ? 1 : 0) : 0 }];
+  // Small stones in the grass (not in an improvement's fields), now and then a boulder.
+  const stones = (asset, n) => ({ asset, scale: 0.42, count: ctx.improvement || wooded ? 0 : r.int(0, n) });
+  if (ground === GROUND.TUNDRA) return [{ asset: "rock.boulder.lichen", scale: 0.95, count: r() < 0.55 ? 1 + (r() < 0.3 ? 1 : 0) : 0 }, stones("rock.boulder.lichen", 3)];
   if (ground === GROUND.SNOW) return [{ asset: "rock.boulder.snow", scale: 0.9, count: r() < 0.4 ? 1 : 0 }];
-  if (sand && feat === FEAT.NONE) return [{ asset: "rock.sandstone", scale: 0.85, count: r() < 0.3 ? 1 : 0 }];
-  if (ground === GROUND.PLAINS || ground === GROUND.GRASS) return [{ asset: "rock.boulder", scale: 0.75, count: r() < 0.1 ? 1 : 0 }];
+  if (sand && feat === FEAT.NONE) return [{ asset: "rock.sandstone", scale: 0.85, count: r() < 0.3 ? 1 : 0 }, stones("rock.boulder", 2)];
+  if (ground === GROUND.PLAINS || ground === GROUND.GRASS) return [{ asset: "rock.boulder", scale: 0.75, count: r() < 0.18 ? 1 : 0 }, stones("rock.boulder", 2)];
   return [];
 }
 

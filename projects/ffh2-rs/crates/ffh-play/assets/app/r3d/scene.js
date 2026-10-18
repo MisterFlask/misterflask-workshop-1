@@ -30,6 +30,7 @@ class AssetBatch {
     this.count = built.count;
     this.radius = built.radius;
     this.hi = built.hi[1];
+    this.shadow = built.shadow !== false;
   }
 
   /** A VAO over this asset's vertices and a new instance buffer (or `shared`, another bucket's,
@@ -488,11 +489,12 @@ export class Scene {
       prog.set({ uCopyX: copy });
       for (const layer of ["static", "units"]) {
         // Detail culling: decoration a few pixels across at this zoom is not drawn, and the
-        // smallest things cast no shadow (units always draw).
+        // smallest things and ground clutter (recipes with `shadow: false`) cast no shadow
+        // (units always draw).
         const minPx = layer === "units" ? 0 : shadow ? 6 : 2.5;
         for (const b of this.layers[layer]) {
           const px = b.batch.radius * this.px;
-          if (px < minPx) continue;
+          if (px < minPx || (shadow && !b.batch.shadow)) continue;
           if (!this.chunkVisible(b.cx, b.cy, copy, shadow ? 3 : 1.5, BUCKET)) continue;
           if (!shadow && !this.boxVisible(b.cx * BUCKET + copy - 0.6, b.cy * BUCKET - 0.6, BUCKET + 1.2, b.top + 0.05)) continue;
           // The simplified copy when the thing is small on screen, and always for the shadows.
