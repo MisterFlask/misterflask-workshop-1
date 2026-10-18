@@ -24,7 +24,7 @@ const DEG = Math.PI / 180;
 const dirOf = (az, el) => [Math.sin(az * DEG) * Math.cos(el * DEG), Math.sin(el * DEG), Math.cos(az * DEG) * Math.cos(el * DEG)];
 
 /** A direction perpendicular to `d`: psi 0 is up (as near +y as it can be), turning about `d`
- *  (for a forward haft: 90 its left (+x), 180 down, 270 its right). */
+ *  (for a forward haft: 90 its right (-x), 180 down, 270 its left (+x)). */
 function edgeOf(d, psi) {
   const e = nz([0, 1, 0].map((c, i) => c - d[i] * d[1]));
   const s = cross(d, e);
@@ -213,18 +213,19 @@ const axe = (az, el, psi) => {
 const axeEdge = (az, el, edge) => aimEdge(AXE, dirOf(az, el), edge);
 
 // The chop. Wind-up: the axe drawn back over the right shoulder, its head dropped behind the back,
-// edge up; the body coils back and rises onto the rear foot. The blow swings up over the top (via
-// the axe upright) and down across the body, accelerating all the way, onto a target in front at
-// chest height, the blade's edge leading down and to the left; the hips and chest unwind first and
-// the shield arm swings back against the blow. Follow-through: carried on down to just above the
-// ground and stopped there. Recovery: the axe brought back up across the body to the guard.
+// edge up; the body coils back and rises onto the rear foot. The blow: the hand leads up over the
+// head with the wrist still cocked (the axe trailing behind it), then the axe whips over and down,
+// accelerating all the way, onto a target in front at shoulder height, the head above the fist (a
+// fist holds the haft at 45-140 degrees to the forearm, never along it); the hips and chest unwind
+// first and the shield arm swings back against the blow. Follow-through: carried on down and
+// stopped there. Recovery: the axe brought back up across the body to the guard.
 const chopArm = armPath([
   { t: 0, hand: [0, 0, 0], elbow: [0, 0, 0], rot: [0, 0, 0] },
   { t: 0.26, ease: "io", hand: [-0.022, 0.046, -0.055], elbow: [0, 0.2, 0], rot: axe(-150, -5, 65) },
   { t: 0.36, ease: "io", hand: [-0.025, 0.05, -0.06], elbow: [0, 0.22, 0], rot: axe(-155, -10, 65) },
   { t: 0.6, ease: "in", hand: [0.05, -0.135, 0.14], elbow: [0, -0.2, 0], rot: axe(-20, 15, 250), via: [{ hand: [0.015, 0.055, 0.085], rot: axeEdge(-170, 40, [0.42, 0.72, 0.55]) }] },
-  { t: 0.665, ease: "out", hand: [0.03, -0.17, 0.12], elbow: [0, -0.2, 0], rot: axe(-25, -15, 245) },
-  { t: 0.74, ease: "io", hand: [0.028, -0.173, 0.118], elbow: [0, -0.2, 0], rot: axe(-25, -17, 245) },
+  { t: 0.665, ease: "out", hand: [0.03, -0.17, 0.12], elbow: [0, -0.2, 0], rot: axe(-32, -13, 245) },
+  { t: 0.74, ease: "io", hand: [0.028, -0.173, 0.118], elbow: [0, -0.2, 0], rot: axe(-32, -15, 245) },
   { t: 1.02, ease: "in", hand: [0.0, -0.075, 0.09], elbow: [0, -0.05, 0], rot: axeEdge(-40, 35, [0.6, 0.6, 0.3]) },
   { t: 1.2, ease: "out", hand: [0, 0, 0], elbow: [0, 0, 0], rot: [0, 0, 0], via: [{ s: 0.4, hand: [-0.035, -0.025, 0.055] }] },
 ]);
@@ -232,8 +233,8 @@ const chopArm = armPath([
 // The death: thrown back by the blow (the chest and head first, the arms flung up a beat later),
 // the knees give, and the body topples backward over the rear heel, turning as it goes, to land
 // on its back with its head to its right (so the corpse lies across its facing, `fall`); a small
-// rebound as it lands, the arms flop to the ground a beat after the body and the left leg drops
-// flat; then it lies still.
+// rebound as it lands, the arms flop to the ground with it and the left leg drops flat; then it
+// lies still, the axe on the ground beside the hand.
 const LIE = [-1.57, 1.57, 0];
 const topple = fallKeys(0.3, 0.8, LIE);
 topple[topple.length - 1].i = { rootRot: "out" };

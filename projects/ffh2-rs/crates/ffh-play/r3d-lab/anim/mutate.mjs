@@ -122,6 +122,19 @@ function scaleMotion(b, k) {
   return b;
 }
 
+/** Sets channel ch to v at time t (in the key at t, or a new one), with segment mode i after it. */
+function setKey(d, t, ch, v, i) {
+  let k = d.keys.find((x) => Math.abs(x.t - t) < 1e-6);
+  if (!k) {
+    k = { t, pose: {} };
+    d.keys.push(k);
+    d.keys.sort((a, c) => a.t - c.t);
+  }
+  k.pose[ch] = v;
+  if (i) k.i = { ...(typeof k.i === "object" ? k.i : k.i ? { default: k.i } : {}), [ch]: i };
+  return d;
+}
+
 /** The clip played k times as fast: key, bump and event times, the duration and contacts. */
 function timeScale(d, k) {
   for (const x of d.keys) x.t *= k;
@@ -135,7 +148,7 @@ function timeScale(d, k) {
   return d;
 }
 
-/** The held melee weapon's key and hand joint. */
+/** What the hands hold (the right hand's weapon, else the left's: a bow) and that hand's joints. */
 const weaponOf = (b) => (b.parts.weapon_r ? ["weapon_r", "handR", "elbowR"] : ["weapon_l", "handL", "elbowL"]);
 
 // --- the catalogue -----------------------------------------------------------------------------------
@@ -146,6 +159,19 @@ const weaponOf = (b) => (b.parts.weapon_r ? ["weapon_r", "handR", "elbowR"] : ["
  */
 export const MUTATIONS = [
   // --- body ---
+  {
+    // A boot skids on its planted ground: a quick 2 cm slide and back.
+    name: "footSkid", kinds: ["idle", "attack", "death"], targets: ["feet.slip"],
+    clip: (d) => {
+      const c = (d.contacts?.L ?? [[0, d.dur]])[0];
+      return bump(d, "fl", (c[0] + Math.min(c[1], d.dur)) / 2, 0.06, [0.015, 0, 0.015]);
+    },
+  },
+  {
+    // The body thrown out over its feet: the pelvis forward and the torso leaning after it.
+    name: "topple", kinds: ["idle", "attack"], targets: ["balance"],
+    clip: (d) => bump(bump(d, "pelvis", d.dur * 0.5, Math.min(0.4, d.dur * 0.3), [0, 0, 0.09]), "lean", d.dur * 0.5, Math.min(0.4, d.dur * 0.3), 0.5),
+  },
   {
     // The body sunk into the ground over the middle of the clip (on the baked frames: a clip that
     // settles its corpse would put a sunk root straight back on the ground).
@@ -160,15 +186,15 @@ export const MUTATIONS = [
       return b;
     },
   },
-  { name: "footSlide", kinds: ["idle", "attack"], targets: ["feet.slip", "feet.drift"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "fl", amp: [0.012, 0, 0.01], n: 1 }]) }) },
+  { name: "footSlide", kinds: ["idle", "attack", "death"], targets: ["feet.slip", "feet.drift"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "fl", amp: [0.012, 0, 0.01], n: 1 }]) }) },
   { name: "footLift", kinds: ["idle", "attack"], targets: ["ground.hover"], clip: (d) => bump(d, "fl", d.dur * 0.5, 0.2, [0, 0.02, 0]) },
   { name: "wrongContacts", kinds: ["death"], targets: ["ground.hover"], clip: (d) => ({ ...d, contacts: { L: [[0, d.dur]], R: [[0, d.dur]] } }) },
   { name: "overreach", kinds: ["idle", "attack", "death"], targets: ["rigid.reach"], clip: (d) => bump(d, "rHand", d.dur * 0.3, 0.15, [0, 0, 0.25]) },
   {
-    name: "stretchProp", kinds: ["attack"], targets: ["rigid.props"],
+    // The held weapon (or bow) stretched 15% about the hand over the middle third.
+    name: "stretchProp", kinds: ["idle", "attack", "death"], targets: ["rigid.props"],
     post: (b) => {
-      const key = b.parts.weapon_r ? "weapon_r" : "weapon_l";
-      const hand = key === "weapon_r" ? "handR" : "handL";
+      const [key, hand] = weaponOf(b);
       for (let f = Math.floor(b.frames / 3); f < Math.floor((2 * b.frames) / 3); f++) {
         const h = b.joints[f][hand];
         edit(b, f, range(b.parts[key]), (p) => p.map((x, k) => h[k] + (x - h[k]) * 1.15));
@@ -189,23 +215,55 @@ export const MUTATIONS = [
       return b;
     },
   },
-  { name: "elbowFold", kinds: ["attack"], targets: ["joints.elbow", "pop.spike", "pop.jitter", "rigid.reach"], clip: (d) => bump(bump(d, "rHand", d.dur * 0.75, 0.12, [0.07, 0.15, -0.14]), "rElbow", d.dur * 0.75, 0.12, [0, 0.9, 0]) },
-  { name: "headTurn", kinds: ["idle", "attack"], targets: ["joints.neck"], clip: (d) => bump(d, "headYaw", d.dur * 0.5, 0.3, 2.0) },
-  { name: "overLean", kinds: ["idle"], targets: ["balance", "joints.spine"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "lean", amp: 0.9, n: 1 }]) }) },
   {
-    // The weapon swung through the head: turned about the hand toward the head over a stretch
-    // of the wind-up.
-    name: "clipWeapon", kinds: ["attack"], archer: false, targets: ["clear.weapon"],
+    // An elbow folded flat: the forearm (and what the hand holds) turned about the elbow until it
+    // nearly lies along the upper arm, over the middle of the clip.
+    name: "elbowFold", kinds: ["idle", "attack", "death"], targets: ["joints.elbow", "rigid.reach"],
     post: (b) => {
-      const key = b.parts.weapon_r ? "weapon_r" : "weapon_l", hand = key === "weapon_r" ? "handR" : "handL";
+      const arm = [];
+      for (let v = 0; v < b.count; v++) if (b.bone[v] === BONE.ARM_R) arm.push(v);
+      const held = b.parts.weapon_r ? range(b.parts.weapon_r) : [];
+      const f0 = Math.floor(b.frames * 0.35), f1 = Math.floor(b.frames * 0.65);
+      for (let f = f0; f <= f1; f++) {
+        const w = 0.9 * Math.sin((Math.PI * (f - f0)) / Math.max(1, f1 - f0));
+        const J = b.joints[f], e = J.elbowR, fore = sub3(J.handR, e), up = sub3(J.shoulderR, e);
+        const L2 = fore[0] ** 2 + fore[1] ** 2 + fore[2] ** 2;
+        const rot = (p) => rotateToward(p, e, fore, up, w);
+        const distal = arm.filter((v) => {
+          const q = (f * b.count + v) * 3;
+          return ((b.pos[q] - e[0]) * fore[0] + (b.pos[q + 1] - e[1]) * fore[1] + (b.pos[q + 2] - e[2]) * fore[2]) / L2 > 0;
+        });
+        edit(b, f, distal.concat(held), rot, ["handR"]);
+      }
+      return b;
+    },
+  },
+  { name: "headTurn", kinds: ["idle", "attack", "death"], targets: ["joints.neck"], clip: (d) => bump(d, "headYaw", d.dur * 0.5, 0.3, 2.0) },
+  { name: "overLean", kinds: ["idle", "attack", "death"], targets: ["balance", "joints.spine"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "lean", amp: 0.9, n: 1 }]) }) },
+  {
+    // The weapon swung through the head (turned about the hand toward it), or the bow pulled into
+    // the chest, over a stretch of the clip's first half.
+    name: "clipWeapon", kinds: ["idle", "attack", "death"], targets: ["clear.weapon"],
+    post: (b) => {
+      const [key, hand] = weaponOf(b);
       const vs = range(b.parts[key]);
+      const loose = new Set([...range(b.parts.string), ...range(b.parts.arrow)]);
+      const solid = vs.filter((v) => !loose.has(v));
       const f0 = Math.floor(b.frames * 0.15), f1 = Math.floor(b.frames * 0.35);
       for (let f = f0; f <= f1; f++) {
-        const w = Math.sin((Math.PI * (f - f0)) / (f1 - f0));
-        const h = b.joints[f][hand], hd = b.held[f][key];
-        const axis = [hd.up[0] - hd.at[0], hd.up[1] - hd.at[1], hd.up[2] - hd.at[2]];
-        const toHead = [b.joints[f].head[0] - h[0], b.joints[f].head[1] - h[1], b.joints[f].head[2] - h[2]];
-        edit(b, f, vs, (p) => rotateToward(p, h, axis, toHead, w));
+        const w = Math.sin((Math.PI * (f - f0)) / Math.max(1, f1 - f0));
+        // Its far end (the axe's head, a bow's limb tip: not the drawn string's nock, already at
+        // the face) turned toward the head.
+        const h = b.joints[f][hand], at = (v) => [0, 1, 2].map((k) => b.pos[(f * b.count + v) * 3 + k]);
+        const tip = solid.reduce((a, v) => (Math.hypot(...sub3(at(v), h)) > Math.hypot(...sub3(at(a), h)) ? v : a), solid[0]);
+        if (b.parts[key].kind !== "bow") edit(b, f, vs, (p) => rotateToward(p, h, sub3(at(tip), h), sub3(b.joints[f].head, h), w));
+        else {
+          // A bow at arm's length cannot reach the head by turning: it is pulled into the chest.
+          const J = b.joints[f], chest = [0, 1, 2].map((k) => (J.neck[k] + J.pelvis[k]) / 2);
+          const c = [0, 1, 2].map((k) => solid.reduce((a, v) => a + at(v)[k], 0) / solid.length);
+          const d = sub3(chest, c).map((x) => x * 0.8 * w);
+          edit(b, f, vs, (p) => p.map((x, k) => x + d[k]));
+        }
       }
       return b;
     },
@@ -233,7 +291,8 @@ export const MUTATIONS = [
       return b;
     },
   },
-  { name: "squat", kinds: ["idle", "attack"], targets: ["joints.knee", "rigid.reach"], clip: (d) => bump(d, "pelvis", d.dur * 0.5, Math.min(0.3, d.dur * 0.25), [0, -0.17, 0]) },
+  // (a death's while it still stands)
+  { name: "squat", kinds: ["idle", "attack", "death"], targets: ["joints.knee", "rigid.reach"], clip: (d) => (d.kind === "death" ? bump(d, "pelvis", 0.12, 0.1, [0, -0.17, 0]) : bump(d, "pelvis", d.dur * 0.5, Math.min(0.3, d.dur * 0.25), [0, -0.17, 0])) },
   {
     // A broken wrist: the weapon turned about the hand toward the forearm's line.
     name: "brokenWrist", kinds: ["idle", "attack", "death"], archer: false, targets: ["joints.wrist"],
@@ -303,11 +362,49 @@ export const MUTATIONS = [
       return b;
     },
   },
-  { name: "jitter", kinds: ["idle", "attack"], targets: ["pop.jitter", "idle.jitter", "pop.trunk", "pop.spike"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "rHand", amp: [0.004, 0.004, 0], n: Math.round(d.dur * 23) }, { ch: "lean", amp: 0.03, n: Math.round(d.dur * 17) }]) }) },
+  { name: "jitter", kinds: ["idle", "attack", "death"], targets: ["pop.jitter", "idle.jitter", "pop.trunk", "pop.spike"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "rHand", amp: [0.004, 0.004, 0], n: Math.round(d.dur * 23) }, { ch: "lean", amp: 0.03, n: Math.round(d.dur * 17) }]) }) },
   {
     // The loop's last fifth of a second dropped: it jumps at its seam.
     name: "loopBreak", kinds: ["idle"], targets: ["idle.seam", "pop.trunk", "pop.spike", "pop.jitter"],
     post: (b) => retime(b, b.frames - Math.max(2, Math.round(b.fps * 0.2)), (g) => g / b.fps),
+  },
+  {
+    // A pose that jumps in one frame (two keys too close, a channel keyed in the wrong units):
+    // the weapon arm and what it holds step 2 cm and ease back over 0.3 s, where the arm moves
+    // least (a jump inside fast motion is masked by it, and the metric rightly lets it pass).
+    name: "snap", kinds: ["idle", "attack", "death"], targets: ["pop.spike"],
+    post: (b) => {
+      const arm = [];
+      for (let v = 0; v < b.count; v++) if (b.bone[v] === BONE.ARM_R || b.bone[v] === BONE.WEAPON) arm.push(v);
+      const n = Math.max(3, Math.round(0.3 * b.fps));
+      const step = (f) => Math.max(...arm.filter((_, i) => i % 5 === 0).map((v) => Math.hypot(...[0, 1, 2].map((k) => b.pos[(f * b.count + v) * 3 + k] - b.pos[((f - 1) * b.count + v) * 3 + k]))));
+      // Not at a declared event, where the validator allows a deliberate snap.
+      const ev = Object.values(b.clip.events ?? {}).map((t) => Math.round(t * b.fps));
+      const free = (f) => ev.every((e) => Math.abs(f - e) > 3);
+      let f0 = -1;
+      for (let f = Math.floor(b.frames * 0.2); f < Math.min(b.frames - n, Math.floor(b.frames * 0.8)); f++) if (free(f) && (f0 < 0 || step(f) < step(f0))) f0 = f;
+      for (let f = f0; f < Math.min(b.frames, f0 + n); f++) {
+        const u = (f - f0) / n, k = 0.02 * (1 - u * u * (3 - 2 * u));
+        edit(b, f, arm, (p) => [p[0] + k, p[1] + k, p[2]], ["handR", "elbowR"]);
+      }
+      return b;
+    },
+  },
+  {
+    // The wind-up rushed: everything before the blow's last 0.25 s plays in 40% of its time,
+    // then the figure waits at the top (the blow lands on time).
+    name: "rushedWindup", kinds: ["attack"], archer: false, targets: ["attack.contrast", "attack.windup"],
+    post: (b) => {
+      const t0 = b.clip.events.impact - 0.25;
+      return retime(b, b.frames, (g) => {
+        const t = g / b.fps;
+        return t >= t0 ? t : Math.min(t0, t / 0.4);
+      });
+    },
+  },
+  {
+    // A sideways swing: the chest turned 75 degrees off the target at the impact.
+    name: "sideways", kinds: ["attack"], archer: false, targets: ["attack.facing"], clip: (d) => bump(d, "twist", d.events.impact, 0.3, 1.3),
   },
   {
     // The clip stops mid-recovery: it does not hand back to the idle's rest pose.
@@ -382,7 +479,7 @@ export const MUTATIONS = [
       return d;
     },
   },
-  { name: "fastSwing", kinds: ["attack"], archer: false, targets: ["playback.lerp", "pop.spike", "attack.strike"], clip: (d) => ({ ...d, fps: 12 }) },
+  { name: "fastSwing", kinds: ["attack", "death"], targets: ["playback.lerp", "pop.spike", "attack.strike"], clip: (d) => ({ ...d, fps: 10 }) },
   {
     name: "freezeTorso", kinds: ["attack"], archer: false, targets: ["craft.commit"],
     clip: (d) => {
@@ -392,8 +489,8 @@ export const MUTATIONS = [
   },
   // --- death ---
   {
-    // The fall lowered gently: from its onset to the ground it takes twice as long and eases to
-    // rest on the ground (a body put down, not falling).
+    // The fall lowered gently: from its onset to the ground it takes 2.5 times as long and eases
+    // to rest on the ground (a body put down, not falling).
     name: "floatyFall", kinds: ["death"], targets: ["death.accelerates", "death.gravity", "death.fallTime", "death.energy", "death.groundEvent"],
     post: (b) => {
       const m = model(b);
@@ -402,13 +499,28 @@ export const MUTATIONS = [
       while (ts < b.frames - 1 && vy[ts] > -0.1) ts++;
       const ground = Math.round((b.clip.events?.ground ?? b.clip.dur * 0.5) * b.fps);
       const ti = Math.max(ts + 2, ground);
-      const add = ti - ts;
+      const L = ti - ts, add = Math.round(1.5 * L);
       const out = retime(b, b.frames + add, (g) => {
         if (g <= ts) return g / b.fps;
         if (g >= ti + add) return (g - add) / b.fps;
-        const u = (g - ts) / (2 * add);
-        return (ts + add * (u * u * (3 - 2 * u))) / b.fps;
+        const u = (g - ts) / (L + add);
+        return (ts + L * (u * u * (3 - 2 * u))) / b.fps;
       });
+      out.clip = { ...b.clip, dur: b.clip.dur + add / b.fps };
+      return out;
+    },
+  },
+  {
+    // A slow-motion fall: from its onset to the ground played at a third of the speed.
+    name: "slowFall", kinds: ["death"], targets: ["death.fallTime", "death.gravity"],
+    post: (b) => {
+      const m = model(b);
+      const vy = m.coms.map((c, k) => (k === 0 ? 0 : (c[1] - m.coms[k - 1][1]) * b.fps));
+      let ts = 3;
+      while (ts < b.frames - 1 && vy[ts] > -0.1) ts++;
+      const ti = Math.max(ts + 2, groundFrame(b));
+      const add = 2 * (ti - ts);
+      const out = retime(b, b.frames + add, (g) => (g <= ts ? g : g >= ti + add ? g - add : ts + (g - ts) / 3) / b.fps);
       out.clip = { ...b.clip, dur: b.clip.dur + add / b.fps };
       return out;
     },
@@ -469,6 +581,11 @@ export const MUTATIONS = [
     },
   },
   // --- idle ---
+  {
+    // An agitated idle: twice the motion, played three times over in the loop's length.
+    name: "hurried", kinds: ["idle"], targets: ["idle.tempo", "idle.breath"],
+    post: (b) => scaleMotion(retime(b, b.frames, (g) => ((3 * g) / b.fps) % b.clip.dur), 2),
+  },
   { name: "statue", kinds: ["idle"], targets: ["idle.alive"], post: (b) => scaleMotion(b, 0.2) },
   { name: "swim", kinds: ["idle"], targets: ["idle.calm", "idle.fromRest", "idle.tempo"], post: (b) => scaleMotion(b, 4) },
   { name: "pant", kinds: ["idle"], targets: ["idle.breath", "idle.tempo"], clip: (d) => ({ ...d, waves: (d.waves ?? []).map((w) => (w.ch === "lean" || (w.ch === "pelvis" && Array.isArray(w.amp) && w.amp[1]) ? { ...w, n: 3 } : w)) }) },
@@ -535,6 +652,37 @@ export const MUTATIONS = [
     clip: (d) => {
       const s0 = d.strike ?? [0, 0, 1], n = Math.hypot(...s0);
       return bump(d, "rHand", d.events.release - 0.02, 0.3, s0.map((x) => (0.1 * x) / n));
+    },
+  },
+  {
+    // The nocked arrow fades out over 0.1 s instead of leaving in one frame.
+    name: "fadeArrow", kinds: ["attack"], archer: true, targets: ["shot.release", "rigid.arrow"],
+    clip: (d) => {
+      const tr = d.events.release;
+      for (const k of d.keys) if (k.t > tr - 0.1 && k.t < tr + 0.1 && k.pose.arrow !== undefined) delete k.pose.arrow;
+      setKey(d, tr - 0.05, "arrow", 1, "linear");
+      return setKey(d, tr + 0.05, "arrow", 0, "hold");
+    },
+  },
+  {
+    // The nocked arrow part-shrunk (a mis-keyed `arrow` channel) for several frames while it is
+    // nocked.
+    name: "shrinkArrow", kinds: ["idle", "attack", "death"], archer: true, targets: ["rigid.arrow"],
+    post: (b) => {
+      const vs = range(b.parts.arrow);
+      const ext = (f) => {
+        const c = [0, 1, 2].map((k) => vs.reduce((a, v) => a + b.pos[(f * b.count + v) * 3 + k], 0) / vs.length);
+        return Math.max(...vs.map((v) => Math.hypot(...[0, 1, 2].map((k) => b.pos[(f * b.count + v) * 3 + k] - c[k]))));
+      };
+      const e0 = ext(0);
+      let n = 0;
+      while (n < b.frames && ext(n) > 0.5 * e0) n++; // the first run of frames with the arrow whole
+      const f0 = Math.floor(n * 0.2), f1 = Math.max(f0 + 5, Math.floor(n * 0.8));
+      for (let f = f0; f < Math.min(f1, n); f++) {
+        const c = [0, 1, 2].map((k) => vs.reduce((a, v) => a + b.pos[(f * b.count + v) * 3 + k], 0) / vs.length);
+        edit(b, f, vs, (p) => p.map((x, k) => c[k] + (x - c[k]) * 0.6));
+      }
+      return b;
     },
   },
 ];

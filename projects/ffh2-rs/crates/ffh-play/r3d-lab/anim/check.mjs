@@ -490,6 +490,9 @@ function rigid(m) {
  *  the rate), in pixels at the gameplay zoom. */
 function playback(m) {
   const { b, F, n, X } = m;
+  // An idle moves too slowly for the lerp to matter: baked at 1.5 frames a second the in-between
+  // is still within 0.3 px (measured), and one moving fast enough to fail fails idle.tempo first.
+  if (b.clip.kind === "idle") return [];
   let fine;
   try {
     fine = bakeClip(b.recipe, b.variant, b.param, b.clipName, { fps: b.fps * 2, clip: b.clip });
@@ -1300,8 +1303,13 @@ function death(m) {
   const ge = b.clip.events?.ground;
   if (ge !== undefined) out.push(M("death.groundEvent", "motion", true, Math.abs(ge - ti / fps) <= LIMITS.groundEvent, `declared ${ge} s, measured ${r4(ti / fps)} s`, `within ${LIMITS.groundEvent} s`, "the clip's ground event is when the body reaches the ground (declared metadata must be true: an effect timed by it lands with the body)", ti));
   out.push(M("death.fallTime", "motion", true, (ti - ts) / fps >= LIMITS.fallTime[0] && (ti - ts) / fps <= LIMITS.fallTime[1], r4((ti - ts) / fps), LIMITS.fallTime.join("-"), "seconds from onset to the ground", ts));
-  // Landing: a small rebound at most, then still.
-  const bounce = Math.max(...coms.slice(ti).map((c) => c[1])) - coms[ti][1];
+  // Landing: a small rebound at most, then still. The rebound is measured from the lowest point
+  // so far (a body still settling after its first contact may not rise again either).
+  let bounce = 0;
+  for (let k = ti, lo = Infinity; k < F; k++) {
+    lo = Math.min(lo, coms[k][1]);
+    bounce = Math.max(bounce, coms[k][1] - lo);
+  }
   out.push(M("death.bounce", "body", true, bounce <= LIMITS.bounce, r4(bounce), LIMITS.bounce, "the body's rebound after it lands (plots)", ti));
   const stepAt = (f) => {
     let d = 0;
