@@ -126,7 +126,17 @@ with weights sharpened by brush-dab noise, so borders between terrains are bands
 strokes; the lookup is warped up to most of a plot between plot centres and not at all at them, so a
 plot's centre always shows its own ground while grass, plains and desert meet in organic shapes. Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they
 rise) with impressionist brush dabs at two sizes (oriented elliptical marks on a jittered lattice,
-one painter's hand: orientations within a 60° fan). Over that: features' floors (forest litter, ice,
+one painter's hand: orientations within a 60° fan). Grassland and prairie (plains), the commonest
+open ground, are painted in laid marks instead (`meadow`, `gmarks`): over the masses and a slow
+warm/cool drift, flat-toned marks at three sizes (4.5, 11 and 26 a plot), each in one of four
+related colours of about the ground's own value -- yellow-green, blue-green, olive and sap on grass;
+straw, ochre, sage and russet on prairie -- so the ground reads as broken colour while its value
+stays quiet round roads, rings and figures. Grass takes short upright strokes, prairie long ones
+swept along a slowly turning wind, so the two read apart by their texture as well as their colour.
+A mark's edge is about a pixel wide at any zoom; each size fades in once its marks are a few pixels
+and out again once they would swell past about 40 px (the finest only close up). That ground spares
+half of the paint filter (alpha keep 0.5; the ink pass ignores the keep of the ground and water),
+so close up its marks stay laid paint instead of being smeared. Over that: features' floors (forest litter, ice,
 flood silt, ash), beaches on the lowest rim of the land, rock with tilted strata on steep ground and
 high slopes (warm lit faces, cool shaded ones), snow on summits and gentle high ledges, wet banks,
 fields, trodden settlement ground and roads (from the decal layer), marsh pools. Hell terrains are
@@ -136,9 +146,9 @@ wraps (no seam), so nothing swims when the camera moves.
 
 **Water.** The sea is one plane at sea level; its shader reads the sea floor's height (a texture at
 4 samples a plot) through a warped, averaged lookup, so the shelf's colour bands follow soft
-contours: teal over the shelf to indigo over the deep. Waves are two drifting noise layers in the
-normal; restrained sun glints; foam on the surf line and a slower line offshore. Rivers are ribbons
-wider than their carved beds: the banks cut the water's edge; flecks drift downstream.
+contours: teal over the shelf to indigo over the deep. Rivers are ribbons wider than their carved
+beds: the banks cut the water's edge. It is drawn over a grab of the scene, seen into, mirroring,
+with waves, glitter and surf: §5.2.
 
 **Decal and light layers** (`decals.js`), painted with a 2D canvas when the map changes: roads (each
 routed plot to its routed neighbours, bowed so a network reads as tracks), fields (farms, plantations,

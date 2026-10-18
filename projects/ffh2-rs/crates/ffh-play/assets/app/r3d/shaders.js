@@ -422,9 +422,81 @@ vec3 masses(vec2 m, vec3 dark, vec3 base, vec3 light, float scale) {
   return c;
 }
 
+// Plots per pixel at this fragment, set in main before any branch (the ground's marks fade by it).
+float gPpx = 0.0;
+// How much of the paint filter the ground just painted is spared (its marks are the paint there).
+float gKeep = 0.0;
+
+// Ground marks: one flat-toned mark per cell of a jittered lattice (about f per plot), periodic like
+// mnoise, each turned to 'ang' (radians from the map's x) give or take 'jit', drawn out 'elong'
+// times, three-lobed like dab2, with an edge about a pixel wide at any zoom ('aa': cells per pixel).
+// Returns (pick, tone, cover): two hashes of the mark that covers the point, and how firmly.
+vec3 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float aa) {
+  float P = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) : 4096.0;
+  vec2 p = uWrapX > 0.5 ? vec2(m.x * P / uMapSize.x, m.y * f) : m * f;
+  vec2 i = floor(p);
+  vec2 fr = fract(p);
+  float soft = 0.12 + aa * 1.2;
+  float best = 0.0;
+  vec2 pick = vec2(0.5);
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 g = vec2(float(x), float(y));
+      vec2 cell = mod(i + g, vec2(P, 4096.0));
+      vec2 o = g + hash22(cell) - fr;
+      float hs = hash12(cell + 1.3);
+      float a = ang + (hash12(cell + 3.7) - 0.5) * jit;
+      vec2 r = vec2(cos(a) * o.x + sin(a) * o.y, -sin(a) * o.x + cos(a) * o.y);
+      float el = elong * (0.75 + 0.5 * hash12(cell + 6.1));
+      vec2 q = r / (rad * (0.7 + 0.6 * hs) * vec2(sqrt(el), 1.0 / sqrt(el)));
+      float len = length(q);
+      float c = q.x / max(len, 1e-4);
+      float d = len * (1.0 + 0.2 * (4.0 * c * c * c - 3.0 * c));
+      float w = (1.0 - smoothstep(1.0 - soft, 1.0, d)) * (0.55 + 0.45 * hs);
+      if (w > best) { best = w; pick = vec2(hash12(cell + 9.1), hash12(cell + 5.3)); }
+    }
+  }
+  return vec3(pick, best);
+}
+
+// Open grassland and prairie, painted: the broad masses (as masses(), with a slow drift between a
+// warm and a cool green or straw), then marks laid over them at three sizes -- the finest only
+// close up, each fading before it would sparkle or swell into a blot -- each mark one of four
+// related colours of about the ground's own value, so the ground reads as laid strokes of broken
+// colour while its value stays quiet round roads, rings and figures. Grass takes short upright
+// strokes; prairie long ones swept along a slowly turning wind.
+vec3 meadow(vec2 m, vec3 dark, vec3 base, vec3 light, vec3 c0, vec3 c1, vec3 c2, vec3 c3, bool prairie) {
+  float big = mfbm(m, 0.45);
+  float mid = mnoise(m + 11.0, 1.6);
+  vec3 c = mix(base, dark, smoothstep(0.52, 0.8, big) * 0.6);
+  c = mix(c, light, smoothstep(0.38, 0.78, big) * smoothstep(0.45, 0.8, mid) * 0.5);
+  float k = uStylize * min(uDabs / 1.6, 1.5);
+  c = mix(c, mix(c1, c0, smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7))), 0.22 * k);
+  float ang = prairie ? 0.35 + (mnoise(m + 41.0, 0.3) - 0.5) * 1.6 : 1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6;
+  float jit = prairie ? 0.35 : 0.8;
+  gKeep = 0.5 * min(k, 1.0);
+  float elong = prairie ? 4.5 : 2.2;
+  for (int o = 0; o < 3; o++) {
+    float f = o == 0 ? 4.5 : o == 1 ? 11.0 : 26.0;
+    float aa = gPpx * f;
+    // In while a mark is a few pixels or more, out again once it would be a blot over ~40 px.
+    float lod = (1.0 - smoothstep(0.22, 0.5, aa)) * smoothstep(0.02, 0.03, aa);
+    if (lod <= 0.0 || k <= 0.0) continue;
+    vec3 mk = gmarks(m + float(o) * 13.1, f, ang, jit, elong, o == 2 ? 0.6 : 0.55, aa);
+    vec3 pc = mk.x < 0.3 ? c0 : mk.x < 0.55 ? c1 : mk.x < 0.8 ? c2 : c3;
+    pc *= 0.86 + 0.28 * mk.y;
+    c = mix(c, pc, mk.z * lod * k * (o == 0 ? (prairie ? 0.42 : 0.5) : o == 1 ? 0.42 : 0.36));
+  }
+  return c;
+}
+
 vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
-  if (g == G_GRASS) return srgb(masses(m, vec3(0.16, 0.24, 0.17), vec3(0.27, 0.36, 0.21), vec3(0.43, 0.49, 0.28), 1.0));
-  if (g == G_PLAINS) return srgb(masses(m, vec3(0.34, 0.31, 0.21), vec3(0.48, 0.42, 0.28), vec3(0.62, 0.54, 0.37), 1.0));
+  // Grass: yellow-green, blue-green, olive and sap.
+  if (g == G_GRASS) return srgb(meadow(m, vec3(0.16, 0.24, 0.17), vec3(0.27, 0.36, 0.21), vec3(0.43, 0.49, 0.28),
+    vec3(0.41, 0.47, 0.23), vec3(0.19, 0.32, 0.25), vec3(0.38, 0.40, 0.21), vec3(0.22, 0.31, 0.15), false));
+  // Prairie: straw, ochre, sage and russet.
+  if (g == G_PLAINS) return srgb(meadow(m, vec3(0.34, 0.31, 0.21), vec3(0.48, 0.42, 0.28), vec3(0.62, 0.54, 0.37),
+    vec3(0.64, 0.56, 0.35), vec3(0.54, 0.43, 0.24), vec3(0.43, 0.44, 0.31), vec3(0.50, 0.39, 0.27), true));
   if (g == G_DESERT) {
     vec3 c = masses(m, vec3(0.58, 0.46, 0.32), vec3(0.71, 0.59, 0.42), vec3(0.82, 0.72, 0.55), 0.8);
     float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
@@ -575,6 +647,7 @@ void main() {
   if (near > 0.0 && uStylize > 0.0 && h > -0.32) imp = ((mdabs(m + 7.3, 6.5) - 0.5) * 0.6 + (mdabs(m, 2.4) - 0.5) * 0.4) * 0.012 * near * uStylize;
   vec3 dpx = dFdx(vWorld), dpy = dFdy(vWorld);
   float dix = dFdx(imp), diy = dFdy(imp);
+  gPpx = length(fwidth(m));
   // The deep sea floor is deeper than the water lets anyone see (the water, drawn over it, shows at
   // most a dark trace of it), so it is shaded cheaply -- but with its true depth, which the water
   // reads for its thickness. Not where unexplored: no water is drawn there, and the blank
@@ -617,6 +690,7 @@ void main() {
   float hellW = 0.0;
   for (int k = 0; k < 4; k++) if (gs[k] == G_BURNING || gs[k] == G_BROKEN || gs[k] == G_PERDITION) hellW += ws[k];
   vec3 alb = vec3(0.0);
+  float keepG = 0.0;
   for (int k = 0; k < 4; k++) {
     if (ws[k] < 0.0) continue;
     float wk = ws[k];
@@ -625,7 +699,9 @@ void main() {
     }
     if (wk < 0.004) continue;
     vec3 e = vec3(0.0);
+    gKeep = 0.0;
     alb += groundAlbedo(gs[k], m, h, e) * wk;
+    keepG += gKeep * wk;
     emit += e * wk;
   }
   // Features' floors, by the same weights.
@@ -737,7 +813,8 @@ void main() {
   }
   col = fogOfWar(col, v);
   col = atmosphere(col, vWorld);
-  oColor = vec4(col, 0.0);
+  // Alpha: the paint filter's keep mask -- open ground spares part of its own marks, not the blank.
+  oColor = vec4(col, keepG * (1.0 - blankT));
   vec3 vn = normalize((uView * vec4(n, 0.0)).xyz);
   oND = vec4(vn, -(uView * vec4(vWorld, 1.0)).z);
   oEmit = vec4(emit * smoothstep(0.5, 0.9, v), 0.0);
@@ -1597,7 +1674,7 @@ void main() {
     // crawl as the camera moves) and lightens where the paint is light -- an edge in the sun is
     // half lost, one in the shade found. Units keep their whole line (src.a, the keep mask), so a
     // figure always reads; foliage (negative id) only borrows the keep mask for the paint filter.
-    float keep = cid < 0.0 ? 0.0 : clamp(src.a, 0.0, 1.0);
+    float keep = cid <= 0.0 ? 0.0 : clamp(src.a, 0.0, 1.0);
     vec3 wpI = (uInvView * vec4((vUv * 2.0 - 1.0) * uTan * nd.w, -nd.w, 1.0)).xyz;
     // Periodic over a wrapping map's width (x enters at 7 cells a plot), so the camera's wrap across
     // the seam (a jump of the map's width in the world) does not change it.
