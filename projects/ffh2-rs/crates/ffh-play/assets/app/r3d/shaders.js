@@ -328,6 +328,48 @@ float strokeMarks(vec3 po, vec3 nO, vec3 dpo) {
   return t;
 }
 
+// A leafy crown's rim (MAT.LEAF): where a cluster of leaves turns away from the eye -- or, for the
+// shadow map, from the sun -- its rim is cut into leaves. Noise in the object's own space at two
+// sizes (bites out of a cluster's outline at the gameplay zoom, single leaves close up, each faded
+// in once its marks are a few pixels) sets how far into the rim a gap reaches, so every cluster's
+// outline is ragged and what lies behind it -- the next cluster, the crown's shaded depth, the
+// ground -- shows through. 'facing' is |n.V| (the recipes give each cluster its own normals, so
+// the rim follows its outline); 'pf' the size of a pixel there, measured across the view (it does
+// not grow on the rim itself, where the surface runs along the view). Returns how far past the
+// rim's cut the point lies: > 0 is cut away. The depth prepass and the shadow pass own the cut
+// (PROP_DEPTH_FS); the colour pass draws what they left.
+const float LEAFCUT_F = 26.0, LEAFCUT_F2 = 70.0;
+float leafCut(vec3 po, float facing, float pf) {
+  float w = 1.0 - smoothstep(0.2, 0.42, pf * LEAFCUT_F);
+  if (w <= 0.0) return -1.0;
+  float w2 = 1.0 - smoothstep(0.2, 0.42, pf * LEAFCUT_F2);
+  float l = vnoise3(po * LEAFCUT_F);
+  if (w2 > 0.0) l = mix(l, l * 0.45 + vnoise3(po * LEAFCUT_F2 + 7.3) * 0.55, w2);
+  return 0.9 * w * smoothstep(0.25, 0.7, l) - facing;
+}
+
+// The leaves of a leafy crown (MAT.LEAF), as its material: marks a leaf in size at two sizes
+// (the larger from about 120 px a plot, single leaves close up), each a leaf turned its own way
+// to the light -- its tone moves the light on it, as a brush mark's does -- so a cluster reads as
+// leaves catching the sun over darker ones, with the brushwork on or off. Signed tone, -0.5..0.5.
+const float LEAF_T = 34.0, LEAF_T2 = 80.0;
+float leafTexture(vec3 po, vec3 nO, vec3 dpo) {
+  float aC = length(dpo * LEAF_T), aF = length(dpo * LEAF_T2);
+  float lC = 1.0 - smoothstep(0.22, 0.5, aC);
+  float lF = 1.0 - smoothstep(0.22, 0.5, aF);
+  float t = 0.0;
+  if (lC > 0.0) t += (objDabs(po + 3.0, nO, LEAF_T, 1.5, 0.6, aC).x - 0.5) * 1.1 * lC;
+  if (lF > 0.0) t += (objDabs(po + 11.0, nO, LEAF_T2, 1.7, 0.6, aF).x - 0.5) * 0.8 * lF;
+  return t;
+}
+
+// The size of a pixel at a surface point (world units), across the view direction V: the part of
+// the screen-space step that is not along the line of sight, so it does not grow where the surface
+// is seen edge-on. dx, dy: dFdx/dFdy of the world position.
+float pixelAcross(vec3 dx, vec3 dy, vec3 V) {
+  return max(length(dx - dot(dx, V) * V), length(dy - dot(dy, V) * V));
+}
+
 #endif
 
 // The fog of war: 1 visible, 0.5 remembered (fogged), 0 unrevealed.
@@ -1207,20 +1249,31 @@ layout(location = 2) out vec4 oEmit;
 
 void main() {
   int kind = int(vMat.x + 0.5);
-  // Foliage (1) and blades of grass and reed (8) are lit as leaves, but only a prop's foliage is
-  // painted as a crown (massed leaf marks, value steps, its lobes merged by the ink): not a unit's
+  // Foliage (1, and leaf clusters 9) and blades of grass and reed (8) are lit as leaves, but only
+  // a prop's foliage is painted as a crown (massed leaf marks, value steps, its lobes merged by the ink): not a unit's
   // wing membrane or moss (a unit must read at a glance), nor a blade (a line, not a mass).
   bool blade = kind == 8;
-  bool leafy = kind == 1 || blade;
-  bool crown = kind == 1 && vTeam.a < 0.5;
+  bool leafy = kind == 1 || kind == 9 || blade;
+  bool crown = (kind == 1 || kind == 9) && vTeam.a < 0.5;
+  // A crown of leaf clusters (MAT.LEAF): each cluster its own small mass with its own normals,
+  // its rim cut into leaves by the depth prepass (leafCut, PROP_DEPTH_FS).
+  bool leaves = kind == 9 && vTeam.a < 0.5;
   vec3 n = normalize(vNormal);
   if (!gl_FrontFacing) n = -n;
+  // The surface's side toward the eye (the normal buffer's). A cluster is a shell of leaves: seen
+  // from inside, where the cut opens its rim, its leaves take the light their outer faces take
+  // (lit through and from round them), not that of a cave turned away from the sky.
+  vec3 nG = n;
+  if (leaves && !gl_FrontFacing) n = -n;
+  vec3 V = normalize(uEye - vWorld);
   // The brush marks' space, offset per instance so neighbours differ; its derivatives are taken
   // here, outside any branch.
   vec3 po = vObj + vTint.a * 61.0;
   vec3 dpo = fwidth(po);
   vec3 nO = normalize(vObjN);
   vec3 alb = vColor * vTint.rgb;
+  // How squarely the surface faces the eye (a leaf cluster's rim is where the prepass cut it).
+  float facing = abs(dot(n, V));
   if (kind == 3) alb = srgb(vTeam.rgb) * (0.38 + 1.25 * lum(vColor)) * vTint.rgb;
   // Pigment variation in the object's own space (stays on the object); the brush marks below
   // carry the finer variation, so the fine pigment steps back as they come in.
@@ -1235,7 +1288,14 @@ void main() {
   float matte = (kind == 0 || kind == 3) ? 1.0 - vTeam.a : 0.0;
   // How squarely the plane faces the sun (before the shadows): where a mark may go dark or light.
   float d0 = clamp((dot(n, uSunDir) + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
-  if (uBrush > 0.0 && kind != 4 && kind != 6) {
+  if (leaves) {
+    // The leaves are the material here (leafTexture): on with the brushwork off too; the
+    // brushwork adds its gouache steps below.
+    tone = leafTexture(po, nO, dpo);
+    tone *= tone < 0.0 ? mix(0.35, 1.0, 1.0 - smoothstep(0.4, 0.85, d0)) : mix(0.5, 1.0, smoothstep(0.05, 0.45, d0));
+    jit = tone * 0.95;
+    alb *= 1.0 + tone * 0.6;
+  } else if (uBrush > 0.0 && kind != 4 && kind != 6) {
     if (crown) {
       tone = leafMarks(po, nO, dpo).x * uBrush;
       // A dark mark fades toward the lit planes and a light one toward the turned-away ones: the
@@ -1255,6 +1315,12 @@ void main() {
     }
   }
   float ao = vMat.w;
+  // The inside of a cluster, seen through the gaps at its rim: the crown's depth, its leaves at a
+  // middle value whatever the belly of the cluster has baked in (that would read as a black hole).
+  if (leaves && !gl_FrontFacing) {
+    ao *= 0.8;
+    alb *= clamp(0.045 / max(lum(alb), 1e-4), 1.0, 4.0);
+  }
   vec3 emit = vec3(0.0);
   vec3 col;
   if (kind == 4 || kind == 6) {
@@ -1275,8 +1341,17 @@ void main() {
       float back = max(0.0, -dot(n, uSunDir)) * 0.35;
       col += alb * uSunColor * back * 0.6;
       col *= mix(1.0, 0.82 + 0.3 * smoothstep(0.0, 1.0, sun), uStylize);
+      if (leaves) {
+        // The thin rim of a sunlit cluster: the light comes through its edge leaves, warm and
+        // yellow-green (light glowing round the clusters, the crown's depth dark behind them).
+        col += alb * uSunColor * vec3(1.0, 1.06, 0.5) * pow(1.0 - facing, 2.0) * sun * 0.5;
+        // Seen from inside (the far wall of a cluster where the cut opens its rim), the leaves are
+        // lit through: their own cluster shades them from the sun, but the light comes through.
+        if (!gl_FrontFacing) col += alb * uSunColor * vec3(0.95, 1.05, 0.55) * (0.45 + 0.45 * max(0.0, dot(n, uSunDir)));
+        // Leaves in the sun turn yellow-green, those in the shade stay blue-green (shadowColour).
+        col *= mix(vec3(1.0), vec3(1.12, 1.04, 0.66), smoothstep(0.3, 0.85, sun) * 0.7);
+      }
     } else if (kind == 2) {
-      vec3 V = normalize(uEye - vWorld);
       vec3 H = normalize(V + uSunDir);
       float sp = pow(max(dot(n, H), 0.0), 24.0) * sun;
       col += uSunColor * sp * 0.45 + uSkyColor * 0.15 * pow(1.0 - max(dot(n, V), 0.0), 2.0);
@@ -1287,7 +1362,6 @@ void main() {
     // A rim of sky light lifts silhouettes off the ground (units most: alpha protect). It is light
     // on the surface, so it follows the surface's brightness: a dark cloak or a wing membrane seen
     // edge-on catches a little of it, not a blue sheen; the back of a thin card less still.
-    vec3 V = normalize(uEye - vWorld);
     float rim = pow(1.0 - max(dot(n, V), 0.0), 3.0) * uRim * (0.5 + vTeam.a);
     rim *= mix(0.35, 1.0, clamp(lum(alb) * 2.5, 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : 0.5);
     // Leaves take little of it: a sky rim round every crown models it as a ball, the thing the
@@ -1320,7 +1394,7 @@ void main() {
   // smear a line of grass away); crowns keep part of their own leaf marks (they are the paint
   // there, world-anchored, and the screen-space filter would smear them back into soft balls).
   oColor = vec4(col, blade ? 1.0 : max(vTeam.a, crown ? 0.45 * uBrush : 0.0));
-  vec3 vn = normalize((uView * vec4(n, 0.0)).xyz);
+  vec3 vn = normalize((uView * vec4(nG, 0.0)).xyz);
   oND = vec4(vn, -(uView * vec4(vWorld, 1.0)).z);
   // Crowns write their object id negated: the ink pass (FINISH_FS) merges one crown's lobes into
   // a single mass by it and keeps crown against crown in a wood a light line. (Units keep theirs:
@@ -1340,6 +1414,30 @@ void main() { gl_Position = uViewProj * vec4(aPos + vec3(uCopyX, 0.0, 0.0), 1.0)
 export const SHADOW_FS = `
 out vec4 o;
 void main() { o = vec4(1.0); }`;
+
+/** The props' depth: the scene's depth prepass and the sun's shadow map. It owns the leafy crowns'
+ *  cut (leafCut): a leaf cluster's rim is cut into leaves here, toward the eye in the prepass and
+ *  toward the sun in the shadow map (uSunView), and the colour pass then shades a prop only where
+ *  the prepass depth equals its own (pipeline.js), so the colour pass itself never discards. */
+export const PROP_DEPTH_FS = `
+in vec3 vWorld;
+in vec3 vNormal;
+in vec4 vTint;
+in vec4 vTeam;
+flat in vec4 vMat;
+in vec3 vObj;
+uniform float uSunView;
+out vec4 o;
+void main() {
+  // (The test is constant over a triangle -- a flat material, a per-instance team -- so the
+  // derivatives inside it are taken by whole quads.)
+  if (int(vMat.x + 0.5) == 9 && vTeam.a < 0.5) {
+    vec3 V = uSunView > 0.5 ? uSunDir : normalize(uEye - vWorld);
+    float pf = pixelAcross(dFdx(vWorld), dFdy(vWorld), V);
+    if (leafCut(vObj + vTint.a * 61.0, abs(dot(normalize(vNormal), V)), pf) > 0.0) discard;
+  }
+  o = vec4(1.0);
+}`;
 
 // --------------------------------------------------------------------------------------------
 // Water: the sea (a plane at sea level) and the rivers (ribbons along their beds)
@@ -2039,8 +2137,8 @@ float edgeAt(vec2 uv, vec4 c, float cid) {
     // against the next is a light line, so the canopy reads as a mass, as a painter masses it.
     if (cid < 0.0 && sid < 0.0) de *= abs(sid - cid) < 0.002 ? 0.0 : 0.3;
     // A crown against the ground: a lighter line too -- its leafy rim reads by value, and inking
-    // every leaf cluster along it would draw a dotted fringe.
-    else if (cid < 0.0) de *= 0.6;
+    // every leaf cluster along its rim (cut into leaves, PROP_DEPTH_FS) would draw a dotted fringe.
+    else if (cid < 0.0) de *= 0.4;
     // Creases and object boundaries on props (not on the ground's gentle folds).
     float ne = (cid > 0.0) ? smoothstep(0.55, 0.85, 1.0 - dot(normalize(s.xyz), normalize(c.xyz))) * 0.6 : 0.0;
     float ie = (cid > 0.0 && abs(sid - cid) > 0.002 && s.w >= c.w - 0.02) ? 0.8 : 0.0;
