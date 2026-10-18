@@ -2,12 +2,11 @@
 //! coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and a Pirate
 //! Port, 3/2/6 on coast). [`Lanun::production`] trains a work boat for a city with a valid cove
 //! plot it works; [`Lanun::sea_worker`] takes it there and casts.
-//! FfH's end-of-turn spell choice would also cast the cove (AI weight 300) from a boat on its way
-//! to a sea resource, which then stays unimproved: [`Lanun::spell_value`] leaves the cove to boats
-//! without orders.
 //!
-//! Tried, not kept: a Siege Workshop where it opens the War Tortoise (their knight, 11/19, no
-//! horses, `PrereqBuilding`): 0.3 Tortoises a game, no measurable effect.
+//! Tried, not kept (docs/civ-ai-c.md): leaving the cove to boats without orders (FfH's
+//! end-of-turn spell choice also casts it from a boat sailing to a sea resource), better on seeds
+//! 1-40 and worse on 41-80; a Siege Workshop where it opens the War Tortoise (`PrereqBuilding`):
+//! 0.3 Tortoises a game, no effect.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -28,17 +27,6 @@ impl CivPlay for Lanun {
 
     fn sea_worker(&self, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {
         sea_worker(g, v, grp, u)
-    }
-
-    /// FfH's end-of-turn spell choice casts the cove (AI weight 300) wherever a boat ends its
-    /// turn on a valid plot, also a boat on its way to improve a sea resource: the resource
-    /// then stays unimproved. A boat with orders keeps them; the cove is cast by `sea_worker`.
-    fn spell_value(&self, g: &Game, u: UnitId, spell: SpellType, value: i32) -> i32 {
-        if g.d.ty::<SpellType>("SPELL_PIRATE_COVE") == Some(spell) && g.units[u].group.is_some_and(|grp| !g.groups[grp].mission_queue.is_empty()) {
-            crate::trace!(g, g.units[u].owner, "work boat {:?} at {:?}: no cove on the way", u, g.map.xy(g.unit_plot(u)));
-            return 0;
-        }
-        value
     }
 }
 
