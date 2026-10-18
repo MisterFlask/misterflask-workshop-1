@@ -415,6 +415,13 @@ two hammers a turn, and the barbarians took such cities within a few turns of fo
 - **Target**: sites are scored value / (turns + 3) and re-planned every turn; the site the
   settler was walking to (kept as the group's `MISSIONAI_FOUND` plot, saved with the game)
   scores 1.5x, so settlers no longer flip between sites of similar value.
+- **First city**: when the "clearly better" site the first settler (or the last settler of a civ
+  without cities) heads for turns out unreachable -- the rules give an AI group that cannot fight
+  no path into or through danger (`path_dest_valid`, `pathValid`), a wider danger than this AI's
+  map -- it founds where it stands. Before, it retried every turn and the civ never had a city:
+  5 of 6 such civs in seeds 1-100 were eliminated by turn 300. On seeds 801-944 the fix changed
+  8 of 144 games; 5 civs that died without a city now stand at turn 300 with 1-9 cities and 14-29
+  techs (all games: legacy +0.6% at turn 300, eliminations -8%).
 
 Measured over seeds 1-48 (6 civs, standard, 300 turns) against the version without them:
 settlers destroyed 50 -> 28, cities razed 38 -> 32, cities captured by barbarians 77 -> 71,
