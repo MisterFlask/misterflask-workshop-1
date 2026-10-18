@@ -10,7 +10,7 @@ import * as St from "../app/state.js";
 
 const data = JSON.parse(fs.readFileSync(fileURLToPath(new URL("../../r3d-lab/data.json", import.meta.url)), "utf8"));
 St.setData(data);
-const { buildMap, buildView, showcase, riverBits } = await import("../../r3d-lab/scenes.js");
+const { buildMap, buildView, showcase, fields, riverBits } = await import("../../r3d-lab/scenes.js");
 const { World, KIND } = await import("../app/r3d/world.js");
 const R = await import("../app/r3d/assets/registry.js");
 await import("../app/r3d/assets/index.js");
@@ -156,6 +156,38 @@ test("a plot's dressing depends only on its neighbourhood: a moving unit redress
   }
   assert.ok(changed > 0, "the move changed the dressing around the unit");
   St.setView(scene.view);
+});
+
+test("worked land keeps to a river's banks: no field, fence or crop in the water, no rock or reed on the crops", async () => {
+  const { fieldLayout, inField, riversAround } = await import("../app/r3d/fields.js");
+  const { RIVER_HALF, RIVER_WANDER } = await import("../app/r3d/world.js");
+  const scene = fields(data);
+  St.setView(scene.view);
+  St.setMap(scene.map);
+  const map = scene.map;
+  const w = new World(map);
+  const d = dressStatic(w, map);
+  let worked = 0;
+  for (let i = 0; i < map.w * map.h; i++) {
+    if (map.improvement[i] < 0) continue;
+    const x = i % map.w, y = (i - x) / map.w;
+    const t = data.tables.ImprovementType[map.improvement[i]].type;
+    const b = map.bonus[i] >= 0 ? data.tables.BonusType[map.bonus[i]].type : null;
+    const rv = riversAround(w, map, x, y);
+    const lay = fieldLayout(i, t, b, rv);
+    assert.ok(lay, `${t} at (${x}, ${y}) has a layout`);
+    if (/PASTURE|MUSHROOMS/.test(t)) assert.ok(lay.paddock, `${t} at (${x}, ${y}) has its paddock`);
+    const dry = (lx, lz, what) => assert.ok(w.riverDist(x + 0.5 + lx, y + 0.5 - lz) > RIVER_HALF + RIVER_WANDER, `${what} of ${t} at (${x}, ${y}) in the river`);
+    for (const f of lay.fields) for (let u = 0; u <= 4; u++) for (let v = 0; v <= 4; v++) dry(f.x0 + ((f.x1 - f.x0) * u) / 4, f.z0 + ((f.z1 - f.z0) * v) / 4, "a field");
+    for (const [[ax, az], [bx, bz]] of lay.fences) for (let u = 0; u <= 4; u++) dry(ax + ((bx - ax) * u) / 4, az + ((bz - az) * u) / 4, "a fence");
+    for (const it of d.byPlot.get(i).list) {
+      const lx = it.x - (x + 0.5), lz = y + 0.5 + it.z;
+      if (/^(imp|anim)\./.test(it.asset)) dry(lx, lz, it.asset);
+      else if (/rock|reeds|plant\.grass/.test(it.asset)) assert.ok(!inField(i, t, b, rv, lx, lz), `${it.asset} on the fields of ${t} at (${x}, ${y})`);
+    }
+    worked++;
+  }
+  assert.ok(worked >= 10, "the scene's worked plots");
 });
 
 test("every panel switch has a default; plain turns the painting off but keeps the water's realism", async () => {

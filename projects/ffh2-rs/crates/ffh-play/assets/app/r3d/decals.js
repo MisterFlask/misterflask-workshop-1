@@ -2,7 +2,8 @@
 // 2D canvas whenever the map changes and sampled by the terrain shader:
 //
 //   decal texture (DRES px per plot): r roads (a distance ramp), g fields (the crop by value),
-//                                     b wet ground (river banks), a trodden settlement ground
+//                                     b wet ground (river banks), a trodden ground (settlements,
+//                                     yards, paddocks; by strength)
 //   light texture (LRES px per plot): rgb pools of local light (towns, lava, mana) that
 //                                     the terrain and the props are lit by
 //
@@ -17,7 +18,7 @@ import { tname } from "../state.js";
 import { FEAT, KIND, isHell, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
 import { hashf } from "./noise.js";
 import { MANA } from "./assets/palette.js";
-import { fieldLayout, roadLinks, ROAD_CLEAR, CROP, CROP_LEVEL } from "./fields.js";
+import { fieldLayout, riversAround, roadLinks, ROAD_CLEAR, CROP, CROP_LEVEL } from "./fields.js";
 
 export const DRES = 16;
 export const LRES = 4;
@@ -147,13 +148,21 @@ export function rasterDecals(world, map, cities) {
     }
   }, DRES * 0.025);
 
-  // g: fields (farms, plantations, vineyards, worked land; fields.js) and the gardens of
-  // villages, each crop by its value (CROP_LEVEL).
+  // g: fields (farms, plantations, vineyards, worked land; fields.js, kept to the bank tops of the
+  // rivers round them), a pasture's grazed turf and the gardens of villages, each crop by its value
+  // (CROP_LEVEL).
   channel(1, () => {
     const level = (crop) => {
       const v = Math.round(255 * CROP_LEVEL[crop]);
       return `rgb(${v},${v},${v})`;
     };
+    // A plot-local (x east, z south) polygon of plot (x, y).
+    const poly = (x, y, pts) => copies((o) => {
+      g.beginPath();
+      pts.forEach(([lx, lz], n) => (n ? g.lineTo : g.moveTo).call(g, (x + 0.5 + lx) * DRES + o, (y + 0.5 - lz) * DRES));
+      g.closePath();
+      g.fill();
+    });
     const tilled = [];
     for (let y = 0; y < world.h; y++) {
       for (let x = 0; x < world.w; x++) {
@@ -161,20 +170,34 @@ export function rasterDecals(world, map, cities) {
         if (map.vis[i] === 0 || map.improvement[i] < 0 || map.city[i] >= 0) continue;
         const t = tname("ImprovementType", map.improvement[i]) ?? "";
         const b = map.bonus[i] >= 0 ? tname("BonusType", map.bonus[i]) ?? "" : "";
-        const lay = fieldLayout(i, t, b);
-        if (lay || VILLAGE.test(t)) tilled.push([x, y]);
+        const lay = fieldLayout(i, t, b, riversAround(world, map, x, y));
+        const turf = lay?.paddock?.turf ? lay.paddock : null;
+        if (lay?.fields.length || turf || VILLAGE.test(t)) tilled.push([x, y]);
         if (lay) {
-          // Plot-local (x east, z south) rectangles, their corners nudged a little off square.
+          // Rectangles, their corners nudged a little off square.
           for (const [k, f] of lay.fields.entries()) {
             const jx = (n) => (hashf(i, k, n) - 0.5) * 0.03;
-            const pts = [[f.x0 + jx(1), f.z0 + jx(2)], [f.x1 + jx(3), f.z0 + jx(4)], [f.x1 + jx(5), f.z1 + jx(6)], [f.x0 + jx(7), f.z1 + jx(8)]];
             g.fillStyle = level(f.crop);
-            copies((o) => {
-              g.beginPath();
-              pts.forEach(([lx, lz], n) => (n ? g.lineTo : g.moveTo).call(g, (x + 0.5 + lx) * DRES + o, (y + 0.5 - lz) * DRES));
-              g.closePath();
-              g.fill();
-            });
+            poly(x, y, [[f.x0 + jx(1), f.z0 + jx(2)], [f.x1 + jx(3), f.z0 + jx(4)], [f.x1 + jx(5), f.z1 + jx(6)], [f.x0 + jx(7), f.z1 + jx(8)]]);
+          }
+          if (turf) {
+            // The paddock's turf, just inside its rails (their oval, wavering a little), with the
+            // ground trodden bare cut out of it: the trodden channel's bare earth shows there.
+            g.fillStyle = level(CROP.TURF);
+            poly(x, y, Array.from({ length: 18 }, (_, k) => {
+              const a = (k / 18) * Math.PI * 2, s = 0.93 + (hashf(i, k, 9) - 0.5) * 0.05;
+              return [turf.x + Math.cos(a) * turf.rx * s, turf.z + Math.sin(a) * turf.rz * s];
+            }));
+            g.fillStyle = "#000";
+            for (const [wx, wz, rx, rz, a] of lay.worn) {
+              g.globalAlpha = a;
+              copies((o) => {
+                g.beginPath();
+                g.ellipse((x + 0.5 + wx) * DRES + o, (y + 0.5 - wz) * DRES, DRES * rx, DRES * rz, 0, 0, Math.PI * 2);
+                g.fill();
+              });
+            }
+            g.globalAlpha = 1;
           }
           continue;
         }
@@ -197,8 +220,8 @@ export function rasterDecals(world, map, cities) {
         }
       }
     }
-    // A road through a farmed plot runs between its fields, a strip of grass either side
-    // (the farm's props keep off it too: fields.js onRoad).
+    // A road through a farmed plot runs between its fields (and across a paddock), a strip of grass
+    // either side (the farm's props keep off it too: fields.js onRoad).
     g.strokeStyle = g.fillStyle = "#000";
     g.lineCap = "round";
     g.lineWidth = ROAD_CLEAR * 2 * DRES;
@@ -233,8 +256,10 @@ export function rasterDecals(world, map, cities) {
     g.globalAlpha = 1;
   }, DRES * 0.06);
 
-  // a: settlement ground.
+  // a: trodden ground: settlements, and an improvement's yards and paddocks (fields.js worn, by
+  // strength; "lighten", so a fainter patch beside a town keeps the town's bare ground).
   channel(3, () => {
+    g.globalCompositeOperation = "lighten";
     g.fillStyle = "#fff";
     for (const c of cities) {
       const r = DRES * (0.3 + Math.min(0.14, (c.city.size ?? 1) * 0.015));
@@ -249,15 +274,21 @@ export function rasterDecals(world, map, cities) {
         const i = y * world.w + x;
         if (map.vis[i] === 0 || map.improvement[i] < 0 || map.city[i] >= 0) continue;
         const t = tname("ImprovementType", map.improvement[i]) ?? "";
-        // A farmstead's yard (fields.js), trodden bare round the barn and the ricks.
-        const yard = /FARM|PLANTATION/.test(t) ? fieldLayout(i, t, null)?.yard : null;
-        if (yard) {
-          const s = yard.side;
-          copies((o) => {
-            g.beginPath();
-            g.ellipse((x + 0.5 + yard.x - s * 0.06) * DRES + o, (y + 0.5 - yard.z) * DRES, DRES * 0.2, DRES * 0.11, 0, 0, Math.PI * 2);
-            g.fill();
-          });
+        const b = map.bonus[i] >= 0 ? tname("BonusType", map.bonus[i]) ?? "" : "";
+        // A farmstead's yard trodden bare round the barn and the ricks, a paddock's gateway, trough
+        // and the herd's standing places, the earth mushrooms spring from (fields.js).
+        const worn = fieldLayout(i, t, b, riversAround(world, map, x, y))?.worn;
+        if (worn?.length) {
+          for (const [wx, wz, rx, rz, a] of worn) {
+            const v = Math.round(255 * a);
+            g.fillStyle = `rgb(${v},${v},${v})`;
+            copies((o) => {
+              g.beginPath();
+              g.ellipse((x + 0.5 + wx) * DRES + o, (y + 0.5 - wz) * DRES, DRES * rx, DRES * rz, 0, 0, Math.PI * 2);
+              g.fill();
+            });
+          }
+          g.fillStyle = "#fff";
           continue;
         }
         if (!VILLAGE.test(t) && !/FORT|TOWER|MINE|QUARRY|LUMBERMILL/.test(t)) continue;

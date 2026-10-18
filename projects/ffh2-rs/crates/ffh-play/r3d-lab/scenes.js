@@ -228,6 +228,29 @@ export function reference(data) {
   return { map, view, focus: [8, 5.6] };
 }
 
+/** Worked land along a river (fields.js): farms, a plantation, a winery, pastures and mushrooms on
+ *  both banks of a river that turns twice, so their fields keep to the bank tops along an edge,
+ *  inside a turn and beside a corner; two units at the water's edge (their rings on the water). */
+export function fields(data) {
+  const rows = ["..........", ".,,.......", "..........", "..........", "..,,......", "..........", ".........."];
+  const rivers = riverBits([[0, 4], [1, 4], [2, 4], [3, 4], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [8, 4], [9, 4], [10, 4]]);
+  const map = buildMap(data, rows, {
+    rivers,
+    improvements: [
+      [1, 4, "IMPROVEMENT_FARM"], [2, 4, "IMPROVEMENT_PASTURE"], [1, 3, "IMPROVEMENT_FARM"], [2, 3, "IMPROVEMENT_FARM"], [3, 3, "IMPROVEMENT_FARM"],
+      [4, 3, "IMPROVEMENT_FARM"], [5, 3, "IMPROVEMENT_PASTURE"], [6, 3, "IMPROVEMENT_PLANTATION"], [8, 3, "IMPROVEMENT_PASTURE"],
+      [4, 2, "IMPROVEMENT_FARM"], [5, 2, "IMPROVEMENT_WINERY"], [6, 2, "IMPROVEMENT_MUSHROOMS"], [8, 4, "IMPROVEMENT_FARM"],
+    ],
+    bonuses: [[1, 4, "BONUS_WHEAT"], [2, 4, "BONUS_HORSE"], [5, 3, "BONUS_COW"], [6, 3, "BONUS_BANANA"], [4, 2, "BONUS_WHEAT"], [5, 2, "BONUS_WINE"], [8, 3, "BONUS_SHEEP"]],
+    owners: [[0, 0, 9, 6, 0]],
+  });
+  const view = buildView(data, {
+    players: [{ civ: "CIVILIZATION_BANNOR" }, { civ: "CIVILIZATION_BARBARIAN", barbarian: true }],
+    units: [{ owner: 0, type: "UNIT_WARRIOR", x: 7, y: 3 }, { owner: 0, type: "UNIT_ARCHER", x: 3, y: 2 }],
+  });
+  return { map, view, focus: [4.6, 3.3] };
+}
+
 /** A grid for inspecting recipes: `names` (asset names), each in a row of `variants`, on flat
  *  grass. Returns the scene and the instance list to show. */
 export function grid(data, names, variants = 6, { ground = ".", spacing = 1 } = {}) {

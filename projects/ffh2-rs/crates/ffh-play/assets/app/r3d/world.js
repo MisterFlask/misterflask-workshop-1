@@ -533,6 +533,27 @@ export class World {
     }
     return best;
   }
+
+  /** The nearest point of a river line to map point (mx, my) and its distance, [x, y, d] (within
+   *  RIVER_NEAR), or null when no river is near: where the water's surface over (mx, my) is laid
+   *  (scene.js riverLevel). */
+  riverPoint(mx, my) {
+    const w = this.w;
+    const cx = Math.floor(mx);
+    const list = this.riverCells.get(`${this.wrapX ? ((cx % w) + w) % w : cx},${Math.floor(my)}`);
+    if (!list) return null;
+    let best = null;
+    for (const k of list) {
+      const [ax0, ay, bx0, by] = this.riverSegs[k];
+      const s = this.wrapX ? Math.round((mx - ax0) / w) * w : 0;
+      const ax = ax0 + s, bx = bx0 + s;
+      const dx = bx - ax, dy = by - ay;
+      const t = clamp(((mx - ax) * dx + (my - ay) * dy) / (dx * dx + dy * dy || 1e-9), 0, 1);
+      const px = ax + dx * t, py = ay + dy * t, d = Math.hypot(mx - px, my - py);
+      if (!best || d < best[2]) best = [px, py, d];
+    }
+    return best;
+  }
 }
 
 function smoother(t) {
