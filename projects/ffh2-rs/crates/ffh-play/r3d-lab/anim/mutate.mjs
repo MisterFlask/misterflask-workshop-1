@@ -146,7 +146,20 @@ const weaponOf = (b) => (b.parts.weapon_r ? ["weapon_r", "handR", "elbowR"] : ["
  */
 export const MUTATIONS = [
   // --- body ---
-  { name: "sink", kinds: ["idle", "attack", "death"], targets: ["ground.penetration"], clip: (d) => bump(d, "root", d.dur * 0.5, d.dur * 0.45, [0, -0.03, 0]) },
+  {
+    // The body sunk into the ground over the middle of the clip (on the baked frames: a clip that
+    // settles its corpse would put a sunk root straight back on the ground).
+    name: "sink", kinds: ["idle", "attack", "death"], targets: ["ground.penetration"],
+    post: (b) => {
+      const all = Array.from({ length: b.count }, (_, v) => v);
+      const f0 = Math.floor(b.frames * 0.1), f1 = Math.floor(b.frames * 0.9);
+      for (let f = f0; f <= f1; f++) {
+        const dy = -0.03 * Math.sin((Math.PI * (f - f0)) / Math.max(1, f1 - f0));
+        edit(b, f, all, (p) => [p[0], p[1] + dy, p[2]], Object.keys(b.joints[f]));
+      }
+      return b;
+    },
+  },
   { name: "footSlide", kinds: ["idle", "attack"], targets: ["feet.slip", "feet.drift"], clip: (d) => ({ ...d, waves: (d.waves ?? []).concat([{ ch: "fl", amp: [0.012, 0, 0.01], n: 1 }]) }) },
   { name: "footLift", kinds: ["idle", "attack"], targets: ["ground.hover"], clip: (d) => bump(d, "fl", d.dur * 0.5, 0.2, [0, 0.02, 0]) },
   { name: "wrongContacts", kinds: ["death"], targets: ["ground.hover"], clip: (d) => ({ ...d, contacts: { L: [[0, d.dur]], R: [[0, d.dur]] } }) },

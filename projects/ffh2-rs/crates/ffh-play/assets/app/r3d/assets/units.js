@@ -2091,9 +2091,6 @@ function placePosed(mb, f, pose, race, s = 1) {
   const st = pose.settle ?? 0;
   if (st > 0) {
     const v = mb.v, F = 13, i0 = m0 * F;
-    for (let i = i0; i < v.length; i += F) {
-      if ((v[i + 11] === BONE.TAIL || v[i + 11] === BONE.CAPE) && v[i + 1] < 0) v[i + 1] -= st * v[i + 1];
-    }
     const feet = new Set();
     for (const k of ["foot_l", "foot_r"]) {
       const r = f.parts?.[k]?.range;
@@ -2107,6 +2104,10 @@ function placePosed(mb, f, pose, race, s = 1) {
     const dy = -st * lo;
     for (let i = i0; i < v.length; i += F) v[i + 1] += dy;
     for (const k of Object.keys(joints)) joints[k] = [joints[k][0], joints[k][1] + dy, joints[k][2]];
+    // Soft parts flatten onto the ground where the shifted body puts them.
+    for (let i = i0; i < v.length; i += F) {
+      if ((v[i + 11] === BONE.TAIL || v[i + 11] === BONE.CAPE) && v[i + 1] < 0) v[i + 1] -= st * v[i + 1];
+    }
   }
   return { ...f, joints, root: M.m };
 }

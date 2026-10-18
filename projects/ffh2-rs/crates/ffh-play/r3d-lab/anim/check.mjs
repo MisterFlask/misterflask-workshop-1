@@ -1298,7 +1298,7 @@ function death(m) {
   const rho = (vImp * vImp) / (2 * GRAV * Math.max(1e-6, dh));
   out.push(M("death.energy", "body", true, rho >= LIMITS.energy[0] && rho <= LIMITS.energy[1], r4(rho), LIMITS.energy.join("-"), "impact speed^2 / (2 g drop): 1 is free fall, 0.75 a rigid topple"));
   const ge = b.clip.events?.ground;
-  if (ge !== undefined) out.push(M("death.groundEvent", "motion", true, Math.abs(ge - ti / fps) <= LIMITS.groundEvent, `declared ${ge} s, measured ${r4(ti / fps)} s`, `within ${LIMITS.groundEvent} s`, "the clip's ground event is when the body reaches the ground (the renderer times the impact by it)", ti));
+  if (ge !== undefined) out.push(M("death.groundEvent", "motion", true, Math.abs(ge - ti / fps) <= LIMITS.groundEvent, `declared ${ge} s, measured ${r4(ti / fps)} s`, `within ${LIMITS.groundEvent} s`, "the clip's ground event is when the body reaches the ground (declared metadata must be true: an effect timed by it lands with the body)", ti));
   out.push(M("death.fallTime", "motion", true, (ti - ts) / fps >= LIMITS.fallTime[0] && (ti - ts) / fps <= LIMITS.fallTime[1], r4((ti - ts) / fps), LIMITS.fallTime.join("-"), "seconds from onset to the ground", ts));
   // Landing: a small rebound at most, then still.
   const bounce = Math.max(...coms.slice(ti).map((c) => c[1])) - coms[ti][1];
