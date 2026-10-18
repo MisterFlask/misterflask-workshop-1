@@ -15,7 +15,8 @@
 //!   cast by the end-of-turn spell choice);
 //! - [`building_value`]: `production::building_value` (what production, research and spells use);
 //! - [`tech_value`]: `research::tech_value`;
-//! - [`promotion_value`]: `units::best_promotion`, the value of each promotion a unit can take.
+//! - [`promotion_value`]: `units::best_promotion`, the value of each promotion a unit can take;
+//! - [`civic_value`]: `empire::civic_value` (civics, the finance guard and research use it).
 //!
 //! What each civilization does is described in its module (docs/AI.md, "Civilization-specific").
 
@@ -175,6 +176,10 @@ pub trait CivPlay: Sync {
     fn promotion_value(&self, g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
         value
     }
+    /// What civic `civic` is worth to player `p` (`value` is the generic estimate).
+    fn civic_value(&self, g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
+        value
+    }
 }
 
 struct Generic;
@@ -245,4 +250,8 @@ pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
 
 pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
     of(g, g.units[u].owner).promotion_value(g, u, promo, value)
+}
+
+pub fn civic_value(g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
+    of(g, p).civic_value(g, p, civic, value)
 }
