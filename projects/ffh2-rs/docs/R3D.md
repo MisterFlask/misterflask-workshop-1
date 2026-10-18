@@ -88,7 +88,8 @@ assets/app/
                   vegetation.js units.js architecture.js props.js fx.js  (the recipe modules)
                   anims.js anim-warrior.js anim-archer.js  (the animation clips)
 r3d-lab/          the lab: synthetic scenes for focused work (not shipped);
-                  anim/ the animation validator, its mutations, its renderer and review sheets
+                  anim/ the animation validator, its mutations, its renderer and review sheets;
+                        experiments/ (blind-authored control clips), workflows/ (the judges)
 tools/r3d-lab.mjs r3d-perf.mjs r3d-compare.mjs   lab screenshots, performance, comparisons
 tools/r3d-anim.mjs                                the animation workbench (docs/ANIMATION.md)
 ```
