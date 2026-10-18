@@ -22,11 +22,13 @@ fn exp() -> &'static str {
 impl CivPlay for Kuriotates {
     fn production(&self, ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
         let exp = exp();
-        full_city_settler(ai, g, c, threat).or_else(|| if exp == "A" { None } else { settlement_settler(ai, g, c, threat) })
+        let d = if exp.contains('D') { full_city_defender(g, c) } else { None };
+        let e = if exp.contains('E') { settlement_defender(g, c) } else { None };
+        d.or(e).or_else(|| full_city_settler(ai, g, c, threat)).or_else(|| if exp == "A" { None } else { settlement_settler(ai, g, c, threat) })
     }
 
     fn site_value(&self, g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
-        if exp() != "B" {
+        if !exp().contains('B') {
             return value;
         }
         let pl = &g.players[p];
@@ -110,4 +112,51 @@ fn settlement_settler(ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choic
         return None;
     }
     Some(Choice::Train(u, UnitAIType::UNITAI_SETTLE))
+}
+
+
+fn civ_war(g: &Game, p: PlayerId) -> bool {
+    let team = g.players[p].team;
+    let barb = g.barbarian_team();
+    g.teams.keys().any(|t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t))
+}
+
+/// A full city holds a third of the empire: one defender more than the generic quota's base.
+fn full_city_defender(g: &Game, c: CityId) -> Option<Choice> {
+    let p = g.cities[c].owner;
+    if g.players[p].max_cities <= 0 || g.cities[c].settlement {
+        return None;
+    }
+    let war = civ_war(g, p);
+    let want = 2 + i32::from(g.city_is_capital(c)) + i32::from(war);
+    if crate::production::garrison(g, p, g.city_plot(c)).0 >= want || !crate::economy::can_afford_unit(g, p, true, war) {
+        return None;
+    }
+    best_unit(g, c, Role::Defense).map(|u| Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE))
+}
+
+/// Settlements cannot train: the nearest full city trains a defender for one that has none
+/// (the garrison logic walks it there), unless one is already on its way.
+fn settlement_defender(g: &Game, c: CityId) -> Option<Choice> {
+    let p = g.cities[c].owner;
+    let pl = &g.players[p];
+    if pl.max_cities <= 0 || g.cities[c].settlement {
+        return None;
+    }
+    let area = g.map.plots[g.city_plot(c)].area;
+    let empty: Vec<CityId> = pl.cities.iter().copied().filter(|&s| g.cities[s].settlement && g.map.plots[g.city_plot(s)].area == area && crate::production::garrison(g, p, g.city_plot(s)).0 == 0).collect();
+    if empty.is_empty() {
+        return None;
+    }
+    let moving = pl.units.iter().filter(|&&u| g.units[u].ai_type == Some(UnitAIType::UNITAI_CITY_DEFENSE) && g.map.plots[g.unit_plot(u)].plot_city.is_none()).count() as i32
+        + pl.ai_num_train_ai_units[UnitAIType::UNITAI_CITY_DEFENSE];
+    if moving >= empty.len() as i32 {
+        return None;
+    }
+    let dist = |a: CityId, b: CityId| g.plot_distance(g.cities[a].x, g.cities[a].y, g.cities[b].x, g.cities[b].y);
+    let nearest_full = |s: CityId| pl.cities.iter().copied().filter(|&o| !g.cities[o].settlement).min_by_key(|&o| (dist(o, s), o));
+    if !empty.iter().any(|&s| nearest_full(s) == Some(c)) || !crate::economy::can_afford_unit(g, p, true, civ_war(g, p)) {
+        return None;
+    }
+    best_unit(g, c, Role::Defense).map(|u| Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE))
 }
