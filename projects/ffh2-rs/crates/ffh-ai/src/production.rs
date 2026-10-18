@@ -952,7 +952,14 @@ fn is_economy_building(g: &Game, c: CityId, b: BuildingType, threat: i32) -> boo
     ev > 0 && ev * 2 >= building_value(g, c, b, threat).max(1)
 }
 
+/// What building `b` is worth in city `c`: the generic estimate, then the civilization's own
+/// (civs/, e.g. a unique building whose effect lives in Python).
 pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
+    crate::civs::building_value(g, c, b, generic_building_value(g, c, b, threat)) // civ-mechanics
+}
+
+/// The generic part of [`building_value`].
+fn generic_building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
     let d = g.d;
     let info = &d.buildings[b];
     let city = &g.cities[c];

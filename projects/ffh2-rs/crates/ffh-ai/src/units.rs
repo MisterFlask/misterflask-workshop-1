@@ -180,6 +180,7 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
         if !alive(g, grp) || !g.units.contains(head) {
             continue;
         }
+        if !v.barbarian && crate::civs::unit(ai, g, v, grp, head) { continue; } // civ-mechanics
         match role {
             Role::Settler => crate::expansion::settler(ai, g, v, grp, head),
             Role::Worker => crate::workers::worker(g, v, grp, head, false),

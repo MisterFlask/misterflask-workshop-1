@@ -711,7 +711,7 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
             }
         }
     }
-    value.max(1)
+    crate::civs::tech_value(g, p, t, value).max(1) // civ-mechanics
 }
 
 #[cfg(test)]

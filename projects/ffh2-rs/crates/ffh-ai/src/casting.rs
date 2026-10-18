@@ -103,13 +103,8 @@ pub fn choose_spell(g: &Game, u: UnitId) -> Option<SpellType> {
     let mut best_value = 0;
     let here = g.unit_plot(u);
     let team = g.unit_get_team(u);
-    // A Luchuirp Golden Hammer (Gifts of Nantosuelta) in one of our cities becomes a free Engineer
-    // there (SPELL_GIVE_HAMMER_TO_CRAFTSMAN). Taking it (+1 strength on whatever unit stands on
-    // the plot, usually a garrison warrior) outvalued that, so units in our cities leave it.
-    let in_own_city = g.map.plots[here].plot_city.is_some_and(|c| g.cities[c].owner == g.units[u].owner);
-    let keep_hammer = if in_own_city && crate::civs::enabled(g, g.units[u].owner) { d.ty::<SpellType>("SPELL_TAKE_GOLDEN_HAMMER_UNIT") } else { None };
     for spell in d.spells.keys() {
-        if Some(spell) == keep_hammer || !g.unit_can_cast(u, spell, false) {
+        if !g.unit_can_cast(u, spell, false) {
             continue;
         }
         let info = &d.spells[spell];
@@ -190,6 +185,9 @@ pub fn choose_spell(g: &Game, u: UnitId) -> Option<SpellType> {
             value /= 2;
         }
         value += info.ai_weight;
+        // Civilization-specific values (civs/: e.g. Luchuirp units in our cities leave a Golden
+        // Hammer to become an Engineer).
+        let value = crate::civs::spell_value(g, u, spell, value);
         if value > best_value {
             best_value = value;
             best = Some(spell);

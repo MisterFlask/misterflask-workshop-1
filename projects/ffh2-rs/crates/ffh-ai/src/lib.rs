@@ -125,6 +125,7 @@ impl Controller for Ai {
             offers::to_humans(g, &v); // ai-offers: deals offered to human players
             // War declarations change the picture.
             v = view::View::new(g, p);
+            civs::turn(self, g, &mut v); // civ-mechanics
         }
         units::play(self, g, &mut v);
         casting::end_turn(g, &v);
