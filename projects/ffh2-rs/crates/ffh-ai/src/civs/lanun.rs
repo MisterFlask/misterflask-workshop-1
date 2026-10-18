@@ -2,6 +2,10 @@
 //! coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and a Pirate
 //! Port, 3/2/6 on coast). [`Lanun::production`] trains a work boat for a city with a valid cove
 //! plot it works; [`Lanun::sea_worker`] takes it there and casts.
+//!
+//! Their knight, the War Tortoise (11/19, walks on water, no horses), needs a Siege Workshop, a
+//! specific building (`PrereqBuilding`) the generic production never builds: [`Lanun::production`]
+//! builds one where it opens a unit a third stronger than the city's best (the generic test).
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -17,7 +21,7 @@ pub struct Lanun;
 
 impl CivPlay for Lanun {
     fn production(&self, _ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
-        cove_boat(g, c, threat)
+        cove_boat(g, c, threat).or_else(|| super::unit_building(g, c, threat, &["UNIT_WAR_TORTOISE"]).map(Choice::Construct))
     }
 
     fn sea_worker(&self, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {

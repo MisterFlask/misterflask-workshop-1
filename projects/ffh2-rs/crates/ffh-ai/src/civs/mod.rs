@@ -235,3 +235,69 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
 pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
     of(g, p).tech_value(g, p, t, value)
 }
+
+// ----------------------------------------------------------------------------
+// Shared helpers for civilization modules
+// ----------------------------------------------------------------------------
+
+/// The building (FfH `PrereqBuilding`, a specific building rather than a class: Siege Workshop,
+/// Stable, Sculptor's Studio) that would let city `c` train one of `units` -- our civilization's
+/// own units -- at least a third stronger as a defender or attacker than its best now; cheap
+/// enough to build soon, in at most about half our cities. The generic `enabler_building` does
+/// the same for `PrereqBuildingClass` units only, so these unique units were never trainable.
+pub(crate) fn unit_building(g: &Game, c: CityId, threat: i32, units: &[&str]) -> Option<BuildingType> {
+    use crate::production::{best_unit, role_ok, type_city_defense, Role};
+    use crate::view::type_attack_power;
+    let d = g.d;
+    let p = g.cities[c].owner;
+    let civ = g.player_get_civilization_type(p)?;
+    if g.cities[c].population < 2 || g.cities[c].settlement {
+        return None;
+    }
+    let mut best: Option<(BuildingType, i64)> = None;
+    let mut cur: Option<(i64, i64)> = None;
+    for name in units {
+        let Some(u) = d.ty::<UnitType>(name) else { continue };
+        let info = &d.units[u];
+        let Some(b) = info.prereq_building else { continue };
+        let Some(class) = info.unit_class_type else { continue };
+        if d.civ_unit(civ, class) != Some(u) || g.city_num_building(c, b) > 0 || !g.player_can_train(p, u, false, false, false) {
+            continue;
+        }
+        if info.prereq_and_bonus.is_some_and(|bn| !g.city_has_bonus(c, bn)) {
+            continue;
+        }
+        if !info.prereq_or_bonuses.is_empty() && !info.prereq_or_bonuses.iter().any(|&bn| g.city_has_bonus(c, bn)) {
+            continue;
+        }
+        if !g.city_can_construct(c, b, false, false, false) {
+            continue;
+        }
+        let have = g.players[p].cities.iter().filter(|&&o| g.city_num_building(o, b) > 0 || g.city_production_building(o) == Some(b)).count();
+        if have > g.players[p].cities.len() / 2 {
+            continue;
+        }
+        let (cur_def, cur_att) = *cur.get_or_insert_with(|| {
+            (
+                best_unit(g, c, Role::Defense).map_or(0, |o| type_city_defense(&d.units[o])),
+                best_unit(g, c, Role::Attack).map_or(0, |o| type_attack_power(d, o) as i64),
+            )
+        });
+        let gain = if role_ok(info, Role::Defense) && cur_def > 0 { type_city_defense(info) * 100 / cur_def } else { 0 }
+            .max(if role_ok(info, Role::Attack) && cur_att > 0 { type_attack_power(d, u) as i64 * 100 / cur_att } else { 0 });
+        if gain < 133 {
+            continue;
+        }
+        let turns = g.city_production_turns_left_building(c, b, 0);
+        if turns > if threat > 0 { 6 } else { 20 } {
+            continue;
+        }
+        if best.map_or(true, |(_, s)| gain > s) {
+            best = Some((b, gain));
+        }
+    }
+    if let Some((b, gain)) = best {
+        crate::trace!(g, p, "{}: {} opens a unit {}% as strong", g.cities[c].name, d.buildings[b].base.type_, gain);
+    }
+    best.map(|(b, _)| b)
+}

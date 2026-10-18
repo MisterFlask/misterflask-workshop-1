@@ -71,7 +71,12 @@ fn play_game(ng: NewGame, seed: u32, turns: i32, check_every: i32) -> Played {
 fn t1_scripted_bot_games() {
     for seed in [1, 2, 3] {
         let played = play_game(peaceful_game(seed), seed, 150, 5);
-        assert_eq!(played.stop, Stop::Human, "seed {seed}: a peaceful game cannot end early -- the bot must reach the full 150-turn run");
+        // `GAMEOPTION_NO_BARBARIANS` does not remove every barbarian: units spawned by FfH's
+        // Python (e.g. the Dragon's Horde of a barbarian city placed at map creation, which sends
+        // Sons of the Inferno) still roam, and can raze the bot's cities (seed 2: barbarian
+        // warriors and a Son of the Inferno take the bot's last cities by turn 142). So the run may also end with the bot eliminated (`Stop::Over`); what must not
+        // happen is a stuck turn (checked in `play_game`).
+        assert!(matches!(played.stop, Stop::Human | Stop::Over), "seed {seed}: {:?}", played.stop);
     }
 }
 

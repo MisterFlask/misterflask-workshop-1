@@ -751,7 +751,7 @@ fn is_hero(info: &UnitInfo) -> bool {
     info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO)
 }
 
-fn role_ok(info: &UnitInfo, role: Role) -> bool {
+pub(crate) fn role_ok(info: &UnitInfo, role: Role) -> bool {
     let has = |a: UnitAIType| info.unit_ai_type[a];
     let fighter = info.combat > 0 && !info.found && !is_hero(info) && info.default_unit_ai_type != Some(UnitAIType::UNITAI_MAGE);
     match role {
