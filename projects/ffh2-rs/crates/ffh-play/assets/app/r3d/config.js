@@ -27,15 +27,16 @@ export const LIGHTING = {
 
 // The painterly preset was moved toward the owner's look target (docs/R3D.md §16: a bright,
 // saturated hand-painted strategy map): more saturation and a little more contrast (the target's
-// deep shade against high-key light), little haze or cloud shadow, a lighter paint filter and ink
-// so painted detail stays crisp.
+// deep shade against high-key light), little haze or cloud shadow, a lighter ink so painted detail
+// stays crisp, and the Kuwahara paint filter off (owner decision: it blurred detail the target has
+// and cost ~40% of a software frame; the switch stays in the panel).
 export const PRESETS = {
   painterly: {
     lighting: "daylight",
     shadows: true,
     ssao: 0.75,
     glow: 0.55,
-    kuwahara: 0.45,
+    kuwahara: 0,
     kuwaharaRadius: 4,
     sharp: 8,
     aniso: 1,

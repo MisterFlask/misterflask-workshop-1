@@ -210,7 +210,7 @@ props. The channels: r roads, g crops, b wet banks, a settlement ground and farm
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
-| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared, foliage partly (its own marks, anchored to the world, are the paint there) | `kuwahara`, `kuwaharaRadius` |
+| paint | (off by default since §16) structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared, foliage partly (its own marks, anchored to the world, are the paint there) | `kuwahara`, `kuwaharaRadius` |
 | finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance; no line where one crown's lobes overlap and a light one between crowns (a prop's crown writes its object id negated), so a wood reads as a mass; lost and found (the weight wanders along a line, anchored to the world, and lightens in the light; firmer on buildings and rock than on foliage) and coloured (a deep version of the paint below, not one sepia), units keeping their whole line; split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `inkLost`, `inkColour`, `grade`, `grain`, `vignette` |
 | aa | FXAA (Timothy Lottes' console variant) on the finished colour before the overlays: takes the stair-step off silhouettes and the ink outlines and stops them crawling when panning (the HUD is a separate 2D canvas, so it stays crisp) | `fxaa` |
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
@@ -568,7 +568,9 @@ third, and FXAA (§5, F17) and the other post passes are cheap. The ground's lai
 next to nothing in themselves (the scene pass measures the same with `dabs` 0, `r3d-perf --configs
 no-dabs`); the larger terrain shader that carries every ground's hand costs SwiftShader about 13-15%
 of the scene pass (about 7% of the frame) against the earlier smooth ground. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
-first and the render scale (which scales the scene pass) second.
+(now off by default anyway) and the water's reflection march first and the render scale (which scales
+the scene pass) second. With the paint filter off (the default since the look-target batch) a
+software frame of the reference scene took ~18 s against ~31 s with it at 0.45 (one run each).
 
 Initial world sync (CPU, this slice): textures 195 ms + dressing 425 ms + instance upload 436 ms +
 paint layers 236 ms + world 41 ms, about 1.3 s for the full redress of ~10.8k props and 123 unit
@@ -597,8 +599,9 @@ line weight, inkColour: coloured ink), paint (pigment variation), dabs (brush da
 brush (brush marks and gouache values on objects, §5.1), bands (stepped light), stylize (coloured
 shadows), rim, clouds, reflections, refraction and caustics (the water, §5.2), haze, mist, grade,
 grain, vignette, borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing),
-autoQuality (the measured-frame-time quality ladder: paint filter off, then render scale 0.75 and
-the water's reflection march off -- it keeps mirroring the sky).
+autoQuality (the measured-frame-time quality ladder: paint filter and the water's reflection march
+off -- it keeps mirroring the sky -- then render scale 0.75). The paint filter (`kuwahara`) is off in
+the painterly preset since the look-target batch (owner decision, §16); the switch stays.
 
 ## 13. Removing it
 
@@ -643,8 +646,8 @@ What is not there, or not good enough yet, as of this prototype:
   plates, so it exposed what the rims hide (the mallorn's lanterns) and left slivers at the real edge.
   A per-vertex envelope normal from the recipes would make it reliable.
 
-Next steps, roughly by value: profile on real GPUs (the quality ladder -- paint filter off, then
-render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
+Next steps, roughly by value: profile on real GPUs (the quality ladder -- reflection march and paint
+filter off, then render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
 is not yet a ladder step); spread the initial world sync over frames or a worker (about 2 s of
 JavaScript on a crowded map); combat and work animations; waterfalls (rivers need their drops); the
 sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
@@ -665,8 +668,12 @@ the same frame. The first batch toward it (five areas worked in parallel -- grou
 vegetation and clutter, water, architecture, farms/roads/bridges -- then one review round on the
 merged result) brought: the meadow ground, broad rivers with foam and rocky banks, towns that grow
 with their size, dense clumped clutter and fuller trees, crop fields, crisp roads and stone bridges,
-and a brighter grade (saturation 1.1, contrast 1.12, little haze or cloud shadow, a lighter paint
-filter and ink).
+and a brighter grade (saturation 1.1, contrast 1.12, little haze or cloud shadow, a lighter ink), and
+the paint filter off by default: crisper and much cheaper, and the target has no smeared paint.
+Turning off the rest of the paint imitation (ink, stepped light, the brush marks and gouache steps
+on objects) as well was compared and not kept yet: without them the trees read as smooth clay balls
+and buildings lose their edge, because those passes stand in for detail the models and materials do
+not have yet; they go once the materials carry it.
 
 Still short of the target: tree crowns are smooth lumps rather than leafy masses; the ground's detail
 is all computed per pixel from noise (no baked material textures), which caps how much fine detail
