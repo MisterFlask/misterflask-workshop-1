@@ -270,11 +270,13 @@ Each archetype's three clips were authored by an agent that iterated against the
 review sheets (`anim-warrior.js`, `anim-archer.js`). Both pass every hard metric for the human, and
 every body and motion metric for the nine races and four variants of the race sweep (108 runs per
 archetype); every mutant of every clip is caught. The first drafts, checked against the final
-validator, show what it made the authors fix: the warrior's attack 6 hard failures (the arm at the
-IK's clamp, the GPU's lerp cutting the swing, the blade along the forearm, the axe through the
-head, the blow eased into its target, the axe hidden by the body), its death 8 (sinking into the
-ground, a floaty 0.17 g fall, the trunk hovering, pops), the archer's death 6 (a fall eased into
-the ground at 0.15 g, the declared ground event 150 ms early).
+validator, show what it made the authors fix: the warrior's attack 5 hard failures (the arm at the
+IK's clamp, the blade along the forearm at 9 degrees, the axe through the head, the blow arriving
+at a quarter of its peak speed, the axe hidden by the body), its death 8 (the body 0.2 plots into
+the ground, a planted boot hovering, pops, a floaty 0.11 g fall, a rebound, the trunk below the
+ground at rest), the archer's death 5 (an arm at its clamp, the lerp cutting the fall, a fall
+eased into the ground, the declared ground event 150 ms late). Their idles, and the archer's
+first attack, already passed.
 
 What the authors found that was wrong in the engine rather than the clips: tube rings that flipped
 between frames (vertex-correspondence pops, §3.4), a folded IK limb whose joint swung wildly, a
