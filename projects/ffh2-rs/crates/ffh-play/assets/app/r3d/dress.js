@@ -158,8 +158,9 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       ctx.cityNear = false;
       for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
       // A great town spills over its plot (the catalog's cityReach, up to ~0.9): nothing grows or
-      // lies within its reach on the neighbouring plots, else trees stand inside its walls.
-      const towns = [];
+      // lies within its reach, on its own plot or the neighbouring ones, else trees and rocks stand
+      // inside its walls.
+      const towns = city ? [[0, 0, (CATALOG.cityReach?.({ size: city.size ?? 1, walls: !!city.walls, capital: !!city.capital }) ?? 0.45) + 0.06]] : [];
       if (ctx.cityNear) {
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
           const c = (dx || dy) && cityAt.get(world.index(x + dx, y + dy));

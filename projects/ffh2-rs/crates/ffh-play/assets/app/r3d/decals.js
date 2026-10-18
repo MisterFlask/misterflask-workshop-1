@@ -107,9 +107,23 @@ export function rasterDecals(world, map, cities) {
   // r: roads, as a ramp: each track stroked ROAD_STEPS times, wide and faint to narrow and bright,
   // kept by "lighten" (the brightest wins), so a pixel holds 1 - (its distance to the nearest
   // track) / ROAD_RAMP.
+  // Every track of a step goes into one path (one stroke, one fill: the same pixels as a stroke per
+  // track, all being one colour and width under "lighten"), and a wrapping map's copies across the
+  // seam only for the tracks that reach within a ramp of it -- this channel is repainted on every
+  // map change.
   channel(0, () => {
-    const paths = [];
-    for (let y = 0; y < world.h; y++) for (let x = 0; x < world.w; x++) paths.push(...tracks(x, y));
+    const lines = [], spots = [];
+    for (let y = 0; y < world.h; y++) {
+      for (let x = 0; x < world.w; x++) {
+        for (const p of tracks(x, y)) {
+          const xs = p.length === 2 ? [p[0]] : [p[0], p[2], p[4]];
+          const offs = [0];
+          if (wrap && Math.max(...xs) + ROAD_RAMP > world.w) offs.push(-W);
+          if (wrap && Math.min(...xs) - ROAD_RAMP < 0) offs.push(W);
+          for (const o of offs) (p.length === 2 ? spots : lines).push([p, o]);
+        }
+      }
+    }
     g.globalCompositeOperation = "lighten";
     g.lineCap = "round";
     g.lineJoin = "round";
@@ -117,13 +131,19 @@ export function rasterDecals(world, map, cities) {
       const v = Math.round((255 * k) / ROAD_STEPS);
       g.strokeStyle = g.fillStyle = `rgb(${v},${v},${v})`;
       g.lineWidth = ROAD_RAMP * (1 - (k - 1) / ROAD_STEPS) * DRES * 2;
-      for (const p of paths) {
-        copies((o) => {
-          trace(p, o);
-          if (p.length === 2) g.fill();
-          else g.stroke();
-        });
+      g.beginPath();
+      for (const [p, o] of lines) {
+        g.moveTo(p[0] * DRES + o, p[1] * DRES);
+        g.quadraticCurveTo(p[2] * DRES + o, p[3] * DRES, p[4] * DRES + o, p[5] * DRES);
       }
+      g.stroke();
+      g.beginPath();
+      for (const [p, o] of spots) {
+        const r = g.lineWidth * 0.3;
+        g.moveTo(p[0] * DRES + o + r, p[1] * DRES);
+        g.arc(p[0] * DRES + o, p[1] * DRES, r, 0, Math.PI * 2);
+      }
+      g.fill();
     }
   }, DRES * 0.025);
 

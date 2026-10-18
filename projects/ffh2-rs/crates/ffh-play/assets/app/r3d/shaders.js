@@ -1049,13 +1049,13 @@ void main() {
     // darker margins and wheel ruts, and a verge of worn, dry grass beside it.
     float rd = (1.0 - dec.r) * 0.3;
     if (rd < 0.15) {
-      float hw = 0.07 + (mnoise(m, 7.0) - 0.5) * 0.024 + (mnoise(m + 2.3, 19.0) - 0.5) * 0.012 + (mnoise(m + 4.4, 35.0) - 0.5) * 0.04;
+      float hw = 0.07 + (mnoise(m, 7.0) - 0.5) * 0.024 + (mnoise(m + 2.3, 19.0) - 0.5) * 0.012 + (mnoise(m + 4.4, 35.0) - 0.5) * 0.016;
       float aa = max(gPpx * 0.75, 0.002);
       float on = 1.0 - smoothstep(hw - aa, hw + aa, rd);
       float t = rd / hw;
       // Mottled packed dirt (kept below the tone curve's shoulder, where mottling would wash out),
       // its margins and ruts broken along the road rather than drawn as unbroken parallel stripes.
-      vec3 dirt = mix(vec3(0.515, 0.41, 0.29), vec3(0.58, 0.475, 0.34), mnoise(m, 10.0)) * (0.8 + 0.4 * mnoise(m + 5.1, 30.0));
+      vec3 dirt = mix(vec3(0.545, 0.435, 0.31), vec3(0.615, 0.505, 0.36), mnoise(m, 10.0)) * (0.9 + 0.2 * mnoise(m + 5.1, 30.0));
       float broken = smoothstep(0.25, 0.65, mnoise(m + 9.7, 6.0));
       dirt = mix(dirt, vec3(0.47, 0.35, 0.23), smoothstep(0.5, 0.95, t) * mix(0.15, 0.4, broken));
       dirt = mix(dirt, vec3(0.36, 0.26, 0.17), smoothstep(0.86, 1.0, t) * mix(0.1, 0.3, broken));
