@@ -26,7 +26,7 @@ pub struct Luchuirp;
 
 impl CivPlay for Luchuirp {
     fn production(&self, _ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
-        super::unit_building(g, c, threat, &["UNIT_WOOD_GOLEM", "UNIT_GARGOYLE"]).map(Choice::Construct)
+        super::unit_building(g, c, threat, if std::env::var("FFH_LUC_EXP").is_ok_and(|v| v == "G") { &["UNIT_GARGOYLE"] } else { &["UNIT_WOOD_GOLEM", "UNIT_GARGOYLE"] }).map(Choice::Construct)
     }
 
     fn spell_value(&self, g: &Game, u: UnitId, spell: SpellType, value: i32) -> i32 {

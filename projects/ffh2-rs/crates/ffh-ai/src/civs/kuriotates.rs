@@ -14,9 +14,31 @@ use crate::Ai;
 
 pub struct Kuriotates;
 
+fn exp() -> &'static str {
+    static E: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    E.get_or_init(|| std::env::var("FFH_KUR_EXP").unwrap_or_default())
+}
+
 impl CivPlay for Kuriotates {
     fn production(&self, ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
-        full_city_settler(ai, g, c, threat).or_else(|| settlement_settler(ai, g, c, threat))
+        let exp = exp();
+        full_city_settler(ai, g, c, threat).or_else(|| if exp == "A" { None } else { settlement_settler(ai, g, c, threat) })
+    }
+
+    fn site_value(&self, g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
+        if exp() != "B" {
+            return value;
+        }
+        let pl = &g.players[p];
+        let full = pl.cities.len() as i32 - g.player_get_num_settlements(p);
+        if pl.max_cities <= 0 || full < pl.max_cities {
+            return value;
+        }
+        let (x, y) = g.map.xy(q);
+        if pl.cities.iter().any(|&c| !g.cities[c].settlement && g.plot_distance(x, y, g.cities[c].x, g.cities[c].y) <= 5) {
+            return 0;
+        }
+        value
     }
 }
 
