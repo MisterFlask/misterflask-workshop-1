@@ -36,7 +36,8 @@ and determinism -- and a standing cost preference:
 | `CvPlayerAI::AI_conquerCity` | `raze_conquered_city` | `diplomacy.rs` |
 | `CvPlayerAI::AI_considerOffer` | `consider_offer` | `diplomacy.rs` |
 | `CvPlayerAI::AI_doAdvancedStart` (from `CvPlayer::setTurnActive`) | `play_turn` while start points remain | `advanced_start.rs` |
-| `CvPlayerAI::AI_chooseEvent`, elections, votes, captured/gifted units | defaults in `controller.rs` | -- |
+| `CvPlayerAI::AI_chooseEvent` | `choose_event` | `events.rs` |
+| elections, votes, captured/gifted units | defaults in `controller.rs` | -- |
 | `CvCityAI::AI_assignWorkingPlots` (citizens) | `Game::city_assign_working_plots` | `ffh-core/src/governor.rs` |
 
 `CvPlayerAI::AI_foundValue` (and its bonus valuation) is ported faithfully into the rules
@@ -211,6 +212,33 @@ build that prefers a worker with work waiting or a garrison upgrade over the str
 (the fallback is only reached by cities that know no process: `decide` picks a process
 whenever one is available); capping optional units at 12% of the commerce.
 
+**Conquest gets no XML weight (`empire::civic_value`).** `civic_value` starts from the civic's
+`iAIWeight` per city. Conquest's is 700, more than any economy civic's other terms, so at turn 300
+29 of 56 civs ran it (seeds 1-8; Agrarianism 12, Foreign Trade 4). Under Conquest
+(`bMilitaryFoodProduction`) a city training a military unit puts its whole food surplus into the
+unit and stops growing (`city_food_difference`), and production trains units most of the time: 71
+of the 107 Conquest cities training units showed food +0 over a positive raw surplus (288 food a
+turn into hammers), against none outside Conquest. The weight is dropped for such civics, which are
+then valued by their other terms like any civic (FfH's own `AI_civicValue` penalises the food rule
+only below 30 population; this AI's production ladder keeps the rule active far more often).
+
+Measured against the AI before it (6 civs, standard map; t is the paired t over seeds):
+
+| | 300 turns, seeds 801-944 (144 games) | full games, seeds 901-916 (`--until-supremacy`) |
+|---|---|---|
+| legacy score | +3.6% (t 7.8) | +5.0% at turn 300 (t 4.9), +1.7% at turn 450 |
+| techs | +1.4% (t 2.7) | +3.4% (t 2.5), +4.9% at turn 450 (t 1.7) |
+| research / commerce / production | +3.8% / +3.3% / +3.8% (t 2.8 / 3.5 / 3.6) | |
+| population | +9.8% (t 12.9) | +10.8% (t 5.5) |
+| power / military | -0.7% / -0.8% (t -0.9) | +2.2% / +4.0% at turn 300; flat at 450 |
+| civ cities captured | -5.7% (t -1.3) | +6% |
+| civs eliminated | -13% (t -2.5) | +8% |
+| outcome | | supremacy 7 -> 9 of 16; decided 30 turns earlier (548 -> 518, t -1.1) |
+
+Variants measured on the same seeds and dropped: the weight only for cities at their happy cap
+(legacy +2.6%, pop +7.7%: the same direction, weaker everywhere), the weight kept while at war or
+preparing one (legacy +1.5%, pop +4.6%; no power gained by running Conquest at war).
+
 ## Research (`research.rs`, `tech_plan.rs`)
 
 Score = value / (turns to research + 4), with one level of lookahead (children at a quarter of
@@ -225,7 +253,8 @@ pressure we see (barbarians near our cities, war, time), with an early "get past
 bonus, also through the next tech (Mining -> Bronze Working); the first arcane unit; happiness
 buildings when cities are capped; better civics than the ones we run (City States and
 Aristocracy cut maintenance); technology and open-borders trading with the civs we know; the
-first transport when our landmass is full or a settler waits in port (and the tech before it);
+first transport when our landmass is full or a settler waits in port and no port of ours can
+train one (and the tech before it; a settler waiting for a ship makes it a goal, see Naval);
 processes (Writing, Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1`
 with `FFH_AI_TRACE` lists every candidate's value and score, and the goals below.
 
@@ -387,6 +416,13 @@ two hammers a turn, and the barbarians took such cities within a few turns of fo
 - **Target**: sites are scored value / (turns + 3) and re-planned every turn; the site the
   settler was walking to (kept as the group's `MISSIONAI_FOUND` plot, saved with the game)
   scores 1.5x, so settlers no longer flip between sites of similar value.
+- **First city**: when the "clearly better" site the first settler (or the last settler of a civ
+  without cities) heads for turns out unreachable -- the rules give an AI group that cannot fight
+  no path into or through danger (`path_dest_valid`, `pathValid`), a wider danger than this AI's
+  map -- it founds where it stands. Before, it retried every turn and the civ never had a city:
+  5 of 6 such civs in seeds 1-100 were eliminated by turn 300. On seeds 801-944 the fix changed
+  8 of 144 games; 5 civs that died without a city now stand at turn 300 with 1-9 cities and 14-29
+  techs (all games: legacy +0.6% at turn 300, eliminations -8%).
 
 Measured over seeds 1-48 (6 civs, standard, 300 turns) against the version without them:
 settlers destroyed 50 -> 28, cities razed 38 -> 32, cities captured by barbarians 77 -> 71,
@@ -415,6 +451,21 @@ resources. Score / (travel + build time). Workers flee when enemies can reach th
 plots under danger. FfH's AI-only build bans (`CvGameUtils.canBuild`) are respected: no forts,
 no farms for Fallow civs, no workshops before Guilds, no cottages under Aristocracy, no
 windmills under Arete.
+
+**Fleeing (`workers::refuge`).** A threatened worker goes to the best plot it reaches this turn:
+a city of ours, else a plot no visible enemy can reach, else one our soldiers hold, else the
+least dangerous (nearer our nearest city first), and moves there with `MOVE_IGNORE_DANGER`. It
+used to walk to the nearest city with a plain move, which the rules' AI path finder refuses for a
+non-combat group that starts or ends a turn next to the enemy (`pathValid`, `AI_getPlotDanger`):
+54% of the flee orders left the worker where it stood (seeds 1-8), and 808 of the 815 civ workers
+the barbarians captured had been left on a plot in danger. Measured against the AI before it: 300
+turns, seeds 801-944 (144 games), population +4.0% (t 2.2), legacy +2.7%, research +4.4%, power
++3.7%, land +2.4% (t 1.6 each); full games (seeds 901-948, 48 games) no significant change.
+Choosing build targets the rules' path finder can reach (a bounded `group_generate_path` over the
+best four) added nothing on top of it (300 turns legacy +1.5% for both together) and was left out.
+Training workers only once an improvement is buildable (no early idle workers: -68% idle
+worker-turns) measured flat to negative on the same seeds (legacy -1.0%, full games power -10.6%
+at turn 300) and was not kept.
 
 ## Field armies (`military.rs`, `campaign.rs`)
 
@@ -516,6 +567,17 @@ plot falls or the odds turn bad, and moves in.
   moves the cargo onto it (what C++ `groupAmphibMove` orders); the settler founds on its next
   turn. An empty transport sails to a port where a settler waits, else waits in port; cargo
   it has no plan for is unloaded in port.
+- **A ship nobody can build**: the settler's wait is its group's `MISSIONAI_LOAD_SETTLER` (as
+  in C++). While one waits and no port of ours can train a transport (`city_can_train`: the
+  Trireme also needs Bronze Working and copper), research takes the nearest step toward the
+  transport a port could train soonest (Optics for the Caravel without copper) next, at
+  siege's score (`research::transport_step_tech`). Before, research counted Sailing alone as
+  having a transport, and settlers waited in port up to 159 turns. Seeds 1-16, 300 turns:
+  settler-turns in port with no transport possible 395 -> 188, settlers that sailed 11 -> 16.
+  Fresh seeds 801-944 at turn 300: overseas cities +62% (t 3.4), legacy score +0.9% (t 2.3),
+  techs +1.6% (t 2.9), power +2.5% (t 2.6), with the leading civ 1.3% weaker (t -2.4): the
+  stuck civs catch up. Full games (seeds 901-948, 48 games): no significant change (supremacy
+  wins 9 -> 6 on 901-916, 14 -> 14 on 917-948).
 - **Sea explorers** (`UNITAI_EXPLORE_SEA`, one at a time) reveal coasts while our land is full
   and nothing overseas is known; when nothing is left to reveal, one that can carry becomes a
   transport.
@@ -575,6 +637,26 @@ it is offered as a real peace-treaty deal the other AI must accept. Every 5 turn
 technologies one for one at similar cost (once `TECH_TRADE` allows it) and signs open borders
 with civs it likes; `consider_offer` accepts tech swaps worth at least 80% of what it gives,
 never with the civ it prepares a war against.
+
+**Defensive pacts (`pacts.rs`).** A weaker civ's check against a stronger, warlike neighbour.
+A civ is threatened when a team within 16 plots by land has at least 120% of its defensive power
+and is warlike (at war with a civ now, or fought one in the last 50 turns) -- only what a human
+could see. On the trade cadence, at peace, a threatened civ that is not preparing a war of its own
+offers a pact to the AI leader it does not dislike that the same neighbour threatens, else the
+one it likes best, else the strongest (at most 2 pacts a team). `consider_offer` accepts from a
+civ it does not dislike when it is threatened itself or likes the proposer (relation 2+), never
+when it is about to attack the proposer or the proposer is its victory rival. The rules do the
+rest: the pact counts in `team_get_defensive_power`, which every war gate divides by, and an
+attacked member's partners declare war on the attacker (`WARPLAN_DOGPILE`). Pacts need Honor on
+either side and both teams at peace with everyone, and a member's own declaration cancels its
+pacts, so they appear only from about turn 190 (dev seeds 1-8, full games: 0-5 a game).
+Measured (full games, seeds 1301-1364, 64 games, against the tip): 23 games change, nearly all
+after turn 300 (300 turns, seeds 1101-1244: 140 of 144 games identical); at turn 450 legacy
++0.7%, techs +1.4%, power +1.0% (t 1.4-1.6); outcomes supremacy 35 -> 31, cultural 17 -> 20, time
+limit 12 -> 13; eliminations in the changed games 42 -> 42. Mechanically working and harmless,
+but not yet a measurable protection: the gating (late Honor, peace with everyone) keeps most
+threatened civs from signing. Levers if it should bite: research Honor when threatened, or a
+rules change to the trading prerequisite.
 
 **Resources and gold (`trade.rs`).** The AI also trades resources (bonuses) and gold -- a port of
 the base game's `CvPlayerAI` trade valuation (`AI_bonusTradeVal`, `AI_bonusTrade`, `AI_dealVal`,
@@ -683,6 +765,36 @@ when the payment is worth over three quarters of the price) -- in practice the b
 cities to 2 and the briber-side winner closes out by domination 64 turns early). No new saved state;
 no RNG.
 
+## Random events (`events.rs`)
+
+The rules offer an AI player the trigger's events it can do, in trigger order (`player_trigger_data`).
+Until `choose_event` was implemented the controller default took the first, and FfH lists the
+decline / pay / lose-a-unit answer first in many triggers: War Games disbanded the unit, the Strange
+Advisor added inflation for good, Clairone's first answer turned down a free Great Artist, the Spider
+Mine's third released a Giant Spider, and every Adaptive leader (Varn, Cardith, Cassiel) became
+Aggressive every 100 turns. About 78 events fire per 300-turn game, about 25 of them with a real
+choice (seeds 1-8).
+
+`events::value` follows C++ `AI_eventValue` term by term in one unit (gold) instead of the C++ mix
+of gold, hammers x100 and per-turn yields x20: gold, tech progress, free units (great people 600)
+and buildings at twice their hammers, a disbanded unit and its experience, golden ages, building
+yield/commerce changes in the cities that have the building, happiness and health only where a city
+is at or near its cap, food, population, revolt and hurry anger, plot yields, improvements, routes
+and resources, experience and free promotions, unit support, inflation on the pre-inflation costs,
+the Armageddon counter by alignment, religion conversions, attitude, follow-up and cleared events.
+Permanent changes count 50 turns. No random draws: `rand(iAIValue)` is its mean, the final +0-20% is
+dropped. Python callback effects are 0 as in C++, except a short table of frequent clear ones
+(hostile spawns, the Iron Orb's free tech, a seceding city) and the Adaptive trait choice, valued
+from the trait's data (`trait_value`: extra yield at the threshold on worked plots, civic upkeep,
+commerce per city, capped happiness and health, great people rate, wonder production, free
+promotions, no anarchy). An event that would declare a war we are not in is never chosen.
+
+Measured (6 civs, standard map, 300 turns, seeds 801-944, 144 paired games against the first-option
+default; t is the paired t over seeds): at turn 300 legacy score +1.2% (t 1.0), techs +1.4% (t 1.0),
+research +2.0% (t 0.8), production +2.5% (t 1.4), research slider +2.9% (t 1.5; +3.8%, t 2.4 at turn
+200), culture +8.2% (t 1.8); captures, eliminations and wars unchanged. A small lever (a few real
+choices per civ in 300 turns), economy-positive throughout and no regression.
+
 ## Civilization-specific (`civs.rs`)
 
 Rules a few civilizations have that the generic logic does not see. Each branch checks the
@@ -705,6 +817,14 @@ before (same checksums).
   time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
   (worked plots of big cities first) and casts there. 23 games (52 seeds): score at turn 300
   +23% (+134 +- 51), pop +24%, techs +22% (Lanun that never research Fishing are unchanged).
+- **Luchuirp**: Gifts of Nantosuelta leaves a Golden Hammer in each city, which can become a free
+  Engineer there (`SPELL_GIVE_HAMMER_TO_CRAFTSMAN`) or +1 strength on a unit that takes it
+  (`SPELL_TAKE_GOLDEN_HAMMER_UNIT`). FfH's end-of-turn spell choice (`casting::choose_spell`) valued
+  the take higher, so the garrison warriors took nearly every hammer (seeds 1-16: 59 takes, 13
+  gives). Units in our own cities now leave it, and the hammer gives itself. Seeds 801-944, the
+  47 games where Luchuirp cast Gifts, Luchuirp civs at turn 300: production +11.8% (t 2.5), great
+  people +47% (t 5.3), power +11.4% (t 2.4), techs +4.0% (t 2.8), legacy +4.2% (t 1.9); the
+  world as a whole is unchanged (the neighbours pay part of it).
 - **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
   every improvement they build on their own plots (FfH's check in `setImprovementType`), and
   workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
@@ -760,6 +880,31 @@ Tried and not kept: stacks committed to a barbarian town turn back for our citie
 unless they strike this turn (`campaign::on_the_move` at war only). Seeds 331-378 and 1-12,
 41-52: score (dead as 0) +15 (t 2.0), 16% fewer civ cities lost to barbarians; seeds 379-426:
 -7, 4% more lost; all 120 seeds: +6 (t 1.2), techs +0.2 (t 1.7), eliminations unchanged.
+
+### Round 4 (2026-10-18): event choice, Conquest, settler, hammers, worker flee, transport
+
+Six changes from a diagnosis of the whole AI (one finder per dimension, each candidate re-checked
+by a skeptic, every merge verified on reserved seeds against the tip it went on), measured together
+against the AI before them on seeds none of the work used:
+
+| | 300 turns, seeds 1101-1244 (144 games) | full games, seeds 1301-1332 (32) |
+|---|---|---|
+| legacy score | +8.0% (t 4.6) | +9.0% at turn 300 (t 2.4), +1.8% at turn 450 |
+| techs / research | +5.6% (t 3.0) / +7.5% (t 2.6) | +6.5% / +8.5% at turn 300; research -10.5% at turn 450 (t -1.8) |
+| population / production | +14.6% (t 7.2) / +11.2% (t 5.3) | population +14.2% at turn 300 (t 3.5) |
+| cities / land / power | +4.2% / +3.8% / +5.5% (t 2.3-2.6) | power +14.7% at turn 450 (t 1.9) |
+| civs eliminated; civ cities captured | -26% (t -1.9); -16.5% (t -2.1) | captures +26% (t 1.2) |
+| outcome | | supremacy 22 -> 17, cultural 9 -> 9, last standing 1 -> 0, time limit 0 -> 6 |
+
+The cost is decisiveness: 6 of 32 full games now reach the time limit, each a world of two or three
+near-equal powers (the leader 34-51% of the world but only 1.04-1.32x the runner-up). No single
+change causes it; leaving one out of the tip (same 32 games) gives time-limit games: without event
+choice 4, without Conquest 3 (and legacy -4.0% at turn 300, t -5.2), without the settler fix 6,
+without the hammers 6, without worker flee 3, without transport 5. It is the general effect of
+civs that grow evenly meeting a war gate that wants a clear power edge (see "War conversion vs.
+decisive wars" under Known gaps) and a cultural pursuit reserved for a clear front-runner. Endgame
+play between equals -- a long war of attrition, a coalition against the leader, or a culture race
+when no one is a front-runner -- is the next strategic gap.
 
 ### Round 3b: goal-directed research + victory pursuit together
 
@@ -884,6 +1029,27 @@ How it got there (same 24 full games; decided / cultural + domination / mean dec
   the Balseraphs of seed 3 beelined every tower tech by turn 363 and then could build no tower
   for want of most of the 16 manas. The estimate now requires the manas, so no civ beelines
   the arcane techs for nothing.
+
+## Looked promising on development seeds, failed on fresh ones
+
+Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-944 at 300 turns,
+901-916 full games) against the tip it would go on; none survived, so none was merged.
+
+- **Promote every unit of a moving stack** (`units::play` promotes only the head of a group ready
+  to move, and C++ `AI_doTurnUnitsPost` promotes every unit each turn: 37% of promotion-ready
+  unit-turns are members behind the head). Seeds 1-48: civ cities captured +38% (t 2.1). Fresh
+  seeds: captures -5.8%, legacy -1.0%, every |t| < 1.4; full games flat. With the Mobility value
+  cut from 60 to 20 a move for non-explorers as well: seeds 1-96 captures +23% (t 2.3); fresh
+  seeds legacy -1.7%, techs -2.7% (t -1.8), research slider -4.7% (t -2.4), eliminations +20%.
+  The promotion gap is real but costs nothing measurable.
+- **Value the building effects `building_value` ignores**: the Lighthouse's sea-plot food, the
+  Harbor's and Inn's trade-route modifier, the Brewery's, Tailor's and Jeweler's free happiness
+  resource (Lighthouses 2 -> 29 and Breweries 0 -> 15 over four games). Seeds 1-80 with the
+  Conquest change: legacy +6-7% at turn 300 (t 3). Fresh seeds on top of the Conquest change:
+  legacy +1.0% (t 0.9), eliminations +27% (t 2.2); full games power -5.8% at turn 300 (t -2.1),
+  military -12% at turn 450 (t -3.6), civ cities captured -23%, cities lost to barbarians +68%,
+  supremacy wins 9 -> 5 of 16. Alone, full games: wars -26% (t -2.2), captures -18%. The new
+  buildings take production from the army, and the civs that build them lose cities.
 
 ## Cost control
 

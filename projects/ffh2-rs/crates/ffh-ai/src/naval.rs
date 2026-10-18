@@ -214,6 +214,16 @@ pub fn settler_waiting(g: &Game, p: PlayerId) -> Option<PlotIdx> {
     })
 }
 
+/// A settler of ours whose last decision was to wait in port for a ship (no site it can walk
+/// to, `settler_overseas`), not one that only stands in a coastal city (waiting for an escort).
+pub fn settler_waits_for_ship(g: &Game, p: PlayerId) -> bool {
+    g.players[p].units.iter().any(|&u| {
+        g.d.units[g.units[u].unit_type].found
+            && !g.unit_is_cargo(u)
+            && g.units[u].group.is_some_and(|grp| g.groups[grp].ai_mission_ai_type == Some(MissionAIType::MISSIONAI_LOAD_SETTLER))
+    })
+}
+
 /// Is our home land full while there is unknown or unsettled land across the water?
 /// (Research and production use it to want ships.)
 pub fn home_is_full(g: &Game, p: PlayerId) -> bool {
@@ -252,7 +262,10 @@ pub fn settler_overseas(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: Un
             return true;
         }
         crate::trace!(g, p, "settler {:?} waits for a ship at {:?}", u, g.map.xy(here));
-        skip(g, grp);
+        // The turn is skipped as a settler waiting for a ship (C++ `MISSIONAI_LOAD_SETTLER`,
+        // which research reads: `settler_waits_for_ship`).
+        let load = Some(MissionAIType::MISSIONAI_LOAD_SETTLER);
+        g.group_push_mission(grp, MissionType::MISSION_SKIP, -1, -1, 0, false, false, load, Some(here), None);
         return true;
     }
     // Walk to the nearest coastal city.

@@ -386,7 +386,12 @@ pub fn settler(ai: &Ai, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         // No safe path (it crosses a neighbour's or unrevealed land): the direct way.
         move_to_site(g, grp, site, 0);
     }
-    if alive(g, grp) && g.group_ready_to_move(grp, false) {
+    if first_city && alive(g, grp) && g.unit_plot(u) == here && g.unit_can_found(u, here, false) && can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {
+        // The better site is out of reach after all (the rules give an unescorted settler no
+        // path through danger): the capital goes where the settler stands, not nowhere.
+        crate::trace!(g, p, "settler {:?} cannot reach {:?}: founds in place", u, g.map.xy(site));
+        push(g, grp, MissionType::MISSION_FOUND, -1, -1, 0, false);
+    } else if alive(g, grp) && g.group_ready_to_move(grp, false) {
         // Path failed (or no moves left): try again next turn.
         skip(g, grp);
     } else if alive(g, grp) && g.unit_plot(u) == site && can_start(g, grp, MissionType::MISSION_FOUND, -1, -1) {

@@ -2008,6 +2008,12 @@ impl Game {
 
     /// C++ `CvUnit::updateBonusAffinity` (CvUnit.cpp:16633-16648).
     pub fn unit_update_bonus_affinity(&mut self, u: UnitId, bonus: BonusType) {
+        // Optimization (same result): with no affinity and no amount applied the update adds
+        // 0 * count - 0. Plot groups call this for every unit of the owner on every bonus change,
+        // and the count (`getNumAvailableBonuses`, via the vote source membership) is costly.
+        if self.units[u].bonus_affinity[bonus] == 0 && self.units[u].bonus_affinity_amount[bonus] == 0 {
+            return;
+        }
         let owner = self.units[u].owner;
         let new_amount = self.player_get_num_available_bonuses(owner, bonus) * self.units[u].bonus_affinity[bonus];
         let unit = &mut self.units[u];

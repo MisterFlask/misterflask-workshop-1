@@ -519,7 +519,8 @@ fn autoplay_delegates_to_the_advisor() {
         global_text: String::new(),
     };
     let options = [EventType(0), EventType(1)];
-    assert_eq!(hc.choose_event(g, h, &data, &options), Some(EventType(0)));
+    assert_eq!(hc.choose_event(g, h, &data, &options), advisor.choose_event(g, h, &data, &options));
+    assert!(hc.choose_event(g, h, &data, &options).is_some());
     assert!(shared.pending_events.lock().unwrap().is_empty());
     g.player_set_disable_human(h, false);
 }

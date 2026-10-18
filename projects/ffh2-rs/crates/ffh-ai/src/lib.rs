@@ -25,11 +25,13 @@ pub mod civs;
 pub mod diplomacy;
 pub mod economy;
 pub mod empire;
+pub mod events;
 pub mod expansion;
 pub mod finance;
 pub mod military;
 pub mod naval;
 pub mod offers;
+pub mod pacts;
 pub mod production;
 pub mod reach;
 pub mod research;
@@ -151,6 +153,10 @@ impl Controller for Ai {
     }
 
     fn update_automated_group(&self, g: &mut Game, grp: GroupId) -> bool { automation::update(self, g, grp) }
+
+    fn choose_event(&self, g: &Game, p: PlayerId, t: &EventTriggeredData, options: &[EventType]) -> Option<EventType> {
+        events::choose(g, p, t, options)
+    }
 
     fn choose_religion(&self, g: &Game, p: PlayerId) -> Option<ReligionType> {
         g.players[p].personality_type.and_then(|l| g.d.leader_heads[l].favorite_religion)
