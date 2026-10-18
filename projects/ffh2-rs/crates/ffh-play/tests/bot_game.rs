@@ -56,10 +56,12 @@ fn play_game(ng: NewGame, seed: u32, turns: i32, check_every: i32) -> Played {
 /// T1: three 150-turn games on a small map against 3 AIs, the human slot played by the bot only
 /// through the protocol's queries and commands. Made robust to AI and content change (the user's
 /// standing rule): the games use `GAMEOPTION_ALWAYS_PEACE` and `GAMEOPTION_NO_BARBARIANS`
-/// (`peaceful_game`), so no AI can attack or eliminate the bot and no victory can fire inside 150
-/// turns. The bot therefore reaches the full run with `Stop::Human` for ANY seed -- true by
-/// construction, not a property of a particular seed that a new AI or new content would break --
-/// so the seeds are free (1, 2, 3) and no seed-specific outcome is asserted. What is asserted is
+/// (`peaceful_game`), so no AI can attack the bot and no victory can fire inside 150 turns. The
+/// barbarians are not all gone (a barbarian city holding the Dragon's Horde keeps spawning units
+/// through FfH's Python, which ignores `GAMEOPTION_NO_BARBARIANS`), so the bot may be eliminated
+/// before turn 150 (`Stop::Over`); either way the outcome is not a property of a particular seed
+/// that a new AI or new content would break, so the seeds are free (1, 2, 3) and no
+/// seed-specific outcome is asserted. What is asserted is
 /// breadth coverage that holds for every full run: no panic, no stuck turn, ffh-stress's
 /// invariants every 5 turns, and the bot founds cities, researches, answers popups and produces
 /// (`play_game` with `check_every > 0`). City capture and the `keep_city` decision are covered
@@ -71,10 +73,8 @@ fn play_game(ng: NewGame, seed: u32, turns: i32, check_every: i32) -> Played {
 fn t1_scripted_bot_games() {
     for seed in [1, 2, 3] {
         let played = play_game(peaceful_game(seed), seed, 150, 5);
-        // `GAMEOPTION_NO_BARBARIANS` does not remove every barbarian: units spawned by FfH's
-        // Python (e.g. the Dragon's Horde of a barbarian city placed at map creation, which sends
-        // Sons of the Inferno) still roam, and can raze the bot's cities (seed 2: barbarian
-        // warriors and a Son of the Inferno take the bot's last cities by turn 142). So the run may also end with the bot eliminated (`Stop::Over`); what must not
+        // The run may end with the bot eliminated by Python-spawned barbarians (seed 2: barbarian
+        // warriors and a Son of the Inferno take the bot's last cities by turn 142); what must not
         // happen is a stuck turn (checked in `play_game`).
         assert!(matches!(played.stop, Stop::Human | Stop::Over), "seed {seed}: {:?}", played.stop);
     }
