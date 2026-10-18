@@ -14,7 +14,8 @@ averaged over games, the leading team's share, its ratio to the runner-up team, 
 usage: ai_metrics.py [--bin target/release/ffh] [--seeds 1-6] [--civs 6]
                      [--size WORLDSIZE_STANDARD] [--turns 300] [--at 100,200,300]
                      [--out results.json] [--compare old.json] [--jobs 4] [--option GAMEOPTION_X]
-                     [--until-supremacy] [--every N] [--cache | --no-cache] [--no-slots]
+                     [--until-supremacy] [--every N] [--civ CIVILIZATION_X] [--detail]
+                     [--cache | --no-cache] [--no-slots]
 
 --every N also snapshots every N turns (and `ffh stats` always adds the final state). Each saved
 game carries per-civ snapshots (`snapshots`), game-wide values (`world_at`), the outcome and the
@@ -65,6 +66,10 @@ def stats_cmd(args, seed):
            '--turns', str(args.turns), '--at', args.at]
     for opt in args.option:
         cmd += ['--option', opt]
+    for civ in getattr(args, 'civ', None) or []:
+        cmd += ['--civ', civ]
+    if getattr(args, 'detail', False):
+        cmd += ['--detail']
     if args.until_supremacy:
         cmd += ['--until-supremacy']
     if args.every:
@@ -247,6 +252,9 @@ def build_parser():
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--label', default='current')
     ap.add_argument('--option', action='append', default=[], help='GAMEOPTION_X to turn on (repeatable)')
+    ap.add_argument('--civ', action='append', default=[],
+                    help='CIVILIZATION_X forced into the next civ slot (repeatable; leader picked by the seed)')
+    ap.add_argument('--detail', action='store_true', help='per-player unit/building/project type counts')
     ap.add_argument('--until-supremacy', action='store_true',
                     help="stop each game at victory, last civ standing, or clear supremacy (1.5x the runner-up's score, "
                          "i.e. share of the world, held 30 turns, counted from turn 200)")

@@ -35,12 +35,41 @@ pub enum Civ {
     Other,
 }
 
+/// The player's civilization as far as civilization-specific play goes: `Civ::Other` for
+/// civilizations without any, and for those turned off by `FFH_AI_CIV_OFF` (see [`enabled`]).
+/// Every civilization-specific branch of the AI goes through this (or [`enabled`]).
 pub fn civ(g: &Game, p: PlayerId) -> Civ {
+    if !enabled(g, p) {
+        return Civ::Other;
+    }
     match g.player_get_civilization_type(p).map(|c| g.d.civilizations[c].base.type_.as_str()) {
         Some("CIVILIZATION_KURIOTATES") => Civ::Kuriotates,
         Some("CIVILIZATION_LANUN") => Civ::Lanun,
         _ => Civ::Other,
     }
+}
+
+/// False when the player's civilization-specific play is turned off: `FFH_AI_CIV_OFF` lists
+/// civilizations (`CIVILIZATION_KHAZAD` or `KHAZAD`, comma-separated, or `all`) that play as
+/// generic civs. A measurement switch (civ X with and without its logic, against the same
+/// opponents, in one binary); it is read once and never changes during a game, so play stays
+/// deterministic, and the run cache keys runs by every `FFH_*` variable.
+pub fn enabled(g: &Game, p: PlayerId) -> bool {
+    static OFF: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    let off = OFF.get_or_init(|| {
+        std::env::var("FFH_AI_CIV_OFF")
+            .unwrap_or_default()
+            .split(',')
+            .map(|s| s.trim().trim_start_matches("CIVILIZATION_").to_ascii_uppercase())
+            .filter(|s| !s.is_empty())
+            .collect()
+    });
+    if off.is_empty() {
+        return true;
+    }
+    let Some(c) = g.player_get_civilization_type(p) else { return true };
+    let name = g.d.civilizations[c].base.type_.trim_start_matches("CIVILIZATION_");
+    !off.iter().any(|o| o == "ALL" || o == name)
 }
 
 // ----------------------------------------------------------------------------

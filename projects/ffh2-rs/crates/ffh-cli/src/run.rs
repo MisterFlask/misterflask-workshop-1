@@ -98,11 +98,28 @@ pub struct RunConfig {
     pub options: Vec<String>,
     /// Stop once the game is decided (see [`SupremacyRule`]); `turns` stays the cap.
     pub until_supremacy: bool,
+    /// Civilizations (`CIVILIZATION_*` type names) forced into the first civ slots, in order;
+    /// the other slots stay random. Each forced slot's leader is one of that civilization's
+    /// leaders, picked by the seed (so a batch of seeds plays all of them).
+    pub force_civs: Vec<String>,
+    /// `ffh stats`: also record per-player counts of unit, building and project types.
+    pub detail: bool,
 }
 
 impl Default for RunConfig {
     fn default() -> Self {
-        RunConfig { seed: 1, civs: 4, world: "WORLDSIZE_SMALL".into(), turns: 100, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false }
+        RunConfig {
+            seed: 1,
+            civs: 4,
+            world: "WORLDSIZE_SMALL".into(),
+            turns: 100,
+            verbose: false,
+            report_every: 0,
+            options: Vec::new(),
+            until_supremacy: false,
+            force_civs: Vec::new(),
+            detail: false,
+        }
     }
 }
 
@@ -120,7 +137,19 @@ pub fn new_game(cfg: &RunConfig) -> (Game, Arc<Timed>) {
     let d = ffh_data::global();
     let mut o = ffh_core::setup::SetupOptions::new(d, cfg.civs, &cfg.world, cfg.seed);
     o.options = cfg.options.iter().map(|name| d.t::<GameOptionType>(name)).collect();
-    let mut g = Game::new_with_options(d, &o);
+    let mut setup = ffh_core::setup::GameSetup::from_options(d, &o);
+    assert!(cfg.force_civs.len() <= cfg.civs, "more forced civilizations than civ slots");
+    for (slot, name) in cfg.force_civs.iter().enumerate() {
+        let civ = d.t::<CivilizationType>(name);
+        let leaders: Vec<LeaderHeadType> = d.leader_heads.keys().filter(|&l| d.civilizations[civ].leaders[l]).collect();
+        assert!(!leaders.is_empty(), "{name} has no leaders");
+        // A slot with a civilization and a leader is left alone by the random civilization pick
+        // (`init_random_civilizations`), which still avoids it for the other slots.
+        setup.players[slot].civ = Some(civ);
+        setup.players[slot].leader = Some(leaders[cfg.seed as usize % leaders.len()]);
+    }
+    let mut g = Game::new(d, setup);
+    g.handicap = o.handicap;
     g.map_script = Arc::new(FractalMapScript::default());
     let timed = Arc::new(Timed::new(ffh_ai::ai_controller()));
     let ai: ControllerRef = timed.clone();
@@ -512,7 +541,7 @@ mod tests {
     /// Same seed, same game: every per-turn sync checksum must match.
     #[test]
     fn same_seed_same_game() {
-        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false };
+        let cfg = RunConfig { seed: 7, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 20, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false, ..RunConfig::default() };
         let (mut a, _) = new_game(&cfg);
         let sa = autoplay(&mut a, &cfg);
         let (mut b, _) = new_game(&cfg);
@@ -629,9 +658,25 @@ mod tests {
 
     /// Different seeds should give different games.
     #[test]
+    fn forced_civ_takes_the_first_slot() {
+        let d = ffh_data::global();
+        for seed in [1, 2] {
+            let cfg = RunConfig { seed, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 1, force_civs: vec!["CIVILIZATION_SHEAIM".into()], ..RunConfig::default() };
+            let (g, _) = new_game(&cfg);
+            let p0 = PlayerId(0);
+            let sheaim = d.t::<CivilizationType>("CIVILIZATION_SHEAIM");
+            assert_eq!(g.player_get_civilization_type(p0), Some(sheaim));
+            let leader = g.player_get_leader_type(p0).expect("a leader");
+            assert!(d.civilizations[sheaim].leaders[leader]);
+            // The random picks avoid the forced civilization.
+            assert!(g.civ_player_ids().into_iter().filter(|&p| p != p0).all(|p| g.player_get_civilization_type(p) != Some(sheaim)));
+        }
+    }
+
+    #[test]
     fn different_seed_different_game() {
-        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false };
-        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0, options: Vec::new(), until_supremacy: false } };
+        let cfg1 = RunConfig { seed: 1, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, options: Vec::new(), until_supremacy: false, ..RunConfig::default() };
+        let cfg2 = RunConfig { seed: 2, ..RunConfig { civs: 3, world: "WORLDSIZE_TINY".into(), turns: 5, verbose: false, report_every: 0, seed: 0, options: Vec::new(), until_supremacy: false, ..RunConfig::default() } };
         let (mut a, _) = new_game(&cfg1);
         let (mut b, _) = new_game(&cfg2);
         let sa = autoplay(&mut a, &cfg1);
@@ -643,7 +688,7 @@ mod tests {
     /// advanced start on its first turn.
     #[test]
     fn ai_spends_advanced_start_points() {
-        let cfg = RunConfig { seed: 3, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 2, verbose: false, report_every: 0, options: vec!["GAMEOPTION_ADVANCED_START".into()], until_supremacy: false };
+        let cfg = RunConfig { seed: 3, civs: 3, world: "WORLDSIZE_TINY".into(), turns: 2, verbose: false, report_every: 0, options: vec!["GAMEOPTION_ADVANCED_START".into()], until_supremacy: false, ..RunConfig::default() };
         let (mut g, _) = new_game(&cfg);
         autoplay(&mut g, &cfg);
         for p in g.player_ids() {

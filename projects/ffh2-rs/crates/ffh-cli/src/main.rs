@@ -13,7 +13,9 @@
 //! Options: --seed N  --civs N  --size WORLDSIZE_X  --turns N  --report N (per-player report
 //! every N turns)  --option GAMEOPTION_X (repeatable)  --until-supremacy (stop at a victory, the
 //! last civ standing, or one team holding 1.5x the runner-up's score -- share of the world --
-//! for 30 turns, counted from turn 200; `--turns` stays the cap)
+//! for 30 turns, counted from turn 200; `--turns` stays the cap)  --civ CIVILIZATION_X
+//! (repeatable: force the first civ slots to these civilizations, leader picked by the seed)
+//! --detail (`stats`: per-player counts of unit, building and project types)
 
 mod run;
 mod stats;
@@ -21,7 +23,7 @@ mod stats;
 use std::time::Instant;
 
 fn usage() -> ! {
-    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--until-supremacy] [--at T1,T2,..] [--every N]");
+    eprintln!("usage: ffh <data|lookup TYPE|autoplay|bench|stats> [--seed N] [--civs N] [--size WORLDSIZE_X] [--turns N] [--report N] [--option GAMEOPTION_X] [--until-supremacy] [--civ CIVILIZATION_X] [--detail] [--at T1,T2,..] [--every N]");
     std::process::exit(2)
 }
 
@@ -43,6 +45,12 @@ fn parse_run_config_at(args: &[String]) -> (run::RunConfig, Vec<i32>) {
             "--size" => cfg.world = val(i),
             "--turns" => cfg.turns = val(i).parse().unwrap_or_else(|_| usage()),
             "--option" => cfg.options.push(val(i)),
+            "--civ" => cfg.force_civs.push(val(i)),
+            "--detail" => {
+                cfg.detail = true;
+                i += 1;
+                continue;
+            }
             "--until-supremacy" => {
                 cfg.until_supremacy = true;
                 i += 1;
