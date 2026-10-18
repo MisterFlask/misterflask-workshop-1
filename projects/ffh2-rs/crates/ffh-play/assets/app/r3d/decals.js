@@ -10,7 +10,7 @@
 // reads as tracks rather than a grid. Map wrap: anything near the east/west seam is drawn twice.
 
 import { tname } from "../state.js";
-import { FEAT, KIND, isHell } from "./world.js";
+import { FEAT, KIND, isHell, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
 import { hashf } from "./noise.js";
 import { MANA } from "./assets/palette.js";
 
@@ -139,22 +139,25 @@ export function rasterDecals(world, map, cities) {
     }
   });
 
-  // b: wet banks along the rivers, and marsh.
+  // b: wet banks along the rivers: full under the water and up the cut bank (the terrain shader
+  // lays wet earth there), fading out over the bank tops (lush grass), in nested strokes.
   channel(2, () => {
     g.strokeStyle = "#fff";
     g.lineCap = "round";
     g.lineJoin = "round";
-    g.lineWidth = DRES * 0.42;
-    g.globalAlpha = 0.7;
-    for (const line of world.rivers) {
-      copies((o) => {
-        g.beginPath();
-        line.forEach(([mx, my], k) => (k ? g.lineTo(mx * DRES + o, my * DRES) : g.moveTo(mx * DRES + o, my * DRES)));
-        g.stroke();
-      });
+    for (const [half, a] of [[RIVER_BANK + 0.14, 0.3], [RIVER_BANK + 0.07, 0.35], [RIVER_BANK, 0.4], [RIVER_HALF + RIVER_WANDER, 1]]) {
+      g.lineWidth = DRES * half * 2;
+      g.globalAlpha = a;
+      for (const line of world.rivers) {
+        copies((o) => {
+          g.beginPath();
+          line.forEach(([mx, my], k) => (k ? g.lineTo(mx * DRES + o, my * DRES) : g.moveTo(mx * DRES + o, my * DRES)));
+          g.stroke();
+        });
+      }
     }
     g.globalAlpha = 1;
-  }, DRES * 0.12);
+  }, DRES * 0.06);
 
   // a: settlement ground.
   channel(3, () => {

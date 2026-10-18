@@ -12,7 +12,7 @@ import * as T from "../tiles.js";
 import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
-import { KIND, FEAT, GROUND, SEA, DRAFT } from "./world.js";
+import { KIND, FEAT, GROUND, SEA, DRAFT, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -141,7 +141,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       const ctx = { r, x, y, i, kind, feat, ground, world, hills: kind === KIND.HILLS, peak: kind === KIND.PEAK, held, city: !!city, owner: ownerId, civ, family, unit: unitAt.has(i), bonus, improvement: imp, coast: shoreOf(world, x, y), river: map.river[i] > 0 };
       const at = (lx, lz) => [x + 0.5 + lx, y + 0.5 - lz]; // plot-local (x east, z south) -> map
       // Nothing grows in a river's channel.
-      const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < 0.2;
+      const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < RIVER_HALF + RIVER_WANDER + 0.05;
       ctx.nearRiver = nearRiver;
       // Something stands on the plot behind this one (north): its trees in front of it keep low.
       const north = world.index(x, y + 1);
@@ -199,6 +199,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
           place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }
       }
+      placeBank(world, map, ctx, place);
       // One-off features (oasis, volcano, flood reeds, ice floes, flames).
       const feats = CATALOG.feature?.(feat, ctx) ?? [];
       for (const f of feats) {
@@ -237,7 +238,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         const bridge = (nx, ny, mx, my, yaw) => {
           const j = world.index(nx, ny);
           if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) return;
-          const bank = Math.max(H(mx + Math.sin(yaw) * 0.22, my - Math.cos(yaw) * 0.22), H(mx - Math.sin(yaw) * 0.22, my + Math.cos(yaw) * 0.22), SEA + 0.01);
+          const bank = Math.max(H(mx + Math.sin(yaw) * RIVER_BANK, my - Math.cos(yaw) * RIVER_BANK), H(mx - Math.sin(yaw) * RIVER_BANK, my + Math.cos(yaw) * RIVER_BANK), SEA + 0.01);
           out.push(inst(pick(CATALOG.bridge?.(ctx) ?? "basic.bridge", "basic.bridge"), mx, bank - 0.006, -my, { yaw, variant: r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
         };
         if (map.river[i] & 1) bridge(x, y - 1, x + 0.5, y, 0);
@@ -275,6 +276,58 @@ function shoreOf(world, x, y) {
     if (j >= 0 && world.isWater(j)) out.push([dx, -dy]);
   }
   return out;
+}
+
+/** A river's banks (docs/R3D.md §5.2): boulders along the water's edge in clusters, now and then
+ *  one out in the stream (the water breaks white round it), reeds standing in the shallows at the
+ *  edge and grass leaning over it from the bank tops. Each plot dresses the banks in its own
+ *  square from a seed of its own (its other dressing draws as before); nothing at a road's
+ *  crossing (a bridge spans it), in a city, round a held plot's centre or out on the sea. */
+function placeBank(world, map, ctx, place) {
+  const { x, y, i } = ctx;
+  if (!world.riverCells.size || ctx.city || world.isWater(i)) return;
+  // Rivers run along plot edges: a plot with none within reach of its square has no bank.
+  if (world.riverDist(x + 0.5, y + 0.5) > 0.5 + RIVER_BANK) return;
+  const known = (j) => j >= 0 && map.vis[j] !== 0;
+  const routed = (j) => known(j) && map.route[j] >= 0;
+  const edge = (px, py, bit, nx, ny) => {
+    const j = world.index(px, py);
+    return known(j) && map.river[j] > 0 && (map.river[j] & bit) !== 0 && routed(j) && routed(world.index(nx, ny));
+  };
+  // The crossings on this plot's four edges (a south or east edge belongs to its plot, dress.js
+  // bridge): where the roads cross, the banks stay clear for the bridge.
+  const cross = [];
+  if (edge(x, y, 1, x, y - 1)) cross.push([x + 0.5, y]);
+  if (edge(x, y + 1, 1, x, y)) cross.push([x + 0.5, y + 1]);
+  if (edge(x, y, 2, x + 1, y)) cross.push([x + 1, y + 0.5]);
+  if (edge(x - 1, y, 2, x, y)) cross.push([x, y + 0.5]);
+  const r = rng(i * 131 + 17);
+  const G = 8;
+  for (let gy = 0; gy < G; gy++) {
+    for (let gx = 0; gx < G; gx++) {
+      // A fixed number of draws per slot, so the dressing of one slot never shifts another's.
+      const lx = -0.5 + (gx + r()) / G, lz = -0.5 + (gy + r()) / G;
+      const roll = r(), sz = r(), yaw = r.range(0, 6.28), variant = r.int(0, 7);
+      const mx = x + 0.5 + lx, my = y + 0.5 - lz;
+      const d = world.riverDist(mx, my);
+      if (d > RIVER_BANK + 0.1) continue;
+      if (cross.some(([cx, cy]) => Math.hypot(mx - cx, my - cy) < 0.42)) continue;
+      if (ctx.held && Math.hypot(lx, lz) < 0.27) continue;
+      if (world.heightAt(mx, my, false) < SEA) continue;
+      // Clusters: rocks where the broad noise is high, reeds where it is low.
+      const clump = clamp(0.5 + world.n2(mx, my, 1.3, 3.1, 7.7) * 1.2, 0, 1);
+      const inWater = d < RIVER_HALF + RIVER_WANDER;
+      if (d < RIVER_HALF - 0.09) {
+        if (roll < 0.05 * clump) place(pick("rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.6 + sz * 0.35, yaw, lift: 0.03 });
+      } else if (d < RIVER_HALF + 0.08) {
+        if (roll < 0.75 * clump * clump) place(pick(variant < 3 ? "rock.boulder.moss" : "rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.5 + sz * 0.6, yaw, lift: inWater ? 0.018 : -0.004 });
+        else if (d > RIVER_HALF - 0.05 && roll > 1 - 0.4 * (1 - clump)) place(pick("reeds", "basic.tree"), lx, lz, { variant, scale: 0.7 + sz * 0.5, yaw, phase: sz });
+      } else if (d > RIVER_BANK - 0.06) {
+        if (roll < 0.25 * clump * clump) place(pick("rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.35 + sz * 0.3, yaw, lift: -0.004 });
+        else if (roll > 0.55) place(pick("plant.grass", "basic.tree"), lx, lz, { variant, scale: 1.0 + sz * 0.6, yaw, phase: sz });
+      }
+    }
+  }
 }
 
 /** An emitter carried by an improvement's part (`e.dx/dy/dz` in the part's own frame), placed in

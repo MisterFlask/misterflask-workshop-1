@@ -864,6 +864,7 @@ void main() {
                + (fs[2] == F_ICE ? max(0.0, w.z) : 0.0) + (fs[3] == F_ICE ? max(0.0, w.w) : 0.0);
     float beach = (1.0 - smoothstep(0.02, 0.075, h)) * smoothstep(-0.05, 0.0, h);
     beach *= 1.0 - smoothstep(0.15, 0.5, iceW);
+    beach *= 1.0 - smoothstep(0.3, 0.7, texture(uDecal, mapUV(m)).b); // a river's banks: wet earth
     vec3 sand = srgb(mix(vec3(0.66, 0.57, 0.40), vec3(0.78, 0.70, 0.52), mnoise(m, 6.0)));
     alb = mix(alb, sand, beach * 0.85);
     // Rock on steep ground: cliffs and the flanks of the mountains, with strata.
@@ -895,10 +896,14 @@ void main() {
     snow = max(snow, smoothstep(1.15, 1.3, h + sn * 0.1));
     snow *= 1.0 - hellW;
     alb = mix(alb, srgb(vec3(0.88, 0.91, 0.95)), snow);
-    // Wet ground along rivers and the shore line.
+    // Wet banks along the rivers (decals.js b: full under the water and on the cut bank, fading
+    // over the bank tops): lush grass by the river, and the bank itself -- its cut face and the
+    // strip at the water's edge -- dark wet earth and moss under the overhanging grass.
     vec4 dec = texture(uDecal, mapUV(m));
-    alb *= mix(1.0, 0.72, dec.b);
-    alb = mix(alb, alb * vec3(0.85, 1.0, 0.85), dec.b * 0.4);
+    alb = mix(alb, alb * vec3(0.86, 1.0, 0.76), smoothstep(0.05, 0.6, dec.b) * 0.6);
+    float mudN = mnoise(m, 9.0);
+    float mud = smoothstep(0.8 + (mudN - 0.5) * 0.16, 0.95, dec.b);
+    alb = mix(alb, srgb(mix(vec3(0.25, 0.2, 0.13), vec3(0.19, 0.23, 0.12), mudN)), mud * 0.9);
     // Settlement ground, fields and roads (rasterised per plot, see decals.js).
     vec3 earth = srgb(mix(vec3(0.36, 0.29, 0.21), vec3(0.47, 0.39, 0.29), mnoise(m, 8.0)));
     alb = mix(alb, earth, dec.a * 0.8);
@@ -1188,8 +1193,10 @@ void main() { o = vec4(1.0); }`;
 export const WATER_VS = `
 in vec3 aPos;
 in vec4 aExtra;
+in vec2 aFlow;
 out vec3 vWorld;
 out vec4 vExtra;
+out vec2 vFlow;
 uniform float uRiverLift;
 invariant gl_Position;
 void main() {
@@ -1198,12 +1205,14 @@ void main() {
   vec3 w = aPos + vec3(uCopyX, uRiverLift, 0.0);
   vWorld = w;
   vExtra = aExtra;
+  vFlow = aFlow;
   gl_Position = uViewProj * vec4(w, 1.0);
 }`;
 
 export const WATER_FS = `
 in vec3 vWorld;
 in vec4 vExtra;
+in vec2 vFlow;
 uniform sampler2D uHeight;
 uniform sampler2D uSceneColor;
 uniform sampler2D uSceneND;
@@ -1239,6 +1248,60 @@ float riverH(float u, float s, float t) {
   float mid = 1.0 - u * u;
   return pnoise(vec2(u * 2.2, s * 3.2 - t * 1.6), vec2(4096.0)) * (0.3 + 0.5 * mid)
        + pnoise(vec2(u * 4.5 + 7.0, s * 7.5 - t * 1.1), vec2(4096.0)) * 0.35;
+}
+
+// How deep a river's water reads (0 its banks' light turquoise, 1 the blue of its channel's
+// middle), in its own frame (bend: how it turns, + to the left looking downstream): deepening
+// toward the middle in long bands drawn out along the current and carried down it, shallow over
+// the inside of a bend.
+float riverDeep(float u, float s, float bend, float t) {
+  float b = pnoise(vec2(u * 1.7 + 3.0, s * 0.55 - t * 0.22), vec2(4096.0));
+  float inner = clamp(-u * bend * 0.25, 0.0, 0.5);
+  float u2 = u * u;
+  // Over that, the ripples' strokes: short marks drawn out along the current, light where they
+  // catch the sky, a few dark.
+  float k = pnoise(vec2(u * 6.0 + 1.0, s * 4.5 - t * 0.35), vec2(4096.0));
+  float marks = -0.45 * smoothstep(0.65, 0.75, k) + 0.25 * (1.0 - smoothstep(0.26, 0.34, k));
+  return clamp(1.0 - u2 * u2 + (b - 0.5) * 0.8 - inner + marks, 0.0, 1.0);
+}
+
+// A thin line wherever the phase p crosses a half (w its half-width, dp the phase across a pixel):
+// thinner than a pixel, it fades rather than breaking into dots.
+float phaseLine(float p, float w, float dp) {
+  float ww = max(w, dp);
+  return (1.0 - smoothstep(ww - dp, ww + dp, abs(fract(p) - 0.5))) * min(1.0, w / dp);
+}
+
+// A river's foam at time t, in its own frame: streaks drawn out along the current -- lines running
+// down the channel at a few to its width, warped into swirls (more on the outside of a bend) and
+// broken along their length -- and a lace of white water on the outside of a bend. 'aa' is the
+// channel's width (in u) across a pixel. Each layer moves at one speed (the warps too: a bounded
+// wobble, never a shear).
+float riverFoam(float u, float s, float bend, float t, float aa) {
+  vec2 P = vec2(4096.0);
+  float outer = smoothstep(0.15, 1.1, u * bend * 0.5);
+  // The warps vary slowly across the channel (a line never folds back into a blot) and quickly
+  // down it (the lines swing from side to side: swirls).
+  float wv = pnoise(vec2(u * 0.6 + 5.0, s * 1.5 - t * 0.2), P) - 0.5;
+  float wv2 = pnoise(vec2(u * 1.1 - 3.0, s * 3.2 - t * 0.35), P) - 0.5;
+  // Each streak swells and tapers along its length like a stroke of the brush (its width from a
+  // noise moving with it), and is lost in between.
+  float ma = smoothstep(0.5 - 0.25 * outer, 0.85 - 0.25 * outer, pnoise(vec2(u * 2.2 + 2.0, s * 2.0 - t * 0.35), P));
+  float mb = smoothstep(0.55 - 0.25 * outer, 0.88 - 0.25 * outer, pnoise(vec2(u * 3.1 - 6.0, s * 3.0 - t * 0.2), P));
+  float la = phaseLine(u * 2.6 + wv * (2.2 + 1.2 * outer) + wv2 * 0.7, 0.09 * ma, aa * 2.6);
+  float lb = phaseLine(u * 4.4 + 0.37 + wv * 1.6 - wv2 * 1.1, 0.065 * mb, aa * 4.4) * (0.4 + 0.6 * outer);
+  // White water: churned foam in broken cells, packed against the outer bank of a bend.
+  vec2 c = mcells(vec2(u * 1.7, s * 2.0 - t * 0.35 * 2.0), 2.4);
+  float churn = smoothstep(0.35, 0.75, pnoise(vec2(u * 2.0, s * 2.5 - t * 0.35), P) + outer * 0.3);
+  float lace = (1.0 - smoothstep(0.04, 0.2 + 0.25 * outer, c.y - c.x)) * churn * smoothstep(0.1, 0.8, u * sign(bend));
+  return clamp(max(la, lb * 0.7) * (0.75 + 0.5 * outer) + lace * outer * 0.9, 0.0, 1.0);
+}
+
+// Where a river's water ends: its edge (in RIVER_HALFs from its line, world.js) wanders with the
+// map, never more than RIVER_WANDER either way, so the banks are drawn here, finer than the
+// terrain's mesh could carve them.
+float riverEdge(vec2 m) {
+  return 1.0 + (mnoise(m, 2.6) - 0.5) * 0.2 + (mnoise(m + 7.7, 7.0) - 0.5) * 0.1;
 }
 
 // The painted sky the water mirrors: a pale glow low down deepening to the sky's blue overhead,
@@ -1316,6 +1379,16 @@ void main() {
   vec2 side = vec2(flow.y, -flow.x);
   float gaa = length(fwidth(m * 8.0));
   float ppx = max(length(dmx), length(dmy)); // plots per pixel
+  // A river's water ends at its wandering edge (riverEdge), rounded past the ribbon's ends (a
+  // source, a confluence); beyond it the bank under the ribbon shows. 'across' is in RIVER_HALFs.
+  float across = length(vec2(vExtra.x, vFlow.y));
+  float edgeAA = max(fwidth(across), 1e-4);
+  float inEdge = river ? riverEdge(m) - across : 1.0;
+  float inWater = smoothstep(-edgeAA, edgeAA, inEdge);
+  // A river along the edge of the unexplored: the blank's parchment covers its far half (no water
+  // is drawn on an unrevealed plot).
+  if (river) inWater *= smoothstep(0.18, 0.32, v);
+  if (inWater <= 0.0) discard;
 
   // The surface normal: the sea's swell and ripples, or a river's current (map y runs along -z).
   vec3 n;
@@ -1366,6 +1439,17 @@ void main() {
   float sun;
   vec3 Lb = lightAt(vec3(0.0, 1.0, 0.0), vWorld, 1.0, sun);
   body *= Lb * 0.7 + 0.1;
+  if (river) {
+    // A river is painted, not seen into: bright turquoise by its banks, through cerulean, to a deep
+    // blue down the middle of its channel (riverDeep), lit by the light's value only (the warm sun
+    // would turn it green) -- in shade it darkens without losing its blue.
+    float rd = riverDeep(vExtra.x, vExtra.y, vFlow.x, tl);
+    if (band) rd = mix(riverDeep(vExtra.x, vExtra.y, vFlow.x, 0.0), rd, live);
+    vec3 rc = mix(srgb(vec3(0.42, 0.8, 0.86)), srgb(vec3(0.2, 0.56, 0.72)), smoothstep(0.1, 0.5, rd));
+    rc = mix(rc, srgb(vec3(0.11, 0.3, 0.47)), smoothstep(0.55, 0.95, rd));
+    body = rc * (lum(Lb) * 0.7 + 0.1) * bm;
+    T *= 0.5;
+  }
 
   // --- The mirror: what stands round the water (the reflected ray marched through the grabbed
   // scene's depth), else the sky and its drifting clouds. Painted, not mirror-sharp: three taps
@@ -1480,31 +1564,44 @@ void main() {
   // (a few pixels, constant in the world): a surface standing at the water's own depth there is
   // something crossing the waterline -- which the floor's depth alone does not show. Not at the
   // beach (the surf has it).
+  // On a river, a rock or a pier in the stream (not its own bank: the edge has its lace below).
   float contact = 0.0;
-  if (!river) {
-    float rr = 0.06 / max(zW, 1.0);
+  {
+    float rr = (river ? 0.045 : 0.06) / max(zW, 1.0);
     for (int k = 0; k < 6; k++) {
       float a = float(k) * 1.0472;
       float zs = texture(uSceneND, uv + vec2(cos(a) * res.y / res.x, sin(a)) * rr).w;
       contact = max(contact, 1.0 - smoothstep(0.006, 0.03, abs(zs - zW)));
     }
-    contact *= smoothstep(0.03, 0.08, depth) * knownC;
+    contact *= (river ? smoothstep(0.08, 0.3, inEdge) : smoothstep(0.03, 0.08, depth)) * knownC;
   }
   float lph = mnoise(m, 4.0) * 6.2831;
   float lap = 0.75 + 0.25 * mix(sin(lph), sin(t * 2.1 + lph), live);
   foam = max(foam, contact * mix(0.5, 1.0, lace) * 0.85 * lap);
   if (river) {
-    float ax = abs(vExtra.x);
+    // Streaks and swirls carried down the current, white water on the outside of the bends
+    // (riverFoam); a broken lace along the banks; a collar round what stands in the stream.
+    float rfa = ppx / 0.19; // u across a pixel (u counts RIVER_HALFs, world.js)
+    float rf = riverFoam(vExtra.x, vExtra.y, vFlow.x, tl, rfa);
+    if (band) rf = mix(riverFoam(vExtra.x, vExtra.y, vFlow.x, 0.0, rfa), rf, live);
     float tr = live > 0.0 ? t : 0.0;
-    float bank = pnoise(vec2(vExtra.x * 3.0, vExtra.y * 6.0 - tr * 2.2), vec2(4096.0));
-    float fl = pnoise(vec2(vExtra.x * 5.0, vExtra.y * 7.0 - tr * 2.2), vec2(4096.0));
-    if (live > 0.0 && live < 1.0) {
-      bank = mix(pnoise(vec2(vExtra.x * 3.0, vExtra.y * 6.0), vec2(4096.0)), bank, live);
-      fl = mix(pnoise(vec2(vExtra.x * 5.0, vExtra.y * 7.0), vec2(4096.0)), fl, live);
+    float bk = pnoise(vec2(vExtra.x * 3.0, vExtra.y * 5.0 - tr * 0.3), vec2(4096.0));
+    if (band) bk = mix(pnoise(vec2(vExtra.x * 3.0, vExtra.y * 5.0), vec2(4096.0)), bk, live);
+    float edgeLace = (1.0 - smoothstep(0.0, 0.1 + 0.08 * bk, inEdge)) * smoothstep(0.35, 0.75, bk) * mix(0.5, 1.0, lace);
+    // White water trailing downstream of what stands in the stream (a rock, a reed bed, a pier):
+    // looking upstream, a surface at the water's level or just above it, not the bank.
+    float wake = 0.0;
+    vec3 up3 = vec3(-flow.x, 0.0, flow.y);
+    for (int k = 1; k <= 4; k++) {
+      vec3 Q = vWorld + up3 * (0.035 * float(k));
+      vec4 cq = uViewProj * vec4(Q, 1.0);
+      float zq = -(uView * vec4(Q, 1.0)).z;
+      float zs = texture(uSceneND, cq.xy / cq.w * 0.5 + 0.5).w;
+      float d = zq - zs;
+      wake = max(wake, smoothstep(-0.006, 0.0, d) * (1.0 - smoothstep(0.05, 0.1, d)) * (1.1 - 0.2 * float(k)));
     }
-    bank = smoothstep(0.72, 0.98, ax) * (0.5 + 0.5 * bank);
-    float fleck = smoothstep(0.8, 0.95, fl) * (1.0 - ax);
-    foam = clamp(bank * 0.55 + fleck * 0.3, 0.0, 1.0) * mix(0.6, 1.0, lace);
+    wake *= smoothstep(0.0, 0.2, inEdge) * smoothstep(0.15, 0.55, lace + 0.4 * rf);
+    foam = clamp(max(max(rf, edgeLace * 0.75), max(contact * smoothstep(0.2, 0.6, lace) * lap, wake * 0.85)), 0.0, 1.0) * knownC;
   }
 
   // --- Caustics: the waves gather the sun into a drifting net of light on the shallow floor, seen
@@ -1522,6 +1619,8 @@ void main() {
     floorCol *= 1.0 + web * fadeC * sun * live * cLod * 1.1 * uCaustics;
   }
   vec3 foamCol = srgb(vec3(0.9, 0.89, 0.83)) * (Lb * 0.32 + 0.08);
+  // A river's foam is a cool white, lit by the light's value (it reads against bright turquoise).
+  if (river) foamCol = srgb(vec3(0.9, 0.96, 1.0)) * (lum(Lb) * 0.45 + 0.08);
 
   // --- Together. What the water adds of its own (its body, the sky, foam, glitter) takes the
   // fog of war and the haze; what is seen in it (the floor, a reflected bank) was grabbed with
@@ -1531,12 +1630,15 @@ void main() {
   own = mix(own, foamCol, foam) + uSunColor * glit * 0.7;
   seen *= 1.0 - foam;
   vec3 col = atmosphere(fogOfWar(own, v), vWorld) + seen;
-  // A river's edge dissolves into its bank (the ribbon's straight edge would otherwise show) -- not
-  // over the sea, whose floor would rim the river in sand.
+  // A river's edge: a dark, wet line where the bank's grass hangs over the water, then the bank
+  // (the scene under the ribbon) past the wandering edge, antialiased.
   // vExtra.z is 1 where the ribbon runs out over the sea (Scene.buildRivers): there the sea already
   // drawn shows instead, its colours and its surf, along a broken edge.
   float overSea = vExtra.z + 0.3 * (mnoise(m, 6.0) - 0.5);
-  if (river) col = mix(col, floorCol, smoothstep(0.8, 1.0, abs(vExtra.x)) * 0.7 * uRefract * (1.0 - step(0.5, overSea)));
+  if (river) {
+    col *= mix(0.62, 1.0, clamp(smoothstep(0.0, 0.07, inEdge) + foam * 0.6, 0.0, 1.0));
+    col = mix(texture(uSceneColor, uv).rgb, col, inWater);
+  }
   if (river && overSea > 0.5) discard;
   // The paint filter spares the glitter (it would erase so small a mark); it blooms a little.
   oColor = vec4(col, clamp(glit * 3.0, 0.0, 0.9));
