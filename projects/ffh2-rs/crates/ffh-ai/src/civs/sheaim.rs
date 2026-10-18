@@ -9,6 +9,11 @@
 //! one per two cities. Adepts follow the army (`units::caster`), pick Death first (Raise Skeleton:
 //! a permanent undead unit summoned next to the enemy every turn by the end-of-turn summon cast),
 //! then Fire (Fireball).
+//!
+//! Measured (full games, seeds 1-40, Sheaim in slot 0, against the generic play): win 2.5% ->
+//! 2.5% (1 seed each way), world share at the end 912 -> 1007 (t 0.79), legacy score at the end
+//! 795 -> 972 (t 1.37), at turn 300 flat (the guild comes around turn 200-250); Mage Guilds 0.0
+//! -> 2.8 per game, casters in 19 of 40 games, skeletons and spectres summoned from turn 250.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
