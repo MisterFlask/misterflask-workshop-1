@@ -4670,10 +4670,11 @@ function settlementOf(type, ctx) {
   };
   switch (t) {
     case "COTTAGE": {
-      // One cottage, big enough to read at the gameplay zoom (the look target's farmhouse), turned a
-      // little off the camera so its gable and one slope of its roof show, and its garden fence.
+      // One cottage (the human builders' thatched one), big enough to read at the gameplay zoom
+      // (the look target's farmhouse), turned a little off the camera so its gable and one slope
+      // of its roof show, and its garden fence.
       const z = ctx.unit ? -0.22 : -0.06, x = r.range(-0.08, 0.08);
-      const v = f === "human" ? r.pick([0, 0, 0, 2, 4]) : r.int(0, 5);
+      const v = f === "human" ? 0 : r.int(0, 5);
       plan.add("bld.house", v, x, z, r.sign() * r.range(0.2, 0.5), f === "human" ? 1.65 : 1.45);
       const s = r.sign();
       plan.add("bld.fence", 0, x + s * 0.12, z + 0.2, r.range(-0.15, 0.15), 0.8, { ghost: true });
