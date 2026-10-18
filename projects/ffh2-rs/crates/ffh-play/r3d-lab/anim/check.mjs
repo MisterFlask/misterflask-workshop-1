@@ -90,7 +90,9 @@ export const LIMITS = {
   // rest pose that an attack can start from any idle frame.
   idleAlive: 1.0, // head and arms (a bobbing prop is not a living body)
   idleTrunk: 0.5, // and the trunk itself
-  idleBody: 2.0, // a 1.6 px weight shift read to three blind viewers as too still, not busy
+  // The body: blind viewers called 1.6 and 2.25 px weight shifts too still (two experiments) and
+  // judges preferred ~2-3 px idles to ~1 px ones, but an 8-10 px sway read as a drunken wobble.
+  idleBody: 3.0,
   idleMax: 4.0,
   idleStep: 4.5, // px a second (0.15 px a frame at 30 fps): a calm body and head
   idleFromRest: 2.0,
@@ -113,6 +115,8 @@ export const LIMITS = {
   peakAtImpact: 0.067,
   decel: 0.5,
   recover: 0.27,
+  snapStrike: 0.15, // scored: craft.snap
+  recoveryKink: 0.05, // scored: craft.recovery
   duration: [0.6, 1.8],
   power: [1.5, 7], // plots/s at impact (5.5-25 m/s)
   reachFront: 0.1, // the blow lands this far in front of the pelvis
@@ -816,7 +820,10 @@ function continuity(m) {
         sf = k;
         sn = t.name;
       }
-      if (d0 > LIMITS.jitter2[0] && d1 > LIMITS.jitter2[0]) {
+      // A turning point the track slows into and speeds out of (each side continuing its own
+      // way) is a reversal, not a shiver, wherever the frames happen to sample it.
+      const turning = !loop && k >= 2 && k + 1 < F - 1 && len(D(k - 2)) > 1.5 * d0 && d2 > 1.5 * d1 && angle(D(k - 2), D(k - 1)) < 45 && angle(D(k), D(k + 1)) < 45;
+      if (d0 > LIMITS.jitter2[0] && d1 > LIMITS.jitter2[0] && !turning) {
         const a = angle(D(k - 1), D(k));
         if (a > LIMITS.jitter2[1] && a > jit) {
           jit = a;
@@ -963,6 +970,7 @@ function idle(m) {
   const p2p = new Float32Array(n), seen = new Float32Array(n), fromRest = new Float32Array(n), step = new Float32Array(n);
   for (let v = 0; v < n; v++) {
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, st = 0, fr = 0, s0 = Infinity, s1 = -Infinity;
+    // (step: the visible part too, so a helmet turning about its own axis is no fast motion)
     const nd = cam.screenDir([b.rest.data[v * 13 + 3], b.rest.data[v * 13 + 4], b.rest.data[v * 13 + 5]]);
     const nl = Math.hypot(nd[0], nd[1]) || 1;
     for (let f = 0; f < F; f++) {
@@ -975,7 +983,7 @@ function idle(m) {
       s0 = Math.min(s0, a);
       s1 = Math.max(s1, a);
       const g = (f + 1) % F;
-      st = Math.max(st, Math.hypot(S[g][v * 2] - x, S[g][v * 2 + 1] - y));
+      st = Math.max(st, Math.abs((S[g][v * 2] - x) * nd[0] + (S[g][v * 2 + 1] - y) * nd[1]) / nl);
       fr = Math.max(fr, Math.hypot(x - rest[v * 2], y - rest[v * 2 + 1]));
     }
     p2p[v] = Math.hypot(x1 - x0, y1 - y0);
@@ -992,7 +1000,17 @@ function idle(m) {
   const trunkAlive = q(p2p, pick([BONE.BODY]), 0.9);
   const body = q(p2p, pick([BONE.BODY]), 0.5);
   const all = Math.max(...seen);
-  const tempo = Math.max(...pick([BONE.BODY, BONE.HEAD]).map((v) => step[v])) * b.fps;
+  // Tempo: the body's visible speed, and the head's by where it goes (its joints): a head turning
+  // slides a round helmet's vertices along its own outline, which shows no speed.
+  let headStep = 0;
+  for (let f = 0; f < F; f++) {
+    const g = (f + 1) % F;
+    for (const k of ["head", "headTop"]) {
+      const a = cam.project(b.joints[f][k]), c = cam.project(b.joints[g][k]);
+      headStep = Math.max(headStep, Math.hypot(c[0] - a[0], c[1] - a[1]));
+    }
+  }
+  const tempo = Math.max(headStep, ...pick([BONE.BODY]).map((v) => step[v])) * b.fps;
   const fromR = Math.max(...fromRest);
   // Breathing: the neck's height, its dominant period; jitter: motion faster than 1.5 Hz.
   const dur = b.clip.dur;
@@ -1069,7 +1087,7 @@ function idle(m) {
     M("craft.rhythm", "motion", false, repeat >= 0.9 * F && pc1 <= 0.85, `repeats after ${r4(repeat / F)} of the loop, PC1 ${r4(pc1)}`, ">= 0.9, <= 0.85", "no metronome: no repeat inside the loop, several independent motions"),
     M("idle.alive", "reading", true, alive >= LIMITS.idleAlive && trunkAlive >= LIMITS.idleTrunk, `${r4(alive)} head and arms, ${r4(trunkAlive)} trunk`, `${LIMITS.idleAlive}, ${LIMITS.idleTrunk}`, "P90 peak-to-peak at the gameplay zoom (px): the body itself moves, not just what it holds"),
     M("idle.calm", "reading", true, body <= LIMITS.idleBody && all <= LIMITS.idleMax, `${r4(body)} body, ${r4(all)} max`, `${LIMITS.idleBody} body, ${LIMITS.idleMax} max`, "median body peak-to-peak and the largest visible one, across the surface (px)"),
-    M("idle.tempo", "reading", true, tempo <= LIMITS.idleStep, r4(tempo), LIMITS.idleStep, "fastest body or head speed (px a second at the gameplay zoom)"),
+    M("idle.tempo", "reading", true, tempo <= LIMITS.idleStep, r4(tempo), LIMITS.idleStep, "fastest body speed (visible, across the surface) or head speed (its joints) (px a second at the gameplay zoom)"),
     M("idle.fromRest", "reading", false, fromR <= LIMITS.idleFromRest, r4(fromR), LIMITS.idleFromRest, "farthest any vertex strays from the rest pose (px; scored: boundary.transition judges the cut itself)"),
     M("idle.loop", "motion", true, dur >= LIMITS.idleLoop[0] && dur <= LIMITS.idleLoop[1], dur, LIMITS.idleLoop.join("-"), "loop length (s)"),
     M("idle.breath", "motion", true, breath >= LIMITS.breath[0] && breath <= LIMITS.breath[1], r4(breath), LIMITS.breath.join("-"), "breathing period from the chest's rise (s)"),
@@ -1141,10 +1159,17 @@ function attack(m) {
   out.push(M("attack.contrast", "motion", true, windupFast <= LIMITS.contrast * peak, r4(windupFast / peak), LIMITS.contrast, "the wind-up's fastest speed / the blow's peak"));
   // The speed arriving at the impact: the step into the first frame at or after it (a speed
   // centred on the impact frame would average in the stop itself).
-  const ki = Math.min(F - 1, Math.max(1, Math.ceil(b.clip.events.impact * fps - 1e-6)));
+  // Half a frame's tolerance on the declared time: the better of the frames either side of it.
   const ub = strikes.map((s, k) => (k === 0 ? 0 : len(sub(s, strikes[k - 1])) * fps));
-  let tb = 1;
-  for (let k = 1; k <= ki; k++) if (ub[k] > ub[tb]) tb = k;
+  const at = (k) => Math.min(F - 1, Math.max(1, k));
+  const kf = at(Math.floor(b.clip.events.impact * fps + 1e-6)), kcl = at(Math.ceil(b.clip.events.impact * fps - 1e-6));
+  const best = (k) => {
+    let p = 1;
+    for (let j = 1; j <= k; j++) if (ub[j] > ub[p]) p = j;
+    return { k, p, r: ub[k] / (ub[p] || 1e-9) };
+  };
+  const cand = [best(kf), best(kcl)].sort((x, y) => y.r - x.r)[0];
+  const ki = cand.k, tb = cand.p;
   out.push(M("attack.peak", "motion", true, ki - tb <= m.sec(LIMITS.peakAtImpact) && ub[ki] >= 0.6 * ub[tb], `peak ${tb}, impact ${ki}, arriving at ${r4(ub[ki] / (ub[tb] || 1e-9))} of peak`, `impact - peak <= ${LIMITS.peakAtImpact} s, >= 0.6`, "the blow lands at speed (not eased into the target)", tb));
   out.push(M("attack.stop", "motion", true, after <= LIMITS.decel * peak, r4(after / peak), LIMITS.decel, "speed 67 ms after impact / peak (the blow meets the target)", kc + m.sec(0.067)));
   out.push(M("attack.recover", "motion", true, recover >= m.sec(LIMITS.recover), r4(recover / fps), LIMITS.recover, "seconds of unhurried recovery after the blow"));
@@ -1182,6 +1207,14 @@ function attack(m) {
   const arc = bulge / (len(chord) || 1);
   out.push(M("craft.commit", "motion", false, commit >= 0.13 * Hh && lag <= 0 && lag >= -4, `${r4(commit / Hh)} H, chest peak ${lag} frames from the weapon's`, ">= 0.13 H, chest leads by 0-4 frames", "the body drives the blow"));
   out.push(M("craft.arc", "motion", false, arc >= 0.12, r4(arc), 0.12, "the weapon's path bulges from its chord (an arc, not a poke)"));
+  // Snap and a clean recovery (scored; blind judges preferred, 4 of 4, a hold at the top and a
+  // 0.13 s strike to a 0.2 s ramp, and a recovery in one smooth arc to one with a whip back to
+  // guard: second differences of the speed up to 0.107 of the peak against 0.015).
+  const recov = u.slice(Math.min(F - 1, kc + m.sec(0.1)));
+  let kink = 0;
+  for (let k = 1; k + 1 < recov.length; k++) kink = Math.max(kink, Math.abs(recov[k + 1] - 2 * recov[k] + recov[k - 1]) / peak);
+  out.push(M("craft.snap", "motion", false, (kc - ka) / fps <= LIMITS.snapStrike, r4((kc - ka) / fps), LIMITS.snapStrike, "seconds from the turnaround to the impact (a snappy blow)"));
+  out.push(M("craft.recovery", "motion", false, kink <= LIMITS.recoveryKink, r4(kink), LIMITS.recoveryKink, "the recovery's sharpest change of speed in a frame / the blow's peak (one smooth arc back)"));
   // Reading at the game's facings: travel, silhouette contrast, the weapon outside the body.
   let travelMin = Infinity, travelMax = 0, iouK = 0, iouR = 0, wOut = Infinity, worstDir = "", dirs = [];
   let travelOk = true, keysOk = true;

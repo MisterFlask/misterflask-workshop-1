@@ -37,6 +37,8 @@ import { buildPosed } from "./assets/registry.js";
 export const FPS = 30;
 
 const VEC = ["pelvis", "fl", "fr", "rHand", "lHand", "rElbow", "lElbow", "rRot", "lRot", "root", "rootRot"];
+/** Channels that are rotations (Euler [x, y, z], R = Rz * Ry * Rx): interpolated as rotations. */
+const ROT = ["rRot", "lRot", "rootRot"];
 const SCALAR = ["lean", "twist", "roll", "headYaw", "headTilt", "arrow", "string", "settle"];
 const REST = { arrow: 1, string: 1 };
 const restOf = (ch) => (VEC.includes(ch) ? [0, 0, 0] : REST[ch] ?? 0);
@@ -89,6 +91,10 @@ function prepare(def) {
     // Tangents per component, periodic when a loop's track spans the whole clip.
     const periodic = !!def.loop && pts[0].t < 1e-9 && Math.abs(pts[pts.length - 1].t - dur) < 1e-9;
     const ts = pts.map((p) => p.t);
+    if (ROT.includes(ch)) {
+      tracks[ch] = rotationTrack(pts, ts, periodic);
+      continue;
+    }
     const m = pts[0].v.map((_, j) => tangents(ts, pts.map((p) => p.v[j]), periodic));
     tracks[ch] = { pts, m };
   }
@@ -115,7 +121,91 @@ function tangents(ts, vs, loop) {
   return m;
 }
 
-function sampleTrack({ pts, m }, t) {
+// --- rotations -------------------------------------------------------------------------------------
+// A rotation channel's keys are slerped (the shortest turn between them) instead of interpolating
+// their Euler angles one by one, which wobbles off the arc and, near gimbal lock, swings through
+// unrelated orientations. Its pace is a monotone cubic on the angle turned so far (the same eases
+// as any channel), with a held instant where the turn reverses.
+
+/** The quaternion [w, x, y, z] of Euler [x, y, z] (R = Rz * Ry * Rx, as units.js eulerTurn). */
+function quatOf([ax, ay, az]) {
+  const cx = Math.cos(ax / 2), sx = Math.sin(ax / 2), cy = Math.cos(ay / 2), sy = Math.sin(ay / 2), cz = Math.cos(az / 2), sz = Math.sin(az / 2);
+  return [cz * cy * cx + sz * sy * sx, cz * cy * sx - sz * sy * cx, cz * sy * cx + sz * cy * sx, sz * cy * cx - cz * sy * sx];
+}
+
+/** Euler [x, y, z] of a unit quaternion (R = Rz * Ry * Rx). */
+function eulerOf([w, x, y, z]) {
+  const r21 = 2 * (y * z + w * x), r22 = 1 - 2 * (x * x + y * y), r20 = 2 * (x * z - w * y), r10 = 2 * (x * y + w * z), r00 = 1 - 2 * (y * y + z * z);
+  return [Math.atan2(r21, r22), -Math.asin(Math.max(-1, Math.min(1, r20))), Math.atan2(r10, r00)];
+}
+
+const qdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+
+function slerp(a, b, u) {
+  const d = Math.min(1, qdot(a, b));
+  if (d > 0.9995) {
+    const q = a.map((x, j) => x + (b[j] - x) * u);
+    const l = Math.hypot(...q);
+    return q.map((x) => x / l);
+  }
+  const th = Math.acos(d), s = Math.sin(th);
+  const wa = Math.sin((1 - u) * th) / s, wb = Math.sin(u * th) / s;
+  return a.map((x, j) => wa * x + wb * b[j]);
+}
+
+/** The axis of the turn from a to b (a world-frame vector, its length the half-angle's sine). */
+function turnAxis(a, b) {
+  // b * conj(a)
+  const [aw, ax, ay, az] = a, [bw, bx, by, bz] = b;
+  return [aw * bx - bw * ax - (by * az - bz * ay), aw * by - bw * ay - (bz * ax - bx * az), aw * bz - bw * az - (bx * ay - by * ax)];
+}
+
+function rotationTrack(pts, ts, periodic) {
+  const q = [];
+  for (const p of pts) {
+    const r = quatOf(p.v);
+    q.push(q.length && qdot(q[q.length - 1], r) < 0 ? r.map((x) => -x) : r);
+  }
+  // The angle turned so far at each key, and its tangents: a monotone cubic, held where the turn
+  // reverses (its axis flips), as a component's tangent is zero at its turning point.
+  const s = [0];
+  for (let k = 1; k < q.length; k++) s.push(s[k - 1] + 2 * Math.acos(Math.min(1, Math.abs(qdot(q[k - 1], q[k])))));
+  const m = tangents(ts, s, periodic);
+  for (let k = 1; k + 1 < q.length; k++) {
+    const a1 = turnAxis(q[k - 1], q[k]), a2 = turnAxis(q[k], q[k + 1]);
+    if (a1[0] * a2[0] + a1[1] * a2[1] + a1[2] * a2[2] <= 0) m[k] = 0;
+  }
+  return { pts, q, s, m, rot: true };
+}
+
+function sampleRotation({ pts, q, s, m }, t) {
+  if (t <= pts[0].t) return pts[0].v.slice();
+  const last = pts[pts.length - 1];
+  if (t >= last.t) return last.v.slice();
+  let k = 0;
+  while (k + 1 < pts.length && pts[k + 1].t <= t) k++;
+  const a = pts[k], b = pts[k + 1];
+  const h = b.t - a.t, u = (t - a.t) / h, ds = s[k + 1] - s[k];
+  let f;
+  if (a.i === "hold") f = 0;
+  else if (a.i === "linear") f = u;
+  else if (a.i === "in") f = u * u;
+  else if (a.i === "out") f = u * (2 - u);
+  else if (ds < 1e-9) f = u;
+  else {
+    const h00 = 2 * u * u * u - 3 * u * u + 1, h10 = u * u * u - 2 * u * u + u, h01 = -2 * u * u * u + 3 * u * u, h11 = u * u * u - u * u;
+    f = (h00 * s[k] + h10 * h * m[k] + h01 * s[k + 1] + h11 * h * m[k + 1] - s[k]) / ds;
+  }
+  if (f <= 0) return a.v.slice();
+  if (f >= 1) return b.v.slice();
+  return eulerOf(slerp(q[k], q[k + 1], f));
+}
+
+function sampleTrack(track, t) {
+  return track.rot ? sampleRotation(track, t) : sampleLinear(track, t);
+}
+
+function sampleLinear({ pts, m }, t) {
   if (t <= pts[0].t) return pts[0].v.slice();
   const last = pts[pts.length - 1];
   if (t >= last.t) return last.v.slice();

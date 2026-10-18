@@ -4,7 +4,8 @@
 // (r3d-lab/anim/sheet.mjs). Node only, no browser (except `lab`).
 //
 //   node tools/r3d-anim.mjs check [--recipe unit.warrior[,unit.archer]] [--clip attack] [--param human]
-//        [--variant 0] [--races] [--json FILE]
+//        [--variant 0] [--races] [--json FILE] [--clips FILE,..]
+//     (--clips, any command: more clip modules, e.g. r3d-lab/anim/experiments/anim-soldier-v1.js)
 //     every clip (or the ones named) through the validator; --races also every race and variant
 //     (hard metrics only). Exit 1 when a hard metric fails.
 //   node tools/r3d-anim.mjs sheet --out DIR [--recipe ..] [--clip ..] [--param ..] [--yaw 0.25]
@@ -25,15 +26,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { ROOT, parseArgs } from "./web-lib.mjs";
 
 const PLAY = path.join(ROOT, "crates", "ffh-play");
-const args = parseArgs(process.argv.slice(3), { recipe: "v", clip: "v", param: "v", variant: "v", races: "flag", json: "v", out: "v", yaw: "v", blind: "flag", times: "v", ts: "v", gpu: "flag", before: "v" });
+const args = parseArgs(process.argv.slice(3), { recipe: "v", clip: "v", param: "v", variant: "v", races: "flag", json: "v", out: "v", yaw: "v", blind: "flag", times: "v", ts: "v", gpu: "flag", before: "v", clips: "v" });
 const cmd = process.argv[2];
 
 await import(path.join(PLAY, "assets/app/r3d/assets/index.js"));
 await import(path.join(PLAY, "assets/app/r3d/assets/anims.js"));
 const A = await import(path.join(PLAY, "assets/app/r3d/anim.js"));
+// --clips FILE,..: more clip modules (r3d-lab/anim/experiments: the blind-authored controls of
+// docs/ANIMATION.md section 7), registered over the game's.
+for (const f of args.clips ? args.clips.split(",") : []) await import(pathToFileURL(path.resolve(f)).href);
 const K = await import(path.join(PLAY, "r3d-lab/anim/check.mjs"));
 
 /** Races a clip is swept over with --races: every humanoid race (and a dark one). */
@@ -41,6 +46,7 @@ export const RACES = ["human", "elf", "dwarf", "orc", "goblin", "lizard", "undea
 
 function jobs() {
   const out = [];
+  if (args.recipe) for (const r of args.recipe.split(",")) if (!A.clipNames(r).length) throw new Error(`no clips for ${r} (an experiment needs --clips FILE; see docs/ANIMATION.md section 7)`);
   for (const recipe of A.animatedRecipes()) {
     if (args.recipe && !args.recipe.split(",").includes(recipe)) continue;
     for (const clip of A.clipNames(recipe)) {
@@ -205,7 +211,7 @@ if (cmd === "judge-pack") {
     for (const [i, file] of args.before.split(",").entries()) {
       // The module imports "../anim.js": a copy beside the pack imports the engine by its path.
       const anim = new URL(`file://${path.join(PLAY, "assets/app/r3d/anim.js")}`).href;
-      const src = fs.readFileSync(file, "utf8").replace(/from "\.\.\/anim\.js"/g, `from "${anim}"`);
+      const src = fs.readFileSync(file, "utf8").replace(/from "(?:\.\.\/)+(?:assets\/app\/r3d\/)?anim\.js"/g, `from "${anim}"`);
       const copy = path.join(dir, `before-${i}.mjs`);
       fs.writeFileSync(copy, src);
       const was = new Map([...current.keys()].map((k) => [k, A.clipOf(...k.split("/"))]));

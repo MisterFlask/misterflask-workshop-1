@@ -3,7 +3,7 @@
 // spear upright in the right hand at the shoulder, the shield on the left arm in front), in a
 // human's plots (figure() scales them to the race).
 
-import { clips, turn } from "../anim.js";
+import { clips, turn } from "../../../assets/app/r3d/anim.js";
 
 // The spear's rest direction (spearmanSpec `dir`): rRot aims it from there.
 const SPEAR = [-0.1, 1, 0.2];
@@ -62,20 +62,20 @@ clips("unit.spearman", {
       // Wind-up (anticipation): coiled on the rear foot, shoulders turned away, the spear drawn
       // back with its point a little high, the shield up; the front foot lifts to step in.
       { t: 0.34, pose: { pelvis: [0.004, -0.014, -0.034], lean: -0.07 } },
-      { t: 0.36, pose: { twist: -0.34, headYaw: 0.12, lHand: [0, 0.02, 0.03], rElbow: [0.2, 0.5, -0.3] } },
+      { t: 0.36, pose: { twist: -0.34, headYaw: 0.12, lHand: [0, 0.02, 0.03], rElbow: [-0.2, 0.1, -0.4] } },
       { t: 0.37, pose: { fl: [0, 0.022, 0.04] } },
-      { t: 0.38, i: "in", pose: { rHand: [-0.015, -0.025, -0.19] } },
+      { t: 0.38, i: "in", pose: { rHand: [-0.015, -0.04, -0.19] } },
       // The thrust: the front foot stamps down, hips then shoulders then arm drive through; the
       // hand accelerates into the impact.
       { t: 0.44, i: "hold", pose: { fl: [0, 0, 0.085] } },
-      { t: 0.46, pose: { rHand: [0.015, -0.02, 0.08], rRot: aim([0.12, -0.03, 1]), rElbow: [-0.2, 1.4, 0.7] } },
+      { t: 0.46, pose: { rHand: [0.005, -0.025, 0.1], rRot: aim([0.12, -0.03, 1]) } },
       { t: 0.48, pose: { twist: 0.3 } },
-      { t: 0.5, pose: { pelvis: [0, -0.032, 0.07], lean: 0.27, headYaw: -0.12, lHand: [-0.01, 0.01, 0.035], headTilt: 0 } },
-      { t: 0.51, pose: { rHand: [0.019, -0.019, 0.089] } },
+      { t: 0.5, pose: { pelvis: [0, -0.032, 0.07], lean: 0.27, headYaw: -0.12, lHand: [-0.01, 0.01, 0.05], rElbow: [0, -0.2, 0], headTilt: 0 } },
+      { t: 0.51, pose: { rHand: [0.01, -0.02, 0.12] } },
       // Follow-through: the arm has stopped, the body keeps going and sinks into the lunge, the
       // head nods a beat late and the point dips.
       { t: 0.57, pose: { pelvis: [0, -0.037, 0.073], lean: 0.3, headTilt: 0.08 } },
-      { t: 0.62, pose: { twist: 0.24, rRot: aim([0.12, -0.07, 1]), rElbow: [-0.2, 1.4, 0.7] } },
+      { t: 0.62, pose: { twist: 0.24, rRot: aim([0.12, -0.07, 1]) } },
       { t: 0.65, pose: { rHand: [0.005, -0.02, 0.08] } },
       // Recovery: push back off the front foot, step it home, raise the spear.
       { t: 0.66, pose: { fl: [0, 0, 0.085] } },
@@ -95,7 +95,7 @@ clips("unit.spearman", {
     pivot: [0, 0, -0.15],
     away: [0, 0, -1],
     fall: [0, 0, -1],
-    events: { hit: 0.03, ground: 0.9, rest: 1.25 },
+    events: { hit: 0.03, ground: 0.88, rest: 1.25 },
     contacts: { L: [[0, 0.4]], R: [[0, 0.1], [0.3, 0.5]] },
     keys: [
       // The blow lands: the chest is driven back; the head and the arms, left behind for an
@@ -115,16 +115,17 @@ clips("unit.spearman", {
       // From here the lowest point rests on the ground whatever the race's girth (settle).
       { t: 0.5, pose: { settle: 0 } },
       { t: 0.54, pose: { settle: 1 } },
-      { t: 0.7, pose: { pelvis: [0.004, -0.045, -0.105] } },
-      { t: 0.9, i: { rootRot: "out", fl: "in", fr: "in", default: "smooth" }, pose: { rootRot: [-1.5708, 0, 0.12], pelvis: [0, -0.012, -0.11], lean: -0.07, twist: -0.08, fl: [0.02, 0.03, -0.04], fr: [-0.01, 0.02, -0.03], rHand: [-0.08, 0.06, -0.02], lHand: [0, 0, -0.04], headTilt: -0.05, rRot: aim([-0.6, 1, 0.3]) } },
-      // The back hits the ground: the shoulders rebound a little and fall back, the legs drop
-      // after it under their own weight, the spear arm slaps down, the head rolls aside.
-      { t: 0.9667, pose: { rootRot: [-1.5208, 0, 0.12] } },
-      { t: 0.98, pose: { rHand: [-0.1, 0.07, -0.035], rRot: aim([-0.6, 1, -0.14]) } },
-      { t: 1.1, pose: { rootRot: [-1.5708, 0, 0.12] } },
+      { t: 0.7, pose: { pelvis: [0.004, -0.055, -0.105] } },
+      { t: 0.88, pose: { rootRot: [-1.5708, 0, 0.12], pelvis: [0, -0.012, -0.11], lean: -0.06, twist: -0.08, fl: [0.02, 0.03, -0.04], fr: [-0.01, 0.02, -0.03], rHand: [-0.08, 0.06, -0.02], lHand: [0, 0, -0.04], headTilt: -0.05, rRot: aim([-0.6, 1, 0.3]) } },
+      // The back hits the ground: the shoulders rebound a little, the legs and the spear arm slam
+      // down after it, the head rolls aside.
+      { t: 0.98, pose: { fl: [0.03, 0, -0.21], fr: [-0.01, 0, -0.09], rHand: [-0.1, 0.07, -0.035], rRot: aim([-0.6, 1, -0.14]) } },
       { t: 1.05, pose: { headTilt: -0.6, headYaw: -0.45 } },
-      { t: 1.2, pose: { fl: [0.05, 0.005, -0.22], fr: [-0.01, 0, -0.09], lHand: [0.01, 0, -0.05] } },
+      { t: 1.2, pose: { fl: [0.05, 0.005, -0.22], lHand: [0.01, 0, -0.05] } },
     ],
-    bumps: [{ ch: "rHand", t: 31 / 30, w: 0.1, v: [0, 0, 0.012] }],
+    bumps: [
+      { ch: "rootRot", t: 0.95, w: 0.07, v: [0.09, 0, 0] },
+      { ch: "rHand", t: 1.03, w: 0.05, v: [0, 0, 0.012] },
+    ],
   },
 });

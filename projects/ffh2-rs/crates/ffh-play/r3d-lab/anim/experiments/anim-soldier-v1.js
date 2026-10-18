@@ -13,7 +13,7 @@
 // (rRot) is authored as blade directions (`blade` below) because a blow turns the blade through
 // half a circle, which per-component Euler keys would not follow.
 
-import { clips } from "../anim.js";
+import { clips } from "../../../assets/app/r3d/anim.js";
 
 // --- the blade: directions in, rRot keys out ----------------------------------------------------
 
