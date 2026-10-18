@@ -31,7 +31,7 @@ import { MAT, icosphere, MeshBuilder } from "../mesh.js";
 import { pal, jitter, MANA } from "./palette.js";
 import { noise3, hashf } from "../noise.js";
 import { vnorm, vsub, vcross, vadd, vscale, clamp } from "../math.js";
-import { KIND, FEAT, GROUND, isHell } from "../world.js";
+import { KIND, FEAT, GROUND, DRAFT, isHell } from "../world.js";
 
 const TAU = Math.PI * 2;
 
@@ -898,6 +898,8 @@ function buildSilt(mb, r) {
 /** Grass tufts: `n` clumps of blades within `spread` of the centre, blades up to `h` tall. */
 function tufts(mb, r, n, spread, h, cols) {
   const m0 = mb.mark();
+  const mat0 = mb.mat;
+  mb.mat = MAT.BLADE;
   for (let k = 0; k < n; k++) {
     const cx = r.range(-spread, spread), cz = r.range(-spread, spread);
     const blades = r.int(5, 8);
@@ -911,6 +913,7 @@ function tufts(mb, r, n, spread, h, cols) {
     }
   }
   mb.heightSway(m0, 0, h, 0.7);
+  mb.mat = mat0;
 }
 
 recipe("feat.silt", { variants: 4, build: (mb, r) => buildSilt(mb, r) });
@@ -4275,7 +4278,7 @@ function improvementOf(type, ctx) {
   const r = ctx.r;
   const unit = !!ctx.unit;
   const yj = (a = 0.25) => r.range(-a, a);
-  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.emit ? { emit: o.emit } : {}), ...(o.tint ? { tint: o.tint } : {}) });
+  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.draft ? { draft: o.draft } : {}), ...(o.emit ? { emit: o.emit } : {}), ...(o.tint ? { tint: o.tint } : {}) });
   // Old stone in the hells is scorched dark (pale ruins would glare on the black ground).
   const scorch = isHell(ctx.ground) ? [0.5, 0.44, 0.42] : undefined;
   // Mirror the layout now and then (never onto the resource marker's front-left corner).
@@ -4328,9 +4331,9 @@ function improvementOf(type, ctx) {
     case "WORKSHOP":
       return [part("imp.workshop", -0.08 * flip, unit ? -0.22 : -0.14, { scale: 1.4, emit: [{ dx: 0.07, dy: 0.18, dz: -0.01, color: "#ff8a30", size: 0.007, rise: 0.6, count: 3, spread: 0.01 }, { dx: 0.07, dy: 0.19, dz: -0.01, color: "#8a8480", size: 0.035, rise: 0.1, count: 4, spread: 0.01, smoke: true }] })];
     case "FISHING_BOATS":
-      return [part("imp.boat", -0.16, -0.12, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5), float: true, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5) + Math.PI * (r() < 0.5 ? 1 : 0), float: true, scale: 1.1 })];
+      return [part("imp.boat", -0.16, -0.12, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5), float: true, draft: DRAFT, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: r.int(0, 1), yaw: r.range(-0.5, 0.5) + Math.PI * (r() < 0.5 ? 1 : 0), float: true, draft: DRAFT, scale: 1.1 })];
     case "WHALING_BOATS":
-      return [part("imp.boat", -0.15, -0.1, { variant: 2, yaw: r.range(-0.5, 0.5), float: true, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: 0, yaw: r.range(-0.5, 0.5) + Math.PI, float: true, scale: 1.05 })];
+      return [part("imp.boat", -0.15, -0.1, { variant: 2, yaw: r.range(-0.5, 0.5), float: true, draft: DRAFT, scale: 1.25 }), part("imp.boat", 0.2, 0.08, { variant: 0, yaw: r.range(-0.5, 0.5) + Math.PI, float: true, draft: DRAFT, scale: 1.05 })];
     case "DUNGEON":
       return part("imp.dungeon", 0, unit ? -0.2 : -0.08, { yaw: yj(0.2), scale: 1.25, emit: [{ dy: 0.05, dz: 0.12, color: "#7ad870", size: 0.01, rise: 0.15, count: 3, spread: 0.05 }] });
     case "BARROW":
@@ -4344,7 +4347,7 @@ function improvementOf(type, ctx) {
     case "MONSTER_SKELETON":
       return part("imp.bones", 0, unit ? -0.2 : -0.04, { yaw: r.range(0, TAU), scale: 1.35, tint: scorch });
     case "SHIP_WRECK":
-      return part("imp.wreck", 0.05, -0.08, { yaw: r.range(0, TAU), float: true, scale: 1.2 });
+      return part("imp.wreck", 0.05, -0.08, { yaw: r.range(0, TAU), float: true, draft: DRAFT, scale: 1.2 });
     case "BEAR_DEN":
     case "LION_DEN":
       return part("imp.den", 0, unit ? -0.2 : -0.08, { param: t === "LION_DEN" ? "lion" : "bear", yaw: yj(0.3), scale: 1.35 });

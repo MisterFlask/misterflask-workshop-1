@@ -181,17 +181,24 @@ not posed or swayed, so the marks ride on swaying leaves and never swim under th
   pressed hardest wins, so a surface reads as stroke laid over stroke. Tones come from a triangular
   distribution: most marks near the middle, few strong accents (no polka dots). Foliage takes leaf
   clusters at two sizes (a few to a crown at 96 px a plot, more close up), everything else longer
-  strokes; each size fades out as it shrinks below a few pixels.
+  strokes; each size fades out as it shrinks below a few pixels. On a crown a dark mark fades toward
+  the fully lit planes and a light one toward the turned-away planes, so the marks turn the form at
+  its turning instead of punching holes in the light mass. Matte and painted props (rock, timber,
+  plaster) take the strokes strongest: their flat facets are where the brush must show.
 * **They push the light**: a mark's tone moves the sun term before the light/shade band
   (`lightAtJ`), so where light turns to shade the boundary is laid in marks, each light or dark, and
   likewise a cast shadow's soft edge. Light marks lean warm, dark ones cool (broken colour).
-* **Gouache values**: foliage's final value is laid in flat half-stop steps, each mark shifting
+* **Gouache values**: a crown's final value is laid in flat half-stop steps, each mark shifting
   where the steps fall, so a crown reads as a few values of overlapping marks rather than a shaded
   ball (the baked colour ramp, the ambient and the occlusion gradients are all flattened alike,
-  while the hues stay broken). Other props get a gentler version (flat-painted planes). Units get a
-  light hand and no steps: they must read at a glance.
+  while the hues stay broken). Other props get a gentler version (flat-painted planes), the marks
+  deciding more of where the steps fall on matte ones. Units get a light hand and no steps: they
+  must read at a glance.
 * Crowns lose most of the sky rim (it models them as balls), and their lobes merge in the ink pass
-  (above).
+  (above). Only a prop's foliage is a crown: a unit's foliage (a wing membrane, a treant's leaves,
+  moss) keeps the unit's light hand, its full line and its own object id (the x-ray ghost knows a
+  figure's own surface by it), and blades of grass and reed (`MAT.BLADE`) are lit as leaves but
+  drawn as lines, with the full ink and kept sharp by the paint filter.
 
 ### 5.2 Water
 
@@ -202,28 +209,48 @@ under and around it:
 
 * **Seen through**: the floor (and a hull's keel, a pier's legs) bent by the waves and absorbed along
   the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
-  turquoise, then the deep's own blue. Rivers carry silt and close over their beds sooner; their
-  edges dissolve into the banks. The shallow floor carries **caustics** (two drifting cellular nets
-  in `TERRAIN_FS`).
+  turquoise, then the deep's own blue. Only the waves' tilt bends the view (a flat surface is seen
+  straight through), and less in the shallows. Rivers carry silt and close over their beds sooner;
+  their edges dissolve into the banks, and where a ribbon runs out over the sea the sea shows
+  instead. At the far zooms the ground is coarse, so the water never reads clearer than the height
+  field's true depth (else a small lake reads as a pale salt pan). The floor carries **caustics**
+  where it is seen: two drifting cellular nets, warped into curves, found where the view ray meets
+  the floor and added through the water (`WATER_FS`), dimmed at the gameplay zoom (a close-up
+  detail).
 * **Mirroring**: the reflected ray is marched through the grabbed depth (banks, trees, sails); where
   it finds nothing, a painted sky with the very cloud field that shadows the land, met at the
   clouds' height, so cloud reflections drift. Fresnel would make the mirror all but invisible from
   the game's camera, so its strength is painted: a floor plus Fresnel toward the horizon, broken into
-  level strokes (warped, drifting) on the sea and along the current on a river.
+  level strokes (warped, drifting) on the sea and along the current on a river. The deep mirrors
+  less and tints what it mirrors with its own blue, so open sea stays darker than the shelf (coast
+  against ocean reads by value).
 * **Waves**: a swell of long crests travelling across the map's diagonal under two drifting ripple
   layers, all anchored to the map (periodic over a wrapping map); a river's ripples are drawn out
   along its current (its direction recovered per pixel from how the downstream distance changes on
-  screen) and run fastest mid-channel.
+  screen) and run fastest mid-channel (a fast layer weighing most there, a slow one at the banks:
+  each layer moves at one speed, since a speed varying across the channel would shear the pattern
+  further every second).
 * **Glitter**: the sun is on the camera's side, so a flat sea never reflects it; small steep facets
   on the swell's crests do, flashing as short level marks that twinkle -- in the sun only, in sight
-  only, and not once smaller than a pixel. They bloom a little and the paint filter spares them.
-* **Surf**: the swash breathes up and down the beach in lacy foam and rollers run in to it; rivers
-  lace their banks and carry flecks; a foam collar laps wherever something breaks the surface
-  offshore (found from the grabbed depth round the pixel). Floating things sit at a small draft
-  (`dress.js` `DRAFT`), so their keels are in the water.
-* Remembered water lies still; the fog of war and the haze apply to what the water adds, not twice to
-  what is seen through it (the grab has them already). Marsh pools (painted in the terrain) take the
-  water's palette with a drifting sky sheen.
+  only. Each has its own length; as the zoom shrinks the cells a glint keeps about a pixel's width,
+  and fades out only once even its length would be a few pixels. They bloom a little and the paint
+  filter spares them.
+* **Surf**: the swash breathes up and down the beach in lacy foam and rollers run in to it (only
+  where the floor shelves toward a shore: over a flat or bumpy floor the depth's contours would close
+  into rings offshore); rivers lace their banks and carry flecks; a foam collar laps wherever
+  something breaks the surface offshore (found from the grabbed depth round the pixel). The edge of
+  the unexplored is no coast, so no surf is drawn within half a plot of it. Hulls sit at a small
+  draft (`world.js` `DRAFT`: ships, boats, wrecks, swimmers), so their keels are in the water; what
+  lies on the surface (a resource's ripples, a whirlpool, a floe) floats at the sea's level.
+* Remembered water calms: its surface lies flat, without glitter, caustics, the swash's breathing,
+  rolling surf or lapping (only the slow drift of what it mirrors goes on, as cloud shadows drift
+  over remembered land). Across the frontier the moving and the calm values are mixed, never the
+  time itself (time scaled by the fog would shear the waves further every second). The fog of war
+  and the haze apply to what the water adds, not twice to what is seen through it (the grab has
+  them already). Marsh pools (painted in the terrain) are peaty, darker and greener than open water
+  (marsh is land), with a faint drifting sheen.
+* Seeing into the water and the mirror read the grabbed view depth, which only a float target holds:
+  without float colour buffers the water is drawn opaque and unmirrored.
 
 ## 6. Asset recipes
 
@@ -335,8 +362,8 @@ traced through them, nothing is placed on them) and painted as dark parchment be
 burnt-paper frontier. Remembered plots keep their remembered terrain, structures and cities, dimmed
 and cooled; no unit is drawn there (the view has none). Particles fade out of sight. The water
 reveals nothing either: it mirrors and is seen through only to what was already drawn (the grabbed
-scene), no water is drawn on an unrevealed plot (the parchment below shows, as on land), and
-remembered water lies still.
+scene), no water is drawn on an unrevealed plot (the parchment below shows, as on land), no surf
+marks the edge of the unexplored as a coast, and remembered water calms (§5.2).
 
 ## 10. The lab, tests and tools
 

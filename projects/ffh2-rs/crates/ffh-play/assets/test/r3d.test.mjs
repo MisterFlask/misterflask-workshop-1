@@ -171,3 +171,18 @@ test("every panel switch has a default; plain turns the painting off but keeps t
     for (const name of ["painterly", "plain"]) assert.ok(PRESETS[name][key] > 0, `${key} is on in ${name}`);
   }
 });
+
+test("a look saved before a switch existed takes that switch from its own preset, not the defaults", async () => {
+  const { loadConfig, PRESETS } = await import("../app/r3d/config.js");
+  const saved = { ...PRESETS.plain, preset: "plain" };
+  for (const key of ["brush", "inkLost", "inkColour"]) delete saved[key];
+  const prev = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => JSON.stringify(saved), setItem() {} } });
+  try {
+    const cfg = loadConfig();
+    for (const key of ["brush", "inkLost", "inkColour"]) assert.equal(cfg[key], 0, `${key} stays off in a saved plain look`);
+  } finally {
+    if (prev) Object.defineProperty(globalThis, "localStorage", prev);
+    else delete globalThis.localStorage;
+  }
+});

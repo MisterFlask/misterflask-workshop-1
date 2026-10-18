@@ -259,7 +259,10 @@ export class Pipeline {
       // The water writes its depth (the overlays and markers sit on its surface).
       gl.viewport(0, 0, W, H);
       gl.depthMask(true);
-      scene.drawWater(this.p.water, { ...SU, uSceneColor: this.t.sceneCopy, uSceneND: this.t.ndCopy, uReflect: cfg.reflections ?? 1, uRefract: cfg.refraction ?? 1 });
+      // Seeing into the water and the mirror read the grabbed view depth, which only a float target
+      // holds (an 8-bit one clamps it to 1): without one the water is drawn opaque, unmirrored.
+      const hdr = this.hdr ? 1 : 0;
+      scene.drawWater(this.p.water, { ...SU, uSceneColor: this.t.sceneCopy, uSceneND: this.t.ndCopy, uReflect: (cfg.reflections ?? 1) * hdr, uRefract: (cfg.refraction ?? 1) * hdr });
     });
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
@@ -338,6 +341,8 @@ export class Pipeline {
         uVignette: cfg.vignette,
         uInkLost: cfg.inkLost ?? 1,
         uInkColour: cfg.inkColour ?? 0.5,
+        uMapSize: [scene.world.w, scene.world.h],
+        uWrapX: scene.world.wrapX ? 1 : 0,
         uTan: fr.tan,
         uInvView: fr.invView,
       });

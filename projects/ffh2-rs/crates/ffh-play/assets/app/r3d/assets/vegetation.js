@@ -1223,7 +1223,7 @@ recipe("bush", { variants: 6, build: (mb, r, { variant }) => buildBush(mb, r, va
 function buildReeds(mb, r, variant) {
   const n = 22 + (variant % 2) * 4;
   const base = pal("#34452a"), tip = pal(PAL.reed), pale = pal("#6f7c40");
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.BLADE;
   for (let k = 0; k < n; k++) {
     const a = r.range(0, TAU), d = Math.sqrt(r()) * 0.045;
     const p = [Math.cos(a) * d, -0.02, Math.sin(a) * d];
@@ -1408,7 +1408,7 @@ recipe("plant.mushroom.glow", { variants: 4, build: (mb, r, { variant }) => buil
 function buildGrass(mb, r, variant) {
   const n = 12 + variant * 2;
   const base = pal("#56662f"), tip = pal(variant % 2 ? "#a8a058" : "#8e9a4a");
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.BLADE;
   for (let k = 0; k < n; k++) {
     const a = r.range(0, TAU), d = Math.sqrt(r()) * 0.025;
     const la = a + r.range(-0.5, 0.5);

@@ -92,6 +92,12 @@ const BASE = [0.035, -0.42, -0.12, 0.1, 0.1, 0.1, 0.025];
 
 export const SEA = 0;
 
+/** How deep a hull sits in the water: its keel is under the surface, so the water is seen over it
+ *  (refracted, tinted) and laps at its waterline in a collar of foam (shaders.js WATER_FS). Only
+ *  hulls (ships, boats, wrecks, swimmers) take it; what lies on the surface (a resource's ripples, a
+ *  whirlpool, a floe) floats at the sea's level. */
+export const DRAFT = 0.012;
+
 /** Where the hell terrains begin (corrupted ground glows, ash falls). */
 export function isHell(g) {
   return g === GROUND.BURNING_SANDS || g === GROUND.BROKEN_LANDS || g === GROUND.PERDITION;

@@ -12,11 +12,7 @@ import * as T from "../tiles.js";
 import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
-import { KIND, FEAT, GROUND, SEA } from "./world.js";
-
-// How deep a floating thing sits in the water: its keel is under the surface, so the water is seen
-// over it (refracted, tinted) and laps at its waterline in a collar of foam (shaders.js WATER_FS).
-const DRAFT = 0.012;
+import { KIND, FEAT, GROUND, SEA, DRAFT } from "./world.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -162,7 +158,8 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
-        const yy = o.float ? Math.max(SEA - DRAFT, H(mx, my)) : H(mx, my);
+        // A floating thing rides at the sea's level, a hull a little under it (its draft).
+        const yy = o.float ? Math.max(SEA - (o.draft ?? 0), H(mx, my)) : H(mx, my);
         out.push(inst(asset, mx, yy + (o.lift ?? 0), -my, { plot: i, id: o.id ?? idOf(`s${i}:${out.length - base}`), ...o }));
       };
 
@@ -206,7 +203,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       const feats = CATALOG.feature?.(feat, ctx) ?? [];
       for (const f of feats) {
         if (city && !f.always) continue;
-        place(f.asset, f.dx ?? 0, f.dz ?? 0, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: f.scale ?? 1, yaw: f.yaw ?? r.range(0, 6.28), float: f.float, tint: f.tint });
+        place(f.asset, f.dx ?? 0, f.dz ?? 0, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: f.scale ?? 1, yaw: f.yaw ?? r.range(0, 6.28), float: f.float, draft: f.draft, tint: f.tint });
       }
       // The improvement's structure (not under a city: the settlement replaces it).
       if (imp && !city) {
@@ -219,7 +216,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         for (const im of parts) {
           const px = im.dx ?? spot[0], pz = im.dz ?? spot[1];
           const yaw = im.yaw ?? r.range(-0.4, 0.4), sc = im.scale ?? 1;
-          place(im.asset, px, pz, { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: sc, sx: im.sx, sy: im.sy, sz: im.sz, yaw, float: im.float, id: im.id ?? iid, team, tint: im.tint });
+          place(im.asset, px, pz, { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: sc, sx: im.sx, sy: im.sy, sz: im.sz, yaw, float: im.float, draft: im.draft, id: im.id ?? iid, team, tint: im.tint });
           for (const e of im.emit ?? []) emitters.push(partEmitter(e, x, y, px, pz, yaw, sc, im.float, H));
         }
       }
@@ -419,6 +416,7 @@ export function dressUnits(world, map) {
       const asset = pick(look.asset, "basic.unit");
       const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
       const ground = standHeight(world, mx, my, foot);
+      // Every floating unit is a hull or a swimmer: it sits at the draft.
       const yy = look.float ? Math.max(SEA - DRAFT, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
       const it = inst(asset, mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
       it.uid = u.id;

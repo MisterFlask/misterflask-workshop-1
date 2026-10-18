@@ -24,6 +24,7 @@ export const MAT = {
   SKIN: 5,
   GLOW_TEAM: 6, // emissive in the owner's colour (banners' lights, runes)
   WATER: 7,
+  BLADE: 8, // grass and reed blades: lit as leaves, drawn as lines (not massed like a crown)
 };
 
 /** Animation groups of a unit's body (units.js poses them in the vertex shader). */

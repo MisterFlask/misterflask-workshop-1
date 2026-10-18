@@ -150,7 +150,10 @@ export function loadConfig() {
   } catch {
     saved = {};
   }
-  const cfg = { ...DEFAULTS, ...saved };
+  // Keys added since the config was saved come from the preset it was saved under, not from the
+  // defaults (a plain look saved before the brushwork existed must not gain brush marks).
+  const base = PRESETS[saved.preset] ? { ...DEFAULTS, ...PRESETS[saved.preset] } : DEFAULTS;
+  const cfg = { ...base, ...saved };
   // The map is always in daylight; a light no longer offered (a saved "dusk", "afternoon" or
   // "day") falls back to the single "daylight" look.
   if (!LIGHTING[cfg.lighting]) cfg.lighting = DEFAULTS.lighting;

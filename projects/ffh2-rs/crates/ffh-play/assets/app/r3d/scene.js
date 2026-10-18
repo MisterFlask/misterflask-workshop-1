@@ -460,7 +460,8 @@ export class Scene {
   drawWater(prog, U, depthOnly = false) {
     if (!this.water) return;
     prog.use().set(U);
-    if (!depthOnly) prog.set(this.mapUniforms());
+    // uCoarse: the far zoom's ground is coarse, so the water reads its depth from the height field.
+    if (!depthOnly) prog.set({ ...this.mapUniforms(), uCoarse: this.far ? 1 : 0 });
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy, uRiver: 0 });
       if (!depthOnly) prog.set({ uRiverLift: 0 });
