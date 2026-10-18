@@ -40,7 +40,7 @@ export class Pipeline {
       prop: P("prop", C + SH.PROP_VS, C + SH.PROP_FS),
       water: P("water", C + SH.WATER_VS, C + SH.WATER_FS),
       shadowTerrain: P("shadow-terrain", C + SH.SHADOW_TERRAIN_VS, SH.SHADOW_FS),
-      shadowProp: P("shadow-prop", C + SH.PROP_VS, SH.SHADOW_FS),
+      shadowProp: P("shadow-prop", C + SH.PROP_VS, C + SH.PROP_DEPTH_FS),
       ssao: P("ssao", FULLSCREEN_VS, C + SH.SSAO_FS),
       aoBlur: P("ao-blur", FULLSCREEN_VS, SH.AO_BLUR_FS),
       blur: P("blur", FULLSCREEN_VS, SH.BLUR_FS),
@@ -223,7 +223,7 @@ export class Pipeline {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFbo);
         gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        scene.drawProps(this.p.shadowProp, SU, true);
+        scene.drawProps(this.p.shadowProp, { ...SU, uSunView: 1 }, true);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFboT);
         gl.viewport(0, 0, TERRAIN_SHADOW_SIZE, TERRAIN_SHADOW_SIZE);
         gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -245,14 +245,19 @@ export class Pipeline {
       // a forest is never painted only to be covered. The water is not in it: the sea floor and
       // the river beds are painted (cheaply where too deep to see), grabbed, and the water is
       // drawn last, seen through to them and mirroring what stands around it.
+      // The props' depth also cuts the leafy crowns' rims into leaves (PROP_DEPTH_FS); the props
+      // are then shaded only where that depth is their own (EQUAL), so the colour pass needs no
+      // discard of its own and keeps its early depth test.
       gl.colorMask(false, false, false, false);
       scene.drawTerrain(this.p.shadowTerrain, U, false);
-      scene.drawProps(this.p.shadowProp, U, false);
+      scene.drawProps(this.p.shadowProp, { ...U, uSunView: 0 }, false);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);
       scene.drawTerrain(this.p.terrain, SU, false);
+      gl.depthFunc(gl.EQUAL);
       scene.drawProps(this.p.prop, SU, false);
+      gl.depthFunc(gl.LEQUAL);
     });
     this.timed("water", () => {
       this.grab();

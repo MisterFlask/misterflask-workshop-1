@@ -6,7 +6,9 @@
 // masses (never one sphere) with gaps and overhangs. Foliage is painted in two to three tones baked
 // into the vertices (a cool dark underside, a mid body, a warm sunlit crown) by height and normal,
 // with soft spherical normals per mass and per crown so the light reads as broad painted masses.
-// Conifers are ragged, drooping, star-edged tiers; the ancient trees are silver-barked, buttressed
+// Broadleaf crowns (oak, birch, saplings, bushes) are masses of leaf clusters (`leafClusters`,
+// material LEAF): small pads of leaves, each lit on its own, over darker masses that are the
+// crown's depth, their rims cut into leaves by the renderer's depth prepass. Conifers are ragged, drooping, star-edged tiers; the ancient trees are silver-barked, buttressed
 // giants whose crowns are cedar-like tiers of broad foliage plates (dark teal below, lit sage-gold on
 // top) with a few lantern-fruits; jungle emergents hold flat umbrella plates over banana-leaved
 // understory; willows weep in curtains; burnt and blighted woods are black,
@@ -24,7 +26,7 @@
 
 import { recipe } from "./registry.js";
 import { extendCatalog } from "./catalog.js";
-import { MAT, FLOATS } from "../mesh.js";
+import { MAT, FLOATS, icosphere } from "../mesh.js";
 import { PAL, pal, jitter } from "./palette.js";
 import { noise3 } from "../noise.js";
 import { vadd, vsub, vscale, vdot, vcross, vlen, vnorm, vlerp, clamp, smoothstep } from "../math.js";
@@ -200,7 +202,7 @@ function shadeBark(mb, from, { foot = null, footAmt = 0.6, y0 = 0, y1 = 0.08, up
  *  trunk point `fork` to the outer ones. `layout` lists [angle, dist (of W), dy (of hc), rad (of W),
  *  detail]; `tone` paints each mass's own light, `amp` and `freq` its lumpiness (leafMass). Returns
  *  the foliage mark (the limbs come before it). */
-function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0, self = 0.55, tone = 0, freq = 1.6 }) {
+function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0, self = 0.55, tone = 0, freq = 1.6, clusters = 0 }) {
   // Limbs first (wood), toward the outer masses.
   const outer = layout.filter((m) => m[1] > 0.3).slice(0, limbs);
   mb.color = bark;
@@ -210,15 +212,22 @@ function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat 
     limb(mb, fork, end, limbR, limbR * 0.4, 4, 0.3);
   }
   const m0 = mb.mark();
-  mb.mat = MAT.FOLIAGE;
+  // A crown of leaf clusters: the masses become its shaded depth (simpler, darker, each with its
+  // own normals so their rims cut cleanly), the clusters on them its leaves.
+  mb.mat = clusters ? MAT.LEAF : MAT.FOLIAGE;
   const cores = [];
   for (const [a, d, dy, rad, detail] of layout) {
-    mb.color = jitter(WHITE, r, 0.07);
+    mb.color = vscale(jitter(WHITE, r, 0.07), clusters ? 0.62 : 1);
     const c = [C[0] + Math.cos(a) * d * W, C[1] + dy * hc, C[2] + Math.sin(a) * d * W];
-    leafMass(mb, c, rad * W, { detail: detail ?? 1, amp, squash, flat, seed: r.range(0, 50), self, tone, freq });
+    leafMass(mb, c, rad * W * (clusters ? 0.92 : 1), { detail: clusters ? 0 : detail ?? 1, amp: clusters ? amp * 0.6 : amp, squash, flat, seed: r.range(0, 50), self: clusters ? 0.9 : self, tone, freq });
     cores.push([c, rad * W, squash]);
   }
-  if (nTufts) tufts(mb, r, cores, nTufts, { tone });
+  if (clusters) {
+    leafClusters(mb, r, cores, clusters, W, { centre: C });
+    // A little of the crown's own roundness in every cluster's normals: the crown keeps a lit
+    // and a shaded side as one mass, and the rim the prepass cuts is mostly the crown's outline.
+    mb.sphereNormals(m0, [C[0], C[1] - hc * 0.5, C[2]], 0.4);
+  } else if (nTufts) tufts(mb, r, cores, nTufts, { tone });
   return m0;
 }
 
@@ -254,6 +263,64 @@ function tufts(mb, r, cores, n, { size = [0.32, 0.46], minUp = -0.25, out = 0.82
   }
 }
 
+/** Leaf clusters over a crown's masses (`cores`: [[c, rad, squash]]), the way a painter builds a
+ *  broadleaf crown: `n` small rounded clusters of leaves (radius `size` x `W`) sitting on the
+ *  outside of the masses, more on their upper and outer faces than under their bellies, spread so
+ *  they neither bury one another nor sink into another mass. Each has normals of its own, out of
+ *  its own centre: it takes the light as a small mass of its own (lit on top, dark at its belly,
+ *  the `tone` baked in too), and the masses under it are the crown's shaded depth, seen in the gaps.
+ *  Material LEAF: the depth prepass cuts each cluster's rim into leaves (shaders.js leafCut).
+ *  A cluster is a dome (`leafDome`), about 12 triangles. */
+function leafClusters(mb, r, cores, n, W, { size = [0.16, 0.3], out = 0.8, low = -0.45, centre = null, tone = 0.7, squash = 0.86 } = {}) {
+  const total = cores.reduce((a, c) => a + c[1] * c[1], 0);
+  const made = [];
+  for (let k = 0; k < n * 8 && made.length < n; k++) {
+    let t = r() * total;
+    let core = cores[0];
+    for (const c of cores) if ((t -= c[1] * c[1]) <= 0) { core = c; break; }
+    const [c, rad, sq] = core;
+    const y = r.range(low, 1), a = r.range(0, TAU), ring = Math.sqrt(1 - y * y);
+    const dir = [Math.cos(a) * ring, y, Math.sin(a) * ring];
+    const p = [c[0] + dir[0] * rad * out, c[1] + dir[1] * rad * sq * out, c[2] + dir[2] * rad * out];
+    // On the crown's outside: not facing in toward its heart, not buried in another mass.
+    if (centre && (p[0] - centre[0]) * dir[0] + (p[2] - centre[2]) * dir[2] + (p[1] - centre[1]) * dir[1] * 0.5 < -0.2 * rad) continue;
+    if (cores.some((o) => o !== core && Math.hypot(p[0] - o[0][0], (p[1] - o[0][1]) / o[2], p[2] - o[0][2]) < o[1] * 0.82)) continue;
+    const s = W * r.range(size[0], size[1]);
+    if (made.some(([q, qs]) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < (s + qs) * 0.62)) continue;
+    made.push([p, s, dir]);
+  }
+  for (const [p, s, dir] of made) {
+    mb.color = jitter(WHITE, r, 0.1);
+    leafDome(mb, p, s, dir, { squash, seed: r.range(0, 50), tone });
+  }
+  return made.length;
+}
+
+/** One cluster of leaves: the outer part of a lumpy pad of radius `s` round `p`, pressed flatter
+ *  along its outward direction `dir` (`flat`) and open toward `-dir` (that side lies in the mass
+ *  under it, never seen). Its normals lean out along `dir` from its centre, so it takes the light
+ *  as a plane of leaves turned to the light or away from it rather than as a ball, and its own
+ *  light is baked in (`tone`: lit on top, dark at its belly). */
+function leafDome(mb, p, s, dir, { squash = 0.86, amp = 0.26, seed = 0, tone = 0.7, flat = 0.68 } = {}) {
+  const { verts, faces } = icosphere(0);
+  const P = verts.map((v) => {
+    const k = 1 + amp * noise3(v[0] * 1.6 + seed, v[1] * 1.6 + seed * 0.37 + 0.5, v[2] * 1.6 - seed * 0.71);
+    const along = (v[0] * dir[0] + v[1] * dir[1] + v[2] * dir[2]) * (flat - 1);
+    return [p[0] + (v[0] + dir[0] * along) * s * k, p[1] + (v[1] + dir[1] * along) * s * k * squash, p[2] + (v[2] + dir[2] * along) * s * k];
+  });
+  const base = mb.color;
+  const lit = (y) => 1 - 0.5 * tone + 0.68 * tone * smoothstep(-0.85, 0.75, (y - p[1]) / (s * squash));
+  const nrm = (q) => {
+    const d = vnorm([q[0] - p[0], (q[1] - p[1] + s * 0.2) / (squash * squash), q[2] - p[2]]);
+    return vnorm(vadd(d, vscale(dir, 0.6)));
+  };
+  for (const [a, b, c] of faces) {
+    const cd = verts[a][0] + verts[b][0] + verts[c][0], cy = verts[a][1] + verts[b][1] + verts[c][1], cz = verts[a][2] + verts[b][2] + verts[c][2];
+    if ((cd * dir[0] + cy * dir[1] + cz * dir[2]) / 3 < -0.3) continue;
+    for (const k of [a, b, c]) mb.vert(P[k], nrm(P[k]), vscale(base, lit(P[k][1])));
+  }
+}
+
 /** A canopy plate (the mallorns' tiers, umbrella crowns): a broad, flat-bellied, gently domed disc of
  *  foliage around `c` (its waist) of radius `R` and thickness `T`, its rim scalloped into irregular
  *  lobes and drooping a little, its top lumpy. Smooth-shaded (a lathe), 10 * `seg` triangles.
@@ -279,8 +346,9 @@ function plate(mb, r, c, R, T, { seg = 11, lobes = 5, scallop = 0.2, lump = 0.3,
 // --- tree.oak -----------------------------------------------------------------------------------------
 
 /** The common broadleaf: a stout trunk with a root flare forking into a few boughs under a broad,
- *  full crown of separate rounded clumps (each lit on top, dark at its belly) with overhangs and
- *  gaps, a skirt of smaller clumps reaching down round the boughs, scalloped by small tufts. Shapes
+ *  full crown of separate rounded clumps with overhangs and gaps, a skirt of smaller clumps
+ *  reaching down round the boughs, all clothed in leaf clusters (each lit on top, dark at its
+ *  belly; ~28, about 330 of its ~650 triangles). Shapes
  *  cycle: broad dome, twin-stemmed (forked low, two lobes), leaning with a heavy low bough, split
  *  crown. */
 function buildOak(mb, r, variant, cols = OAK) {
@@ -320,10 +388,9 @@ function buildOak(mb, r, variant, cols = OAK) {
   // The skirt: small clumps low round the boughs, so the crown reaches down full instead of
   // sitting on the trunk like a ball on a stick.
   layout.push(...ringLayout(r, shape === 3 ? 3 : 2, { dist: [0.62, 0.8], dy: [-0.8, -0.58], rad: [0.34, 0.42], detail: 0 }));
-  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.76, nTufts: 5, self: 0.5, tone: 0.6, amp: 0.38, freq: 2.3 });
+  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.76, self: 0.5, tone: 0.6, amp: 0.38, freq: 2.3, clusters: 28 });
   shadeBark(mb, w0, { foot: MOSS, footAmt: 0.55, y0: -0.02, y1: 0.07 });
   mb.heightAO(w0, -0.02, forkY, 0.55);
-  mb.sphereNormals(m0, [C[0], C[1] - hc * 0.6, C[2]], 0.45);
   // Each tree drifts a little in hue inside the identity (bluer, greener, more olive).
   const drift = [[0.94, 1, 1.08], [1, 1, 1], [1.06, 1.02, 0.9], [0.97, 1.03, 0.98]][r.int(0, 3)];
   shadeFoliage(mb, m0, { lo: forkY, hi: C[1] + hc * 1.2, cols: cols.map((c) => lin(c).map((x, q) => x * drift[q])), center: C, rad: W * 1.1, seed: r.range(0, 9), hw: 0.5 });
@@ -372,28 +439,33 @@ function buildBirch(mb, r, variant) {
   }
   // One airy oval crown over all the stems: wider low, narrowing to a pointed top.
   const m0 = mb.mark();
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.LEAF;
   const ox = tops.reduce((acc, t) => acc + t.p[0], 0) / stems, oz = tops.reduce((acc, t) => acc + t.p[2], 0) / stems;
   // Airy: separate small clumps spiralling up the stems, with gaps between them where the pale
-  // stems and the light show through (never one dense ball).
+  // stems and the light show through (never one dense ball), each a shaded mass under small
+  // clusters of leaves.
   const W = [0.082, 0.092, 0.1][stems - 1] * r.range(0.92, 1.08);
   const y0 = Math.max(0.12, H * 0.42), y1 = H - 0.015;
   const lo = y0 - W * 0.5, hi = y1 + W * 0.4;
   const ph = r.range(0, TAU);
   const n = 6;
+  const cores = [];
   for (let k = 0; k < n; k++) {
     const u = k / (n - 1);
     const a = ph + k * 2.4 + r.range(-0.3, 0.3);
     const d = W * (k === n - 1 ? 0.12 : (0.68 - 0.36 * u) * r.range(0.85, 1.1));
     const c = [ox + Math.cos(a) * d, y0 + (y1 - y0) * u, oz + Math.sin(a) * d];
-    mb.color = jitter(WHITE, r, 0.08);
-    leafMass(mb, c, W * (0.56 - 0.16 * u) * r.range(0.88, 1.1), { detail: 1, amp: 0.36, squash: 0.92, flat: 0.2, seed: r.range(0, 50), self: 0.4, freq: 2.0 });
+    const rad = W * (0.56 - 0.16 * u) * r.range(0.88, 1.1);
+    mb.color = vscale(jitter(WHITE, r, 0.08), 0.66);
+    leafMass(mb, c, rad * 0.9, { detail: 0, amp: 0.25, squash: 0.92, flat: 0.2, seed: r.range(0, 50), self: 0.9, freq: 2.0 });
+    cores.push([c, rad, 0.92]);
   }
   const cx = ox, cz = oz;
   const cy = (lo + hi) * 0.5;
+  leafClusters(mb, r, cores, 20, W, { size: [0.26, 0.34], centre: [cx, cy, cz] });
+  mb.sphereNormals(m0, [cx, cy - 0.02, cz], 0.3);
   // Twigs hang: the crown's rim droops.
   mb.displace(m0, (x, y, z) => [0, -0.45 * Math.max(0, Math.hypot(x - cx, z - cz) - 0.03) * (y < cy ? 1.4 : 1), 0]);
-  mb.sphereNormals(m0, [cx, cy - 0.02, cz], 0.35);
   mb.heightAO(w0, -0.02, H * 0.4, 0.6);
   shadeFoliage(mb, m0, { lo, hi, cols: BIRCH, center: [cx, cy, cz], rad: 0.09, seed: r.range(0, 9), aoMin: 0.6 });
   swayFoliage(mb, m0, lo, hi, 0.08, 1, cx, cz);
@@ -1164,21 +1236,26 @@ function buildSapling(mb, r, variant, param) {
   mb.tube([[0, -0.05, 0], [top[0] * 0.4, H * 0.35, top[2] * 0.4], top], [0.0075, 0.0055, 0.0035], 4);
   mb.heightAO(w0, -0.02, H * 0.4, 0.6);
   const m0 = mb.mark();
-  mb.mat = MAT.FOLIAGE;
-  // An upright, irregular young crown (never a ball on a stick): five small clumps spiralling up
-  // the stem from low down, the lower ones out on short twigs, narrowing to a tuft at the top.
+  mb.mat = MAT.LEAF;
+  // An upright, irregular young crown (never a ball on a stick): five small clusters spiralling up
+  // the stem from low down, the lower ones out on short twigs, narrowing to a tuft at the top,
+  // each with its own normals (it takes the light as a cluster of leaves) and two more clusters
+  // on the outside.
   const W = r.range(0.046, 0.056) * (kind === "ancient" ? 1.1 : 1);
   const C = [top[0] * 0.7, H * 0.62, top[2] * 0.7];
   const n = 5, a0 = r.range(0, TAU);
+  const cores = [];
   for (let k = 0; k < n; k++) {
     const u = k / (n - 1);
     const b = a0 + k * 2.3 + r.range(-0.3, 0.3);
     const d = W * (0.55 - 0.42 * u) * r.range(0.85, 1.15);
     const p = [top[0] * (0.3 + 0.7 * u) + Math.cos(b) * d, H * (0.36 + 0.56 * u), top[2] * (0.3 + 0.7 * u) + Math.sin(b) * d];
+    const rad = W * (0.62 - 0.2 * u) * r.range(0.9, 1.1);
     mb.color = jitter(WHITE, r, 0.08);
-    leafMass(mb, p, W * (0.62 - 0.2 * u) * r.range(0.9, 1.1), { detail: 0, amp: 0.2, squash: 0.85, flat: 0.25, seed: r.range(0, 50), self: 0.3 });
+    leafMass(mb, p, rad, { detail: 0, amp: 0.25, squash: 0.85, flat: 0.25, seed: r.range(0, 50), self: 0.85, tone: 0.5 });
+    cores.push([p, rad, 0.85]);
   }
-  mb.sphereNormals(m0, [C[0], C[1] - W * 0.4, C[2]], 0.6);
+  leafClusters(mb, r, cores, 2, W, { size: [0.36, 0.44], centre: C, low: -0.1 });
   shadeFoliage(mb, m0, { lo: H * 0.3, hi: H, cols: kind === "ancient" ? ANCIENT : OAK, center: C, rad: W * 1.4, seed: r.range(0, 9), bias: kind === "ancient" ? 0.1 : 0.04, aoMin: 0.6 });
   swayFoliage(mb, m0, H * 0.3, H, W, 1, C[0], C[2]);
 }
@@ -1212,25 +1289,24 @@ function buildBush(mb, r, variant) {
   const H = r.range(0.07, 0.1) * (shape === 2 ? 0.75 : shape === 3 ? 1.35 : 1);
   const W = r.range(0.065, 0.08) * (shape === 2 ? 1.3 : shape === 3 ? 0.8 : 1);
   const m0 = mb.mark();
-  mb.mat = MAT.FOLIAGE;
+  mb.mat = MAT.LEAF;
   const ph = r.range(0, TAU);
-  // The main mass (two side by side for the two-lobed shape), then smaller clumps leaning on it.
+  // The main mass (two side by side for the two-lobed shape): the bush's shaded depth, under
+  // clusters of leaves, each lit on top and dark at its belly, that make its outline.
   const mains = shape === 4 ? [[Math.cos(ph) * W * 0.32, Math.sin(ph) * W * 0.32, 0.5], [-Math.cos(ph) * W * 0.36, -Math.sin(ph) * W * 0.36, 0.44]] : [[0, 0, 0.62]];
+  const cores = [];
   for (const [x, z, s] of mains) {
-    mb.color = jitter(WHITE, r, 0.06);
-    leafMass(mb, [x, H * 0.45, z], W * s, { detail: 1, squash: (H * 0.55) / (W * s), flat: 0, seed: r.range(0, 50), amp: 0.3, self: 0.6, tone: 0.5 });
+    mb.color = vscale(jitter(WHITE, r, 0.06), 0.66);
+    const sq = (H * 0.55) / (W * s);
+    leafMass(mb, [x, H * 0.45, z], W * s * 0.92, { detail: 0, squash: sq, flat: 0, seed: r.range(0, 50), amp: 0.2, self: 0.9, tone: 0.5 });
+    cores.push([[x, H * 0.45, z], W * s, sq]);
   }
-  const n = shape === 4 ? 1 : bloom ? 2 : 3;
-  for (let k = 0; k < n; k++) {
-    const a = ph + 1.2 + (k / n) * TAU + r.range(-0.4, 0.4);
-    mb.color = jitter(WHITE, r, 0.08);
-    leafMass(mb, [Math.cos(a) * W * 0.6, H * r.range(0.2, 0.4), Math.sin(a) * W * 0.6], W * r.range(0.36, 0.46), { detail: 0, amp: 0.15, squash: 0.8, flat: 0, seed: r.range(0, 50), self: 0.6, tone: 0.5 });
-  }
+  leafClusters(mb, r, cores, bloom || shape === 4 ? 7 : 8, W, { size: [0.26, 0.34], out: 0.78, low: -0.2, centre: [0, H * 0.3, 0], squash: 0.82 });
+  mb.sphereNormals(m0, [0, 0, 0], 0.3);
   // Sink the bottom into the ground.
   eachVert(mb, m0, (v, i) => {
     if (v[i + 1] < 0.004) v[i + 1] = Math.max(-0.03, v[i + 1] * 1.5 - 0.01);
   });
-  mb.sphereNormals(m0, [0, 0, 0], 0.35);
   const drift = [[0.95, 1, 1.06], [1, 1, 1], [1.06, 1.03, 0.88]][r.int(0, 2)];
   shadeFoliage(mb, m0, { lo: 0, hi: H, cols: BUSH.map((c) => lin(c).map((x, q) => x * drift[q])), center: [0, H * 0.3, 0], rad: W, seed: r.range(0, 9), aoMin: 0.6, hw: 0.45 });
   // Blossom or berries: flecks over the upper faces, toward the light.
