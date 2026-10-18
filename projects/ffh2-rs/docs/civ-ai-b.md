@@ -14,9 +14,48 @@ Held world spells share `civs/held.rs`: the civ's `spell_value` returns 0 for th
 `turn` hook casts it through `unit_can_cast` / `unit_cast` when its condition holds, so the
 ported Python's AI-only gates still apply.
 
-<!-- HIPPUS -->
+- **Hippus**: Warcry (world spell: every unit with a unit combat gets +1 strength, +1 defense,
+  +1 move and Blitz, with a 5% chance a turn to wear off, about 20 turns; AI gate: at war with a
+  civ, 25+ units) was cast on the first turn of the war, while the operation still gathered in
+  the rally city (operations spend about half their turns gathering). It is now held and cast
+  when the war operation steps next to its target or strikes, when a city is in peril in a civ
+  war, or after 20 turns of war (16 traced games: 4 strike, 4 peril, 4 fallback). Wins 15.0% ->
+  22.5% (4/1), share@300 1578 -> 1669 (+91, t 2.10), legacy@300 +64 (t 2.85); share@end -35
+  (t -0.3), share@400 carried +69 (t 0.9), share@600 carried -52 (t -0.5): the gain is the war
+  of the cast and fades later; part of the end loss is earlier wins (game length 528 -> 502).
+  The keep rule's "share@end goes up" is not met (within noise); kept for the win rate and the
+  turn-300 share, to be confirmed on fresh seeds.
+  Tried, not kept: Hippus units with Blitz attacking again in a campaign strike
+  (`campaign::strike` drops every unit that has attacked; cross-cutting finding 3), through a
+  civ hook: alone wins 2/0, share@300 -5, share@end -15, all |t| < 1.6. With the Warcry timing:
+  wins 4/0, share@300 +85 (t 1.98), share@end -78 (t -0.7), i.e. no better than the timing
+  alone. Magnadine (the hero) is already trained by the generic hero step.
 
-<!-- DOVIELLO -->
+- **Doviello** (nothing kept). Tried:
+  - Wild Hunt (world spell: a wolf, strength 2 or more for strong units, on the plot of every
+    unit of ours; AI gate: at war with a civ, 20+ units) held like Warcry (the operation steps
+    next to its target or strikes, a city in peril, 20 turns of war), the new wolves made army
+    units (`UNITAI_ATTACK`) in the army stack on their plot. Cast at once they appeared in our
+    cities on the declaration turn and, as `UNITAI_ANIMAL`, wandered like barbarian animals.
+    Alone: wins 22.5% -> 15.0% (0/3), share@300 +55 (t 1.32), share@400 carried -101 (t -1.6),
+    share@end +111 (t 1.34). With the worker rule and the buildings below: wins 0/2, share@300
+    +28, share@end +155 (t 1.15). The win rate fell in both (5 discordant seeds, all the base's).
+  - No Worker -> Beastman conversion (a 75-hammer worker becomes a 25-hammer unit for 20 gold;
+    the generic spell choice values a worker at 0, so at war every worker above the city count
+    was converted and then retrained) unless enemies stand next to the worker. Alone: wins 0/1,
+    share@300 +10 (t 0.3), share@end +108 (t 0.96), legacy@end +228 (t 2.08), alive at the end
+    t 2.22; workers at the end 4.1 -> 5.2. The best candidate here for a fresh-seed run; not
+    kept because neither the win rate nor the turn-300 share moved.
+  - A gold reserve (20 + 3 per city, as the generic upgrades keep) for the upgrade spells
+    (300 turns, with the two above): Sons of Asena at turn 300 17.3 -> 13.6, Battlemasters
+    0.6 -> 0.1, share@300 -10, wins 0/3. The upgrade spells are the Doviello's only upgrade
+    path; spending the treasury on them is right.
+  - A Siege Workshop in the most productive city once Machinery is known (War Machine, the
+    strength-19 hero) and Stables in the better half of the cities at Warhorses (Bison Rider,
+    no horse needed): never fired in 40 full games (neither unit nor building appears at any 50-turn
+    snapshot, on either side).
+  Charadon's barbarian alliance (the garrison and research counts treat peaceful barbarians as a
+  threat, `production::barbarians_near`) is generic code and was not changed.
 
 - **Illians**: The White Hand (Philosophy, 400 hammers: three Priests of Winter, strength 5 + 2
   cold, Medic, Channeling II, Ice) and Stir from Slumber (Drifa, a dragon; allowed once a
