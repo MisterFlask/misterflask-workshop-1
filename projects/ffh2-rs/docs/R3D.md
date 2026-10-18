@@ -128,31 +128,32 @@ plot's centre always shows its own ground while grass, plains and desert meet in
 Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they rise) with
 impressionist brush dabs at two sizes (oriented elliptical marks on a jittered lattice, one
 painter's hand: orientations within a 60° fan) -- now only on the coast's floor; every open ground
-lays marks instead (`lay`, `gmarks`): over its broad masses and a slow drift between a warm and a
-cool colour of its own, flat-toned marks at up to three sizes (4.5, 11 and 26 a plot), each one of
-four related colours, so the ground reads as strokes of broken colour while its value stays quiet
-round roads, rings and figures. Each ground has its own hand: short upright strokes on grass (each
-mark's value taken from the masses under it, only its hue from the palette -- yellow-green,
-blue-green, olive, sap -- so the grass keeps its light and dark design and the plot grid still
-reads); long strokes swept along a slowly turning wind on prairie (straw, ochre, sage, russet) and
-on snow (blue and lilac shadow streaks on warm white); round lichen and moss clumps on tundra, late
-snow only in its hollows; upright reed strokes in a marsh, none in its pools; sinuous dune crests in
-the desert and the burning sands (lit back slope, a cool rose or char shadow dropping at once behind
-the crest; wrap-safe), with sheets of sand or ash flakes laid along the crests and, close up,
-ripples on the desert's lit slopes; each basalt plate of the broken lands its own tone and stroke
-direction; clotted round dabs between perdition's pools. A mark's edge is about a pixel wide at any
-zoom; each size fades in once its marks are a few render-target pixels and out before they would
-swell into blots, so at the gameplay zoom the 4.5 and 11 sizes are laid and from about 110 px a plot
-the finest (and the desert's ripples) join them. A ground holding only a sliver of a blend lays none
-(no muddy double layer at borders). Marked ground spares half of the paint filter (alpha keep 0.5;
-the ink pass ignores the keep of the ground and water), so close up its marks stay laid paint
-instead of being smeared. Over that: features' floors (forest litter, ice, flood silt, ash), beaches
-on the lowest rim of the land, rock with tilted strata on steep ground and high slopes (warm lit
-faces, cool shaded ones), snow on summits and gentle high ledges, wet banks, fields, trodden
-settlement ground and roads (from the decal layer), marsh pools. Hell terrains (burning sands,
-broken lands, fields of perdition) are split by a few meandering smouldering fissures (iso-lines of
-broad noise, emissive, pulsing slowly). All patterns are anchored to the map, periodic over its
-width when it wraps (no seam), so nothing swims when the camera moves.
+lays marks instead (`lay`, `gmarks`): over its broad masses (on grass, prairie, desert and tundra
+with a slow drift between a warm and a cool colour of their own), flat-toned marks at up to three
+sizes (4.5, 11 and 26 a plot), each one of four related colours, so the ground reads as strokes of
+broken colour while its value stays quiet round roads, rings and figures. Each ground has its own
+hand: short upright strokes on grass (each mark's value taken from the masses under it, only its hue
+from the palette -- yellow-green, blue-green, olive, sap -- so the grass keeps its light and dark
+design and the plot grid still reads); long strokes swept along a slowly turning wind on prairie
+(straw, ochre, sage, russet) and on snow (blue and lilac shadow streaks on warm white); round lichen
+and moss clumps on tundra, late snow only in its hollows; upright reed strokes in a marsh, none in
+its pools; sinuous dune crests in the desert and the burning sands (lit back slope, a cool rose or
+char shadow dropping at once behind the crest; wrap-safe), with sheets of sand or ash flakes laid
+along the crests and, close up, ripples on the desert's lit back slopes (not the slip faces); each
+basalt plate of the broken lands its own tone and stroke direction; clotted round dabs between
+perdition's pools. A mark's edge is about a pixel wide at any zoom; each size fades in once its
+marks are a few render-target pixels and out before they would swell into blots, so at the gameplay
+zoom the 4.5 and 11 sizes are laid and from about 110 px a plot the finest (and the desert's
+ripples) join them. A ground holding only a sliver of a blend lays none (no muddy double layer at
+borders). Marked ground spares half of the paint filter (alpha keep 0.5; the ink pass ignores the
+keep of the ground and water), so close up its marks stay laid paint instead of being smeared. Over
+that: features' floors (forest litter, ice, flood silt, ash), beaches on the lowest rim of the land,
+rock with tilted strata on steep ground and high slopes (warm lit faces, cool shaded ones), snow on
+summits and gentle high ledges, wet banks, fields, trodden settlement ground and roads (from the
+decal layer), marsh pools. Hell terrains (burning sands, broken lands, fields of perdition) are
+split by a few meandering smouldering fissures (iso-lines of broad noise, emissive, pulsing slowly).
+All patterns are anchored to the map, periodic over its width when it wraps (no seam), so nothing
+swims when the camera moves.
 
 **Water.** The sea is one plane at sea level; its shader reads the sea floor's height (a texture at
 4 samples a plot) through a warped, averaged lookup, so the shelf's colour bands follow soft
@@ -471,21 +472,24 @@ rasteriser -- only the shares carry over):
 
 | pass | ts 40 (far) | ts 96 (gameplay) |
 |---|---|---|
-| scene (geometry + shading, brushwork) | 2213 ms (~53%) | 3162 ms (~57%) |
-| kuwahara (paint filter) | 843 ms (~20%) | 1484 ms (~27%) |
-| water (grab + sea and rivers) | 419 ms (~10%) | 378 ms (~7%) |
-| shadow | 313 ms | 147 ms |
-| overlay | 104 ms | 134 ms |
-| finish (ink + grade) | 97 ms | 43 ms |
-| compose | 59 ms | 11 ms |
-| glow | 49 ms | 56 ms |
-| ssao | 48 ms | 36 ms |
-| fxaa | 20 ms | 14 ms |
-| **whole frame** | **4201 ms** | **5531 ms** |
+| scene (geometry + shading, brushwork) | 2585 ms (~60%) | 3693 ms (~64%) |
+| kuwahara (paint filter) | 673 ms (~16%) | 1386 ms (~24%) |
+| water (grab + sea and rivers) | 368 ms (~9%) | 324 ms (~6%) |
+| shadow | 275 ms | 128 ms |
+| overlay | 79 ms | 102 ms |
+| finish (ink + grade) | 40 ms | 32 ms |
+| glow | 32 ms | 33 ms |
+| ssao | 26 ms | 20 ms |
+| fxaa | 12 ms | 11 ms |
+| compose | 10 ms | 9 ms |
+| **whole frame** | **4291 ms** | **5793 ms** |
 
 The scene pass dominates and the Kuwahara paint filter is the clear second; the water (one
 full-screen-ish pass over the sea: refraction, a 20-step mirror march, glitter, surf) is a distant
-third, and FXAA (§5, F17) and the other post passes are cheap. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
+third, and FXAA (§5, F17) and the other post passes are cheap. The ground's laid marks (§4) cost
+next to nothing in themselves (the scene pass measures the same with `dabs` 0, `r3d-perf --configs
+no-dabs`); the larger terrain shader that carries every ground's hand costs SwiftShader about 13-15%
+of the scene pass (about 7% of the frame) against the earlier smooth ground. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
 first and the render scale (which scales the scene pass) second.
 
 Initial world sync (CPU, this slice): textures 195 ms + dressing 425 ms + instance upload 436 ms +
@@ -494,8 +498,8 @@ figures; per-move redressing is incremental. On a more crowded map this is the ~
 JavaScript noted in §14 -- spreading it over frames or onto a worker is a next step.
 
 Panning stability (`tools/r3d-lab.mjs --stability`, showcase at 96 px; pan, then re-align by the best
-whole-pixel shift and compare): mean |diff| about 1.4 of 255 with 1.1% of pixels off by more than 24
-for the painterly preset (1.1 / 1.2% plain, 1.5 / 1.3% painterly with the paint filter off) -- low
+whole-pixel shift and compare): mean |diff| about 1.6 of 255 with 1.1% of pixels off by more than 24
+for the painterly preset (1.1 / 1.2% plain, 1.7 / 1.3% painterly with the paint filter off) -- low
 crawl, from the texel-snapped shadow frustum and the world-anchored paint, brush marks and grain.
 Over water (`--query "scene=showcase&cx=3&cy=6&ts=150"`): 0.8 / 0.4% painterly, 0.6 / 0.4% plain;
 what is left sits on parallax edges and ship rigging, from the screen-space refraction and mirror
