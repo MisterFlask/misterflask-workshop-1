@@ -198,6 +198,9 @@ def compare(base, new, checkpoints):
     seeds = sorted(set(base) & set(new))
     fb = [game_facts(base[s], checkpoints) for s in seeds]
     fn = [game_facts(new[s], checkpoints) for s in seeds]
+    for s, x, y in zip(seeds, fb, fn):
+        # The same game on both sides (e.g. a civ whose own logic never acts in it).
+        x['identical'] = y['identical'] = int(base[s].get('checksum') == new[s].get('checksum'))
     return seeds, fb, fn
 
 
@@ -223,6 +226,8 @@ def report(label, seeds, fb, fn, checkpoints, detail=False):
     print('  world spell   %d -> %d games (first snapshot with it: %s -> %s)' % (
         ws_b, ws_n, '%.0f' % mean(tb) if tb else '-', '%.0f' % mean(tn) if tn else '-'))
     print('  game length   %.0f -> %.0f turns' % (mean([f['final_turn'] for f in fb]), mean([f['final_turn'] for f in fn])))
+    identical = sum(f.get('identical', 0) for f in fn)
+    print('  identical     %d of %d games are the same game on both sides' % (identical, n))
     if detail:
         for kind in ('unit_types', 'building_types', 'project_types'):
             keys = sorted(set(k for f in fb + fn for k in f[kind]))
@@ -236,7 +241,15 @@ def report(label, seeds, fb, fn, checkpoints, detail=False):
             if diffs:
                 print('  %s at the end (mean per game, changed): %s' % (kind, ', '.join(
                     '%s %.1f->%.1f' % (k, a, b) for _, k, a, b in diffs[:14])))
-    return {'n': n, 'wins_base': wb, 'wins_new': wn, 'gained': gained, 'lost': lost}
+    out = {'n': n, 'wins_base': wb, 'wins_new': wn, 'gained': gained, 'lost': lost,
+           'sign_p': sign_test(gained, gained + lost), 'decided_base': db, 'decided_new': dn,
+           'world_spell_base': ws_b, 'world_spell_new': ws_n, 'identical': identical}
+    for key in ['share@%s' % t for t in checkpoints + ['end']] + ['legacy@%s' % t for t in checkpoints + ['end']] + ['alive', 'rank', 'final_turn']:
+        a = [f[key] for f in fb]
+        b = [f[key] for f in fn]
+        m, t = paired_t(a, b)
+        out[key] = {'base': mean(a), 'new': mean(b), 'diff': m, 't': t}
+    return out
 
 
 def main():
@@ -259,6 +272,7 @@ def main():
     ap.add_argument('--out-dir', default='civ_ab_out')
     ap.add_argument('--load', default=None, help='report on a directory from an earlier run')
     ap.add_argument('--jobs', type=int, default=4)
+    ap.add_argument('--summary-json', default=None, help='also write the per-civ and pooled numbers as JSON')
     a = ap.parse_args()
     civs = a.civ or ['all']
     if 'all' in [c.lower() for c in civs]:
@@ -289,9 +303,13 @@ def main():
             print('  crashed games (left out of the pairs): base seeds %s, new seeds %s' % (CRASHED[pb] or '-', CRASHED[pn] or '-'))
         pooled_b += fb
         pooled_n += fn
+    summary = dict(totals)
     if len(totals) > 1:
-        report('pooled over %d civs' % len(totals), list(range(len(pooled_b))), pooled_b, pooled_n, checkpoints)
+        summary['pooled'] = report('pooled over %d civs' % len(totals), list(range(len(pooled_b))), pooled_b, pooled_n, checkpoints)
         print('  per civ wins base -> new: ' + ', '.join('%s %d->%d' % (c, t['wins_base'], t['wins_new']) for c, t in totals))
+    if a.summary_json:
+        with open(a.summary_json, 'w') as f:
+            json.dump(summary, f, indent=1, default=lambda x: None)
 
 
 if __name__ == '__main__':
