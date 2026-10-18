@@ -2,10 +2,12 @@
 //! coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and a Pirate
 //! Port, 3/2/6 on coast). [`Lanun::production`] trains a work boat for a city with a valid cove
 //! plot it works; [`Lanun::sea_worker`] takes it there and casts.
+//! FfH's end-of-turn spell choice would also cast the cove (AI weight 300) from a boat on its way
+//! to a sea resource, which then stays unimproved: [`Lanun::spell_value`] leaves the cove to boats
+//! without orders.
 //!
-//! Their knight, the War Tortoise (11/19, walks on water, no horses), needs a Siege Workshop, a
-//! specific building (`PrereqBuilding`) the generic production never builds: [`Lanun::production`]
-//! builds one where it opens a unit a third stronger than the city's best (the generic test).
+//! Tried, not kept: a Siege Workshop where it opens the War Tortoise (their knight, 11/19, no
+//! horses, `PrereqBuilding`): 0.3 Tortoises a game, no measurable effect.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -21,7 +23,7 @@ pub struct Lanun;
 
 impl CivPlay for Lanun {
     fn production(&self, _ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
-        cove_boat(g, c, threat).or_else(|| super::unit_building(g, c, threat, &["UNIT_WAR_TORTOISE"]).map(Choice::Construct))
+        cove_boat(g, c, threat)
     }
 
     fn sea_worker(&self, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {
