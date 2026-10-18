@@ -6,9 +6,9 @@
 //! ones gifted by deaths stayed weak (2+1) army units all game. The AI now walks lone Manes to the
 //! nearest city and adds them there, keeping one other defender in the city.
 //!
-//! Measured over the 5 games (of 80 full games, Malakim and Svartalfar forced, seeds 1-40) where
-//! the Infernals appear on both sides: population at the end 15.8 -> 53.4 (t 2.44), cities 2.4 ->
-//! 4.4, world share 785 -> 1316 (t 1.93), Manes left at the end 10 -> 0.
+//! Measured over the 6 games (of 120 full games, seeds 1-40 with Malakim, Svartalfar and Sidar
+//! forced) where the Infernals appear on both sides: population at the end 29.5 -> 64.5 (t 2.72),
+//! cities 4.0 -> 5.7, world share 1056 -> 1557 (t 2.21), Manes left at the end 12 -> 0.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;

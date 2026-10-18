@@ -4,9 +4,9 @@
 //! settler waited all game paying unit support. When no site is on its landmass 20 turns after it
 //! appeared, the AI disbands it.
 //!
-//! Measured over the 50 games (of 80 full games, Malakim and Svartalfar forced, seeds 1-40) where
-//! the Mercurians appear on both sides: settlers left at the end 44 -> 5, world share 377 -> 420
-//! (t 1.33), cities 2.48 -> 2.80, population 19.6 -> 21.4.
+//! Measured over the 76 games (of 120 full games, seeds 1-40 with Malakim, Svartalfar and Sidar
+//! forced) where the Mercurians appear on both sides: settlers left at the end 68 -> 9, world
+//! share 351 -> 385 (t 1.21), cities 2.29 -> 2.47.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
