@@ -213,7 +213,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       } else if ((kind === KIND.LAND || kind === KIND.HILLS) && !city) {
         // Open ground: plants scattered in clumps, thick in some places and bare in others.
         const flora = CATALOG.flora?.(ctx) ?? [{ asset: "basic.tree", scale: 0.45, count: r() < 0.25 ? 1 : 0, size: 2 }];
-        scatterFlora(world, ctx, place, flora);
+        scatterFlora(world, map, ctx, place, flora);
       }
       // Rocks on hills, peaks and rough ground (off the roads and out of the river).
       const rocks = CATALOG.rocks?.(ctx) ?? (kind === KIND.HILLS || kind === KIND.PEAK ? [{ asset: "basic.rock", scale: 1, count: kind === KIND.PEAK ? 3 : 1 }] : []);
@@ -508,18 +508,77 @@ function roadDist(roads, lx, lz) {
 const FOOT = [0.03, 0.055, 0.09];
 const UNIT_CLEAR = [0.25, 0.32, 0.36];
 
+/** How strongly each size of plant gathers at the edges (`edgeOf`): the share of its clumps
+ *  kept out in open meadow, away from every edge (1 at an edge), and how much the pick of a clump's
+ *  centre leans toward the edges (low plants and bushes only: trees keep to their groves). */
+const OPEN_KEEP = [0.45, 0.42, 1];
+const EDGE_PULL = [3, 3.5, 0];
+
+/** The fields and paddocks round plot (x, y), its own and its neighbours' (fields.js fieldLayout),
+ *  as [dx, dz, layout] with the plot-local offset of the plot they belong to (x east, z south). */
+function layoutsAround(world, map, x, y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = world.index(x + dx, y + dy);
+      if (j < 0 || map.vis[j] === 0 || map.improvement[j] < 0) continue;
+      const imp = tname("ImprovementType", map.improvement[j]);
+      const bonus = map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null;
+      const lay = fieldLayout(j, imp, bonus, riversAround(world, map, x + dx, y + dy));
+      if (lay && (lay.fields.length || lay.paddock)) out.push([dx, -dy, lay]);
+    }
+  }
+  return out;
+}
+
+/** The distance from plot-local (lx, lz) to the nearest field or paddock of `lay` (0 on one). */
+function layoutDist(lay, lx, lz) {
+  let best = Infinity;
+  for (const f of lay.fields) best = Math.min(best, Math.hypot(Math.max(f.x0 - lx, 0, lx - f.x1), Math.max(f.z0 - lz, 0, lz - f.z1)));
+  const p = lay.paddock;
+  if (p) best = Math.min(best, Math.max(0, Math.hypot((lx - p.x) / p.rx, (lz - p.z) / p.rz) - 1) * Math.min(p.rx, p.rz));
+  return best;
+}
+
+/** Where the low plants and bushes mass, 0..1 at plot-local (lx, lz) -- as in the look target,
+ *  along the edges of things: a road's verges, a river's banks, the margins of fields and paddocks
+ *  (this plot's and its neighbours', `lays`: layoutsAround) and the edge of a wood next door
+ *  (`woods`: the plot-local offsets of wooded neighbours); 0 out in the open meadow between. */
+function edgeOf(world, ctx, lays, woods, lx, lz) {
+  let e = 0;
+  const rd = ctx.roadDist(lx, lz);
+  if (rd < 0.4) e = 1 - smoothstep(0.14, 0.36, rd);
+  if (world.riverCells.size > 0) {
+    const d = world.riverDist(ctx.x + 0.5 + lx, ctx.y + 0.5 - lz) - RIVER_HALF - RIVER_WANDER;
+    if (d < 0.4) e = Math.max(e, 1 - smoothstep(0.06, 0.34, d));
+  }
+  for (const [dx, dz, lay] of lays) e = Math.max(e, 0.9 * (1 - smoothstep(0.02, 0.22, layoutDist(lay, lx - dx, lz - dz))));
+  for (const [dx, dz] of woods) e = Math.max(e, 0.7 * (1 - smoothstep(0.08, 0.4, Math.hypot(Math.max(Math.abs(lx - dx) - 0.5, 0), Math.max(Math.abs(lz - dz) - 0.5, 0)))));
+  return e;
+}
+
 /** Open ground's plants (the catalog's flora entries, catalog.js): each entry's `count` in clumps
  *  of `clump` ([min, max]) within `spread` of a centre, a clump kept or dropped by a slow density
  *  field anchored to the map (`dense`: how much it follows it), so meadows run thick in some places
- *  and bare in others across plot borders and trees gather in groves. Nothing stands on a road, in
- *  a river, on a beach or on a resource's marker; on an improved plot plants keep to its rim (its
- *  fields and buildings fill the rest); round a unit only low clutter, outside its ring; trees keep
- *  out of the way of what stands on the plot, behind it and in front of it. */
-function scatterFlora(world, ctx, place, flora) {
-  const { r, x, y } = ctx;
+ *  and bare in others across plot borders and trees gather in groves. Low plants and bushes mass
+ *  along the edges of things (`edgeOf`: road verges, river banks, field margins, wood edges): a
+ *  clump's centre is picked from three with odds rising steeply toward an edge, a clump out in the
+ *  open is mostly dropped (`OPEN_KEEP`) and one at an edge stands a little taller, so the open
+ *  meadow between lies calm. Nothing stands on a road, in a river, on a beach or on a resource's
+ *  marker; on an improved plot plants keep to its rim (its fields and buildings fill the rest);
+ *  round a unit only low clutter, outside its ring; trees keep out of the way of what stands on
+ *  the plot, behind it and in front of it. */
+function scatterFlora(world, map, ctx, place, flora) {
+  const { x, y } = ctx;
+  // A stream of its own, so how the plants fall never shifts the rest of the plot's dressing.
+  const r = rng(hash32(ctx.i * 977 + 0x51f1));
   const field = (lx, lz, f, o) => world.n2(x + 0.5 + lx, y + 0.5 - lz, f, o, o * 0.7);
   const meadow = (lx, lz) => smoothstep(-0.55, 0.45, field(lx, lz, 0.75, 3.1) + 0.5 * field(lx, lz, 2.1, 7.7));
   const grove = (lx, lz) => smoothstep(-0.3, 0.4, field(lx, lz, 0.4, 11.3) + 0.3 * field(lx, lz, 1.3, 5.9));
+  const lays = layoutsAround(world, map, x, y);
+  const woods = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && WOODED.has(world.feat[world.index(x + dx, y + dy)])) woods.push([dx, -dy]);
+  const edge = (lx, lz) => edgeOf(world, ctx, lays, woods, lx, lz);
   const cityBehind = ctx.cityBehind.n || ctx.cityBehind.e || ctx.cityBehind.w;
   // The low clutter of a plot is one object to the ink (no outline between overlapping tufts).
   const low = idOf(`fl${ctx.i}`);
@@ -551,9 +610,26 @@ function scatterFlora(world, ctx, place, flora) {
     for (let left = f.count ?? 1; left > 0; ) {
       const n = Math.min(left, r.int(c0, c1));
       left -= n;
-      const cx = r.range(-0.44, 0.44), cz = r.range(-0.44, 0.44);
-      if (r() > 1 - dense + dense * (size === 2 ? grove(cx, cz) : meadow(cx, cz))) continue;
-      for (let k = 0; k < n; k++) {
+      // The clump's centre: one of three, the odds rising steeply toward an edge.
+      let cx = 0, cz = 0, ce = 0, sum = 0;
+      const cand = [];
+      for (let k = 0; k < 3; k++) {
+        const px = r.range(-0.44, 0.44), pz = r.range(-0.44, 0.44), e = edge(px, pz);
+        const wt = 0.2 + e * e * EDGE_PULL[size];
+        cand.push([px, pz, e, wt]);
+        sum += wt;
+      }
+      let t = r() * sum;
+      for (const c of cand) {
+        [cx, cz, ce] = c;
+        if ((t -= c[3]) <= 0) break;
+      }
+      // Kept by the slow density field, out in the open mostly dropped, at an edge nearly always
+      // kept and fuller (a few more round the clump).
+      const keep = (1 - dense + dense * (size === 2 ? grove(cx, cz) : meadow(cx, cz))) * OPEN_KEEP[size];
+      if (r() > keep + (1 - keep) * ce * (size < 2 ? 0.85 : 0)) continue;
+      const fill = size < 2 ? Math.round(ce * ce * (c1 + 1) * 0.6) : 0;
+      for (let k = 0; k < n + fill; k++) {
         // The first of a clump near its centre, the rest round it (trees a trunk's width apart).
         const a = r.range(0, Math.PI * 2), d = spread * (k ? 0.45 + 0.55 * Math.sqrt(r()) : 0.3 * r());
         const lx = cx + Math.cos(a) * d, lz = cz + Math.sin(a) * d;
@@ -562,7 +638,7 @@ function scatterFlora(world, ctx, place, flora) {
           let t = r() * total;
           for (const e of f.mix) if ((t -= e.weight ?? 1) <= 0) { m = e; break; }
         }
-        const s = (m.scale ?? 1) * (f.mix ? f.scale ?? 1 : 1) * r.range(0.8, 1.15) * (size === 2 && ctx.cityNear ? 0.8 : 1);
+        const s = (m.scale ?? 1) * (f.mix ? f.scale ?? 1 : 1) * r.range(0.8, 1.15) * (size === 2 && ctx.cityNear ? 0.8 : 1) * (size < 2 ? 1 + (size ? 0.15 : 0.3) * ce : 1);
         const yaw = r.range(0, 6.28), phase = r(), variant = m.variant ?? r.int(0, 7);
         if (!free(lx, lz, size)) continue;
         const o = { variant, param: m.param, scale: s, yaw, phase, tint: m.tint, lift: size === 2 ? -0.008 : 0 };
