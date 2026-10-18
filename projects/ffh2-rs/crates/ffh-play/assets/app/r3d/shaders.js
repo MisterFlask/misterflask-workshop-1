@@ -580,8 +580,8 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     float dn = mnoise(m + 61.0, 0.85) * 0.35 + mnoise(m - 27.0, 1.9) * 0.4 + mstroke(m + 13.0, 3.6, 2.5) * 0.25;
     float t = mix(0.63, 0.37, gDry);
     // A ragged edge: finer fingers combed along the wind where a patch meets the green (only there).
-    if (abs(dn - t) < 0.12) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
-    dry = smoothstep(t - 0.06, t + 0.06, dn);
+    if (abs(dn - t) < 0.18) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
+    dry = smoothstep(t - 0.12, t + 0.12, dn);
     dry = mix(gDry, dry, smoothstep(0.16, 0.34, length(fract(m) - 0.5)));
     big = mfbm(m, 0.45);
     float mid = mnoise(m + 11.0, 1.6), mot = mnoise(m + 5.0, 2.4);
@@ -604,7 +604,7 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // little.
     vec4 tg = matPair(m, M_GRASS, 1.0);
     vec4 tw = matPair(m + 7.3, M_STRAW, 0.8);
-    float k = smoothstep(-0.3, 0.3, tw.a - tg.a + (dry - 0.5) * 2.6);
+    float k = smoothstep(-0.3, 0.3, tw.a - tg.a + (dry - 0.5) * 2.0);
     c = mix(matTint(tg, M_GRASS, mix(cg, cd, dry * 0.35)), matTint(tw, M_STRAW, cd), k);
     gH = mix(tg.a, tw.a, k);
   } else if (g == G_DESERT) {
