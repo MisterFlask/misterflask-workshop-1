@@ -26,10 +26,14 @@
 // the square outward -- each into the best of many candidate spots (fronting a street, wall to
 // wall beside a neighbour, back to back behind one, or with its back to the town wall), scored by
 // closeness to the heart, a front on a street and neighbours touched -- so roofs close into one
-// mass instead of a ring of boxes.
+// mass instead of a ring of boxes; then smaller houses packed the same way, and the gaps left
+// filled from a grid of spots (`Plan.fill`: in a town of the human builders, its back yards --
+// woodsheds, stores, kitchen gardens, a cart -- and a garden tree or two).
 // Footprints are the meshes' own oriented bounds, so roofs do not run into each other. Halls stand
-// on the square, towers at the back, a wall ring with towers and a gate toward the camera (+z), and
-// a pier on the water side of a coastal town. Families differ in spacing, how freely buildings turn
+// on the square, towers at the back, a wall ring with towers and a gate toward the camera (+z) --
+// a little out of round and following the lie of the land (`wallLine`), planned before the houses
+// so they keep inside it -- with clumps of trees at its foot outside, and a pier on the water side
+// of a coastal town. Families differ in spacing, how freely buildings turn
 // (a camp's tents turn their doors to its fire), the square's furniture (stalls and a well; a fire
 // and totems; braziers; trees from vegetation.js among elven pods) and particles (embers, forge
 // sparks, lantern motes, arcane motes). A town deep in the woods raises its landmark and spires.
@@ -50,7 +54,8 @@
 // a half segment), bld.gate (width 0.2, outer face +z), bld.walltower (4), and the common pieces
 // bld.well, bld.stall (3), bld.banner (2: hanging banner, swallow-tailed standard), bld.fence
 // (along x, length 0.2), bld.totem, bld.brazier, bld.pier (2: jetty with a rowboat, quay with a
-// sailing boat; sea level at y = 0, along +z from the shore).
+// sailing boat; sea level at y = 0, along +z from the shore), bld.shed (4: a town's back yards --
+// woodshed, store, kitchen garden, a rick and log pile -- in the human builders' palette).
 
 import { recipe, buildAsset, hasRecipe } from "./registry.js";
 import { extendCatalog } from "./catalog.js";
@@ -58,6 +63,7 @@ import { MAT, FLOATS } from "../mesh.js";
 import { pal, jitter } from "./palette.js";
 import { noise3 } from "../noise.js";
 import { FEAT, RIVER_HALF, RIVER_WANDER } from "../world.js";
+import { roadLinks, onRoad } from "../fields.js";
 
 const TAU = Math.PI * 2;
 const QT = Math.PI / 2;
@@ -3902,6 +3908,85 @@ function fence(mb, r, f) {
   ground(mb, 0, 0.02, 0.6);
 }
 
+/** The small things that fill a town's back yards (cityLayout's gap filling), in the human
+ *  builders' palette (by sub-style): v0 a lean-to woodshed open to the front, logs stacked under
+ *  its plank roof; v1 a small gabled store with a plank door; v2 a kitchen garden, low rows of
+ *  greens inside a wattle fence, a water butt at its corner; v3 a yard corner: a little rick of
+ *  hay, a log pile and barrels. Front +z, about 0.06-0.09 across. */
+function shed(mb, r, v, sub) {
+  const S = humanStyle(r, sub);
+  const board = J(S.board, r, 0.06);
+  const log = (x, y, z, len, rad, yaw = 0) =>
+    at(mb, x, y, z, yaw, () => {
+      mb.rotateZ(QT);
+      mb.translate(0, -len / 2, 0);
+      mb.cylinder(rad, rad, len, 5, { caps: true });
+    });
+  const barrel = (x, z, s = 1) => {
+    mb.color = J("#6a4a30", r, 0.06);
+    at(mb, x, 0, z, r.range(0, TAU), () => mb.lathe([[0.0075 * s, -0.01], [0.009 * s, 0.009 * s], [0.0075 * s, 0.018 * s], [0, 0.0185 * s]], 7));
+    mb.color = C("#3a3230");
+    at(mb, x, 0, z, 0, () => mb.lathe([[0.0092 * s, 0.006 * s], [0.0092 * s, 0.008 * s]], 7, { caps: false }));
+  };
+  if (v === 0) {
+    // Lean-to: a plank back and ends, a roof falling to the front, logs stacked inside.
+    const w = r.range(0.064, 0.074), d = 0.04, hb = 0.05, hf = 0.034;
+    mb.color = board;
+    at(mb, 0, 0, -d / 2 + 0.003, 0, () => blk(mb, w, 0.006, -0.02, hb));
+    for (const s of [-1, 1]) at(mb, (s * (w - 0.005)) / 2, 0, 0, 0, () => blk(mb, 0.005, d, -0.02, hf));
+    mb.color = mulc(S.roofC, 0.95);
+    const o = 0.008;
+    mb.quad([-w / 2 - o, hb + 0.004, -d / 2 - 0.004], [-w / 2 - o, hf - 0.002, d / 2 + o], [w / 2 + o, hf - 0.002, d / 2 + o], [w / 2 + o, hb + 0.004, -d / 2 - 0.004]);
+    mb.color = mulc(S.roofC, 0.55);
+    mb.quad([-w / 2 - o, hf - 0.002, d / 2 + o], [-w / 2 - o, hf - 0.007, d / 2 + o], [w / 2 + o, hf - 0.007, d / 2 + o], [w / 2 + o, hf - 0.002, d / 2 + o]);
+    mb.color = J("#8a6a48", r, 0.06);
+    for (let row = 0; row < 2; row++) for (let k = 0; k < 3 - row; k++) log(-w * 0.2 + (k + row * 0.5) * w * 0.2, 0.006 + row * 0.0095, 0.002, d * 0.8, 0.0052, QT);
+  } else if (v === 1) {
+    // A small store: wall and timber under a steep gable, a plank door.
+    const w = r.range(0.056, 0.064), d = r.range(0.044, 0.05), h = 0.036;
+    mb.color = mulc(S.stoneC, 0.85);
+    blk(mb, w + 0.004, d + 0.004, -0.04, 0.006);
+    mb.color = r() < 0.5 ? S.wallC : board;
+    shell(mb, w, d, 0, h);
+    face(mb, 0, w, d, () => door(mb, S, r.range(-0.01, 0.01), 0.018, 0.026, 0, 0.004, mulc(board, 0.62)));
+    face(mb, 1, w, d, (span) => framing(mb, S, span, 0.004, h, 2));
+    mb.part(() => {
+      mb.translate(0, h, 0);
+      mb.color = r() < 0.5 && !S.gothic ? J(S.thatch, r, 0.06) : S.roofC;
+      gableRoof(mb, w, d, 0.032 * S.pitch, { over: 0.008, overX: 0.008, thick: 0.004, ends: board });
+    });
+  } else if (v === 2) {
+    // A kitchen garden: a low wattle fence round rows of greens, a water butt.
+    const w = r.range(0.08, 0.095), d = r.range(0.06, 0.07);
+    mb.color = J("#5a4430", r, 0.06);
+    for (const [x0, z0, x1, z1] of [[-w / 2, -d / 2, w / 2, -d / 2], [w / 2, -d / 2, w / 2, d / 2], [w / 2, d / 2, -w / 2, d / 2], [-w / 2, d / 2, -w / 2, -d / 2]]) {
+      const L = Math.hypot(x1 - x0, z1 - z0);
+      at(mb, (x0 + x1) / 2, 0, (z0 + z1) / 2, Math.atan2(-(z1 - z0), x1 - x0), () => blk(mb, L, 0.003, -0.01, 0.012));
+    }
+    mb.color = J("#4a3a2a", r, 0.05);
+    blk(mb, w - 0.006, d - 0.006, -0.01, 0.002);
+    mb.mat = MAT.FOLIAGE;
+    const greens = ["#46682a", "#527430", "#5c7e36"];
+    for (let k = 0; k < 3; k++) {
+      mb.color = J(r.pick(greens), r, 0.08);
+      at(mb, r.range(-0.003, 0.003), 0, -d / 2 + ((k + 0.5) * d) / 3, 0, () => blk(mb, w * 0.84, 0.013, -0.004, 0.011, 0.55));
+    }
+    mb.mat = MAT.MATTE;
+    barrel(w / 2 + 0.008, d / 2 - 0.006);
+  } else {
+    // A yard corner: a little rick of hay, a log pile and barrels.
+    mb.color = J("#c4a454", r, 0.05);
+    const m0 = mb.mark();
+    at(mb, -0.022, 0, -0.01, r.range(0, TAU), () => mb.lathe([[0.024, -0.01], [0.025, 0.014], [0.019, 0.03], [0.008, 0.04], [0, 0.043]], 7));
+    mb.tint(m0, (x, y) => 0.7 + 0.4 * Math.max(0, Math.min(1, y / 0.04)));
+    mb.color = J("#8a6a48", r, 0.06);
+    for (let row = 0; row < 2; row++) for (let k = 0; k < 3 - row; k++) log(0.012 + (k + row * 0.5) * 0.0105, 0.006 + row * 0.0095, -0.014, 0.04, 0.0052, QT);
+    barrel(0.03, 0.022);
+    barrel(0.012, 0.026, 0.85);
+  }
+  ground(mb, 0, 0.03, 0.6);
+}
+
 /** A pier (a harbour's jetty): a plank deck along +z from the shore (z = 0) out over the water,
  *  modelled with sea level at y = 0 (the city lifts it there), on posts down to the sea floor,
  *  bollards at its end and a boat moored alongside (v1 a longer quay and a small sailing boat
@@ -4066,6 +4151,7 @@ recipe("bld.fence", { variants: 2, build: (mb, r, { param }) => fence(mb, r, fam
 recipe("bld.totem", { variants: 2, build: (mb, r) => totem(mb, r) });
 recipe("bld.brazier", { variants: 1, build: (mb, r, { param }) => brazier(mb, r, famOf(param).f) });
 recipe("bld.pier", { variants: 2, build: (mb, r, { variant, param }) => pier(mb, r, variant, famOf(param).f) });
+recipe("bld.shed", { variants: 4, build: (mb, r, { variant, param }) => shed(mb, r, variant, famOf(param).sub) });
 
 // --- the catalog: families, cities, settlements ---------------------------------------------------------
 
@@ -4291,13 +4377,16 @@ class Plan {
    *  the `heart` (the town grows outward from its square), how squarely its front meets a street
    *  and how many neighbours it touches. `gap` keeps a family's spacing (wider for camps and
    *  elven groves); `eaves` lets neighbours' eaves overlap by that much (a close-built town);
-   *  `jitter` turns them off true. An item that finds no spot tries again smaller. */
-  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null, rows = true, rim = false, faceHeart = false, eaves = 0 } = {}) {
+   *  `jitter` turns them off true. An item that finds no spot tries again smaller; after `giveUp`
+   *  items in a row found none, the rest are not tried (the town is full: gap filling, `fill`,
+   *  does the rest more cheaply). */
+  pack(items, { heart = [0, 0], gap = 0.008, jitter = 0.06, cands = 150, rmin = 0.08, rmax = this.Rmax, street = 1, spread = 1, front = null, rows = true, rim = false, faceHeart = false, eaves = 0, giveUp = Infinity } = {}) {
     const r = this.r;
     const S = this.streets ?? [];
     const total = S.reduce((a, s) => a + s.l, 0);
     const placed = [];
     const homes = [];
+    let fails = 0;
     for (const it0 of items) {
       let done = null;
       for (const shrink of [1, 0.88, 0.78]) {
@@ -4375,7 +4464,49 @@ class Plan {
           break;
         }
       }
-      if (done) placed.push(done);
+      if (done) {
+        placed.push(done);
+        fails = 0;
+      } else if (++fails >= giveUp) break;
+    }
+    return placed;
+  }
+
+  /** Fills the gaps left between the buildings with smaller things: spots on a grid of `step`
+   *  (jittered), nearest the `heart` first, each taking the first of `choose(x, z)`'s items
+   *  ({asset, variant, scale, turn?, pad?, most?}) that fits there, turned to the nearest street
+   *  (or freely, `turn`), up to `cap` of them and `most` of an item's asset. Spots inside a
+   *  building, on a street or on ground kept open are passed over without trying. */
+  fill(choose, { step = 0.05, heart = [0, 0], cap = 20, rmin = 0.08 } = {}) {
+    const used = new Map();
+    const r = this.r;
+    const R = this.Rmax;
+    const spots = [];
+    for (let gz = -R; gz <= R + 1e-9; gz += step)
+      for (let gx = -R; gx <= R + 1e-9; gx += step) {
+        const x = gx + r.range(-0.3, 0.3) * step, z = gz + r.range(-0.3, 0.3) * step, d = Math.hypot(x, z);
+        if (d >= rmin && d < this.edge(x, z) - 0.02) spots.push([x, z, Math.hypot(x - heart[0], z - heart[1]) + r() * step * 2]);
+      }
+    spots.sort((a, b) => a[2] - b[2]);
+    const placed = [];
+    for (const [x, z] of spots) {
+      if (placed.length >= cap) break;
+      if (this.boxes.some((B) => nearPoint(B, x, z, 0.012))) continue;
+      if (this.zones.some(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) < zr)) continue;
+      if (this.lanes.some(([lx, lz, h]) => Math.hypot(x - lx, z - lz) < h + 0.01)) continue;
+      if (this.clear.some((B) => nearPoint(B, x, z, 0.01))) continue;
+      const ns = this.nearestStreet(x, z);
+      const face = ns && ns.d > 1e-3 ? yawTo(ns.px - x, ns.pz - z) : yawTo(heart[0] - x, heart[1] - z);
+      for (const it of choose(x, z)) {
+        if (it.most !== undefined && (used.get(it.asset) ?? 0) >= it.most) continue;
+        const yaw = it.turn ? r.range(0, TAU) : face + r.range(-0.12, 0.12);
+        const p = this.try(it.asset, it.variant, x, z, yaw, it.scale ?? 1, it);
+        if (p) {
+          placed.push(p);
+          used.set(it.asset, (used.get(it.asset) ?? 0) + 1);
+          break;
+        }
+      }
     }
     return placed;
   }
@@ -4430,6 +4561,26 @@ function townGround(ctx) {
     if (river && river(x, z) < RIVER_WET) return false;
     if (keep) for (const o of keep) if (o.r !== undefined ? Math.hypot(x - o.x, z - o.z) < o.r : x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1) return false;
     return true;
+  };
+}
+
+/** Whether plot-local (x, z) of a town lies on (within 0.07 of) a road on its plot or the plots
+ *  round it, as decals.js draws them (fields.js roadLinks); never, without the world (the lab's
+ *  grid). */
+function roadsRound(ctx) {
+  const world = ctx.world;
+  if (!world?.map?.route || typeof world.index !== "function") return () => false;
+  const plots = new Map();
+  for (let dz = -1; dz <= 1; dz++)
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = world.index(ctx.x + dx, ctx.y - dz);
+      const routed = j >= 0 && world.map.route[j] >= 0 && world.map.vis[j] !== 0;
+      if (routed) plots.set(dx * 3 + dz, roadLinks(world, world.map, ctx.x + dx, ctx.y - dz));
+    }
+  return (x, z) => {
+    const dx = Math.round(x), dz = Math.round(z);
+    const links = plots.get(dx * 3 + dz);
+    return !!links && onRoad(links, true, x - dx, z - dz, 0.07);
   };
 }
 
@@ -4494,7 +4645,7 @@ function cityCounts(size, fill = 1) {
 /** How each family lays out a settlement: gaps between buildings on a street front, how freely
  *  they turn, the square's furniture, trees among the houses, and its particles. */
 const LAY = {
-  human: { gap: 0.008, jitter: 0.06, stalls: true, well: true, banner: 0, eaves: 0.012 },
+  human: { gap: 0.006, jitter: 0.06, stalls: true, well: true, banner: 0, eaves: 0.016 },
   dwarven: { gap: 0.004, jitter: 0.0, stalls: true, well: true, banner: 0, sparks: true, eaves: 0.01 },
   desert: { gap: 0.004, jitter: 0.04, stalls: true, well: true, banner: 0, eaves: 0.008 },
   coastal: { gap: 0.02, jitter: 0.2, stalls: true, well: false, banner: 1 },
@@ -4524,6 +4675,13 @@ function cityLayoutMemo(ctx) {
       key.push(j >= 0 ? ctx.world.feat[j] : -1);
     }
   if (typeof ctx.buildable === "function") for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) key.push(ctx.buildable(dx, dz) ? 1 : 0);
+  // (The roads round it, which its trees outside the wall keep off: roadsRound.)
+  if (ctx.world?.map?.route && ctx.world.index)
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const j = ctx.world.index(ctx.x + dx, ctx.y + dy);
+        key.push(j >= 0 && ctx.world.map.route[j] >= 0 && ctx.world.map.vis[j] !== 0 ? 1 : 0);
+      }
   if (typeof ctx.riverDist === "function")
     for (let gz = -2; gz <= 2; gz++) for (let gx = -2; gx <= 2; gx++) key.push(Math.round(Math.min(1, ctx.riverDist(gx * 0.45, gz * 0.45)) * 100));
   const k = key.join("|");
@@ -4568,6 +4726,10 @@ function cityLayout(ctx) {
     plan.zone(x, z, rad);
     plan.clear.push({ x, z: z + len / 2, hw, hd: len / 2, c: 1, s: 0 });
   });
+  // A walled town's wall line (wallLine: a little out of round, following the ground), planned
+  // first: its houses keep inside it.
+  const line = walls ? wallLine(r, Rw, plan.height, k, { lim: room ? (x, z) => roomAt(room, x, z) - wallIn : null, stands: G }) : null;
+  if (line) plan.lim = (x, z) => Math.min(room ? roomAt(room, x, z) - inset : Infinity, line.at(x, z) - 0.03 * k);
   // (Fewer houses where the town has less ground: the share of its disc that its room and the
   // garrison leave, on a grid.)
   let free = 0, all = 0;
@@ -4688,7 +4850,7 @@ function cityLayout(ctx) {
   // (The infernal spire-houses are slender: a little bigger, so the town keeps its mass.)
   const fam = f === "infernal" && sub !== "gothic" ? 1.15 : 1;
   for (let n = 0; n < N.houses; n++) items.push({ asset: "bld.house", variant: hv[n % 6], scale: r.range(0.93, 1.05) * hsc * fam });
-  plan.pack(items, camp ? { heart: [sq.x, sq.z], gap: L.gap * k, jitter: 0.25, cands: 160, rmin: 0.1 * q, rows: false, rim: walls, faceHeart: true } : { heart: [sq.x, sq.z - 0.06 * q], gap: L.gap * k, jitter: L.jitter, cands: 200, rmin: 0.06 * q, rim: walls, eaves: (L.eaves ?? 0) * k });
+  plan.pack(items, camp ? { heart: [sq.x, sq.z], gap: L.gap * k, jitter: 0.25, cands: 160, rmin: 0.1 * q, rows: false, rim: walls, faceHeart: true } : { heart: [sq.x, sq.z - 0.06 * q], gap: L.gap * k, jitter: L.jitter, cands: 200, rmin: 0.06 * q, rim: walls, eaves: (L.eaves ?? 0) * k, giveUp: 3 });
   // Trees among an elven town's houses (the vegetation's, when it is loaded).
   if (L.trees) {
     const dark = sub === "dark";
@@ -4708,12 +4870,71 @@ function cityLayout(ctx) {
     for (let n = 0; kinds.length && n < Math.min(4, Math.floor(size / 3)); n++)
       plan.scatter({ asset: kinds[n % kinds.length], variant: r.int(0, 7), scale: r.range(0.55, 0.7) * k, pad: -0.06, param: "" }, { rmin: 0.15 * q, rmax: Rmax - 0.02, tries: 60 });
   }
+  // The gaps the packer leaves -- between roofs, behind them along the wall, round the landmark --
+  // close up (Plan.fill): smaller houses, and in a town of the human builders its back yards too
+  // (woodsheds, stores, kitchen gardens, a cart or a rick), with a garden tree now and then. Camps
+  // and elven groves keep their open ground.
+  if (!camp && f !== "elven") {
+    // Smaller houses first, packed as the others are (snug beside and behind their neighbours and
+    // along the wall), then the yards on a grid of the spots left.
+    const smalls = [];
+    for (let n = 0; n < Math.round(4 + size * 0.8); n++) smalls.push({ asset: "bld.house", variant: hv[(n + 3) % 6], scale: r.range(0.66, 0.76) * hsc * fam });
+    plan.pack(smalls, { heart: [sq.x, sq.z - 0.06 * q], gap: L.gap * k, jitter: L.jitter, cands: 110, rmin: 0.06 * q, rim: walls, eaves: (L.eaves ?? 0) * k, giveUp: 3 });
+    const human = f === "human" || sub === "gothic";
+    const trees = human && sub !== "gothic" && size >= 4 ? (sub === "north" ? ["tree.pine"] : sub === "arcane" ? ["tree.birch", "tree.pine"] : ["tree.pine", "tree.oak", "tree.pine"]).filter((t) => hasRecipe(t)) : [];
+    const most = Math.min(3, Math.floor(size / 4));
+    const yard = () => ({ asset: "bld.shed", variant: r.int(0, 3), scale: r.range(0.95, 1.1) * k });
+    const cart = () => ({ asset: hasRecipe("imp.cart") ? "imp.cart" : "bld.shed", variant: r.int(0, 1), scale: 1.2 * k, turn: true, param: "", most: 2 });
+    const tree = () => ({ asset: trees[r.int(0, trees.length - 1)], variant: r.int(0, 7), scale: r.range(0.5, 0.65) * k, pad: -0.05, param: "", turn: true, most });
+    if (human)
+      plan.fill(
+        () => {
+          const t = r();
+          const list = t < 0.85 ? [yard()] : [cart(), yard()];
+          if (trees.length && r() < 0.3) list.splice(r() < 0.5 ? 0 : list.length, 0, tree());
+          return list;
+        },
+        { step: 0.042 * k, heart: [sq.x, sq.z], cap: Math.round(3 + size * 1.2), rmin: 0.06 * q },
+      );
+  }
   if (L.motes) out.emit.push({ dx: lm.x, dz: lm.z, dy: 0.22 * k, color: sub === "dark" ? "#a8b0ff" : "#ffe2a0", size: 0.0055, rise: 0.06, count: 7, spread: 0.26 * q });
   if (L.sparks)
     for (const p of out)
       if (p.asset === "bld.keep") for (const s of [-1, 1]) out.emit.push({ dx: p.x + s * 0.06 * p.scale, dz: p.z - 0.07 * p.scale, dy: 0.31 * p.scale, color: "#ffb050", size: 0.0045, rise: 0.4, count: 3, spread: 0.01 });
   if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.56 * p.scale, color: "#b89aff", size: 0.0065, rise: 0.12, count: 5, spread: 0.05 });
-  if (walls) wallRing(out, r, P, Rw, plan.height, k, { ok: plan.ok, lim: room ? (x, z) => roomAt(room, x, z) - wallIn : null, stands: G });
+  if (line) wallRing(out, P, line, plan.height, k, { ok: plan.ok, stands: G });
+  // Trees in clumps at the foot of the wall, outside (the look target's dark conifers and a
+  // broadleaf by its towers), for the human and dwarven builders: on ground the town may use
+  // (townGround) and reach (its room: never across a river, past a neighbour's farm or the known),
+  // within the ground its neighbours leave it (cityReach), off the roads, the way in and the
+  // garrison's ground.
+  const outside = !line ? [] : f === "dwarven" || sub === "north" || sub === "gothic" ? ["tree.pine"] : f === "human" ? (sub === "arcane" ? ["tree.birch", "tree.pine"] : ["tree.pine", "tree.oak", "tree.pine"]) : [];
+  if (outside.length && outside.every((t) => hasRecipe(t))) {
+    const road = roadsRound(ctx);
+    const far = reach + 0.04 * k + 0.05;
+    const free = (x, z) =>
+      (!plan.ok || plan.ok(x, z)) && (!plan.height || plan.height(x, z) > 0.015) && !road(x, z) &&
+      !plan.zones.some(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) < zr + 0.03) &&
+      !plan.clear.some((B) => nearPoint(B, x, z, 0.04)) && !plan.lanes.some(([lx, lz, h]) => Math.hypot(x - lx, z - lz) < h + 0.04);
+    const stood = [];
+    const clumps = 2 + (size >= 8 ? 1 : 0) + (r() < 0.5 ? 1 : 0);
+    for (let c = 0; c < clumps; c++) {
+      const a = r.range(0.6, TAU - 0.6), n = r.int(2, 3);
+      const sx = Math.sin(a), sz = Math.cos(a), w0 = line.at(sx, sz);
+      for (let t = 0; t < n; t++) {
+        const b = a + r.range(-0.12, 0.12), d = r.range(w0 + 0.045 * k, Math.max(w0 + 0.05 * k, far));
+        const x = Math.sin(b) * d, z = Math.cos(b) * d, wb = line.at(x, z);
+        if (d < wb + 0.04 * k || d > far + 0.01 || (room && d > roomAt(room, x, z))) continue;
+        // (The way from the wall out to the tree is the town's ground too.)
+        if (![wb + 0.01, (wb + d) / 2, d].every((e) => free(Math.sin(b) * e, Math.cos(b) * e))) continue;
+        if (stood.some(([px, pz]) => Math.hypot(x - px, z - pz) < 0.05 * k)) continue;
+        stood.push([x, z]);
+        // (Slender conifers as tall as the towers; a broadleaf lower, its crown wide.)
+        const kind = outside[r.int(0, outside.length - 1)];
+        out.push({ asset: kind, param: "", variant: r.int(0, 7), x, z, yaw: r.range(0, TAU), scale: r.range(0.55, 0.7) * k * (kind === "tree.pine" ? 1 : 0.8) });
+      }
+    }
+  }
   return out;
 }
 
@@ -4728,31 +4949,93 @@ function segDist(x, z, p, q) {
   return Math.hypot(x - p[0] - ex * t, z - p[1] - ez * t);
 }
 
-/** A ring of wall segments of radius R with towers and a gate at +z, its pieces `k` times their
- *  size (a segment's length is the ring's own): bowed out round the garrison's `stands` near or
- *  beyond it (a small town's wall would run through its garrison), pulled in to `lim(x, z)` (the
- *  town's room, less the wall's thickness) where that is nearer; none standing in water or where
- *  `ok` says no (townGround), across a slope too steep to wall (the cliff is the wall there) or
- *  where a figure would still stand in it. */
-function wallRing(out, r, P, R, height = null, k = 1, { ok = null, lim = null, stands = [] } = {}) {
-  const wet = (x, z) => (!!height && height(x, z) < 0.005) || (!!ok && !ok(x, z));
-  const steep = (p, q) => !!height && Math.abs(height(p[0], p[1]) - height(q[0], q[1])) > 0.07 * k;
+/** Bins of a wall line's radius by direction (WallLine.at). */
+const LINE_BINS = 128;
+
+/** The line of a town wall: a ring of N corners round radius R (a segment ~0.2 * k long), the
+ *  gate's two corners square to the front (+z). Out of round as an old wall is: two slow lobes
+ *  pull it in by up to 7% and the corners step a little along the ring; each corner then takes,
+ *  of a few radii about its place, the one whose ground is nearest the last corner's (the wall
+ *  follows the lie of the land, along a slope rather than up and down it). Bowed out round the
+ *  garrison's `stands` near or beyond it (a small town's wall would run through its garrison),
+ *  pulled in to `lim(x, z)` (the town's room, less the wall's thickness) where that is nearer.
+ *  Planned before the houses, which keep inside it (`at`). Returns {V: corners [x, z] (V[N-1] to
+ *  V[0] is the gate's), at(x, z): the line's distance from the centre toward (x, z)}. */
+function wallLine(r, R, height = null, k = 1, { lim = null, stands = [] } = {}) {
   const N = Math.max(8, Math.round((TAU * R) / (0.2 * k)));
   const D = TAU / N;
-  const rad = [];
-  for (let i = 0; i < N; i++) rad.push(R * (1 + (i === 0 || i === N - 1 ? 0 : r.range(-0.035, 0.02))));
+  const ang = [];
+  for (let i = 0; i < N; i++) ang.push((i + 0.5 + (i === 0 || i === N - 1 ? 0 : r.range(-0.2, 0.2))) * D);
+  const p2 = r.range(0, TAU), p3 = r.range(0, TAU), w2 = r.range(0.4, 1);
+  const lobe = (a) => 0.965 + 0.035 * (w2 * Math.sin(2 * a + p2) + (1 - w2) * Math.sin(3 * a + p3));
+  const hAt = (a, rr) => (height ? height(Math.sin(a) * rr, Math.cos(a) * rr) : 0);
+  const rad = [R];
+  let hPrev = hAt(ang[0], R);
+  for (let i = 1; i < N; i++) {
+    if (i === N - 1) {
+      rad.push(R);
+      break;
+    }
+    const a = ang[i], base = R * lobe(a);
+    let best = base, bestS = Infinity;
+    for (const f of [0.95, 0.98, 1, 1.025]) {
+      const rr = Math.min(R * 1.02, base * f);
+      const s = (Math.abs(hAt(a, rr) - hPrev) * 5) / k + Math.abs(rr - base) * 0.5 + r() * 0.006;
+      if (s < bestS) [bestS, best] = [s, rr];
+    }
+    rad.push(best);
+    hPrev = hAt(a, best);
+  }
   // The two corners either side of a stand go far enough out that the wall between them passes
   // WALL_CLEAR beyond it.
   for (const [sx, sz] of stands) {
-    const i0 = Math.floor(((Math.atan2(sx, sz) + TAU) % TAU) / D - 0.5);
-    const need = (Math.hypot(sx, sz) + WALL_CLEAR) / Math.cos(D / 2);
-    for (const i of [(i0 + N) % N, (i0 + 1) % N]) rad[i] = Math.max(rad[i], need);
+    const as = (Math.atan2(sx, sz) + TAU) % TAU;
+    let i0 = N - 1;
+    for (let i = 0; i < N; i++) if (ang[i] <= as) i0 = i;
+    const i1 = (i0 + 1) % N;
+    const half = (((ang[i1] - ang[i0] + TAU) % TAU) || D) / 2;
+    const need = (Math.hypot(sx, sz) + WALL_CLEAR) / Math.cos(Math.min(1.2, half));
+    for (const i of [i0, i1]) rad[i] = Math.max(rad[i], need);
   }
   const V = rad.map((rr, i) => {
-    const a = (i + 0.5) * D;
+    const a = ang[i];
     if (lim) rr = Math.min(rr, lim(Math.sin(a), Math.cos(a)));
     return [Math.sin(a) * rr, Math.cos(a) * rr];
   });
+  // The line's radius by direction: where the ray meets the segment spanning it, binned
+  // conservatively (the nearest of the bin's two edges and any corner within it).
+  const ray = (a) => {
+    const ux = Math.sin(a), uz = Math.cos(a);
+    let best = Infinity;
+    for (let i = 0; i < N; i++) {
+      const p = V[(i + N - 1) % N], q = V[i];
+      const ex = q[0] - p[0], ez = q[1] - p[1];
+      const den = ux * ez - uz * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      const t = (p[0] * ez - p[1] * ex) / den, s = (p[0] * uz - p[1] * ux) / den;
+      if (t > 0 && s >= -1e-6 && s <= 1 + 1e-6) best = Math.min(best, t);
+    }
+    return best;
+  };
+  const edges = [];
+  for (let b = 0; b <= LINE_BINS; b++) edges.push(ray((b / LINE_BINS) * TAU));
+  const tab = new Float64Array(LINE_BINS);
+  for (let b = 0; b < LINE_BINS; b++) tab[b] = Math.min(edges[b], edges[b + 1]);
+  for (const [x, z] of V) {
+    const b = Math.floor((((Math.atan2(x, z) + TAU) % TAU) / TAU) * LINE_BINS) % LINE_BINS;
+    tab[b] = Math.min(tab[b], Math.hypot(x, z));
+  }
+  return { V, at: (x, z) => tab[Math.floor((((Math.atan2(x, z) + TAU) % TAU) / TAU) * LINE_BINS) % LINE_BINS] };
+}
+
+/** A town wall along its line (wallLine), its pieces `k` times their size (a segment's length is
+ *  the line's own): wall segments, towers on every other corner and the gate at +z; none standing
+ *  in water or where `ok` says no (townGround), across a slope too steep to wall (the cliff is the
+ *  wall there) or where a figure would still stand in it. */
+function wallRing(out, P, line, height = null, k = 1, { ok = null, stands = [] } = {}) {
+  const wet = (x, z) => (!!height && height(x, z) < 0.005) || (!!ok && !ok(x, z));
+  const steep = (p, q) => !!height && Math.abs(height(p[0], p[1]) - height(q[0], q[1])) > 0.07 * k;
+  const V = line.V, N = V.length;
   const onStand = (p, q, d) => stands.some(([sx, sz]) => segDist(sx, sz, p, q) < d);
   for (let i = 0; i < N; i++) {
     const p = V[(i + N - 1) % N], q = V[i];
@@ -4761,7 +5044,7 @@ function wallRing(out, r, P, R, height = null, k = 1, { ok = null, lim = null, s
     const yaw = Math.atan2(-(q[1] - p[1]), q[0] - p[0]);
     if (wet(cx, cz) || (i && steep(p, q)) || onStand(p, q, 0.06)) continue;
     if (i === 0) out.push({ asset: "bld.gate", param: P, x: cx, z: cz, yaw, scale: k, sx: L / 0.2 });
-    else out.push({ asset: "bld.wall", param: P, x: cx, z: cz, yaw, scale: k, sx: (L / 0.2) * 1.02 });
+    else out.push({ asset: "bld.wall", param: P, x: cx, z: cz, yaw, scale: k, sx: (L / 0.2) * 1.04 });
   }
   for (let i = 0; i < N; i++) {
     if (i === 0 || i === N - 1) continue;

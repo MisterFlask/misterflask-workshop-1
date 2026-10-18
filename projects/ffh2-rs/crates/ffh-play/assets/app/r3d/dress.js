@@ -398,7 +398,8 @@ function shoreOf(world, x, y) {
 
 /** A river's banks (docs/R3D.md §5.2): boulders along the water's edge in clusters, now and then
  *  one out in the stream (the water breaks white round it), reeds standing in the shallows at the
- *  edge and grass leaning over it from the bank tops. Each plot dresses the banks in its own
+ *  edge, grass on the bank tops and, between the boulder clusters, grass hanging out over the
+ *  water's edge (feat.overhang, turned to the water). Each plot dresses the banks in its own
  *  square from a seed of its own (its other dressing draws as before); nothing at a road's
  *  crossing (a bridge spans it), in a city, round a held plot's centre, on a farm's fields or in a
  *  paddock (fields.js inField) or out on the sea. */
@@ -449,7 +450,45 @@ function placeBank(world, map, ctx, place) {
       }
     }
   }
+  // Grass hanging over the water's edge (the catalog's feat.overhang): rooted along the bank top,
+  // turned to the water and combed out over it, between the boulder clusters (thinned where the
+  // rocks cluster). Its own seed and a fixed number of draws per slot, so the rocks and reeds
+  // above keep their places. Not in the hells or on snow, sparse and straw-dry in the desert.
+  if (!hasRecipe("feat.overhang") || isHellGround(ctx.ground) || ctx.ground === GROUND.SNOW) return;
+  const ro = rng(i * 173 + 41);
+  const desert = ctx.ground === GROUND.DESERT;
+  const GO = 8;
+  for (let gy = 0; gy < GO; gy++) {
+    for (let gx = 0; gx < GO; gx++) {
+      let mx = x + (gx + ro()) / GO, my = y + 1 - (gy + ro()) / GO;
+      const roll = ro(), sz = ro(), variant = ro.int(0, 3), want = ro.range(RIVER_BANK - 0.025, RIVER_BANK + 0.01), dry = ro(), turn = ro.range(-0.35, 0.35);
+      const d = world.riverDist(mx, my);
+      if (d < RIVER_HALF || d > RIVER_BANK + 0.08) continue;
+      // Step across the bank to the root line, along the way to the water.
+      const e = 0.01;
+      let vx = world.riverDist(mx - e, my) - world.riverDist(mx + e, my), vy = world.riverDist(mx, my - e) - world.riverDist(mx, my + e);
+      const vl = Math.hypot(vx, vy);
+      if (vl < 1e-4) continue;
+      vx /= vl;
+      vy /= vl;
+      mx += vx * (d - want);
+      my += vy * (d - want);
+      const lx = mx - x - 0.5, lz = y + 0.5 - my;
+      if (Math.abs(lx) > 0.5 || Math.abs(lz) > 0.5) continue;
+      if (cross.some(([cx, cy]) => Math.hypot(mx - cx, my - cy) < 0.44)) continue;
+      if (ctx.held && Math.hypot(lx, lz) < 0.27) continue;
+      if (ctx.inTown(lx, lz)) continue;
+      if (ctx.improvement && inField(i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, 0.03)) continue;
+      if (world.heightAt(mx, my, false) < SEA) continue;
+      const clump = clamp(0.5 + world.n2(mx, my, 1.3, 3.1, 7.7) * 1.2, 0, 1);
+      if (roll > (desert ? 0.3 : 0.92) - 0.55 * clump * clump) continue;
+      const param = desert || (ctx.ground === GROUND.PLAINS && dry < 0.3) || ctx.ground === GROUND.TUNDRA ? "dry" : "";
+      place("feat.overhang", lx, lz, { variant, param, scale: 0.8 + sz * 0.4, yaw: Math.atan2(vy, vx) + turn, phase: sz });
+    }
+  }
 }
+
+const isHellGround = (g) => g === GROUND.BURNING_SANDS || g === GROUND.BROKEN_LANDS || g === GROUND.PERDITION;
 
 /** An emitter carried by an improvement's part (`e.dx/dy/dz` in the part's own frame), placed in
  *  the world: turned with the part's yaw (as the prop shader turns it) and scaled with it. */

@@ -12,13 +12,14 @@
 //
 // Recipes (names are a contract):
 //   rocks     rock.boulder (6; param "" | "lichen" | "moss" | "snow" | "sand" | "basalt"),
-//             rock.boulder.lichen / .moss / .snow (aliases: the rocks entry cannot pass a param),
+//             rock.boulder.lichen / .moss / .snow (aliases by name),
 //             rock.outcrop (6, layered strata; param "" | "moss" | "sand" | "snow"),
 //             rock.outcrop.moss, rock.crag (4, splintered rock towers; param "snow"),
 //             rock.crag.snow, rock.shard (4, obsidian), rock.sandstone (4, wind-carved),
 //             rock.basalt (4), rock.thorn (4, infernal horns of rock, ember at the roots)
 //   features  feat.pool (oasis), feat.palm (fallback palm), feat.volcano, feat.flames,
-//             feat.icefloe, feat.silt, feat.tuft, feat.wisp, feat.fallout
+//             feat.icefloe, feat.silt, feat.tuft, feat.wisp, feat.fallout, feat.overhang (bank
+//             grass hanging over a river's edge; param "dry")
 //   (more below: improvements imp.*, landmarks lm.*, resource markers res.*)
 //
 // Sizes: rocks, improvements and landmarks are modelled at map scale and the catalog scales the
@@ -31,10 +32,11 @@ import { MAT, icosphere, MeshBuilder } from "../mesh.js";
 import { pal, jitter, MANA } from "./palette.js";
 import { noise3, hashf } from "../noise.js";
 import { vnorm, vsub, vcross, vadd, vscale, clamp } from "../math.js";
-import { KIND, FEAT, GROUND, DRAFT, isHell } from "../world.js";
-import { fieldLayout, roadLinks, onRoad, ROAD_CLEAR, CROP, ROWS } from "../fields.js";
+import { KIND, FEAT, GROUND, DRAFT, RIVER_HALF, RIVER_WANDER, isHell } from "../world.js";
+import { fieldLayout, inField, roadLinks, onRoad, ROAD_CLEAR, CROP, ROWS } from "../fields.js";
 
 const TAU = Math.PI * 2;
+const QT = Math.PI / 2;
 
 // --- colour ---------------------------------------------------------------------------------------
 
@@ -284,33 +286,42 @@ function groundAO(mb, m0, y0 = -0.02, y1 = 0.05, min = 0.5) {
  *  dust) with its coverage. */
 function rockPaint(kind, r) {
   // Stone of the same family as the terrain's own rock (shaders.js: cool grey-violet in shadow,
-  // warm grey where lit); the coats are muted (the low sun saturates greens and yellows a lot:
-  // moss stays a dark olive, lichen a pale grey-ochre, never lime).
+  // warm grey where lit). The sun is warm (config.js: in linear light its blue is half its red),
+  // so a neutral grey reads sandy beige under it: the stone is painted cool -- violet-grey sides,
+  // pale mauve-grey tops -- so it lands on the look target's grey (pale warm-grey tops, mauve-grey
+  // flanks, dark clefts). The coats are muted (the sun saturates greens and yellows a lot: moss stays a
+  // dark olive, lichen a pale grey-ochre, never lime).
   switch (kind) {
     case "lichen":
-      return { base: J("#4e4d52", r, 0.05), top: J("#7a756c", r), coat: ["#7e7a5c", "#8a6e4c", "#6e6e5e"], cover: 0.42 };
+      return { base: J("#57535e", r, 0.04), top: J("#9c949c", r, 0.04), coat: ["#7e7a5c", "#8a6e4c", "#6e6e5e"], cover: 0.42 };
     case "moss":
-      return { base: J("#4e4c4c", r, 0.05), top: J("#77716a", r), coat: ["#3e4826", "#47522a", "#525a34"], cover: 0.36 };
+      return { base: J("#55525c", r, 0.04), top: J("#9a929a", r, 0.04), coat: ["#3e4826", "#47522a", "#525a34"], cover: 0.36 };
     case "snow":
-      return { base: J("#4a4850", r, 0.05), top: J("#6e6c74", r), coat: [T.snow, T.snow, T.snowShade], cover: 0.6 };
+      return { base: J("#4e4e5c", r, 0.04), top: J("#7c7a88", r, 0.04), coat: [T.snow, T.snow, T.snowShade], cover: 0.6 };
     case "sand":
       return { base: J(T.sandBand, r, 0.05), top: J(T.sandLight, r), coat: ["#c8ad84"], cover: 0.25 };
     case "basalt":
       return { base: J("#252228", r, 0.05), top: J("#3a3640", r), coat: ["#4a2e26", "#3e3836"], cover: 0.25 };
     default:
-      return { base: J("#504e50", r, 0.05), top: J("#7c766c", r), coat: ["#5e5e46", "#444c2a"], cover: 0.16 };
+      return { base: J("#59535d", r, 0.04), top: J("#a1979d", r, 0.04), coat: ["#5e5e46", "#444c2a"], cover: 0.16 };
   }
 }
 
-/** A shade function for a painted rock (facet value + top coat by noise). */
+/** A shade function for a painted rock (facet value + top coat by noise): pale tops, the flanks in
+ *  the base colour, and the steep and undercut facets low down sunk toward a dark cleft colour
+ *  (the dark crevices that make a boulder read as split stone, not a smooth lump). */
 function rockShader(p, seed, { bands = 0, bandC = null, bandF = 70 } = {}) {
+  const cleft = mulc(p.base, 0.42);
   return (n, y, a, b, c) => {
     let base = p.base;
     if (bands) {
       const s = Math.sin(y * bandF + seed * 3);
       if (s > 0.35) base = mixl(base, bandC, bands);
     }
-    let col = faceShade(base, n, { top: p.top, under: mulc(base, 0.5), lit: 0.22 });
+    // Steep facets facing down or away (the clefts between the chisel cuts) darken, more so near
+    // the ground.
+    if (n[1] < 0.2) base = mixl(base, cleft, clamp((0.2 - n[1]) * 1.6, 0, 0.7) * clamp(1.2 - y * 14, 0.35, 1));
+    let col = faceShade(base, n, { top: p.top, under: mulc(base, 0.45), lit: 0.26 });
     if (n[1] > 0.38 && p.cover > 0) {
       const cx = (a[0] + b[0] + c[0]) / 3, cz = (a[2] + b[2] + c[2]) / 3;
       const k = noise3(cx * 40 + seed, y * 40, cz * 40) * 0.5 + 0.5;
@@ -379,7 +390,8 @@ function buildOutcrop(mb, r, variant, kind = "") {
   const p = rockPaint(kind || "moss", r);
   if (!kind) p.cover = 0.22;
   // Beds alternating in value (a pale bed, a dark one): the strata must read at a glance.
-  const strata = sand ? [T.sandLight, T.sandDeep, "#b08a60", T.sandBand] : [mixl(p.base, "#958b7a", 0.55), mulc(p.base, 0.78), mixl(p.base, "#a09482", 0.45), mixl(p.base, "#5e5a60", 0.5)];
+  // (Grey beds of the cool stone, rockPaint; the desert's in sand.)
+  const strata = sand ? [T.sandLight, T.sandDeep, "#b08a60", T.sandBand] : [mixl(p.base, "#9a929c", 0.55), mulc(p.base, 0.76), mixl(p.base, "#a49ca4", 0.45), mixl(p.base, "#54525e", 0.5)];
   const m0 = mb.mark();
   const layers = r.int(3, 4);
   const R = r.range(0.11, 0.14);
@@ -402,7 +414,7 @@ function buildOutcrop(mb, r, variant, kind = "") {
       const poly = jagPoly(r, r.int(6, 8), rad, 0.24, r.range(1.0, 1.45), 1).map(([x, z]) => [x + dx * off, z + dz * off]);
       const band = strata[(i + variant) % strata.length];
       // Bed tops: weathered pale stone, a few patches of dark moss (or snow, or sand dust).
-      const topStone = sand ? mixl(band, "#d8c09a", 0.4) : mixl(band, "#aaa08e", 0.4);
+      const topStone = sand ? mixl(band, "#d8c09a", 0.4) : mixl(band, "#b0a8ae", 0.45);
       slab(mb, poly, y, y + th, {
         top: r.range(0.8, 0.92),
         skew: [-dx * 0.006, -dz * 0.006],
@@ -442,8 +454,9 @@ function buildCrag(mb, r, variant, snow = false) {
   // warm only where the sun strikes, dark in the clefts.
   // A cluster of tall, splintered rock blades (aiguilles) leaning out from one master tooth, set
   // deep in the slope (a peak's flank falls away fast, so the roots reach far below y = 0).
-  const base = J(mixl("#58555c", "#605a56", r()), r, 0.04);
-  const lit = mixl(base, "#b0a696", 0.55);
+  // (Painted cool against the warm sun, as the boulders are: rockPaint.)
+  const base = J(mixl("#5a5660", "#605a62", r()), r, 0.04);
+  const lit = mixl(base, "#b0a8ae", 0.55);
   const dark = mixl(base, "#24222a", 0.5);
   const seed = r.range(0, 50);
   const sh = (n, y, a, b, c) => {
@@ -933,6 +946,71 @@ function buildTuft(mb, r, variant) {
 
 recipe("feat.tuft", { variants: 4, build: (mb, r, { variant }) => buildTuft(mb, r, variant) });
 
+/** Bank grass hanging over a river's edge (dress.js placeBank): rooted on the bank top along z,
+ *  long fronds combed out toward the water (+x), arching up and drooping over the edge so their
+ *  tips hang just above the surface; the lowest ones dark and wet, a shadowed line along the
+ *  water, the upper ones catching the light, and a few short blades standing on the bank behind.
+ *  `param` "dry": the straw-gold grass of the plains. ~50 triangles, no shadow-map shadow. */
+function buildOverhang(mb, r, variant, param) {
+  const dry = param === "dry";
+  const roots = (dry ? ["#3a3818", "#46401c"] : ["#1c3014", "#22381a"]).map(C);
+  const mids = (dry ? ["#8a8034", "#9a8a3c", "#7a7a30"] : ["#3e6a24", "#4a7628", "#56802e"]).map(C);
+  const tips = (dry ? ["#d8bc58", "#e6cc6a", "#c8a848"] : ["#94b844", "#a6c44e", "#86ac40"]).map(C);
+  mb.mat = MAT.BLADE;
+  // A blade: from its root along `dir` (horizontal, unit) up to a crest `h` high, a little under
+  // halfway, then down to its tip `drop` from the root (a quad and a tip triangle); colour,
+  // occlusion and sway grow toward the tip.
+  const blade = (x0, z0, dir, L, w, h, drop, kr, km, kt, crest = 0.42) => {
+    const side = [-dir[2], 0, dir[0]];
+    const T3 = [0, crest, 1];
+    const P = [[x0, -0.006, z0], [x0 + dir[0] * L * crest, h, z0 + dir[2] * L * crest], [x0 + dir[0] * L, drop, z0 + dir[2] * L]];
+    const W = [w, w * 0.7, 0];
+    const K = [kr, km, kt];
+    const n = vnorm([dir[0] * 0.25, 1, dir[2] * 0.25]);
+    const V = (k, s) => [P[k][0] + side[0] * W[k] * s, P[k][1], P[k][2] + side[2] * W[k] * s];
+    const vtx = (p, k) => {
+      mb.sway = 0.95 * Math.pow(T3[k], 1.3);
+      mb.vert(p, n, K[k], 0.6 + 0.4 * T3[k]);
+    };
+    const tri = (a, ka, b, kb, c, kc) => {
+      // Wound to face the normal (the shader flips a back face's normal).
+      const f = vcross(vsub(b, a), vsub(c, a));
+      if (f[0] * n[0] + f[1] * n[1] + f[2] * n[2] < 0) [b, kb, c, kc] = [c, kc, b, kb];
+      vtx(a, ka);
+      vtx(b, kb);
+      vtx(c, kc);
+    };
+    tri(V(0, -1), 0, V(0, 1), 0, V(1, 1), 1);
+    tri(V(0, -1), 0, V(1, 1), 1, V(1, -1), 1);
+    tri(V(1, -1), 1, V(1, 1), 1, P[2], 2);
+  };
+  const n = 13 + (variant % 2);
+  for (let k = 0; k < n; k++) {
+    // The first few are the under-layer: low, dark, hanging furthest down (the wet line); the
+    // rest arch higher and catch the light. (The tips stay just above the water: the roots stand
+    // 0.02-0.045 above it, on the top of the cut bank.)
+    const under = k < 4;
+    const a = r.range(-0.65, 0.65) * (under ? 0.7 : 1);
+    const dir = [Math.cos(a), 0, Math.sin(a)];
+    const L = r.range(0.1, 0.15) * (under ? 0.85 : 1);
+    const h = under ? r.range(0.008, 0.016) : r.range(0.022, 0.042);
+    const drop = under ? r.range(-0.022, -0.014) : r.range(-0.016, 0.004);
+    const kr = jitter(r.pick(roots), r, 0.06), km = jitter(r.pick(mids), r, 0.06), kt = jitter(r.pick(tips), r, 0.08);
+    blade(r.range(-0.045, -0.005), r.range(-0.06, 0.06), dir, L, r.range(0.0055, 0.008), h, drop, kr, under ? mulc(km, 0.6) : km, under ? mulc(kt, 0.62) : kt, r.range(0.36, 0.5));
+  }
+  // Short blades standing on the bank top behind, leaning out a little (the meadow running into
+  // the overhang): the crest high up, the tip a little over.
+  for (let k = 0; k < 3; k++) {
+    const a = r.range(-1.3, 1.3);
+    const h = r.range(0.05, 0.075);
+    blade(r.range(-0.05, -0.02), r.range(-0.05, 0.05), [Math.cos(a), 0, Math.sin(a)], r.range(0.025, 0.04), 0.0065, h, h * 0.8, jitter(r.pick(roots), r, 0.06), jitter(r.pick(mids), r, 0.06), jitter(r.pick(tips), r, 0.08), 0.6);
+  }
+  mb.sway = 0;
+  mb.mat = MAT.MATTE;
+}
+
+recipe("feat.overhang", { variants: 4, shadow: false, build: (mb, r, { variant, param }) => buildOverhang(mb, r, variant, param) });
+
 /** Tormented souls: pale wisps writhing up out of the ground (dim emissive, fluttering). */
 function buildWisps(mb, r, variant) {
   mb.mat = MAT.EMISSIVE;
@@ -1235,9 +1313,11 @@ recipe("imp.barn", { variants: 4, build: (mb, r, { variant, param }) => buildBar
 
 /** Haystacks: two or three domed ricks and a few sheaves. */
 function buildHaystacks(mb, r, variant) {
-  // The brightest thing on a farm: fat golden ricks (they say "farm" from far away).
-  const hay = J("#c4a454", r, 0.05);
+  // The brightest thing on a farm: fat, soft ricks of pale straw (they say "farm" from far away),
+  // rounded like loaves as the look target's are, combed light and dark down their flanks.
+  const hay = J("#d2b264", r, 0.05);
   const n = 2 + (variant % 2);
+  const seed = r.range(0, 50);
   for (let k = 0; k < n; k++) {
     const a = (k / n) * TAU + r.range(-0.3, 0.3), d = k ? r.range(0.06, 0.075) : 0;
     const s = (k ? r.range(0.75, 0.9) : 1) * 1.25;
@@ -1245,14 +1325,12 @@ function buildHaystacks(mb, r, variant) {
       mb.color = hay;
       const m0 = mb.mark();
       if (variant >= 2 && k === 0) {
-        // A long rick with a ridged top.
+        // A long rick, its top rounded over.
         mb.scale(1.5, 1, 1);
-        mb.lathe([[0.034 * s, -0.01], [0.036 * s, 0.02], [0.028 * s, 0.04], [0.012 * s, 0.056], [0, 0.06 * s]], 8);
-      } else mb.lathe([[0.03 * s, -0.01], [0.032 * s, 0.018], [0.026 * s, 0.038], [0.014 * s, 0.054 * s], [0, 0.062 * s]], 7);
-      mb.tint(m0, (x, y) => 0.68 + 0.42 * clamp(y / 0.05, 0, 1));
-      // A darker band of rope / weathered top.
-      mb.color = C("#7a6638");
-      mb.lathe([[0.0335 * s, 0.024], [0.032 * s, 0.03]], 7, { caps: false });
+        mb.lathe([[0.034 * s, -0.01], [0.037 * s, 0.014], [0.034 * s, 0.032], [0.025 * s, 0.047], [0.012 * s, 0.056], [0, 0.059 * s]], 9);
+      } else mb.lathe([[0.03 * s, -0.01], [0.033 * s, 0.012], [0.031 * s, 0.029], [0.023 * s, 0.045 * s], [0.011 * s, 0.056 * s], [0, 0.06 * s]], 9);
+      // Lit crown, shaded foot, and streaks of the straw down the flanks.
+      mb.tint(m0, (x, y, z) => (0.66 + 0.46 * clamp(y / 0.055, 0, 1)) * (0.93 + 0.1 * noise3(Math.atan2(z, x) * 2.2 + seed, y * 18, k)));
     });
   }
   // Sheaves leaning together.
@@ -1288,6 +1366,111 @@ function buildScarecrow(mb, r) {
 }
 
 recipe("imp.scarecrow", { variants: 2, build: (mb, r) => buildScarecrow(mb, r) });
+
+/** A farm cart (a farmyard's, or a town yard's): a plank bed on two spoked wheels, its shafts
+ *  resting on the ground in front; v0 loaded with hay, v1 with sacks and a barrel. Along x, the
+ *  shafts toward +x. */
+function buildCart(mb, r, variant) {
+  const wood = J("#7a5a3a", r, 0.06), dark = mulc(wood, 0.62);
+  const L = 0.07, W = 0.04, y0 = 0.02;
+  // The bed: a floor and low plank sides.
+  mb.color = wood;
+  at(mb, 0, y0, 0, 0, () => mb.box(L, 0.004, W));
+  mb.color = mulc(wood, 0.88);
+  for (const s of [-1, 1]) at(mb, 0, y0, (s * W) / 2, 0, () => mb.box(L, 0.011, 0.003));
+  at(mb, -L / 2, y0, 0, 0, () => mb.box(0.003, 0.011, W));
+  // Shafts down to the ground in front.
+  mb.color = dark;
+  for (const s of [-1, 1]) stick(mb, [L * 0.2, y0, s * W * 0.32], [L / 2 + 0.045, -0.002, s * W * 0.26], 0.0022, 4);
+  // Wheels: a dark tyre disc with a lighter hub, either side of the axle.
+  for (const s of [-1, 1]) {
+    at(mb, -0.004, 0.018, s * (W / 2 + 0.004), 0, () => {
+      mb.rotateX(QT);
+      mb.color = dark;
+      mb.cylinder(0.018, 0.018, 0.004, 9, { caps: true });
+      mb.color = mulc(wood, 1.1);
+      mb.translate(0, s > 0 ? 0.0045 : -0.0005, 0);
+      mb.cylinder(0.0045, 0.0045, 0.001, 5, { caps: true });
+    });
+  }
+  if (variant % 2 === 0) {
+    // A load of hay heaped over the bed.
+    mb.color = J("#c8a858", r, 0.05);
+    const m0 = mb.mark();
+    at(mb, -0.004, y0 + 0.004, 0, 0, () => {
+      mb.scale(1.55, 1, 1);
+      mb.lathe([[0.022, 0], [0.023, 0.01], [0.017, 0.022], [0.006, 0.029], [0, 0.03]], 7);
+    });
+    mb.tint(m0, (x, y) => 0.72 + 0.38 * clamp((y - y0) / 0.03, 0, 1));
+  } else {
+    // Sacks and a barrel.
+    for (let k = 0; k < 3; k++) {
+      mb.color = J(k % 2 ? "#b8a07a" : "#a48a64", r, 0.06);
+      at(mb, -0.022 + k * 0.016, y0 + 0.01, r.range(-0.006, 0.006), r.range(-0.4, 0.4), () => mb.sphere(0.0095, 0, { squash: 0.75 }));
+    }
+    mb.color = J("#6a4a30", r, 0.06);
+    at(mb, 0.024, y0 + 0.002, 0, 0, () => mb.lathe([[0.008, 0], [0.0095, 0.01], [0.008, 0.02], [0, 0.0205]], 7));
+  }
+  groundAO(mb, 0, -0.005, 0.03, 0.65);
+}
+
+recipe("imp.cart", { variants: 2, build: (mb, r, { variant }) => buildCart(mb, r, variant) });
+
+/** Farm tools by the yard: v0 a pitchfork, a rake and a scythe leaning on a trestle beside a
+ *  wheelbarrow; v1 a chopping block with its axe, split logs and a basket. */
+function buildTools(mb, r, variant) {
+  const wood = J("#7a5a3a", r, 0.06), iron = C("#55545a");
+  if (variant % 2 === 0) {
+    // The trestle: a bar on two pairs of splayed legs.
+    mb.color = mulc(wood, 0.85);
+    stick(mb, [-0.024, 0.026, 0], [0.024, 0.026, 0], 0.0024, 4);
+    for (const x of [-0.02, 0.02]) for (const s of [-1, 1]) stick(mb, [x, 0.026, 0], [x + s * 0.003, -0.004, s * 0.012], 0.0018, 3);
+    // Tools leaning on it: hafts from the ground behind up over the bar, iron heads on top.
+    for (let k = 0; k < 3; k++) {
+      const x = -0.016 + k * 0.016 + r.range(-0.003, 0.003);
+      const foot = [x, -0.002, -0.026], top = [x + r.range(-0.004, 0.004), 0.05, 0.012];
+      mb.color = mulc(wood, 1.12);
+      stick(mb, foot, top, 0.0016, 3);
+      mb.mat = MAT.METAL;
+      mb.color = iron;
+      if (k === 0) for (const s of [-1, 0, 1]) stick(mb, top, [top[0] + s * 0.004, top[1] + 0.012, top[2] + 0.003], 0.0008, 3); // fork
+      else if (k === 1) stick(mb, [top[0] - 0.008, top[1], top[2]], [top[0] + 0.008, top[1], top[2]], 0.0012, 3); // rake
+      else mb.quad([top[0], top[1], top[2]], [top[0] + 0.003, top[1] + 0.002, top[2]], [top[0] + 0.024, top[1] - 0.008, top[2] - 0.004], [top[0] + 0.022, top[1] - 0.009, top[2] - 0.004]); // scythe
+      mb.mat = MAT.MATTE;
+    }
+    // A wheelbarrow beside it.
+    mb.color = wood;
+    at(mb, 0.044, 0.012, 0.004, 0.4, () => {
+      mb.box(0.026, 0.012, 0.02, { top: 1.25 });
+      mb.color = mulc(wood, 0.62);
+      at(mb, 0.017, -0.004, 0, 0, () => {
+        mb.rotateX(QT);
+        mb.cylinder(0.008, 0.008, 0.004, 7, { caps: true });
+      });
+      for (const s of [-1, 1]) stick(mb, [-0.01, 0.002, s * 0.008], [-0.032, -0.006, s * 0.01], 0.0016, 3);
+    });
+  } else {
+    // A chopping block with its axe, split logs about it and a basket of kindling.
+    mb.color = J("#8a6a48", r, 0.05);
+    mb.cylinder(0.012, 0.011, 0.016, 7, { caps: true });
+    mb.color = mulc(wood, 1.1);
+    stick(mb, [0.002, 0.016, 0], [0.016, 0.034, 0.004], 0.0014, 3);
+    mb.mat = MAT.METAL;
+    mb.color = iron;
+    at(mb, 0.002, 0.017, 0.0, 0.3, () => mb.box(0.008, 0.006, 0.0025));
+    mb.mat = MAT.MATTE;
+    mb.color = J("#a4825a", r, 0.06);
+    for (let k = 0; k < 5; k++) {
+      const a = r.range(0, TAU), d = r.range(0.018, 0.03);
+      at(mb, Math.cos(a) * d, 0.003, Math.sin(a) * d, r.range(0, TAU), () => mb.box(0.014, 0.005, 0.005));
+    }
+    mb.color = J("#9a7a4a", r, 0.06);
+    at(mb, -0.03, 0, 0.01, 0, () => mb.lathe([[0.008, 0], [0.011, 0.012], [0.0105, 0.013], [0, 0.009]], 7, { caps: false }));
+  }
+  groundAO(mb, 0, -0.005, 0.03, 0.65);
+}
+
+recipe("imp.tools", { variants: 2, build: (mb, r, { variant }) => buildTools(mb, r, variant) });
 
 // --- animals (pastures and the livestock markers) -------------------------------------------------
 
@@ -1930,30 +2113,33 @@ recipe("imp.shed", { variants: 2, build: (mb, r, { variant, param }) => buildShe
 /** A stook: sheaves of grain stood together to dry, ears up and tied at the waist (0-1 a ring of
  *  sheaves, 2 a ridge of them leaning together in pairs). */
 function buildStook(mb, r, variant) {
-  const straw = J("#d4ac4c", r, 0.05);
+  // Pale, soft straw (the look target's stooks are the palest gold on the field), fat sheaves
+  // flaring into full heads of ears above the tie, the tie a darker band.
+  const straw = J("#dcbc66", r, 0.05);
   const sheaf = (x, z, lx, lz) => {
-    // From the butt on the ground, in to the tie, out to the spread ears; leaning by (lx, lz).
-    const P = [[x, -0.012, z], [x + lx * 0.4, 0.026, z + lz * 0.4], [x + lx * 0.8, 0.05, z + lz * 0.8], [x + lx, 0.064, z + lz]];
+    // From the spread butt on the ground, in to the tie, out to the full head of ears; leaning
+    // by (lx, lz).
+    const P = [[x - lx * 0.12, -0.012, z - lz * 0.12], [x + lx * 0.3, 0.02, z + lz * 0.3], [x + lx * 0.55, 0.034, z + lz * 0.55], [x + lx * 0.85, 0.054, z + lz * 0.85], [x + lx, 0.07, z + lz]];
     mb.color = straw;
     const m0 = mb.mark();
-    mb.tube(P, [0.0095, 0.0068, 0.0105, 0.004], 4);
-    mb.tint(m0, (px, y) => 0.86 + 0.3 * clamp(y / 0.06, 0, 1));
+    mb.tube(P, [0.017, 0.012, 0.0105, 0.018, 0.006], 4);
+    mb.tint(m0, (px, y) => (Math.abs(y - 0.034) < 0.004 ? 0.66 : 0.78 + 0.36 * clamp(y / 0.066, 0, 1)));
   };
   if (variant < 2) {
-    const n = 4 + variant;
+    const n = 5 + variant;
     const a0 = r.range(0, TAU);
     for (let k = 0; k < n; k++) {
       const a = a0 + (k / n) * TAU + r.range(-0.2, 0.2);
       const c = Math.cos(a), s = Math.sin(a);
-      sheaf(c * 0.017, s * 0.017, -c * 0.011, -s * 0.011);
+      sheaf(c * 0.022, s * 0.022, -c * 0.013, -s * 0.013);
     }
   } else {
     for (let k = 0; k < 3; k++) {
-      const z = (k - 1) * 0.019 + r.range(-0.003, 0.003);
-      for (const s of [-1, 1]) sheaf(s * 0.016, z, -s * 0.011, r.range(-0.003, 0.003));
+      const z = (k - 1) * 0.024 + r.range(-0.003, 0.003);
+      for (const s of [-1, 1]) sheaf(s * 0.02, z, -s * 0.013, r.range(-0.003, 0.003));
     }
   }
-  groundAO(mb, 0, -0.01, 0.02, 0.75);
+  groundAO(mb, 0, -0.01, 0.025, 0.72);
 }
 
 recipe("imp.stook", { variants: 3, build: (mb, r, { variant }) => buildStook(mb, r, variant) });
@@ -2030,19 +2216,67 @@ function buildBeds(mb, r, variant) {
 
 recipe("imp.beds", { variants: 3, build: (mb, r, { variant }) => buildBeds(mb, r, variant) });
 
+/** A row of standing grain along z centred on x = 0: a soft, rounded sheaf of section foot (half
+ *  width hw, sunk to y = -0.012) -- shoulder -- crown (a flattish top `hs` either side of the
+ *  crest), the crest through `crest` ([y, x-offset] at even stations over the length L), with
+ *  normals rounding over it; `tone(k)` colours each station (the ears combed light and dark along
+ *  the row). Three faces a segment and low end caps. */
+function grainRow(mb, L, hw, crest, tone) {
+  const n = crest.length - 1, foot = -0.012, hs = hw * 0.42;
+  const z = (k) => -L / 2 + (L * k) / n;
+  // The section's points (x, y) and normals at station k: foot, shoulder, shoulder, foot.
+  const sec = (k) => {
+    const [y, xo] = crest[k];
+    return [[-hw, foot], [xo - hs, y], [xo + hs, y], [hw, foot]];
+  };
+  const NS = [vnorm([-0.8, 0.6, 0]), vnorm([-0.3, 1, 0]), vnorm([0.3, 1, 0]), vnorm([0.8, 0.6, 0])];
+  for (let k = 0; k < n; k++) {
+    const a = sec(k), b = sec(k + 1), ka = tone(k), kb = tone(k + 1);
+    for (let f = 0; f < 3; f++) {
+      const p = [[a[f][0], a[f][1], z(k)], [a[f + 1][0], a[f + 1][1], z(k)], [b[f + 1][0], b[f + 1][1], z(k + 1)], [b[f][0], b[f][1], z(k + 1)]];
+      const nf = [NS[f], NS[f + 1], NS[f + 1], NS[f]];
+      const ks = [ka, ka, kb, kb];
+      // Wound to face up and out (the shader flips a back face's normal).
+      const fn = vcross(vsub(p[1], p[0]), vsub(p[2], p[0]));
+      const order = fn[1] < 0 ? [0, 3, 2, 1] : [0, 1, 2, 3];
+      const tri = (i, j, l) => {
+        mb.vert(p[order[i]], nf[order[i]], ks[order[i]]);
+        mb.vert(p[order[j]], nf[order[j]], ks[order[j]]);
+        mb.vert(p[order[l]], nf[order[l]], ks[order[l]]);
+      };
+      tri(0, 1, 2);
+      tri(0, 2, 3);
+    }
+  }
+  for (const [k, s] of [[0, -1], [n, 1]]) {
+    mb.color = mulc(tone(k), 0.82);
+    const q = sec(k).map(([x, y]) => [x, y, z(k)]);
+    const nn = [0, 0.4, s];
+    for (const [i, j, l] of [[0, 1, 2], [0, 2, 3]]) {
+      const f = vcross(vsub(q[j], q[i]), vsub(q[l], q[i]));
+      if (f[2] * s < 0) mb.triN(q[i], q[l], q[j], nn, nn, nn);
+      else mb.triN(q[i], q[j], q[l], nn, nn, nn);
+    }
+  }
+}
+
 /** Standing grain: rows of ripe ears (variant + 1 of them, 1/18 plot apart -- the rows the field
- *  decal paints) along z, 0.2 long: ridged golden masses, warm on top, ochre down the stalks.
- *  Laid in patches like the beds. */
+ *  decal paints) along z, 0.2 long: soft, rounded golden sheaves with a shadowed furrow between
+ *  them (as the look target's wheat: combed rows, not one flat mat), pale on the crown, ochre
+ *  down the stalks, each row's ears combed light and dark along it. Laid in patches like the
+ *  beds (their ends overlapping, so a field reads as one run of rows). */
 function buildGrain(mb, r, variant) {
   const rows = variant + 1, gap = 1 / 18, L = 0.2, n = 3;
-  const gold = J("#c89c46", r, 0.05);
+  const gold = J("#b6803a", r, 0.05);
   for (let j = 0; j < rows; j++) {
-    // Neighbouring rows overlap: one mass of grain, its rows soft ridges along it.
-    const crest = [];
-    for (let k = 0; k <= n; k++) crest.push([0.021 + r.range(-0.0015, 0.0015), r.range(-0.002, 0.002)]);
+    const crest = [], tones = [];
+    for (let k = 0; k <= n; k++) {
+      crest.push([0.025 + r.range(-0.002, 0.002), r.range(-0.0025, 0.0025)]);
+      tones.push(mulc(gold, r.range(0.9, 1.08)));
+    }
     const m0 = mb.mark();
-    at(mb, (j - (rows - 1) / 2) * gap, 0, 0, 0, () => cropRow(mb, L, gap * 0.82, crest, (k, s) => (s < 0 ? gold : mulc(gold, 0.92))));
-    mb.tint(m0, (px, y) => 0.7 + 0.42 * clamp((y + 0.012) / 0.033, 0, 1));
+    at(mb, (j - (rows - 1) / 2) * gap, 0, 0, 0, () => grainRow(mb, L, gap * 0.6, crest, (k) => tones[k]));
+    mb.tint(m0, (px, y) => 0.46 + 0.56 * clamp((y + 0.008) / 0.033, 0, 1));
   }
 }
 
@@ -4541,10 +4775,11 @@ function rocksOf(ctx) {
     return [{ asset: k < 0.45 ? "rock.thorn" : k < 0.7 ? "rock.shard" : "rock.basalt", scale: k < 0.45 ? 1.35 : 1.0, count: r() < 0.75 ? 1 + (r() < 0.25 ? 1 : 0) : 0 }];
   }
   // Small stones in the grass (not in an improvement's fields), now and then a boulder.
-  const stones = (asset, n) => ({ asset, scale: 0.42, count: ctx.improvement || wooded ? 0 : r.int(0, n) });
+  const stones = (asset, n, param) => ({ asset, param, scale: 0.42, count: ctx.improvement || wooded ? 0 : r.int(0, n) });
   if (ground === GROUND.TUNDRA) return [{ asset: "rock.boulder.lichen", scale: 0.95, count: r() < 0.55 ? 1 + (r() < 0.3 ? 1 : 0) : 0 }, stones("rock.boulder.lichen", 3)];
   if (ground === GROUND.SNOW) return [{ asset: "rock.boulder.snow", scale: 0.9, count: r() < 0.4 ? 1 : 0 }];
-  if (sand && feat === FEAT.NONE) return [{ asset: "rock.sandstone", scale: 0.85, count: r() < 0.3 ? 1 : 0 }, stones("rock.boulder", 2)];
+  // (The desert's stones are sandstone, not the grasslands' grey.)
+  if (sand && feat === FEAT.NONE) return [{ asset: "rock.sandstone", scale: 0.85, count: r() < 0.3 ? 1 : 0 }, stones("rock.boulder", 2, "sand")];
   if (ground === GROUND.PLAINS || ground === GROUND.GRASS) return [{ asset: "rock.boulder", scale: 0.75, count: r() < 0.18 ? 1 : 0 }, stones("rock.boulder", 2)];
   return [];
 }
@@ -4583,7 +4818,8 @@ function onRoadOf(ctx) {
 const layoutOf = (ctx) => fieldLayout(ctx.i, ctx.improvement, ctx.bonus, ctx.rivers ?? 0);
 
 /** A farm on its fields (fields.js): the farmstead (a barn or a granary) in its yard with its
- *  haystacks, fence runs along the field edges, stooks on the grain and a scarecrow in the beds.
+ *  haystacks and, on some farms, a cart or its tools; fence runs along the field edges, stooks on
+ *  the grain and a scarecrow in the beds.
  *  The plot's centre keeps only low crops (a unit standing there stays readable). */
 function farmOf(ctx, part, yj) {
   const r = ctx.r;
@@ -4592,10 +4828,27 @@ function farmOf(ctx, part, yj) {
   // Nothing of the farm but its barn stands on a road through it (the decal keeps the fields off
   // the road too).
   const road = onRoadOf(ctx);
+  const hz = yard.z + r.range(-0.05, 0.03);
   const out = [
     part("imp.barn", yard.x, yard.z, { variant: r.int(0, 3), yaw: yj(0.3), scale: 1.2 }),
-    part("imp.haystacks", yard.x - s * 0.2, yard.z + r.range(-0.05, 0.03), { variant: r.int(0, 3), yaw: r.range(0, TAU), scale: r.range(1.3, 1.5), tint: [0.96, 0.88, 0.78] }),
+    part("imp.haystacks", yard.x - s * 0.2, hz, { variant: r.int(0, 3), yaw: r.range(0, TAU), scale: r.range(1.3, 1.5), tint: [1, 0.96, 0.9] }),
   ];
+  // Now and then a cart or the farm's tools in the yard: the first spot round the barn that is off
+  // the fields, the road and the water and clear of the barn and the ricks.
+  const kit = r(), ka = r.range(0, TAU);
+  if (kit < 0.6) {
+    const ok = (x, z) =>
+      Math.abs(x) < 0.42 && Math.abs(z) < 0.42 && Math.hypot(x - yard.x, z - yard.z) > 0.17 && Math.hypot(x - (yard.x - s * 0.2), z - hz) > 0.12 &&
+      !inField(ctx.i, ctx.improvement, ctx.bonus, ctx.rivers ?? 0, x, z, 0.03) && !road([[x, z]], 0.04) && (!ctx.unit || Math.hypot(x, z) > 0.22) &&
+      (!ctx.world || ctx.world.riverDist(ctx.x + 0.5 + x, ctx.y + 0.5 - z) > RIVER_HALF + RIVER_WANDER + 0.06);
+    for (let k = 0; k < 10; k++) {
+      const a = ka + k * 2.4, d = 0.19 + 0.02 * (k % 3);
+      const x = yard.x + Math.cos(a) * d, z = yard.z + Math.sin(a) * d;
+      if (!ok(x, z)) continue;
+      out.push(part(kit < 0.35 ? "imp.cart" : "imp.tools", x, z, { variant: r.int(0, 1), yaw: r.range(0, TAU), scale: 1.35 }));
+      break;
+    }
+  }
   for (const [[ax, az], [bx, bz]] of lay.fences) {
     const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 0.2));
     const yaw = Math.atan2(-(bz - az), bx - ax);
@@ -4640,7 +4893,7 @@ function farmOf(ctx, part, yj) {
         if (road([-1, 0, 1].flatMap((u) => [-1, 0, 1].map((v) => [cx + u * ext[0], cz + v * ext[1]])))) continue;
         out.push(green
           ? { asset: "imp.beds", dx: along, dz: c, yaw: 0, variant: chunk.length - 1, scale: 1, sx: len / 0.2 }
-          : { asset: "imp.grain", dx: c, dz: along, yaw: 0, variant: chunk.length - 1, scale: 1, sz: len / 0.2 });
+          : { asset: "imp.grain", dx: c, dz: along, yaw: 0, variant: chunk.length - 1, scale: 1, sz: (len / 0.2) * 1.05 });
       }
     }
   }
