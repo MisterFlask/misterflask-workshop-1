@@ -23,9 +23,10 @@ anim-*.js       anim.js   check.mjs  sheet.mjs  mutate.mjs   vision     the lab 
    bakes the clip from the real figure generator and runs every metric (§4). A hard failure names
    the metric, its value, its limit and the worst frame.
 3. **Look** at it: `node tools/r3d-anim.mjs sheet --recipe unit.warrior --clip attack --out DIR`
-   draws the review sheet: every frame at the true gameplay size and enlarged, a timing chart
-   (onion skin, one dot a frame on the striking point, head and pelvis: the spacing is the
-   speed), the speed and height curves, the verdicts. Numbers do not replace looking.
+   draws the review sheet: an even sample of about 24 frames (always the last frame and each
+   event's frame, every cell labelled with its frame and time) at the true gameplay size and
+   enlarged, a timing chart (onion skin, one dot a frame on the striking point, head and pelvis:
+   the spacing is the speed), the speed and height curves, the verdicts. Numbers do not replace looking.
 4. **Mutate**: `node tools/r3d-anim.mjs mutants --recipe unit.warrior` degrades the clip in the
    ways animation goes wrong and checks that each degradation trips the metric that claims to
    catch it, while the good clip passes (§5). This is the validator's own test.
@@ -145,14 +146,16 @@ ends up), `pivot`.
 - **Snaps are instantaneous.** A loosed arrow or a released string must change in one frame
   (`"hold"` segments); a part-grown arrow is a visible defect.
 - **Fast motion needs frames.** The GPU lerps between baked frames; a fast swing's chord cuts its
-  arc and shrinks the weapon. The validator compares the lerp with a bake at twice the rate.
+  arc and shrinks the weapon. The validator compares the lerp with a bake at four times the rate.
 - **Read from every side.** Fights come from eight directions and the figure turns to them. An
   overhead chop seen from behind is hidden by the body; a diagonal chop across the body reads
   from all eight.
 - **Honest metadata.** Declared contacts, fall directions and events are checked against the
   motion: the renderer turns corpses by them.
-- **Dead limbs fall.** A leg or an arm that lands after the body must land no faster than
-  falling from its own highest point (`death.landing`); keyed down faster, it reads as a slap.
+- **Dead limbs fall.** A leg (or the head, or the body itself) that lands must land no faster
+  than falling from its own highest point (`death.landing`); keyed down faster, it reads as a
+  slap. Arms are not judged: a hand trailing past the body in a rigid topple can rightly land
+  faster than that.
 - **Snap and settle.** Hold at the top, strike in about 0.1-0.15 s, peak at the impact, and come
   back in one smooth arc: blind judges preferred that, 4 of 4, to a ramp into the blow and a whip
   back to guard, both of which the hard metrics pass (§6).
@@ -234,11 +237,14 @@ A metric is trusted only when it **fails on its defect and passes on a good clip
 
 A mutation must express its defect however the clip was authored. The first catalogue edited
 single keys, and the warrior's densely keyed clips diluted five of its mutants to nothing (the
-mutation, not the metric, was the weak link). A mutation now edits a clip only with smooth
-additive `bumps` and whole-clip changes (waves, metadata, every key scaled or shifted), or edits
-the baked frames: retiming the motion (linear timing, an eased impact, a floaty fall, a dropped
-loop end), freezing it (no recoil, a lingering arrow), scaling it about its mean (a statue, a
-swimming idle), or moving parts (a stretched forearm, a broken wrist, a weapon through the head).
+mutation, not the metric, was the weak link). A mutation now never changes one key without
+clearing the keys around it. It edits a clip with smooth additive `bumps`, whole-clip changes
+(waves, metadata, every key scaled, shifted or mirrored, a channel dropped from every key), range
+edits (every key before an event removed, every key after it shifted), window replacements (a
+channel's keys around an event cleared and new ones set), or edits of the baked frames: retiming
+the motion (linear timing, an eased impact, a floaty fall, a dropped loop end), freezing it (no
+recoil, a lingering arrow), scaling it about its mean (a statue, a swimming idle), or moving
+parts (a stretched forearm, a broken wrist, a weapon through the head).
 
 | mutation | the defect | must trip |
 |---|---|---|
@@ -258,7 +264,7 @@ metric that no mutant targeting it trips: every hard metric must be *seen* to fa
 (`mutate.mjs` `RUNTIME` exempts the two that measure the runtime's projectile, not the clip:
 `shot.flight`, `shot.visible`). Requiring that found a blind spot: `death.bounce` measured a rise
 against the height at first contact, so a corpse that kept settling after it could float back up
-3 cm unseen (it now measures from the lowest point so far).
+0.03 plots (about 11 cm) unseen (it now measures from the lowest point so far).
 
 What the mutants measured about the metrics themselves: `joints.knee` is nearly implied by
 `rigid.reach`'s lower bound (a leg folded past 145 degrees is under 30% of its reach); a deep squat
@@ -267,7 +273,7 @@ trips both. The cut from the idle (`boundary.transition`) cannot fail once `idle
 so it is scored, not a gate. A pop inside fast motion is masked by it, and `pop.spike` rightly lets
 it pass: the `snap` mutant is placed where the arm moves least. Two mutants were caught only at
 some loop phases (found when an author shifted a loop's start): they now pull a bow fully into the
-chest and make the pop a 4 cm jump held two frames, so the self-test does not depend on luck.
+chest and make the pop a 0.04-plot jump held two frames, so the self-test does not depend on luck.
 
 Two more tests guard the engine, since a metric can only measure what the baker reproduces
 faithfully:
@@ -275,7 +281,7 @@ faithfully:
 - the rest identity: a figure built with an empty pose is its static mesh, bit for bit;
 - the continuity sweep: every pose channel swept over its range in 120 steps has no step 4x its
   neighbours' (it caught the ring flips of §3.4: re-introducing the old ring rule fails it with a
-  34 mm jump).
+  0.034-plot jump).
 
 The panel that designed the validator (four independent designs: biomechanics, perception, craft,
 judge calibration; an architecture critic; skeptics trying to kill each metric) kept a metric only

@@ -412,8 +412,10 @@ Delete `assets/app/r3d/`, `crates/ffh-play/r3d-lab/`, `tools/r3d-*.mjs`, `assets
 this file and docs/ANIMATION.md; remove the r3d lines of `ASSETS` in `src/transport/http.rs`, the
 `r3d?.combat` call in `units.js`, `useR3d` and the `r3d` delegation lines in `map.js`,
 `use3d`/the `"3d"` branch in `main.js`, `EXPERIMENTAL_3D` in `look.js` and `tools.js`, the
-`renderer3d` step of `tools/web-smoke.mjs`, `stage corrupt` in `src/stage.rs`/`src/main.rs`, and the
-`await import(` line of `tests/web.rs`'s scanner. Nothing else depends on it.
+`renderer3d` and `stagedAttack3d` steps of `tools/web-smoke.mjs` (and their calls in `main()`), the
+`app/r3d`, `app/r3d/assets`, `r3d-lab` and `r3d-lab/anim` globs of `tools/web-check.sh`, `stage corrupt`
+in `src/stage.rs`/`src/main.rs`, and the `await import(` line of `tests/web.rs`'s scanner. Nothing
+else depends on it.
 
 ## 14. Limitations and next steps
 
