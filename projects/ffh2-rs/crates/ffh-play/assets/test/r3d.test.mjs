@@ -11,7 +11,7 @@ import * as St from "../app/state.js";
 const data = JSON.parse(fs.readFileSync(fileURLToPath(new URL("../../r3d-lab/data.json", import.meta.url)), "utf8"));
 St.setData(data);
 const { buildMap, buildView, showcase, riverBits } = await import("../../r3d-lab/scenes.js");
-const { World, KIND } = await import("../app/r3d/world.js");
+const { World, KIND, RIVER_HALF, RIVER_WANDER } = await import("../app/r3d/world.js");
 const R = await import("../app/r3d/assets/registry.js");
 await import("../app/r3d/assets/index.js");
 const { CATALOG } = await import("../app/r3d/assets/catalog.js");
@@ -156,6 +156,37 @@ test("a plot's dressing depends only on its neighbourhood: a moving unit redress
   }
   assert.ok(changed > 0, "the move changed the dressing around the unit");
   St.setView(scene.view);
+});
+
+test("a great town keeps to known land, out of the river and off its neighbours' fields; its garrison stands dry", () => {
+  const rows = Array.from({ length: 7 }, () => ".".repeat(7));
+  const wet = RIVER_HALF + RIVER_WANDER;
+  // A walled capital with a river down its west side, the unknown east of it and a farm north; and
+  // one at the map's west edge with a river along its front.
+  for (const [cx, rivers, hidden, farm] of [
+    [3, riverBits(Array.from({ length: 8 }, (_, y) => [3, 7 - y])), [[4, 2], [4, 3], [4, 4]], [3, 4]],
+    [0, riverBits(Array.from({ length: 8 }, (_, x) => [x, 3])), [], [1, 3]],
+  ]) {
+    const town = { id: 1, owner: 0, x: cx, y: 3, name: "T", capital: true, size: 12, walls: true };
+    const map = buildMap(data, rows, { rivers, hidden, improvements: [[...farm, "IMPROVEMENT_FARM"]], cities: [town], owners: [[0, 0, 6, 6, 0]] });
+    const units = [0, 1, 2].map(() => ({ type: "UNIT_WARRIOR", x: cx, y: 3 }));
+    St.setView(buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }], cities: [town], units }));
+    St.setMap(map);
+    const w = new World(map);
+    const d = dressStatic(w, map);
+    const parts = d.byPlot.get(3 * 7 + cx).list;
+    assert.ok(parts.length > 25, "a great town");
+    for (const it of parts) {
+      const j = w.index(Math.floor(it.x), Math.floor(-it.z));
+      assert.ok(j >= 0 && map.vis[j] !== 0, `${it.asset} off the map or on an unrevealed plot`);
+      assert.ok(w.riverDist(it.x, -it.z) > wet, `${it.asset} in the river`);
+    }
+    for (const f of d.byPlot.get(farm[1] * 7 + farm[0]).list) {
+      if (!/^imp\./.test(f.asset)) continue;
+      for (const it of parts) assert.ok(Math.hypot(it.x - f.x, it.z - f.z) > 0.05, `${it.asset} on the farm's ${f.asset}`);
+    }
+    for (const it of dressUnits(w, map).list) assert.ok(w.riverDist(it.x, -it.z) > wet + 0.03, `${it.asset} of the garrison in the river`);
+  }
 });
 
 test("every panel switch has a default; plain turns the painting off but keeps the water's realism", async () => {

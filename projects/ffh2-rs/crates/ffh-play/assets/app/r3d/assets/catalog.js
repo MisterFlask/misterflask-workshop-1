@@ -32,7 +32,11 @@
 //                              `.emit` array property: chimney smoke, braziers; `.reach`: how far
 //                              from the plot centre it stands) a settlement's buildings around its
 //                              plot centre (ctx: size, capital, walls, family, civ, seed,
-//                              height(dx, dz), coast, river); a great city spills over its plot
+//                              height(dx, dz), coast, river; the ground it may use: buildable(dx,
+//                              dz) (known plots on the map), riverDist(dx, dz), keep (its
+//                              neighbours' fields and buildings: discs {x, z, r}, rectangles {x0,
+//                              z0, x1, z1}); garrison: where its units stand, [[x, z], ...]); a
+//                              great city spills over its plot where that ground is free
 //   cityReach(ctx)         -> number  how far a city's buildings reach from its plot centre (ctx:
 //                              size, capital, walls): ~0.4 for a small town to ~0.9 for a great
 //                              walled capital (its plate, its neighbours' woods keep clear of it)
