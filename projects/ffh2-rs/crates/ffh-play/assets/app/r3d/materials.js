@@ -1,6 +1,8 @@
 // Ground materials of the 3D renderer (docs/R3D.md §4): tiling textures of the ground's fine
 // detail -- grass blades, wind-combed straw, packed dirt with pebbles, tilled soil, ripe grain,
-// vegetable beds -- painted by code into typed arrays once at start-up (no image is loaded,
+// vegetable beds, sand, tundra's moss and lichen, wind-carved snow, reeds, rock (the hell grounds
+// borrow the value of sand, lichen and rock) -- painted by code into typed arrays once at start-up
+// (about 100-250 ms; no image is loaded,
 // docs/R3D.md §15) and kept in one TEXTURE_2D_ARRAY with mipmaps. The terrain shader (shaders.js
 // TERRAIN_FS, matAt/matPair) samples them anchored to the map and keeps the broad, plot-scale
 // painting procedural (which ground lies where, the meadow's golden patches, a plot's centre pinned
@@ -20,7 +22,7 @@ import { rng } from "./noise.js";
 export const MAT_SIZE = 256;
 
 /** The layers in the texture array; shaders.js reads these indices. */
-export const MAT = { GRASS: 0, STRAW: 1, DIRT: 2, SOIL: 3, GRAIN: 4, VEG: 5, NOISE: 6 };
+export const MAT = { GRASS: 0, STRAW: 1, DIRT: 2, SOIL: 3, GRAIN: 4, VEG: 5, NOISE: 6, SAND: 7, LICHEN: 8, SNOW: 9, REEDS: 10, ROCK: 11 };
 
 /** Crop rows a tile (shaders.js lays the tile once a plot for crops): grain rows run north-south,
  *  vegetable beds east-west, as in the shader and the field props (fields.js). */
@@ -132,23 +134,25 @@ class Tile {
     }
   }
 
-  /** Every texel from f(k, i, j) -> [r, g, b, h] (k the texel's index). */
+  /** Every texel from f(k, i, j, o), which writes [r, g, b, h] into o (k the texel's index). */
   fill(f) {
     const { n, p } = this;
+    const o = new Float64Array(4);
     for (let j = 0, k = 0; j < n; j++) {
       for (let i = 0; i < n; i++, k++) {
-        const c = f(k, i, j);
-        p[k * 4] = c[0];
-        p[k * 4 + 1] = c[1];
-        p[k * 4 + 2] = c[2];
-        p[k * 4 + 3] = c[3];
+        f(k, i, j, o);
+        p[k * 4] = o[0];
+        p[k * 4 + 1] = o[1];
+        p[k * 4 + 2] = o[2];
+        p[k * 4 + 3] = o[3];
       }
     }
   }
 }
 
-/** Value noise periodic over the tile: `cells` lattice cells across, smooth, 0..1 (n * n). */
-function tnoise(n, cells, seed) {
+/** Value noise periodic over the tile: `cells` lattice cells across, smooth, 0..1 (n * n); with
+ *  `out`, `amp` times it is added to out instead. */
+function tnoise(n, cells, seed, out = null, amp = 1) {
   const r = rng(seed);
   const g = new Float32Array(cells * cells);
   for (let i = 0; i < g.length; i++) g[i] = r();
@@ -161,14 +165,16 @@ function tnoise(n, cells, seed) {
     X1[i] = (xi + 1) % cells;
     F[i] = f * f * (3 - 2 * f);
   }
-  const out = new Float32Array(n * n);
+  const add = !!out;
+  if (!out) out = new Float32Array(n * n);
   for (let j = 0, k = 0; j < n; j++) {
     const r0 = X0[j] * cells, r1 = X1[j] * cells, fy = F[j];
     for (let i = 0; i < n; i++, k++) {
       const fx = F[i];
       const a = g[r0 + X0[i]], b = g[r0 + X1[i]], c = g[r1 + X0[i]], d = g[r1 + X1[i]];
       const top = a + (b - a) * fx, bot = c + (d - c) * fx;
-      out[k] = top + (bot - top) * fy;
+      const v = top + (bot - top) * fy;
+      out[k] = add ? out[k] + v * amp : v;
     }
   }
   return out;
@@ -179,8 +185,7 @@ function tfbm(n, cells, oct, seed) {
   const out = new Float32Array(n * n);
   let amp = 1, sum = 0;
   for (let o = 0; o < oct; o++) {
-    const a = tnoise(n, cells << o, seed * 7 + o);
-    for (let k = 0; k < out.length; k++) out[k] += a[k] * amp;
+    tnoise(n, cells << o, seed * 7 + o, out, amp);
     sum += amp;
     amp *= 0.5;
   }
@@ -223,6 +228,13 @@ function tcells(n, cells, seed) {
 }
 
 const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+/** o's colour = mix(a, b, t) times s, its height h (a fill's texel, without allocating). */
+const put = (o, a, b, t, s, h) => {
+  o[0] = (a[0] + (b[0] - a[0]) * t) * s;
+  o[1] = (a[1] + (b[1] - a[1]) * t) * s;
+  o[2] = (a[2] + (b[2] - a[2]) * t) * s;
+  o[3] = h;
+};
 const mul3 = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
 /** One of `pal` by the cumulative weights `cuts` (the last is 1). */
 const pick = (r, pal, cuts) => {
@@ -263,10 +275,10 @@ function tufts(t, r, count, blades, ang, fan, blade, spread = 1.2) {
 function grass(t, r) {
   const n = t.n;
   const a = tfbm(n, 4, 3, 11), b = tnoise(n, 10, 12);
-  t.fill((k) => {
+  const lo = [0.19, 0.27, 0.12], hi = [0.29, 0.37, 0.15];
+  t.fill((k, i, j, o) => {
     const v = a[k] * 0.5 + b[k] * 0.5;
-    const c = mix3([0.19, 0.27, 0.12], [0.29, 0.37, 0.15], v);
-    return [c[0], c[1], c[2], 0.2 + 0.2 * v];
+    put(o, lo, hi, v, 1, 0.2 + 0.2 * v);
   });
   const DAB = [[0.36, 0.45, 0.17], [0.26, 0.36, 0.14], [0.33, 0.41, 0.15], [0.26, 0.37, 0.18]];
   const CUTS = [0.32, 0.6, 0.84];
@@ -295,10 +307,10 @@ function grass(t, r) {
 function straw(t, r) {
   const n = t.n;
   const a = tfbm(n, 4, 3, 21), b = tnoise(n, 12, 22);
-  t.fill((k) => {
+  const lo = [0.44, 0.36, 0.21], hi = [0.55, 0.47, 0.29];
+  t.fill((k, i, j, o) => {
     const v = a[k] * 0.6 + b[k] * 0.4;
-    const c = mix3([0.44, 0.36, 0.21], [0.55, 0.47, 0.29], v);
-    return [c[0], c[1], c[2], 0.2 + 0.2 * v];
+    put(o, lo, hi, v, 1, 0.2 + 0.2 * v);
   });
   const DAB = [[0.60, 0.52, 0.33], [0.47, 0.38, 0.23], [0.55, 0.46, 0.27], [0.50, 0.44, 0.27]];
   const CUTS = [0.36, 0.62, 0.9];
@@ -326,14 +338,11 @@ function straw(t, r) {
 function dirt(t, r) {
   const n = t.n;
   const a = tfbm(n, 4, 4, 31), b = tnoise(n, 16, 32), cl = tcells(n, 6, 33), w = tnoise(n, 8, 34);
-  t.fill((k) => {
+  const lo = [0.47, 0.37, 0.26], hi = [0.65, 0.54, 0.39];
+  t.fill((k, i, j, o) => {
     const v = Math.min(1, Math.max(0, (a[k] - 0.5) * 1.6 + 0.5)) * 0.75 + b[k] * 0.25;
-    let c = mix3([0.47, 0.37, 0.26], [0.65, 0.54, 0.39], v);
-    let h = 0.3 + 0.25 * v;
-    const crack = (1 - Math.min(1, cl[k] / 0.05)) * Math.max(0, w[k] * 2.2 - 1.1);
-    c = mul3(c, 1 - 0.3 * Math.min(1, crack));
-    h -= 0.2 * Math.min(1, crack);
-    return [c[0], c[1], c[2], h];
+    const crack = Math.min(1, (1 - Math.min(1, cl[k] / 0.05)) * Math.max(0, w[k] * 2.2 - 1.1));
+    put(o, lo, hi, v, 1 - 0.3 * crack, 0.3 + 0.25 * v - 0.2 * crack);
   });
   for (let k = 0; k < 2600; k++) {
     const dark = r() < 0.55;
@@ -353,11 +362,10 @@ function dirt(t, r) {
 function soil(t, r) {
   const n = t.n;
   const a = tfbm(n, 4, 3, 41), b = tnoise(n, 32, 42);
-  t.fill((k, i, j) => {
+  const lo = [0.25, 0.20, 0.15], hi = [0.43, 0.35, 0.26];
+  t.fill((k, i, j, o) => {
     const f = 0.5 + 0.5 * Math.sin(Math.PI * 2 * (j + 0.5) * FURROWS / n + (a[k] - 0.5) * 3);
-    const v = f * (0.65 + 0.5 * b[k]);
-    const c = mix3([0.25, 0.20, 0.15], [0.43, 0.35, 0.26], Math.min(1, v));
-    return [c[0], c[1], c[2], 0.15 + 0.55 * f];
+    put(o, lo, hi, Math.min(1, f * (0.65 + 0.5 * b[k])), 1, 0.15 + 0.55 * f);
   });
   const rowH = n / FURROWS;
   for (let k = 0; k < 1500; k++) {
@@ -379,10 +387,10 @@ function grain(t, r) {
   const n = t.n;
   const a = tnoise(n, 16, 51);
   const rw = n / GRAIN_ROWS;
-  t.fill((k, i) => {
+  const lo = [0.62, 0.44, 0.17], hi = [0.40, 0.27, 0.10];
+  t.fill((k, i, j, o) => {
     const across = Math.abs(((i + 0.5) / rw) % 1 - 0.5) * 2;
-    const c = mix3([0.62, 0.44, 0.17], [0.40, 0.27, 0.10], Math.min(1, across * 1.2) * (0.7 + 0.3 * a[k]));
-    return [c[0], c[1], c[2], 0.1 + 0.2 * (1 - across)];
+    put(o, lo, hi, Math.min(1, across * 1.2) * (0.7 + 0.3 * a[k]), 1, 0.1 + 0.2 * (1 - across));
   });
   const GOLD = [[0.82, 0.62, 0.27], [0.88, 0.70, 0.34], [0.74, 0.54, 0.22], [0.80, 0.66, 0.36]];
   for (let row = 0; row < GRAIN_ROWS; row++) {
@@ -403,10 +411,8 @@ function grain(t, r) {
 function veg(t, r) {
   const n = t.n;
   const a = tfbm(n, 8, 2, 61);
-  t.fill((k) => {
-    const c = mix3([0.22, 0.18, 0.13], [0.33, 0.27, 0.20], a[k]);
-    return [c[0], c[1], c[2], 0.1 + 0.1 * a[k]];
-  });
+  const lo = [0.22, 0.18, 0.13], hi = [0.33, 0.27, 0.20];
+  t.fill((k, i, j, o) => put(o, lo, hi, a[k], 1, 0.1 + 0.1 * a[k]));
   const GREEN = [[0.30, 0.48, 0.16], [0.40, 0.55, 0.21], [0.24, 0.40, 0.17], [0.35, 0.50, 0.25]];
   const rh = n / BED_ROWS;
   for (let row = 0; row < BED_ROWS; row++) {
@@ -455,7 +461,122 @@ function utility(t, r) {
       }
     }
   }
-  t.fill((k) => [0.5 + (tone[k] - 0.5) * best[k], g[k], Math.min(1, cl[k]), g[k]]);
+  t.fill((k, i, j, o) => {
+    o[0] = 0.5 + (tone[k] - 0.5) * best[k];
+    o[1] = o[3] = g[k];
+    o[2] = Math.min(1, cl[k]);
+  });
+}
+
+/** Desert sand: pale and fine -- a soft mottling, a grain of light and dark specks, faint wind
+ *  ripples running along the dunes' crests (a whole number of them over the tile, about 16 a plot;
+ *  the shader adds broader ones on the dunes' lit slopes), and a few small pebbles. */
+function sand(t, r) {
+  const n = t.n;
+  const a = tfbm(n, 4, 3, 81), b = tnoise(n, 24, 82), wob = tnoise(n, 6, 83);
+  const lo = [0.69, 0.58, 0.42], hi = [0.80, 0.70, 0.53];
+  // Ripple crests across the wave vector (10, 12) a tile: about the dunes' heading.
+  const kx = (Math.PI * 2 * 10) / n, ky = (Math.PI * 2 * 12) / n;
+  t.fill((k, i, j, o) => {
+    const rip = Math.sin(i * kx + j * ky + (wob[k] - 0.5) * 5);
+    const v = a[k] * 0.7 + b[k] * 0.3;
+    put(o, lo, hi, v, 1 + 0.035 * rip + (r() - 0.5) * 0.07, 0.35 + 0.15 * v + 0.12 * rip);
+  });
+  for (let k = 0; k < 900; k++) {
+    const dark = r() < 0.5;
+    t.blob(r() * n, r() * n, 0, 0.55 + 0.4 * r(), 0.55 + 0.4 * r(), dark ? [0.56, 0.45, 0.33] : [0.88, 0.80, 0.64], 0.5, 0, 0.5 + 0.3 * r());
+  }
+  for (let k = 0; k < 28; k++) {
+    const x = r() * n, y = r() * n, rx = 1.2 + 1.6 * r(), ang = r() * Math.PI;
+    t.blob(x + 0.4, y - 0.4, ang, rx + 0.7, rx * 0.8 + 0.7, [0.55, 0.44, 0.32], 0.3, 0, 0.4);
+    t.blob(x, y, ang, rx, rx * 0.8, mix3([0.62, 0.55, 0.46], [0.72, 0.62, 0.5], r()), 0.85, 0.5, 1, 0.4);
+  }
+}
+
+/** Tundra: a mosaic of low clumps -- moss, rust dwarf shrub, pale lichen, slate grey, all near one
+ *  value -- each a few lumps lit from the sun's side, packed over a darker peat with a few stones. */
+function lichen(t, r) {
+  const n = t.n;
+  const a = tfbm(n, 4, 3, 91);
+  const lo = [0.37, 0.38, 0.31], hi = [0.45, 0.45, 0.37];
+  t.fill((k, i, j, o) => put(o, lo, hi, a[k], 1, 0.15 + 0.15 * a[k]));
+  const PAL = [[0.42, 0.45, 0.32], [0.48, 0.42, 0.32], [0.55, 0.56, 0.48], [0.40, 0.41, 0.39]];
+  const CUTS = [0.38, 0.6, 0.84];
+  // Clumps, each a few lumps of one colour, the lumps varying a little (cushions of moss).
+  const g = 15, cell = n / g;
+  for (let gy = 0; gy < g; gy++) {
+    for (let gx = 0; gx < g; gx++) {
+      const x = (gx + r()) * cell, y = (gy + r()) * cell;
+      const c = mul3(pick(r, PAL, CUTS), 0.92 + 0.16 * r());
+      const lumps = 4 + Math.floor(r() * 4), size = 5 + 5 * r();
+      for (let l = 0; l < lumps; l++) {
+        const rx = size * (0.5 + 0.4 * r());
+        t.blob(x + r.gauss(size * 0.55), y + r.gauss(size * 0.55), r() * Math.PI, rx, rx * (0.7 + 0.3 * r()), mul3(c, 0.94 + 0.12 * r()), 0.5 + 0.4 * r(), 0.12, 1, 0.7);
+      }
+    }
+  }
+  for (let k = 0; k < 30; k++) t.blob(r() * n, r() * n, r() * Math.PI, 1.2 + 1.8 * r(), 1 + 1.2 * r(), [0.52, 0.52, 0.50], 0.9, 0.5);
+}
+
+/** Snow carved by the wind: warm white, soft blue and lilac shadow streaks swept along the wind (as
+ *  the shader's gWind on the prairie, so it runs on across a border), thin wind-cut ridges lit on
+ *  their sunward side. */
+function snow(t, r) {
+  const n = t.n;
+  const a = tfbm(n, 4, 3, 101);
+  const lo = [0.84, 0.87, 0.92], hi = [0.95, 0.95, 0.95];
+  t.fill((k, i, j, o) => put(o, lo, hi, a[k], 1, 0.3 + 0.2 * a[k]));
+  const PAL = [[0.74, 0.80, 0.92], [0.80, 0.78, 0.90], [0.97, 0.96, 0.94], [0.86, 0.89, 0.95]];
+  tufts(t, r, 160, [1, 2], 0.35, 0.2, (r) => {
+    const c = PAL[Math.floor(r() * 4)];
+    return { len: 30 + 40 * r(), w: 4 + 5 * r(), w1: 2, c0: c, c1: c, h0: 0.35, h1: 0.5, a: 0.4 };
+  }, 4);
+  tufts(t, r, 260, [1, 2], 0.35, 0.25, (r) => {
+    const c = r() < 0.5 ? [0.70, 0.76, 0.90] : [0.99, 0.98, 0.96];
+    return { len: 10 + 22 * r(), w: 1.0 + 0.7 * r(), w1: 0.4, c0: c, c1: c, h0: 0.8, h1: 0.7, a: 0.6 };
+  }, 3);
+}
+
+/** Marsh: reed beds -- tufts of stiff upright blades in straw-olive, dark sedge, bronze and green --
+ *  over wet dark peat. */
+function reeds(t, r) {
+  const n = t.n;
+  const a = tfbm(n, 4, 3, 111);
+  const lo = [0.15, 0.17, 0.12], hi = [0.24, 0.26, 0.17];
+  t.fill((k, i, j, o) => put(o, lo, hi, a[k], 1, 0.1 + 0.1 * a[k]));
+  const PAL = [[0.42, 0.40, 0.24], [0.22, 0.28, 0.20], [0.36, 0.31, 0.19], [0.30, 0.37, 0.20]];
+  const CUTS = [0.3, 0.6, 0.8];
+  const pass = (count, val, h0, h1) => {
+    let hue = PAL[0];
+    tufts(t, r, count, [3, 6], Math.PI / 2, 0.45, (r, b) => {
+      if (b === 0) hue = mul3(pick(r, PAL, CUTS), val[0] + (val[1] - val[0]) * r());
+      const c = mul3(hue, 0.9 + 0.2 * r());
+      return { len: 13 + 13 * r(), w: 1.4 + 1.0 * r(), c0: mul3(c, 0.65), c1: mul3(c, 1.15), h0, h1 };
+    }, 2.2);
+  };
+  pass(260, [0.75, 0.95], 0.3, 0.75);
+  pass(200, [0.95, 1.2], 0.5, 1.0);
+}
+
+/** Rock: grey stone broken into facets of slightly different tone, hairline cracks between them,
+ *  a fine grain, and spots of ochre and pale green lichen. */
+function rock(t, r) {
+  const n = t.n;
+  const a = tfbm(n, 4, 4, 121), cl = tcells(n, 7, 122), w = tnoise(n, 6, 123);
+  const lo = [0.30, 0.29, 0.29], hi = [0.46, 0.44, 0.42];
+  t.fill((k, i, j, o) => {
+    const crack = (1 - Math.min(1, cl[k] / 0.06)) * Math.min(1, Math.max(0, w[k] * 2 - 0.5));
+    put(o, lo, hi, a[k], (1 - 0.35 * crack) * (1 + (r() - 0.5) * 0.08), 0.4 + 0.3 * a[k] - 0.3 * crack);
+  });
+  for (let k = 0; k < 70; k++) {
+    const rx = 8 + 14 * r();
+    t.blob(r() * n, r() * n, r() * Math.PI, rx, rx * (0.5 + 0.4 * r()), mul3(mix3([0.33, 0.32, 0.33], [0.47, 0.45, 0.42], r()), 1), 0.55 + 0.3 * r(), 0.25, 0.35, 0.85);
+  }
+  const LICH = [[0.62, 0.55, 0.32], [0.52, 0.56, 0.42], [0.66, 0.64, 0.56]];
+  for (let k = 0; k < 140; k++) {
+    const rx = 0.8 + 2.2 * r() * r();
+    t.blob(r() * n, r() * n, r() * Math.PI, rx, rx * (0.6 + 0.4 * r()), LICH[Math.floor(r() * 3)], 0.6, 0.3, 0.8, 0.8);
+  }
 }
 
 const RECIPES = [
@@ -466,6 +587,11 @@ const RECIPES = [
   [MAT.GRAIN, grain],
   [MAT.VEG, veg],
   [MAT.NOISE, utility],
+  [MAT.SAND, sand],
+  [MAT.LICHEN, lichen],
+  [MAT.SNOW, snow],
+  [MAT.REEDS, reeds],
+  [MAT.ROCK, rock],
 ];
 
 /** Paints every layer: {size, layers, data (RGBA8, layer after layer), mean (rgb a layer, the
@@ -487,8 +613,10 @@ export function bakeMaterials(size = MAT_SIZE) {
       mr += p[k];
       mg += p[k + 1];
       mb += p[k + 2];
-      for (let c = 0; c < 4; c++) data[o + k + c] = Math.max(0, Math.min(255, Math.round(p[k + c] * 255)));
     }
+    // (A clamped view rounds and clamps each value to a byte.)
+    const bytes = new Uint8ClampedArray(data.buffer, o, p.length);
+    for (let k = 0; k < p.length; k++) bytes[k] = p[k] * 255;
     const nn = size * size;
     mean.set([mr / nn, mg / nn, mb / nn], layer * 3);
     times.push(performance.now() - tl);
