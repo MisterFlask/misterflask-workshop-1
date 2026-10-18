@@ -13,6 +13,10 @@ import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp } from "./math.js";
 import { KIND, FEAT, GROUND, SEA } from "./world.js";
+
+// How deep a floating thing sits in the water: its keel is under the surface, so the water is seen
+// over it (refracted, tinted) and laps at its waterline in a collar of foam (shaders.js WATER_FS).
+const DRAFT = 0.012;
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -158,7 +162,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
-        const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);
+        const yy = o.float ? Math.max(SEA - DRAFT, H(mx, my)) : H(mx, my);
         out.push(inst(asset, mx, yy + (o.lift ?? 0), -my, { plot: i, id: o.id ?? idOf(`s${i}:${out.length - base}`), ...o }));
       };
 
@@ -415,7 +419,7 @@ export function dressUnits(world, map) {
       const asset = pick(look.asset, "basic.unit");
       const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
       const ground = standHeight(world, mx, my, foot);
-      const yy = look.float ? Math.max(SEA + 0.005, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
+      const yy = look.float ? Math.max(SEA - DRAFT, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
       const it = inst(asset, mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
       it.uid = u.id;
       it.ground = !look.float && !look.fly;

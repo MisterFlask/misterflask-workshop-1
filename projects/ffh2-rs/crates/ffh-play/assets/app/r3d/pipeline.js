@@ -86,6 +86,9 @@ export class Pipeline {
       tensorB: texture(gl, w, h, F),
       aa: texture(gl, w, h),
       final: texture(gl, w, h),
+      // The scene before the water (grab): what the water is seen through and what it mirrors.
+      sceneCopy: texture(gl, w, h, F),
+      ndCopy: texture(gl, w, h, { ...F, filter: gl.NEAREST }),
     };
     this.depth = depthBuffer(gl, w, h);
     const t = this.t;
@@ -101,7 +104,23 @@ export class Pipeline {
       tensorB: framebuffer(gl, [t.tensorB]),
       aa: framebuffer(gl, [t.aa]),
       final: framebuffer(gl, [t.final], this.depth),
+      sceneCopy: framebuffer(gl, [t.sceneCopy]),
+      ndCopy: framebuffer(gl, [t.ndCopy]),
     };
+  }
+
+  /** Copies the scene's colour and normal/depth targets (the water reads them: it may not sample
+   *  the targets it draws into). */
+  grab() {
+    const gl = this.gl, W = this.w, H = this.h;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.f.scene);
+    for (const [i, dst] of [[0, this.f.sceneCopy], [1, this.f.ndCopy]]) {
+      gl.readBuffer(gl.COLOR_ATTACHMENT0 + i);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
+      gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    }
+    gl.readBuffer(gl.COLOR_ATTACHMENT0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.f.scene);
   }
 
   disposeTargets() {
@@ -220,19 +239,22 @@ export class Pipeline {
       gl.clearBufferfv(gl.COLOR, 2, [0, 0, 0, 0]);
       gl.clear(gl.DEPTH_BUFFER_BIT);
       // Depth first (cheap vertex-only passes), then each pixel is shaded once: the ground under
-      // a forest or under the sea is never painted only to be covered.
+      // a forest is never painted only to be covered. The water is not in it: the sea floor and
+      // the river beds are painted (cheaply where too deep to see), grabbed, and the water is
+      // drawn last, seen through to them and mirroring what stands around it.
       gl.colorMask(false, false, false, false);
       scene.drawTerrain(this.p.shadowTerrain, U, false);
-      scene.drawWater(this.p.shadowTerrain, U, true);
       scene.drawProps(this.p.shadowProp, U, false);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);
       const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
       scene.drawTerrain(this.p.terrain, SU, false);
-      scene.drawWater(this.p.water, SU);
       scene.drawProps(this.p.prop, SU, false);
+      this.grab();
+      // The water writes its depth (the overlays and markers sit on its surface).
       gl.depthMask(true);
+      scene.drawWater(this.p.water, { ...SU, uSceneColor: this.t.sceneCopy, uSceneND: this.t.ndCopy, uReflect: cfg.reflections ?? 1, uRefract: cfg.refraction ?? 1 });
     });
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);

@@ -546,6 +546,7 @@ export class Map3D {
       uTerrainShadow: cfg.terrainShadow ?? 1,
       uDabs: cfg.dabs ?? 1,
       uBrush: cfg.brush ?? 1,
+      uCaustics: cfg.caustics ?? 1,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
       uWind: cfg.wind,
@@ -619,13 +620,15 @@ export class Map3D {
   }
 
   /** The config with the quality ladder applied: at level 1 the Kuwahara paint filter is off, at
-   *  level 2 the render scale drops to 0.75 as well. */
+   *  level 2 the render scale drops to 0.75 and the water's screen-space reflections go (it keeps
+   *  mirroring the sky and its clouds) as well. */
   qualityCfg() {
     if (this.autoLevel <= 0) return this.cfg;
     return {
       ...this.cfg,
       kuwahara: 0,
       renderScale: this.cfg.renderScale * (this.autoLevel >= 2 ? 0.75 : 1),
+      reflections: this.autoLevel >= 2 ? 0 : this.cfg.reflections,
     };
   }
 
