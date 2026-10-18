@@ -1,50 +1,16 @@
-//! Hippus.
+//! Hippus. No civilization-specific play.
 //!
-//! **Warcry** (world spell, `spellWarcry`): every unit with a unit combat gets Warcry (+1
-//! strength, +1 defense, +1 move, Blitz; a 5% chance a turn to wear off, about 20 turns). The
-//! AI-only gate of the Python allows it at war with a civ with 25 units or more; cast at once, it
-//! fell on the declaration turn, while the stacks were still gathering (operations spend about
-//! half their turns gathering), so much of the promotion wore off before any fight. Held for the
-//! fight: cast when our war operation steps next to its target or strikes, when one of our cities
-//! is in peril in a civ war, or after 20 turns of war without either.
+//! Tried, not kept (round 5, commit ebb1427): Warcry (world spell: every unit with a unit combat
+//! gets +1 strength, +1 defense, +1 move and Blitz, about 20 turns; AI gate: at war with a civ, 25+
+//! units) is cast by the generic choice on the declaration turn, while the war operation still
+//! gathers. Held until the operation steps next to its target or strikes, a city is in peril, or
+//! 20 turns of war: development seeds 1-40 win 15.0% -> 22.5% (4/1 seeds won by one side only),
+//! share at turn 300 +91 (t 2.10); fresh seeds 5001-5064 (the civ with and without its logic) win
+//! 14.1% -> 10.9% (1/3), share at turn 300 -1 (t -0.06), at the end -6 (t -0.07).
+//! Also tried: Blitz units attacking again in a campaign strike (flat).
 
-use ffh_core::game::Game;
-use ffh_core::ids::*;
-use ffh_data::*;
-
-use super::{held, CivPlay};
-use crate::view::View;
-use crate::Ai;
+use super::CivPlay;
 
 pub struct Hippus;
 
-impl CivPlay for Hippus {
-    fn turn(&self, _ai: &Ai, g: &mut Game, v: &mut View) {
-        warcry(g, v);
-    }
-
-    fn spell_value(&self, g: &Game, _u: UnitId, spell: SpellType, value: i32) -> i32 {
-        if Some(spell) == held::spell(g, "SPELL_WARCRY") {
-            return 0;
-        }
-        value
-    }
-}
-
-fn warcry(g: &mut Game, v: &mut View) {
-    let p = v.p;
-    let Some(spell) = held::spell(g, "SPELL_WARCRY") else { return };
-    if held::caster(g, p, spell).is_none() {
-        return;
-    }
-    let why = if held::war_op_striking(g, v) {
-        "strike"
-    } else if held::civ_peril(v) {
-        "a city in peril"
-    } else if held::civ_war_turns(g, v) >= held::speed_turns(g, 20) {
-        "fallback"
-    } else {
-        return;
-    };
-    held::cast(g, p, spell, why);
-}
+impl CivPlay for Hippus {}
