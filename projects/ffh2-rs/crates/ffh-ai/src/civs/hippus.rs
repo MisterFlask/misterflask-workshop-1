@@ -2,12 +2,11 @@
 //!
 //! **Warcry** (world spell, `spellWarcry`): every unit with a unit combat gets Warcry (+1
 //! strength, +1 defense, +1 move, Blitz; a 5% chance a turn to wear off, about 20 turns). The
-//! AI-only gate of the Python allows it at war with a civ with 25 units or more; cast at once it
-//! fell on the declaration turn, while the stacks were still gathering. Held for the fight:
-//! cast when our war operation steps next to its target or strikes, when one of our cities is in
-//! peril in a civ war, or after 20 turns of war without either. In the strike, Hippus units with
-//! Blitz attack again ([`CivPlay::strike_blitz`]): Horselord's and Warcry's extra moves become
-//! extra attacks.
+//! AI-only gate of the Python allows it at war with a civ with 25 units or more; cast at once, it
+//! fell on the declaration turn, while the stacks were still gathering (operations spend about
+//! half their turns gathering), so much of the promotion wore off before any fight. Held for the
+//! fight: cast when our war operation steps next to its target or strikes, when one of our cities
+//! is in peril in a civ war, or after 20 turns of war without either.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -25,27 +24,15 @@ impl CivPlay for Hippus {
     }
 
     fn spell_value(&self, g: &Game, _u: UnitId, spell: SpellType, value: i32) -> i32 {
-        if Some(spell) == held::spell(g, "SPELL_WARCRY") && dev(1) {
+        if Some(spell) == held::spell(g, "SPELL_WARCRY") {
             return 0;
         }
         value
     }
-
-    fn strike_blitz(&self) -> bool {
-        dev(2)
-    }
-}
-
-fn dev(bit: i32) -> bool {
-    static V: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
-    *V.get_or_init(|| std::env::var("FFH_DEV_HIP").ok().and_then(|s| s.parse().ok()).unwrap_or(3)) & bit != 0
 }
 
 fn warcry(g: &mut Game, v: &mut View) {
     let p = v.p;
-    if !dev(1) {
-        return;
-    }
     let Some(spell) = held::spell(g, "SPELL_WARCRY") else { return };
     if held::caster(g, p, spell).is_none() {
         return;

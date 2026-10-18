@@ -989,7 +989,6 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
     let name = g.cities[op.city].name.clone();
     let mut done: Vec<UnitId> = Vec::new();
     let mut fights = 0;
-    let blitz = crate::civs::strike_blitz(g, p); // civ-mechanics
     for _ in 0..48 {
         if !g.cities.contains(op.city) || g.cities[op.city].owner == p {
             break;
@@ -1003,7 +1002,7 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
         let units: Vec<UnitId> = pool
             .iter()
             .copied()
-            .filter(|&u| next_to(g, u) && !done.contains(&u) && g.unit_moves_left(u) > 0 && (!g.units[u].made_attack || blitz && g.unit_is_blitz(u)) && attack_power(g, u) > 0 && g.unit_can_attack(u))
+            .filter(|&u| next_to(g, u) && !done.contains(&u) && g.unit_moves_left(u) > 0 && !g.units[u].made_attack && attack_power(g, u) > 0 && g.unit_can_attack(u))
             .filter(|&u| !(walls && g.unit_bombard_rate(u) > 0))
             .collect();
         // Start with a margin; once started, go on while the rest still takes the city, or
