@@ -36,6 +36,7 @@ mod clan_of_embers;
 mod doviello;
 mod elohim;
 mod grigori;
+mod held;
 mod hippus;
 mod illians;
 mod infernal;
