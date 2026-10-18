@@ -104,6 +104,11 @@ function flashCombat() {
     else if (defHit) mapView.flashTile(pc.tx, pc.ty, "hit");
     else if (atkDied && pc.ax != null) mapView.flashTile(pc.ax, pc.ay, "death");
     else if (atkHit && pc.ax != null) mapView.flashTile(pc.ax, pc.ay, "hit");
+    // The 3D map animates the fight (docs/ANIMATION.md): the attacker that fought (the one hurt
+    // or killed, else the first) strikes, and the one that died falls.
+    const fought = pc.attackers.find((a) => gone(a.id) || hpNow(a.id) < a.hp) ?? pc.attackers[0];
+    const loser = defDied ? pc.defenders.find((d) => gone(d.id))?.id : atkDied ? fought?.id : null;
+    mapView.r3d?.combat?.({ attacker: atkDied ? null : fought?.id ?? null, ax: pc.ax, ay: pc.ay, tx: pc.tx, ty: pc.ty, loser: loser ?? null });
   } catch {
     /* a flash is never worth a thrown handler */
   }

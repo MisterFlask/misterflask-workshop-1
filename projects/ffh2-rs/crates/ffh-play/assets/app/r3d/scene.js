@@ -11,6 +11,7 @@ import { rasterDecals, rasterLight } from "./decals.js";
 import { SEA } from "./world.js";
 import { hexLinear } from "./math.js";
 import { rng } from "./noise.js";
+import { BLEND } from "./anim.js";
 
 const RIVER_LAYOUT = { aPos: 3, aExtra: 4 };
 /** Below this size on screen (bounding radius in pixels) a prop draws its simplified copy. */
@@ -19,6 +20,10 @@ const LOD_PX = 22;
  *  test then skips more of what is off screen, for a few more draw calls). */
 const BUCKET = 8;
 const PARTICLE_LAYOUT = { aPos: 3, aNormal: 3, aExtra: 4 };
+/** An instance's clip (iAnim): [first frame, frames, start time (s), fps (> 0 loops, < 0 plays
+ *  once and holds its last frame, 0 = the rest mesh)]; iAnimPrev the clip it cross-fades from
+ *  (anim.js BLEND seconds from the clip's start). */
+const NO_ANIM = [0, 0, 0, 0];
 
 /** One asset's vertex buffer, shared by its per-chunk instance buckets. */
 class AssetBatch {
@@ -30,6 +35,21 @@ class AssetBatch {
     this.count = built.count;
     this.radius = built.radius;
     this.hi = built.hi[1];
+    /** The baked animation frames (anim.js packFrames) as an RGBA16UI texture, or null. */
+    this.anim = null;
+  }
+
+  /** Uploads (or replaces) this asset's animation frames: `packed` from anim.js packFrames. */
+  setAnim(packed) {
+    const gl = this.gl;
+    if (this.anim) gl.deleteTexture(this.anim.tex);
+    const tex = texture(gl, packed.w, packed.h, { internal: gl.RGBA16UI, format: gl.RGBA_INTEGER, type: gl.UNSIGNED_SHORT, filter: gl.NEAREST, data: packed.data });
+    // Not left bound: a float sampler that shares the active unit must not find it there.
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    this.anim = { tex, packed, uniforms: { uAnim: tex, uAnimLo: packed.lo, uAnimSpan: packed.span, uAnimCount: packed.count, uAnimW: packed.w, uAnimBlend: BLEND } };
+    // A figure lying down reaches farther than its rest mesh: culling uses the frames' bounds.
+    this.radius = Math.max(this.radius, Math.hypot(...packed.lo.map((v, k) => Math.max(Math.abs(v), Math.abs(v + packed.span[k])))));
+    this.hi = Math.max(this.hi, packed.lo[1] + packed.span[1]);
   }
 
   /** A VAO over this asset's vertices and a new instance buffer (or `shared`, another bucket's,
@@ -50,7 +70,7 @@ class AssetBatch {
     gl.bindBuffer(gl.ARRAY_BUFFER, ibuf);
     if (!shared) gl.bufferData(gl.ARRAY_BUFFER, instances, gl.STATIC_DRAW);
     let o = 0;
-    for (const name of ["iPosRot", "iScale", "iTint", "iTeam"]) {
+    for (const name of ["iPosRot", "iScale", "iTint", "iTeam", "iAnim", "iAnimPrev"]) {
       gl.enableVertexAttribArray(ATTR[name]);
       gl.vertexAttribPointer(ATTR[name], 4, gl.FLOAT, false, INSTANCE_FLOATS * 4, o);
       gl.vertexAttribDivisor(ATTR[name], 1);
@@ -62,6 +82,7 @@ class AssetBatch {
 
   dispose() {
     this.gl.deleteBuffer(this.vbo);
+    if (this.anim) this.gl.deleteTexture(this.anim.tex);
   }
 }
 
@@ -91,6 +112,7 @@ export class Scene {
     this.terrain = new TerrainMeshes(gl);
     this.tex = new MapTextures(gl);
     this.assets = new Map(); // asset key -> AssetBatch
+    this.animData = new Map(); // asset key -> packed animation frames (anim.js)
     this.layers = { static: [], units: [] }; // [{batch, chunk: [cx, cy], top, bucket}]
     this.world = null;
     this.water = null;
@@ -189,6 +211,7 @@ export class Scene {
           continue;
         }
         batch = new AssetBatch(gl, built);
+        if (this.animData.has(key)) batch.setAnim(this.animData.get(key));
         // The simplified copy, for far zooms and the shadow map (not for units: they stay whole).
         if (layer === "static") {
           const [asset, variant, param] = key.split("#");
@@ -201,7 +224,9 @@ export class Scene {
         const arr = new Float32Array(items.length * INSTANCE_FLOATS);
         let top = 0;
         items.forEach((it, k) => {
-          arr.set([it.x, it.y, it.z, it.yaw, it.sx, it.sy, it.sz, it.phase, it.tint[0], it.tint[1], it.tint[2], it.id, it.team[0], it.team[1], it.team[2], it.protect], k * INSTANCE_FLOATS);
+          const an = it.anim && batch.anim ? it.anim : NO_ANIM;
+          const ap = it.anim && batch.anim && it.animPrev ? it.animPrev : NO_ANIM;
+          arr.set([it.x, it.y, it.z, it.yaw, it.sx, it.sy, it.sz, it.phase, it.tint[0], it.tint[1], it.tint[2], it.id, it.team[0], it.team[1], it.team[2], it.protect, an[0], an[1], an[2], an[3], ap[0], ap[1], ap[2], ap[3]], k * INSTANCE_FLOATS);
           top = Math.max(top, it.y + batch.hi * it.sy);
         });
         const [cx, cy] = ck.split(",").map(Number);
@@ -477,9 +502,24 @@ export class Scene {
     if (!depthOnly) prog.set({ uRiverLift: 0 });
   }
 
+  /** The animation uniforms of a batch without frames: a 1x1 integer texture keeps the sampler
+   *  valid (WebGL refuses a draw whose usampler2D has no integer texture bound). */
+  noAnim() {
+    if (!this._noAnim) {
+      const gl = this.gl;
+      const tex = texture(gl, 1, 1, { internal: gl.RGBA16UI, format: gl.RGBA_INTEGER, type: gl.UNSIGNED_SHORT, filter: gl.NEAREST, data: new Uint16Array(4) });
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      this._noAnim = { tex, uniforms: { uAnim: tex, uAnimLo: [0, 0, 0], uAnimSpan: [1, 1, 1], uAnimCount: 0, uAnimW: 1, uAnimBlend: BLEND } };
+    }
+    return this._noAnim.uniforms;
+  }
+
   drawProps(prog, U, shadow) {
     const gl = this.gl;
     prog.use().set(U).set(this.mapUniforms());
+    const none = this.noAnim();
+    let bound = none;
+    prog.set(none);
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy });
       for (const layer of ["static", "units"]) {
@@ -495,6 +535,9 @@ export class Scene {
           const lod = b.lodBucket && (shadow || px < LOD_PX);
           const bk = lod ? b.lodBucket : b.bucket;
           const count = lod ? b.batch.lod.count : b.batch.count;
+          // Animated figures read their frames by vertex index: never with the simplified copy.
+          const au = !lod && b.batch.anim ? b.batch.anim.uniforms : none;
+          if (au !== bound) prog.set((bound = au));
           gl.bindVertexArray(bk.vao);
           gl.drawArraysInstanced(gl.TRIANGLES, 0, count, bk.n);
           if (!shadow && this.drawn && prog.name === "prop") {
@@ -506,21 +549,38 @@ export class Scene {
       }
     }
     gl.bindVertexArray(null);
+    this.releaseAnim(prog);
+  }
+
+  /** Unbinds the animation texture from `prog`'s unit: another program whose sampler shares that
+   *  unit index (and is not set every draw) must not find an integer texture there. */
+  releaseAnim(prog) {
+    const unit = prog.units.uAnim;
+    if (unit === undefined) return;
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   /** The unit figures again (the units layer), for their x-ray silhouettes. */
   drawUnitGhosts(prog, U) {
     const gl = this.gl;
     prog.use().set(U).set(this.mapUniforms());
+    const none = this.noAnim();
+    let bound = none;
+    prog.set(none);
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy });
       for (const b of this.layers.units) {
         if (!this.chunkVisible(b.cx, b.cy, copy, 1.5, BUCKET)) continue;
+        const au = b.batch.anim ? b.batch.anim.uniforms : none;
+        if (au !== bound) prog.set((bound = au));
         gl.bindVertexArray(b.bucket.vao);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, b.batch.count, b.bucket.n);
       }
     }
     gl.bindVertexArray(null);
+    this.releaseAnim(prog);
   }
 
   drawOverlay(prog, U) {
@@ -579,7 +639,14 @@ export class Scene {
     }
     this.assets.clear();
     for (const m of [this.water, this.rivers, this.markers, this.ringMesh, this.particles]) m?.dispose();
-    for (const t of [this.decal, this.light, this.marks]) if (t) gl.deleteTexture(t);
+    for (const t of [this.decal, this.light, this.marks, this._noAnim?.tex]) if (t) gl.deleteTexture(t);
+  }
+
+  /** Gives asset `key` ("asset#variant#param") its baked animation frames (anim.js packFrames);
+   *  a batch made later picks them up. The caller re-sets the units' instances after. */
+  setAnim(key, packed) {
+    this.animData.set(key, packed);
+    this.assets.get(key)?.setAnim(packed);
   }
 }
 

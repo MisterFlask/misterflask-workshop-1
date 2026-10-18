@@ -78,6 +78,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/chunks.js", JS, include_str!("../../assets/app/chunks.js")),
     ("app/artworker.js", JS, include_str!("../../assets/app/artworker.js")),
     // The experimental 3D renderer (docs/R3D.md), loaded by the client only when chosen.
+    ("app/r3d/anim.js", JS, include_str!("../../assets/app/r3d/anim.js")),
     ("app/r3d/config.js", JS, include_str!("../../assets/app/r3d/config.js")),
     ("app/r3d/decals.js", JS, include_str!("../../assets/app/r3d/decals.js")),
     ("app/r3d/dress.js", JS, include_str!("../../assets/app/r3d/dress.js")),
@@ -92,6 +93,9 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/r3d/shaders.js", JS, include_str!("../../assets/app/r3d/shaders.js")),
     ("app/r3d/terrain.js", JS, include_str!("../../assets/app/r3d/terrain.js")),
     ("app/r3d/world.js", JS, include_str!("../../assets/app/r3d/world.js")),
+    ("app/r3d/assets/anim-archer.js", JS, include_str!("../../assets/app/r3d/assets/anim-archer.js")),
+    ("app/r3d/assets/anim-warrior.js", JS, include_str!("../../assets/app/r3d/assets/anim-warrior.js")),
+    ("app/r3d/assets/anims.js", JS, include_str!("../../assets/app/r3d/assets/anims.js")),
     ("app/r3d/assets/architecture.js", JS, include_str!("../../assets/app/r3d/assets/architecture.js")),
     ("app/r3d/assets/basic.js", JS, include_str!("../../assets/app/r3d/assets/basic.js")),
     ("app/r3d/assets/catalog.js", JS, include_str!("../../assets/app/r3d/assets/catalog.js")),

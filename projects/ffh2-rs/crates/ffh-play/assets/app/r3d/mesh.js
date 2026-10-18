@@ -303,13 +303,16 @@ export class MeshBuilder {
   }
 
   /** A tube along `points` ([x, y, z] ...) with `radii` (one per point, or one number), `seg`
-   *  sides; smooth, open-ended unless `caps`. Frames by parallel transport, so it does not twist. */
-  tube(points, radii, seg = 6, { caps = false, colors = null } = {}) {
+   *  sides; smooth, open-ended unless `caps`. Frames by parallel transport, so it does not twist.
+   *  `ref` orients the rings (their first side faces it); without it the choice of axis jumps
+   *  when the tube's start crosses 0.9 of vertical, which an animated limb must not do (its
+   *  facets would turn a fifth of a turn between two frames): limbs pass their bend direction. */
+  tube(points, radii, seg = 6, { caps = false, colors = null, ref = null } = {}) {
     const R = (i) => (Array.isArray(radii) ? radii[i] : radii);
     const n = points.length;
     if (n < 2) return this;
     const tangents = points.map((_, i) => vnorm(vsub(points[Math.min(n - 1, i + 1)], points[Math.max(0, i - 1)])));
-    let u = Math.abs(tangents[0][1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    let u = ref ?? (Math.abs(tangents[0][1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]);
     let nrm = vnorm(vcross(vcross(tangents[0], u), tangents[0]));
     const frames = [];
     for (let i = 0; i < n; i++) {

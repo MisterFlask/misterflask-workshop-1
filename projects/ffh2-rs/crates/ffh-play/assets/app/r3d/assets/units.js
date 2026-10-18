@@ -40,6 +40,10 @@ function buildAsset_(name, sub, r, ctx) {
 }
 
 const TAU = Math.PI * 2;
+/** Limb tubes orient their rings by a fixed side axis (legs; never along a leg) or the arm's bend
+ *  plane normal (perpendicular to both of its bones): stable while a limb moves (mesh.js tube
+ *  `ref`). Tubes hung from the torso take the torso frame's side axis. */
+const LIMB_X = [1, 0, 0];
 const R_SIDE = -1; // the figure's right hand (-x)
 const L_SIDE = 1;
 
@@ -83,15 +87,21 @@ function orient(mb, o, ydir, zhint = [0, 0, 1]) {
 }
 
 /** Two-bone IK: the joint between `a` and the target `t` (bone lengths l1, l2), bent toward
- *  `pole`. Returns {mid, end} (end pulled in when out of reach). */
+ *  `pole`. Returns {mid, end, normal} (end pulled in when out of reach, pushed out when closer
+ *  than a quarter of the reach: past that the limb folds into itself and the joint swings wildly
+ *  for a small move of the target; normal: the bend plane's, perpendicular to both bones). */
 function ik(a, t, l1, l2, pole) {
   let d = vsub(t, a);
   let dl = vlen(d);
-  const max = (l1 + l2) * 0.995;
+  const max = (l1 + l2) * 0.995, min = (l1 + l2) * 0.25;
   if (dl > max) {
     t = vadd(a, vscale(d, max / dl));
     d = vsub(t, a);
     dl = max;
+  } else if (dl < min && dl > 1e-6) {
+    t = vadd(a, vscale(d, min / dl));
+    d = vsub(t, a);
+    dl = min;
   }
   dl = Math.max(dl, 1e-4);
   const dir = vscale(d, 1 / dl);
@@ -100,7 +110,7 @@ function ik(a, t, l1, l2, pole) {
   let p = vsub(pole, vscale(dir, vdot(pole, dir)));
   if (vlen(p) < 1e-5) p = Math.abs(dir[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
   p = vnorm(p);
-  return { mid: vadd(vadd(a, vscale(dir, x)), vscale(p, h)), end: t };
+  return { mid: vadd(vadd(a, vscale(dir, x)), vscale(p, h)), end: t, normal: vnorm(vcross(dir, p)) };
 }
 
 /** A flat shape: polygon `poly` ([[x, y], ...], star-shaped about its centroid) in the local xy
@@ -394,23 +404,38 @@ const WEAPONS = {
     setMat(mb, "#d8d0b8");
     const top = pts[n - 1], bot = pts[0];
     const nock = [0, 0, draw];
-    mb.tube([top, nock], 0.0013, 3);
-    mb.tube([nock, bot], 0.0013, 3);
+    const s0 = mb.mark();
+    mb.tube([top, nock], 0.0013, 3, { ref: [1, 0, 0] });
+    mb.tube([nock, bot], 0.0013, 3, { ref: [1, 0, 0] });
+    const info = { string: [s0, mb.mark()], nock, grip: [0, 0, 0], top, bot };
     if (o.arrow !== false) {
-      setMat(mb, "#a08a6a");
-      mb.tube([nock, [0, 0, -0.035]], 0.0022, 3);
-      setMat(mb, "#e8e0d0");
+      // The arrow: `arrowLen` long from the nock (fixed in an animation, so it slides with the
+      // string), scaled toward the nock by `arrow` (0 = loosed: collapsed into the nock, the
+      // vertex count unchanged).
+      const len = o.arrowLen ?? draw + 0.035;
+      const k = typeof o.arrow === "number" ? o.arrow : 1;
+      const a0 = mb.mark();
       mb.part(() => {
-        mb.translate(0, 0, draw - 0.012);
-        mb.card([0, 0, -0.018], [0, 0.007, -0.006], [0, 0.007, 0.012], [0, 0, 0.012]);
+        mb.translate(0, 0, draw);
+        mb.scale(k);
+        mb.translate(0, 0, -draw);
+        setMat(mb, "#a08a6a");
+        mb.tube([nock, [0, 0, draw - len]], 0.0022, 3);
+        setMat(mb, "#e8e0d0");
+        mb.part(() => {
+          mb.translate(0, 0, draw - 0.012);
+          mb.card([0, 0, -0.018], [0, 0.007, -0.006], [0, 0.007, 0.012], [0, 0, 0.012]);
+        });
+        setMat(mb, g.metal2, MAT.METAL);
+        mb.part(() => {
+          mb.translate(0, 0, draw - len);
+          mb.rotateX(-Math.PI / 2);
+          mb.cone(0.0055, 0.018, 4);
+        });
       });
-      setMat(mb, g.metal2, MAT.METAL);
-      mb.part(() => {
-        mb.translate(0, 0, -0.035);
-        mb.rotateX(-Math.PI / 2);
-        mb.cone(0.0055, 0.018, 4);
-      });
+      Object.assign(info, { arrow: [a0, mb.mark()], arrowLen: len, tip: [0, 0, draw - (len + 0.018) * k] });
     }
+    return info;
   },
   pick(mb, g) {
     setMat(mb, g.wood);
@@ -655,8 +680,19 @@ const STANCES = {
  *     right / left: {hand: [out, dy, fwd] from the shoulder, or handAt(hands, shoulder),
  *                    elbow: pole [out, dy, fwd], weapon (WEAPONS key), dir, face, at, opts
  *                    (values or functions of the hands), scale, shield, shieldFace, shieldUp,
- *                    shieldOff, shieldOpts}}
- * Returns {mb, hands, headC, top}.
+ *                    shieldOff, shieldOpts}},
+ *     pose: an animation frame's deltas from this rest pose (anim.js; absent = the rest pose,
+ *           built exactly as without it): {pelvis, fl, fr (ankles), rHand, lHand} [dx, dy, dz]
+ *           in a human's plots (scaled to the race), {lean, twist, roll, headYaw, headTilt} in
+ *           radians, {rElbow, lElbow} added to the elbow poles, {rRot, lRot} [x, y, z] Euler
+ *           turns (radians, figure space) of what the hand holds about the hand, {arrow} 0..1
+ *           (a nocked arrow's scale toward the string: 0 = loosed), {arrowLen} (a fixed arrow
+ *           length, so the arrow slides with the string instead of stretching), {string} 0..1
+ *           (a bowstring at the drawing hand .. back at the bow; the archer's bow reads these).
+ * Returns {mb, hands, headC, top, joints, parts}: joints are the posed skeleton's points (pelvis,
+ * neck, head, and per side hip, knee, ankle, shoulder, elbow, hand); parts the vertex ranges
+ * [first, end) of the feet and of what the hands hold (weapon, shield, arrow) with the weapon's
+ * frame.
  */
 function figure(o) {
   const mb = new MeshBuilder();
@@ -666,6 +702,10 @@ function figure(o) {
   // Heroic stylisation: limbs a little stouter and hands bigger than life, so arms, weapons and
   // stances still read when the figure is 35-45 pixels tall.
   const R = { ...R0, armR: R0.armR * 1.12, legR: R0.legR * 1.08, handR: R0.handR * 1.18 };
+  // An animation frame's deltas (positions in a human's plots, scaled to this race's size).
+  const P = o.pose ?? null;
+  const pk = R0.shY / RACES.human.shY;
+  const pv = (v) => [v[0] * pk, v[1] * pk, v[2] * pk];
   const g = o.garb ?? garbOf(race, o.dark);
   const skinC = jitter(C(o.skin ?? R.skin), r, 0.04);
   const skinMat = race === "undead" ? MAT.MATTE : MAT.SKIN;
@@ -676,15 +716,17 @@ function figure(o) {
 
   // --- the pelvis and legs ------------------------------------------------------------------
   const seated = !!o.seat;
-  const st = seated ? null : STANCES[o.stance ?? "stand"] ?? STANCES.stand;
+  const st = seated ? null : (o.stance && typeof o.stance === "object" ? o.stance : STANCES[o.stance ?? "stand"]) ?? STANCES.stand;
   const drop = seated ? 0 : st.drop * (R.hipY / 0.225);
-  const pelvis = seated ? [0, R.hipY, 0] : [o.shift ?? 0, R.hipY - drop, 0];
+  let pelvis = seated ? [0, R.hipY, 0] : [o.shift ?? 0, R.hipY - drop, 0];
+  if (P?.pelvis) pelvis = vadd(pelvis, pv(P.pelvis));
   const ankleY = 0.02 * (R.legR / 0.0195);
   const legLen = ((R.hipY - ankleY) / 2) * 1.035;
   const hipJ = (s) => vadd(pelvis, [s * R.hipW, -0.012, 0]);
   const feet = {};
   for (const s of [L_SIDE, R_SIDE]) {
     let ankle, pole;
+    let lift = 0;
     if (seated) {
       ankle = [s * (o.seat.w + 0.012), R.hipY - legLen * 1.55, 0.02];
       pole = [s * 0.3, 0, 1];
@@ -692,46 +734,53 @@ function figure(o) {
       const f = s === L_SIDE ? st.fl : st.fr;
       ankle = [f[0] * W, ankleY, f[1] * (R.hipY / 0.225)];
       pole = [s * 0.12, 0, 1];
+      const fo = P && (s === L_SIDE ? P.fl : P.fr);
+      if (fo) {
+        ankle = vadd(ankle, pv(fo));
+        lift = fo[1] * pk;
+      }
     }
     const hip = hipJ(s);
     const { mid: knee, end } = ik(hip, ankle, legLen, legLen, pole);
-    feet[s] = { hip, knee, ankle: end };
+    feet[s] = { hip, knee, ankle: end, lift };
   }
 
   // --- the torso frame ------------------------------------------------------------------------
-  const lean = R.lean + (o.lean ?? 0);
-  const twist = o.twist ?? 0;
+  const lean = R.lean + (o.lean ?? 0) + (P?.lean ?? 0);
+  const twist = (o.twist ?? 0) + (P?.twist ?? 0);
   const TF = new MeshBuilder();
   TF.translate(pelvis[0], pelvis[1], pelvis[2]).rotateY(twist).rotateX(lean);
+  if (P?.roll) TF.rotateZ(P.roll);
   const T = (p) => TF.xp(p);
   const ts = R.shY - R.hipY; // shoulder height above the pelvis
   const tn = R.neckY - R.hipY;
   const shoulder = (s) => T([s * R.shW, ts - R.armR * 0.4, -0.004]);
+  const torsoX = vsub(T([1, 0, 0]), T([0, 0, 0])); // the torso's side axis (tube rings hung from it)
 
   // --- legs -------------------------------------------------------------------------------------
   for (const s of [L_SIDE, R_SIDE]) {
-    const { hip, knee, ankle } = feet[s];
+    const { hip, knee, ankle, lift } = feet[s];
     mb.bone = s === L_SIDE ? BONE.LEG_L : BONE.LEG_R;
     if (!robe) {
       if (bony) {
         setMat(mb, skinC);
-        mb.tube([hip, knee, ankle], [R.legR * 1.2, R.legR, R.legR * 0.8], 4, { caps: true });
+        mb.tube([hip, knee, ankle], [R.legR * 1.2, R.legR, R.legR * 0.8], 4, { caps: true, ref: LIMB_X });
         ball(mb, knee, R.legR * 1.6, 0);
       } else {
         const legC = o.legs ? C(o.legs) : C(g.legs);
         const bootC = o.boots ? C(o.boots) : C(g.boots);
         const mid = vlerp(knee, ankle, 0.35);
         mb.mat = MAT.MATTE;
-        mb.tube([hip, vlerp(hip, knee, 0.5), knee, mid, ankle], [R.legR * 1.15, R.legR * 1.08, R.legR * 0.92, R.legR * 1.02, R.legR * 0.9], LS, { caps: true, colors: [legC, legC, o.bareShin ? skinC : legC, bootC] });
+        mb.tube([hip, vlerp(hip, knee, 0.5), knee, mid, ankle], [R.legR * 1.15, R.legR * 1.08, R.legR * 0.92, R.legR * 1.02, R.legR * 0.9], LS, { caps: true, colors: [legC, legC, o.bareShin ? skinC : legC, bootC], ref: LIMB_X });
         // Boot cuff (under greaves, or on a demon's hoof-like legs, not needed).
         if (!o.greaves && race !== "demon") {
           mb.color = bootC;
           mb.mat = MAT.MATTE;
-          mb.tube([vlerp(knee, ankle, 0.3), vlerp(knee, ankle, 0.42)], R.legR * 1.18, LS);
+          mb.tube([vlerp(knee, ankle, 0.3), vlerp(knee, ankle, 0.42)], R.legR * 1.18, LS, { ref: LIMB_X });
         }
         if (o.greaves) {
           setMat(mb, g.metal, MAT.METAL);
-          mb.tube([vlerp(knee, ankle, 0.05), vlerp(knee, ankle, 0.6)], [R.legR * 1.12, R.legR * 1.05], LS);
+          mb.tube([vlerp(knee, ankle, 0.05), vlerp(knee, ankle, 0.6)], [R.legR * 1.12, R.legR * 1.05], LS, { ref: LIMB_X });
           ball(mb, knee, R.legR * 1.25, 0);
         }
       }
@@ -744,11 +793,13 @@ function figure(o) {
       mb.color = skinC;
       mb.mat = skinMat;
     }
+    const f0 = mb.mark();
     mb.part(() => {
-      mb.translate(ankle[0], seated ? ankle[1] - ankleY * 0.8 : -0.014, ankle[2] + R.foot * 0.25);
+      mb.translate(ankle[0], seated ? ankle[1] - ankleY * 0.8 : -0.014 + lift, ankle[2] + R.foot * 0.25);
       mb.rotateY(fdir);
       mb.box(R.legR * 1.9, ankleY + 0.02, R.foot * (seated ? 0.9 : 1.2), { top: 0.75, skew: [0, -R.foot * 0.2] });
     });
+    feet[s].foot = [f0, mb.mark()];
     if (o.claws) {
       setMat(mb, "bone");
       for (const dx of [-1, 1]) {
@@ -802,7 +853,7 @@ function figure(o) {
   if (bony) {
     // A ribcage, a spine and a pelvis of bone.
     setMat(mb, skinC);
-    mb.tube([pelvis, T([0, ts * 0.5, -0.01]), T([0, tn, 0])], [R.waistR * 0.8, R.waistR * 0.7, R.waistR * 0.6], 4);
+    mb.tube([pelvis, T([0, ts * 0.5, -0.01]), T([0, tn, 0])], [R.waistR * 0.8, R.waistR * 0.7, R.waistR * 0.6], 4, { ref: torsoX });
     mb.part(() => {
       mb.apply(TF.m);
       mb.scale(1, 1, R.depth);
@@ -967,16 +1018,20 @@ function figure(o) {
     const spec = (s === L_SIDE ? o.left : o.right) ?? {};
     const S = shoulder(s);
     const h = spec.hand ?? [0.012, -armL * 0.92, 0.02];
-    const target = spec.handAt ? spec.handAt(hands, S) : vadd(S, [s * h[0], h[1], h[2]]);
-    const pole = spec.elbow ? [s * spec.elbow[0], spec.elbow[1], spec.elbow[2]] : [s * 0.8, -0.2, -0.6];
-    const { mid: E, end: Hd } = ik(S, target, armL * 0.52, armL * 0.48, pole);
+    let target = spec.handAt ? spec.handAt(hands, S) : vadd(S, [s * h[0], h[1], h[2]]);
+    let pole = spec.elbow ? [s * spec.elbow[0], spec.elbow[1], spec.elbow[2]] : [s * 0.8, -0.2, -0.6];
+    const ho = P && (s === L_SIDE ? P.lHand : P.rHand);
+    if (ho) target = vadd(target, pv(ho));
+    const eo = P && (s === L_SIDE ? P.lElbow : P.rElbow);
+    if (eo) pole = vadd(pole, eo);
+    const { mid: E, end: Hd, normal: bend } = ik(S, target, armL * 0.52, armL * 0.48, pole);
     const dirW = vnorm(vsub(Hd, E));
     const wrist = vsub(Hd, vscale(dirW, R.handR * 0.7));
     hands[s] = { pos: Hd, dir: dirW, elbow: E, shoulder: S };
     mb.bone = s === L_SIDE ? BONE.ARM_L : BONE.ARM_R;
     if (bony) {
       setMat(mb, skinC);
-      mb.tube([S, E, wrist], [R.armR * 1.2, R.armR, R.armR * 0.8], 4, { caps: true });
+      mb.tube([S, E, wrist], [R.armR * 1.2, R.armR, R.armR * 0.8], 4, { caps: true, ref: bend });
       ball(mb, E, R.armR * 1.6, 0);
     } else {
       const sleeve = o.sleeves ?? (o.body === "armour" || o.body === "plate" ? "metal" : o.body === "fur" || o.body === "bare" || o.body === "vest" ? "bare" : "team");
@@ -984,12 +1039,12 @@ function figure(o) {
       const loC = o.bracers ? [C(o.bracers === true ? g.leather : o.bracers), MAT.MATTE] : sleeve === "metal" ? upC : robe || sleeve === "body" ? upC : sleeve === "team" && o.longSleeves ? upC : [skinC, skinMat];
       mb.color = upC[0];
       mb.mat = upC[1];
-      mb.tube([S, vlerp(S, E, 0.5), E], [R.armR * 1.18, R.armR * 1.1, R.armR * 0.98], LS, { caps: true });
+      mb.tube([S, vlerp(S, E, 0.5), E], [R.armR * 1.18, R.armR * 1.1, R.armR * 0.98], LS, { caps: true, ref: bend });
       mb.color = loC[0];
       mb.mat = loC[1];
       const cuff = robe ? 1.6 : 1;
-      mb.tube([E, vlerp(E, wrist, 0.5), wrist], [R.armR * 0.98, R.armR * (0.95 + 0.25 * (cuff - 1)), R.armR * 0.85 * cuff], LS, { caps: true });
-      if (o.bracers) mb.tube([vlerp(E, wrist, 0.45), wrist], [R.armR * 1.08, R.armR * 1.05], LS);
+      mb.tube([E, vlerp(E, wrist, 0.5), wrist], [R.armR * 0.98, R.armR * (0.95 + 0.25 * (cuff - 1)), R.armR * 0.85 * cuff], LS, { caps: true, ref: bend });
+      if (o.bracers) mb.tube([vlerp(E, wrist, 0.45), wrist], [R.armR * 1.08, R.armR * 1.05], LS, { ref: bend });
       // Shoulder: a deltoid, or a pauldron.
       if (o.pauldrons) {
         const pc = o.pauldrons === true ? [C(o.metal ?? g.metal), MAT.METAL] : o.pauldrons === "team" ? [C(teamCol(0.8)), MAT.TEAM] : [C(o.pauldrons), MAT.MATTE];
@@ -1019,13 +1074,13 @@ function figure(o) {
   const headC = vadd(neckTop, hdOff);
   if (!bony) {
     setMat(mb, skinC, skinMat);
-    mb.tube([T([0, tn - 0.012, 0]), vlerp(neckTop, headC, 0.5)], HR * (race === "orc" ? 0.55 : 0.4), 5);
+    mb.tube([T([0, tn - 0.012, 0]), vlerp(neckTop, headC, 0.5)], HR * (race === "orc" ? 0.55 : 0.4), 5, { ref: torsoX });
   } else {
     setMat(mb, skinC);
-    mb.tube([T([0, tn - 0.012, 0]), headC], R.armR, 4);
+    mb.tube([T([0, tn - 0.012, 0]), headC], R.armR, 4, { ref: torsoX });
   }
   const HF = new MeshBuilder();
-  HF.translate(headC[0], headC[1], headC[2]).rotateY(o.headYaw ?? twist * 0.4).rotateX(-lean * 0.75 + (o.headTilt ?? 0));
+  HF.translate(headC[0], headC[1], headC[2]).rotateY((o.headYaw ?? twist * 0.4) + (P?.headYaw ?? 0)).rotateX(-lean * 0.75 + (o.headTilt ?? 0) + (P?.headTilt ?? 0));
   const headPart = (f) => mb.part(() => {
     mb.apply(HF.m);
     f();
@@ -1085,11 +1140,11 @@ function figure(o) {
     if (item === "quiver") {
       setMat(mb, g.leather);
       const a = backP(ts * 0.3, R.shW * 0.4), b = backP(ts * 1.05, -R.shW * 0.5);
-      mb.tube([a, b], [0.014, 0.016], 6, { caps: true });
+      mb.tube([a, b], [0.014, 0.016], 6, { caps: true, ref: torsoX });
       setMat(mb, "#e0d8c8");
       for (let i = 0; i < 4; i++) {
         const tip = vadd(b, [(i - 1.5) * 0.006 - 0.012, 0.03 + (i % 2) * 0.006, -0.004 + (i % 2) * 0.004]);
-        mb.tube([vadd(b, [(i - 1.5) * 0.005, -0.005, 0]), tip], 0.0035, 3);
+        mb.tube([vadd(b, [(i - 1.5) * 0.005, -0.005, 0]), tip], 0.0035, 3, { ref: torsoX });
       }
     } else if (item === "sack") {
       setMat(mb, "linen");
@@ -1099,7 +1154,7 @@ function figure(o) {
         mb.blob(0.042, { detail: 1, amp: 0.12, squash: 1.2, noise: (v) => noise3(v[0] * 3, v[1] * 3, v[2] * 3) });
       });
       setMat(mb, "rope");
-      mb.tube([T([R.shW * 0.6, ts, R.chestR * R.depth * 0.6]), T([R.shW * 0.4, ts * 0.4, R.chestR * R.depth * 1.05]), T([-R.shW * 0.3, ts * 0.1, R.chestR * R.depth * 1.05])], 0.003, 3);
+      mb.tube([T([R.shW * 0.6, ts, R.chestR * R.depth * 0.6]), T([R.shW * 0.4, ts * 0.4, R.chestR * R.depth * 1.05]), T([-R.shW * 0.3, ts * 0.1, R.chestR * R.depth * 1.05])], 0.003, 3, { ref: torsoX });
     } else if (item === "bedroll") {
       setMat(mb, g.cloth);
       const p = backP(ts * 1.0);
@@ -1127,26 +1182,38 @@ function figure(o) {
   }
 
   // --- weapons and shields in the hands ---------------------------------------------------------
+  const parts = {};
   for (const s of [R_SIDE, L_SIDE]) {
     const spec = (s === L_SIDE ? o.left : o.right) ?? {};
     const hd = hands[s];
+    const side = s === L_SIDE ? "l" : "r";
+    // An animation frame turns what the hand holds about the hand.
+    const turn = P && (s === L_SIDE ? P.lRot : P.rRot);
+    const rot = turn ? (v) => eulerTurn(v, turn) : (v) => v;
     if (spec.weapon) {
       mb.bone = BONE.WEAPON;
+      const v0 = mb.mark();
+      let frame = null, info;
       mb.part(() => {
-        const fn = (v, d) => (typeof v === "function" ? v(hands) : v ?? d);
-        orient(mb, fn(spec.at, hd.pos), fn(spec.dir, [0, 1, 0]), fn(spec.face, [0, 0, 1]));
+        const fn = (v, d) => (typeof v === "function" ? v(hands, o) : v ?? d);
+        const at = fn(spec.at, hd.pos), dir = rot(fn(spec.dir, [0, 1, 0])), face = rot(fn(spec.face, [0, 0, 1]));
+        orient(mb, at, dir, face);
         if (spec.scale) mb.scale(spec.scale);
-        WEAPONS[spec.weapon](mb, g, fn(spec.opts, {}));
+        frame = { at, dir, face, m: mb.m };
+        info = WEAPONS[spec.weapon](mb, g, fn(spec.opts, {}));
       });
+      parts[`weapon_${side}`] = { range: [v0, mb.mark()], kind: spec.weapon, frame, info };
     }
     if (spec.shield) {
       mb.bone = s === L_SIDE ? BONE.ARM_L : BONE.ARM_R;
+      const v0 = mb.mark();
       mb.part(() => {
-        const face = vnorm(spec.shieldFace ?? [s * 0.35, 0.15, 1]);
+        const face = rot(vnorm(spec.shieldFace ?? [s * 0.35, 0.15, 1]));
         const at = vadd(hd.pos, vadd(vscale(face, 0.016), spec.shieldOff ?? [0, 0.012, 0]));
-        orient(mb, at, spec.shieldUp ?? [s * 0.05, 1, -0.1], face);
+        orient(mb, at, rot(spec.shieldUp ?? [s * 0.05, 1, -0.1]), face);
         shield(mb, g, spec.shield, spec.shieldOpts ?? {});
       });
+      parts[`shield_${side}`] = { range: [v0, mb.mark()], kind: spec.shield };
     }
   }
   mb.bone = BONE.BODY;
@@ -1162,7 +1229,32 @@ function figure(o) {
     tv[i + 7] *= k;
     tv[i + 8] *= k;
   }
-  return { mb, hands, headC, top: headC[1] + HR };
+  parts.foot_l = { range: feet[L_SIDE].foot, kind: "foot" };
+  parts.foot_r = { range: feet[R_SIDE].foot, kind: "foot" };
+  const joints = { pelvis, neck: neckTop, head: headC, headTop: vadd(headC, [0, HR, 0]) };
+  for (const s of [L_SIDE, R_SIDE]) {
+    const k = s === L_SIDE ? "L" : "R";
+    Object.assign(joints, { [`hip${k}`]: feet[s].hip, [`knee${k}`]: feet[s].knee, [`ankle${k}`]: feet[s].ankle, [`shoulder${k}`]: hands[s].shoulder, [`elbow${k}`]: hands[s].elbow, [`hand${k}`]: hands[s].pos });
+  }
+  // The torso's and head's turns (radians, figure space; the head's yaw is not the torso's child).
+  const angles = { lean, twist, roll: P?.roll ?? 0, headYaw: (o.headYaw ?? twist * 0.4) + (P?.headYaw ?? 0), headTilt: -lean * 0.75 + (o.headTilt ?? 0) + (P?.headTilt ?? 0) };
+  // Proportions the validator's solids use (anim-check: what passes through the head or chest).
+  const dims = { headR: HR, chestR: R.chestR * bulk, waistR: R.waistR * bulk, depth: R.depth, shW: R.shW, armR: R.armR, legR: R.legR };
+  return { mb, hands, headC, top: headC[1] + HR, joints, parts, angles, dims };
+}
+
+/** Turns vector `v` by Euler angles [x, y, z] (radians; about x, then y, then z, figure space). */
+function eulerTurn(v, [ax, ay, az]) {
+  let [x, y, z] = v;
+  let c = Math.cos(ax), s = Math.sin(ax);
+  [y, z] = [c * y - s * z, s * y + c * z];
+  c = Math.cos(ay);
+  s = Math.sin(ay);
+  [x, z] = [c * x + s * z, -s * x + c * z];
+  c = Math.cos(az);
+  s = Math.sin(az);
+  [x, y] = [c * x - s * y, s * x + c * y];
+  return [x, y, z];
 }
 
 /** The head: skull, face features, hair, beard and headgear (in the head frame). */
@@ -1777,7 +1869,15 @@ function archerSpec({ race, dark, variant }) {
     cape: race === "elf",
     capeLen: 0.8,
     back: ["quiver"],
-    left: { hand: [reach, 0.025, 0.0], elbow: [0.1, -1, -0.2], weapon: "bow", dir: [0.06, 1, 0.02], face: [-1, 0, 0], opts: (h) => ({ len: bowLen, recurve: race === "elf" || race === "lizard", draw: Math.max(0.08, vlen(vsub(h[L_SIDE].pos, h[R_SIDE].pos)) - 0.01) }) },
+    // The bow's string side faces the drawing hand, so the string meets the fingers and the arrow
+    // lies on the line from the anchor through the grip.
+    left: { hand: [reach, 0.025, 0.0], elbow: [0.1, -1, -0.2], weapon: "bow", dir: [0.06, 1, 0.02], face: (h) => vnorm(vsub(h[R_SIDE].pos, h[L_SIDE].pos)), opts: (h, o) => {
+      // The string at the drawing hand; an animation's `string` (1 at the hand .. 0 at rest)
+      // lets it go: loosed, it snaps back to the bow's brace height.
+      const full = Math.max(0.08, vlen(vsub(h[L_SIDE].pos, h[R_SIDE].pos)) - 0.01);
+      const sp = o?.pose?.string ?? 1, brace = 0.05 * (bowLen / 0.34);
+      return { len: bowLen, recurve: race === "elf" || race === "lizard", draw: sp === 1 ? full : brace + (full - brace) * sp, arrow: o?.pose?.arrow, arrowLen: o?.pose?.arrowLen };
+    } },
     right: { handAt: (h, S) => vadd(S, [R.shW * 1.0, 0.03, 0.025]), elbow: [1, 0.15, -0.4] },
   };
 }
@@ -1944,13 +2044,42 @@ const HERO_SCALE = 1.14;
 for (const [name, [variants, make]] of Object.entries(SPECS)) {
   unitRecipe(name, {
     variants,
-    build(mb, r, { variant, param }) {
+    posable: true,
+    build(mb, r, { variant, param, pose }) {
       const { race, dark } = raceOf(param);
       const spec = make({ race, dark, variant, r });
-      const f = figure({ r, race, dark, variant, ...spec });
-      place(mb, f.mb, [0, 0, 0], 0, name === "unit.hero" ? HERO_SCALE : 1);
+      const f = figure({ r, race, dark, variant, ...spec, pose });
+      const s = name === "unit.hero" ? HERO_SCALE : 1;
+      if (!pose) {
+        place(mb, f.mb, [0, 0, 0], 0, s);
+        return f;
+      }
+      return placePosed(mb, f, pose, race, s);
     },
   });
+}
+
+/** Appends a posed figure `f` under the frame's root motion: `root` [dx, dy, dz] moves the whole
+ *  figure, `rootRot` [x, y, z] (Euler radians, as eulerTurn) turns it about `pivot` [x, y, z]
+ *  (figure space, before the turn; a fall pivots about the feet). Positions in a human's plots,
+ *  scaled to the race. Returns `f` with its joints moved the same way and the root's matrix. */
+function placePosed(mb, f, pose, race, s = 1) {
+  const pk = (RACES[race] ?? RACES.human).shY / RACES.human.shY;
+  const root = pose.root ?? [0, 0, 0], rot = pose.rootRot ?? [0, 0, 0], pv = pose.pivot ?? [0, 0, 0];
+  const M = new MeshBuilder();
+  M.translate(root[0] * pk, root[1] * pk, root[2] * pk);
+  M.translate(pv[0] * pk, pv[1] * pk, pv[2] * pk);
+  // eulerTurn turns about x, then y, then z: as matrices Rz * Ry * Rx.
+  M.rotateZ(rot[2]).rotateY(rot[1]).rotateX(rot[0]);
+  M.translate(-pv[0] * pk, -pv[1] * pk, -pv[2] * pk);
+  if (s !== 1) M.scale(s);
+  mb.part(() => {
+    mb.apply(M.m);
+    mb.append(f.mb);
+  });
+  const joints = {};
+  for (const [k, p] of Object.entries(f.joints)) joints[k] = M.xp(p);
+  return { ...f, joints, root: M.m };
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -17,7 +17,9 @@ import { Scene, bucketOf } from "./scene.js";
 import { dressStatic, dressUnits, staticEnv, teamColour, standHeight } from "./dress.js";
 import { loadConfig, saveConfig, withPreset, LIGHTING, PANEL } from "./config.js";
 import { drawHud } from "./hud.js";
+import { Animator, clipOf, flight, flightTime, attackYaw, deathYaw } from "./anim.js";
 import "./assets/index.js";
+import "./assets/anims.js";
 
 const ZOOMS = [28, 40, 56, 72, 96, 128, 168, 220];
 export const DEFAULT_ZOOM = 96;
@@ -93,6 +95,14 @@ export class Map3D {
     this.fastN = 0;
     /** The last sync's costs by stage (ms): world, textures, dress, instances, paint, units. */
     this.syncMs = {};
+    /** Unit animation (anim.js, docs/ANIMATION.md): baked clips, what each unit plays, and the
+     *  corpses of units that died in a fight seen here (they play their death, then go). */
+    this.animator = new Animator();
+    this.corpses = [];
+    this.projectiles = []; // {from, to, start, dur} loosed arrows (world points, the clock)
+    this.fightFacing = new Map(); // unit id -> {yaw, start, end}: a fighter turned to its target
+    this.unitsKey = "";
+    this.lastUnits = new Map(); // unit id -> its last instance record (a corpse starts from it)
     this.raf = requestAnimationFrame(() => this.loop());
     this.panel = null;
     this.addPanelButton();
@@ -339,6 +349,11 @@ export class Map3D {
       const u = dressUnits(this.world, map);
       this.stacks = u.stacks;
       this.startTweens(u.list);
+      // Who was drawn before this dressing: a unit that died in a fight starts its corpse here.
+      const now = performance.now();
+      for (const it of this.unitList ?? []) if (it.uid !== undefined) this.lastUnits.set(it.uid, { it, gone: now });
+      for (const it of u.list) if (it.uid !== undefined) this.lastUnits.delete(it.uid);
+      for (const [id, e] of this.lastUnits) if (now - e.gone > 4000) this.lastUnits.delete(id);
       this.unitList = u.list;
       this.scene.setInstances("units", this.tweened(performance.now()));
       this.syncMs.units = performance.now() - T5;
@@ -430,12 +445,27 @@ export class Map3D {
     }
   }
 
-  /** The unit instances at time `now`, the walking ones partway along. */
+  /** The unit instances at time `now`, the walking ones partway along, each with its clip
+   *  (idle, or the attack or death it plays) when its figure animates; the corpses after. */
   tweened(now) {
     const out = [];
+    const clock = (now - this.t0) / 1000;
+    const motion = this.cfg.animate && !this.view.reduceMotion();
     for (const it of this.unitList ?? []) {
-      const f = it.uid !== undefined ? this.facing?.get(it.uid) : undefined;
+      let f = it.uid !== undefined ? this.facing?.get(it.uid) : undefined;
+      // A fighter turns to its target over TURN seconds as its blow starts, and back after it.
+      const fy = it.uid !== undefined ? this.fightFacing.get(it.uid) : undefined;
+      if (fy) {
+        const base = f ?? it.yaw;
+        if (clock > fy.end + TURN) this.fightFacing.delete(it.uid);
+        else f = clock < fy.end ? turnTo(base, fy.yaw, (clock - fy.start) / TURN) : turnTo(fy.yaw, base, (clock - fy.end) / TURN);
+      }
       let o = f !== undefined ? { ...it, yaw: f } : it;
+      if (motion && this.animator.animates(it.asset)) {
+        this.animator.want(it.asset, it.variant, it.param);
+        const a = this.animator.instanceAnim(it, it.uid, clock, it.phase);
+        o = { ...o, anim: a.cur, animPrev: a.prev };
+      }
       const tw = it.uid !== undefined ? this.tweens?.get(it.uid) : undefined;
       if (tw) {
         const t = Math.min(1, (now - tw.t0) / tw.dur);
@@ -451,7 +481,74 @@ export class Map3D {
       }
       out.push(o);
     }
+    // Corpses: idle until the blow lands, turn as they are thrown, play their death, lie still,
+    // then sink into the ground and are gone.
+    this.corpses = this.corpses.filter((c) => clock < c.until);
+    for (const c of this.corpses) {
+      const a = this.animator.instanceAnim(c.it, c.id, clock, 0);
+      const sink = smoothstep(c.until - SINK, c.until, clock) * 0.3;
+      out.push({ ...c.it, yaw: turnTo(c.fromYaw, c.it.yaw, (clock - c.impact) / TURN), y: c.it.y - sink, anim: a.cur, animPrev: a.prev, uid: undefined });
+    }
+    // Arrows in flight.
+    this.projectiles = this.projectiles.filter((a) => clock < a.start + a.dur);
+    for (const a of this.projectiles) {
+      const u = (clock - a.start) / a.dur;
+      if (u < 0) continue;
+      const { p, dir } = flight(a.from, a.to, u);
+      out.push({ asset: "fx.arrow", variant: 0, param: "", x: p[0], y: p[1], z: p[2], yaw: Math.atan2(dir[0], dir[2]), sx: 1, sy: 1, sz: 1, phase: 0, tint: [1, 1, 1], id: 0, team: [1, 1, 1], protect: 0, plot: -1 });
+    }
     return out;
+  }
+
+  /**
+   * A fight seen on the map (units.js flashCombat): the attacker `attacker` (a unit id, standing
+   * at (ax, ay)) strikes toward the plot (tx, ty); `loser`, when it died, plays its death where it
+   * stood (as its last drawn instance), timed to land with the blow. Animated figures only; under
+   * prefers-reduced-motion or with animation off nothing plays (the 2D flash still shows).
+   */
+  combat({ attacker = null, ax = null, ay = null, tx, ty, loser = null }) {
+    if (!this.cfg.animate || this.view.reduceMotion()) return;
+    const clock = (performance.now() - this.t0) / 1000;
+    let impact = clock;
+    const atk = attacker != null ? (this.unitList ?? []).find((it) => it.uid === attacker) ?? this.lastUnits.get(attacker)?.it : null;
+    if (atk && this.animator.animates(atk.asset) && clipOf(atk.asset, "attack")) {
+      const c = clipOf(atk.asset, "attack");
+      const yaw = attackYaw(c, Math.atan2(tx + 0.5 - atk.x, -(ty + 0.5) - atk.z));
+      this.animator.trigger(attacker, "attack", clock, yaw, atk, atk.phase);
+      this.fightFacing.set(attacker, { yaw, start: clock, end: clock + c.dur });
+      impact = clock + (c.events?.impact ?? c.events?.release ?? 0.4);
+      // A bow looses an arrow at the release, from where the nocked arrow's tip was.
+      const rel = this.animator.looks.get(`${atk.asset}#${atk.variant ?? 0}#${atk.param ?? ""}`)?.packed?.clips.attack?.release;
+      if (rel) {
+        const s = atk.sx ?? 1, cy = Math.cos(yaw), sy = Math.sin(yaw);
+        const W = (q) => [atk.x + (cy * q[0] + sy * q[2]) * s, atk.y + q[1] * s, atk.z + (-sy * q[0] + cy * q[2]) * s];
+        const from = W(rel.tip);
+        const gx = tx + 0.5, gz = -(ty + 0.5);
+        const ground = this.world ? standHeight(this.world, gx, -gz, 0) : atk.y;
+        const to = [gx, ground + 0.22, gz];
+        const dur = flightTime(Math.hypot(to[0] - from[0], to[2] - from[2]));
+        this.projectiles.push({ from, to, start: clock + c.events.release, dur });
+        impact = clock + c.events.release + dur;
+      }
+    }
+    if (loser != null) {
+      const gone = this.lastUnits.get(loser)?.it ?? (this.unitList ?? []).find((it) => it.uid === loser);
+      if (gone && this.animator.animates(gone.asset) && clipOf(gone.asset, "death")) {
+        const d = clipOf(gone.asset, "death");
+        // Thrown away from the blow: the clip's `away` is the direction it is thrown.
+        const from = ax != null ? [ax + 0.5, -(ay + 0.5)] : [gone.x, gone.z + 1];
+        const away = [gone.x - from[0], gone.z - from[1]];
+        const yaw = deathYaw(d, Math.atan2(away[0], away[1]));
+        const id = `corpse:${loser}`;
+        // It cross-fades from the idle the unit was playing when the blow lands.
+        const idle = this.animator.instanceAnim(gone, loser, impact, gone.phase).cur;
+        this.animator.trigger(id, "death", impact, null, null, 0, { hold: 1.2 + SINK });
+        this.animator.play.get(id).prev = idle;
+        this.corpses.push({ id, it: { ...gone, yaw }, fromYaw: gone.yaw ?? 0, impact, until: impact + d.dur + 1.2 + SINK });
+        this.lastUnits.delete(loser);
+      }
+    }
+    this.dirty = true;
   }
 
   // --- frames -----------------------------------------------------------------------------------
@@ -471,9 +568,25 @@ export class Map3D {
       this.dirty = true;
     } else this.ts = target;
     const animate = this.cfg.animate && !this.view.reduceMotion();
-    if (this.tweens?.size) {
-      this.scene.setInstances("units", this.tweened(performance.now()));
-      this.dirty = true;
+    // Bake animation frames a few milliseconds a frame; a look that finishes starts playing.
+    let reunits = false;
+    if (animate && this.animator.queue.length) {
+      for (const d of this.animator.step(5)) {
+        this.scene.setAnim(d.key, d.packed);
+        reunits = true;
+      }
+    }
+    // The units' instances change while a unit walks, turns, fights, dies or an arrow flies; they
+    // are re-sent only when something in them changed (a clip plays from its start time in the
+    // shader without them).
+    if (this.tweens?.size || this.corpses.length || this.projectiles.length || this.animator.play.size || this.fightFacing.size || reunits) {
+      const list = this.tweened(performance.now());
+      const key = instancesKey(list);
+      if (key !== this.unitsKey || reunits) {
+        this.unitsKey = key;
+        this.scene.setInstances("units", list);
+        this.dirty = true;
+      }
     }
     if (!this.dirty && !animate) return;
     // Animation at ~30 frames per second is enough for wind and water.
@@ -768,3 +881,22 @@ function unwrapPath(path, world) {
 }
 
 export { tname, me };
+
+/** Seconds a fighter takes to turn to its target (and back), a corpse to turn as it is thrown. */
+const TURN = 0.15;
+/** Seconds a corpse takes to sink away after it has lain still. */
+const SINK = 0.6;
+
+/** The yaw from a toward b, the short way round, at u (0..1, eased). */
+function turnTo(a, b, u) {
+  const t = smoothstep(0, 1, u);
+  const d = Math.atan2(Math.sin(b - a), Math.cos(b - a));
+  return a + d * t;
+}
+
+/** A compact key of instance records' placement and clips (unchanged key: nothing to re-send). */
+function instancesKey(list) {
+  let h = "";
+  for (const it of list) h += `${it.asset}${it.x.toFixed(4)},${it.y.toFixed(4)},${it.z.toFixed(4)},${it.yaw.toFixed(3)}|${it.anim ?? ""}|${it.animPrev ?? ""};`;
+  return h;
+}

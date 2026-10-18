@@ -83,10 +83,14 @@ assets/app/
     hud.js        city plates, stack badges, far-zoom counters, yields, flashes (2D canvas)
     config.js     tunables, presets, lighting
     gl.js math.js noise.js mesh.js   WebGL2 plumbing, matrices, deterministic noise, mesh builder
+    anim.js       unit animation: clips, baking, the GPU frame packing, the animator (docs/ANIMATION.md)
     assets/       registry.js catalog.js palette.js basic.js fallbacks.js index.js
                   vegetation.js units.js architecture.js props.js fx.js  (the recipe modules)
-r3d-lab/          the lab: synthetic scenes for focused work (not shipped)
+                  anims.js anim-warrior.js anim-archer.js  (the animation clips)
+r3d-lab/          the lab: synthetic scenes for focused work (not shipped);
+                  anim/ the animation validator, its mutations, its renderer and review sheets
 tools/r3d-lab.mjs r3d-perf.mjs r3d-compare.mjs   lab screenshots, performance, comparisons
+tools/r3d-anim.mjs                                the animation workbench (docs/ANIMATION.md)
 ```
 
 Data flow per change: `S.map`/`S.view` change → `Map3D.sync()` rebuilds only what changed (the world
@@ -191,7 +195,8 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 * **Vertex format**: position, normal, linear albedo, and `aMat` = (material, sway, bone, baked
   occlusion). Materials: matte, foliage (light through leaves), metal, team (the owner's colour times
   the vertex colour's luminance), emissive, skin, team glow. Bones drive a small idle animation in
-  the vertex shader (breathing, arms, cape, wings, tail); sway drives wind.
+  the vertex shader (breathing, arms, cape, wings, tail) for figures without clips; sway drives
+  wind. Figures with clips (docs/ANIMATION.md) play baked frames instead.
 * **Palette** (`assets/palette.js`): every recipe takes its colours from one designed palette
   (warm daylight key; saturation spent on owner colours, magic and fire), plus the mana schools'
   colours.
@@ -264,6 +269,9 @@ stack shows its top unit with up to two of its company behind it (at a city, at 
   60 px a plot a team-coloured counter pin over each stack.
 * Units walk between plots (a short glide with a step bob, then keep facing their heading, turned at
   most 100° from the camera); nothing moves under `prefers-reduced-motion`.
+* Animated figures (the warrior and the archer so far, docs/ANIMATION.md) idle, strike or shoot
+  toward their target when a fight is seen, and the one that dies falls, lies still and sinks
+  away; an arrow flies from a bow.
 
 ## 9. Fog of war and hidden information
 
@@ -399,8 +407,9 @@ measured-frame-time quality ladder).
 
 ## 13. Removing it
 
-Delete `assets/app/r3d/`, `crates/ffh-play/r3d-lab/`, `tools/r3d-*.mjs`, this file; remove the r3d
-lines of `ASSETS` in `src/transport/http.rs`, `useR3d` and the `r3d` delegation lines in `map.js`,
+Delete `assets/app/r3d/`, `crates/ffh-play/r3d-lab/`, `tools/r3d-*.mjs`, `assets/test/anim.test.mjs`,
+this file and docs/ANIMATION.md; remove the r3d lines of `ASSETS` in `src/transport/http.rs`, the
+`r3d?.combat` call in `units.js`, `useR3d` and the `r3d` delegation lines in `map.js`,
 `use3d`/the `"3d"` branch in `main.js`, `EXPERIMENTAL_3D` in `look.js` and `tools.js`, the
 `renderer3d` step of `tools/web-smoke.mjs`, `stage corrupt` in `src/stage.rs`/`src/main.rs`, and the
 `await import(` line of `tests/web.rs`'s scanner. Nothing else depends on it.
@@ -413,8 +422,10 @@ What is not there, or not good enough yet, as of this prototype:
   SwiftShader (a CPU rasteriser): frames there take seconds, and §11's absolute times say nothing
   about a real GPU. The design is GPU-conventional (instancing, a depth pre-pass, half-resolution
   occlusion and glow, full-screen passes), but it has not been profiled on one.
-* **Motion.** Units glide between plots and idle (breathing, capes, wings, tails, wind); there are
-  no attack, death or work animations, and combat shows only the 2D flashes.
+* **Motion.** Units glide between plots and idle (breathing, capes, wings, tails, wind). The warrior
+  and the archer have baked idle, attack and death clips (docs/ANIMATION.md); other figures have
+  none yet, there are no walk or work cycles, and only fights the human player starts are seen
+  (the client infers them from its own attacks).
 * **Always daylight, by choice.** There is one `daylight` light (a warm, high sun); no dusk,
   night or day/night cycle.
 * **Faces and hands** are blank at the closest zoom; crossbowmen and slingers use the bow and
@@ -430,7 +441,8 @@ What is not there, or not good enough yet, as of this prototype:
 Next steps, roughly by value: profile on real GPUs (the quality ladder -- paint filter off, then
 render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
 is not yet a ladder step); spread the initial world sync over frames or a worker (about 2 s of
-JavaScript on a crowded map); combat and work animations; a reflection or sky term for water; the
+JavaScript on a crowded map); clips for the other archetypes, and walk and work cycles
+(docs/ANIMATION.md §9); a reflection or sky term for water; the
 sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 
 ## 15. Provenance

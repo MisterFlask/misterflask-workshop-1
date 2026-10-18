@@ -472,6 +472,50 @@ async function renderer3d(url) {
   steps.push(`?renderer=3d: a frame of ${frame.colours} colours mid-view (${frame.props} props, ${frame.units} unit figures), ${pick.n} plots picked right through the relief, click-select, hover, zoom ${zooms.join(" ")}, pan, political layer, back to the art${canLose ? ", a lost WebGL context falls back to the art" : " (no WEBGL_lose_context: context loss not checked)"}`);
 }
 
+/** The staged attack in the 3D renderer (docs/ANIMATION.md): the warrior's clips bake, the attack
+ *  plays on the attacker (turned to its target), the loser's corpse plays its death, and a frame
+ *  draws mid-fight. The frame loop is stopped (software rendering takes seconds a frame); the
+ *  test bakes and renders explicitly. */
+async function stagedAttack3d(bin, saves, url) {
+  const cfg = encodeURIComponent(JSON.stringify({ animate: true, renderScale: 0.4, autoQuality: 0 }));
+  await b.goto(`${url}/?renderer=3d&r3d=${cfg}&force3d=1`);
+  await until2("window.ffh && window.ffh.ready", "the client to boot (3d attack)");
+  await until2(`window.ffh.mapView.renderer() === "3d" && !!window.ffh.mapView.r3d.cam`, "the 3D renderer", 180000);
+  const st = await loadStaged(bin, saves, "attack");
+  // Stop the loop, draw once (it dresses the units and queues their looks), bake them.
+  const looks = await b.eval(`(() => {
+    const r = window.ffh.mapView.r3d;
+    r.running = false;
+    cancelAnimationFrame(r.raf);
+    r.render((performance.now() - r.t0) / 1000);
+    for (const d of r.animator.step(1e9)) r.scene.setAnim(d.key, d.packed);
+    return [...r.animator.looks.values()].map((L) => L.key + ":" + Object.keys(L.packed ? L.packed.clips : {}).join("/"));
+  })()`);
+  if (!looks.some((l) => /^unit\.warrior#.*idle\/attack\/death|^unit\.warrior#.*attack/.test(l))) throw new Error(`the warrior's clips were not baked: ${looks.join(", ")}`);
+  const u = await S(`S.units.get(${st.unit})`);
+  const p = await plotPos(u.x, u.y);
+  await b.mouse(p.x, p.y);
+  await until2(`window.ffh.S.sel && window.ffh.S.sel.units[0] === ${st.unit}`, "the warrior selected (3d)");
+  const e = await plotPos(st.x, st.y);
+  await b.mouse(e.x, e.y, "right");
+  await until2(`(() => { const S = window.ffh.S; const me = S.units.get(${st.unit}); return !S.units.has(${st.enemy}) || !me || me.hp < me.max_hp; })()`, "the combat (3d)");
+  await new Promise((r) => setTimeout(r, 400));
+  const fight = await b.eval(`(() => {
+    const r = window.ffh.mapView.r3d;
+    r.sync();
+    const pl = r.animator.play.get(${st.unit});
+    const t = (performance.now() - r.t0) / 1000 + 0.3;
+    r.render(t);
+    return { attack: pl ? pl.clip : null, turned: r.fightFacing.has(${st.unit}), corpses: r.corpses.length, won: !window.ffh.S.units.has(${st.enemy}) };
+  })()`);
+  if (fight.attack !== "attack" || !fight.turned) throw new Error(`the attacker did not play its attack: ${JSON.stringify(fight)}`);
+  if (fight.won && fight.corpses !== 1) throw new Error(`the defender died but no corpse plays its death: ${JSON.stringify(fight)}`);
+  await shot("attack-3d");
+  await b.eval(`window.ffh.setRenderer("art")`);
+  await until2(`window.ffh.mapView.renderer() === "art" && !document.querySelector("canvas.map3d")`, "the art renderer after the 3D attack");
+  steps.push(`3D attack (stage attack): the warrior's clips baked (${looks.length} looks), the attack played toward the target${fight.won ? ", the defender's corpse fell" : ""}; a frame drawn mid-fight`);
+}
+
 /** Records the page's POST bodies in `window.__posts` (from now on). */
 async function recordPosts() {
   await b.eval(`(() => {
@@ -1243,6 +1287,7 @@ async function main() {
     await shiftWaypoints(bin, saves, "goto");
     await flatRenderer(server.url);
     await renderer3d(server.url);
+    await stagedAttack3d(bin, saves, server.url);
     await newGameElsewhere(bin);
     await crashScreen(bin);
     console.log(`web-smoke: ${steps.length} steps in ${((Date.now() - t0) / 1000).toFixed(1)} s`);

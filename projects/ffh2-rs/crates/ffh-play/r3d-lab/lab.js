@@ -16,9 +16,13 @@
 //   rows=ffff.aaaa,jjjj.wwww                   a map from legend rows (scenes.js LEGEND, north
 //                                              first), dressed by the real placement
 //   &sel=x,y&select=1&hover=x,y&targets=x,y;x,y&path=x,y;x,y&attack=1&layer=political  overlays
+//   grid=unit.warrior,unit.archer&anim=attack  (grid) the figures play clip `anim` (anim.js,
+//        docs/ANIMATION.md) from time 0 in the units layer; a shot at --time t shows the frame at t
+//        (&yaw=.. turns them; idle loops)
 
 import { S, setData, setView, setMap } from "/app/state.js";
 import { Map3D } from "/app/r3d/map3d.js";
+import { clipOf } from "/app/r3d/anim.js";
 import { showcase, grid, settlements, fromRows } from "./scenes.js";
 
 const q = new URLSearchParams(location.search);
@@ -94,8 +98,25 @@ async function main() {
       protect: q.get("protect") ? 1 : 0,
       plot: -1,
     }));
-    r3d.scene.setInstances("static", list);
-    r3d.scene.setInstances("units", []);
+    const clip = q.get("anim");
+    if (clip) {
+      // Animated figures: bake every look now (the lab waits), then play `clip` from time 0.
+      const A = r3d.animator;
+      for (const it of list) A.want(it.asset, it.variant, it.param);
+      for (const d of A.step(Infinity)) r3d.scene.setAnim(d.key, d.packed);
+      for (const it of list) {
+        const P = A.looks.get(`${it.asset}#${it.variant}#${it.param}`)?.packed;
+        const c = P?.clips[clip] ?? null;
+        it.anim = c ? [c.base, c.frames, 0, c.loop ? c.fps : -c.fps] : null;
+        it.protect = 1;
+        if (!clipOf(it.asset, clip)) console.warn(`lab: ${it.asset} has no clip ${clip}`);
+      }
+      r3d.scene.setInstances("static", []);
+      r3d.scene.setInstances("units", list);
+    } else {
+      r3d.scene.setInstances("static", list);
+      r3d.scene.setInstances("units", []);
+    }
     r3d.stacks = [];
     r3d.cities = [];
   }

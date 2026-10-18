@@ -45,7 +45,7 @@ for f in "$assets"/app/*.js "$assets"/app/r3d/*.js "$assets"/app/r3d/assets/*.js
   fi
   n=$((n + 1))
 done
-for f in "$assets"/test/*.mjs "$root"/tools/*.mjs; do
+for f in "$assets"/test/*.mjs "$root"/tools/*.mjs "$root"/crates/ffh-play/r3d-lab/anim/*.mjs; do
   "$node" --check "$f"
   n=$((n + 1))
 done

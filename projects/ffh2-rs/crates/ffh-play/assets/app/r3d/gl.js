@@ -13,6 +13,8 @@ export const ATTR = {
   iTint: 6,
   iTeam: 7,
   aExtra: 8,
+  iAnim: 9,
+  iAnimPrev: 10,
 };
 
 const SAMPLERS = new Set();
@@ -194,8 +196,8 @@ export function depthTexture(gl, w, h) {
 
 /** Vertex layouts: attribute name -> components. Float32 throughout. */
 export const PROP_LAYOUT = { aPos: 3, aNormal: 3, aColor: 3, aMat: 4 };
-export const INSTANCE_LAYOUT = { iPosRot: 4, iScale: 4, iTint: 4, iTeam: 4 };
-export const INSTANCE_FLOATS = 16;
+export const INSTANCE_LAYOUT = { iPosRot: 4, iScale: 4, iTint: 4, iTeam: 4, iAnim: 4, iAnimPrev: 4 };
+export const INSTANCE_FLOATS = 24;
 
 /** A mesh on the GPU: one interleaved vertex buffer (`layout`), optional indices, optional
  *  per-instance buffer (INSTANCE_LAYOUT) set with `setInstances`. */
@@ -244,6 +246,8 @@ export class Mesh {
       gl.vertexAttrib4f(ATTR.iScale, 1, 1, 1, 0);
       gl.vertexAttrib4f(ATTR.iTint, 1, 1, 1, 1);
       gl.vertexAttrib4f(ATTR.iTeam, 1, 1, 1, 1);
+      gl.vertexAttrib4f(ATTR.iAnim, 0, 0, 0, 0);
+      gl.vertexAttrib4f(ATTR.iAnimPrev, 0, 0, 0, 0);
     }
     gl.bindVertexArray(null);
   }
@@ -265,6 +269,8 @@ export class Mesh {
       gl.vertexAttrib4f(ATTR.iScale, 1, 1, 1, 0);
       gl.vertexAttrib4f(ATTR.iTint, 1, 1, 1, 1);
       gl.vertexAttrib4f(ATTR.iTeam, 1, 1, 1, 1);
+      gl.vertexAttrib4f(ATTR.iAnim, 0, 0, 0, 0);
+      gl.vertexAttrib4f(ATTR.iAnimPrev, 0, 0, 0, 0);
     }
     if (this.ibo) {
       if (this.ibuf) gl.drawElementsInstanced(this.mode, this.count, this.indexType, 0, this.instances);

@@ -50,6 +50,24 @@ export function buildAsset(name, variant = 0, param = "") {
   return out;
 }
 
+/** True when recipe `name` takes an animation pose (`ctx.pose`, see anim.js). */
+export function isPosable(name) {
+  return !!RECIPES.get(name)?.posable;
+}
+
+/** One animation frame of (name, variant, param): the recipe built with `pose` (not cached).
+ *  Same randomness as buildAsset, so the frame is the rest mesh moved, vertex for vertex. Returns
+ *  the mesh data and what the recipe's build returned (a figure's joints and parts) as `meta`. */
+export function buildPosed(name, variant = 0, param = "", pose = null) {
+  const def = RECIPES.get(name);
+  if (!def) throw new Error(`r3d: no recipe "${name}"`);
+  const v = ((variant % def.variants) + def.variants) % def.variants;
+  const mb = new MeshBuilder();
+  const seed = hash32(hash32(strHash(name)) ^ (v * 7919 + 1) ^ strHash(param));
+  const meta = def.build(mb, rng(seed), { variant: v, param, name, pose }) ?? null;
+  return { ...mb.build(), meta };
+}
+
 /** Forgets the built meshes (after a recipe module is reloaded in the lab). */
 export function clearBuilt() {
   BUILT.clear();

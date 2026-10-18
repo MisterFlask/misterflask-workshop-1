@@ -637,7 +637,31 @@ in vec4 iPosRot;
 in vec4 iScale;
 in vec4 iTint;
 in vec4 iTeam;
+in vec4 iAnim;
+in vec4 iAnimPrev;
 uniform float uWind;
+// Baked animation frames (anim.js packFrames): per vertex and frame, the position quantised to 16
+// bits over the frames' box (uAnimLo .. + uAnimSpan) and the normal octahedron-encoded (8 + 8
+// bits), uAnimCount vertices a frame, laid out uAnimW texels a row. iAnim: first frame, frames,
+// start time, fps (> 0 loops, < 0 once and holds the last frame, 0 = the rest mesh).
+uniform highp usampler2D uAnim;
+uniform vec3 uAnimLo;
+uniform vec3 uAnimSpan;
+uniform int uAnimCount;
+uniform int uAnimW;
+uniform float uAnimBlend;
+
+uvec4 animTexel(float frame) {
+  int i = int(frame) * uAnimCount + gl_VertexID;
+  return texelFetch(uAnim, ivec2(i % uAnimW, i / uAnimW), 0);
+}
+
+vec3 octDecode(uint e) {
+  vec2 f = vec2(float(e & 255u), float(e >> 8u)) / 255.0 * 2.0 - 1.0;
+  vec3 n = vec3(f, 1.0 - abs(f.x) - abs(f.y));
+  if (n.z < 0.0) n.xy = (1.0 - abs(n.yx)) * vec2(n.x >= 0.0 ? 1.0 : -1.0, n.y >= 0.0 ? 1.0 : -1.0);
+  return normalize(n);
+}
 out vec3 vWorld;
 out vec3 vNormal;
 out vec3 vColor;
@@ -653,8 +677,44 @@ vec3 rotY(vec3 p, float a) {
   return vec3(c * p.x + s * p.z, p.y, -s * p.x + c * p.z);
 }
 
+/** The pose of clip A (an iAnim) at uTime: the two baked frames around it, lerped. */
+void animPose(vec4 A, out vec3 pos, out vec3 nrm) {
+  float n = A.y;
+  float x = max(0.0, (uTime - A.z) * abs(A.w));
+  float f0, f1;
+  if (A.w > 0.0) {
+    x = mod(x, n);
+    f0 = floor(x);
+    f1 = mod(f0 + 1.0, n);
+  } else {
+    x = min(x, n - 1.0);
+    f0 = floor(x);
+    f1 = min(f0 + 1.0, n - 1.0);
+  }
+  uvec4 a = animTexel(A.x + f0), b = animTexel(A.x + f1);
+  float u = x - f0;
+  pos = uAnimLo + mix(vec3(a.xyz), vec3(b.xyz), u) / 65535.0 * uAnimSpan;
+  nrm = normalize(mix(octDecode(a.w), octDecode(b.w), u));
+}
+
 void main() {
-  vec3 p = aPos * iScale.xyz;
+  vec3 pos = aPos, nrm = aNormal;
+  bool animated = uAnimCount > 0 && iAnim.w != 0.0 && iAnim.y > 0.0;
+  if (animated) {
+    animPose(iAnim, pos, nrm);
+    // A new clip cross-fades from the one it interrupted over uAnimBlend seconds.
+    if (iAnimPrev.w != 0.0 && iAnimPrev.y > 0.0) {
+      float w = clamp((uTime - iAnim.z) / uAnimBlend, 0.0, 1.0);
+      if (w < 1.0) {
+        vec3 p0, n0;
+        animPose(iAnimPrev, p0, n0);
+        w = w * w * (3.0 - 2.0 * w);
+        pos = mix(p0, pos, w);
+        nrm = normalize(mix(n0, nrm, w));
+      }
+    }
+  }
+  vec3 p = pos * iScale.xyz;
   float phase = iScale.w;
   // Wind in the leaves and cloth: a slow sway and a faster flutter, stronger toward the tips.
   int bone0 = int(aMat.z + 0.5);
@@ -664,9 +724,10 @@ void main() {
     p.xz += vec2(0.8, 0.5) * s * aMat.y * uWind * 0.025 * max(iScale.y, 0.5);
     p.y += sin(uTime * 3.7 + ph + aPos.x * 9.0) * aMat.y * uWind * 0.004;
   }
-  // Units breathe and shift their weight; wings beat (bones, mesh.js BONE).
+  // Units breathe and shift their weight; wings beat (bones, mesh.js BONE). An animated figure's
+  // clip does this itself.
   int bone = int(aMat.z + 0.5);
-  if (bone > 0 || iTeam.a > 0.5) {
+  if (!animated && (bone > 0 || iTeam.a > 0.5)) {
     float t = uTime * 1.6 + phase * 6.2831;
     if (bone == 1) p.y += sin(t) * 0.004;
     // A weapon moves with the hand that holds it (the right arm).
@@ -686,7 +747,7 @@ void main() {
   }
   vec3 w = rotY(p, iPosRot.w) + iPosRot.xyz + vec3(uCopyX, 0.0, 0.0);
   vWorld = w;
-  vNormal = rotY(aNormal / iScale.xyz, iPosRot.w);
+  vNormal = rotY(nrm / iScale.xyz, iPosRot.w);
   vColor = aColor;
   vLocal = aPos;
   vTint = iTint;
