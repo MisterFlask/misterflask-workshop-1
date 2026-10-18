@@ -1,8 +1,20 @@
-//! Kuriotates (`CvCity::init`, FfH): past the city limit (3 on a standard map) a new city is a
-//! settlement (radius 2, -75% yields, nothing to build, but no maintenance or civic upkeep, and it
-//! claims land and resources). [`Kuriotates::production`] builds one settler at a time for the
-//! sites `sites.rs` already scores for them (C++ `AI_foundValue` switches a sprawling player at
-//! its limit to settlement-sized sites and favours sites away from our cities).
+//! Kuriotates (`CvCity::init`, FfH): the Sprawling trait limits them to 3 full cities on a
+//! standard map (radius 3, as for every AI); past the limit a new city is a *settlement* (radius
+//! 2, -75% yields, nothing to build, but no maintenance or civic upkeep, and it claims land and
+//! resources). The ported C++ `AI_foundValue` already scores settlement-sized sites for a
+//! sprawling player at its limit and favours sites away from our cities. What the AI does:
+//! - [`Kuriotates::production`] builds one settler at a time for a settlement site on the city's
+//!   landmass, from a full city of size 5+ (or at its happy cap) at peace;
+//! - [`Kuriotates::site_value`]: at the limit, no settlement site within 5 plots of a full city.
+//!   A plot is worked by the city nearest to it (`CvPlot::updateWorkingCity`), so a settlement
+//!   inside a full city's radius-3 ring takes plots the full city could work and leaves them
+//!   nearly idle (a size-1 settlement works one plot at a quarter of its yield): measured, full
+//!   cities stayed smaller (population at turn 300 37 against 41 without settlements, commerce
+//!   117 against 159);
+//! - settlements cannot train units: the nearest full city trains a defender for a settlement that
+//!   has none (the garrison logic walks it there);
+//! - after losing a full city, the next city founded is a full one, but the generic settler step
+//!   counts settlements towards the limit and stops: a settler for a full city then.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -14,28 +26,18 @@ use crate::Ai;
 
 pub struct Kuriotates;
 
-fn exp() -> &'static str {
-    static E: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-    E.get_or_init(|| std::env::var("FFH_KUR_EXP").unwrap_or_default())
-}
-
 impl CivPlay for Kuriotates {
     fn production(&self, ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
-        let exp = exp();
-        let d = if exp.contains('D') { full_city_defender(g, c) } else { None };
-        let e = if exp.contains('E') { settlement_defender(g, c) } else { None };
-        d.or(e).or_else(|| full_city_settler(ai, g, c, threat)).or_else(|| if exp == "A" { None } else { settlement_settler(ai, g, c, threat) })
+        settlement_defender(g, c).or_else(|| full_city_settler(ai, g, c, threat)).or_else(|| settlement_settler(ai, g, c, threat))
     }
 
     fn site_value(&self, g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
-        if !exp().contains('B') {
-            return value;
-        }
         let pl = &g.players[p];
         let full = pl.cities.len() as i32 - g.player_get_num_settlements(p);
         if pl.max_cities <= 0 || full < pl.max_cities {
             return value;
         }
+        // A full city's radius (3) plus a settlement's (2): closer, they share plots.
         let (x, y) = g.map.xy(q);
         if pl.cities.iter().any(|&c| !g.cities[c].settlement && g.plot_distance(x, y, g.cities[c].x, g.cities[c].y) <= 5) {
             return 0;
@@ -43,7 +45,6 @@ impl CivPlay for Kuriotates {
         value
     }
 }
-
 
 /// Below the limit of full cities while settlements make up the rest (a full city was lost): the
 /// next city founded is a full one (`CvCity::init` counts full cities), but the generic settler
@@ -119,20 +120,6 @@ fn civ_war(g: &Game, p: PlayerId) -> bool {
     let team = g.players[p].team;
     let barb = g.barbarian_team();
     g.teams.keys().any(|t| t != team && t != barb && g.teams[t].alive_count > 0 && g.at_war(team, t))
-}
-
-/// A full city holds a third of the empire: one defender more than the generic quota's base.
-fn full_city_defender(g: &Game, c: CityId) -> Option<Choice> {
-    let p = g.cities[c].owner;
-    if g.players[p].max_cities <= 0 || g.cities[c].settlement {
-        return None;
-    }
-    let war = civ_war(g, p);
-    let want = 2 + i32::from(g.city_is_capital(c)) + i32::from(war);
-    if crate::production::garrison(g, p, g.city_plot(c)).0 >= want || !crate::economy::can_afford_unit(g, p, true, war) {
-        return None;
-    }
-    best_unit(g, c, Role::Defense).map(|u| Choice::Train(u, UnitAIType::UNITAI_CITY_DEFENSE))
 }
 
 /// Settlements cannot train: the nearest full city trains a defender for one that has none
