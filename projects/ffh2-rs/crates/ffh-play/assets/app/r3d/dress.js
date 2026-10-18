@@ -232,13 +232,24 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // Particles of the ground itself (hell's embers, ancient forests' motes).
       for (const e of CATALOG.emitters?.("plot", ctx) ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5, y + 0.5) + (e.dy ?? 0.05), z: -(y + 0.5 - (e.dz ?? 0)) });
       // Bridges where a road crosses a river edge to a routed neighbour (south and east edges;
-      // each crossing belongs to one plot).
+      // each crossing belongs to one plot). The road runs straight across (decals.js), and the
+      // bridge stands where it passes nearest the river's (smoothed, meandering) line, its deck at
+      // the higher bank: a span of 0.6 plot or more clears the water (at most 0.45 wide there).
       if (map.route[i] >= 0 && map.river[i] > 0) {
         const bridge = (nx, ny, mx, my, yaw) => {
           const j = world.index(nx, ny);
           if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) return;
-          const bank = Math.max(H(mx + Math.sin(yaw) * 0.22, my - Math.cos(yaw) * 0.22), H(mx - Math.sin(yaw) * 0.22, my + Math.cos(yaw) * 0.22), SEA + 0.01);
-          out.push(inst(pick(CATALOG.bridge?.(ctx) ?? "basic.bridge", "basic.bridge"), mx, bank - 0.006, -my, { yaw, variant: r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
+          const ux = nx - x, uy = ny - y; // along the road, map units
+          let best = Infinity, cx = mx, cy = my;
+          for (let k = -8; k <= 8; k++) {
+            const px = mx + ux * k * 0.03, py = my + uy * k * 0.03;
+            const d = world.riverDist(px, py);
+            if (d < best) [best, cx, cy] = [d, px, py];
+          }
+          const bank = Math.max(H(cx + ux * 0.32, cy + uy * 0.32), H(cx - ux * 0.32, cy - uy * 0.32), SEA + 0.01);
+          const b = CATALOG.bridge?.(ctx) ?? null;
+          const asset = typeof b === "string" ? b : b?.asset;
+          out.push(inst(pick(asset, "basic.bridge"), cx, bank - 0.006, -cy, { yaw, variant: b?.variant ?? r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
         };
         if (map.river[i] & 1) bridge(x, y - 1, x + 0.5, y, 0);
         if (map.river[i] & 2) bridge(x + 1, y, x + 1, y + 0.5, Math.PI / 2);

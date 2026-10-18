@@ -32,6 +32,7 @@ import { pal, jitter, MANA } from "./palette.js";
 import { noise3, hashf } from "../noise.js";
 import { vnorm, vsub, vcross, vadd, vscale, clamp } from "../math.js";
 import { KIND, FEAT, GROUND, DRAFT, isHell } from "../world.js";
+import { fieldLayout, CROP, ROWS } from "../fields.js";
 
 const TAU = Math.PI * 2;
 
@@ -1922,6 +1923,296 @@ function buildShed(mb, r, variant, param) {
 }
 
 recipe("imp.shed", { variants: 2, build: (mb, r, { variant, param }) => buildShed(mb, r, variant, param) });
+
+// --- fields: stooks, fences ----------------------------------------------------------------------
+
+/** A stook: sheaves of grain stood together to dry, ears up and tied at the waist (0-1 a ring of
+ *  sheaves, 2 a ridge of them leaning together in pairs). */
+function buildStook(mb, r, variant) {
+  const straw = J("#d4ac4c", r, 0.05);
+  const sheaf = (x, z, lx, lz) => {
+    // From the butt on the ground, in to the tie, out to the spread ears; leaning by (lx, lz).
+    const P = [[x, -0.012, z], [x + lx * 0.4, 0.026, z + lz * 0.4], [x + lx * 0.8, 0.05, z + lz * 0.8], [x + lx, 0.064, z + lz]];
+    mb.color = straw;
+    const m0 = mb.mark();
+    mb.tube(P, [0.0095, 0.0068, 0.0105, 0.004], 4);
+    mb.tint(m0, (px, y) => 0.86 + 0.3 * clamp(y / 0.06, 0, 1));
+  };
+  if (variant < 2) {
+    const n = 4 + variant;
+    const a0 = r.range(0, TAU);
+    for (let k = 0; k < n; k++) {
+      const a = a0 + (k / n) * TAU + r.range(-0.2, 0.2);
+      const c = Math.cos(a), s = Math.sin(a);
+      sheaf(c * 0.017, s * 0.017, -c * 0.011, -s * 0.011);
+    }
+  } else {
+    for (let k = 0; k < 3; k++) {
+      const z = (k - 1) * 0.019 + r.range(-0.003, 0.003);
+      for (const s of [-1, 1]) sheaf(s * 0.016, z, -s * 0.011, r.range(-0.003, 0.003));
+    }
+  }
+  groundAO(mb, 0, -0.01, 0.02, 0.75);
+}
+
+recipe("imp.stook", { variants: 3, build: (mb, r, { variant }) => buildStook(mb, r, variant) });
+
+/** A run of field fence along x (0.2 long, centred): three weathered posts and two rails between
+ *  them, a little out of true. Runs are laid end to end, each at its own ground height. */
+function buildFenceRun(mb, r, variant) {
+  const col = J(variant === 3 ? "#6e5a44" : "#8c7556", r, 0.05);
+  const h = 0.042;
+  mb.color = col;
+  const posts = [-0.1, 0, 0.1].map((x) => [x + r.range(-0.006, 0.006), r.range(-0.003, 0.003)]);
+  for (const [x, z] of posts) stick(mb, [x, -0.03, z], [x + r.range(-0.004, 0.004), h + r.range(0, 0.008), z + r.range(-0.003, 0.003)], 0.0052, 3);
+  mb.color = mulc(col, 1.12);
+  for (const y of [h * 0.42, h * 0.84]) {
+    for (let k = 0; k < 2; k++) {
+      const [ax, az] = posts[k], [bx, bz] = posts[k + 1];
+      stick(mb, [ax, y + r.range(-0.002, 0.002), az + 0.005], [bx, y + r.range(-0.002, 0.002), bz + 0.005], 0.0034, 3);
+    }
+  }
+}
+
+recipe("imp.fence", { variants: 4, build: (mb, r, { variant }) => buildFenceRun(mb, r, variant) });
+
+/** A quad with vertex normals, wound to face `n` (props are lit on both sides, so the winding must
+ *  match the normals). */
+function qnN(mb, a, b, c, d, na, nb, nc, nd, n) {
+  const f = vcross(vsub(b, a), vsub(c, a));
+  if (f[0] * n[0] + f[1] * n[1] + f[2] * n[2] < 0) mb.quadN(a, d, c, b, na, nd, nc, nb);
+  else mb.quadN(a, b, c, d, na, nb, nc, nd);
+}
+
+/** A crop row along z centred on x = 0: a roll of triangular section (half-width hw, feet sunk to
+ *  y = -0.012) whose crest runs through `crest` ([y, x-offset] at even stations over the length L),
+ *  with soft normals so it reads round; `tone(k, side)` colours each segment. Low: two faces a
+ *  segment, and two end caps. */
+function cropRow(mb, L, hw, crest, tone) {
+  const n = crest.length - 1, foot = -0.012;
+  const z = (k) => -L / 2 + (L * k) / n;
+  for (let k = 0; k < n; k++) {
+    const [ya, xa] = crest[k], [yb, xb] = crest[k + 1];
+    for (const s of [-1, 1]) {
+      const nf = vnorm([s * 0.75, 0.66, 0]), nc = vnorm([s * 0.25, 1, 0]);
+      mb.color = tone(k, s);
+      qnN(mb, [s * hw, foot, z(k)], [xa, ya, z(k)], [xb, yb, z(k + 1)], [s * hw, foot, z(k + 1)], nf, nc, nc, nf, nf);
+    }
+  }
+  for (const [k, s] of [[0, -1], [n, 1]]) {
+    mb.color = mulc(tone(Math.min(k, n - 1), 1), 0.8);
+    const [y, xo] = crest[k];
+    const a = [-hw, foot, z(k)], b = [hw, foot, z(k)], c = [xo, y, z(k)];
+    const nn = [0, 0.3, s];
+    const f = vcross(vsub(b, a), vsub(c, a));
+    if (f[2] * s < 0) mb.triN(a, c, b, nn, nn, nn);
+    else mb.triN(a, b, c, nn, nn, nn);
+  }
+}
+
+/** Vegetable beds: rows of leafy crops (variant + 1 of them, 1/14 plot apart -- the rows the field
+ *  decal paints, fields.js ROWS) along x, 0.2 long, lumpy and mottled light and dark. Laid in
+ *  patches over a field, each at its own ground height; sunk, so a slope buries an end rather than
+ *  lifting one. */
+function buildBeds(mb, r, variant) {
+  const rows = variant + 1, gap = 1 / 14, L = 0.2, n = 5;
+  const greens = ["#46682a", "#527430", "#5c7e36", "#3e6028"].map((c) => J(c, r, 0.05));
+  mb.mat = MAT.FOLIAGE;
+  for (let j = 0; j < rows; j++) {
+    const crest = [];
+    for (let k = 0; k <= n; k++) crest.push([k === 0 || k === n ? 0.006 : r.range(0.014, 0.022), r.range(-0.004, 0.004)]);
+    const tones = crest.map(() => r.pick(greens));
+    at(mb, 0, 0, (j - (rows - 1) / 2) * gap, Math.PI / 2, () => cropRow(mb, L, 0.026, crest, (k, s) => (s < 0 ? tones[k] : mulc(tones[k], 0.88))));
+  }
+  mb.mat = MAT.MATTE;
+}
+
+recipe("imp.beds", { variants: 3, build: (mb, r, { variant }) => buildBeds(mb, r, variant) });
+
+/** Standing grain: rows of ripe ears (variant + 1 of them, 1/18 plot apart -- the rows the field
+ *  decal paints) along z, 0.2 long: ridged golden masses, warm on top, ochre down the stalks.
+ *  Laid in patches like the beds. */
+function buildGrain(mb, r, variant) {
+  const rows = variant + 1, gap = 1 / 18, L = 0.2, n = 3;
+  const gold = J("#c89c46", r, 0.05);
+  for (let j = 0; j < rows; j++) {
+    // Neighbouring rows overlap: one mass of grain, its rows soft ridges along it.
+    const crest = [];
+    for (let k = 0; k <= n; k++) crest.push([0.021 + r.range(-0.0015, 0.0015), r.range(-0.002, 0.002)]);
+    const m0 = mb.mark();
+    at(mb, (j - (rows - 1) / 2) * gap, 0, 0, 0, () => cropRow(mb, L, gap * 0.82, crest, (k, s) => (s < 0 ? gold : mulc(gold, 0.92))));
+    mb.tint(m0, (px, y) => 0.7 + 0.42 * clamp((y + 0.012) / 0.033, 0, 1));
+  }
+}
+
+recipe("imp.grain", { variants: 4, build: (mb, r, { variant }) => buildGrain(mb, r, variant) });
+
+// --- bridges -----------------------------------------------------------------------------------
+
+/** A quad wound to face `n` (props are lit on both sides, so the winding must match the normal). */
+function qn(mb, a, b, c, d, n) {
+  const f = vcross(vsub(b, a), vsub(c, a));
+  if (f[0] * n[0] + f[1] * n[1] + f[2] * n[2] < 0) mb.quad(a, d, c, b);
+  else mb.quad(a, b, c, d);
+}
+
+/** Pale dressed stone of the bridges (the target's bridges are the brightest stone on the map). */
+const BRIDGE_STONE = { wall: "#887b68", ring: "#cabea8", deck: "#b8aa92", cap: "#d4cab6", shade: "#4a423c" };
+
+/** Square posts with a cap on the four corners of a bridge's parapets (x = +-x, z = +-zEnd). */
+function bridgePosts(mb, r, x, zEnd, y, h, s) {
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      at(mb, sx * x, y - 0.03, sz * zEnd, 0, () => {
+        mb.color = J(BRIDGE_STONE.wall, r, 0.04);
+        mb.box(s, h + 0.03, s);
+        mb.color = J(BRIDGE_STONE.cap, r, 0.03);
+        at(mb, 0, h + 0.03, 0, 0, () => mb.box(s * 1.3, 0.008, s * 1.3, { top: 0.75 }));
+      });
+    }
+  }
+}
+
+/** Abutments: a broad stone footing at each end, sunk into the bank under the deck's end. */
+function bridgeFootings(mb, r, X, zEnd) {
+  for (const sz of [-1, 1]) {
+    at(mb, 0, -0.14, sz * (zEnd - 0.03), 0, () => {
+      mb.color = J(BRIDGE_STONE.wall, r, 0.05);
+      mb.box(2 * X + 0.05, 0.14, 0.13, { top: 0.92 });
+    });
+  }
+}
+
+/** An arched stone bridge along z: a humped deck between parapets with a coping over one arch (0)
+ *  or two arches on a pier with cutwaters (1), each arch ringed with lighter voussoirs and dark
+ *  inside, square end posts, footings down into both banks. The deck's ends (y = 0) meet the
+ *  banks; it spans 0.68 (a river's water is at most 0.45 wide where a road crosses it). */
+function buildArchBridge(mb, r, variant) {
+  // A humpback: the deck rises well over the banks, so the arches stand clear of the water (a
+  // river's surface is only a few hundredths under its banks).
+  const Lh = 0.34, W = 0.1, pt = 0.015, ph = 0.026, rt = 0.017;
+  const X = W / 2 + pt, deep = -0.14, ys = -0.075;
+  const top = (z) => 0.004 + 0.064 * Math.pow(Math.max(0, Math.cos((Math.PI * z) / (2 * Lh))), 1.3);
+  const arches = (variant ? [[-0.122, 0.105], [0.122, 0.105]] : [[0, 0.18]]).map(([c, a]) => ({ c, a, yc: top(c) - 0.032 }));
+  const archAt = (za, zb) => arches.find((q) => za >= q.c - q.a - 1e-6 && zb <= q.c + q.a + 1e-6);
+  const curve = (q, z) => ys + (q.yc - ys) * Math.sqrt(Math.max(0, 1 - ((z - q.c) / q.a) ** 2));
+  // Stations along z: the ends, the solid stretches' middles, dense over each arch.
+  const zs = [-Lh, Lh];
+  const N = arches.length > 1 ? 7 : 10;
+  for (const q of arches) for (let k = 0; k <= N; k++) zs.push(q.c - q.a * Math.cos((Math.PI * k) / N));
+  zs.push((-Lh + arches[0].c - arches[0].a) / 2, (Lh + arches[arches.length - 1].c + arches[arches.length - 1].a) / 2);
+  zs.sort((a, b) => a - b);
+  const wall = J(BRIDGE_STONE.wall, r, 0.04);
+  for (let k = 0; k + 1 < zs.length; k++) {
+    const za = zs[k], zb = zs[k + 1];
+    if (zb - za < 1e-6) continue;
+    const ta = top(za), tb = top(zb), q = archAt(za, zb);
+    // Deck, parapets (inner faces and coping), both outer faces.
+    mb.color = J(BRIDGE_STONE.deck, r, 0.05);
+    qn(mb, [-W / 2, ta, za], [W / 2, ta, za], [W / 2, tb, zb], [-W / 2, tb, zb], [0, 1, 0]);
+    for (const s of [-1, 1]) {
+      mb.color = J(wall, r, 0.05);
+      qn(mb, [(s * W) / 2, ta, za], [(s * W) / 2, ta + ph, za], [(s * W) / 2, tb + ph, zb], [(s * W) / 2, tb, zb], [-s, 0, 0]);
+      mb.color = J(BRIDGE_STONE.cap, r, 0.04);
+      qn(mb, [s * (W / 2 - 0.002), ta + ph, za], [s * (X + 0.003), ta + ph, za], [s * (X + 0.003), tb + ph, zb], [s * (W / 2 - 0.002), tb + ph, zb], [0, 1, 0]);
+      mb.color = mulc(BRIDGE_STONE.cap, 0.8);
+      qn(mb, [s * (X + 0.003), ta + ph - 0.006, za], [s * (X + 0.003), ta + ph, za], [s * (X + 0.003), tb + ph, zb], [s * (X + 0.003), tb + ph - 0.006, zb], [s, 0, 0]);
+      const x = s * X;
+      if (q) {
+        const aa = curve(q, za), ab = curve(q, zb);
+        mb.color = J(wall, r, 0.06);
+        qn(mb, [x, aa + rt, za], [x, ta + ph - 0.006, za], [x, tb + ph - 0.006, zb], [x, ab + rt, zb], [s, 0, 0]);
+        // The ring: voussoirs alternating light and a little darker (their joints read).
+        mb.color = J(k % 2 ? BRIDGE_STONE.ring : mixl(BRIDGE_STONE.ring, BRIDGE_STONE.wall, 0.45), r, 0.05);
+        qn(mb, [x, aa, za], [x, aa + rt, za], [x, ab + rt, zb], [x, ab, zb], [s, 0, 0]);
+      } else {
+        mb.color = J(wall, r, 0.06);
+        qn(mb, [x, deep, za], [x, ta + ph - 0.006, za], [x, tb + ph - 0.006, zb], [x, deep, zb], [s, 0, 0]);
+      }
+    }
+    if (q) {
+      // The arch's underside, and its shadowed inside: a dark screen down the middle (seen from
+      // above, the opening otherwise shows only the bright water through it).
+      const aa = curve(q, za), ab = curve(q, zb);
+      mb.color = C(BRIDGE_STONE.shade);
+      qn(mb, [-X, aa, za], [X, aa, za], [X, ab, zb], [-X, ab, zb], [0, -1, 0]);
+      mb.color = C("#2a2420");
+      mb.card([0, ys, za], [0, ys, zb], [0, ab, zb], [0, aa, za]);
+    }
+  }
+  // The piers' faces toward the water, under each arch's springing; a cutwater on a middle pier.
+  for (const q of arches) {
+    for (const s of [-1, 1]) {
+      mb.color = mulc(wall, 0.75);
+      qn(mb, [-X, deep, q.c + s * q.a], [X, deep, q.c + s * q.a], [X, ys, q.c + s * q.a], [-X, ys, q.c + s * q.a], [0, 0, -s]);
+    }
+  }
+  if (arches.length > 1) {
+    at(mb, 0, deep, 0, 0, () => {
+      mb.color = J(wall, r, 0.05);
+      const d = 0.034, tip = 0.03;
+      mb.prism([[-X, -d / 2], [X, -d / 2], [X + tip, 0], [X, d / 2], [-X, d / 2], [-X - tip, 0]], ys + 0.03 - deep, { top: 0.9 });
+    });
+  }
+  bridgePosts(mb, r, X - pt / 2 + 0.002, Lh - 0.014, top(Lh), ph + 0.012, 0.024);
+  bridgeFootings(mb, r, X, Lh);
+}
+
+recipe("bridge.arch", { variants: 2, build: (mb, r, { variant }) => buildArchBridge(mb, r, variant) });
+
+/** A flat slab bridge along z: a deck of big pale flagstones on piers with cutwaters (two, or one),
+ *  low walls of blocks along both sides, square posts at the ends, footings in both banks; it
+ *  spans 0.64 (a river's water is at most 0.45 wide where a road crosses it). */
+function buildSlabBridge(mb, r, variant) {
+  const Lh = 0.32, W = 0.112, pt = 0.016, ph = 0.017, th = 0.03, y0 = 0.008;
+  const X = W / 2 + pt, deep = -0.14;
+  // The flagstones over a dark bed (their joints).
+  mb.color = C(BRIDGE_STONE.shade);
+  qn(mb, [-W / 2, y0 - 0.002, -Lh], [W / 2, y0 - 0.002, -Lh], [W / 2, y0 - 0.002, Lh], [-W / 2, y0 - 0.002, Lh], [0, 1, 0]);
+  const n = 9;
+  for (let k = 0; k < n; k++) {
+    const za = -Lh + ((2 * Lh) / n) * k + 0.002, zb = -Lh + ((2 * Lh) / n) * (k + 1) - 0.002;
+    // Some courses are two stones side by side.
+    const split = r() < 0.45 ? r.range(-0.02, 0.02) : null;
+    const xs = split === null ? [[-W / 2 + 0.002, W / 2 - 0.002]] : [[-W / 2 + 0.002, split - 0.0015], [split + 0.0015, W / 2 - 0.002]];
+    for (const [xa, xb] of xs) {
+      const y = y0 + r.range(-0.0015, 0.0015);
+      mb.color = J(BRIDGE_STONE.deck, r, 0.07);
+      qn(mb, [xa, y, za], [xb, y, za], [xb, y, zb], [xa, y, zb], [0, 1, 0]);
+    }
+  }
+  // Fascia and walls: blocks of their own heights along both sides, a coping on top.
+  for (const s of [-1, 1]) {
+    let z = -Lh;
+    while (z < Lh - 1e-6) {
+      const L = Math.min(Lh - z, r.range(0.06, 0.09));
+      at(mb, s * (W / 2 + pt / 2), y0 - th, z + L / 2, 0, () => {
+        mb.color = J(BRIDGE_STONE.wall, r, 0.06);
+        mb.box(pt, th + ph + r.range(-0.002, 0.003), L - 0.0025);
+      });
+      z += L;
+    }
+    at(mb, s * (W / 2 + pt / 2), y0 + ph, 0, 0, () => {
+      mb.color = J(BRIDGE_STONE.cap, r, 0.03);
+      mb.box(pt + 0.004, 0.005, 2 * Lh - 0.03);
+    });
+  }
+  // The deck's underside.
+  mb.color = C(BRIDGE_STONE.shade);
+  qn(mb, [-X, y0 - th, -Lh], [X, y0 - th, -Lh], [X, y0 - th, Lh], [-X, y0 - th, Lh], [0, -1, 0]);
+  // Piers in the water, pointed up- and downstream (the river runs along x).
+  for (const pz of variant ? [0] : [-0.11, 0.11]) {
+    at(mb, 0, deep, pz, 0, () => {
+      mb.color = J(BRIDGE_STONE.wall, r, 0.05);
+      const d = 0.05, w = X + 0.012, tip = 0.035;
+      mb.prism([[-w, -d / 2], [w, -d / 2], [w + tip, 0], [w, d / 2], [-w, d / 2], [-w - tip, 0]], y0 - th - deep + 0.002);
+    });
+  }
+  bridgePosts(mb, r, X - pt / 2, Lh - 0.012, y0, ph + 0.014, 0.026);
+  bridgeFootings(mb, r, X, Lh);
+}
+
+recipe("bridge.slab", { variants: 2, build: (mb, r, { variant }) => buildSlabBridge(mb, r, variant) });
 
 // --- boats ------------------------------------------------------------------------------------
 
@@ -4275,6 +4566,73 @@ function herdOf(bonus) {
 
 const glowOf = (school) => MANA[school] ?? MANA[""];
 
+/** A farm on its fields (fields.js): the farmstead (a barn or a granary) in its yard with its
+ *  haystacks, fence runs along the field edges, stooks on the grain and a scarecrow in the beds.
+ *  The plot's centre keeps only low crops (a unit standing there stays readable). */
+function farmOf(ctx, part, yj) {
+  const r = ctx.r;
+  const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
+  const { yard } = lay, s = yard.side;
+  const out = [
+    part("imp.barn", yard.x, yard.z, { variant: r.int(0, 3), yaw: yj(0.3), scale: 1.2 }),
+    part("imp.haystacks", yard.x - s * 0.2, yard.z + r.range(-0.05, 0.03), { variant: r.int(0, 3), yaw: r.range(0, TAU), scale: r.range(1.3, 1.5) }),
+  ];
+  for (const [[ax, az], [bx, bz]] of lay.fences) {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 0.2));
+    const yaw = Math.atan2(-(bz - az), bx - ax);
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      out.push({ asset: "imp.fence", dx: ax + (bx - ax) * t, dz: az + (bz - az) * t, yaw: yaw + yj(0.03), variant: r.int(0, 3), scale: 1, sx: L / n / 0.2 });
+    }
+  }
+  // The crops in the round: beds and standing grain in patches over their fields, each patch on its
+  // own ground, its rows on the rows the decal paints (fields.js ROWS).
+  for (const f of lay.fields) {
+    if (f.crop === CROP.SOIL) continue;
+    const green = f.crop === CROP.GREEN;
+    const N = green ? ROWS.green : ROWS.grain, per = green ? 3 : 4;
+    // Row positions across the field (z for beds running along x, x for grain running along z).
+    const lo = green ? f.z0 : f.x0, hi = green ? f.z1 : f.x1;
+    const rows = [];
+    for (let k = 0; k < N; k++) {
+      const c = green ? 0.5 - (k + 0.5) / N : (k + 0.5) / N - 0.5;
+      if (c > lo + 0.022 && c < hi - 0.022) rows.push(c);
+    }
+    rows.sort((a, b) => a - b);
+    const a0 = green ? f.x0 + 0.015 : f.z0 + 0.015, a1 = green ? f.x1 - 0.015 : f.z1 - 0.015;
+    const m = Math.max(1, Math.round((a1 - a0) / 0.2)), len = (a1 - a0) / m;
+    for (let k = 0; k < rows.length; k += per) {
+      const chunk = rows.slice(k, k + per);
+      const c = (chunk[0] + chunk[chunk.length - 1]) / 2;
+      const half = (chunk[chunk.length - 1] - chunk[0]) / 2 + 0.03;
+      for (let q = 0; q < m; q++) {
+        const along = a0 + len * (q + 0.5);
+        // A patch stands level: where the ground under it is too steep, the painted rows suffice.
+        if (ctx.world) {
+          const hs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => {
+            const lx = green ? along + (u * len) / 2 : c + u * half, lz = green ? c + v * half : along + (v * len) / 2;
+            return ctx.world.heightAt(ctx.x + 0.5 + lx, ctx.y + 0.5 - lz);
+          });
+          if (Math.max(...hs) - Math.min(...hs) > 0.024) continue;
+        }
+        out.push(green
+          ? { asset: "imp.beds", dx: along, dz: c, yaw: 0, variant: chunk.length - 1, scale: 1, sx: len / 0.2 }
+          : { asset: "imp.grain", dx: c, dz: along, yaw: 0, variant: chunk.length - 1, scale: 1, sz: len / 0.2 });
+      }
+    }
+  }
+  for (const [x, z] of lay.stooks) {
+    if (ctx.unit && Math.abs(x) < 0.16) continue;
+    out.push(part("imp.stook", x, z, { variant: r.int(0, 2), yaw: r.range(0, TAU), scale: r.range(1.4, 1.7) }));
+  }
+  const beds = lay.fields.find((f) => f.crop === CROP.GREEN);
+  if (beds && r() < 0.6) {
+    const x = beds.x0 + (beds.x1 - beds.x0) * r.range(0.3, 0.7), z = beds.z0 + (beds.z1 - beds.z0) * r.range(0.3, 0.7);
+    if (!ctx.unit || Math.hypot(x, z) > 0.2) out.push(part("imp.scarecrow", x, z, { yaw: yj(0.5), scale: 1.35 }));
+  }
+  return out;
+}
+
 function improvementOf(type, ctx) {
   const t = type.replace("IMPROVEMENT_", "");
   if (NOT_OURS.test(t)) return null;
@@ -4295,18 +4653,20 @@ function improvementOf(type, ctx) {
   }
   switch (t) {
     case "FARM":
-      return [
-        part("imp.barn", -0.18 * flip, -0.19, { variant: r.int(0, 3), yaw: yj(0.35), scale: 1.15 }),
-        part("imp.haystacks", 0.17 * flip, -0.2),
-        part("imp.scarecrow", 0.22 * flip, 0.16, { yaw: yj(0.5), scale: 1.35 }),
-      ];
+      return farmOf(ctx, part, yj);
     case "PLANTATION": {
+      // The rows fill the green field the decal lays (fields.js); the drying shed in the yard.
       const b = (ctx.bonus ?? "").replace("BONUS_", "");
       const crop = { BANANA: "banana", SUGAR: "sugar", COTTON: "cotton", DYE: "dye", SILK: "tea", INCENSE: "tea", SPICES: "tea" }[b] ?? "tea";
-      return [part("imp.croprows", 0.06 * flip, 0.1, { param: crop, yaw: yj(0.12), scale: 1.55 }), part("imp.shed", -0.2 * flip, -0.22, { scale: 1.45 })];
+      const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
+      return [
+        part("imp.croprows", -0.2, 0.2, { param: crop, yaw: yj(0.08), scale: 1.4 }),
+        part("imp.croprows", 0.2, 0.2, { param: crop, variant: 1, yaw: yj(0.08), scale: 1.4 }),
+        part("imp.shed", lay.yard.x, lay.yard.z, { scale: 1.45 }),
+      ];
     }
     case "WINERY":
-      return [part("imp.vines", 0.06 * flip, 0.1, { yaw: yj(0.12), scale: 1.5 }), part("imp.press", -0.19 * flip, -0.21, { scale: 1.4 })];
+      return [part("imp.vines", -0.17, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.vines", 0.2, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.press", -0.19 * flip, -0.23, { scale: 1.4 })];
     case "PASTURE": {
       const herd = herdOf(ctx.bonus);
       const kinds = herd ? [herd, herd] : ["sheep", "cow"];
@@ -4474,6 +4834,8 @@ extendCatalog({
   feature: (feat, ctx) => featureOf(feat, ctx),
   improvement: (type, ctx) => improvementOf(type, ctx),
   bonus: (type, ctx) => bonusOf(type, ctx),
+  // A stone bridge where a road crosses a river: arched or a flat slab, by the crossing.
+  bridge: (ctx) => ({ asset: ctx.r() < 0.5 ? "bridge.arch" : "bridge.slab", variant: ctx.r.int(0, 1) }),
 });
 
 void TEAM;
