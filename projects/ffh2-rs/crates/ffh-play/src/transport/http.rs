@@ -81,6 +81,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/r3d/config.js", JS, include_str!("../../assets/app/r3d/config.js")),
     ("app/r3d/decals.js", JS, include_str!("../../assets/app/r3d/decals.js")),
     ("app/r3d/dress.js", JS, include_str!("../../assets/app/r3d/dress.js")),
+    ("app/r3d/fields.js", JS, include_str!("../../assets/app/r3d/fields.js")),
     ("app/r3d/gl.js", JS, include_str!("../../assets/app/r3d/gl.js")),
     ("app/r3d/hud.js", JS, include_str!("../../assets/app/r3d/hud.js")),
     ("app/r3d/map3d.js", JS, include_str!("../../assets/app/r3d/map3d.js")),

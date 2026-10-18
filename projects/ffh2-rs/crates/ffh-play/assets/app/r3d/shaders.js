@@ -1006,20 +1006,63 @@ void main() {
     // Settlement ground, fields and roads (rasterised per plot, see decals.js).
     vec3 earth = srgb(mix(vec3(0.36, 0.29, 0.21), vec3(0.47, 0.39, 0.29), mnoise(m, 8.0)));
     alb = mix(alb, earth, dec.a * 0.8);
-    if (dec.g > 0.01) {
-      vec2 cell = floor(m * 3.0 + vec2(mnoise(m, 1.0)) * 0.6);
-      float kind = hash12(cell);
-      float ang = hash12(cell + 7.0) > 0.5 ? m.x : m.y;
-      float furrow = 0.5 + 0.5 * sin(ang * 70.0);
-      vec3 crop = kind < 0.35 ? vec3(0.66, 0.55, 0.26) : kind < 0.7 ? vec3(0.38, 0.45, 0.20) : vec3(0.42, 0.32, 0.22);
-      crop *= 0.85 + 0.2 * furrow;
-      alb = mix(alb, srgb(crop), dec.g * 0.85);
+    // Fields (decals.js, fields.js): g holds the crop -- ~0.33 vegetable beds (green rows on tilled
+    // soil, 14 a plot, running east-west), ~0.67 bare tilled soil, 1 golden grain (18 rows a plot,
+    // running north-south). The filtered value fades the field in; the crop is the highest of the
+    // four texels around (a field's soft edge would pass through the levels below its own). The
+    // rows fade to their mean colour once they are finer than the pixels, and raise a bump.
+    float fieldW = smoothstep(0.08, 0.2, dec.g);
+    float rowH = 0.0;
+    if (fieldW > 0.0) {
+      ivec2 dsz = textureSize(uDecal, 0);
+      ivec2 t0 = ivec2(floor(mapUV(m) * vec2(dsz) - 0.5));
+      float gk = 0.0;
+      for (int k = 0; k < 4; k++) {
+        ivec2 tk = t0 + ivec2(k & 1, k >> 1);
+        tk = ivec2(uWrapX > 0.5 ? (tk.x % dsz.x + dsz.x) % dsz.x : clamp(tk.x, 0, dsz.x - 1), clamp(tk.y, 0, dsz.y - 1));
+        gk = max(gk, texelFetch(uDecal, tk, 0).g);
+      }
+      float soilK = smoothstep(0.42, 0.56, gk), grainK = smoothstep(0.78, 0.9, gk);
+      // Each pattern fades once its period is under a few pixels (gPpx: map units a pixel).
+      float fineF = 1.0 - smoothstep(0.01, 0.018, gPpx), fineB = 1.0 - smoothstep(0.022, 0.04, gPpx), fineG = 1.0 - smoothstep(0.018, 0.03, gPpx);
+      float clod = mnoise(m, 30.0);
+      float furrow = 0.5 + 0.5 * sin(m.y * 175.9 + mnoise(m, 4.0) * 3.0 + (clod - 0.5) * 1.6);
+      vec3 soil = mix(vec3(0.30, 0.25, 0.185), vec3(0.41, 0.34, 0.25), mix(0.5, furrow * (0.6 + 0.6 * clod), fineF)) * (0.86 + 0.28 * mnoise(m, 9.0));
+      float leaf = mnoise(m, 55.0);
+      float bed = 1.0 - abs(fract(m.y * 14.0) - 0.5) * 2.0;
+      float bedK = smoothstep(0.32, 0.56, bed + (leaf - 0.5) * 0.35);
+      vec3 green = mix(vec3(0.24, 0.38, 0.14), vec3(0.42, 0.56, 0.22), leaf * 0.6 + bed * 0.4);
+      vec3 veg = mix(soil, green, mix(0.6, bedK, fineB));
+      float row = 1.0 - abs(fract(m.x * 18.0) - 0.5) * 2.0;
+      float ears = mnoise(vec2(m.x, m.y * 0.25), 40.0);
+      float ridge = smoothstep(0.05, 0.75, row) * (0.7 + 0.6 * ears);
+      vec3 grain = mix(vec3(0.62, 0.42, 0.15), vec3(0.88, 0.69, 0.33), mix(0.62, ridge, fineG));
+      vec3 crop = mix(mix(veg, soil, soilK), grain, grainK);
+      alb = mix(alb, srgb(crop), fieldW);
+      rowH = fieldW * mix(mix(bedK * fineB, furrow * 0.4 * fineF, soilK), ridge * 0.8 * fineG, grainK);
+      keepG = max(keepG, fieldW * 0.45);
     }
-    if (dec.r > 0.01) {
-      vec3 road = srgb(mix(vec3(0.40, 0.33, 0.25), vec3(0.55, 0.47, 0.37), mnoise(m, 10.0)));
+    n = bump(n, vWorld, rowH * 0.007, 1.0);
+    // Roads: r is a ramp falling from 1 on a track's centre line to 0 at 0.3 plots (decals.js
+    // ROAD_RAMP), cut here into a packed-dirt track ~0.14 plots wide: a crisp edge, a lighter crown,
+    // darker margins and wheel ruts, and a verge of worn, dry grass beside it.
+    float rd = (1.0 - dec.r) * 0.3;
+    if (rd < 0.15) {
+      float hw = 0.07 + (mnoise(m, 7.0) - 0.5) * 0.024 + (mnoise(m + 2.3, 19.0) - 0.5) * 0.012;
+      float aa = max(gPpx * 0.75, 0.002);
+      float on = 1.0 - smoothstep(hw - aa, hw + aa, rd);
+      float t = rd / hw;
+      vec3 dirt = mix(vec3(0.57, 0.455, 0.325), vec3(0.645, 0.53, 0.38), mnoise(m, 10.0));
+      dirt = mix(dirt, vec3(0.47, 0.35, 0.23), smoothstep(0.5, 0.95, t) * 0.8);
+      dirt = mix(dirt, vec3(0.36, 0.26, 0.17), smoothstep(0.86, 1.0, t) * 0.7);
+      float rut = (1.0 - smoothstep(0.05, 0.13, abs(t - 0.58))) * (1.0 - smoothstep(0.006, 0.013, gPpx));
+      dirt = mix(dirt, vec3(0.45, 0.34, 0.22), rut * 0.55);
       float cob = smoothstep(0.2, 0.5, mcells(m, 26.0).x);
-      road = mix(road, road * (0.8 + 0.3 * cob), dec.a);
-      alb = mix(alb, road, smoothstep(0.2, 0.6, dec.r));
+      dirt = mix(dirt, dirt * (0.8 + 0.3 * cob), dec.a);
+      float verge = (1.0 - smoothstep(hw, hw + 0.05, rd)) * smoothstep(0.3, 0.7, mnoise(m, 30.0) + 0.2);
+      alb = mix(alb, alb * vec3(1.12, 1.0, 0.7), verge * (1.0 - on) * 0.7);
+      alb = mix(alb, srgb(dirt), on);
+      keepG = max(keepG, on * 0.6);
     }
   }
 

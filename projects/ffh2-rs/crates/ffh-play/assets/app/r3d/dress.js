@@ -13,6 +13,7 @@ import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp, smoothstep } from "./math.js";
 import { KIND, FEAT, GROUND, SEA, DRAFT, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
+import { roadLinks, inField } from "./fields.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -242,13 +243,25 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // Particles of the ground itself (hell's embers, ancient forests' motes).
       for (const e of CATALOG.emitters?.("plot", ctx) ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5, y + 0.5) + (e.dy ?? 0.05), z: -(y + 0.5 - (e.dz ?? 0)) });
       // Bridges where a road crosses a river edge to a routed neighbour (south and east edges;
-      // each crossing belongs to one plot).
+      // each crossing belongs to one plot). The road runs straight across (decals.js), and the
+      // bridge stands where it passes nearest the river's (smoothed, meandering) line, its deck at
+      // the higher bank top (about 0.3 either side of the line, past water at most 0.44 wide): the
+      // bridges span 0.68, their footings on the bank tops.
       if (map.route[i] >= 0 && map.river[i] > 0) {
         const bridge = (nx, ny, mx, my, yaw) => {
           const j = world.index(nx, ny);
           if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) return;
-          const bank = Math.max(H(mx + Math.sin(yaw) * RIVER_BANK, my - Math.cos(yaw) * RIVER_BANK), H(mx - Math.sin(yaw) * RIVER_BANK, my + Math.cos(yaw) * RIVER_BANK), SEA + 0.01);
-          out.push(inst(pick(CATALOG.bridge?.(ctx) ?? "basic.bridge", "basic.bridge"), mx, bank - 0.006, -my, { yaw, variant: r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
+          const ux = nx - x, uy = ny - y; // along the road, map units
+          let best = Infinity, cx = mx, cy = my;
+          for (let k = -8; k <= 8; k++) {
+            const px = mx + ux * k * 0.03, py = my + uy * k * 0.03;
+            const d = world.riverDist(px, py);
+            if (d < best) [best, cx, cy] = [d, px, py];
+          }
+          const bank = Math.max(H(cx + ux * RIVER_BANK, cy + uy * RIVER_BANK), H(cx - ux * RIVER_BANK, cy - uy * RIVER_BANK), SEA + 0.01);
+          const b = CATALOG.bridge?.({ ...ctx, crossing: j, alongX: yaw !== 0 }) ?? null;
+          const asset = typeof b === "string" ? b : b?.asset;
+          out.push(inst(pick(asset, "basic.bridge"), cx, bank - 0.006, -cy, { yaw, variant: b?.variant ?? r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
         };
         if (map.river[i] & 1) bridge(x, y - 1, x + 0.5, y, 0);
         if (map.river[i] & 2) bridge(x + 1, y, x + 1, y + 0.5, Math.PI / 2);
@@ -352,7 +365,6 @@ function partEmitter(e, x, y, px, pz, yaw, sc, float, H) {
 }
 
 const WOODED = new Set([FEAT.FOREST, FEAT.JUNGLE, FEAT.ANCIENT, FEAT.BURNT, FEAT.YOUNG]);
-const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
 
 /** The road through plot (x, y) as the decal layer paints it (decals.js: from the plot's centre to
  *  the edge midpoint toward each routed neighbour, bowed by a hash of the pair), as plot-local
@@ -360,10 +372,12 @@ const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, 
 function roadsOf(world, map, x, y, i) {
   if (map.route[i] < 0) return [];
   const out = [];
-  for (const [dx, dy] of DIRS8) {
+  const riv = (k, bit) => map.river[k] > 0 && (map.river[k] & bit) !== 0;
+  for (const [dx, dy] of roadLinks(world, map, x, y)) {
     const j = world.index(x + dx, y + dy);
-    if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) continue;
-    const bow = (hashf(Math.min(i, j), Math.max(i, j)) - 0.5) * 0.16 * (i < j ? 1 : -1);
+    // As decals.js: straight over a river, onto its bridge.
+    const bridged = (dy < 0 && !dx && riv(i, 1)) || (dy > 0 && !dx && riv(j, 1)) || (dx > 0 && !dy && riv(i, 2)) || (dx < 0 && !dy && riv(j, 2));
+    const bow = bridged ? 0 : (hashf(Math.min(i, j), Math.max(i, j)) - 0.5) * 0.16 * (i < j ? 1 : -1);
     const l = Math.hypot(dx, dy);
     const kx = dx * 0.25 - (dy / l) * bow, ky = dy * 0.25 + (dx / l) * bow;
     const line = [];
@@ -416,6 +430,7 @@ function scatterFlora(world, ctx, place, flora) {
     const foot = FOOT[size];
     if (ctx.unit && Math.hypot(lx - UNIT_SPOT[0], lz - UNIT_SPOT[1]) < UNIT_CLEAR[size]) return false;
     if (ctx.improvement && Math.max(Math.abs(lx), Math.abs(lz)) < 0.38) return false;
+    if (ctx.improvement && inField(ctx.i, ctx.improvement, ctx.bonus, lx, lz, foot)) return false;
     if (ctx.bonus && Math.hypot(lx - BONUS_SPOT[0], lz - BONUS_SPOT[1]) < 0.09 + foot) return false;
     if (ctx.roadDist(lx, lz) < 0.08 + foot) return false;
     if (ctx.inTown(lx, lz)) return false;
