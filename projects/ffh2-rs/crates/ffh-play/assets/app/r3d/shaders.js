@@ -34,6 +34,7 @@ uniform float uFogWar;
 uniform float uStylize;
 uniform float uClouds;
 uniform float uDabs;
+uniform float uBrush;
 uniform sampler2D uShadowMap;
 uniform sampler2D uShadowMapT;
 uniform float uTerrainShadow;
@@ -191,14 +192,20 @@ float shadowAt(vec3 wp, vec3 n) {
 // The painterly light model: a wrapped, softly stepped sun term (broad light masses), coloured
 // shadows from a cool sky ambient, the local light pools (cities, lava, mana) and the occlusion.
 // Returns the light to multiply the albedo by; 'sun' is the sun term (for highlights).
-vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
+// 'jit' is a brush mark's tone (about -0.5..0.5, 0 for none): it pushes the sun term before the
+// band, so where light turns to shade the boundary is laid in dabs and strokes, each one light or
+// dark, instead of a smooth gradient -- the place a painter's brushwork shows most.
+vec3 lightAtJ(vec3 n, vec3 wp, float ao, float jit, out float sun) {
   float ndl = dot(n, uSunDir);
-  float d = clamp((ndl + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
+  float d = clamp((ndl + uWrapLight) / (1.0 + uWrapLight) + jit, 0.0, 1.0);
   // The light-mass band: a lower threshold so a slope turned from the (now higher) sun keeps a
   // readable value instead of being crushed near-black (F1).
   float stepped = smoothstep(0.16, 0.56, d) * 0.82 + d * 0.18;
   d = mix(d, stepped, uBands);
   float sh = shadowAt(wp, n);
+  // The same marks break a cast shadow's soft edge (flecks of sun in the shade, shade in the sun);
+  // fully lit and fully shaded ground are untouched.
+  sh = clamp(sh + jit * 0.9 * (1.0 - abs(sh * 2.0 - 1.0)), 0.0, 1.0);
   // Cloud shadows drifting over the land: broad, soft masses of light and shade (fixed to the
   // world, slowly moving), the painter's way of composing a wide landscape.
   // Two octaves only: a cloud's shadow spans several plots and has no small blots in it.
@@ -221,10 +228,87 @@ vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) {
   return L;
 }
 
+vec3 lightAt(vec3 n, vec3 wp, float ao, out float sun) { return lightAtJ(n, wp, ao, 0.0, sun); }
+
 // Coloured shadows: where the sun does not reach, colours lean to the shadow tint (painters' cool
 // shadows), more so for the stylized look.
 vec3 shadowColour(vec3 c, float sun) {
   return mix(c, c * uShadowTint, (1.0 - sun) * 0.55 * uStylize);
+}
+
+// Brush marks on an object, laid in the object's own space so they stay on it as it sways and
+// never swim under the camera. dab2: marks on a jittered lattice (one per cell), laid in one hand
+// (orientations within a fan), each its own size, length ('elong' on average: about 1 for leaf
+// clusters, 2+ for strokes) and tone, with a three-lobed rather than elliptical outline (a loaded
+// brush's mark, not a stamped spot); 'rad' is the mean half-size in cells. Where marks overlap the
+// one pressed hardest (the larger) wins, so the surface reads as stroke laid over stroke. Tones
+// are drawn from a triangular distribution: most marks near the middle, few strong accents (no
+// polka dots). Returns (tone 0..1, 0.5 between marks; cover 0..1). 'aa' is the lattice cells per
+// pixel: it softens a mark's edge as it shrinks on screen (no sparkle).
+vec2 dab2(vec2 p, float elong, float rad, float aa) {
+  vec2 i = floor(p);
+  vec2 fr = fract(p);
+  float soft = 0.1 + aa * 0.9;
+  float best = 0.0, tone = 0.5;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 g = vec2(float(x), float(y));
+      vec2 cell = i + g;
+      vec2 o = g + hash22(cell) - fr;
+      float hs = hash12(cell + 1.3);
+      float a = 0.3 + hash12(cell + 3.7) * 0.9;
+      vec2 r = vec2(cos(a) * o.x + sin(a) * o.y, -sin(a) * o.x + cos(a) * o.y);
+      float el = elong * (0.8 + 0.5 * hash12(cell + 6.1));
+      vec2 q = r / (rad * (0.75 + 0.5 * hs) * vec2(sqrt(el), 1.0 / sqrt(el)));
+      float len = length(q);
+      float c = q.x / max(len, 1e-4);
+      float d = len * (1.0 + 0.2 * (4.0 * c * c * c - 3.0 * c));
+      float w = (1.0 - smoothstep(1.0 - soft, 1.0, d)) * (0.55 + 0.45 * hs);
+      if (w > best) { best = w; tone = 0.5 * (hash12(cell + 9.1) + hash12(cell + 5.3)); }
+    }
+  }
+  return vec2(mix(0.5, tone, best), best);
+}
+
+// dab2 projected onto a surface from the three axis planes, by the object-space normal (a sharp
+// blend: one plane carries each face). 'f' marks per plot.
+vec2 objDabs(vec3 p, vec3 n, float f, float elong, float rad, float aa) {
+  vec3 w = abs(n);
+  w = w * w;
+  w = w * w;
+  w /= dot(w, vec3(1.0)) + 1e-5;
+  vec2 acc = vec2(0.0);
+  float ws = 1e-4;
+  if (w.x > 0.04) { acc += w.x * dab2(p.zy * f, elong, rad, aa); ws += w.x; }
+  if (w.y > 0.04) { acc += w.y * dab2(p.xz * f + 17.0, elong, rad, aa); ws += w.y; }
+  if (w.z > 0.04) { acc += w.z * dab2(p.xy * f + 31.0, elong, rad, aa); ws += w.z; }
+  return acc / ws;
+}
+
+// Foliage marks: big leaf clusters (a few to a crown at the gameplay zoom) and smaller ones (close
+// up). Each fades out as its marks shrink below a few pixels. 'dpo' = fwidth(po), taken by the
+// caller outside any branch. Returns the signed tone (-0.5..0.5) and the clusters' cover.
+const float LEAF_F = 13.0, LEAF_F2 = 31.0;
+vec2 leafMarks(vec3 po, vec3 nO, vec3 dpo) {
+  float aC = length(dpo * LEAF_F), aF = length(dpo * LEAF_F2);
+  vec2 dC = objDabs(po, nO, LEAF_F, 1.15, 0.66, aC);
+  float lC = 1.0 - smoothstep(0.22, 0.5, aC);
+  float lF = 1.0 - smoothstep(0.22, 0.5, aF);
+  float t = (dC.x - 0.5) * 1.1 * lC;
+  if (lF > 0.0) t += (objDabs(po + 7.0, nO, LEAF_F2, 1.3, 0.66, aF).x - 0.5) * 0.65 * lF;
+  return vec2(t, mix(1.0, dC.y, lC));
+}
+
+// Strokes on everything else (walls, roofs, rock, hulls, cloth): longer marks, a broad and a fine
+// size, the same hand.
+float strokeMarks(vec3 po, vec3 nO, vec3 dpo) {
+  float aC = length(dpo * 9.0), aF = length(dpo * 22.0);
+  float lC = 1.0 - smoothstep(0.22, 0.5, aC);
+  float lF = 1.0 - smoothstep(0.22, 0.5, aF);
+  float t = 0.0;
+  if (lC > 0.0) t += (objDabs(po, nO, 9.0, 2.3, 0.66, aC).x - 0.5) * 0.8 * lC;
+  if (lF > 0.0) t += (objDabs(po + 3.0, nO, 22.0, 2.0, 0.66, aF).x - 0.5) * 0.45 * lF;
+  return t;
 }
 
 #endif
@@ -646,6 +730,10 @@ out vec4 vTint;
 out vec4 vTeam;
 flat out vec4 vMat;
 out float vVis;
+// The object's own space, scaled to the map (plots) but not posed or swayed: brush marks laid in
+// it stay on the surface as leaves sway and figures breathe. vObjN is the normal there.
+out vec3 vObj;
+out vec3 vObjN;
 invariant gl_Position;
 
 vec3 rotY(vec3 p, float a) {
@@ -655,6 +743,8 @@ vec3 rotY(vec3 p, float a) {
 
 void main() {
   vec3 p = aPos * iScale.xyz;
+  vObj = p;
+  vObjN = aNormal;
   float phase = iScale.w;
   // Wind in the leaves and cloth: a slow sway and a faster flutter, stronger toward the tips.
   int bone0 = int(aMat.z + 0.5);
@@ -705,6 +795,8 @@ in vec4 vTint;
 in vec4 vTeam;
 flat in vec4 vMat;
 in float vVis;
+in vec3 vObj;
+in vec3 vObjN;
 uniform float uEmissive;
 layout(location = 0) out vec4 oColor;
 layout(location = 1) out vec4 oND;
@@ -712,14 +804,36 @@ layout(location = 2) out vec4 oEmit;
 
 void main() {
   int kind = int(vMat.x + 0.5);
+  bool leafy = kind == 1;
   vec3 n = normalize(vNormal);
   if (!gl_FrontFacing) n = -n;
+  // The brush marks' space, offset per instance so neighbours differ; its derivatives are taken
+  // here, outside any branch.
+  vec3 po = vObj + vTint.a * 61.0;
+  vec3 dpo = fwidth(po);
+  vec3 nO = normalize(vObjN);
   vec3 alb = vColor * vTint.rgb;
   if (kind == 3) alb = srgb(vTeam.rgb) * (0.38 + 1.25 * lum(vColor)) * vTint.rgb;
-  // Pigment variation in the object's own space (stays on the object).
+  // Pigment variation in the object's own space (stays on the object); the brush marks below
+  // carry the finer variation, so the fine pigment steps back as they come in.
   float pg = vnoise3(vLocal * 22.0 + vTint.a * 50.0);
   float pg2 = vnoise3(vLocal * 6.0 + vTint.a * 31.0);
-  alb *= 1.0 + uPaint * ((pg - 0.5) * 0.22 + (pg2 - 0.5) * 0.3);
+  alb *= 1.0 + uPaint * ((pg - 0.5) * 0.22 * (1.0 - 0.6 * uBrush) + (pg2 - 0.5) * 0.3);
+  // Brushwork: leaf clusters on foliage, strokes on everything else, each mark its own value
+  // (tone) and pushing the light/shade boundary (jit). Units take a lighter hand: they must read
+  // at a glance, and the paint filter keeps them sharp too.
+  float tone = 0.0, jit = 0.0;
+  if (uBrush > 0.0 && kind != 4 && kind != 6) {
+    if (leafy) {
+      tone = leafMarks(po, nO, dpo).x * uBrush;
+      jit = tone * 0.75;
+      alb *= 1.0 + tone * 0.6;
+    } else {
+      tone = strokeMarks(po, nO, dpo) * uBrush * (1.0 - 0.6 * vTeam.a);
+      jit = tone * 0.5 * (1.0 - vTeam.a);
+      alb *= 1.0 + tone * 0.6;
+    }
+  }
   float ao = vMat.w;
   vec3 emit = vec3(0.0);
   vec3 col;
@@ -730,9 +844,13 @@ void main() {
     col = e * 1.2;
   } else {
     float sun;
-    vec3 L = lightAt(n, vWorld, ao, sun);
+    vec3 L = lightAtJ(n, vWorld, ao, jit * uStylize, sun);
     col = alb * L;
-    if (kind == 1) {
+    // Broken colour: a light mark leans warm, a dark one cool (sky in the shade) -- strongly in
+    // foliage (sunlit leaves against blue-green depths), gently elsewhere.
+    float bc = min(1.0, abs(tone) * 1.6) * uStylize * (leafy ? 1.0 : 0.6);
+    col *= mix(vec3(1.0), tone > 0.0 ? vec3(1.07, 1.03, 0.84) : vec3(0.88, 0.97, 1.12), bc);
+    if (leafy) {
       // Leaves: light through the canopy from behind, and a warm, sunlit crown.
       float back = max(0.0, -dot(n, uSunDir)) * 0.35;
       col += alb * uSunColor * back * 0.6;
@@ -752,15 +870,37 @@ void main() {
     vec3 V = normalize(uEye - vWorld);
     float rim = pow(1.0 - max(dot(n, V), 0.0), 3.0) * uRim * (0.5 + vTeam.a);
     rim *= mix(0.35, 1.0, clamp(lum(alb) * 2.5, 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : 0.5);
+    // Leaves take little of it: a sky rim round every crown models it as a ball, the thing the
+    // painted crown must not be.
+    if (leafy) rim *= mix(1.0, 0.3, uBrush);
     col += uSkyColor * rim * 0.6 * ao;
+    // Gouache: the value is laid in flat steps (foliage half a stop apart), each mark shifting
+    // where the steps fall, so a crown reads as a few values of overlapping marks, not a shaded
+    // ball -- the baked colour ramp, the ambient and the occlusion gradients are all flattened
+    // alike, while the hues (warm lights, cool shade, each mass's own) stay broken. Other props
+    // get a gentler version (flat-painted planes); units none, so they keep their modelling.
+    float amt = (leafy ? 0.85 : 0.55 * (1.0 - vTeam.a)) * uBrush * uStylize;
+    if (amt > 0.0) {
+      float S = leafy ? 2.0 : 1.5;
+      float Lc = max(lum(col), 1e-5);
+      float q = (log2(Lc) + tone * 1.2) * S + 32.0;
+      float qf = floor(q) + smoothstep(0.3, 0.7, fract(q));
+      col *= mix(1.0, exp2((qf - 32.0) / S) / Lc, amt);
+    }
   }
   col = fogOfWar(col, vVis);
   col = atmosphere(col, vWorld);
-  oColor = vec4(col, vTeam.a);
+  // Alpha is the paint filter's keep mask: units stay sharp (1); foliage keeps part of its own
+  // leaf marks (they are the paint there, world-anchored, and the screen-space filter would smear
+  // them back into soft balls).
+  oColor = vec4(col, max(vTeam.a, leafy ? 0.45 * uBrush : 0.0));
   vec3 vn = normalize((uView * vec4(n, 0.0)).xyz);
   oND = vec4(vn, -(uView * vec4(vWorld, 1.0)).z);
-  oEmit = vec4(emit * smoothstep(0.5, 0.9, vVis), vTint.a);
+  // Leaves write their object id negated: the ink pass (FINISH_FS) merges one crown's lobes into
+  // a single mass by it and keeps crown against crown in a wood a light line.
+  oEmit = vec4(emit * smoothstep(0.5, 0.9, vVis), leafy ? -max(vTint.a, 0.003) : vTint.a);
 }`;
+
 
 // --------------------------------------------------------------------------------------------
 // Shadows (depth only): the terrain and props through their own vertex transforms
@@ -1093,7 +1233,8 @@ uniform vec3 uShadowGrade;
 uniform vec3 uLightGrade;
 uniform float uGrain;
 uniform float uVignette;
-uniform mat4 uInvViewProj;
+uniform float uInkLost;
+uniform float uInkColour;
 uniform vec2 uTan;
 uniform mat4 uInvView;
 out vec4 o;
@@ -1109,9 +1250,18 @@ float edgeAt(vec2 uv, vec4 c, float cid) {
     // Depth: only the far side of a jump draws (a single line on the near object's silhouette).
     float dd = (s.w - c.w) / c.w;
     float de = smoothstep(0.012, 0.03, dd);
+    // Leaves against leaves (PROP_FS writes leaves' ids negated): one crown's lobes merge into a
+    // single painted mass -- no line where one lobe overlaps another -- and in a wood one crown
+    // against the next is a light line, so the canopy reads as a mass, as a painter masses it.
+    if (cid < 0.0 && sid < 0.0) de *= abs(sid - cid) < 0.002 ? 0.0 : 0.3;
+    // A crown against the ground: a lighter line too -- its leafy rim reads by value, and inking
+    // every leaf cluster along it would draw a dotted fringe.
+    else if (cid < 0.0) de *= 0.6;
     // Creases and object boundaries on props (not on the ground's gentle folds).
     float ne = (cid > 0.0) ? smoothstep(0.55, 0.85, 1.0 - dot(normalize(s.xyz), normalize(c.xyz))) * 0.6 : 0.0;
     float ie = (cid > 0.0 && abs(sid - cid) > 0.002 && s.w >= c.w - 0.02) ? 0.8 : 0.0;
+    // A trunk or limb where it runs into its own crown: a light touch, not a hard line.
+    if (cid > 0.0 && sid < 0.0 && abs(sid + cid) < 0.002) ie *= 0.3;
     e = max(e, max(de, max(ne, ie)));
   }
   return e;
@@ -1125,7 +1275,19 @@ void main() {
   if (uOutline > 0.0 && nd.w > 0.0) {
     float e = edgeAt(vUv, nd, cid);
     float fade = 1.0 - smoothstep(30.0, 70.0, nd.w);
-    col = mix(col, uInk * (0.35 + 0.4 * col), e * uOutline * fade);
+    // Lost and found: a painted contour's weight wanders along it (world-anchored, so it does not
+    // crawl as the camera moves) and lightens where the paint is light -- an edge in the sun is
+    // half lost, one in the shade found. Units keep their whole line (src.a, the keep mask), so a
+    // figure always reads; foliage (negative id) only borrows the keep mask for the paint filter.
+    float keep = cid < 0.0 ? 0.0 : clamp(src.a, 0.0, 1.0);
+    vec3 wpI = (uInvView * vec4((vUv * 2.0 - 1.0) * uTan * nd.w, -nd.w, 1.0)).xyz;
+    float wob = pnoise(vec2(wpI.x * 7.0 + wpI.y * 4.0, wpI.z * 7.0 - wpI.y * 3.0), vec2(4096.0));
+    // Foliage loses the most; buildings, rock and the land's own edges keep a firmer drawing.
+    float lost = mix(cid < 0.0 ? 0.35 : 0.62, 1.05, smoothstep(0.28, 0.72, wob)) * mix(1.0, cid < 0.0 ? 0.6 : 0.78, smoothstep(0.5, 0.85, lum(col)));
+    e *= mix(1.0, lost, uInkLost * (1.0 - keep));
+    // A coloured line: a deep version of the local colour rather than one uniform sepia.
+    vec3 ink = mix(uInk * (0.35 + 0.4 * col), col * col * 0.5 + uInk * 0.12, uInkColour * (1.0 - keep));
+    col = mix(col, ink, e * uOutline * fade);
   }
   if (uGrade > 0.0) {
     float L = dot(col, vec3(0.299, 0.587, 0.114));

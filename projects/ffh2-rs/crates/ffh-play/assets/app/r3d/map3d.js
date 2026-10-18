@@ -545,6 +545,7 @@ export class Map3D {
       uClouds: cfg.clouds,
       uTerrainShadow: cfg.terrainShadow ?? 1,
       uDabs: cfg.dabs ?? 1,
+      uBrush: cfg.brush ?? 1,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
       uWind: cfg.wind,

@@ -309,6 +309,8 @@ export class Pipeline {
         uLightGrade: [1.06, 1.0, 0.9],
         uGrain: cfg.grain,
         uVignette: cfg.vignette,
+        uInkLost: cfg.inkLost ?? 1,
+        uInkColour: cfg.inkColour ?? 0.5,
         uTan: fr.tan,
         uInvView: fr.invView,
       });
