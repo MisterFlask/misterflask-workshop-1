@@ -638,6 +638,26 @@ technologies one for one at similar cost (once `TECH_TRADE` allows it) and signs
 with civs it likes; `consider_offer` accepts tech swaps worth at least 80% of what it gives,
 never with the civ it prepares a war against.
 
+**Defensive pacts (`pacts.rs`).** A weaker civ's check against a stronger, warlike neighbour.
+A civ is threatened when a team within 16 plots by land has at least 120% of its defensive power
+and is warlike (at war with a civ now, or fought one in the last 50 turns) -- only what a human
+could see. On the trade cadence, at peace, a threatened civ that is not preparing a war of its own
+offers a pact to the AI leader it does not dislike that the same neighbour threatens, else the
+one it likes best, else the strongest (at most 2 pacts a team). `consider_offer` accepts from a
+civ it does not dislike when it is threatened itself or likes the proposer (relation 2+), never
+when it is about to attack the proposer or the proposer is its victory rival. The rules do the
+rest: the pact counts in `team_get_defensive_power`, which every war gate divides by, and an
+attacked member's partners declare war on the attacker (`WARPLAN_DOGPILE`). Pacts need Honor on
+either side and both teams at peace with everyone, and a member's own declaration cancels its
+pacts, so they appear only from about turn 190 (dev seeds 1-8, full games: 0-5 a game).
+Measured (full games, seeds 1301-1364, 64 games, against the tip): 23 games change, nearly all
+after turn 300 (300 turns, seeds 1101-1244: 140 of 144 games identical); at turn 450 legacy
++0.7%, techs +1.4%, power +1.0% (t 1.4-1.6); outcomes supremacy 35 -> 31, cultural 17 -> 20, time
+limit 12 -> 13; eliminations in the changed games 42 -> 42. Mechanically working and harmless,
+but not yet a measurable protection: the gating (late Honor, peace with everyone) keeps most
+threatened civs from signing. Levers if it should bite: research Honor when threatened, or a
+rules change to the trading prerequisite.
+
 **Resources and gold (`trade.rs`).** The AI also trades resources (bonuses) and gold -- a port of
 the base game's `CvPlayerAI` trade valuation (`AI_bonusTradeVal`, `AI_bonusTrade`, `AI_dealVal`,
 `AI_goldTradeValuePercent`/`AI_goldPerTurnTradeVal`, `AI_maxGold(PerTurn)Trade`). The value of

@@ -31,6 +31,7 @@ pub mod finance;
 pub mod military;
 pub mod naval;
 pub mod offers;
+pub mod pacts;
 pub mod production;
 pub mod reach;
 pub mod research;

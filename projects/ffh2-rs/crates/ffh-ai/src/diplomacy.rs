@@ -72,7 +72,7 @@ pub fn attitude(g: &Game, p: PlayerId, towards: PlayerId) -> AttitudeType {
     }
 }
 
-fn is_team_leader(g: &Game, p: PlayerId) -> bool {
+pub(crate) fn is_team_leader(g: &Game, p: PlayerId) -> bool {
     let team = g.players[p].team;
     g.player_ids().into_iter().find(|&q| g.players[q].alive && g.players[q].team == team) == Some(p)
 }
@@ -105,7 +105,7 @@ pub fn preparing_target(g: &Game, team: TeamId) -> Option<TeamId> {
 
 /// Distance (plots) from our nearest city to their nearest city, if both have cities in a
 /// shared land area.
-fn reach_distance(g: &Game, team: TeamId, other: TeamId) -> Option<i32> {
+pub(crate) fn reach_distance(g: &Game, team: TeamId, other: TeamId) -> Option<i32> {
     let mut best: Option<i32> = None;
     for p in g.player_ids() {
         if !g.players[p].alive || g.players[p].team != team {
@@ -178,6 +178,10 @@ pub fn manage(g: &mut Game, v: &View) {
     // one at similar cost, open borders.
     if (turn + p.0 as i32) % 5 == 0 {
         trade(g, p);
+        // A weaker civ's check against a stronger, warlike neighbour (pacts need peace all round).
+        if v.civ_enemies.is_empty() {
+            crate::pacts::seek(g, p);
+        }
     }
 
     // Gift a free tech to a markedly weaker, well-liked ally (C++ give-help). The ~150-turn contact
@@ -915,6 +919,9 @@ pub fn consider_offer(g: &Game, p: PlayerId, from: PlayerId, they_give: &[TradeD
         let theirs = crate::trade::deal_val(g, p, from, they_give, false, 1);
         let ours = crate::trade::deal_val(g, from, p, we_give, false, 1);
         return theirs >= ours;
+    }
+    if all(they_give, TradeableItem::TRADE_DEFENSIVE_PACT) && all(we_give, TradeableItem::TRADE_DEFENSIVE_PACT) {
+        return crate::pacts::accept(g, p, from);
     }
     if all(they_give, TradeableItem::TRADE_OPEN_BORDERS) && all(we_give, TradeableItem::TRADE_OPEN_BORDERS) {
         return !g.at_war(team, their_team) && relation(g, p, from) >= 1;
