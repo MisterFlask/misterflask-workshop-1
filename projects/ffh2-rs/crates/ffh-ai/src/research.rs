@@ -41,7 +41,7 @@ struct Ctx {
     rate: i32,
     /// Our landmass is full (see `naval::home_is_full`).
     home_full: bool,
-    /// We can already build a ship that carries land units.
+    /// One of our ports can already train a ship that carries land units (or we have no port).
     has_transport: bool,
     /// Cities with no building left to build.
     idle_cities: i32,
@@ -203,12 +203,12 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
         has_process: g.d.processes.iter().any(|pr| pr.tech_prereq.map_or(true, |t| g.team_is_has_tech(team, Some(t)))),
         siege_want: false,
     };
-    ctx.has_transport = g.d.units.keys().any(|u| {
-        let info = &g.d.units[u];
-        crate::naval::is_transport_type(info)
-            && info.unit_class_type.and_then(|cl| ctx.civ.and_then(|c| g.d.civ_unit(c, cl))) == Some(u)
-            && info.prereq_and_tech.map_or(true, |t| g.team_is_has_tech(team, Some(t)))
-    });
+    // A transport one of our ports can train (the rules' check, as production's): the
+    // Trireme also needs Bronze Working and copper, so Sailing alone left copper-less civs
+    // believing they had one while their settlers waited in port. No port: nothing to ship.
+    let ports: Vec<CityId> = pl.cities.iter().copied().filter(|&c| crate::naval::is_coastal_city(g, c)).collect();
+    ctx.has_transport = ports.is_empty()
+        || g.d.units.keys().any(|u| crate::naval::is_transport_type(&g.d.units[u]) && ports.iter().any(|&c| g.city_can_train(c, u, false, false, false, false)));
     let (def, att) = best_military(g, p, &ctx, &[]);
     ctx.best_defense = def;
     ctx.best_attack = att;
@@ -331,6 +331,58 @@ fn defense_goal(g: &Game, p: PlayerId, ctx: &Ctx) -> Option<TechType> {
 /// first), above ordinary economy techs. Half of [`DEFENSE_SCORE`].
 const SIEGE_SCORE: i64 = 1_500_000;
 
+/// A settler waits in port for a ship none of our ports can train: the nearest step toward one
+/// is researched next (below defense, as siege). It is a few hundred beakers (Optics for the
+/// Caravel), and without it the settler idled in port for up to 150 turns.
+const TRANSPORT_SCORE: i64 = 1_500_000;
+
+/// The nearest researchable step toward the transport one of our ports could train soonest (the
+/// research left on the path to all of its techs). Types whose resources no port of ours has are
+/// left out: a civ without copper needs Optics for the Caravel, not the Trireme.
+fn transport_step_tech(g: &Game, p: PlayerId, ctx: &Ctx) -> Option<TechType> {
+    let d = g.d;
+    let civ = ctx.civ?;
+    let ports: Vec<CityId> = g.players[p].cities.iter().copied().filter(|&c| crate::naval::is_coastal_city(g, c)).collect();
+    let mut best: Option<(i64, TechType)> = None;
+    for u in d.units.keys() {
+        let info = &d.units[u];
+        if !crate::naval::is_transport_type(info) || info.production_cost <= 0 || info.unit_class_type.and_then(|cl| d.civ_unit(civ, cl)) != Some(u) {
+            continue;
+        }
+        if info.prereq_building.is_some() || info.prereq_religion.is_some() {
+            continue;
+        }
+        let resources = |c: CityId| {
+            info.prereq_and_bonus.map_or(true, |b| g.city_has_bonus(c, b)) && (info.prereq_or_bonuses.is_empty() || info.prereq_or_bonuses.iter().any(|&b| g.city_has_bonus(c, b)))
+        };
+        if !ports.iter().any(|&c| resources(c)) {
+            continue;
+        }
+        let mut techs: Vec<TechType> = Vec::new();
+        let mut reachable = true;
+        for &t in info.prereq_and_tech.iter().chain(info.prereq_and_techs.iter()) {
+            let Some(path) = crate::tech_plan::path(g, p, t) else {
+                reachable = false;
+                break;
+            };
+            for pt in path.techs {
+                if !techs.contains(&pt) {
+                    techs.push(pt);
+                }
+            }
+        }
+        if !reachable {
+            continue;
+        }
+        let left: i64 = techs.iter().map(|&t| g.team_get_research_left(ctx.team, t).max(1) as i64).sum();
+        let Some(step) = techs.iter().copied().find(|&t| g.player_can_research(p, t, false)) else { continue };
+        if best.map_or(true, |(l, _)| left < l) {
+            best = Some((left, step));
+        }
+    }
+    best.map(|(_, t)| t)
+}
+
 /// The nearest researchable tech on the path to our civilization's siege engine, or `None` when we
 /// already have that tech, have no siege unit, or no path exists.
 fn siege_step_tech(g: &Game, p: PlayerId) -> Option<TechType> {
@@ -376,6 +428,16 @@ fn goal_bonus(g: &Game, p: PlayerId, ctx: &Ctx, trace: bool) -> Vec<(TechType, i
             out.push((t, SIEGE_SCORE * (turns + 4) / 1000));
             if trace {
                 crate::trace!(g, p, "  siege goal {} (want offense)", g.d.techs[t].base.type_);
+            }
+        }
+    }
+    // A settler waiting in port for a ship nobody can build: the nearest step toward a transport.
+    if !ctx.has_transport && crate::naval::num_transports(g, p) == 0 && crate::naval::settler_waits_for_ship(g, p) {
+        if let Some(t) = transport_step_tech(g, p, ctx) {
+            let turns = g.team_get_research_left(team, t).max(1) as i64 / rate;
+            out.push((t, TRANSPORT_SCORE * (turns + 4) / 1000));
+            if trace {
+                crate::trace!(g, p, "  transport goal {} (a settler waits in port)", g.d.techs[t].base.type_);
             }
         }
     }

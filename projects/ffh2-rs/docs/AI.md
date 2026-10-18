@@ -253,7 +253,8 @@ pressure we see (barbarians near our cities, war, time), with an early "get past
 bonus, also through the next tech (Mining -> Bronze Working); the first arcane unit; happiness
 buildings when cities are capped; better civics than the ones we run (City States and
 Aristocracy cut maintenance); technology and open-borders trading with the civs we know; the
-first transport when our landmass is full or a settler waits in port (and the tech before it);
+first transport when our landmass is full or a settler waits in port and no port of ours can
+train one (and the tech before it; a settler waiting for a ship makes it a goal, see Naval);
 processes (Writing, Mathematics) when cities have nothing left to build. `FFH_AI_TRACE_TECH=1`
 with `FFH_AI_TRACE` lists every candidate's value and score, and the goals below.
 
@@ -566,6 +567,17 @@ plot falls or the odds turn bad, and moves in.
   moves the cargo onto it (what C++ `groupAmphibMove` orders); the settler founds on its next
   turn. An empty transport sails to a port where a settler waits, else waits in port; cargo
   it has no plan for is unloaded in port.
+- **A ship nobody can build**: the settler's wait is its group's `MISSIONAI_LOAD_SETTLER` (as
+  in C++). While one waits and no port of ours can train a transport (`city_can_train`: the
+  Trireme also needs Bronze Working and copper), research takes the nearest step toward the
+  transport a port could train soonest (Optics for the Caravel without copper) next, at
+  siege's score (`research::transport_step_tech`). Before, research counted Sailing alone as
+  having a transport, and settlers waited in port up to 159 turns. Seeds 1-16, 300 turns:
+  settler-turns in port with no transport possible 395 -> 188, settlers that sailed 11 -> 16.
+  Fresh seeds 801-944 at turn 300: overseas cities +62% (t 3.4), legacy score +0.9% (t 2.3),
+  techs +1.6% (t 2.9), power +2.5% (t 2.6), with the leading civ 1.3% weaker (t -2.4): the
+  stuck civs catch up. Full games (seeds 901-948, 48 games): no significant change (supremacy
+  wins 9 -> 6 on 901-916, 14 -> 14 on 917-948).
 - **Sea explorers** (`UNITAI_EXPLORE_SEA`, one at a time) reveal coasts while our land is full
   and nothing overseas is known; when nothing is left to reveal, one that can carry becomes a
   transport.
