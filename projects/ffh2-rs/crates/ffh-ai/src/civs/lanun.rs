@@ -27,6 +27,17 @@ impl CivPlay for Lanun {
     fn sea_worker(&self, g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {
         sea_worker(g, v, grp, u)
     }
+
+    /// FfH's end-of-turn spell choice casts the cove (AI weight 300) wherever a boat ends its
+    /// turn on a valid plot, also a boat on its way to improve a sea resource: the resource
+    /// then stays unimproved. A boat with orders keeps them; the cove is cast by `sea_worker`.
+    fn spell_value(&self, g: &Game, u: UnitId, spell: SpellType, value: i32) -> i32 {
+        if g.d.ty::<SpellType>("SPELL_PIRATE_COVE") == Some(spell) && g.units[u].group.is_some_and(|grp| !g.groups[grp].mission_queue.is_empty()) {
+            crate::trace!(g, g.units[u].owner, "work boat {:?} at {:?}: no cove on the way", u, g.map.xy(g.unit_plot(u)));
+            return 0;
+        }
+        value
+    }
 }
 
 
