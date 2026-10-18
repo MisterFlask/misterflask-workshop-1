@@ -3,7 +3,7 @@
 // anim.js), runs the validator (r3d-lab/anim/check.mjs) and draws review sheets
 // (r3d-lab/anim/sheet.mjs). Node only, no browser (except `lab`).
 //
-//   node tools/r3d-anim.mjs check [--recipe unit.warrior] [--clip attack] [--param human]
+//   node tools/r3d-anim.mjs check [--recipe unit.warrior[,unit.archer]] [--clip attack] [--param human]
 //        [--variant 0] [--races] [--json FILE]
 //     every clip (or the ones named) through the validator; --races also every race and variant
 //     (hard metrics only). Exit 1 when a hard metric fails.
@@ -42,7 +42,7 @@ export const RACES = ["human", "elf", "dwarf", "orc", "goblin", "lizard", "undea
 function jobs() {
   const out = [];
   for (const recipe of A.animatedRecipes()) {
-    if (args.recipe && args.recipe !== recipe) continue;
+    if (args.recipe && !args.recipe.split(",").includes(recipe)) continue;
     for (const clip of A.clipNames(recipe)) {
       if (args.clip && args.clip !== clip) continue;
       out.push({ recipe, clip, param: args.param ?? "human", variant: Number(args.variant ?? 0) });

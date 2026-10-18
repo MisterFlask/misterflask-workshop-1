@@ -116,8 +116,7 @@ clips("unit.spearman", {
       { t: 0.5, pose: { settle: 0 } },
       { t: 0.54, pose: { settle: 1 } },
       { t: 0.7, pose: { pelvis: [0.004, -0.045, -0.105] } },
-      { t: 0.74, i: { rootRot: "linear" }, pose: { rootRot: [-0.6732, 0, 0.0514] } },
-      { t: 0.9, i: { rootRot: "out", fl: "in", fr: "in", default: "smooth" }, pose: { rootRot: [-1.5708, 0, 0.12], pelvis: [0, -0.012, -0.11], lean: -0.06, twist: -0.08, fl: [0.02, 0.03, -0.04], fr: [-0.01, 0.02, -0.03], rHand: [-0.08, 0.06, -0.02], lHand: [0, 0, -0.04], headTilt: -0.05, rRot: aim([-0.6, 1, 0.3]) } },
+      { t: 0.9, i: { rootRot: "out", fl: "in", fr: "in", default: "smooth" }, pose: { rootRot: [-1.5708, 0, 0.12], pelvis: [0, -0.012, -0.11], lean: -0.07, twist: -0.08, fl: [0.02, 0.03, -0.04], fr: [-0.01, 0.02, -0.03], rHand: [-0.08, 0.06, -0.02], lHand: [0, 0, -0.04], headTilt: -0.05, rRot: aim([-0.6, 1, 0.3]) } },
       // The back hits the ground: the shoulders rebound a little and fall back, the legs drop
       // after it under their own weight, the spear arm slaps down, the head rolls aside.
       { t: 0.9667, pose: { rootRot: [-1.5208, 0, 0.12] } },

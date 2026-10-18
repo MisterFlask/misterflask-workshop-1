@@ -131,7 +131,14 @@ export function sheet(b, opts = {}) {
       out.line(p(f), p(f + 1), c);
     }
   };
-  const speed = m.strikes.map((_, k) => (k === 0 || k === b.frames - 1 ? 0 : (Math.hypot(...[0, 1, 2].map((i) => m.strikes[k + 1][i] - m.strikes[k - 1][i])) * b.fps) / 2));
+  // Central differences; a loop wraps, a one-shot's ends take one-sided steps (a speed drawn as
+  // zero at the ends reads as a hitch at a loop's seam).
+  const F = b.frames, S = m.strikes;
+  const at = (k) => S[b.clip.loop ? ((k % F) + F) % F : Math.max(0, Math.min(F - 1, k))];
+  const speed = S.map((_, k) => {
+    const a = at(k - 1), c = at(k + 1), span = b.clip.loop || (k > 0 && k < F - 1) ? 2 : 1;
+    return (Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]) * b.fps) / span;
+  });
   plot(speed, [200, 30, 30], 0, Math.max(...speed, 1e-6));
   const hh = b.joints.map((J) => J.head[1]), ch = m.coms.map((c) => c[1]);
   const top = Math.max(...hh, ...ch);
