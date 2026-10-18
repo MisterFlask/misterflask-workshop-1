@@ -157,3 +157,17 @@ test("a plot's dressing depends only on its neighbourhood: a moving unit redress
   assert.ok(changed > 0, "the move changed the dressing around the unit");
   St.setView(scene.view);
 });
+
+test("every panel switch has a default; plain turns the painting off but keeps the water's realism", async () => {
+  const { PRESETS, DEFAULTS, PANEL } = await import("../app/r3d/config.js");
+  for (const [key] of PANEL) assert.notEqual(DEFAULTS[key], undefined, `panel switch ${key} has no default`);
+  // The brushwork on objects and the painted ink are stylisation: off in the plain comparison.
+  for (const key of ["brush", "inkLost", "inkColour"]) {
+    assert.ok(PRESETS.painterly[key] > 0, `${key} is on in the painterly look`);
+    assert.equal(PRESETS.plain[key], 0, `${key} is off in the plain render`);
+  }
+  // Seeing into and mirrored in water is ordinary rendering: on in both.
+  for (const key of ["reflections", "refraction", "caustics"]) {
+    for (const name of ["painterly", "plain"]) assert.ok(PRESETS[name][key] > 0, `${key} is on in ${name}`);
+  }
+});

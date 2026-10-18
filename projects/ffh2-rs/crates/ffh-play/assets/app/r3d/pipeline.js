@@ -1,8 +1,10 @@
 // The render pipeline of the 3D map (docs/R3D.md "Pipeline"):
 //
 //   shadow   sun's depth map over the ground in view (texel-snapped: no shimmer when panning)
-//   scene    terrain, water, rivers, props -> colour (linear HDR, a = keep sharp), view normal +
-//            linear depth, emission (+ object id)
+//   scene    terrain, props -> colour (linear HDR, a = keep sharp), view normal + linear depth,
+//            emission (+ object id; negated on leaves)
+//   water    the scene grabbed, then the sea and rivers over it: seen through to the floor,
+//            mirroring the sky and what stands round them, writing depth
 //   ssao     half resolution, depth-aware blur
 //   glow     emission, blurred at half resolution
 //   compose  occlusion, glow, exposure, filmic curve -> display colour
@@ -230,7 +232,8 @@ export class Pipeline {
       });
     }
 
-    // --- scene
+    // --- scene, then the water over it
+    const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
     this.timed("scene", () => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.f.scene);
       gl.viewport(0, 0, W, H);
@@ -248,11 +251,13 @@ export class Pipeline {
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);
-      const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
       scene.drawTerrain(this.p.terrain, SU, false);
       scene.drawProps(this.p.prop, SU, false);
+    });
+    this.timed("water", () => {
       this.grab();
       // The water writes its depth (the overlays and markers sit on its surface).
+      gl.viewport(0, 0, W, H);
       gl.depthMask(true);
       scene.drawWater(this.p.water, { ...SU, uSceneColor: this.t.sceneCopy, uSceneND: this.t.ndCopy, uReflect: cfg.reflections ?? 1, uRefract: cfg.refraction ?? 1 });
     });

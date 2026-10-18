@@ -1150,10 +1150,12 @@ void main() {
   if (glod > 0.0 && sun > 0.05 && live > 0.0 && crest > 0.0) {
     vec2 gp = m * 8.0;
     vec2 gi = floor(gp), gfr = fract(gp);
+    // Periodic over a wrapping map's width, like every pattern on the map (no seam).
+    vec2 gP = vec2(uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * 8.0 + 0.5)) : 1e6, 1e6);
     for (int y = -1; y <= 1; y++) {
       for (int x = -1; x <= 1; x++) {
         vec2 g = vec2(float(x), float(y));
-        vec2 cell = gi + g;
+        vec2 cell = mod(gi + g, gP);
         vec2 o = g + hash22(cell) - gfr;
         float ph = t * 1.3 + hash12(cell + 2.9) * 9.0;
         if (hash12(cell + 5.5) > 0.35) continue;

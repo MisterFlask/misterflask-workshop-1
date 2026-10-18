@@ -150,21 +150,80 @@ nodes, ancient forests) that light the terrain and the props.
 | pass | what | optional |
 |---|---|---|
 | shadow | sun depth maps over the ground in view, texel-snapped (no shimmer when panning): the props in a 2048² map (crisp, 12-tap rotated Poisson PCF), the terrain in a 1024² one (6 wide taps, soft) applied at part strength, so a hill's cast shadow darkens the plain behind it a little instead of punching a hole in it | `shadows`, `terrainShadow` |
-| scene | depth pre-pass (each pixel shaded once), then terrain, sea, rivers, props into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id | — |
+| scene | depth pre-pass of terrain and props (each pixel shaded once), then the terrain (the sea floor and river beds too; the deep floor, which no one can see through the water, cheaply) and the props, with their brushwork (§5.1), into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id (negated on foliage) | `brush` |
+| water | the scene's colour and normal/depth grabbed (blit), then the sea and rivers drawn over them, writing depth (the overlays sit on the surface): seen through to the floor, mirroring what stands round them or a painted sky with drifting clouds, waves, glitter and surf (§5.2) | `refraction`, `reflections`, `caustics` |
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
-| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared | `kuwahara`, `kuwaharaRadius` |
-| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance, coloured from the paint below (sepia ink, not black); split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `grade`, `grain`, `vignette` |
+| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared, foliage partly (its own marks, anchored to the world, are the paint there) | `kuwahara`, `kuwaharaRadius` |
+| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance; no line where one crown's lobes overlap and a light one between crowns (leaves' ids are negated), so a wood reads as a mass; lost and found (the weight wanders along a line, anchored to the world, and lightens in the light; firmer on buildings and rock than on foliage) and coloured (a deep version of the paint below, not one sepia), units keeping their whole line; split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `inkLost`, `inkColour`, `grade`, `grain`, `vignette` |
 | aa | FXAA (Timothy Lottes' console variant) on the finished colour before the overlays: takes the stair-step off silhouettes and the ink outlines and stops them crawling when panning (the HUD is a separate 2D canvas, so it stays crisp) | `fxaa` |
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
-The light model (scene pass): a wrapped, softly stepped sun term (broad light masses), coloured
+The light model (scene pass): a wrapped, softly stepped sun term (broad light masses) whose boundary
+the brush marks break (§5.1), coloured
 shadows (a cool sky ambient and a shadow tint), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
 light pools, rim light on silhouettes (stronger on units), soft metal highlights, light through
 leaves, an aerial haze with distance and valley mist, and the fog of war (§9). HUD text and the
 interface marks are never filtered: the strategic overlays draw after the post passes and the
 labels on the 2D canvas.
+
+### 5.1 Brushwork on objects
+
+At the gameplay zoom the paint filter runs at a third of its strength (it would erase roads and
+units), so the painting on trees, buildings and rocks has to be on the surfaces themselves. The
+prop shader (`PROP_FS`) lays brush marks in each object's own space (`vObj`, scaled to the map but
+not posed or swayed, so the marks ride on swaying leaves and never swim under the camera):
+
+* **Marks** (`dab2`/`objDabs`): one per cell of a jittered lattice, projected onto the surface from
+  the three axis planes. Each has its own size, length and tone, a three-lobed rather than
+  elliptical outline, and an orientation within one fan (one hand); where marks overlap, the one
+  pressed hardest wins, so a surface reads as stroke laid over stroke. Tones come from a triangular
+  distribution: most marks near the middle, few strong accents (no polka dots). Foliage takes leaf
+  clusters at two sizes (a few to a crown at 96 px a plot, more close up), everything else longer
+  strokes; each size fades out as it shrinks below a few pixels.
+* **They push the light**: a mark's tone moves the sun term before the light/shade band
+  (`lightAtJ`), so where light turns to shade the boundary is laid in marks, each light or dark, and
+  likewise a cast shadow's soft edge. Light marks lean warm, dark ones cool (broken colour).
+* **Gouache values**: foliage's final value is laid in flat half-stop steps, each mark shifting
+  where the steps fall, so a crown reads as a few values of overlapping marks rather than a shaded
+  ball (the baked colour ramp, the ambient and the occlusion gradients are all flattened alike,
+  while the hues stay broken). Other props get a gentler version (flat-painted planes). Units get a
+  light hand and no steps: they must read at a glance.
+* Crowns lose most of the sky rim (it models them as balls), and their lobes merge in the ink pass
+  (above).
+
+### 5.2 Water
+
+The sea is one plane at sea level (`SEA = 0`); lakes share it (only their floor differs); rivers are
+ribbons along their beds (`vExtra` = across the channel, -1..1, and the distance downstream). The
+water is drawn last, over a grab of the scene (`Pipeline.grab`), so `WATER_FS` can read what lies
+under and around it:
+
+* **Seen through**: the floor (and a hull's keel, a pier's legs) bent by the waves and absorbed along
+  the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
+  turquoise, then the deep's own blue. Rivers carry silt and close over their beds sooner; their
+  edges dissolve into the banks. The shallow floor carries **caustics** (two drifting cellular nets
+  in `TERRAIN_FS`).
+* **Mirroring**: the reflected ray is marched through the grabbed depth (banks, trees, sails); where
+  it finds nothing, a painted sky with the very cloud field that shadows the land, met at the
+  clouds' height, so cloud reflections drift. Fresnel would make the mirror all but invisible from
+  the game's camera, so its strength is painted: a floor plus Fresnel toward the horizon, broken into
+  level strokes (warped, drifting) on the sea and along the current on a river.
+* **Waves**: a swell of long crests travelling across the map's diagonal under two drifting ripple
+  layers, all anchored to the map (periodic over a wrapping map); a river's ripples are drawn out
+  along its current (its direction recovered per pixel from how the downstream distance changes on
+  screen) and run fastest mid-channel.
+* **Glitter**: the sun is on the camera's side, so a flat sea never reflects it; small steep facets
+  on the swell's crests do, flashing as short level marks that twinkle -- in the sun only, in sight
+  only, and not once smaller than a pixel. They bloom a little and the paint filter spares them.
+* **Surf**: the swash breathes up and down the beach in lacy foam and rollers run in to it; rivers
+  lace their banks and carry flecks; a foam collar laps wherever something breaks the surface
+  offshore (found from the grabbed depth round the pixel). Floating things sit at a small draft
+  (`dress.js` `DRAFT`), so their keels are in the water.
+* Remembered water lies still; the fog of war and the haze apply to what the water adds, not twice to
+  what is seen through it (the grab has them already). Marsh pools (painted in the terrain) take the
+  water's palette with a drifting sky sheen.
 
 ## 6. Asset recipes
 
@@ -191,7 +250,9 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 * **Vertex format**: position, normal, linear albedo, and `aMat` = (material, sway, bone, baked
   occlusion). Materials: matte, foliage (light through leaves), metal, team (the owner's colour times
   the vertex colour's luminance), emissive, skin, team glow. Bones drive a small idle animation in
-  the vertex shader (breathing, arms, cape, wings, tail); sway drives wind.
+  the vertex shader (breathing, arms, cape, wings, tail); sway drives wind. Recipes do not paint
+  brushwork: the prop shader lays marks in each object's own space (§5.1), so a recipe models form
+  and colour and gets the paint for free.
 * **Palette** (`assets/palette.js`): every recipe takes its colours from one designed palette
   (warm daylight key; saturation spent on owner colours, magic and fire), plus the mana schools'
   colours.
@@ -272,7 +333,10 @@ are -1 everywhere; fogged plots carry what was seen) and the units in sight. Unr
 modelled as flat *void* (no hidden plot shapes the height of its neighbours, no river or road is
 traced through them, nothing is placed on them) and painted as dark parchment behind a brushy,
 burnt-paper frontier. Remembered plots keep their remembered terrain, structures and cities, dimmed
-and cooled; no unit is drawn there (the view has none). Particles fade out of sight.
+and cooled; no unit is drawn there (the view has none). Particles fade out of sight. The water
+reveals nothing either: it mirrors and is seen through only to what was already drawn (the grabbed
+scene), no water is drawn on an unrevealed plot (the parchment below shows, as on land), and
+remembered water lies still.
 
 ## 10. The lab, tests and tools
 
@@ -389,13 +453,17 @@ GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 ## 12. Configuration
 
 `r3d/config.js`: `PRESETS.painterly` (default) and `PRESETS.plain` (every stylisation off: an
-ordinary real-time render of the same geometry, for comparison), `LIGHTING` (one `daylight` look:
+ordinary real-time render of the same geometry, for comparison; it keeps the water's reflections,
+transparency and caustics, which are ordinary rendering, not stylisation), `LIGHTING` (one `daylight` look:
 always daylight by design, a warm high sun at about 42 degrees; a saved light that is no longer
 offered -- a "dusk", "afternoon" or "day" -- falls back to it), and the switches of the panel
-(`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width), paint (pigment variation),
-bands (stepped light), stylize (coloured shadows), rim, clouds, haze, mist, grade, grain, vignette,
-borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing), autoQuality (the
-measured-frame-time quality ladder).
+(`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width, inkLost: lost-and-found
+line weight, inkColour: coloured ink), paint (pigment variation), dabs (brush dabs on the ground),
+brush (brush marks and gouache values on objects, §5.1), bands (stepped light), stylize (coloured
+shadows), rim, clouds, reflections, refraction and caustics (the water, §5.2), haze, mist, grade,
+grain, vignette, borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing),
+autoQuality (the measured-frame-time quality ladder: paint filter off, then render scale 0.75 and
+the water's reflection march off -- it keeps mirroring the sky).
 
 ## 13. Removing it
 
@@ -425,12 +493,19 @@ What is not there, or not good enough yet, as of this prototype:
   unexplored is dark parchment, not modelled.
 * **Particles** draw after the paint passes and cannot be occluded behind tall props per pixel
   (a point sprite is depth-tested at its centre).
-* **Water** has no reflections and no waterfalls where rivers drop.
+* **Water** mirrors only what is on screen (a screen-space march; past the frame's edge it falls back
+  to the painted sky), has no waterfalls where rivers drop (nothing along a river records a drop),
+  and lakes share the sea's surface and colours (only their floor differs).
+* **Crown silhouettes** are the outlines of the leaf masses (lumpy lobes, painted, but not ragged
+  with leaves). Cutting the silhouette band into leaf clusters in the depth prepass was tried and
+  dropped: the soft lighting normals do not track the true silhouette of the mallorn and jungle
+  plates, so it exposed what the rims hide (the mallorn's lanterns) and left slivers at the real edge.
+  A per-vertex envelope normal from the recipes would make it reliable.
 
 Next steps, roughly by value: profile on real GPUs (the quality ladder -- paint filter off, then
 render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
 is not yet a ladder step); spread the initial world sync over frames or a worker (about 2 s of
-JavaScript on a crowded map); combat and work animations; a reflection or sky term for water; the
+JavaScript on a crowded map); combat and work animations; waterfalls (rivers need their drops); the
 sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 
 ## 15. Provenance
