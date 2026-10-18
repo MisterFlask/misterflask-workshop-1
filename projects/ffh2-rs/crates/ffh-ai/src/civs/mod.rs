@@ -14,7 +14,8 @@
 //! - [`spell_value`]: `casting::choose_spell`, the value of each castable spell (0 or less: not
 //!   cast by the end-of-turn spell choice);
 //! - [`building_value`]: `production::building_value` (what production, research and spells use);
-//! - [`tech_value`]: `research::tech_value`.
+//! - [`tech_value`]: `research::tech_value`;
+//! - [`civic_value`]: `empire::civic_value` (civics, the finance guard and research use it).
 //!
 //! What each civilization does is described in its module (docs/AI.md, "Civilization-specific").
 
@@ -168,6 +169,10 @@ pub trait CivPlay: Sync {
     fn tech_value(&self, g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
         value
     }
+    /// What civic `civic` is worth to player `p` (`value` is the generic estimate).
+    fn civic_value(&self, g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
+        value
+    }
 }
 
 struct Generic;
@@ -234,4 +239,8 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
 
 pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
     of(g, p).tech_value(g, p, t, value)
+}
+
+pub fn civic_value(g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
+    of(g, p).civic_value(g, p, civic, value)
 }
