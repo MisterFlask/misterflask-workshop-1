@@ -482,16 +482,16 @@ vec4 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float
 }
 
 // --- Laid marks on the open ground. Each ground: its broad masses (as masses(), without the soft
-// dabs) -- grass, prairie, desert and tundra with a slow drift between a warm and a cool colour of
-// their own -- then marks laid over them at up
+// dabs) -- the meadow's green and golden grass, desert and tundra with a slow drift between a warm
+// and a cool colour of their own -- then marks laid over them at up
 // to three sizes (4.5, 11 and 26 a plot) -- each fading in once its marks are a few pixels and out
 // before they would swell into blots, so at the gameplay zoom the two larger are laid and close up
 // the finest joins them -- each mark one of four related colours, so the ground reads as strokes of
 // broken colour while its value stays quiet round roads, rings and figures. Every ground its own
-// hand: upright strokes on grass and in reed beds, long ones swept along the wind on prairie and
-// snow, round clumps on tundra and in perdition, strokes along the dunes' crests in the deserts,
-// each basalt plate its own direction. A ground holding only a sliver of a blend lays none
-// (gMarkW: no muddy double layer at borders).
+// hand: upright blades on the meadow's green and in reed beds, long strokes swept along the wind
+// on its golden grass and on snow, round clumps on tundra and in perdition, strokes along the
+// dunes' crests in the deserts, each basalt plate its own direction. A ground holding only a
+// sliver of a blend lays none (gMarkW: no muddy double layer at borders).
 float gMarkW = 1.0;
 float gK() { return uStylize * min(uDabs / 1.6, 1.5); }
 // Three tones by the broad shapes ('big') and a finer noise ('mid'): dark where the broad shapes
@@ -623,9 +623,10 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   bool hell = g == G_BURNING || g == G_BROKEN || g == G_PERDITION;
   if (g != G_GRASS && g != G_PLAINS && g != G_DESERT && g != G_TUNDRA && g != G_SNOW && g != G_MARSH && !hell) return blankAlbedo(m);
   // Each open ground: its masses (c), then the hand its marks are laid in -- a palette per size
-  // (P0..P2), the sizes' strengths, heading, angle spread, length, width, lobe and value spread --
-  // all laid by the one loop below (one inlined copy of the mark lattice per size, not one per
-  // ground: the terrain shader stays small enough to compile quickly and run lean).
+  // (P0..P2), the sizes' strengths, heading, angle spread, length, width, lobe, value spread and
+  // tip, and how much of a mark's value comes from the masses (hue) -- all laid by the one loop
+  // below (one inlined copy of the mark lattice per size, not one per ground: the terrain shader
+  // stays small enough to compile quickly and run lean).
   float big;
   vec3 c;
   mat4 P0, P1, P2;
@@ -653,23 +654,23 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     float mid = mnoise(m + 11.0, 1.6), mot = mnoise(m + 5.0, 2.4);
     // Green: yellow-green with darker blue-green mottling at two sizes (the broad shapes and
     // half-plot blotches), drifting slowly between a yellower and a bluer green.
-    vec3 cg = mass3(vec3(0.18, 0.27, 0.17), vec3(0.27, 0.35, 0.205), vec3(0.35, 0.415, 0.225), big, mid);
+    vec3 cg = mass3(vec3(0.18, 0.27, 0.17), vec3(0.27, 0.35, 0.22), vec3(0.35, 0.415, 0.24), big, mid);
     cg = mix(cg, vec3(0.17, 0.26, 0.17), smoothstep(0.55, 0.8, mot) * 0.42);
     vec3 dr = mix(vec3(0.20, 0.31, 0.21), vec3(0.33, 0.40, 0.20), smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7)));
     cg = mix(cg, dr * lum(cg) / max(lum(dr), 1e-4), 0.22 * gK());
     // Golden: straw over ochre, combed by the wind into lighter and darker streaks; its shade an
     // olive ochre (not russet: the warm sun and the grade's saturation would turn that orange).
-    vec3 cd = mass3(vec3(0.37, 0.30, 0.16), vec3(0.50, 0.42, 0.24), vec3(0.62, 0.54, 0.33), big, mid);
-    cd = mix(cd, vec3(0.38, 0.31, 0.16), smoothstep(0.55, 0.8, mstroke(m - 3.0, 5.0, 4.0)) * 0.5);
-    cd = mix(cd, vec3(0.64, 0.56, 0.36), smoothstep(0.6, 0.85, mstroke(m + 9.0, 3.5, 5.0)) * 0.3);
-    cd = mix(cd, vec3(0.43, 0.40, 0.23), smoothstep(0.55, 0.8, mot) * 0.4);
+    vec3 cd = mass3(vec3(0.37, 0.30, 0.185), vec3(0.50, 0.42, 0.265), vec3(0.62, 0.54, 0.355), big, mid);
+    cd = mix(cd, vec3(0.38, 0.31, 0.185), smoothstep(0.55, 0.8, mstroke(m - 3.0, 5.0, 4.0)) * 0.5);
+    cd = mix(cd, vec3(0.64, 0.56, 0.385), smoothstep(0.6, 0.85, mstroke(m + 9.0, 3.5, 5.0)) * 0.3);
+    cd = mix(cd, vec3(0.43, 0.40, 0.255), smoothstep(0.55, 0.8, mot) * 0.4);
     c = mix(cg, cd, dry);
     // Marks: short upright blades on the green (each mark's value from the masses under it, only its
     // hue from the palette -- yellow-green, blue-green, olive, sap -- lighter at the tip), long strokes
     // swept along the wind on the golden (light straw, ochre, gold and a green fleck); a mark between
     // the two is bent between their headings, as grass bends.
     P0 = P4(vec3(0.33, 0.41, 0.21), vec3(0.22, 0.32, 0.21), vec3(0.30, 0.36, 0.20), vec3(0.25, 0.34, 0.18), vec3(0.3, 0.55, 0.8)); P1 = P0; P2 = P0;
-    gPalB = P4(vec3(0.60, 0.53, 0.34), vec3(0.46, 0.37, 0.21), vec3(0.53, 0.46, 0.27), vec3(0.34, 0.38, 0.21), vec3(0.35, 0.62, 0.88));
+    gPalB = P4(vec3(0.60, 0.53, 0.365), vec3(0.46, 0.37, 0.235), vec3(0.53, 0.46, 0.295), vec3(0.34, 0.38, 0.23), vec3(0.35, 0.62, 0.88));
     // The finest blades come and go (smoother sward between thicker tufts), so the grass is not one
     // even pile.
     str = mix(vec3(0.35, 0.6, 0.75 * smoothstep(0.25, 0.6, mid)), vec3(0.45, 0.6, 0.7), dry);
