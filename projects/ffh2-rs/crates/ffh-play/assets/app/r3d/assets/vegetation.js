@@ -35,7 +35,7 @@ const TAU = Math.PI * 2;
 // --- colours --------------------------------------------------------------------------------------
 // Foliage ramps run deep (cool, shadowed underside) -> dark -> mid -> light (warm, sunlit crown).
 
-const OAK = ["#12231a", "#213f29", "#365a2e", "#6b8a40"];
+const OAK = ["#0f1f19", "#1c3a26", "#33562c", "#6e8c3e"];
 const OAK_AUTUMN = ["#16261e", "#2c4127", "#4e5c2e", "#868340"];
 const BIRCH = ["#1a3222", "#2e4f30", "#527a3a", "#92ac58"];
 const PINE = ["#0b1e17", "#163522", "#284f33", "#5a7e48"];
@@ -198,9 +198,9 @@ function shadeBark(mb, from, { foot = null, footAmt = 0.6, y0 = 0, y1 = 0.08, up
 
 /** A broadleaf crown: masses around `C` (half-width `W`, half-height `hc`), with limbs from the
  *  trunk point `fork` to the outer ones. `layout` lists [angle, dist (of W), dy (of hc), rad (of W),
- *  detail]; `tone` paints each mass's own light (leafMass). Returns the foliage mark (the limbs come
- *  before it). */
-function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0, self = 0.55, tone = 0 }) {
+ *  detail]; `tone` paints each mass's own light, `amp` and `freq` its lumpiness (leafMass). Returns
+ *  the foliage mark (the limbs come before it). */
+function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat = 0.4, limbR = 0.01, limbs = 3, bark, nTufts = 0, self = 0.55, tone = 0, freq = 1.6 }) {
   // Limbs first (wood), toward the outer masses.
   const outer = layout.filter((m) => m[1] > 0.3).slice(0, limbs);
   mb.color = bark;
@@ -215,7 +215,7 @@ function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat 
   for (const [a, d, dy, rad, detail] of layout) {
     mb.color = jitter(WHITE, r, 0.07);
     const c = [C[0] + Math.cos(a) * d * W, C[1] + dy * hc, C[2] + Math.sin(a) * d * W];
-    leafMass(mb, c, rad * W, { detail: detail ?? 1, amp, squash, flat, seed: r.range(0, 50), self, tone });
+    leafMass(mb, c, rad * W, { detail: detail ?? 1, amp, squash, flat, seed: r.range(0, 50), self, tone, freq });
     cores.push([c, rad * W, squash]);
   }
   if (nTufts) tufts(mb, r, cores, nTufts, { tone });
@@ -320,13 +320,13 @@ function buildOak(mb, r, variant, cols = OAK) {
   // The skirt: small clumps low round the boughs, so the crown reaches down full instead of
   // sitting on the trunk like a ball on a stick.
   layout.push(...ringLayout(r, shape === 3 ? 3 : 2, { dist: [0.62, 0.8], dy: [-0.8, -0.58], rad: [0.34, 0.42], detail: 0 }));
-  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.76, nTufts: 4, self: 0.5, tone: 0.45 });
+  const m0 = crown(mb, r, { C, W, hc, fork, layout, limbR: tr * (shape === 1 ? 0.75 : 0.55), limbs: shape === 1 ? 2 : 3, bark, squash: 0.76, nTufts: 5, self: 0.5, tone: 0.6, amp: 0.38, freq: 2.3 });
   shadeBark(mb, w0, { foot: MOSS, footAmt: 0.55, y0: -0.02, y1: 0.07 });
   mb.heightAO(w0, -0.02, forkY, 0.55);
   mb.sphereNormals(m0, [C[0], C[1] - hc * 0.6, C[2]], 0.45);
   // Each tree drifts a little in hue inside the identity (bluer, greener, more olive).
   const drift = [[0.94, 1, 1.08], [1, 1, 1], [1.06, 1.02, 0.9], [0.97, 1.03, 0.98]][r.int(0, 3)];
-  shadeFoliage(mb, m0, { lo: forkY, hi: C[1] + hc * 1.2, cols: cols.map((c) => lin(c).map((x, q) => x * drift[q])), center: C, rad: W * 1.1, seed: r.range(0, 9) });
+  shadeFoliage(mb, m0, { lo: forkY, hi: C[1] + hc * 1.2, cols: cols.map((c) => lin(c).map((x, q) => x * drift[q])), center: C, rad: W * 1.1, seed: r.range(0, 9), hw: 0.5 });
   swayFoliage(mb, m0, forkY, H, W, 0.9, C[0], C[2]);
 }
 
