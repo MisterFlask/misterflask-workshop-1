@@ -192,8 +192,13 @@ props. The channels: r roads, g crops, b wet banks, a settlement ground and farm
   texels round a point; rows are world-anchored (14 bed rows, 18 grain rows a plot) and the props'
   low 3D rows (`imp.beds`, `imp.grain`) stand on the painted ones, with fences (`imp.fence`), stooks
   (`imp.stook`) and haystacks; wheat, corn and rice farms grow golden grain, others vegetable beds
-  beside bare tilled soil. Fields keep `ROAD_CLEAR` (0.12) from a road, and loose plants keep off
-  them (`inField`).
+  beside bare tilled soil. Fields keep `ROAD_CLEAR` (0.12) from a road, and loose plants, rocks and
+  bank dressing keep off them (`inField`). Worked land keeps to a river's bank tops: `fieldLayout`
+  takes the plot's rivers (`riversAround`), squeezes its fields, fences and yard off a river edge to
+  `RIVER_BANK` and cuts them back from a corner a river touches. A pasture paints an oval of grazed
+  turf (`CROP.TURF`, 0.2) inside its paddock's rails with trodden ground at the gate, the trough and
+  where the herd stands; mushrooms an unfenced patch of trodden earth. Team rings and the path ribbon
+  ride a river's water surface (`world.riverPoint`), not its bed.
 
 ## 5. The pipeline (`pipeline.js`, `shaders.js`)
 

@@ -13,7 +13,7 @@ import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp, smoothstep } from "./math.js";
 import { KIND, FEAT, GROUND, SEA, DRAFT, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
-import { roadLinks, inField, fieldLayout } from "./fields.js";
+import { roadLinks, inField, fieldLayout, riversAround } from "./fields.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -167,6 +167,8 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // Nothing grows in a river's channel.
       const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < RIVER_HALF + RIVER_WANDER + 0.05;
       ctx.nearRiver = nearRiver;
+      // The rivers round the plot, as its fields keep off them (fields.js fieldLayout).
+      ctx.rivers = riversAround(world, map, x, y);
       // Something stands on the plot behind this one (north): its trees in front of it keep low.
       const north = world.index(x, y + 1);
       ctx.northHeld = north >= 0 && (unitAt.has(north) || cityAt.has(north));
@@ -230,6 +232,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
           }
           if (held && Math.hypot(lx, lz) < 0.32) continue;
           if (ctx.roadDist(lx, lz) < 0.12 || nearRiver(lx, lz) || ctx.inTown(lx, lz)) continue;
+          if (imp && inField(i, imp, bonus, ctx.rivers, lx, lz, 0.03)) continue; // not in the crops
           place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }
       }
@@ -333,7 +336,8 @@ function townGround(world, map, cityAt, x, y) {
       if (cityAt.has(j)) keep.push({ x: dx, z: -dy, r: 0.5 });
       else if (map.improvement[j] >= 0) {
         keep.push({ x: dx, z: -dy, r: 0.47 });
-        const lay = fieldLayout(j, tname("ImprovementType", map.improvement[j]), map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null);
+        // The neighbour's fields as dress.js and decals.js lay them (squeezed off its rivers).
+        const lay = fieldLayout(j, tname("ImprovementType", map.improvement[j]), map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null, riversAround(world, map, x + dx, y + dy));
         if (!lay) continue;
         // The fields' bounds, with their fences.
         let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
@@ -396,7 +400,8 @@ function shoreOf(world, x, y) {
  *  one out in the stream (the water breaks white round it), reeds standing in the shallows at the
  *  edge and grass leaning over it from the bank tops. Each plot dresses the banks in its own
  *  square from a seed of its own (its other dressing draws as before); nothing at a road's
- *  crossing (a bridge spans it), in a city, round a held plot's centre or out on the sea. */
+ *  crossing (a bridge spans it), in a city, round a held plot's centre, on a farm's fields or in a
+ *  paddock (fields.js inField) or out on the sea. */
 function placeBank(world, map, ctx, place) {
   const { x, y, i } = ctx;
   if (!world.riverCells.size || ctx.city || world.isWater(i)) return;
@@ -428,6 +433,7 @@ function placeBank(world, map, ctx, place) {
       if (cross.some(([cx, cy]) => Math.hypot(mx - cx, my - cy) < 0.42)) continue;
       if (ctx.held && Math.hypot(lx, lz) < 0.27) continue;
       if (ctx.inTown(lx, lz)) continue;
+      if (ctx.improvement && inField(i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, 0.03)) continue;
       if (world.heightAt(mx, my, false) < SEA) continue;
       // Clusters: rocks where the broad noise is high, reeds where it is low.
       const clump = clamp(0.5 + world.n2(mx, my, 1.3, 3.1, 7.7) * 1.2, 0, 1);
@@ -522,7 +528,7 @@ function scatterFlora(world, ctx, place, flora) {
     const foot = FOOT[size];
     if (ctx.unit && Math.hypot(lx - UNIT_SPOT[0], lz - UNIT_SPOT[1]) < UNIT_CLEAR[size]) return false;
     if (ctx.improvement && Math.max(Math.abs(lx), Math.abs(lz)) < 0.38) return false;
-    if (ctx.improvement && inField(ctx.i, ctx.improvement, ctx.bonus, lx, lz, foot)) return false;
+    if (ctx.improvement && inField(ctx.i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, foot)) return false;
     if (ctx.bonus && Math.hypot(lx - BONUS_SPOT[0], lz - BONUS_SPOT[1]) < 0.09 + foot) return false;
     if (ctx.roadDist(lx, lz) < 0.08 + foot) return false;
     if (ctx.inTown(lx, lz)) return false;

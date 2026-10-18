@@ -1009,11 +1009,12 @@ void main() {
     // Settlement ground, fields and roads (rasterised per plot, see decals.js).
     vec3 earth = srgb(mix(vec3(0.36, 0.29, 0.21), vec3(0.47, 0.39, 0.29), mnoise(m, 8.0)));
     alb = mix(alb, earth, dec.a * 0.8);
-    // Fields (decals.js, fields.js): g holds the crop -- ~0.33 vegetable beds (green rows on tilled
-    // soil, 14 a plot, running east-west), ~0.67 bare tilled soil, 1 golden grain (18 rows a plot,
-    // running north-south). The filtered value fades the field in; the crop is the highest of the
-    // four texels around (a field's soft edge would pass through the levels below its own). The
-    // rows fade to their mean colour once they are finer than the pixels, and raise a bump.
+    // Fields (decals.js, fields.js): g holds the crop -- 0.2 a paddock's grazed turf, ~0.33 vegetable
+    // beds (green rows on tilled soil, 14 a plot, running east-west), ~0.67 bare tilled soil, 1
+    // golden grain (18 rows a plot, running north-south). The filtered value fades the field in; the
+    // crop is the highest of the four texels around (a field's soft edge would pass through the
+    // levels below its own). The rows fade to their mean colour once they are finer than the
+    // pixels, and raise a bump.
     float fieldW = smoothstep(0.08, 0.2, dec.g);
     float rowH = 0.0;
     if (fieldW > 0.0) {
@@ -1025,7 +1026,7 @@ void main() {
         tk = ivec2(uWrapX > 0.5 ? (tk.x % dsz.x + dsz.x) % dsz.x : clamp(tk.x, 0, dsz.x - 1), clamp(tk.y, 0, dsz.y - 1));
         gk = max(gk, texelFetch(uDecal, tk, 0).g);
       }
-      float soilK = smoothstep(0.42, 0.56, gk), grainK = smoothstep(0.78, 0.9, gk);
+      float soilK = smoothstep(0.42, 0.56, gk), grainK = smoothstep(0.78, 0.9, gk), turfK = 1.0 - smoothstep(0.23, 0.29, gk);
       // Each pattern fades once its period is under a few pixels (gPpx: map units a pixel).
       float fineF = 1.0 - smoothstep(0.01, 0.018, gPpx), fineB = 1.0 - smoothstep(0.022, 0.04, gPpx), fineG = 1.0 - smoothstep(0.018, 0.03, gPpx);
       float clod = mnoise(m, 30.0);
@@ -1040,9 +1041,14 @@ void main() {
       float ears = mnoise(vec2(m.x, m.y * 0.25), 40.0);
       float ridge = smoothstep(0.05, 0.75, row) * (0.7 + 0.6 * ears);
       vec3 grain = mix(vec3(0.62, 0.42, 0.15), vec3(0.88, 0.69, 0.33), mix(0.62, ridge, fineG));
-      vec3 crop = mix(mix(veg, soil, soilK), grain, grainK);
+      // Grazed turf: the meadow cropped short -- an even, paler green (a straw olive on the prairie)
+      // without the long grass's strokes, mottled by the hooves.
+      float sward = mnoise(m, 3.0);
+      vec3 turf = mix(mix(vec3(0.35, 0.42, 0.21), vec3(0.43, 0.48, 0.25), sward), mix(vec3(0.49, 0.44, 0.27), vec3(0.56, 0.5, 0.31), sward), gDry);
+      turf *= 0.92 + 0.16 * mix(0.5, mnoise(m, 34.0), fineB);
+      vec3 crop = mix(mix(mix(veg, soil, soilK), grain, grainK), turf, turfK);
       alb = mix(alb, srgb(crop), fieldW);
-      rowH = fieldW * mix(mix(bedK * fineB, furrow * 0.4 * fineF, soilK), ridge * 0.8 * fineG, grainK);
+      rowH = fieldW * (1.0 - turfK) * mix(mix(bedK * fineB, furrow * 0.4 * fineF, soilK), ridge * 0.8 * fineG, grainK);
       keepG = max(keepG, fieldW * 0.45);
     }
     n = bump(n, vWorld, rowH * 0.007, 1.0);

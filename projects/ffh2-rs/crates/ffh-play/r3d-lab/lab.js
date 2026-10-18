@@ -6,6 +6,7 @@
 //   lab.html?scene=reference&ts=160             the look target's composition (docs/R3D.md §16)
 //   lab.html?scene=rivertown&ts=150             a great town by a river among farms, a unit
 //                                               behind it, a small walled town; their garrisons
+//   lab.html?scene=fields                       farms, pastures and the like along a river
 //   lab.html?grid=tree.oak,tree.pine&variants=6 recipes in rows of variants on flat grass
 //            &param=x (all rows) or &params=a,b,c (one per row; repeat a name for several params)
 //            &ground=.  &spacing=1
@@ -23,7 +24,7 @@
 
 import { S, setData, setView, setMap } from "/app/state.js";
 import { Map3D } from "/app/r3d/map3d.js";
-import { showcase, reference, riverTown, grid, settlements, fromRows } from "./scenes.js";
+import { showcase, reference, riverTown, fields, grid, settlements, fromRows } from "./scenes.js";
 
 const q = new URLSearchParams(location.search);
 
@@ -44,6 +45,8 @@ async function main() {
     scene = reference(data);
   } else if (q.get("scene") === "rivertown") {
     scene = riverTown(data);
+  } else if (q.get("scene") === "fields") {
+    scene = fields(data);
   } else {
     scene = showcase(data);
   }

@@ -1394,7 +1394,8 @@ for (const k of ["cow", "ox", "horse", "sheep", "pig", "deer"]) {
 }
 
 /** A pasture's paddock: a ring of post-and-rail fence (open toward the front) and a lean-to
- *  shelter with a trough at the back. */
+ *  shelter with a trough at the back, left of the middle or right by variant (fields.js paddock
+ *  treads the ground round it bare). */
 function buildPaddock(mb, r, variant, param) {
   const F = famOf(param);
   const pts = [];
@@ -1405,7 +1406,7 @@ function buildPaddock(mb, r, variant, param) {
   }
   fenceLine(mb, pts, { col: F.key === "infernal" ? "#3a2c28" : "#8a785c", step: 0.11 });
   // Lean-to shelter and trough.
-  at(mb, r.range(-0.12, 0.12), 0, -0.22, 0, () => {
+  at(mb, variant % 2 ? 0.08 : -0.08, 0, -0.22, 0, () => {
     mb.color = C(F.timber);
     for (const x of [-0.04, 0.04]) {
       stick(mb, [x, -0.02, 0.025], [x, 0.05, 0.025], 0.003, 4);
@@ -4577,12 +4578,16 @@ function onRoadOf(ctx) {
   return (pts, pad = 0) => pts.some(([x, z]) => onRoad(links, routed, x, z, ROAD_CLEAR + pad));
 }
 
+/** The plot's field layout (fields.js), drawn back from the rivers round it (dress.js gives the
+ *  context its riversAround; the lab's grid has none). */
+const layoutOf = (ctx) => fieldLayout(ctx.i, ctx.improvement, ctx.bonus, ctx.rivers ?? 0);
+
 /** A farm on its fields (fields.js): the farmstead (a barn or a granary) in its yard with its
  *  haystacks, fence runs along the field edges, stooks on the grain and a scarecrow in the beds.
  *  The plot's centre keeps only low crops (a unit standing there stays readable). */
 function farmOf(ctx, part, yj) {
   const r = ctx.r;
-  const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
+  const lay = layoutOf(ctx);
   const { yard } = lay, s = yard.side;
   // Nothing of the farm but its barn stands on a road through it (the decal keeps the fields off
   // the road too).
@@ -4651,13 +4656,21 @@ function farmOf(ctx, part, yj) {
   return out;
 }
 
+/** Where a pair of row props (a plantation's crop rows, a winery's vines) stands on field `f`: at
+ *  fractions `us` across it and `v` down it, each shrunk (x, z) as the field is narrower than `w`
+ *  or shallower than `d` (a field drawn back from a river, fields.js). [[x, z, sx, sz], ...]. */
+function rowsOn(f, w, d, us, v) {
+  const sx = Math.min(1, (f.x1 - f.x0) / w), sz = Math.min(1, (f.z1 - f.z0) / d);
+  return us.map((u) => [f.x0 + (f.x1 - f.x0) * u, f.z0 + (f.z1 - f.z0) * v, sx, sz]);
+}
+
 function improvementOf(type, ctx) {
   const t = type.replace("IMPROVEMENT_", "");
   if (NOT_OURS.test(t)) return null;
   const r = ctx.r;
   const unit = !!ctx.unit;
   const yj = (a = 0.25) => r.range(-a, a);
-  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.draft ? { draft: o.draft } : {}), ...(o.emit ? { emit: o.emit } : {}), ...(o.tint ? { tint: o.tint } : {}) });
+  const part = (asset, dx, dz, o = {}) => ({ asset, dx, dz, yaw: o.yaw ?? yj(), scale: o.scale ?? 1, ...(o.param !== undefined ? { param: o.param } : {}), ...(o.variant !== undefined ? { variant: o.variant } : {}), ...(o.float ? { float: true } : {}), ...(o.draft ? { draft: o.draft } : {}), ...(o.emit ? { emit: o.emit } : {}), ...(o.tint ? { tint: o.tint } : {}), ...(o.sx !== undefined ? { sx: o.sx } : {}), ...(o.sz !== undefined ? { sz: o.sz } : {}) });
   // Old stone in the hells is scorched dark (pale ruins would glare on the black ground).
   const scorch = isHell(ctx.ground) ? [0.5, 0.44, 0.42] : undefined;
   // Mirror the layout now and then (never onto the resource marker's front-left corner).
@@ -4673,27 +4686,29 @@ function improvementOf(type, ctx) {
     case "FARM":
       return farmOf(ctx, part, yj);
     case "PLANTATION": {
-      // The rows fill the green field the decal lays (fields.js); the drying shed in the yard.
+      // The rows fill the green field the decal lays (fields.js), shrunk with it off a river; the
+      // drying shed in the yard.
       const b = (ctx.bonus ?? "").replace("BONUS_", "");
       const crop = { BANANA: "banana", SUGAR: "sugar", COTTON: "cotton", DYE: "dye", SILK: "tea", INCENSE: "tea", SPICES: "tea" }[b] ?? "tea";
-      const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
+      const lay = layoutOf(ctx);
       const road = onRoadOf(ctx);
-      return [
-        part("imp.croprows", -0.2, 0.2, { param: crop, yaw: yj(0.08), scale: 1.4 }),
-        part("imp.croprows", 0.2, 0.2, { param: crop, variant: 1, yaw: yj(0.08), scale: 1.4 }),
-      ].filter((p) => !road([[p.dx, p.dz]], 0.06)).concat([part("imp.shed", lay.yard.x, lay.yard.z, { scale: 1.45 })]);
+      return rowsOn(lay.fields[0], 0.84, 0.48, [0.26, 0.74], 0.54).map(([x, z, sx, sz], k) => part("imp.croprows", x, z, { param: crop, ...(k ? { variant: 1 } : {}), yaw: yj(0.08), scale: 1.4, sx: 1.4 * sx, sz: 1.4 * sz }))
+        .filter((p) => !road([[p.dx, p.dz]], 0.06)).concat([part("imp.shed", lay.yard.x, lay.yard.z, { scale: 1.45 })]);
     }
     case "WINERY": {
+      const lay = layoutOf(ctx);
       const road = onRoadOf(ctx);
-      const vines = [part("imp.vines", -0.17, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.vines", 0.2, 0.16, { yaw: yj(0.1), scale: 1.4 })];
-      return [...vines.filter((p) => !road([[p.dx, p.dz]], 0.06)), part("imp.press", -0.19 * flip, -0.23, { scale: 1.4 })];
+      const vines = rowsOn(lay.fields[0], 0.78, 0.44, [0.27, 0.75], 0.5).map(([x, z, sx, sz]) => part("imp.vines", x, z, { yaw: yj(0.1), scale: 1.4, sx: 1.4 * sx, sz: 1.4 * sz }));
+      return [...vines.filter((p) => !road([[p.dx, p.dz]], 0.06)), part("imp.press", lay.yard.x, lay.yard.z, { scale: 1.4 })];
     }
     case "PASTURE": {
+      // The paddock (fields.js) where its ground is trodden, the herd inside its rails.
+      const p = layoutOf(ctx).paddock;
       const herd = herdOf(ctx.bonus);
       const kinds = herd ? [herd, herd] : ["sheep", "cow"];
       const spots = unit ? [[-0.22, -0.1], [0.22, -0.04], [0.06, -0.22]] : [[-0.17, -0.04], [0.15, -0.12], [0.06, 0.1]];
       // Side-on (their readable profile), a few turned the other way.
-      return [part("imp.paddock", 0, 0, { yaw: yj(0.1) }), ...kinds.map((k, i) => part(`anim.${k}`, spots[i][0], spots[i][1], { variant: i, yaw: yj(0.5), scale: 1.15 }))];
+      return [part("imp.paddock", p.x, p.z, { yaw: yj(0.1), variant: p.variant, sx: p.sx, sz: p.sz }), ...kinds.map((k, i) => part(`anim.${k}`, p.x + spots[i][0] * p.sx, p.z + spots[i][1] * p.sz, { variant: i, yaw: yj(0.5), scale: 1.15 }))];
     }
     case "CAMP":
       return [
@@ -4751,8 +4766,11 @@ function improvementOf(type, ctx) {
       return part("imp.portal", 0, unit ? -0.2 : -0.06, { yaw: yj(0.15), scale: 1.5, emit: [{ dy: 0.14, color: "#b08aff", size: 0.012, rise: 0.25, count: 4, spread: 0.06 }] });
     case "HELLFIRE":
       return part("imp.hellfire", 0, unit ? -0.18 : -0.04, { yaw: r.range(0, TAU), scale: 1.3, emit: [{ dy: 0.1, color: "#ff5a1a", size: 0.012, rise: 0.4, count: 6, spread: 0.08 }] });
-    case "MUSHROOMS":
-      return part("imp.mushrooms", 0.04, unit ? -0.2 : -0.06, { yaw: r.range(0, TAU), scale: 1.25 });
+    case "MUSHROOMS": {
+      // On their patch of trodden earth (fields.js), at its back when a unit stands on the plot.
+      const p = layoutOf(ctx).paddock;
+      return part("imp.mushrooms", p.x, p.z + (unit ? -0.06 : 0.06), { yaw: r.range(0, TAU), scale: 1.25 });
+    }
     case "PENGUINS":
       return part("imp.penguins", 0.06, unit ? -0.2 : -0.06, { yaw: r.range(0, TAU), scale: 1.3 });
     case "PIRATE_COVE":

@@ -8,7 +8,7 @@ import { ATTR, Mesh, texture, upload, INSTANCE_FLOATS, PROP_LAYOUT } from "./gl.
 import { TerrainMeshes, MapTextures, CHUNK, RES, LOW_RES } from "./terrain.js";
 import { buildAsset, buildAssetLOD } from "./assets/registry.js";
 import { rasterDecals, rasterLight } from "./decals.js";
-import { SEA, RIVER_HALF, RIVER_WANDER } from "./world.js";
+import { SEA, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
 import { hexLinear } from "./math.js";
 import { rng } from "./noise.js";
 
@@ -22,6 +22,12 @@ const LOD_PX = 22;
  *  test then skips more of what is off screen, for a few more draw calls). */
 const BUCKET = 8;
 const PARTICLE_LAYOUT = { aPos: 3, aNormal: 3, aExtra: 4 };
+
+/** A river's water surface over the point (mx, my) of its line (the ribbon lies flat across the
+ *  channel there): a little under the banks, never under the sea's. */
+function riverLevel(world, mx, my) {
+  return Math.max(SEA + 0.004, world.heightAt(mx, my) + 0.045);
+}
 
 /** One asset's vertex buffer, shared by its per-chunk instance buckets. */
 class AssetBatch {
@@ -285,7 +291,7 @@ export class Scene {
         for (let j = Math.max(0, k - 4); j <= Math.min(N - 1, k + 4); j++, n++) s += turn[j];
         return s / n;
       });
-      const level = (p) => Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
+      const level = (p) => riverLevel(world, p[0], p[1]);
       const rows = [];
       const row = (p, t, y, s, b, past) => rows.push([[p[0] - t[1] * half, y, -(p[1] + t[0] * half)], [p[0] + t[1] * half, y, -(p[1] - t[0] * half)], s, b, past]);
       // The river and a cap past each end (the shader rounds it). A cap sits a hair lower, more the
@@ -334,35 +340,54 @@ export class Scene {
       this.ringWorld = world;
     }
     const v = [];
-    // Draped on the surface the player sees: on a sea plot heightAt is the sea floor, so clamp to
-    // the water level so rings and the path ribbon sit on the water, not under it (F7).
-    const ground = (mx, my) => Math.max(SEA, world.heightAt(mx, my));
-    const push = (mx, my, lift, c, a, H = ground) => v.push(mx, H(mx, my) + lift, -my, c[0], c[1], c[2], a);
+    // Draped on the surface the player sees: on a sea plot heightAt is the sea floor and under a
+    // river its bed, so rings and the path ribbon sit on the water, not under it (F7). A river's
+    // water lies at its ribbon's level by the nearest point of its line (riverLevel), over the
+    // channel and up the cut bank to where the ground rises out of it; that level changes slowly
+    // along the line, so it is looked up once a twentieth of a plot.
+    const rivers = world.riverCells.size > 0;
+    const levels = new Map();
+    const water = (mx, my) => {
+      const p = world.riverPoint(mx, my);
+      if (!p || p[2] >= RIVER_BANK) return -Infinity;
+      const key = `${Math.round(p[0] * 20)},${Math.round(p[1] * 20)}`;
+      let l = levels.get(key);
+      if (l === undefined) levels.set(key, (l = riverLevel(world, p[0], p[1])));
+      return l;
+    };
+    const ground = (mx, my) => Math.max(SEA, world.heightAt(mx, my), rivers ? water(mx, my) : -Infinity);
+    const push = (mx, my, y, c, a) => v.push(mx, y, -my, c[0], c[1], c[2], a);
     // A ring is draped on a 5 x 5 patch of the ground's height under it (bilinear), not on a
-    // height lookup per vertex: hundreds of stacks re-ring on every move.
+    // height lookup per vertex: hundreds of stacks re-ring on every move. Beside a river each of its
+    // points looks up the water as well: the patch would smear the water's edge (and where the far
+    // side lies low, sink the ring's edge under the surface).
     const patch = (cx, cy, R) => {
       const N = 4;
       const hs = new Float64Array((N + 1) * (N + 1));
       for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) hs[j * (N + 1) + i] = Math.max(SEA, world.heightAt(cx - R + (2 * R * i) / N, cy - R + (2 * R * j) / N));
-      return (mx, my) => {
+      const P = (mx, my) => {
         const u = Math.min(N - 1e-6, Math.max(0, ((mx - cx + R) / (2 * R)) * N));
         const t = Math.min(N - 1e-6, Math.max(0, ((my - cy + R) / (2 * R)) * N));
         const i = Math.floor(u), j = Math.floor(t), fu = u - i, ft = t - j;
         const h = (a, b) => hs[b * (N + 1) + a];
         return (h(i, j) * (1 - fu) + h(i + 1, j) * fu) * (1 - ft) + (h(i, j + 1) * (1 - fu) + h(i + 1, j + 1) * fu) * ft;
       };
+      return rivers && world.riverDist(cx, cy) < R + RIVER_BANK ? (mx, my) => Math.max(P(mx, my), water(mx, my)) : P;
     };
     const N = 28;
     const cs = Array.from({ length: N + 1 }, (_, k) => [Math.cos((k / N) * Math.PI * 2), Math.sin((k / N) * Math.PI * 2) * 0.92]);
     const annulus = (cx, cy, r0, r1, c, a, lift, H) => {
-      const corner = (r, k) => push(cx + cs[k][0] * r, cy + cs[k][1] * r, lift, c, a, H);
+      // Each point of the two circles is draped once.
+      const circle = (r) => cs.map(([cu, cv]) => [cx + cu * r, cy + cv * r]).map(([mx, my]) => [mx, my, H(mx, my) + lift]);
+      const A = circle(r0), B = circle(r1);
+      const corner = (p) => push(p[0], p[1], p[2], c, a);
       for (let k = 0; k < N; k++) {
-        corner(r0, k);
-        corner(r1, k);
-        corner(r1, k + 1);
-        corner(r0, k);
-        corner(r1, k + 1);
-        corner(r0, k + 1);
+        corner(A[k]);
+        corner(B[k]);
+        corner(B[k + 1]);
+        corner(A[k]);
+        corner(B[k + 1]);
+        corner(A[k + 1]);
       }
     };
     for (const g of rebuildRings ? rings : []) {
@@ -392,7 +417,7 @@ export class Scene {
           if (s % 2 === 1) continue; // dashed
           const p0 = [ax + (bx - ax) * t0, ay + (by - ay) * t0], p1 = [ax + (bx - ax) * t1, ay + (by - ay) * t1];
           const q = [[p0[0] - ty * wd, p0[1] + tx * wd], [p0[0] + ty * wd, p0[1] - tx * wd], [p1[0] + ty * wd, p1[1] - tx * wd], [p1[0] - ty * wd, p1[1] + tx * wd]];
-          for (const [mx, my] of [q[0], q[1], q[2], q[0], q[2], q[3]]) push(mx, my, 0.02, c, 0.95);
+          for (const [mx, my] of [q[0], q[1], q[2], q[0], q[2], q[3]]) push(mx, my, ground(mx, my) + 0.02, c, 0.95);
         }
       }
     }
