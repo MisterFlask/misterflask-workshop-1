@@ -234,7 +234,8 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // Bridges where a road crosses a river edge to a routed neighbour (south and east edges;
       // each crossing belongs to one plot). The road runs straight across (decals.js), and the
       // bridge stands where it passes nearest the river's (smoothed, meandering) line, its deck at
-      // the higher bank: a span of 0.6 plot or more clears the water (at most 0.45 wide there).
+      // the higher bank top (about 0.3 either side of the line, past water at most 0.44 wide): the
+      // bridges span 0.68, their footings on the bank tops.
       if (map.route[i] >= 0 && map.river[i] > 0) {
         const bridge = (nx, ny, mx, my, yaw) => {
           const j = world.index(nx, ny);

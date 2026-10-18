@@ -2086,14 +2086,15 @@ function bridgeFootings(mb, r, X, zEnd) {
 /** An arched stone bridge along z: a humped deck between parapets with a coping over one arch (0)
  *  or two arches on a pier with cutwaters (1), each arch ringed with lighter voussoirs and dark
  *  inside, square end posts, footings down into both banks. The deck's ends (y = 0) meet the
- *  banks; it spans 0.68 (a river's water is at most 0.45 wide where a road crosses it). */
+ *  banks: it spans 0.68 and its arches 0.44, over a river whose water is at most 0.44 wide and
+ *  whose bank tops are 0.3 from its line (world.js RIVER_BANK), where the footings stand. */
 function buildArchBridge(mb, r, variant) {
   // A humpback: the deck rises well over the banks, so the arches stand clear of the water (a
   // river's surface is only a few hundredths under its banks).
   const Lh = 0.34, W = 0.1, pt = 0.015, ph = 0.026, rt = 0.017;
   const X = W / 2 + pt, deep = -0.14, ys = -0.075;
   const top = (z) => 0.004 + 0.064 * Math.pow(Math.max(0, Math.cos((Math.PI * z) / (2 * Lh))), 1.3);
-  const arches = (variant ? [[-0.122, 0.105], [0.122, 0.105]] : [[0, 0.18]]).map(([c, a]) => ({ c, a, yc: top(c) - 0.032 }));
+  const arches = (variant ? [[-0.115, 0.11], [0.115, 0.11]] : [[0, 0.22]]).map(([c, a]) => ({ c, a, yc: top(c) - 0.032 }));
   const archAt = (za, zb) => arches.find((q) => za >= q.c - q.a - 1e-6 && zb <= q.c + q.a + 1e-6);
   const curve = (q, z) => ys + (q.yc - ys) * Math.sqrt(Math.max(0, 1 - ((z - q.c) / q.a) ** 2));
   // Stations along z: the ends, the solid stretches' middles, dense over each arch.
@@ -2162,9 +2163,9 @@ recipe("bridge.arch", { variants: 2, build: (mb, r, { variant }) => buildArchBri
 
 /** A flat slab bridge along z: a deck of big pale flagstones on piers with cutwaters (two, or one),
  *  low walls of blocks along both sides, square posts at the ends, footings in both banks; it
- *  spans 0.64 (a river's water is at most 0.45 wide where a road crosses it). */
+ *  spans 0.68, its footings on the bank tops 0.3 from the river's line (as the arched bridge). */
 function buildSlabBridge(mb, r, variant) {
-  const Lh = 0.32, W = 0.112, pt = 0.016, ph = 0.017, th = 0.03, y0 = 0.008;
+  const Lh = 0.34, W = 0.112, pt = 0.016, ph = 0.017, th = 0.03, y0 = 0.008;
   const X = W / 2 + pt, deep = -0.14;
   // The flagstones over a dark bed (their joints).
   mb.color = C(BRIDGE_STONE.shade);
