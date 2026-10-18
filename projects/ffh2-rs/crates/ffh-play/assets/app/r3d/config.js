@@ -8,13 +8,14 @@ import { hexLinear } from "./math.js";
 const KEY = "ffh.r3d.config";
 
 /** The light of the scene: sun direction (toward the sun) and colours (linear).
- * The map is always in daylight. There is one light, `daylight`: a warm, high sun (about 42
- * degrees up) so shadows stay short (about 1.2x object height) and the shaded side keeps its
- * colour. No dusk, night or time-of-day cycle (owner decision); the old `afternoon`/`day` pair,
- * whose low (27 degrees) sun cast the long near-black shadows F1 reported, is merged into this. */
+ * The map is always in daylight. There is one light, `daylight`: a warm, high sun (about 48
+ * degrees up, from the south-west) so shadows stay short (about 0.9x object height, as in the
+ * look target) and the shaded side keeps its colour. No dusk, night or time-of-day cycle (owner
+ * decision); the old `afternoon`/`day` pair, whose low (27 degrees) sun cast the long near-black
+ * shadows F1 reported, is merged into this. */
 export const LIGHTING = {
   daylight: {
-    sunDir: [-0.65, 0.67, 0.35],
+    sunDir: [-0.589, 0.743, 0.317],
     sun: [hexLinear("#ffe2bc"), 2.8],
     sky: [hexLinear("#7e93bf"), 0.68],
     ground: [hexLinear("#6c5a44"), 0.26],
@@ -25,8 +26,9 @@ export const LIGHTING = {
 };
 
 // The painterly preset was moved toward the owner's look target (docs/R3D.md §16: a bright,
-// saturated hand-painted strategy map): more saturation, little haze or cloud shadow, a lighter
-// paint filter and ink so painted detail stays crisp.
+// saturated hand-painted strategy map): more saturation and a little more contrast (the target's
+// deep shade against high-key light), little haze or cloud shadow, a lighter paint filter and ink
+// so painted detail stays crisp.
 export const PRESETS = {
   painterly: {
     lighting: "daylight",
@@ -41,7 +43,7 @@ export const PRESETS = {
     outlineWidth: 1,
     grade: 1,
     saturation: 1.25,
-    contrast: 1.08,
+    contrast: 1.12,
     grain: 0.02,
     vignette: 0.1,
     paint: 1,
