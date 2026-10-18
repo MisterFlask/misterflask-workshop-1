@@ -221,6 +221,30 @@ pub fn worker_in_danger(g: &Game, v: &View, plot: PlotIdx) -> bool {
     v.danger_at(plot) > 0 && g.map.plots[plot].plot_city.is_none()
 }
 
+/// Where a threatened worker goes this turn: a city of ours it can reach, else a plot no
+/// visible enemy can reach, else one our soldiers hold, else the least dangerous; nearer our
+/// nearest city first. None when we have no city.
+fn refuge(g: &Game, v: &mut View, u: UnitId) -> Option<PlotIdx> {
+    let p = v.p;
+    let here = g.unit_plot(u);
+    let city = nearest_city(g, p, here)?;
+    let (cx, cy) = (g.cities[city].x, g.cities[city].y);
+    let reach = v.flood.run(g, u, 0, false);
+    reach
+        .iter()
+        .map(|r| r.plot)
+        .filter(|&q| g.map.plots[q].owner.map_or(true, |o| o == p))
+        .min_by_key(|&q| {
+            let plot = &g.map.plots[q];
+            let ours = plot.plot_city.is_some_and(|c| g.cities[c].owner == p);
+            let danger = v.danger_at(q);
+            let held = plot.units.iter().any(|&o| g.units[o].owner == p && g.d.units[g.units[o].unit_type].combat > 0);
+            let rank = if ours { 0 } else if danger == 0 { 1 } else if held { 2 } else { 3 };
+            let (x, y) = g.map.xy(q);
+            (rank, if rank == 3 { danger } else { 0 }, g.plot_distance(x, y, cx, cy), q)
+        })
+}
+
 pub fn worker(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: bool) {
     worker_with(g, v, grp, u, sea, &|_, _, _| true);
 }
@@ -233,8 +257,13 @@ pub fn worker_with(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, sea: boo
     // Flee danger first.
     if !sea && worker_in_danger(g, v, here) {
         crate::trace!(g, p, "worker {:?} at {:?} flees", u, g.map.xy(here));
-        if let Some(c) = nearest_city(g, p, here) {
-            move_to(g, grp, g.city_plot(c), 0);
+        if let Some(q) = refuge(g, v, u) {
+            if q != here {
+                // Our own danger map chose the plot: the rules' AI path finder would refuse a
+                // path for a non-combat group that starts or ends next to the enemy (pathValid's
+                // AI_getPlotDanger), and the worker would stay where it is to be captured.
+                move_to(g, grp, q, MOVE_IGNORE_DANGER);
+            }
             if alive(g, grp) && g.group_ready_to_move(grp, true) {
                 skip(g, grp);
             }

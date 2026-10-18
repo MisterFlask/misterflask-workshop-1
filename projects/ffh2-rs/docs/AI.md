@@ -451,6 +451,21 @@ plots under danger. FfH's AI-only build bans (`CvGameUtils.canBuild`) are respec
 no farms for Fallow civs, no workshops before Guilds, no cottages under Aristocracy, no
 windmills under Arete.
 
+**Fleeing (`workers::refuge`).** A threatened worker goes to the best plot it reaches this turn:
+a city of ours, else a plot no visible enemy can reach, else one our soldiers hold, else the
+least dangerous (nearer our nearest city first), and moves there with `MOVE_IGNORE_DANGER`. It
+used to walk to the nearest city with a plain move, which the rules' AI path finder refuses for a
+non-combat group that starts or ends a turn next to the enemy (`pathValid`, `AI_getPlotDanger`):
+54% of the flee orders left the worker where it stood (seeds 1-8), and 808 of the 815 civ workers
+the barbarians captured had been left on a plot in danger. Measured against the AI before it: 300
+turns, seeds 801-944 (144 games), population +4.0% (t 2.2), legacy +2.7%, research +4.4%, power
++3.7%, land +2.4% (t 1.6 each); full games (seeds 901-948, 48 games) no significant change.
+Choosing build targets the rules' path finder can reach (a bounded `group_generate_path` over the
+best four) added nothing on top of it (300 turns legacy +1.5% for both together) and was left out.
+Training workers only once an improvement is buildable (no early idle workers: -68% idle
+worker-turns) measured flat to negative on the same seeds (legacy -1.0%, full games power -10.6%
+at turn 300) and was not kept.
+
 ## Field armies (`military.rs`, `campaign.rs`)
 
 Each army group is a stack; per decision, in order:
