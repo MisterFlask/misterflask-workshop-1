@@ -243,8 +243,11 @@ export function drawHud(r3d, cam) {
       const bh = fs + 4;
       const bx = p.x - ts * 0.16 - bw;
       const by = p.y - bh - 2;
-      // The plate itself stays solid even while the abbreviation fades, so the count reads clearly.
-      g.globalAlpha = 1;
+      // The plate is as opaque as its most-solid part: solid while a count rides along (so the
+      // count always reads), but it fades out with a lone abbreviation, so a single-unit badge fades
+      // smoothly at the gameplay-to-close zoom transition instead of popping out as a solid plate.
+      const plateAlpha = Math.max(...parts.map(([, a]) => a));
+      g.globalAlpha = plateAlpha;
       g.fillStyle = "rgba(18,14,12,0.88)";
       roundRect(g, bx, by, bw, bh, 3);
       g.fill();
