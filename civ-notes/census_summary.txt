@@ -30,6 +30,10 @@ GRIGORI: 40 games; win 6 (15%; decided 6), alive at end 30, world share at 300 1
   world spell cast in 31/40 games, first seen at turn 353 on average (snapshots every 50 turns)
   unique units / hero (games with any at a snapshot): ADVENTURER 34/40 games (mean 0.1 at t300), DRAGON_SLAYER 25/40 games (mean 1.4 at t300), GRIGORI_MEDIC 0/40 games (mean 0.0 at t300), LUONNOTAR 0/40 games (mean 0.0 at t300)
   unique buildings (games with any; mean cities at t300): ADVENTURERS_GUILD 22/40 games (mean 0.3 at t300), TAVERN_GRIGORI 3/40 games (mean 0.0 at t300)
+HIPPUS: 40 games; win 6 (15%; decided 6), alive at end 26, world share at 300 1578 bp, at end 1497 bp (fair share 1667)
+  world spell cast in 30/40 games, first seen at turn 285 on average (snapshots every 50 turns)
+  unique units / hero (games with any at a snapshot): MAGNADINE 5/40 games (mean 0.0 at t300), MERCENARY_MOUNTED 0/40 games (mean 0.0 at t300)
+  unique buildings (games with any; mean cities at t300): -
 ILLIANS: 40 games; win 5 (12%; decided 5), alive at end 30, world share at 300 1626 bp, at end 1460 bp (fair share 1667)
   world spell cast in 35/40 games, first seen at turn 209 on average (snapshots every 50 turns)
   unique units / hero (games with any at a snapshot): HIGH_PRIEST_OF_WINTER 1/40 games (mean 0.0 at t300), JAVELIN_THROWER 36/40 games (mean 5.0 at t300), PRIEST_OF_WINTER 1/40 games (mean 0.0 at t300), WILBOMAN 0/40 games (mean 0.0 at t300)
@@ -42,6 +46,10 @@ KURIOTATES: 40 games; win 2 (5%; decided 2), alive at end 24, world share at 300
   world spell cast in 36/40 games, first seen at turn 201 on average (snapshots every 50 turns)
   unique units / hero (games with any at a snapshot): AIRSHIP 0/40 games (mean 0.0 at t300), CENTAUR 13/40 games (mean 0.5 at t300), CENTAUR_ARCHER 31/40 games (mean 8.4 at t300), CENTAUR_CHARGER 30/40 games (mean 1.3 at t300), CENTAUR_LANCER 2/40 games (mean 0.0 at t300), EURABATRES 0/40 games (mean 0.0 at t300), SWORDSMAN 8/40 games (mean 0.1 at t300)
   unique buildings (games with any; mean cities at t300): JEWELER 1/40 games (mean 0.0 at t300), TAILOR 24/40 games (mean 0.7 at t300)
+LANUN: 40 games; win 16 (40%; decided 16), alive at end 28, world share at 300 1788 bp, at end 1930 bp (fair share 1667)
+  world spell cast in 5/40 games, first seen at turn 588 on average (snapshots every 50 turns)
+  unique units / hero (games with any at a snapshot): BOARDING_PARTY 13/40 games (mean 0.3 at t300), GUYBRUSH 24/40 games (mean 0.2 at t300), PIRATE 15/40 games (mean 0.1 at t300), SWORDSMAN 25/40 games (mean 4.5 at t300), WAR_TORTOISE 0/40 games (mean 0.0 at t300)
+  unique buildings (games with any; mean cities at t300): HARBOR_LANUN 27/40 games (mean 0.9 at t300)
 LJOSALFAR: 40 games; win 11 (28%; decided 11), alive at end 29, world share at 300 1642 bp, at end 1707 bp (fair share 1667)
   world spell cast in 16/40 games, first seen at turn 460 on average (snapshots every 50 turns)
   unique units / hero (games with any at a snapshot): FLURRY 5/40 games (mean 0.0 at t300), FYRDWELL 1/40 games (mean 0.0 at t300), GILDEN 31/40 games (mean 0.4 at t300), SWORDSMAN 18/40 games (mean 1.0 at t300)
@@ -61,4 +69,8 @@ SHEAIM: 40 games; win 1 (2%; decided 1), alive at end 21, world share at 300 131
 SIDAR: 40 games; win 2 (5%; decided 2), alive at end 28, world share at 300 1531 bp, at end 1333 bp (fair share 1667)
   world spell cast in 22/40 games, first seen at turn 323 on average (snapshots every 50 turns)
   unique units / hero (games with any at a snapshot): DIVIDED_SOUL 30/40 games (mean 1.1 at t300), GHOST 11/40 games (mean 0.1 at t300), RATHUS 18/40 games (mean 0.1 at t300)
+  unique buildings (games with any; mean cities at t300): -
+SVARTALFAR: 40 games; win 8 (20%; decided 8), alive at end 31, world share at 300 1512 bp, at end 1513 bp (fair share 1667)
+  world spell cast in 32/40 games, first seen at turn 246 on average (snapshots every 50 turns)
+  unique units / hero (games with any at a snapshot): ALAZKAN 17/40 games (mean 0.3 at t300), ILLUSIONIST 0/40 games (mean 0.0 at t300), NYXKIN 2/40 games (mean 0.0 at t300), SWORDSMAN 14/40 games (mean 0.7 at t300)
   unique buildings (games with any; mean cities at t300): -
