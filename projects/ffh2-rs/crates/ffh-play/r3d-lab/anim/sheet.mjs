@@ -10,8 +10,9 @@
 //      with the clip's events marked;
 //   D  (not blind) the validator's failed and scored metrics.
 //
-// `blind` drops every name, number and verdict except frame indices (vision judges must not be
-// told what they are looking at, nor what the validator thinks).
+// `blind` drops every name and verdict, keeping cell numbers and times (vision judges must not be
+// told what they are looking at, nor what the validator thinks, but timing needs the clock: the
+// cells sample the frames, and read as consecutive they make every motion look 2-3x faster).
 
 import { Image, camera, renderFrame, text } from "./raster.mjs";
 import { model, check } from "./check.mjs";
@@ -82,7 +83,7 @@ export function sheet(b, opts = {}) {
   if (!blind) {
     const fails = results.filter((r) => r.hard && !r.pass).length;
     text(out, 10, y, `${b.recipe} ${b.clipName} ${b.param} v${b.variant}  ${b.frames} frames at ${b.fps} fps  ${b.clip.dur}s  ${fails ? fails + " hard fails" : "pass"}`, fails ? [170, 20, 20] : INK, 2);
-  } else text(out, 10, y, `frames left to right, ${b.fps} per second`, INK, 2);
+  } else text(out, 10, y, `${frames.length} of ${b.frames} frames (${b.fps} a second, ${b.clip.dur}s), left to right; each cell shows its time`, INK, 2);
   y += 22;
   // A: the true-size strip, then the enlarged cells.
   const game = (f, w = cell, h = cell) => {
@@ -97,7 +98,8 @@ export function sheet(b, opts = {}) {
     const cx = 10 + (i % per) * (cell * K + 4), cy = y + Math.floor(i / per) * (cell * K + 18);
     out.paste(game(f), cx, cy, K);
     const ev = Object.entries(b.clip.events ?? {}).filter(([, t]) => Math.round(t * b.fps) === f).map(([n]) => n);
-    text(out, cx + 2, cy + cell * K + 3, blind ? `${i + 1}` : `F${f} ${b.times[f].toFixed(2)}S ${ev.join(" ")}`, INK, 2);
+    // Blind cells keep their time (timing is what is judged) but not the events' names.
+    text(out, cx + 2, cy + cell * K + 3, blind ? `${i + 1}  ${b.times[f].toFixed(2)}S` : `F${f} ${b.times[f].toFixed(2)}S ${ev.join(" ")}`, INK, 2);
   });
   y += rowsA * (cell * K + 18) + 6;
   // B: the timing chart at the closest zoom.

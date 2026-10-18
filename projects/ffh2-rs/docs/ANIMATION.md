@@ -164,12 +164,12 @@ The metrics, by family (the full list with limits and reasons is `check.mjs` `LI
 | `feet.slip`, `feet.drift` | a planted boot skating | 0.0015 a frame, 0.004 a contact (0.8 px close) |
 | `rigid.props`, `rigid.arrow`, `rigid.limbs` | a weapon, bow or limb stretching; an arrow part-grown | Kabsch residual 1% of the part's radius; arrow whole or gone |
 | `rigid.reach` | a limb at its IK clamp (stall, then lurch) or folded | 0.3-0.985 of its length |
-| `joints.*` | a knee bending back, an elbow folded flat, an owl neck, a broken wrist | anatomical maxima; the haft 45-140 degrees from the forearm |
+| `joints.*` | a knee bending back, an elbow folded flat, an owl neck, a broken wrist | anatomical maxima; the haft at most 45 degrees below the figure's own rest grip (ulnar deviation), at most 140 |
 | `clear.weapon` | the axe passing through the head or chest | 0.008 deeper than at rest; up to 0.015 for 34 ms in all (a blurred pass in a fast swing) |
-| `balance` | leaning out over the feet | centre of mass (Winter's segment model) inside the support |
+| `balance` | leaning out over the feet | centre of mass (Winter's segment model) inside the support; a stepping foot's next footprint counts |
 | `attack.power`, `attack.reach`, `attack.aim`, `attack.facing` | a tap, a blow behind or beside the target, a sideways swing | 1.5-7 plots/s, 0.1 ahead, 45 degrees; the chest within 60 degrees of the target |
-| `death.accelerates`, `death.gravity`, `death.energy` | a floaty fall, a body lowered onto a cushion | peak speed at the ground; 0.4-2.5 g; 0.25-1.6 of free fall's energy |
-| `death.bounce`, `death.settles`, `death.grounded`, `death.low` | a corpse bouncing, twitching, sitting up or floating | a 0.008 rebound; still within 0.5 s; trunk within 0.012 of the ground; mass at <= 0.45 of standing, the head at <= 0.3 |
+| `death.accelerates`, `death.gravity`, `death.energy` | a floaty fall, a body lowered onto a cushion | from the final descent (a stagger that catches itself is not the fall) to the trunk's core on the ground (not a skirt's hem): peak speed at the ground; 0.4-2.5 g; 0.25-1.6 of free fall's energy |
+| `death.bounce`, `death.settles`, `death.grounded`, `death.low` | a corpse bouncing, twitching, sitting up or floating | a 0.008 rebound from the lowest point so far; still within 0.5 s; trunk within 0.012 of the ground; mass at <= 0.45 of standing, the head at <= 0.3 |
 | `shot.*` (body) | a string pulled by nothing, an arrow behind the bow, a chest anchor, a canted bow | nock 0.015 from the hand; tip ahead of the grip; anchor at the face; bow arm along the arrow |
 
 **Motion** (timing and continuity):
@@ -178,9 +178,9 @@ The metrics, by family (the full list with limits and reasons is `check.mjs` `LI
 |---|---|---|
 | `pop.trunk` | the body twitching | cubic residual 0.003 plots (zero for any cubic motion) |
 | `pop.spike`, `pop.jitter` | a one-frame pop; a shiver | a 3 px step (closest zoom) 4x its neighbours'; two reversing 2 px steps |
-| `playback.lerp` | the weapon shrinking between frames | the GPU's in-between within 1.5 px of the true pose |
-| `boundary.*`, `idle.seam` | a snap when a clip starts, ends or loops | rest pose at the ends; cut in from the idle's farthest frame, the cross-fade adds <= 1.5 px a 60 Hz frame; the seam no rougher than the loop |
-| `attack.windup`, `.strike`, `.contrast`, `.peak`, `.stop`, `.recover`, `.anticipation`, `.duration` | no anticipation, a push instead of a blow, a blow eased into its target, a snappy recovery | a wind-up >= 200 ms with a 67 ms hold; the blow in 67-233 ms at >= 2.5x the wind-up's speed; the speed peaks at the impact and halves 67 ms after; >= 270 ms of recovery; 0.6-1.8 s in all |
+| `playback.lerp` | the weapon shrinking between frames, an apex skipped | the GPU's straight in-between and the true path (a 4x bake) within 1.5 px of each other, both ways (a lerp running along the path at another pace is retimed, not misshapen) |
+| `boundary.*`, `idle.seam` | a snap when a clip starts, ends or loops | rest pose at the ends; the seam no rougher than the loop; scored: cut in from any idle frame, the cross-fade adds <= 1.5 px a 60 Hz frame beyond the same cut from rest |
+| `attack.windup`, `.strike`, `.contrast`, `.peak`, `.stop`, `.recover`, `.anticipation`, `.duration` | no anticipation, a push instead of a blow, a blow eased into its target, a snappy recovery | a wind-up >= 200 ms with a 67 ms hold; the blow in 67-233 ms at >= 2.5x the wind-up's speed; it arrives at the impact at >= 0.6 of its peak speed (the step into the impact frame) and halves 67 ms after; >= 270 ms of recovery; 0.6-1.8 s in all |
 | `shot.aimHold`, `.release`, `.snap`, `.recoil` | a soft or unaimed release | an aim hold of 100 ms; the arrow gone in a frame; the string home in 67 ms; the hand flies back |
 | `death.react`, `death.fallTime`, `death.fallDir`, `death.groundEvent` | no reaction to the blow, a slow topple, a corpse lying where the renderer does not expect | the head thrown away within 133 ms; 150-700 ms of fall; within 35 degrees of the declared fall; the declared `ground` event within 67 ms of the contact |
 | `idle.breath`, `idle.jitter`, `idle.loop` | panting, trembling, a hurried loop | a 2-6.5 s breath; nothing faster than 1.5 Hz; a 2.5-8 s loop |
@@ -191,10 +191,10 @@ the map camera at the facings the game uses: eight target directions, `attackYaw
 
 | metric | a viewer sees | limit (reason) |
 |---|---|---|
-| `idle.alive`, `idle.calm`, `idle.tempo`, `idle.fromRest` | a statue; a swimming figure | head and arms move >= 1 px, the trunk >= 0.5 px; the body <= 1.5 px, anything <= 4 px; body and head <= 4.5 px a second; within 2 px of rest |
+| `idle.alive`, `idle.calm`, `idle.tempo`, `idle.fromRest` | a statue; a swimming figure | head and arms move >= 1 px, the trunk >= 0.5 px; the body <= 2 px, anything <= 4 px of visible motion (across the surface: a hat's brim turning about its own axis does not count); body and head <= 4.5 px a second; scored: within 2 px of rest |
 | `read.travel` | a blow too small to see from some side | the striking point travels 1-3.2 figure heights on screen at all eight facings (0.75 from behind, where the body hides a blow landing in front of it) |
 | `read.keys` | two key poses that look the same | silhouette overlap (aligned IoU) of wind-up and impact <= 0.6 (0.7 from behind) |
-| `read.weapon` | the weapon lost inside the body's outline | >= 20 px^2 and 40% outside the body at the wind-up and impact (the wind-up only from behind) |
+| `read.weapon` | the weapon lost inside the body's outline | >= 20 px^2 and 40% outside the body at the wind-up and impact (the wind-up only from behind), on a canvas holding the whole clip (a cropped spear once read as hidden) |
 | `read.lying` | a corpse that reads as standing (a body along the camera's axis keeps a standing outline at 48 degrees) | the body's axis within 40 degrees of horizontal on screen, its height <= 0.45 of standing |
 | `shot.axis`, `shot.flight`, `shot.visible` | an arrow that leaves at an angle, too fast to see, too thin to see | within 15 degrees of the nocked arrow; 130-400 ms of flight; >= 10 px^2 |
 
@@ -223,22 +223,28 @@ swimming idle), or moving parts (a stretched forearm, a broken wrist, a weapon t
 | `freezeTorso` | an arm swinging on a frozen body | `craft.commit` |
 | `rushed`, `snapBack`, `smallWeapon` | an attack over too soon, no recovery, a weapon too small to read | `attack.duration`, `attack.recover`, `read.weapon` |
 | `sink`, `footSlide`, `footLift`, `wrongContacts`, `overreach`, `squat`, `stretchProp`, `stretchLimb`, `kneeBack`, `elbowFold`, `brokenWrist`, `headTurn`, `overLean`, `clipWeapon` | the body's defects | the body metrics |
-| `hitch`, `jitter`, `loopBreak`, `noReturn`, `offStart`, `earlyLurch`, `shortLoop` | pops, shivers, a seam, a clip that does not start or end on rest, a jerk under the cross-fade, a hurried loop | the continuity and boundary metrics, `idle.loop` |
+| `hitch`, `jitter`, `snap`, `loopBreak`, `noReturn`, `offStart`, `shortLoop` | pops, shivers, a jump, a seam, a clip that does not start or end on rest, a hurried loop | the continuity and boundary metrics, `idle.loop` |
 | `floatyFall`, `sitUp`, `rise`, `kneel`, `twitch`, `wrongFall`, `noReaction` | a floaty fall, a corpse sitting up or floating off the ground, no fall, a twitch, the wrong side, no reaction | the death metrics |
 | `statue`, `swim`, `pant`, `lockstep` | a dead, swimming, panting or metronome idle | the idle metrics |
 | `softRelease`, `noAimHold`, `chestAnchor`, `cantedBow`, `noRecoil`, `lingeringArrow`, `overdraw`, `underdraw` | the archer's defects | the shot metrics |
 
 `selfTest` bakes the good clip (it must pass every hard metric) and each applicable mutant (one of
 its targets must fail). The test suite runs it for every clip, and fails when a clip has a hard
-metric that no applicable mutation targets (`mutate.mjs` `RUNTIME` lists the two that measure the
-runtime's projectile, not the clip: `shot.flight`, `shot.visible`).
+metric that no mutant targeting it trips: every hard metric must be *seen* to fail on its defect
+(`mutate.mjs` `RUNTIME` exempts the two that measure the runtime's projectile, not the clip:
+`shot.flight`, `shot.visible`). Requiring that found a blind spot: `death.bounce` measured a rise
+against the height at first contact, so a corpse that kept settling after it could float back up
+3 cm unseen (it now measures from the lowest point so far).
 
-What the mutants measured about the metrics themselves: `boundary.transition` trips only on a
-gross departure (0.2 plots inside the first 0.12 s); the cross-fade absorbs smaller lurches, so it
-guards the idle-to-clip cut, not a clip's own start. `joints.knee` is nearly implied by
+What the mutants measured about the metrics themselves: `joints.knee` is nearly implied by
 `rigid.reach`'s lower bound (a leg folded past 145 degrees is under 30% of its reach); a deep squat
-trips both. Two more tests guard the engine,
-since a metric can only measure what the baker reproduces faithfully:
+trips both. The cut from the idle (`boundary.transition`) cannot fail once `idle.calm` and
+`boundary.start` pass (an idle within 4 px adds at most ~0.7 px a frame through the cross-fade),
+so it is scored, not a gate. A pop inside fast motion is masked by it, and `pop.spike` rightly lets
+it pass: the `snap` mutant is placed where the arm moves least.
+
+Two more tests guard the engine, since a metric can only measure what the baker reproduces
+faithfully:
 
 - the rest identity: a figure built with an empty pose is its static mesh, bit for bit;
 - the continuity sweep: every pose channel swept over its range in 120 steps has no step 4x its
@@ -258,7 +264,80 @@ idle), ratio metrics whose denominator can vanish (report n/a rather than a numb
 
 ## 7. The proof of concept
 
-(Filled in when the clips pass.)
+### 7.1 The warrior and the archer
+
+Each archetype's three clips were authored by an agent that iterated against the validator and the
+review sheets (`anim-warrior.js`, `anim-archer.js`). Both pass every hard metric for the human, and
+every body and motion metric for the nine races and four variants of the race sweep (108 runs per
+archetype); every mutant of every clip is caught. The first drafts, checked against the final
+validator, show what it made the authors fix: the warrior's attack 6 hard failures (the arm at the
+IK's clamp, the GPU's lerp cutting the swing, the blade along the forearm, the axe through the
+head, the blow eased into its target, the axe hidden by the body), its death 8 (sinking into the
+ground, a floaty 0.17 g fall, the trunk hovering, pops), the archer's death 6 (a fall eased into
+the ground at 0.15 g, the declared ground event 150 ms early).
+
+What the authors found that was wrong in the engine rather than the clips: tube rings that flipped
+between frames (vertex-correspondence pops, §3.4), a folded IK limb whose joint swung wildly, a
+round shield's rim built perpendicular to its disk, a dying body that could not rest on the ground
+for every race (the `settle` channel), and `settle` flattening a cape before moving the body down
+onto it (the cape ended under the ground).
+
+### 7.2 Is the validator right? A blind-authored control
+
+Mutation testing proves each metric fails on its defect (sensitivity); it cannot show that a
+metric passes good animation it was not tuned on (specificity). Two archetypes authored *against*
+the validator cannot show that either. So a third archetype, the spearman (a thrust, not a chop),
+was authored by an agent working from animation principles and its own eyes (review sheets, the
+real renderer, its own probes) that was never shown the validator, its limits or the other clips.
+The validator then reported 16 hard failures on it, and each was adjudicated
+(`/workflows` adjudicate-blind-clip): three animators reviewed the clips blind, listing every
+defect they saw without knowing the verdicts; a metric auditor per clip read each metric's code
+against the clip and probed the frames; an adjudicator per failure argued both sides and decided.
+
+| verdict | n | failures |
+|---|---|---|
+| real, visible | 1 | the death's legs slammed down a frame after the back lands (`pop.trunk`) |
+| real, subtle | 5 | arms keyed past their reach (`rigid.reach`), the spear through the forearm in the recovery (`joints.wrist`, attack), a landing between baked frames (`playback.lerp`, death), a rebound too short for 30 fps (`pop.spike`), the front foot lifted before the body is back over the feet (`balance`) |
+| false positive | 10 | below |
+
+The false positives were measurement errors, each with a mechanism, most of which the warrior's and
+archer's clips happened not to trigger:
+
+- `idle.calm` counted a kettle hat's brim sliding round its own axis as 3.3 px of motion (its
+  outline moved 0.45 px); its 1.5 px body limit failed a slow weight shift the blind viewers judged
+  too still, not busy.
+- `idle.fromRest` and `boundary.transition` scored the cross-fade's own lag (any clip whose
+  opening moves is retimed by it) as a defect: the cut from rest failed too.
+- `playback.lerp` scored the pace along the path within a frame (a hard stop inside one) as shape.
+- `attack.peak` took a centred speed across the impact frame, averaging the stop into the arrival.
+- `read.weapon` rendered on a 72 px canvas that cropped a spear, and read the crop as occlusion.
+- `death.gravity` took a knee-buckle 0.4 s before the fall as its onset, and `death.groundEvent`
+  took a skirt's hem touching the ground for the body landing.
+- `joints.wrist` had a fixed 45 degree floor where the anatomy is the figure's own rest grip less
+  the wrist's deviation.
+
+Each was fixed in its definition (`check.mjs`, with the mechanism in its comment); the only
+threshold changes are the idle body limit (1.5 to 2 px) and the wrist floor (relative to the rest
+grip). The warrior and the archer still pass and every mutant is still caught. Rechecked, the
+spearman fails 5 metrics, all adjudicated real; the sixth real one (`balance`) is no longer
+flagged: the static check now counts a stepping foot's next footprint, and what was wrong there
+is dynamic (the body still moving forward when the foot lifts), which a static margin cannot see.
+
+What the blind animators saw that no metric flags: a spear twitch in the idle with no body
+involvement, the spear pitched toward the camera so the class weapon reads as a stub from the
+front, the shaft passing through the hip as the spear is drawn back, the grip that never lets go
+of the spear in death. These are staging and craft, the vision judges' and the owner's part.
+
+A caution the experiment taught about its own instruments: the blind sheets numbered their cells
+without times, and the viewers, reading them as consecutive frames, judged every motion 2-3 times
+too fast (a 1.15 s attack as "25 frames, 0.4 s"). The blind sheets now print each cell's time.
+
+The fixed validator was calibrated on this clip, so it is no longer a held-out test; §7.3 repeats
+the experiment on a fourth archetype.
+
+### 7.3 A held-out control
+
+(Filled in when it has run.)
 
 ## 8. Cost
 

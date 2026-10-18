@@ -96,10 +96,12 @@ function rotateToward(p, c, a, bdir, w) {
 
 const sub3 = (a, c) => [a[0] - c[0], a[1] - c[1], a[2] - c[2]];
 
-/** The first frame a fallen body's trunk (body and head vertices) reaches the ground. */
+/** The first frame a fallen body's trunk reaches the ground (as check.mjs: the body above the
+ *  hips and the head, not a skirt hanging below them). */
 function groundFrame(b) {
   const trunk = [];
-  for (let v = 0; v < b.count; v++) if (b.bone[v] === BONE.BODY || b.bone[v] === BONE.HEAD) trunk.push(v);
+  const hipY = Math.min(b.joints[0].hipL[1], b.joints[0].hipR[1]);
+  for (let v = 0; v < b.count; v++) if ((b.bone[v] === BONE.BODY && b.pos[v * 3 + 1] >= hipY) || b.bone[v] === BONE.HEAD) trunk.push(v);
   for (let f = 3; f < b.frames; f++) {
     let lo = Infinity;
     for (const v of trunk) lo = Math.min(lo, b.pos[(f * b.count + v) * 3 + 1]);
@@ -329,11 +331,6 @@ export const MUTATIONS = [
     name: "offStart", kinds: ["attack", "death"], targets: ["boundary.start"],
     clip: (d) => bump(bump(d, "rHand", 0, 0.25, [0, 0.06, 0.06]), "lean", 0, 0.25, 0.25),
   },
-  {
-    // A lurch away from rest (0.2 plots) inside the runtime's cross-fade from the idle, whose
-    // blend weight then sweeps across the whole gap at once.
-    name: "earlyLurch", kinds: ["attack", "death"], targets: ["boundary.transition"],
-    clip: (d) => bump(d, "root", 0.12, 0.12, [0.14, 0, 0.14]),
   },
   { name: "shortLoop", kinds: ["idle"], targets: ["idle.loop"], clip: (d) => timeScale(d, 0.45) },
   { name: "rushed", kinds: ["attack"], archer: false, targets: ["attack.duration"], clip: (d) => timeScale(d, 0.45) },

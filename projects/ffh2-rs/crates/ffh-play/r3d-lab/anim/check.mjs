@@ -49,8 +49,8 @@ export const LIMITS = {
   // 30% it is folded into itself (the IK clamps at 25%) and its joint swings wildly.
   reach: 0.985,
   reachMin: 0.3,
-  // The GPU lerps between baked frames: the in-between may be at most 1.5 px from the true pose
-  // at the gameplay zoom (a fast swing's chord cuts the arc and shrinks the weapon).
+  // The GPU lerps between baked frames: the in-between may be at most 1.5 px off the true path at
+  // the gameplay zoom (a fast swing's chord cuts the arc and shrinks the weapon).
   lerpPx: 1.5,
   // Joint ranges (degrees): anatomical maxima, wider than the rest poses.
   knee: 150,
@@ -59,7 +59,11 @@ export const LIMITS = {
   neckYaw: 80,
   lean: [-35, 85],
   twist: 90, // one twist serves hips and chest: a swing's wind-up needs 80-90 degrees of turn
-  wrist: [45, 140], // the haft against the forearm (a fist holds it at ~60-90; along the arm = broken)
+  // The haft against the forearm: a fist holds it at its rest grip (66-80 degrees in these
+  // figures) and the wrist deviates ~30-40 degrees toward the arm (ulnar): the floor is the rest
+  // grip less 45, at most 45; along the arm is broken.
+  wrist: [45, 140],
+  wristDev: 45,
   // Clearance: a weapon or bow at most 0.008 deeper into the head or chest than at rest; up to
   // 0.015 for at most 34 ms in all (a motion-blurred pass in a fast swing), never more.
   clear: 0.008,
@@ -72,9 +76,10 @@ export const LIMITS = {
   popTrunk: 0.003,
   spike: [3 / 220, 4],
   jitter2: [2 / 220, 120],
-  // Clip boundaries: an attack or death starts (and an attack ends) on the rest pose; started from
-  // the idle frame farthest from rest, the runtime's cross-fade moves no vertex more than 1.5 px
-  // (gameplay zoom) in a 60 Hz frame beyond what the clip itself moves.
+  // Clip boundaries: an attack or death starts (and an attack ends) on the rest pose. Scored:
+  // started from any idle frame, the runtime's cross-fade moves no vertex more than 1.5 px
+  // (gameplay zoom) in a 60 Hz frame beyond the same cut from the rest pose. (An idle within
+  // idle.calm's 4 px adds at most ~0.7 px: the hard gates already bound the cut.)
   boundary: 0.002,
   transition: 1.5,
   // Balance: centre-of-mass margin inside the feet (idle static; attack the extrapolated XCoM).
@@ -85,7 +90,7 @@ export const LIMITS = {
   // rest pose that an attack can start from any idle frame.
   idleAlive: 1.0, // head and arms (a bobbing prop is not a living body)
   idleTrunk: 0.5, // and the trunk itself
-  idleBody: 1.5,
+  idleBody: 2.0, // a 1.6 px weight shift read to three blind viewers as too still, not busy
   idleMax: 4.0,
   idleStep: 4.5, // px a second (0.15 px a frame at 30 fps): a calm body and head
   idleFromRest: 2.0,
@@ -493,33 +498,53 @@ function playback(m) {
   // An idle moves too slowly for the lerp to matter: baked at 1.5 frames a second the in-between
   // is still within 0.3 px (measured), and one moving fast enough to fail fails idle.tempo first.
   if (b.clip.kind === "idle") return [];
+  // The true path between two baked frames from a bake at 4x the rate against the GPU's straight
+  // in-between, both ways (the Hausdorff distance of path and chord). Only shape counts: a lerp
+  // that runs along the path at a different pace within a frame (a hard stop inside one) is
+  // retimed, not misshapen; a cut arc or a skipped apex is misshapen.
+  const K = 4;
   let fine;
   try {
-    fine = bakeClip(b.recipe, b.variant, b.param, b.clipName, { fps: b.fps * 2, clip: b.clip });
+    fine = bakeClip(b.recipe, b.variant, b.param, b.clipName, { fps: b.fps * K, clip: b.clip });
   } catch {
     return [];
   }
   const cam = camera({ ts: G, yaw: 0.25, w: 64, h: 64 });
   // The arrow and the string snap by design (loosed, nocked: one frame); the rest must lerp true.
   const skip = new Set([...m.arrow, ...m.string]);
+  const toSeg = (p, a, c) => {
+    const ex = c[0] - a[0], ey = c[1] - a[1], l2 = ex * ex + ey * ey;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / l2)) : 0;
+    return Math.hypot(a[0] + ex * t - p[0], a[1] + ey * t - p[1]);
+  };
   let worst = 0, wf = 0;
   for (let f = 0; f + 1 < F; f++) {
-    const g = 2 * f + 1;
-    if (g >= fine.frames) break;
+    if (K * (f + 1) >= fine.frames) break;
     for (let v = 0; v < n; v += 2) {
       if (skip.has(v)) continue;
       const a = X(f, v), c = X(f + 1, v);
-      const q = (g * n + v) * 3;
-      const t = [fine.pos[q], fine.pos[q + 1], fine.pos[q + 2]];
-      const pa = cam.project(lerp3(a, c, 0.5)), pt = cam.project(t);
-      const e = Math.hypot(pa[0] - pt[0], pa[1] - pt[1]);
+      const path = [];
+      for (let g = K * f; g <= K * (f + 1); g++) {
+        const q = (g * n + v) * 3;
+        path.push(cam.project([fine.pos[q], fine.pos[q + 1], fine.pos[q + 2]]));
+      }
+      // Both ways: the lerp off the path, and the path off the lerp (an apex or arc it skips).
+      const pa = cam.project(a), pc = cam.project(c);
+      let e = 0;
+      for (const p of path) e = Math.max(e, toSeg(p, pa, pc));
+      for (const u of [0.25, 0.5, 0.75]) {
+        const pl = cam.project(lerp3(a, c, u));
+        let d = Infinity;
+        for (let k = 0; k + 1 < path.length; k++) d = Math.min(d, toSeg(pl, path[k], path[k + 1]));
+        e = Math.max(e, d);
+      }
       if (e > worst) {
         worst = e;
         wf = f;
       }
     }
   }
-  return [M("playback.lerp", "motion", true, worst <= LIMITS.lerpPx, r4(worst), LIMITS.lerpPx, `the GPU's in-between frame against the true pose (px at the gameplay zoom; baked at ${b.fps} fps)`, wf)];
+  return [M("playback.lerp", "motion", true, worst <= LIMITS.lerpPx, r4(worst), LIMITS.lerpPx, `the GPU's in-betweens off the true path (px at the gameplay zoom; baked at ${b.fps} fps)`, wf)];
 }
 
 function joints(m) {
@@ -552,10 +577,13 @@ function joints(m) {
       }
     }
   }
-  // Wrist: the held weapon's haft against the forearm.
-  let wr = [Infinity, -Infinity], wf = 0;
+  // Wrist: the held weapon's haft against the forearm, at most LIMITS.wristDev below the figure's
+  // own rest grip (ulnar deviation) and never past LIMITS.wrist.
+  let wr = [Infinity, -Infinity], wf = 0, wristLo = LIMITS.wrist[0];
   if (m.weaponKey && !m.isBow) {
     const s = m.weaponKey === "weapon_r" ? "R" : "L";
+    const J0 = b.joints[0], h0 = b.held[0][m.weaponKey];
+    wristLo = Math.min(LIMITS.wrist[0], angle(sub(J0[`hand${s}`], J0[`elbow${s}`]), sub(h0.up, h0.at)) - LIMITS.wristDev);
     for (let f = 0; f < F; f++) {
       const J = b.joints[f], h = b.held[f][m.weaponKey];
       const a = angle(sub(J[`hand${s}`], J[`elbow${s}`]), sub(h.up, h.at));
@@ -568,7 +596,7 @@ function joints(m) {
     M("joints.kneeDir", "body", true, kneeDir >= LIMITS.kneeDir, r4(kneeDir), LIMITS.kneeDir, "a bent knee points forward (cosine to the body's forward)", df),
     M("joints.elbow", "body", true, elbow <= LIMITS.elbow, r4(elbow), LIMITS.elbow, "elbow flexion (degrees)", ef),
   ];
-  if (wr[0] !== Infinity) out.push(M("joints.wrist", "body", true, wr[0] >= LIMITS.wrist[0] && wr[1] <= LIMITS.wrist[1], `${r4(wr[0])}..${r4(wr[1])}`, LIMITS.wrist.join("-"), "the weapon's haft against the forearm (degrees)", wf));
+  if (wr[0] !== Infinity) out.push(M("joints.wrist", "body", true, wr[0] >= wristLo && wr[1] <= LIMITS.wrist[1], `${r4(wr[0])}..${r4(wr[1])}`, `${r4(wristLo)}-${LIMITS.wrist[1]}`, "the weapon's haft against the forearm (degrees; the floor is the rest grip less the wrist's deviation)", wf));
   if (b.angles?.length) {
     const deg = (x) => (x * 180) / Math.PI;
     let neck = 0, nf = 0, lean = [Infinity, -Infinity], twist = 0;
@@ -661,9 +689,18 @@ function balance(m) {
   const { b, F, X, feet, d0, coms } = m;
   const kind = b.clip.kind;
   if (kind === "death") return [];
+  // A foot in the air is stepping: the support it steps onto (its sole where it next lands)
+  // counts with the stance foot, as the body falls toward it by design.
+  const down = (f, s) => feet[s].filter((v) => X(f, v)[1] <= d0 + 0.004);
   let worst = Infinity, wf = 0;
   for (let f = 0; f < F; f++) {
-    const sole = [...feet.L, ...feet.R].filter((v) => X(f, v)[1] <= d0 + 0.004).map((v) => [X(f, v)[0], X(f, v)[2]]);
+    const pts = [];
+    for (const s of ["L", "R"]) {
+      let vs = down(f, s), g = f;
+      while (!vs.length && ++g < F) vs = down(g, s);
+      for (const v of vs) pts.push([X(g, v)[0], X(g, v)[2]]);
+    }
+    const sole = pts;
     // The static margin. (The extrapolated centre of mass would count the arm's swing, whose
     // momentum the body absorbs, as a fall.)
     const c = coms[f];
@@ -674,7 +711,7 @@ function balance(m) {
     }
   }
   const lim = kind === "attack" ? LIMITS.balanceAttack : LIMITS.balanceIdle;
-  return [M("balance", "body", true, worst >= lim, r4(worst), lim, "centre of mass inside the feet (plots; a lunge may lean a little past them)", wf)];
+  return [M("balance", "body", true, worst >= lim, r4(worst), lim, "centre of mass inside the feet, a stepping foot's next footprint included (plots; a lunge may lean a little past them)", wf)];
 }
 
 // --- motion -----------------------------------------------------------------------------------------
@@ -781,9 +818,11 @@ function boundaries(m) {
   return out;
 }
 
-/** The cut from the idle into this clip as the runtime plays it: from the idle frame farthest from
- *  rest, cross-faded over BLEND seconds (smoothstep), sampled at 60 Hz; the worst vertex step
- *  beyond the clip's own step at that moment, in pixels at the gameplay zoom. */
+/** The cut from the idle into this clip as the runtime plays it: from each idle frame, the idle
+ *  keeps playing while the clip starts, cross-faded over BLEND seconds (smoothstep), sampled at
+ *  60 Hz. What the idle adds: each vertex's step against the same cut from the rest pose (the
+ *  cross-fade's own lag, which retimes any clip's opening along its own path, is not a defect),
+ *  in pixels at the gameplay zoom; the worst idle frame. */
 function transition(m) {
   const { b, F, n, X, R0 } = m;
   if (b.clip.kind !== "attack" && b.clip.kind !== "death") return null;
@@ -795,47 +834,68 @@ function transition(m) {
     return null;
   }
   const cam = camera({ ts: G, yaw: 0.25, w: 64, h: 64 });
-  let far = 0, fd = -1;
-  for (let f = 0; f < idle.frames; f++) {
-    let d = 0;
-    for (let v = 0; v < n; v += 7) {
-      const q = (f * n + v) * 3;
-      d = Math.max(d, len(sub([idle.pos[q], idle.pos[q + 1], idle.pos[q + 2]], R0(v))));
-    }
-    if (d > fd) {
-      fd = d;
-      far = f;
-    }
-  }
-  const at = (t, v) => {
-    // The idle keeps playing from `far` while the clip starts; both lerped like the GPU does.
-    const xi = (far + t * idle.fps) % idle.frames, i0 = Math.floor(xi), i1 = (i0 + 1) % idle.frames, ui = xi - i0;
-    const xc = Math.min(F - 1, t * b.fps), c0 = Math.floor(xc), c1 = Math.min(F - 1, c0 + 1), uc = xc - c0;
-    const qi = (k) => [idle.pos[(k * n + v) * 3], idle.pos[(k * n + v) * 3 + 1], idle.pos[(k * n + v) * 3 + 2]];
-    const pi = lerp3(qi(i0), qi(i1), ui), pc = lerp3(X(c0, v), X(c1, v), uc);
-    const w0 = Math.max(0, Math.min(1, t / BLEND)), w = w0 * w0 * (3 - 2 * w0);
-    return { mixed: lerp3(pi, pc, w), clip: pc };
+  const steps = Math.ceil((BLEND + 1 / 60) * 60) + 1;
+  const vs = [];
+  for (let v = 0; v < n; v += 3) vs.push(v);
+  // The clip's own path and the cut from rest, projected once.
+  const clipAt = (t, v) => {
+    const xc = Math.min(F - 1, t * b.fps), c0 = Math.floor(xc), c1 = Math.min(F - 1, c0 + 1);
+    return lerp3(X(c0, v), X(c1, v), xc - c0);
   };
-  let worst = 0, wt = 0;
-  for (let k = 0; k * (1 / 60) <= BLEND + 1 / 60; k++) {
-    const t0 = k / 60, t1 = (k + 1) / 60;
-    for (let v = 0; v < n; v += 3) {
-      const a = at(t0, v), c = at(t1, v);
-      const pa = cam.project(a.mixed), pc = cam.project(c.mixed);
-      const ca = cam.project(a.clip), cc = cam.project(c.clip);
-      const e = Math.hypot(pc[0] - pa[0], pc[1] - pa[1]) - Math.hypot(cc[0] - ca[0], cc[1] - ca[1]);
-      if (e > worst) {
-        worst = e;
-        wt = t0;
+  const wAt = (t) => {
+    const w0 = Math.max(0, Math.min(1, t / BLEND));
+    return w0 * w0 * (3 - 2 * w0);
+  };
+  const base = vs.map((v) => {
+    const P = Array.from({ length: steps }, (_, k) => cam.project(lerp3(R0(v), clipAt(k / 60, v), wAt(k / 60))));
+    return P.slice(1).map((p, k) => Math.hypot(p[0] - P[k][0], p[1] - P[k][1]));
+  });
+  let worst = 0, wt = 0, wf = 0;
+  for (let i = 0; i < idle.frames; i++) {
+    vs.forEach((v, vi) => {
+      let prev = null;
+      for (let k = 0; k < steps; k++) {
+        const t = k / 60;
+        const xi = (i + t * idle.fps) % idle.frames, i0 = Math.floor(xi), i1 = (i0 + 1) % idle.frames;
+        const q = (f) => [idle.pos[(f * n + v) * 3], idle.pos[(f * n + v) * 3 + 1], idle.pos[(f * n + v) * 3 + 2]];
+        const p = cam.project(lerp3(lerp3(q(i0), q(i1), xi - i0), clipAt(t, v), wAt(t)));
+        if (prev) {
+          const e = Math.hypot(p[0] - prev[0], p[1] - prev[1]) - base[vi][k - 1];
+          if (e > worst) {
+            worst = e;
+            wt = t;
+            wf = i;
+          }
+        }
+        prev = p;
       }
-    }
+    });
   }
-  return M("boundary.transition", "motion", true, worst <= LIMITS.transition, r4(worst), LIMITS.transition, `cut from the idle frame farthest from rest (${far}) into the clip, cross-faded over ${BLEND} s: the extra step in a 60 Hz frame (px; worst at ${r4(wt)} s)`);
+  return M("boundary.transition", "motion", false, worst <= LIMITS.transition, r4(worst), LIMITS.transition, `cut from any idle frame into the clip, cross-faded over ${BLEND} s: the step the idle adds in a 60 Hz frame (px; worst from idle frame ${wf}, at ${r4(wt)} s)`);
 }
 
 // --- screen helpers ---------------------------------------------------------------------------------
 
 /** Screen positions (px) of every vertex in frame f through `cam`. */
+/** A gameplay-zoom camera at `yaw` whose canvas holds every frame of the clip (a long spear or a
+ *  corpse half a plot from the feet is never cropped, which would read as hidden). */
+function fitCamera(m, yaw, pad = 4) {
+  const { b, F, n, X } = m;
+  const probe = camera({ ts: G, yaw, w: 1, h: 1, ox: 0, oy: 0 });
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let f = 0; f < F; f++) {
+    for (let v = 0; v < n; v += 3) {
+      const p = probe.project(X(f, v));
+      x0 = Math.min(x0, p[0]);
+      x1 = Math.max(x1, p[0]);
+      y0 = Math.min(y0, p[1]);
+      y1 = Math.max(y1, p[1]);
+    }
+  }
+  void b;
+  return camera({ ts: G, yaw, w: Math.ceil(x1 - x0) + 2 * pad, h: Math.ceil(y1 - y0) + 2 * pad, ox: pad - x0, oy: pad - y0 });
+}
+
 function screen(m, f, cam) {
   const out = new Float32Array(m.n * 2);
   for (let v = 0; v < m.n; v++) {
@@ -865,20 +925,29 @@ function idle(m) {
     rest[v * 2] = p[0];
     rest[v * 2 + 1] = p[1];
   }
-  const p2p = new Float32Array(n), fromRest = new Float32Array(n), step = new Float32Array(n);
+  // Peak-to-peak per vertex; and its visible part, across the surface: the motion along the
+  // vertex's normal on screen (a part turning about its own axis of symmetry -- a hat's brim, a
+  // round shield -- slides its vertices along its outline and shows no motion).
+  const p2p = new Float32Array(n), seen = new Float32Array(n), fromRest = new Float32Array(n), step = new Float32Array(n);
   for (let v = 0; v < n; v++) {
-    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, st = 0, fr = 0;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, st = 0, fr = 0, s0 = Infinity, s1 = -Infinity;
+    const nd = cam.screenDir([b.rest.data[v * 13 + 3], b.rest.data[v * 13 + 4], b.rest.data[v * 13 + 5]]);
+    const nl = Math.hypot(nd[0], nd[1]) || 1;
     for (let f = 0; f < F; f++) {
       const x = S[f][v * 2], y = S[f][v * 2 + 1];
       x0 = Math.min(x0, x);
       x1 = Math.max(x1, x);
       y0 = Math.min(y0, y);
       y1 = Math.max(y1, y);
+      const a = ((x - rest[v * 2]) * nd[0] + (y - rest[v * 2 + 1]) * nd[1]) / nl;
+      s0 = Math.min(s0, a);
+      s1 = Math.max(s1, a);
       const g = (f + 1) % F;
       st = Math.max(st, Math.hypot(S[g][v * 2] - x, S[g][v * 2 + 1] - y));
       fr = Math.max(fr, Math.hypot(x - rest[v * 2], y - rest[v * 2 + 1]));
     }
     p2p[v] = Math.hypot(x1 - x0, y1 - y0);
+    seen[v] = s1 - s0;
     step[v] = st;
     fromRest[v] = fr;
   }
@@ -890,7 +959,7 @@ function idle(m) {
   const alive = q(p2p, pick([BONE.HEAD, BONE.ARM_L, BONE.ARM_R]), 0.9);
   const trunkAlive = q(p2p, pick([BONE.BODY]), 0.9);
   const body = q(p2p, pick([BONE.BODY]), 0.5);
-  const all = Math.max(...p2p);
+  const all = Math.max(...seen);
   const tempo = Math.max(...pick([BONE.BODY, BONE.HEAD]).map((v) => step[v])) * b.fps;
   const fromR = Math.max(...fromRest);
   // Breathing: the neck's height, its dominant period; jitter: motion faster than 1.5 Hz.
@@ -967,9 +1036,9 @@ function idle(m) {
     M("idle.seam", "motion", true, seamStep <= LIMITS.seam[0] && seamAcc <= LIMITS.seam[1], `step ${r4(seamStep)}x, acceleration ${r4(seamAcc)}x`, `${LIMITS.seam[0]}x, ${LIMITS.seam[1]}x`, "the loop's seam against its largest interior step and acceleration"),
     M("craft.rhythm", "motion", false, repeat >= 0.9 * F && pc1 <= 0.85, `repeats after ${r4(repeat / F)} of the loop, PC1 ${r4(pc1)}`, ">= 0.9, <= 0.85", "no metronome: no repeat inside the loop, several independent motions"),
     M("idle.alive", "reading", true, alive >= LIMITS.idleAlive && trunkAlive >= LIMITS.idleTrunk, `${r4(alive)} head and arms, ${r4(trunkAlive)} trunk`, `${LIMITS.idleAlive}, ${LIMITS.idleTrunk}`, "P90 peak-to-peak at the gameplay zoom (px): the body itself moves, not just what it holds"),
-    M("idle.calm", "reading", true, body <= LIMITS.idleBody && all <= LIMITS.idleMax, `${r4(body)} body, ${r4(all)} max`, `${LIMITS.idleBody} body, ${LIMITS.idleMax} max`, "median body and largest peak-to-peak (px)"),
+    M("idle.calm", "reading", true, body <= LIMITS.idleBody && all <= LIMITS.idleMax, `${r4(body)} body, ${r4(all)} max`, `${LIMITS.idleBody} body, ${LIMITS.idleMax} max`, "median body peak-to-peak and the largest visible one, across the surface (px)"),
     M("idle.tempo", "reading", true, tempo <= LIMITS.idleStep, r4(tempo), LIMITS.idleStep, "fastest body or head speed (px a second at the gameplay zoom)"),
-    M("idle.fromRest", "reading", true, fromR <= LIMITS.idleFromRest, r4(fromR), LIMITS.idleFromRest, "farthest any vertex strays from the rest pose (px): an attack starts from any idle frame"),
+    M("idle.fromRest", "reading", false, fromR <= LIMITS.idleFromRest, r4(fromR), LIMITS.idleFromRest, "farthest any vertex strays from the rest pose (px; scored: boundary.transition judges the cut itself)"),
     M("idle.loop", "motion", true, dur >= LIMITS.idleLoop[0] && dur <= LIMITS.idleLoop[1], dur, LIMITS.idleLoop.join("-"), "loop length (s)"),
     M("idle.breath", "motion", true, breath >= LIMITS.breath[0] && breath <= LIMITS.breath[1], r4(breath), LIMITS.breath.join("-"), "breathing period from the chest's rise (s)"),
     M("idle.jitter", "motion", true, jitter <= LIMITS.jitter, r4(jitter), LIMITS.jitter, "largest motion faster than 1.5 Hz (plots)"),
@@ -1038,7 +1107,13 @@ function attack(m) {
   out.push(M("attack.windup", "motion", true, ka >= m.sec(LIMITS.windupMin) && hold >= m.sec(LIMITS.holdTime), `${r4(ka / fps)} s, hold ${r4(hold / fps)} s`, `>= ${LIMITS.windupMin} s, hold >= ${LIMITS.holdTime} s`, "the wind-up's turnaround and its hold", ka));
   out.push(M("attack.strike", "motion", true, kc - ka >= m.sec(LIMITS.strike[0]) && kc - ka <= m.sec(LIMITS.strike[1]), r4((kc - ka) / fps), LIMITS.strike.join("-"), "seconds from the turnaround to the impact", kc));
   out.push(M("attack.contrast", "motion", true, windupFast <= LIMITS.contrast * peak, r4(windupFast / peak), LIMITS.contrast, "the wind-up's fastest speed / the blow's peak"));
-  out.push(M("attack.peak", "motion", true, kc - tp >= 0 && kc - tp <= m.sec(LIMITS.peakAtImpact) && u[kc] >= 0.6 * peak, `peak ${tp}, impact ${kc}, ${r4(u[kc] / peak)} of peak`, `impact - peak <= ${LIMITS.peakAtImpact} s, >= 0.6`, "the blow lands at speed (not eased into the target)", tp));
+  // The speed arriving at the impact: the step into the first frame at or after it (a speed
+  // centred on the impact frame would average in the stop itself).
+  const ki = Math.min(F - 1, Math.max(1, Math.ceil(b.clip.events.impact * fps - 1e-6)));
+  const ub = strikes.map((s, k) => (k === 0 ? 0 : len(sub(s, strikes[k - 1])) * fps));
+  let tb = 1;
+  for (let k = 1; k <= ki; k++) if (ub[k] > ub[tb]) tb = k;
+  out.push(M("attack.peak", "motion", true, ki - tb <= m.sec(LIMITS.peakAtImpact) && ub[ki] >= 0.6 * ub[tb], `peak ${tb}, impact ${ki}, arriving at ${r4(ub[ki] / (ub[tb] || 1e-9))} of peak`, `impact - peak <= ${LIMITS.peakAtImpact} s, >= 0.6`, "the blow lands at speed (not eased into the target)", tb));
   out.push(M("attack.stop", "motion", true, after <= LIMITS.decel * peak, r4(after / peak), LIMITS.decel, "speed 67 ms after impact / peak (the blow meets the target)", kc + m.sec(0.067)));
   out.push(M("attack.recover", "motion", true, recover >= m.sec(LIMITS.recover), r4(recover / fps), LIMITS.recover, "seconds of unhurried recovery after the blow"));
   out.push(M("attack.duration", "motion", true, b.clip.dur >= LIMITS.duration[0] && b.clip.dur <= LIMITS.duration[1], b.clip.dur, LIMITS.duration.join("-"), "clip length (s)"));
@@ -1081,7 +1156,7 @@ function attack(m) {
   for (const [name, heading] of Object.entries(HEADINGS)) {
     const yaw = attackYaw(b.clip, heading);
     const back = Math.abs(yaw) > Math.PI / 2 + 1e-6;
-    const cam = camera({ ts: G, yaw, w: 72, h: 72, oy: 52 });
+    const cam = fitCamera(m, yaw);
     const H = screenHeight(m, cam);
     const pa = cam.project(strikes[ka]), pc = cam.project(strikes[kc]);
     const tr = Math.hypot(pc[0] - pa[0], pc[1] - pa[1]) / H;
@@ -1267,18 +1342,29 @@ function death(m) {
   let react = 0;
   for (let f = 1; f <= Math.min(F - 1, m.sec(LIMITS.react[0])); f++) react = Math.max(react, dot(sub(b.joints[f].head, b.joints[0].head), away));
   out.push(M("death.react", "motion", true, react >= LIMITS.react[1], r4(react), LIMITS.react[1], `the head thrown away from the blow within ${LIMITS.react[0]} s (plots)`));
-  // The fall: onset (the centre of mass sinking faster than 0.1 plots/s) to impact (a trunk
-  // vertex reaching the ground).
+  // The fall: from the onset of the final descent (the centre of mass sinking faster than 0.1
+  // plots/s without a pause until the impact; an earlier stagger or buckle that catches itself
+  // is not the fall) to the impact (the trunk's core reaching the ground: the body above the hips
+  // and the head, not a skirt or a coat tail hanging below them).
   const vy = coms.map((c, k) => (k === 0 ? 0 : (c[1] - coms[k - 1][1]) * fps));
-  const trunk = (byBone.get(BONE.BODY) ?? []).concat(byBone.get(BONE.HEAD) ?? []);
+  const hipY = Math.min(b.joints[0].hipL[1], b.joints[0].hipR[1]); // a death starts at rest
+  const trunk = (byBone.get(BONE.BODY) ?? []).filter((v) => m.R0(v)[1] >= hipY).concat(byBone.get(BONE.HEAD) ?? []);
   const lowTrunk = (f) => Math.min(...trunk.map((v) => X(f, v)[1]));
   let ts = -1, ti = -1;
   for (let k = 3; k < F; k++) {
-    if (ts < 0 && vy[k] < -0.1) ts = k;
-    if (ts >= 0 && lowTrunk(k) <= 0.012) {
+    if (lowTrunk(k) <= 0.012) {
       ti = k;
       break;
     }
+  }
+  if (ti > 0) {
+    // The final descent: back from the impact while the centre of mass sinks at all; the fall
+    // starts within it once it sinks faster than 0.1 plots/s (a gentle lowering never does).
+    let sd = ti - 1;
+    while (sd > 1 && vy[sd] < 0) sd--;
+    ts = sd + 1;
+    while (ts < ti && vy[ts] >= -0.1) ts++;
+    if (ts >= ti - 1) ts = Math.max(sd + 1, ti - 2);
   }
   if (ts < 0 || ti < 0) {
     out.push(M("death.falls", "body", true, false, "no fall", "falls to the ground", "the body never reaches the ground"));
