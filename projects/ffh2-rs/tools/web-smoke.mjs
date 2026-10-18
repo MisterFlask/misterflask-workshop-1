@@ -480,8 +480,14 @@ async function stagedAttack3d(bin, saves, url) {
   const cfg = encodeURIComponent(JSON.stringify({ animate: true, renderScale: 0.4, autoQuality: 0 }));
   await b.goto(`${url}/?renderer=3d&r3d=${cfg}&force3d=1`);
   await until2("window.ffh && window.ffh.ready", "the client to boot (3d attack)");
-  await until2(`window.ffh.mapView.renderer() === "3d" && !!window.ffh.mapView.r3d.cam`, "the 3D renderer", 180000);
+  await waitHuman("the game in the 3D renderer (attack)");
+  await answerPopups(false);
   const st = await loadStaged(bin, saves, "attack");
+  // The load screen may bring the map back in the saved renderer choice (the previous step's lost
+  // context chose the art): ask for the 3D one again.
+  if (!(await b.eval(`window.ffh.mapView.renderer() === "3d"`))) await b.eval(`window.ffh.setRenderer("3d")`);
+  await until2(`window.ffh.mapView.renderer() === "3d" && !!window.ffh.mapView.r3d && !!window.ffh.mapView.r3d.cam`, "the 3D renderer", 180000);
+  await answerPopups(false);
   // Stop the loop, draw once (it dresses the units and queues their looks), bake them.
   const looks = await b.eval(`(() => {
     const r = window.ffh.mapView.r3d;
@@ -498,7 +504,12 @@ async function stagedAttack3d(bin, saves, url) {
   await until2(`window.ffh.S.sel && window.ffh.S.sel.units[0] === ${st.unit}`, "the warrior selected (3d)");
   const e = await plotPos(st.x, st.y);
   await b.mouse(e.x, e.y, "right");
-  await until2(`(() => { const S = window.ffh.S; const me = S.units.get(${st.unit}); return !S.units.has(${st.enemy}) || !me || me.hp < me.max_hp; })()`, "the combat (3d)");
+  try {
+    await until2(`(() => { const S = window.ffh.S; const me = S.units.get(${st.unit}); return !S.units.has(${st.enemy}) || !me || me.hp < me.max_hp; })()`, "the combat (3d)");
+  } catch (err) {
+    const why = await b.eval(`({ renderer: window.ffh.mapView.renderer(), sel: window.ffh.S.sel && window.ffh.S.sel.units })`);
+    throw new Error(`${err.message} (${JSON.stringify(why)}, dialogs: ${JSON.stringify(await modalTitles())})`);
+  }
   await new Promise((r) => setTimeout(r, 400));
   const fight = await b.eval(`(() => {
     const r = window.ffh.mapView.r3d;
