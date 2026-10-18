@@ -86,20 +86,37 @@ def main():
     seeds = sorted(set(A) & set(B))
     if not seeds:
         raise SystemExit('no common seeds')
-    turns = sorted(set.intersection(*[set(int(t) for t in A[s]['snapshots']) & set(int(t) for t in B[s]['snapshots']) for s in seeds]))
+    # Games stopped early (--until-supremacy) lack the later checkpoints: each turn pairs the
+    # seeds that have it on both sides (`ffh stats` also snapshots the final turn; those odd turns
+    # are left out).
+    counts = {}
+    for s in seeds:
+        for t in set(int(t) for t in A[s]['snapshots']) & set(int(t) for t in B[s]['snapshots']):
+            counts[t] = counts.get(t, 0) + 1
+    turns = sorted(t for t, n in counts.items() if n >= max(2, len(seeds) // 4))
     if args.at:
         turns = [t for t in turns if t in set(int(x) for x in args.at.split(','))]
     same = sum(1 for s in seeds if A[s].get('checksum') == B[s].get('checksum'))
     print(f'{len(seeds)} paired seeds ({seeds[0]}-{seeds[-1]}); identical games: {same}')
     print(f'  {"metric":22s} {"base":>10s}    {"new":>10s}  {"diff":>9s}            paired t')
     for t in turns:
-        print(f'turn {t} (per-civ mean, dead civs as 0):')
+        ts = [s for s in seeds if str(t) in A[s]['snapshots'] and str(t) in B[s]['snapshots']]
+        print(f'turn {t} (per-civ mean, dead civs as 0; {len(ts)} games on both sides):')
         for m in args.metrics.split(','):
-            a = [civ_mean(A[s], t, m) for s in seeds]
-            b = [civ_mean(B[s], t, m) for s in seeds]
+            a = [civ_mean(A[s], t, m) for s in ts]
+            b = [civ_mean(B[s], t, m) for s in ts]
             if any(x is None for x in a + b):
                 continue
             print(row(m, a, b))
+    if any(A[s].get('outcome', {}).get('kind') not in (None, 'turn_limit') or B[s].get('outcome', {}).get('kind') not in (None, 'turn_limit') for s in seeds):
+        print('outcome:')
+        for name, D in (('base', A), ('new', B)):
+            kinds = {}
+            for s in seeds:
+                k = D[s].get('outcome', {}).get('kind', '?')
+                kinds[k] = kinds.get(k, 0) + 1
+            print(f'  {name:5s} ' + ', '.join(f'{k} {n}' for k, n in sorted(kinds.items())))
+        print(row('final_turn', [A[s].get('final_turn', 0) for s in seeds], [B[s].get('final_turn', 0) for s in seeds]))
     print('whole game (per game):')
     for e in EVENTS:
         a = [event(A[s], e) for s in seeds]

@@ -212,6 +212,33 @@ build that prefers a worker with work waiting or a garrison upgrade over the str
 (the fallback is only reached by cities that know no process: `decide` picks a process
 whenever one is available); capping optional units at 12% of the commerce.
 
+**Conquest gets no XML weight (`empire::civic_value`).** `civic_value` starts from the civic's
+`iAIWeight` per city. Conquest's is 700, more than any economy civic's other terms, so at turn 300
+29 of 56 civs ran it (seeds 1-8; Agrarianism 12, Foreign Trade 4). Under Conquest
+(`bMilitaryFoodProduction`) a city training a military unit puts its whole food surplus into the
+unit and stops growing (`city_food_difference`), and production trains units most of the time: 71
+of the 107 Conquest cities training units showed food +0 over a positive raw surplus (288 food a
+turn into hammers), against none outside Conquest. The weight is dropped for such civics, which are
+then valued by their other terms like any civic (FfH's own `AI_civicValue` penalises the food rule
+only below 30 population; this AI's production ladder keeps the rule active far more often).
+
+Measured against the AI before it (6 civs, standard map; t is the paired t over seeds):
+
+| | 300 turns, seeds 801-944 (144 games) | full games, seeds 901-916 (`--until-supremacy`) |
+|---|---|---|
+| legacy score | +3.6% (t 7.8) | +5.0% at turn 300 (t 4.9), +1.7% at turn 450 |
+| techs | +1.4% (t 2.7) | +3.4% (t 2.5), +4.9% at turn 450 (t 1.7) |
+| research / commerce / production | +3.8% / +3.3% / +3.8% (t 2.8 / 3.5 / 3.6) | |
+| population | +9.8% (t 12.9) | +10.8% (t 5.5) |
+| power / military | -0.7% / -0.8% (t -0.9) | +2.2% / +4.0% at turn 300; flat at 450 |
+| civ cities captured | -5.7% (t -1.3) | +6% |
+| civs eliminated | -13% (t -2.5) | +8% |
+| outcome | | supremacy 7 -> 9 of 16; decided 30 turns earlier (548 -> 518, t -1.1) |
+
+Variants measured on the same seeds and dropped: the weight only for cities at their happy cap
+(legacy +2.6%, pop +7.7%: the same direction, weaker everywhere), the weight kept while at war or
+preparing one (legacy +1.5%, pop +4.6%; no power gained by running Conquest at war).
+
 ## Research (`research.rs`, `tech_plan.rs`)
 
 Score = value / (turns to research + 4), with one level of lookahead (children at a quarter of

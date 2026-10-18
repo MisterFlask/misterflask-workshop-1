@@ -186,7 +186,11 @@ pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     let pl = &g.players[p];
     let n = pl.cities.len() as i32;
     let pop = pl.total_population;
-    let mut v = info.ai_weight * n.max(1);
+    // Conquest (`bMilitaryFoodProduction`): a city training a military unit puts its whole food
+    // surplus into the unit and stops growing, and production trains units most of the time.
+    // Its XML weight (700 a city) outbid every other economy civic, so most civs ran it and their
+    // cities stalled; it gets none, and is valued like any civic by its other terms.
+    let mut v = if info.military_food_production { 0 } else { info.ai_weight * n.max(1) };
     if let Some(l) = pl.personality_type.map(|l| &d.leader_heads[l]) {
         if l.favorite_civic == Some(civic) {
             v += 300 + 50 * n;
