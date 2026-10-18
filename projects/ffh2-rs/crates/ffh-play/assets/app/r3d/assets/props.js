@@ -4853,8 +4853,13 @@ extendCatalog({
   feature: (feat, ctx) => featureOf(feat, ctx),
   improvement: (type, ctx) => improvementOf(type, ctx),
   bonus: (type, ctx) => bonusOf(type, ctx),
-  // A stone bridge where a road crosses a river: arched or a flat slab, by the crossing.
-  bridge: (ctx) => ({ asset: ctx.r() < 0.5 ? "bridge.arch" : "bridge.slab", variant: ctx.r.int(0, 1) }),
+  // A stone bridge where a road crosses a river, by the crossing: an arch reads only from the side,
+  // so mostly arches where the road runs east-west (its side toward the camera), mostly flat slab
+  // bridges where it runs north-south.
+  bridge: (ctx) => {
+    const h = hashf(ctx.i, ctx.crossing ?? 0, 0x5b1d), v = hashf(ctx.i, ctx.crossing ?? 0, 0x5b1e);
+    return { asset: (ctx.alongX ? h < 0.75 : h < 0.25) ? "bridge.arch" : "bridge.slab", variant: v < 0.65 ? 0 : 1 };
+  },
 });
 
 void TEAM;

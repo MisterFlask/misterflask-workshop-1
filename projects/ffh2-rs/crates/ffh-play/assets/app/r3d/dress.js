@@ -248,7 +248,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
             if (d < best) [best, cx, cy] = [d, px, py];
           }
           const bank = Math.max(H(cx + ux * 0.32, cy + uy * 0.32), H(cx - ux * 0.32, cy - uy * 0.32), SEA + 0.01);
-          const b = CATALOG.bridge?.(ctx) ?? null;
+          const b = CATALOG.bridge?.({ ...ctx, crossing: j, alongX: yaw !== 0 }) ?? null;
           const asset = typeof b === "string" ? b : b?.asset;
           out.push(inst(pick(asset, "basic.bridge"), cx, bank - 0.006, -cy, { yaw, variant: b?.variant ?? r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
         };

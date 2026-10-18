@@ -80,6 +80,13 @@ export function fieldLayout(i, type, bonus = null) {
   return null;
 }
 
+/** Whether plot-local point (lx, lz) of a plot (index `i`, improvement and resource names) lies on
+ *  one of its fields, or within `pad` of one: loose plants keep off the crops. */
+export function inField(i, type, bonus, lx, lz, pad = 0) {
+  const lay = fieldLayout(i, type, bonus);
+  return !!lay && lay.fields.some((f) => lx > f.x0 - pad && lx < f.x1 + pad && lz > f.z0 - pad && lz < f.z1 + pad);
+}
+
 /** A farm: two fields across the front of the plot, the farmstead's yard in a back corner with a
  *  third field beside it; fences along the front and one side; stooks on the grain. */
 function farm(h, grain) {

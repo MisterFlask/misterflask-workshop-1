@@ -19,6 +19,8 @@
 //   bonus(type, ctx)       -> {asset, param?, scale?, water?}   a resource's marker
 //   bridge(ctx)            -> {asset, variant?} (or an asset name)  a road's bridge over a river
 //                              edge of the plot, modelled along z with its deck's ends at y = 0
+//                              (ctx: the plot ctx, crossing (the plot across), alongX (the road
+//                              runs east-west))
 //   feature(feat, ctx)     -> [{asset, param?, scale?, dx?, dz?}] one-off features (oasis, volcano)
 //   family(civType)        -> string   a civilization's architectural family
 //   city(ctx)              -> [{asset, variant?, param?, x, z, yaw, scale, lift?}] (+ optional
