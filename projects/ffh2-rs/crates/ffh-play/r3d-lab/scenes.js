@@ -188,6 +188,46 @@ export function showcase(data) {
   return { map, view, focus: [12, Y(7)] };
 }
 
+/** The look target (docs/R3D.md §16): the composition of the owner's reference image -- a walled
+ *  town on golden grass at the top, a river winding from the north-east to the south-west under two
+ *  stone bridges, a crossroads of dirt roads, farms with a cottage and haystacks on the right, a
+ *  wheat field, scattered trees thickening into woods at the right and a rocky rise at the bottom
+ *  right. No units: the reference shows the land itself. Best framed at ts=150-170. */
+export function reference(data) {
+  const rows = [
+    ",,,,..,,,,....ff",
+    ",,,,..,,,,...f.f",
+    ",,,,.,,,,,....ff",
+    ",,,,,..,,.......",
+    ",,.,,,.,,.....f.",
+    "..,,,,.,......f.",
+    "................",
+    "......,,,....ff.",
+    "......,,,,...fff",
+    "....,,,,,,..fffh",
+    "...,,,,,,,..ffhh",
+  ];
+  const h = rows.length;
+  const w = rows[0].length;
+  const rivers = riverBits([[16, 9], [15, 9], [14, 9], [14, 8], [13, 8], [12, 8], [12, 7], [11, 7], [10, 7], [10, 6], [9, 6], [8, 6], [7, 6], [7, 5], [6, 5], [5, 5], [4, 5], [4, 4], [3, 4], [2, 4], [2, 3], [1, 3], [0, 3]]);
+  const town = { id: 1, owner: 0, x: 7, y: 8, name: "Aldenhal", capital: true, size: 9, walls: true };
+  const routes = [[7, 8], [7, 7], [7, 6], [7, 5]];
+  for (let x = 0; x < w; x++) routes.push([x, 4]);
+  const map = buildMap(data, rows, {
+    rivers,
+    routes,
+    improvements: [
+      [14, 7, "IMPROVEMENT_FARM"], [15, 7, "IMPROVEMENT_FARM"], [13, 6, "IMPROVEMENT_COTTAGE"],
+      [10, 5, "IMPROVEMENT_COTTAGE"], [11, 5, "IMPROVEMENT_FARM"], [10, 3, "IMPROVEMENT_FARM"], [11, 3, "IMPROVEMENT_FARM"],
+    ],
+    bonuses: [[10, 3, "BONUS_WHEAT"]],
+    owners: [[0, 0, w - 1, h - 1, 0]],
+    cities: [town],
+  });
+  const view = buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }], cities: [town] });
+  return { map, view, focus: [8, 5.6] };
+}
+
 /** A grid for inspecting recipes: `names` (asset names), each in a row of `variants`, on flat
  *  grass. Returns the scene and the instance list to show. */
 export function grid(data, names, variants = 6, { ground = ".", spacing = 1 } = {}) {
