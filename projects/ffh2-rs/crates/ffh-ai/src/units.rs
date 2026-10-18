@@ -530,7 +530,7 @@ fn great_person(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     if crate::victory::great_work(g, v, grp, u) { return; } // victory-pursuit
     let here = g.unit_plot(u);
-    let Some(capital) = g.players[p].capital_city else {
+    let Some(capital) = g.player_get_capital_city(p) else {
         hold(g, grp);
         return;
     };
