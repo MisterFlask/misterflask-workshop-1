@@ -17,7 +17,7 @@ import { tname } from "../state.js";
 import { FEAT, KIND, isHell } from "./world.js";
 import { hashf } from "./noise.js";
 import { MANA } from "./assets/palette.js";
-import { fieldLayout, CROP, CROP_LEVEL } from "./fields.js";
+import { fieldLayout, roadLinks, ROAD_CLEAR, CROP, CROP_LEVEL } from "./fields.js";
 
 export const DRES = 16;
 export const LRES = 4;
@@ -25,8 +25,6 @@ export const LRES = 4;
  *  divides by the same. */
 export const ROAD_RAMP = 0.3;
 const ROAD_STEPS = 12;
-
-const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
 
 function canvas(w, h) {
   const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
@@ -75,62 +73,55 @@ export function rasterDecals(world, map, cities) {
     for (let i = 0; i < W * Hh; i++) out[i * 4 + k] = px[i * 4];
   };
 
+  // The road tracks out of a plot (fields.js roadLinks): from its centre to each link's midpoint,
+  // bowed sideways by a hash of the (unordered) pair -- straight over a river, onto its bridge
+  // (dress.js) -- as [x0, y0, kx, ky, x1, y1] (a quadratic); a lone routed plot's road is a spot,
+  // [x, y].
+  const riv = (k, bit) => map.river[k] > 0 && (map.river[k] & bit) !== 0;
+  const tracks = (x, y) => {
+    const i = y * world.w + x;
+    if (map.vis[i] === 0 || map.route[i] < 0) return [];
+    const links = roadLinks(world, map, x, y);
+    if (!links.length) return [[x + 0.5, y + 0.5]];
+    return links.map(([dx, dy]) => {
+      const j = world.index(x + dx, y + dy);
+      const a = Math.min(i, j), b = Math.max(i, j);
+      const bridged = (dy < 0 && !dx && riv(i, 1)) || (dy > 0 && !dx && riv(j, 1)) || (dx > 0 && !dy && riv(i, 2)) || (dx < 0 && !dy && riv(j, 2));
+      const bow = bridged ? 0 : (hashf(a, b) - 0.5) * 0.16;
+      const [cx, cy] = [x + 0.5, y + 0.5];
+      const l = Math.hypot(dx, dy);
+      const kx = cx + dx * 0.25 - (dy / l) * bow * (i < j ? 1 : -1);
+      const ky = cy + dy * 0.25 + (dx / l) * bow * (i < j ? 1 : -1);
+      return [cx, cy, kx, ky, cx + dx * 0.5, cy + dy * 0.5];
+    });
+  };
+  const trace = (p, o) => {
+    g.beginPath();
+    if (p.length === 2) g.arc(p[0] * DRES + o, p[1] * DRES, g.lineWidth * 0.3, 0, Math.PI * 2);
+    else {
+      g.moveTo(p[0] * DRES + o, p[1] * DRES);
+      g.quadraticCurveTo(p[2] * DRES + o, p[3] * DRES, p[4] * DRES + o, p[5] * DRES);
+    }
+  };
+
   // r: roads, as a ramp: each track stroked ROAD_STEPS times, wide and faint to narrow and bright,
   // kept by "lighten" (the brightest wins), so a pixel holds 1 - (its distance to the nearest
   // track) / ROAD_RAMP.
   channel(0, () => {
-    const routed = (x, y) => {
-      const j = world.index(x, y);
-      return j >= 0 && map.route[j] >= 0 && map.vis[j] !== 0;
-    };
-    // A river along plot k's south (bit 1) or east (bit 2) edge.
-    const riv = (k, bit) => map.river[k] > 0 && (map.river[k] & bit) !== 0;
     const paths = [];
-    for (let y = 0; y < world.h; y++) {
-      for (let x = 0; x < world.w; x++) {
-        const i = y * world.w + x;
-        if (map.vis[i] === 0 || map.route[i] < 0) continue;
-        let linked = false;
-        for (const [dx, dy] of DIRS8) {
-          if (!routed(x + dx, y + dy)) continue;
-          linked = true;
-          // A diagonal step where the two plots already meet through a routed plot beside both
-          // would close a triangle at every corner of the network.
-          if (dx && dy && (routed(x + dx, y) || routed(x, y + dy))) continue;
-          const j = world.index(x + dx, y + dy);
-          // To the midpoint, bowed sideways by a hash of the (unordered) pair -- straight over a
-          // river (onto its bridge, dress.js).
-          const a = Math.min(i, j), b = Math.max(i, j);
-          const bridged = (dy < 0 && !dx && riv(i, 1)) || (dy > 0 && !dx && riv(j, 1)) || (dx > 0 && !dy && riv(i, 2)) || (dx < 0 && !dy && riv(j, 2));
-          const bow = bridged ? 0 : (hashf(a, b) - 0.5) * 0.16;
-          const [cx, cy] = [x + 0.5, y + 0.5];
-          const l = Math.hypot(dx, dy);
-          const kx = cx + dx * 0.25 - (dy / l) * bow * (i < j ? 1 : -1);
-          const ky = cy + dy * 0.25 + (dx / l) * bow * (i < j ? 1 : -1);
-          paths.push([cx, cy, kx, ky, cx + dx * 0.5, cy + dy * 0.5]);
-        }
-        if (!linked) paths.push([x + 0.5, y + 0.5]);
-      }
-    }
+    for (let y = 0; y < world.h; y++) for (let x = 0; x < world.w; x++) paths.push(...tracks(x, y));
     g.globalCompositeOperation = "lighten";
     g.lineCap = "round";
     g.lineJoin = "round";
     for (let k = 1; k <= ROAD_STEPS; k++) {
       const v = Math.round((255 * k) / ROAD_STEPS);
-      const rad = ROAD_RAMP * (1 - (k - 1) / ROAD_STEPS) * DRES;
       g.strokeStyle = g.fillStyle = `rgb(${v},${v},${v})`;
-      g.lineWidth = rad * 2;
+      g.lineWidth = ROAD_RAMP * (1 - (k - 1) / ROAD_STEPS) * DRES * 2;
       for (const p of paths) {
         copies((o) => {
-          g.beginPath();
-          if (p.length === 2) {
-            g.arc(p[0] * DRES + o, p[1] * DRES, rad * 0.6, 0, Math.PI * 2);
-            g.fill();
-          } else {
-            g.moveTo(p[0] * DRES + o, p[1] * DRES);
-            g.quadraticCurveTo(p[2] * DRES + o, p[3] * DRES, p[4] * DRES + o, p[5] * DRES);
-            g.stroke();
-          }
+          trace(p, o);
+          if (p.length === 2) g.fill();
+          else g.stroke();
         });
       }
     }
@@ -143,6 +134,7 @@ export function rasterDecals(world, map, cities) {
       const v = Math.round(255 * CROP_LEVEL[crop]);
       return `rgb(${v},${v},${v})`;
     };
+    const tilled = [];
     for (let y = 0; y < world.h; y++) {
       for (let x = 0; x < world.w; x++) {
         const i = y * world.w + x;
@@ -150,6 +142,7 @@ export function rasterDecals(world, map, cities) {
         const t = tname("ImprovementType", map.improvement[i]) ?? "";
         const b = map.bonus[i] >= 0 ? tname("BonusType", map.bonus[i]) ?? "" : "";
         const lay = fieldLayout(i, t, b);
+        if (lay || VILLAGE.test(t)) tilled.push([x, y]);
         if (lay) {
           // Plot-local (x east, z south) rectangles, their corners nudged a little off square.
           for (const [k, f] of lay.fields.entries()) {
@@ -182,6 +175,20 @@ export function rasterDecals(world, map, cities) {
             g.restore();
           });
         }
+      }
+    }
+    // A road through a farmed plot runs between its fields, a strip of grass either side
+    // (the farm's props keep off it too: fields.js onRoad).
+    g.strokeStyle = g.fillStyle = "#000";
+    g.lineCap = "round";
+    g.lineWidth = ROAD_CLEAR * 2 * DRES;
+    for (const [x, y] of tilled) {
+      for (const p of tracks(x, y)) {
+        copies((o) => {
+          trace(p, o);
+          if (p.length === 2) g.fill();
+          else g.stroke();
+        });
       }
     }
   });

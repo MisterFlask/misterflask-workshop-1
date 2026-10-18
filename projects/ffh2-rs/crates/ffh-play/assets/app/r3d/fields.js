@@ -20,7 +20,44 @@ export const CROP_LEVEL = { [CROP.GREEN]: 0.33, [CROP.SOIL]: 0.67, [CROP.GRAIN]:
  *  step with the terrain shader's field read-out. */
 export const ROWS = { green: 14, grain: 18 };
 
+/** How far either side of a road's centre line the fields keep off it (plots): the track (~0.07)
+ *  and a strip of verge. */
+export const ROAD_CLEAR = 0.12;
+
 const GRAIN = /WHEAT|CORN|RICE|BARLEY|OATS|RYE/;
+const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+
+/** The roads out of plot (x, y), as decals.js draws them: [dx, dy] (map directions, y north) to
+ *  each routed, revealed neighbour, leaving out a diagonal step when a routed plot beside both
+ *  already joins the two (it would close a triangle at every corner of the network). Empty when
+ *  the plot has no road. */
+export function roadLinks(world, map, x, y) {
+  const routed = (x, y) => {
+    const j = world.index(x, y);
+    return j >= 0 && map.route[j] >= 0 && map.vis[j] !== 0;
+  };
+  if (!routed(x, y)) return [];
+  const out = [];
+  for (const [dx, dy] of DIRS8) {
+    if (!routed(x + dx, y + dy)) continue;
+    if (dx && dy && (routed(x + dx, y) || routed(x, y + dy))) continue;
+    out.push([dx, dy]);
+  }
+  return out;
+}
+
+/** Whether plot-local point (lx, lz) lies within `pad` of the road `links` (roadLinks) of its plot:
+ *  fields leave a strip either side of a track, and nothing of a farm stands on it. A routed plot
+ *  without links has its road as a spot at the centre. */
+export function onRoad(links, routed, lx, lz, pad) {
+  if (routed && !links.length) return Math.hypot(lx, lz) < pad;
+  for (const [dx, dy] of links) {
+    const ex = dx * 0.5, ez = -dy * 0.5;
+    const t = Math.max(0, Math.min(1, (lx * ex + lz * ez) / (ex * ex + ez * ez)));
+    if (Math.hypot(lx - ex * t, lz - ez * t) < pad) return true;
+  }
+  return false;
+}
 
 /** A rectangle [x0, z0, x1, z1] with a crop. */
 const rect = (x0, z0, x1, z1, crop) => ({ x0, z0, x1, z1, crop });

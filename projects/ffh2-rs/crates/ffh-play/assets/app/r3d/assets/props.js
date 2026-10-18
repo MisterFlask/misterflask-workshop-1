@@ -32,7 +32,7 @@ import { pal, jitter, MANA } from "./palette.js";
 import { noise3, hashf } from "../noise.js";
 import { vnorm, vsub, vcross, vadd, vscale, clamp } from "../math.js";
 import { KIND, FEAT, GROUND, DRAFT, isHell } from "../world.js";
-import { fieldLayout, CROP, ROWS } from "../fields.js";
+import { fieldLayout, roadLinks, onRoad, ROAD_CLEAR, CROP, ROWS } from "../fields.js";
 
 const TAU = Math.PI * 2;
 
@@ -4566,6 +4566,14 @@ function herdOf(bonus) {
 
 const glowOf = (school) => MANA[school] ?? MANA[""];
 
+/** Whether any of the plot-local points [[x, z], ...] lies on a road through the plot, or within
+ *  `pad` of the strip the fields leave it (fields.js onRoad). */
+function onRoadOf(ctx) {
+  const links = ctx.world ? roadLinks(ctx.world, ctx.world.map, ctx.x, ctx.y) : [];
+  const routed = !!ctx.world && ctx.world.map.route[ctx.i] >= 0;
+  return (pts, pad = 0) => pts.some(([x, z]) => onRoad(links, routed, x, z, ROAD_CLEAR + pad));
+}
+
 /** A farm on its fields (fields.js): the farmstead (a barn or a granary) in its yard with its
  *  haystacks, fence runs along the field edges, stooks on the grain and a scarecrow in the beds.
  *  The plot's centre keeps only low crops (a unit standing there stays readable). */
@@ -4573,15 +4581,19 @@ function farmOf(ctx, part, yj) {
   const r = ctx.r;
   const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
   const { yard } = lay, s = yard.side;
+  // Nothing of the farm but its barn stands on a road through it (the decal keeps the fields off
+  // the road too).
+  const road = onRoadOf(ctx);
   const out = [
     part("imp.barn", yard.x, yard.z, { variant: r.int(0, 3), yaw: yj(0.3), scale: 1.2 }),
-    part("imp.haystacks", yard.x - s * 0.2, yard.z + r.range(-0.05, 0.03), { variant: r.int(0, 3), yaw: r.range(0, TAU), scale: r.range(1.3, 1.5) }),
+    part("imp.haystacks", yard.x - s * 0.2, yard.z + r.range(-0.05, 0.03), { variant: r.int(0, 3), yaw: r.range(0, TAU), scale: r.range(1.3, 1.5), tint: [0.96, 0.88, 0.78] }),
   ];
   for (const [[ax, az], [bx, bz]] of lay.fences) {
     const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 0.2));
     const yaw = Math.atan2(-(bz - az), bx - ax);
     for (let k = 0; k < n; k++) {
       const t = (k + 0.5) / n;
+      if (road([0, 0.5, 1].map((u) => [ax + ((bx - ax) * (k + u)) / n, az + ((bz - az) * (k + u)) / n]))) continue;
       out.push({ asset: "imp.fence", dx: ax + (bx - ax) * t, dz: az + (bz - az) * t, yaw: yaw + yj(0.03), variant: r.int(0, 3), scale: 1, sx: L / n / 0.2 });
     }
   }
@@ -4615,6 +4627,9 @@ function farmOf(ctx, part, yj) {
           });
           if (Math.max(...hs) - Math.min(...hs) > 0.024) continue;
         }
+        const ext = green ? [len / 2, half] : [half, len / 2];
+        const cx = green ? along : c, cz = green ? c : along;
+        if (road([-1, 0, 1].flatMap((u) => [-1, 0, 1].map((v) => [cx + u * ext[0], cz + v * ext[1]])))) continue;
         out.push(green
           ? { asset: "imp.beds", dx: along, dz: c, yaw: 0, variant: chunk.length - 1, scale: 1, sx: len / 0.2 }
           : { asset: "imp.grain", dx: c, dz: along, yaw: 0, variant: chunk.length - 1, scale: 1, sz: len / 0.2 });
@@ -4622,13 +4637,13 @@ function farmOf(ctx, part, yj) {
     }
   }
   for (const [x, z] of lay.stooks) {
-    if (ctx.unit && Math.abs(x) < 0.16) continue;
+    if ((ctx.unit && Math.abs(x) < 0.16) || road([[x, z]], 0.03)) continue;
     out.push(part("imp.stook", x, z, { variant: r.int(0, 2), yaw: r.range(0, TAU), scale: r.range(1.4, 1.7) }));
   }
   const beds = lay.fields.find((f) => f.crop === CROP.GREEN);
   if (beds && r() < 0.6) {
     const x = beds.x0 + (beds.x1 - beds.x0) * r.range(0.3, 0.7), z = beds.z0 + (beds.z1 - beds.z0) * r.range(0.3, 0.7);
-    if (!ctx.unit || Math.hypot(x, z) > 0.2) out.push(part("imp.scarecrow", x, z, { yaw: yj(0.5), scale: 1.35 }));
+    if ((!ctx.unit || Math.hypot(x, z) > 0.2) && !road([[x, z]], 0.03)) out.push(part("imp.scarecrow", x, z, { yaw: yj(0.5), scale: 1.35 }));
   }
   return out;
 }
@@ -4659,14 +4674,17 @@ function improvementOf(type, ctx) {
       const b = (ctx.bonus ?? "").replace("BONUS_", "");
       const crop = { BANANA: "banana", SUGAR: "sugar", COTTON: "cotton", DYE: "dye", SILK: "tea", INCENSE: "tea", SPICES: "tea" }[b] ?? "tea";
       const lay = fieldLayout(ctx.i, ctx.improvement, ctx.bonus);
+      const road = onRoadOf(ctx);
       return [
         part("imp.croprows", -0.2, 0.2, { param: crop, yaw: yj(0.08), scale: 1.4 }),
         part("imp.croprows", 0.2, 0.2, { param: crop, variant: 1, yaw: yj(0.08), scale: 1.4 }),
-        part("imp.shed", lay.yard.x, lay.yard.z, { scale: 1.45 }),
-      ];
+      ].filter((p) => !road([[p.dx, p.dz]], 0.06)).concat([part("imp.shed", lay.yard.x, lay.yard.z, { scale: 1.45 })]);
     }
-    case "WINERY":
-      return [part("imp.vines", -0.17, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.vines", 0.2, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.press", -0.19 * flip, -0.23, { scale: 1.4 })];
+    case "WINERY": {
+      const road = onRoadOf(ctx);
+      const vines = [part("imp.vines", -0.17, 0.16, { yaw: yj(0.1), scale: 1.4 }), part("imp.vines", 0.2, 0.16, { yaw: yj(0.1), scale: 1.4 })];
+      return [...vines.filter((p) => !road([[p.dx, p.dz]], 0.06)), part("imp.press", -0.19 * flip, -0.23, { scale: 1.4 })];
+    }
     case "PASTURE": {
       const herd = herdOf(ctx.bonus);
       const kinds = herd ? [herd, herd] : ["sheep", "cow"];
