@@ -82,9 +82,14 @@ def run_side(a, side, civ, binary, env_pairs):
     return out
 
 
+CRASHED = {}  # path -> seeds whose game failed (no result; left out of the pairs)
+
+
 def load(path):
     with open(path) as f:
-        return {g['seed']: g for g in json.load(f)}
+        games = json.load(f)
+    CRASHED[path] = sorted(g['seed'] for g in games if 'error' in g)
+    return {g['seed']: g for g in games if 'error' not in g}
 
 
 def rows_at(game, turn):
@@ -280,6 +285,8 @@ def main():
             continue
         seeds, fb, fn = compare(load(pb), load(pn), checkpoints)
         totals.append((civ, report(civ, seeds, fb, fn, checkpoints, a.detail)))
+        if CRASHED[pb] or CRASHED[pn]:
+            print('  crashed games (left out of the pairs): base seeds %s, new seeds %s' % (CRASHED[pb] or '-', CRASHED[pn] or '-'))
         pooled_b += fb
         pooled_n += fn
     if len(totals) > 1:
