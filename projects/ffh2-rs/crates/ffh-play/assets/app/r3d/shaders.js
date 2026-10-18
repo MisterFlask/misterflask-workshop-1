@@ -643,13 +643,15 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // grass broken by golden dry grass. Where it lies golden: organic patches (about 1, 0.5 and 0.3
     // plots, the finest drawn out along the map's diagonal) that ignore the plot grid, the prairie's
     // share of the point (gDry) tipping the balance -- about a sixth of a grassland lies golden, five
-    // sixths of a prairie, and no broader noise than a plot, so a whole region never flips -- so a
-    // plot's centre still reads as its own ground while the grid no longer shows in the grass.
+    // sixths of a prairie, and no broader noise than a plot, so a whole region never flips -- only
+    // in a plot's rim: its centre is pinned to its own ground (grassland and plains differ in yield,
+    // so a player must read it there), while the grid no longer shows in the grass.
     float dn = mnoise(m + 61.0, 0.85) * 0.35 + mnoise(m - 27.0, 1.9) * 0.4 + mstroke(m + 13.0, 3.6, 2.5) * 0.25;
     float t = mix(0.63, 0.37, gDry);
     // A ragged edge: finer fingers combed along the wind where a patch meets the green (only there).
     if (abs(dn - t) < 0.12) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
     dry = smoothstep(t - 0.06, t + 0.06, dn);
+    dry = mix(gDry, dry, smoothstep(0.16, 0.34, length(fract(m) - 0.5)));
     gSplit = dry;
     big = mfbm(m, 0.45);
     float mid = mnoise(m + 11.0, 1.6), mot = mnoise(m + 5.0, 2.4);
@@ -2179,11 +2181,15 @@ void main() {
     acc = mix(acc, vec4(oc * 0.55 + 0.45 * vec3(1.0, 0.95, 0.85) * lum(oc), 1.0), line * uBorders);
   }
   if (uPolitical > 0.0 && me > 0) acc = mix(acc, vec4(uOwnerColors[me], 1.0), 0.42 * uPolitical);
-  // The grid: faint lines on the plot edges (the logical board under the painted world).
+  // The grid: faint lines on the plot edges (the logical board under the painted world), a dark
+  // core in a light halo so it reads over the busy painted ground, light or dark.
   if (uGrid > 0.0) {
     vec2 d = min(f, 1.0 - f);
-    float g = 1.0 - smoothstep(0.0, 0.018, min(d.x, d.y));
-    acc = mix(acc, vec4(0.06, 0.05, 0.04, 1.0), g * uGrid * 0.5);
+    float dm = min(d.x, d.y);
+    float core = 1.0 - smoothstep(0.004, 0.014, dm);
+    float halo = (1.0 - smoothstep(0.014, 0.03, dm)) * (1.0 - core);
+    acc = mix(acc, vec4(1.0, 0.97, 0.88, 1.0), halo * uGrid * 1.2);
+    acc = mix(acc, vec4(0.06, 0.05, 0.04, 1.0), core * uGrid * 2.2);
   }
   // Marks (marks texture: r targets, g path, b reachable this turn).
   vec4 mk = marksAt(cell);
