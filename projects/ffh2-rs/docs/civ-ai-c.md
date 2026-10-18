@@ -97,6 +97,23 @@ games that had Luchuirp opponents.
   share@300 -46 (t -1.73), share@end -17. Not kept. March of the Trees is cast in 16 of 40 games,
   at about turn 460 (AI gate below).
 
+## The branch as a whole
+
+`civ-ai/group-c` against base `2d95e9c`, full games, seeds 1-40, each civilization forced into
+slot 0 (only the Kuriotates play differently; the other four games change only where the
+Kuriotates are an opponent -- every game without them is identical to the base):
+
+| civ | win (discordant) | share@300 | share@end |
+|---|---|---|---|
+| Kuriotates | 5.1% -> 5.1% (0/0) | 1761 -> 1830 (+69, t 1.07) | 1141 -> 1185 (+45, t 0.26) |
+| Khazad | 28.2% -> 25.6% (1/2) | -5 (t -0.25) | +62 (t 0.91) |
+| Lanun | 40.0% -> 42.5% (2/1) | +9 (t 0.35) | +158 (t 1.55) |
+| Ljosalfar | 27.5% -> 30.0% (1/0) | -69 (t -2.33) | -34 (t -0.53) |
+| Luchuirp | 23.1% -> 23.1% (0/0) | -25 (t -1.04) | -77 (t -0.90) |
+
+The Ljosalfar and Luchuirp drops come from their 7 games with Kuriotates opponents (share@300
+there -302 and -139 on average): a stronger Kuriotates takes land from its neighbours.
+
 ## World spells: the AI-only gates and the timing I would choose
 
 | civ | spell | AI gate (ported `req*`, rules code) | base AI: cast in / first seen | with the gate open | how much it would matter |
