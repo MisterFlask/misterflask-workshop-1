@@ -449,8 +449,9 @@ function utility(t, r) {
         for (let i = Math.floor(x - R); i <= x + R; i++) {
           const dx = (i + 0.5 - x) / cell, dy = (j + 0.5 - y) / cell;
           const qx = (ca * dx + sa * dy) / 0.78, qy = (-sa * dx + ca * dy) / 0.3;
-          const d = Math.sqrt(qx * qx + qy * qy);
-          const e = Math.min(1, Math.max(0, (d - 0.5) / 0.5));
+          const d2 = qx * qx + qy * qy;
+          if (d2 >= 1) continue; // outside the dab (most of its box)
+          const e = Math.max(0, (Math.sqrt(d2) - 0.5) / 0.5);
           const w = (1 - e * e * (3 - 2 * e)) * s;
           const k = (j & (n - 1)) * n + (i & (n - 1));
           if (w > best[k]) {
