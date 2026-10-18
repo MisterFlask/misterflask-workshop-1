@@ -331,7 +331,6 @@ export const MUTATIONS = [
     name: "offStart", kinds: ["attack", "death"], targets: ["boundary.start"],
     clip: (d) => bump(bump(d, "rHand", 0, 0.25, [0, 0.06, 0.06]), "lean", 0, 0.25, 0.25),
   },
-  },
   { name: "shortLoop", kinds: ["idle"], targets: ["idle.loop"], clip: (d) => timeScale(d, 0.45) },
   { name: "rushed", kinds: ["attack"], archer: false, targets: ["attack.duration"], clip: (d) => timeScale(d, 0.45) },
   {

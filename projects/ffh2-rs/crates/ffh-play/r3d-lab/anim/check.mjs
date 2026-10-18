@@ -1342,9 +1342,8 @@ function death(m) {
   let react = 0;
   for (let f = 1; f <= Math.min(F - 1, m.sec(LIMITS.react[0])); f++) react = Math.max(react, dot(sub(b.joints[f].head, b.joints[0].head), away));
   out.push(M("death.react", "motion", true, react >= LIMITS.react[1], r4(react), LIMITS.react[1], `the head thrown away from the blow within ${LIMITS.react[0]} s (plots)`));
-  // The fall: from the onset of the final descent (the centre of mass sinking faster than 0.1
-  // plots/s without a pause until the impact; an earlier stagger or buckle that catches itself
-  // is not the fall) to the impact (the trunk's core reaching the ground: the body above the hips
+  // The fall: from the onset of the final descent (the centre of mass sinking without a pause
+  // until the impact; an earlier stagger or buckle that catches itself is not the fall) to the impact (the trunk's core reaching the ground: the body above the hips
   // and the head, not a skirt or a coat tail hanging below them).
   const vy = coms.map((c, k) => (k === 0 ? 0 : (c[1] - coms[k - 1][1]) * fps));
   const hipY = Math.min(b.joints[0].hipL[1], b.joints[0].hipR[1]); // a death starts at rest
@@ -1358,13 +1357,13 @@ function death(m) {
     }
   }
   if (ti > 0) {
-    // The final descent: back from the impact while the centre of mass sinks at all; the fall
-    // starts within it once it sinks faster than 0.1 plots/s (a gentle lowering never does).
-    let sd = ti - 1;
-    while (sd > 1 && vy[sd] < 0) sd--;
-    ts = sd + 1;
-    while (ts < ti && vy[ts] >= -0.1) ts++;
-    if (ts >= ti - 1) ts = Math.max(sd + 1, ti - 2);
+    // The final descent: back from the impact while the centre of mass sinks at all (its last
+    // high point before the ground); a descent that never sinks faster than 0.1 plots/s is a
+    // body lowered, not a fall.
+    ts = ti - 1;
+    while (ts > 1 && vy[ts] < 0) ts--;
+    if (ts >= ti - 1) ts = Math.max(1, ti - 2);
+    if (Math.min(...vy.slice(ts, ti + 1)) >= -0.1) ts = -1;
   }
   if (ts < 0 || ti < 0) {
     out.push(M("death.falls", "body", true, false, "no fall", "falls to the ground", "the body never reaches the ground"));
