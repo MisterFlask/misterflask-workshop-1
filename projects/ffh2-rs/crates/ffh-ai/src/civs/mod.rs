@@ -34,6 +34,7 @@ mod clan_of_embers;
 mod doviello;
 mod elohim;
 mod grigori;
+mod held;
 mod hippus;
 mod illians;
 mod infernal;
@@ -168,6 +169,10 @@ pub trait CivPlay: Sync {
     fn tech_value(&self, g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
         value
     }
+    /// Units with Blitz that have attacked this turn may attack again in a campaign strike.
+    fn strike_blitz(&self) -> bool {
+        false
+    }
 }
 
 struct Generic;
@@ -234,4 +239,8 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
 
 pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
     of(g, p).tech_value(g, p, t, value)
+}
+
+pub fn strike_blitz(g: &Game, p: PlayerId) -> bool {
+    of(g, p).strike_blitz()
 }
