@@ -77,7 +77,7 @@ fn compute(g: &Game, p: PlayerId) -> Vec<(PlotIdx, i32)> {
                     continue;
                 }
                 let (x, y) = g.map.xy(q);
-                let v = g.player_ai_found_value(p, x, y, -1, false, &[]);
+                let v = crate::civs::site_value(g, p, q, g.player_ai_found_value(p, x, y, -1, false, &[])); // civ-mechanics
                 if v > 0 {
                     scored.push((q, v));
                 }
@@ -108,7 +108,7 @@ fn compute(g: &Game, p: PlayerId) -> Vec<(PlotIdx, i32)> {
                         continue;
                     }
                     let (x, y) = g.map.xy(q);
-                    let v = g.player_ai_found_value(p, x, y, -1, false, &[]);
+                    let v = crate::civs::site_value(g, p, q, g.player_ai_found_value(p, x, y, -1, false, &[])); // civ-mechanics
                     if v > 0 {
                         scored.push((q, v));
                     }

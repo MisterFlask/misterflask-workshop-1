@@ -16,7 +16,8 @@
 //! - [`building_value`]: `production::building_value` (what production, research and spells use);
 //! - [`tech_value`]: `research::tech_value`;
 //! - [`promotion_value`]: `units::best_promotion`, the value of each promotion a unit can take;
-//! - [`civic_value`]: `empire::civic_value` (civics, the finance guard and research use it).
+//! - [`civic_value`]: `empire::civic_value` (civics, the finance guard and research use it);
+//! - [`site_value`]: `sites::compute`, the value of a city site.
 //!
 //! What each civilization does is described in its module (docs/AI.md, "Civilization-specific").
 
@@ -181,6 +182,10 @@ pub trait CivPlay: Sync {
     fn civic_value(&self, g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
         value
     }
+    /// What a city site at `q` is worth to `p` (`value` is `AI_foundValue`; 0 or less: no site).
+    fn site_value(&self, g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
+        value
+    }
 }
 
 struct Generic;
@@ -255,4 +260,8 @@ pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType, value: i32) ->
 
 pub fn civic_value(g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
     of(g, p).civic_value(g, p, civic, value)
+}
+
+pub fn site_value(g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
+    of(g, p).site_value(g, p, q, value)
 }
