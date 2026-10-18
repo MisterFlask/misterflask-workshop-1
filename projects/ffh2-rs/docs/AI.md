@@ -770,6 +770,14 @@ before (same checksums).
   time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
   (worked plots of big cities first) and casts there. 23 games (52 seeds): score at turn 300
   +23% (+134 +- 51), pop +24%, techs +22% (Lanun that never research Fishing are unchanged).
+- **Luchuirp**: Gifts of Nantosuelta leaves a Golden Hammer in each city, which can become a free
+  Engineer there (`SPELL_GIVE_HAMMER_TO_CRAFTSMAN`) or +1 strength on a unit that takes it
+  (`SPELL_TAKE_GOLDEN_HAMMER_UNIT`). FfH's end-of-turn spell choice (`casting::choose_spell`) valued
+  the take higher, so the garrison warriors took nearly every hammer (seeds 1-16: 59 takes, 13
+  gives). Units in our own cities now leave it, and the hammer gives itself. Seeds 801-944, the
+  47 games where Luchuirp cast Gifts, Luchuirp civs at turn 300: production +11.8% (t 2.5), great
+  people +47% (t 5.3), power +11.4% (t 2.4), techs +4.0% (t 2.8), legacy +4.2% (t 1.9); the
+  world as a whole is unchanged (the neighbours pay part of it).
 - **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
   every improvement they build on their own plots (FfH's check in `setImprovementType`), and
   workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
