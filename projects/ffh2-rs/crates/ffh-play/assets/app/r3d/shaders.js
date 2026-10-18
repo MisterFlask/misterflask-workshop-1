@@ -645,6 +645,8 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // plot's centre still reads as its own ground while the grid no longer shows in the grass.
     float dn = mnoise(m + 61.0, 0.85) * 0.35 + mnoise(m - 27.0, 1.9) * 0.4 + mstroke(m + 13.0, 3.6, 2.5) * 0.25;
     float t = mix(0.63, 0.37, gDry);
+    // A ragged edge: finer fingers combed along the wind where a patch meets the green (only there).
+    if (abs(dn - t) < 0.12) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
     dry = smoothstep(t - 0.06, t + 0.06, dn);
     gSplit = dry;
     big = mfbm(m, 0.45);
@@ -670,10 +672,10 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     gPalB = P4(vec3(0.60, 0.53, 0.34), vec3(0.46, 0.37, 0.21), vec3(0.53, 0.46, 0.27), vec3(0.34, 0.38, 0.21), vec3(0.35, 0.62, 0.88));
     // The finest blades come and go (smoother sward between thicker tufts), so the grass is not one
     // even pile.
-    str = mix(vec3(0.35, 0.6, 0.75 * smoothstep(0.25, 0.6, mid)), vec3(0.45, 0.6, 0.6), dry);
+    str = mix(vec3(0.35, 0.6, 0.75 * smoothstep(0.25, 0.6, mid)), vec3(0.45, 0.6, 0.7), dry);
     ang = mix(1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6, gWind(m), dry);
-    jit = vec3(mix(0.8, 0.35, dry)); elong = mix(vec3(2.0, 4.5, 3.5), vec3(4.5), dry); rad = vec3(0.55, 0.55, 0.6); lobe = vec3(0.0);
-    tone = vec3(mix(0.08, 0.2, dry)); hue = mix(1.0, 0.3, dry); tip = mix(vec3(0.0, 0.15, 0.28), vec3(0.0, 0.08, 0.12), dry);
+    jit = vec3(mix(0.8, 0.35, dry)); elong = mix(vec3(2.0, 4.5, 3.5), vec3(4.0, 5.0, 5.5), dry); rad = vec3(0.55, 0.55, 0.6); lobe = vec3(0.0);
+    tone = mix(vec3(0.08), vec3(0.16, 0.2, 0.24), dry); hue = mix(1.0, 0.3, dry); tip = mix(vec3(0.0, 0.15, 0.28), vec3(0.0, 0.1, 0.2), dry);
   } else if (g == G_DESERT) {
     // Desert: pale sand cut by sinuous dune crests -- the back slope brightening to the crest, a cool
     // rose shadow behind it (the sun is from the south-west) -- with long low sheets of sand laid
