@@ -36,7 +36,8 @@ and determinism -- and a standing cost preference:
 | `CvPlayerAI::AI_conquerCity` | `raze_conquered_city` | `diplomacy.rs` |
 | `CvPlayerAI::AI_considerOffer` | `consider_offer` | `diplomacy.rs` |
 | `CvPlayerAI::AI_doAdvancedStart` (from `CvPlayer::setTurnActive`) | `play_turn` while start points remain | `advanced_start.rs` |
-| `CvPlayerAI::AI_chooseEvent`, elections, votes, captured/gifted units | defaults in `controller.rs` | -- |
+| `CvPlayerAI::AI_chooseEvent` | `choose_event` | `events.rs` |
+| elections, votes, captured/gifted units | defaults in `controller.rs` | -- |
 | `CvCityAI::AI_assignWorkingPlots` (citizens) | `Game::city_assign_working_plots` | `ffh-core/src/governor.rs` |
 
 `CvPlayerAI::AI_foundValue` (and its bonus valuation) is ported faithfully into the rules
@@ -682,6 +683,36 @@ when the payment is worth over three quarters of the price) -- in practice the b
 *winners*, converting gold into a decisive second front (seed 5: the dogpile cuts the target from 13
 cities to 2 and the briber-side winner closes out by domination 64 turns early). No new saved state;
 no RNG.
+
+## Random events (`events.rs`)
+
+The rules offer an AI player the trigger's events it can do, in trigger order (`player_trigger_data`).
+Until `choose_event` was implemented the controller default took the first, and FfH lists the
+decline / pay / lose-a-unit answer first in many triggers: War Games disbanded the unit, the Strange
+Advisor added inflation for good, Clairone's first answer turned down a free Great Artist, the Spider
+Mine's third released a Giant Spider, and every Adaptive leader (Varn, Cardith, Cassiel) became
+Aggressive every 100 turns. About 78 events fire per 300-turn game, about 25 of them with a real
+choice (seeds 1-8).
+
+`events::value` follows C++ `AI_eventValue` term by term in one unit (gold) instead of the C++ mix
+of gold, hammers x100 and per-turn yields x20: gold, tech progress, free units (great people 600)
+and buildings at twice their hammers, a disbanded unit and its experience, golden ages, building
+yield/commerce changes in the cities that have the building, happiness and health only where a city
+is at or near its cap, food, population, revolt and hurry anger, plot yields, improvements, routes
+and resources, experience and free promotions, unit support, inflation on the pre-inflation costs,
+the Armageddon counter by alignment, religion conversions, attitude, follow-up and cleared events.
+Permanent changes count 50 turns. No random draws: `rand(iAIValue)` is its mean, the final +0-20% is
+dropped. Python callback effects are 0 as in C++, except a short table of frequent clear ones
+(hostile spawns, the Iron Orb's free tech, a seceding city) and the Adaptive trait choice, valued
+from the trait's data (`trait_value`: extra yield at the threshold on worked plots, civic upkeep,
+commerce per city, capped happiness and health, great people rate, wonder production, free
+promotions, no anarchy). An event that would declare a war we are not in is never chosen.
+
+Measured (6 civs, standard map, 300 turns, seeds 801-944, 144 paired games against the first-option
+default; t is the paired t over seeds): at turn 300 legacy score +1.2% (t 1.0), techs +1.4% (t 1.0),
+research +2.0% (t 0.8), production +2.5% (t 1.4), research slider +2.9% (t 1.5; +3.8%, t 2.4 at turn
+200), culture +8.2% (t 1.8); captures, eliminations and wars unchanged. A small lever (a few real
+choices per civ in 300 turns), economy-positive throughout and no regression.
 
 ## Civilization-specific (`civs.rs`)
 
