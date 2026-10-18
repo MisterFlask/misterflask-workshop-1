@@ -8,11 +8,14 @@ import { ATTR, Mesh, texture, upload, INSTANCE_FLOATS, PROP_LAYOUT } from "./gl.
 import { TerrainMeshes, MapTextures, CHUNK, RES, LOW_RES } from "./terrain.js";
 import { buildAsset, buildAssetLOD } from "./assets/registry.js";
 import { rasterDecals, rasterLight } from "./decals.js";
-import { SEA } from "./world.js";
+import { SEA, RIVER_HALF, RIVER_WANDER } from "./world.js";
 import { hexLinear } from "./math.js";
 import { rng } from "./noise.js";
 
 const RIVER_LAYOUT = { aPos: 3, aExtra: 4 };
+/** The sea and the rivers: aExtra (across the river, down it, over the sea), aFlow (the river's
+ *  bend, how far past its end) -- the sea's are zero. */
+const WATER_LAYOUT = { aPos: 3, aExtra: 4, aFlow: 2 };
 /** Below this size on screen (bounding radius in pixels) a prop draws its simplified copy. */
 const LOD_PX = 22;
 /** Props are bucketed by squares of this many plots (finer than the terrain chunks: the frustum
@@ -223,23 +226,30 @@ export class Scene {
     const v = [];
     const idx = [];
     const nx = Math.ceil(w / step) + 1, ny = Math.ceil(h / step) + 1;
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) v.push(Math.min(w, i * step), SEA, -Math.min(h, j * step), 0, 0, 0, 0);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) v.push(Math.min(w, i * step), SEA, -Math.min(h, j * step), 0, 0, 0, 0, 0, 0);
     for (let j = 0; j + 1 < ny; j++) {
       for (let i = 0; i + 1 < nx; i++) {
         const a = j * nx + i;
         idx.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1);
       }
     }
-    this.water = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT, { indices: new Uint32Array(idx) });
+    this.water = new Mesh(gl, new Float32Array(v), WATER_LAYOUT, { indices: new Uint32Array(idx) });
   }
 
-  /** The rivers: ribbons along the smoothed river lines, their surface a little under the banks. */
+  /** The rivers: ribbons along the smoothed river lines, their surface a little under the banks,
+   *  a little wider than the water (the water shader draws its wandering edge, WATER_FS) and
+   *  capped at both ends (a source, a confluence). Per vertex: aExtra = across the channel (1 at
+   *  the water's mean edge, RIVER_HALF), the distance downstream, 1 over the sea; aFlow = how the
+   *  river bends (radians a plot, + to the left looking downstream), how far past its end (in
+   *  RIVER_HALFs, as across). */
   buildRivers() {
     const gl = this.gl;
     this.rivers?.dispose();
     this.rivers = null;
     const world = this.world;
     const v = [];
+    // Half the ribbon's width: the widest the water's edge may wander, and a pixel or two more.
+    const half = RIVER_HALF + RIVER_WANDER + 0.02;
     for (const line of world.rivers) {
       // Resample to an even spacing.
       const pts = [];
@@ -254,33 +264,54 @@ export class Scene {
       const h0 = world.heightAt(pts[0][0], pts[0][1]);
       const h1 = world.heightAt(pts[pts.length - 1][0], pts[pts.length - 1][1]);
       if (h0 < h1) pts.reverse();
-      let along = 0;
-      // Wider than the bed: the banks cut the water's edge (an organic shore line).
-      const width = 0.125;
-      const ring = [];
-      for (let k = 0; k < pts.length; k++) {
-        const p = pts[k];
-        const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)];
-        let tx = b[0] - a[0], ty = b[1] - a[1];
-        const l = Math.hypot(tx, ty) || 1;
-        tx /= l;
-        ty /= l;
-        if (k > 0) along += Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]);
-        const y = Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
-        ring.push([[p[0] - ty * width, y, -(p[1] + tx * width)], [p[0] + ty * width, y, -(p[1] - tx * width)], along]);
-      }
+      const N = pts.length;
+      // Tangents, the distance downstream, and the bend: the heading's change a plot, averaged over
+      // about a third of a plot each way (white water gathers on the outside of a whole bend).
+      const tan = pts.map((p, k) => {
+        const a = pts[Math.max(0, k - 1)], b = pts[Math.min(N - 1, k + 1)];
+        const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+      });
+      const along = [0];
+      for (let k = 1; k < N; k++) along.push(along[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+      const turn = tan.map((t, k) => {
+        if (k === 0 || k === N - 1) return 0;
+        const a = tan[k - 1], b = tan[k + 1];
+        return Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]) / Math.max(1e-6, along[k + 1] - along[k - 1]);
+      });
+      const bend = turn.map((_, k) => {
+        let s = 0, n = 0;
+        for (let j = Math.max(0, k - 4); j <= Math.min(N - 1, k + 4); j++, n++) s += turn[j];
+        return s / n;
+      });
+      const level = (p) => Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
+      const rows = [];
+      const row = (p, t, y, s, b, past) => rows.push([[p[0] - t[1] * half, y, -(p[1] + t[0] * half)], [p[0] + t[1] * half, y, -(p[1] - t[0] * half)], s, b, past]);
+      // The river and a cap past each end (the shader rounds it). A cap sits a hair lower, more the
+      // further out: where it overlaps another river's water (a confluence), the ribbon nearest its
+      // own line is the one drawn.
+      const CAPS = 4;
+      const capRow = (k, dir, j) => {
+        const d = (half * j) / CAPS;
+        const p = [pts[k][0] + tan[k][0] * d * dir, pts[k][1] + tan[k][1] * d * dir];
+        row(p, tan[k], level(pts[k]) - 0.002 - 0.01 * d, along[k] + d * dir, 0, d);
+      };
+      for (let j = CAPS; j > 0; j--) capRow(0, -1, j);
+      for (let k = 0; k < N; k++) row(pts[k], tan[k], level(pts[k]), along[k], bend[k], 0);
+      for (let j = 1; j <= CAPS; j++) capRow(N - 1, 1, j);
       // aExtra.z: 1 where the ribbon runs out over the sea (the ground under it, uncut by the
       // channel, is below sea level): the water shader leaves the sea there (WATER_FS).
       const sea = (p) => (world.heightAt(p[0], -p[2], false) < SEA - 0.005 ? 1 : 0);
-      for (let k = 0; k + 1 < ring.length; k++) {
-        const [a0, a1, s0] = ring[k];
-        const [b0, b1, s1] = ring[k + 1];
-        const V = (p, u, s) => v.push(p[0], p[1], p[2], u, s, sea(p), 0);
-        V(a0, -1, s0); V(b0, -1, s1); V(a1, 1, s0);
-        V(a1, 1, s0); V(b0, -1, s1); V(b1, 1, s1);
+      const u = half / RIVER_HALF;
+      for (let k = 0; k + 1 < rows.length; k++) {
+        const [a0, a1, s0, b0, p0] = rows[k];
+        const [c0, c1, s1, b1, p1] = rows[k + 1];
+        const V = (p, uu, s, b, past) => v.push(p[0], p[1], p[2], uu, s, sea(p), 0, b, past / RIVER_HALF);
+        V(a0, -u, s0, b0, p0); V(c0, -u, s1, b1, p1); V(a1, u, s0, b0, p0);
+        V(a1, u, s0, b0, p0); V(c0, -u, s1, b1, p1); V(c1, u, s1, b1, p1);
       }
     }
-    if (v.length) this.rivers = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT);
+    if (v.length) this.rivers = new Mesh(gl, new Float32Array(v), WATER_LAYOUT);
   }
 
   /** Team rings (unit stacks, cities) and the path ribbon, draped on the ground. `rings`:

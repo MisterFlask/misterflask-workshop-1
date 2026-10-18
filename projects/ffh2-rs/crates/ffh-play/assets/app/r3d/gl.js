@@ -13,6 +13,7 @@ export const ATTR = {
   iTint: 6,
   iTeam: 7,
   aExtra: 8,
+  aFlow: 9,
 };
 
 const SAMPLERS = new Set();
