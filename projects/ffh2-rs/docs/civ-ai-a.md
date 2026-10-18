@@ -84,7 +84,23 @@ t is the paired t over seeds; wins are "won only by new / only by base" with the
     mana nodes on the map, was never met: the world spell was cast in 0 of 40 games on either
     side), Cave of Ancestors and Teach Spellcasting (small).
 
-## Notes for the orchestrator
+## The branch against its base (2d95e9c), all five together
+
+`civ_ab.py --civ X --seeds 1-40 --base-bin <2d95e9c> --new-bin <branch tip>`: opponents differ too
+(any group-A civ among them plays its new logic), so these mix each civ's own change with
+stronger or weaker neighbours.
+
+| civ | full games: win rate (only new / only base) | share@300 (t) | share@end (t) | 300 turns: share@300 (t) |
+|---|---|---|---|---|
+| Clan of Embers | 35.0% -> 52.5% (9 / 2, p 0.065) | 2094 -> 2211 (1.49) | 2394 -> 2935 (3.12) | 2135 -> 2240 (1.26) |
+| Balseraphs | 22.5% -> 20.0% (5 / 6) | 1785 -> 1919 (1.67) | 1640 -> 1861 (1.12) | 1779 -> 1930 (1.83) |
+| Calabim | 10.3% -> 7.7% (2 / 3; seed 21 left out: the known stack overflow, new side) | 1375 -> 1419 (0.80) | 1027 -> 1069 (0.23) | 1352 -> 1401 (0.87) |
+| Amurites | 5.0% -> 7.5% (2 / 1) | 1281 -> 1304 (0.39) | 884 -> 1147 (1.73) | 1274 -> 1297 (0.38) |
+| Bannor (no own change) | 15.0% -> 10.0% (1 / 3) | 1379 -> 1274 (-1.49) | 1323 -> 1255 (-0.41) | 1363 -> 1257 (-1.48) |
+
+The Bannor have no logic of their own on the branch, so their loss is what the stronger group-A
+neighbours (mostly the Clan and the Balseraphs, who take more cities) cost them.
+
 
 - **Generic fix in this branch**: `units::great_person` read `Player::capital_city` raw and
   panicked on a dangling id (a player whose capital was destroyed with no other city to move it
