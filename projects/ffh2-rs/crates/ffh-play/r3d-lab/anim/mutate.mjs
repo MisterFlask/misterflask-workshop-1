@@ -263,7 +263,7 @@ export const MUTATIONS = [
           // A bow at arm's length cannot reach the head by turning: it is pulled into the chest.
           const J = b.joints[f], chest = [0, 1, 2].map((k) => (J.neck[k] + J.pelvis[k]) / 2);
           const c = [0, 1, 2].map((k) => solid.reduce((a, v) => a + at(v)[k], 0) / solid.length);
-          const d = sub3(chest, c).map((x) => x * 0.8 * w);
+          const d = sub3(chest, c).map((x) => x * w);
           edit(b, f, vs, (p) => p.map((x, k) => x + d[k]));
         }
       }
@@ -332,7 +332,7 @@ export const MUTATIONS = [
     clip: (d) => bump(bump(d, "rHand", 0, 0.25, [0, 0.06, 0.06]), "lean", 0, 0.25, 0.25),
   },
   { name: "shortLoop", kinds: ["idle"], targets: ["idle.loop"], clip: (d) => timeScale(d, 0.45) },
-  { name: "rushed", kinds: ["attack"], archer: false, targets: ["attack.duration"], clip: (d) => timeScale(d, 0.45) },
+  { name: "rushed", kinds: ["attack"], archer: false, targets: ["attack.duration", "attack.power"], clip: (d) => timeScale(d, 0.45) },
   {
     // After the blow the figure snaps back to rest in 0.15 s: no recovery.
     name: "snapBack", kinds: ["attack"], archer: false, targets: ["attack.recover"],
@@ -366,13 +366,14 @@ export const MUTATIONS = [
   },
   {
     // A pose that jumps in one frame (two keys too close, a channel keyed in the wrong units):
-    // the weapon arm and what it holds step 2 cm and ease back over 0.3 s, where the arm moves
-    // least (a jump inside fast motion is masked by it, and the metric rightly lets it pass).
+    // the weapon arm and what it holds step 4 cm, hold two frames and ease back over 0.5 s (at
+    // least six frames), where the arm moves least (a jump inside fast motion is masked by it,
+    // and the metric rightly lets it pass).
     name: "snap", kinds: ["idle", "attack", "death"], targets: ["pop.spike"],
     post: (b) => {
       const arm = [];
       for (let v = 0; v < b.count; v++) if (b.bone[v] === BONE.ARM_R || b.bone[v] === BONE.WEAPON) arm.push(v);
-      const n = Math.max(3, Math.round(0.3 * b.fps));
+      const hold = 2, n = hold + Math.max(6, Math.round(0.5 * b.fps));
       const step = (f) => Math.max(...arm.filter((_, i) => i % 5 === 0).map((v) => Math.hypot(...[0, 1, 2].map((k) => b.pos[(f * b.count + v) * 3 + k] - b.pos[((f - 1) * b.count + v) * 3 + k]))));
       // Not at a declared event, where the validator allows a deliberate snap.
       const ev = Object.values(b.clip.events ?? {}).map((t) => Math.round(t * b.fps));
@@ -380,7 +381,7 @@ export const MUTATIONS = [
       let f0 = -1;
       for (let f = Math.floor(b.frames * 0.2); f < Math.min(b.frames - n, Math.floor(b.frames * 0.8)); f++) if (free(f) && (f0 < 0 || step(f) < step(f0))) f0 = f;
       for (let f = f0; f < Math.min(b.frames, f0 + n); f++) {
-        const u = (f - f0) / n, k = 0.02 * (1 - u * u * (3 - 2 * u));
+        const u = Math.max(0, f - f0 - hold) / (n - hold), k = 0.04 * (1 - u * u * (3 - 2 * u));
         edit(b, f, arm, (p) => [p[0] + k, p[1] + k, p[2]], ["handR", "elbowR"]);
       }
       return b;

@@ -45,15 +45,24 @@ clips("unit.archer", {
     contacts: { L: [[0, 3.6]], R: [[0, 3.6]] },
     keys: [],
     waves: [
-      { ch: "lean", amp: 0.022, n: 1, phase: 0 },
-      { ch: "pelvis", amp: [0, -0.0035, 0], n: 1, phase: 0.25 },
-      { ch: "pelvis", amp: [0.003, 0, 0.002], n: 1, phase: 0.55 },
-      // Holding the draw: the aim drifts and is corrected; the drawing hand eases and recovers.
-      { ch: "lHand", amp: [0, 0.007, 0.004], n: 1, phase: 0.3 },
-      { ch: "lHand", amp: [0, 0.0025, 0], n: 3, phase: 0.1 },
-      { ch: "rHand", amp: [0.007, 0.002, 0], n: 1, phase: 0.62 },
-      { ch: "headTilt", amp: 0.03, n: 1, phase: 0.4 },
-      { ch: "twist", amp: 0.02, n: 1, phase: 0.85 },
+      // One slow breath a loop: the chest rises and opens (no whole-body bob while holding a draw).
+      { ch: "lean", amp: 0.032, n: 1, phase: 0.3 },
+      { ch: "pelvis", amp: [0, -0.002, 0], n: 1, phase: 0.55 },
+      // The weight drifts from foot to foot, the shoulders tilting against the hips.
+      { ch: "pelvis", amp: [0.0105, 0, 0.0045], n: 1, phase: 0.85 },
+      { ch: "roll", amp: 0.034, n: 1, phase: 0.85 },
+      { ch: "twist", amp: 0.03, n: 1, phase: 0.15 },
+      // Holding the draw: the bow arm tires and sags, then is lifted back onto the mark (a quicker
+      // correction than the sag); the bow's tip drifts with it.
+      { ch: "lHand", amp: [0, -0.012, 0.004], n: 1, phase: 0.6 },
+      { ch: "lHand", amp: [0, 0.004, 0], n: 2, phase: 0.7 },
+      { ch: "lRot", amp: [0, 0, 0.025], n: 1, phase: 0.65 },
+      // The draw eases a finger's width and is pulled back to the anchor.
+      { ch: "rHand", amp: [0.012, -0.002, 0.002], n: 1, phase: 0.92 },
+      { ch: "rHand", amp: [0.003, 0, 0], n: 2, phase: 0.8 },
+      // The head nods with the breath and checks the mark.
+      { ch: "headTilt", amp: 0.04, n: 1, phase: 0.7 },
+      { ch: "headYaw", amp: 0.05, n: 2, phase: 0.3 },
     ],
   },
 

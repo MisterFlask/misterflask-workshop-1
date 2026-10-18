@@ -107,6 +107,7 @@ const EASE = {
   in: (u) => u * u, // accelerating into the end (a blow)
   out: (u) => u * (2 - u), // leaving at speed, slowing to a stop
   io: (u) => u * u * (3 - 2 * u), // slow in, slow out
+  blow: (u) => (u + 2 * u * u) / 3, // off at once from a hold, speeding up into the end
 };
 
 /** Catmull-Rom point at s through points P at increasing parameters S (S[0] = 0, last = 1). */
@@ -212,22 +213,22 @@ const axe = (az, el, psi) => {
 /** The axe aimed at azimuth/elevation with its edge toward a given direction. */
 const axeEdge = (az, el, edge) => aimEdge(AXE, dirOf(az, el), edge);
 
-// The chop. Wind-up: the axe drawn back over the right shoulder, its head dropped behind the back,
-// edge up; the body coils back and rises onto the rear foot. The blow: the hand leads up over the
-// head with the wrist still cocked (the axe trailing behind it), then the axe whips over and down,
-// accelerating all the way, onto a target in front at shoulder height, the head above the fist (a
-// fist holds the haft at 45-140 degrees to the forearm, never along it); the hips and chest unwind
-// first and the shield arm swings back against the blow. Follow-through: carried on down and
-// stopped there. Recovery: the axe brought back up across the body to the guard.
+// The chop. Wind-up (0-0.28 s): the axe drawn back over the right shoulder, its head dropped
+// behind the back, edge up; the body coils back and rises onto the rear foot. A held top (to
+// 0.435 s), still settling. The blow (0.13 s): the hand leads up over the head with the wrist still
+// cocked (the axe trailing behind it), then the axe whips over and down, speeding up all the way
+// into a target in front at shoulder height, the head above the fist (a fist holds the haft at
+// 45-140 degrees to the forearm, never along it); the hips and chest unwind first and the shield
+// arm swings back against the blow. Follow-through: carried on down and stopped there. Recovery
+// (0.7-1.2 s): the axe eased back up to the guard in one smooth arc.
 const chopArm = armPath([
   { t: 0, hand: [0, 0, 0], elbow: [0, 0, 0], rot: [0, 0, 0] },
-  { t: 0.26, ease: "io", hand: [-0.022, 0.046, -0.055], elbow: [0, 0.2, 0], rot: axe(-150, -5, 65) },
-  { t: 0.36, ease: "io", hand: [-0.025, 0.05, -0.06], elbow: [0, 0.22, 0], rot: axe(-155, -10, 65) },
-  { t: 0.6, ease: "in", hand: [0.05, -0.135, 0.14], elbow: [0, -0.2, 0], rot: axe(-20, 15, 250), via: [{ hand: [0.015, 0.055, 0.085], rot: axeEdge(-170, 40, [0.42, 0.72, 0.55]) }] },
-  { t: 0.665, ease: "out", hand: [0.03, -0.17, 0.12], elbow: [0, -0.2, 0], rot: axe(-32, -13, 245) },
-  { t: 0.74, ease: "io", hand: [0.028, -0.173, 0.118], elbow: [0, -0.2, 0], rot: axe(-32, -15, 245) },
-  { t: 1.02, ease: "in", hand: [0.0, -0.075, 0.09], elbow: [0, -0.05, 0], rot: axeEdge(-40, 35, [0.6, 0.6, 0.3]) },
-  { t: 1.2, ease: "out", hand: [0, 0, 0], elbow: [0, 0, 0], rot: [0, 0, 0], via: [{ s: 0.4, hand: [-0.035, -0.025, 0.055] }] },
+  { t: 0.28, ease: "io", hand: [-0.018, 0.05, -0.042], elbow: [0, 0.2, 0], rot: axe(-150, 0, 65) },
+  { t: 0.435, ease: "io", hand: [-0.02, 0.055, -0.045], elbow: [0, 0.22, 0], rot: axe(-155, -5, 65) },
+  { t: 34 / 60, ease: "blow", hand: [0.05, -0.135, 0.14], elbow: [0, -0.2, 0], rot: axe(-20, 15, 250), via: [{ s: 0.35, hand: [0.015, 0.055, 0.085], rot: axeEdge(-170, 40, [0.42, 0.72, 0.55]) }] },
+  { t: 0.635, ease: "out", hand: [0.03, -0.17, 0.12], elbow: [0, -0.2, 0], rot: axe(-32, -13, 245) },
+  { t: 0.7, ease: "io", hand: [0.028, -0.173, 0.118], elbow: [0, -0.2, 0], rot: axe(-32, -15, 245) },
+  { t: 1.2, ease: "io", hand: [0, 0, 0], elbow: [0, 0, 0], rot: [0, 0, 0], via: [{ s: 0.56, hand: [-0.005, -0.06, 0.09], rot: axeEdge(-40, 35, [0.6, 0.6, 0.3]) }] },
 ]);
 
 // The death: thrown back by the blow (the chest and head first, the arms flung up a beat later),
@@ -248,26 +249,28 @@ clips("unit.warrior", {
     contacts: { L: [[0, 3.2]], R: [[0, 3.2]] },
     // The weight held a little toward the front foot's side and back: the narrow-footed races
     // (undead) keep their balance margin through the breath.
-    keys: [{ t: 0, pose: { pelvis: [0.0025, 0, -0.002] } }],
+    keys: [{ t: 0, pose: { pelvis: [0.0035, 0, -0.0035] } }],
     waves: [
-      // One breath a loop (3.2 s): the chest rises, the pelvis settles.
-      { ch: "lean", amp: 0.028, n: 1, phase: 0 },
-      { ch: "pelvis", amp: [0, -0.004, 0], n: 1, phase: 0.25 },
+      // One deep breath a loop (3.2 s): the chest swells and lifts, the pelvis settles.
+      { ch: "lean", amp: 0.055, n: 1, phase: 0 },
+      { ch: "pelvis", amp: [0, -0.008, 0], n: 1, phase: 0.25 },
       // The weight drifts between the feet, out of step with the breath.
-      { ch: "pelvis", amp: [0.002, 0, 0.002], n: 1, phase: 0.6 },
+      { ch: "pelvis", amp: [0.005, 0, 0.004], n: 1, phase: 0.6 },
+      // The shoulders turn a little with the weight.
+      { ch: "twist", amp: 0.05, n: 1, phase: 0.75 },
       // The weapon arm settles after the breath; a smaller twice-a-loop bob keeps it from moving
       // as one with the chest.
-      { ch: "rHand", amp: [0, 0.007, 0.0035], n: 1, phase: 0.12 },
-      { ch: "rHand", amp: [0.002, 0.003, 0], n: 2, phase: 0.3 },
-      { ch: "rRot", amp: [0.035, 0, 0.018], n: 1, phase: 0.18 },
+      { ch: "rHand", amp: [0, 0.012, 0.006], n: 1, phase: 0.12 },
+      { ch: "rHand", amp: [0.003, 0.005, 0], n: 2, phase: 0.3 },
+      { ch: "rRot", amp: [0.04, 0, 0.02], n: 1, phase: 0.18 },
       // The shield hand sways across its arm, not along it (a goblin's shield arm is at full reach).
-      { ch: "lHand", amp: [0, 0.0045, 0.004], n: 1, phase: 0.45 },
-      // The head looks about, slowly, and nods a little with the breath.
-      { ch: "headYaw", amp: 0.13, n: 1, phase: 0.7 },
-      { ch: "headTilt", amp: 0.035, n: 1, phase: 0.05 },
-      { ch: "twist", amp: 0.025, n: 1, phase: 0.75 },
+      { ch: "lHand", amp: [0, 0.008, 0.007], n: 1, phase: 0.45 },
+      // The head looks about, slowly, and stays level as the chest breathes under it.
+      { ch: "headYaw", amp: 0.16, n: 1, phase: 0.7 },
+      { ch: "headTilt", amp: 0.04, n: 1, phase: 0.55 },
     ],
   },
+
 
   attack: {
     kind: "attack",
@@ -275,19 +278,19 @@ clips("unit.warrior", {
     fps: 60,
     returns: true,
     strike: [0, 0, 1],
-    events: { impact: 0.6 },
+    events: { impact: 34 / 60 },
     contacts: { L: [[0, 1.2]], R: [[0, 1.2]] },
     keys: merged([
       ...chopArm,
       // Anticipation: coil back and up, leaning away from the blow, the shield raised in guard.
-      { t: 0.26, pose: { pelvis: [0.003, 0.002, -0.016], lean: -0.18, twist: -0.3, headYaw: 0.18, headTilt: 0.04, lHand: [-0.012, 0.045, -0.004] } },
-      // The moving hold at the top of the wind-up.
-      { t: 0.36, pose: { pelvis: [0.004, 0.003, -0.019], lean: -0.21, twist: -0.33, headYaw: 0.2, headTilt: 0.05, lHand: [-0.014, 0.05, -0.005] } },
+      { t: 0.28, pose: { pelvis: [0.003, 0.002, -0.016], lean: -0.18, twist: -0.3, headYaw: 0.18, headTilt: 0.04, lHand: [-0.012, 0.045, -0.004] } },
+      // The hold at the top of the wind-up, still settling into the coil.
+      { t: 0.435, pose: { pelvis: [0.004, 0.003, -0.019], lean: -0.21, twist: -0.33, headYaw: 0.2, headTilt: 0.05, lHand: [-0.014, 0.05, -0.005] } },
       // The hips and chest drive ahead of the arm, dropping onto the front foot.
-      { t: 0.565, pose: { pelvis: [0.009, -0.022, 0.012], lean: 0.2, twist: 0.16, headYaw: -0.05, headTilt: 0.09, lHand: [0.045, -0.012, -0.045] } },
+      { t: 0.535, pose: { pelvis: [0.009, -0.022, 0.012], lean: 0.2, twist: 0.16, headYaw: -0.05, headTilt: 0.09, lHand: [0.045, -0.012, -0.045] } },
       // Impact: low over the front foot, the shield swung back and out against the blow.
-      { t: 0.6, pose: { pelvis: [0.012, -0.03, 0.016], lean: 0.28, twist: 0.3, headYaw: -0.12, headTilt: 0.1, lHand: [0.065, -0.01, -0.06] } },
-      { t: 0.72, pose: { pelvis: [0.012, -0.033, 0.016], lean: 0.29, twist: 0.33, headYaw: -0.14, headTilt: 0.11, lHand: [0.066, -0.014, -0.062] } },
+      { t: 34 / 60, pose: { pelvis: [0.012, -0.03, 0.016], lean: 0.28, twist: 0.3, headYaw: -0.12, headTilt: 0.1, lHand: [0.065, -0.01, -0.06] } },
+      { t: 0.69, pose: { pelvis: [0.012, -0.033, 0.016], lean: 0.29, twist: 0.33, headYaw: -0.14, headTilt: 0.11, lHand: [0.066, -0.014, -0.062] } },
       // Recovery toward the guard (the clip returns to rest at the end).
       { t: 0.95, pose: { pelvis: [0.005, -0.013, 0.006], lean: 0.1, twist: 0.1, headYaw: -0.05, headTilt: 0.04, lHand: [0.008, 0, -0.012] } },
     ]),
