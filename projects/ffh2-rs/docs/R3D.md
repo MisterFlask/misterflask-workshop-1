@@ -361,8 +361,13 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
   min(0.78, 0.33 + 0.035 s), its buildings scaled 1.06-1.42 (size 2: ~0.4; size 6: ~0.54; a walled
   size-9 capital ~0.79 with its wall; a size-12+ capital ~0.9), so a great town spills onto its
   neighbours' plots; their trees, clutter, rocks and bank dressing keep out of its reach (`dress.js`
-  `ctx.inTown`), its houses keep off the garrison's spot (`CITY_UNIT_SPOT`, mirrored by the
-  `GARRISON` zones of architecture.js) and its plate stands in front of its walls. Foundations, roots and trunk
+  `ctx.inTown`), it grows only where it has room (`townRoom`, 64 rays from its centre): it keeps
+  to revealed plots on the map, out of a river's water and off its neighbours' fields and buildings
+  (and half the ground toward a neighbouring city), its wall pulling in along a bank or a hedge;
+  houses, towers and trees on or in front of a unit's ring on a neighbouring plot are dropped from the
+  finished plan; its houses keep clear of where the garrison stands and the strip in front of it
+  (`dress.js` `garrisonOf`, shared by the plan and the unit figures, mirrored or drawn back out of a
+  river); its plate stands in front of its walls. Foundations, roots and trunk
   flares reach below y = 0 so nothing floats on sloping ground.
 
 ### 6.1 The recipe modules
@@ -448,7 +453,9 @@ The 3D renderer sees only what the other renderers see: the server's map arrays 
 are -1 everywhere; fogged plots carry what was seen) and the units in sight. Unrevealed plots are
 modelled as flat *void* (no hidden plot shapes the height of its neighbours, no river or road is
 traced through them, nothing is placed on them) and painted as dark parchment behind a brushy,
-burnt-paper frontier. Remembered plots keep their remembered terrain, structures and cities, dimmed
+burnt-paper frontier. A town builds only on revealed plots on the map: its shape follows the edge of the known, never
+what lies beyond (the plots' visibility is part of its layout's cache key). Remembered plots keep
+their remembered terrain, structures and cities, dimmed
 and cooled; no unit is drawn there (the view has none). Particles fade out of sight. The water
 reveals nothing either: it mirrors and is seen through only to what was already drawn (the grabbed
 scene), no water is drawn on an unrevealed plot (the parchment below shows, as on land), no surf
