@@ -35,15 +35,15 @@ const TAU = Math.PI * 2;
 // --- colours --------------------------------------------------------------------------------------
 // Foliage ramps run deep (cool, shadowed underside) -> dark -> mid -> light (warm, sunlit crown).
 
-const OAK = ["#0f1f19", "#1c3a26", "#33562c", "#6e8c3e"];
+const OAK = ["#0f1f19", "#1c3a26", "#324030", "#4d573e"];
 const OAK_AUTUMN = ["#16261e", "#2c4127", "#4e5c2e", "#868340"];
-const BIRCH = ["#1a3222", "#2e4f30", "#527a3a", "#92ac58"];
-const PINE = ["#0a1b14", "#13301f", "#22472d", "#4f7340"];
+const BIRCH = ["#1a3222", "#2e4f30", "#4c5b43", "#646d52"];
+const PINE = ["#0a1b14", "#13301f", "#26342a", "#3b4736"];
 const JUNGLE = ["#08191a", "#112e22", "#1d4630", "#456a3c"];
 const WILLOW = ["#1b2a23", "#2e4330", "#4b6244", "#7e8e68"];
 const ANCIENT = ["#0b1d1f", "#15322f", "#244840", "#486a53", "#aab27e"];
 const BLIGHT = ["#120a0e", "#24121a", "#3a1a1e", "#6a3424"];
-const BUSH = ["#0e1f13", "#1b3519", "#2f4e21", "#5f7e30"];
+const BUSH = ["#0e1f13", "#1b3519", "#2e3928", "#444e35"];
 const PALM = ["#1a3024", "#28442a", "#3b5a33", "#687a45"];
 const SAGE = ["#222b24", "#344234", "#4c5e46", "#6c7e5c"];
 const SNOW = "#f0f4f6";

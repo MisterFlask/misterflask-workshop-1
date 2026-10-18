@@ -398,12 +398,12 @@ function gem(mb, r, h = r * 1.6) {
 const STY = {
   // Whitewashed plaster and cream stone under red-brown tile, some orange and blue slate.
   human: {
-    wall: ["#e0d4b8", "#e2d4b4", "#d8cbac", "#ded2ba", "#e0d0ac"],
+    wall: ["#b8ab94", "#bcad92", "#b2a58c", "#b9ad98", "#bbab8c"],
     stone: ["#a39a8a", "#968e82", "#a89c88"],
-    stoneLight: ["#d8cbae", "#d0c3a6", "#dccfb2"],
+    stoneLight: ["#b4a78e", "#ad9f88", "#b7aa92"],
     timber: "#4a3022",
-    roof: [["#8e4436", 3.2], ["#7a3a32", 2], ["#985640", 1.6], ["#a0684a", 0.6], ["#4c5884", 0.55], ["#5e4660", 0.3]],
-    tile: "#8e4436",
+    roof: [["#8a5446", 3.2], ["#7a4a40", 2], ["#946250", 1.6], ["#9a705a", 0.6], ["#4c5884", 0.55], ["#5e4660", 0.3]],
+    tile: "#8a5446",
     slate: "#4c5884",
     slateDark: "#303c6c",
     thatch: "#d2b67c",

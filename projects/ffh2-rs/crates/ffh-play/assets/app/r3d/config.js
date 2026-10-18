@@ -42,7 +42,7 @@ export const PRESETS = {
     outline: 0.4,
     outlineWidth: 1,
     grade: 1,
-    saturation: 1.25,
+    saturation: 1.1,
     contrast: 1.12,
     grain: 0.02,
     vignette: 0.1,

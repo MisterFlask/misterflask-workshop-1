@@ -552,7 +552,8 @@ vec3 hatch(vec2 m, vec3 c, float dry) {
       h = pnoise(vec2(uWrapX > 0.5 ? m.x * P / uMapSize.x : m.x * f, m.y * f / 3.0) + float(o) * 7.7, vec2(P, 4096.0)) * (1.0 - dry);
     }
     if (dry > 0.01) h += mstroke(m + float(o) * 5.3, f, 4.0) * dry;
-    k += (h - 0.5) * a * (o == 0 ? 0.32 : 0.26);
+    // The green carries more of it than the straw (its marks vary less in value).
+    k += (h - 0.5) * a * (o == 0 ? 0.32 : 0.26) * mix(1.4, 1.0, dry);
   }
   return c * (1.0 + k);
 }
@@ -671,12 +672,12 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // the two is bent between their headings, as grass bends.
     P0 = P4(vec3(0.33, 0.41, 0.21), vec3(0.22, 0.32, 0.21), vec3(0.30, 0.36, 0.20), vec3(0.25, 0.34, 0.18), vec3(0.3, 0.55, 0.8)); P1 = P0; P2 = P0;
     gPalB = P4(vec3(0.60, 0.53, 0.365), vec3(0.46, 0.37, 0.235), vec3(0.53, 0.46, 0.295), vec3(0.34, 0.38, 0.23), vec3(0.35, 0.62, 0.88));
-    // The finest blades come and go (smoother sward between thicker tufts), so the grass is not one
-    // even pile.
-    str = mix(vec3(0.35, 0.6, 0.75 * smoothstep(0.25, 0.6, mid)), vec3(0.45, 0.6, 0.7), dry);
+    // The finest blades thin and thicken (smoother sward between thicker tufts), so the grass is not
+    // one even pile -- but never vanish: the target's grass is textured everywhere.
+    str = mix(vec3(0.35, 0.6, mix(0.45, 0.75, smoothstep(0.25, 0.6, mid))), vec3(0.45, 0.6, 0.7), dry);
     ang = mix(1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6, gWind(m), dry);
     jit = vec3(mix(0.8, 0.35, dry)); elong = mix(vec3(2.0, 4.5, 3.5), vec3(4.0, 5.0, 5.5), dry); rad = vec3(0.55, 0.55, 0.6); lobe = vec3(0.0);
-    tone = mix(vec3(0.08), vec3(0.16, 0.2, 0.24), dry); hue = mix(1.0, 0.3, dry); tip = mix(vec3(0.0, 0.15, 0.28), vec3(0.0, 0.1, 0.2), dry);
+    tone = mix(vec3(0.18), vec3(0.16, 0.2, 0.24), dry); hue = mix(0.5, 0.3, dry); tip = mix(vec3(0.1, 0.22, 0.3), vec3(0.0, 0.1, 0.2), dry);
   } else if (g == G_DESERT) {
     // Desert: pale sand cut by sinuous dune crests -- the back slope brightening to the crest, a cool
     // rose shadow behind it (the sun is from the south-west) -- with long low sheets of sand laid
@@ -1048,14 +1049,17 @@ void main() {
     // darker margins and wheel ruts, and a verge of worn, dry grass beside it.
     float rd = (1.0 - dec.r) * 0.3;
     if (rd < 0.15) {
-      float hw = 0.07 + (mnoise(m, 7.0) - 0.5) * 0.024 + (mnoise(m + 2.3, 19.0) - 0.5) * 0.012;
+      float hw = 0.07 + (mnoise(m, 7.0) - 0.5) * 0.024 + (mnoise(m + 2.3, 19.0) - 0.5) * 0.012 + (mnoise(m + 4.4, 35.0) - 0.5) * 0.04;
       float aa = max(gPpx * 0.75, 0.002);
       float on = 1.0 - smoothstep(hw - aa, hw + aa, rd);
       float t = rd / hw;
-      vec3 dirt = mix(vec3(0.57, 0.455, 0.325), vec3(0.645, 0.53, 0.38), mnoise(m, 10.0));
-      dirt = mix(dirt, vec3(0.47, 0.35, 0.23), smoothstep(0.5, 0.95, t) * 0.8);
-      dirt = mix(dirt, vec3(0.36, 0.26, 0.17), smoothstep(0.86, 1.0, t) * 0.7);
-      float rut = (1.0 - smoothstep(0.05, 0.13, abs(t - 0.58))) * (1.0 - smoothstep(0.006, 0.013, gPpx));
+      // Mottled packed dirt (kept below the tone curve's shoulder, where mottling would wash out),
+      // its margins and ruts broken along the road rather than drawn as unbroken parallel stripes.
+      vec3 dirt = mix(vec3(0.515, 0.41, 0.29), vec3(0.58, 0.475, 0.34), mnoise(m, 10.0)) * (0.8 + 0.4 * mnoise(m + 5.1, 30.0));
+      float broken = smoothstep(0.25, 0.65, mnoise(m + 9.7, 6.0));
+      dirt = mix(dirt, vec3(0.47, 0.35, 0.23), smoothstep(0.5, 0.95, t) * mix(0.15, 0.4, broken));
+      dirt = mix(dirt, vec3(0.36, 0.26, 0.17), smoothstep(0.86, 1.0, t) * mix(0.1, 0.3, broken));
+      float rut = (1.0 - smoothstep(0.05, 0.13, abs(t - 0.58))) * (1.0 - smoothstep(0.006, 0.013, gPpx)) * broken;
       dirt = mix(dirt, vec3(0.45, 0.34, 0.22), rut * 0.55);
       float cob = smoothstep(0.2, 0.5, mcells(m, 26.0).x);
       dirt = mix(dirt, dirt * (0.8 + 0.3 * cob), dec.a);
@@ -1587,7 +1591,7 @@ void main() {
     // would turn it green) -- in shade it darkens without losing its blue.
     float rd = riverDeep(vExtra.x, vExtra.y, vFlow.x, tl);
     if (band) rd = mix(riverDeep(vExtra.x, vExtra.y, vFlow.x, 0.0), rd, live);
-    vec3 rc = mix(srgb(vec3(0.42, 0.8, 0.86)), srgb(vec3(0.2, 0.56, 0.72)), smoothstep(0.1, 0.5, rd));
+    vec3 rc = mix(srgb(vec3(0.34, 0.64, 0.72)), srgb(vec3(0.2, 0.48, 0.62)), smoothstep(0.1, 0.5, rd));
     rc = mix(rc, srgb(vec3(0.11, 0.3, 0.47)), smoothstep(0.55, 0.95, rd));
     body = rc * (lum(Lb) * 0.7 + 0.1) * bm;
     T *= 0.5;
