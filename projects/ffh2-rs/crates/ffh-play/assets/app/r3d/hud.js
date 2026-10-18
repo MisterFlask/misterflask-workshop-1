@@ -219,20 +219,32 @@ export function drawHud(r3d, cam) {
       g.fillStyle = f > 0.6 ? "#7ad04a" : f > 0.3 ? "#e8c040" : "#e04a30";
       g.fillRect(p.x - bw / 2, p.y - 4, bw * f, 3);
     }
-    // A type tag (and the stack count) over the figure at the gameplay zooms, so the unit's kind
-    // reads where the figures are too small to tell apart (F6). Fades out above ~150 px, where the
-    // figures speak for themselves; below 60 px the far-zoom shield carries the type instead.
+    // A type tag over the figure at the gameplay zooms, so the unit's kind reads where the figures
+    // are too small to tell apart (F6). The type abbreviation fades out above ~150 px, where the
+    // figures speak for themselves; below 60 px the far-zoom shield carries the type instead. The
+    // stack count stays solid at every zoom: only up to three figures are ever drawn, so a bigger
+    // stack cannot be counted from the figures, and fading the count would hide a stack's true size
+    // at the closest zooms. The abbreviation and count share one plate but keep their own alpha, so
+    // the count never dims while the abbreviation fades.
     const multi = s.units.length > 1;
-    const tag = ts >= 60 ? T.abbrev(dname("UnitType", top.type)) + (multi ? " " + s.units.length : "") : multi ? String(s.units.length) : null;
-    const tagAlpha = ts >= 60 ? Math.max(0, Math.min(1, (152 - ts) / 14)) : 1;
-    if (tag && tagAlpha > 0) {
+    const cnt = multi ? String(s.units.length) : null;
+    const abbrAlpha = ts >= 60 ? Math.max(0, Math.min(1, (152 - ts) / 14)) : 0;
+    const parts = [];
+    if (abbrAlpha > 0) parts.push([T.abbrev(dname("UnitType", top.type)), abbrAlpha]);
+    if (cnt) parts.push([cnt, 1]);
+    if (parts.length) {
       const fs = Math.max(10, Math.min(14, Math.round(ts * 0.14)));
       g.font = `700 ${fs}px ${FONT}`;
-      const bw = g.measureText(tag).width + 8;
+      g.textAlign = "left";
+      g.textBaseline = "middle";
+      const gap = parts.length > 1 ? g.measureText(" ").width : 0;
+      const tw = parts.reduce((w, [t]) => w + g.measureText(t).width, 0) + gap * (parts.length - 1);
+      const bw = tw + 8;
       const bh = fs + 4;
       const bx = p.x - ts * 0.16 - bw;
       const by = p.y - bh - 2;
-      g.globalAlpha = tagAlpha;
+      // The plate itself stays solid even while the abbreviation fades, so the count reads clearly.
+      g.globalAlpha = 1;
       g.fillStyle = "rgba(18,14,12,0.88)";
       roundRect(g, bx, by, bw, bh, 3);
       g.fill();
@@ -240,9 +252,13 @@ export function drawHud(r3d, cam) {
       g.lineWidth = 1.2;
       g.stroke();
       g.fillStyle = "#f4ecd8";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(tag, bx + bw / 2, by + bh / 2 + 0.5);
+      let tx = bx + 4;
+      const ty = by + bh / 2 + 0.5;
+      for (const [t, a] of parts) {
+        g.globalAlpha = a;
+        g.fillText(t, tx, ty);
+        tx += g.measureText(t).width + gap;
+      }
       g.globalAlpha = 1;
     }
     if (top.owner === mine) {
