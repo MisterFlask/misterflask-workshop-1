@@ -35,7 +35,9 @@
 // sparks, lantern motes, arcane motes). A town deep in the woods raises its landmark and spires.
 // A town grows with its size (`cityReach`): a small one keeps within its plot, a great walled
 // capital spills over it to ~0.85 from the centre, its buildings up to 1.4 times their size, so it
-// dominates the country around it as the walled town of the look target does.
+// dominates the country around it as the walled town of the look target does -- where it has the
+// room (`townRoom`): it keeps to known land, out of a river's water and off its neighbours' fields
+// and buildings, its reach pulling in toward them (its wall along the river bank or a farm's hedge).
 //
 // Families (the recipes' param, from `family(civType)`; a ".sub" suffix picks a sub-style that
 // `city` and `settlement` derive from the civilization): human ("human.arcane" for the Amurites and
@@ -55,7 +57,7 @@ import { extendCatalog } from "./catalog.js";
 import { MAT, FLOATS } from "../mesh.js";
 import { pal, jitter } from "./palette.js";
 import { noise3 } from "../noise.js";
-import { FEAT } from "../world.js";
+import { FEAT, RIVER_HALF, RIVER_WANDER } from "../world.js";
 
 const TAU = Math.PI * 2;
 const QT = Math.PI / 2;
@@ -4151,29 +4153,44 @@ function corners(A) {
 
 const yawTo = (dx, dz) => Math.atan2(dx, dz);
 
+/** Remembers `f(x, z)` on a fine grid (candidate spots cluster; the terrain's lookups are not
+ *  free). */
+function gridMemo(f) {
+  const memo = new Map();
+  return (x, z) => {
+    const k = Math.round(x * 200) * 4096 + Math.round(z * 200);
+    let v = memo.get(k);
+    if (v === undefined) memo.set(k, (v = f(Math.round(x * 200) / 200, Math.round(z * 200) / 200)));
+    return v;
+  };
+}
+
 /** A settlement being planned: the parts placed so far, their footprints, the open spaces and
- *  streets that must stay clear, and the radius everything stays within. */
+ *  streets that must stay clear, and the radius everything stays within. `ground` (optional):
+ *  `ok(x, z)`, whether a part may stand at a point at all (known land, out of the river, off the
+ *  neighbours' ground: `townGround`), and `lim(x, z)`, how far from the centre parts may reach
+ *  toward a point (the town's room in that direction, `townRoom`). */
 class Plan {
-  constructor(r, P, Rmax, height = null) {
+  constructor(r, P, Rmax, height = null, ground = {}) {
     this.r = r;
     this.P = P;
     this.Rmax = Rmax;
-    // The ground's height, remembered on a fine grid (candidate spots cluster; the terrain's
-    // height lookup is not free).
-    if (height) {
-      const memo = new Map();
-      this.height = (x, z) => {
-        const k = Math.round(x * 200) * 4096 + Math.round(z * 200);
-        let h = memo.get(k);
-        if (h === undefined) memo.set(k, (h = height(Math.round(x * 200) / 200, Math.round(z * 200) / 200)));
-        return h;
-      };
-    } else this.height = null;
+    this.height = height ? gridMemo(height) : null;
+    this.ok = ground.ok ? gridMemo(ground.ok) : null;
+    this.lim = ground.lim ?? null;
     this.out = [];
     this.out.emit = [];
     this.boxes = [];
     this.zones = [];
     this.lanes = [];
+    // Footprints kept clear that no building counts as a neighbour (the garrison's line of sight).
+    this.clear = [];
+  }
+
+  /** How far from the centre parts may reach toward (x, z): `rmax`, or less where the town's room
+   *  (`lim`) is shorter. */
+  edge(x, z, rmax = this.Rmax) {
+    return this.lim ? Math.min(rmax, this.lim(x, z)) : rmax;
   }
 
   /** Keeps a disc clear (squares, the garrison's place). */
@@ -4191,17 +4208,22 @@ class Plan {
   }
 
   fits(A, tol = 0.004, rmax = this.Rmax) {
-    for (const [x, z] of corners(A)) if (Math.hypot(x, z) > rmax) return false;
+    const cs = corners(A);
+    for (const [x, z] of cs) if (Math.hypot(x, z) > this.edge(x, z, rmax)) return false;
     // Broad phase by bounding circles before the exact tests.
     const ra = Math.hypot(A.hw, A.hd);
     const near = (x, z, rad) => (x - A.x) ** 2 + (z - A.z) ** 2 < (ra + rad) ** 2;
     for (const [x, z, rad] of this.zones) if (near(x, z, rad) && nearPoint(A, x, z, rad)) return false;
     for (const [x, z, rad] of this.lanes) if (near(x, z, rad) && nearPoint(A, x, z, rad)) return false;
+    for (const B of this.clear) if (near(B.x, B.z, B.hw + B.hd) && overlap(A, B, 0)) return false;
     for (const B of this.boxes) if (near(B.x, B.z, Math.hypot(B.hw, B.hd)) && overlap(A, B, tol)) return false;
+    cs.push([A.x, A.z]);
+    // Known land, out of the river and off the neighbours' ground.
+    if (this.ok) for (const [x, z] of cs) if (!this.ok(x, z)) return false;
     // Dry, fairly level ground: no footing in the sea or across a river bank.
     if (this.height) {
       let lo = Infinity, hi = -Infinity;
-      for (const [x, z] of [...corners(A), [A.x, A.z]]) {
+      for (const [x, z] of cs) {
         const h = this.height(x, z);
         lo = Math.min(lo, h);
         hi = Math.max(hi, h);
@@ -4290,7 +4312,7 @@ class Plan {
           if (rim && kind === 4 && k % 10 === 4) {
             // Backs to the town wall, fronts turned in: the row inside a walled town's ring.
             const a = r.range(0, TAU), hw = Math.max(-b.lo[0], b.hi[0]) * sc + gap / 2;
-            const back = Math.sqrt(Math.max(0, (rmax - 0.003) ** 2 - hw * hw)) + b.lo[2] * sc - gap / 2;
+            const back = Math.sqrt(Math.max(0, (this.edge(Math.sin(a), Math.cos(a), rmax) - 0.003) ** 2 - hw * hw)) + b.lo[2] * sc - gap / 2;
             x = Math.sin(a) * back;
             z = Math.cos(a) * back;
             yaw = a + Math.PI;
@@ -4338,7 +4360,7 @@ class Plan {
           if (!this.fits(A, eaves)) continue;
           // Closeness to the heart, a front meeting a street, neighbours touched.
           let score = Math.hypot(x - heart[0], (z - heart[1]) * 0.9) * spread;
-          if (rim) score = Math.min(score, (rmax - rad) * 0.8 + 0.03);
+          if (rim) score = Math.min(score, (this.edge(x, z, rmax) - rad) * 0.8 + 0.03);
           const fx = x + Math.sin(yaw) * hd, fz = z + Math.cos(yaw) * hd;
           const ns = this.nearestStreet(fx, fz);
           if (ns) score += street * 0.5 * Math.max(0, ns.d - ns.half - 0.008);
@@ -4381,9 +4403,69 @@ function shuffle(r, list) {
   return list;
 }
 
-/** Where a city's garrison stands, kept clear of houses: dress.js's CITY_UNIT_SPOT (-0.27, 0.32)
- *  and the two of its company behind it (at -/+0.17, -0.12 from it), as [x, z, radius]. */
-const GARRISON = [[-0.27, 0.32, 0.09], [-0.44, 0.2, 0.07], [-0.1, 0.2, 0.07]];
+/** Where a city's garrison stands when the city context does not say (`ctx.garrison`, from
+ *  dress.js `garrisonOf`): the front-left corner (CITY_UNIT_SPOT) and the two of its company behind
+ *  it, as [x, z]. */
+const GARRISON = [[-0.27, 0.32], [-0.44, 0.2], [-0.1, 0.2]];
+/** What each stand of the garrison keeps clear of houses, [disc radius, strip half-width, strip
+ *  length]: a disc (under the head, the stack's ring; the company's feet) and a strip in front of
+ *  it, toward the camera, so that no roof or tower stands between the camera and the figures. */
+const GARRISON_CLEAR = [[0.2, 0.08, 0.5], [0.13, 0.05, 0.4]];
+
+/** How near a river's centre line its water may reach (the shader's wandering edge and a margin):
+ *  nothing of a town stands nearer. */
+const RIVER_WET = RIVER_HALF + RIVER_WANDER + 0.03;
+
+/** Whether a part of a town may stand at plot-local (x, z): on a plot the player knows, on the map
+ *  (`ctx.buildable`, docs/R3D.md §9), out of a river's water (`ctx.riverDist`) and off what stands
+ *  on the neighbouring plots (`ctx.keep`: their fields and buildings, discs {x, z, r} and
+ *  rectangles {x0, z0, x1, z1}). Null when the context tells none of these (the lab's grid). */
+function townGround(ctx) {
+  const known = typeof ctx.buildable === "function" ? ctx.buildable : null;
+  const river = typeof ctx.riverDist === "function" ? ctx.riverDist : null;
+  const keep = Array.isArray(ctx.keep) && ctx.keep.length ? ctx.keep : null;
+  if (!known && !river && !keep) return null;
+  return (x, z) => {
+    if (known && !known(x, z)) return false;
+    if (river && river(x, z) < RIVER_WET) return false;
+    if (keep) for (const o of keep) if (o.r !== undefined ? Math.hypot(x - o.x, z - o.z) < o.r : x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1) return false;
+    return true;
+  };
+}
+
+/** A town's room: for each of ROOM_RAYS rays out from its centre, how far it runs over ground the
+ *  town may stand on (`ok`, townGround) before it meets the first it may not, up to `R` (Infinity
+ *  when it never does). A town does not build across a river or past a neighbour's farm, even
+ *  where the ground beyond is free: its reach pulls in (its wall along the bank or the hedge). */
+const ROOM_RAYS = 64;
+function townRoom(ok, R) {
+  const room = new Float64Array(ROOM_RAYS).fill(Infinity);
+  for (let m = 0; m < ROOM_RAYS; m++) {
+    const a = (m / ROOM_RAYS) * TAU, sx = Math.sin(a), sz = Math.cos(a);
+    let lo = 0.05;
+    for (let t = 0.07; t <= R + 0.02; t += 0.02) {
+      if (!ok(sx * t, sz * t)) {
+        let hi = t;
+        for (let n = 0; n < 4; n++) {
+          const mid = (lo + hi) / 2;
+          if (ok(sx * mid, sz * mid)) lo = mid;
+          else hi = mid;
+        }
+        room[m] = lo;
+        break;
+      }
+      lo = t;
+    }
+  }
+  return room;
+}
+
+/** The room toward plot-local (x, z): the nearer of the two rays either side of it. */
+function roomAt(room, x, z) {
+  const f = ((Math.atan2(x, z) / TAU) * ROOM_RAYS + ROOM_RAYS) % ROOM_RAYS;
+  const i = Math.floor(f) % ROOM_RAYS;
+  return Math.min(room[i], room[(i + 1) % ROOM_RAYS]);
+}
 
 /** How far a city reaches and how big it builds (the scale contract, docs/R3D.md §6): `R` the
  *  radius of its wall ring (unwalled, the radius its buildings keep within), `k` the scale of its
@@ -4423,12 +4505,14 @@ const LAY = {
 
 /** Layouts already planned, by everything they depend on: a great town takes a tenth of a second
  *  to plan, and its plot is dressed again whenever a unit moves next to it. The key holds the
- *  ground's height at a few points (and the neighbours' features), so a town is planned again when
- *  the land under it changes. `ctx.seed` must seed `ctx.r` (dress.js: the city's id). */
+ *  ground's height at a few points (and the neighbours' features), which neighbours are known, the
+ *  river's distance at a few points, the neighbours' keep-out ground and the garrison's stands, so
+ *  a town is planned again when the land under it changes. `ctx.seed` must seed `ctx.r` (dress.js:
+ *  the city's id). */
 const LAYOUTS = new Map();
 function cityLayoutMemo(ctx) {
   if (ctx.seed === undefined || ctx.seed === null) return cityLayout(ctx);
-  const key = [ctx.civ, ctx.family, ctx.size, !!ctx.capital, !!ctx.walls, ctx.seed, ctx.x, ctx.y, JSON.stringify(ctx.coast ?? null)];
+  const key = [ctx.civ, ctx.family, ctx.size, !!ctx.capital, !!ctx.walls, ctx.seed, ctx.x, ctx.y, JSON.stringify(ctx.coast ?? null), JSON.stringify(ctx.keep ?? null), JSON.stringify(ctx.garrison ?? null)];
   if (typeof ctx.height === "function")
     for (let i = 0; i < 9; i++) {
       const a = (i * TAU) / 8, d = i ? 0.62 : 0;
@@ -4439,6 +4523,9 @@ function cityLayoutMemo(ctx) {
       const j = ctx.world.index(ctx.x + dx, ctx.y + dy);
       key.push(j >= 0 ? ctx.world.feat[j] : -1);
     }
+  if (typeof ctx.buildable === "function") for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) key.push(ctx.buildable(dx, dz) ? 1 : 0);
+  if (typeof ctx.riverDist === "function")
+    for (let gz = -2; gz <= 2; gz++) for (let gx = -2; gx <= 2; gx++) key.push(Math.round(Math.min(1, ctx.riverDist(gx * 0.45, gz * 0.45)) * 100));
   const k = key.join("|");
   let out = LAYOUTS.get(k);
   if (!out) {
@@ -4462,13 +4549,36 @@ function cityLayout(ctx) {
   const Rw = walls ? reach : 0;
   const Rmax = walls ? Rw - 0.03 * k : reach;
   const q = Math.max(1, Rmax / 0.42);
-  const plan = new Plan(r, P, Rmax, typeof ctx.height === "function" ? (x, z) => ctx.height(x, z) : null);
+  // The town's room (townRoom): it keeps to known land, out of the river and off what stands on
+  // its neighbours, pulling in where they come nearer than its reach -- its wall along the river
+  // bank or a farm's hedge, its houses inside the wall (`inset`).
+  const ok = townGround(ctx);
+  const room = ok ? townRoom(ok, reach) : null;
+  const wallIn = 0.04 * k;
+  const inset = walls ? wallIn + 0.03 * k : 0.01;
+  const inRoom = (x, z, m) => !room || Math.hypot(x, z) < roomAt(room, x, z) - m;
+  const plan = new Plan(r, P, Rmax, typeof ctx.height === "function" ? (x, z) => ctx.height(x, z) : null, { ok, lim: room ? (x, z) => roomAt(room, x, z) - inset : null });
   const out = plan.out;
   out.reach = reach + (walls ? 0.04 * k : 0.03);
-  const N = cityCounts(size, Math.max(1, Math.min(1.9, ((q * q) / (k * k)) * 0.72)));
-  // The garrison's place (dress.js CITY_UNIT_SPOT: the front-left corner, its company behind it)
-  // and the way in from the gate.
-  for (const [x, z, rad] of GARRISON) plan.zone(x, z, rad);
+  // The garrison's place (dress.js garrisonOf: the front-left corner, its company behind it, all
+  // out of the river), the ground in front of it toward the camera, and the way in from the gate.
+  const G = Array.isArray(ctx.garrison) && ctx.garrison.length ? ctx.garrison : GARRISON;
+  G.forEach(([x, z], n) => {
+    const [rad, hw, len] = GARRISON_CLEAR[n ? 1 : 0];
+    plan.zone(x, z, rad);
+    plan.clear.push({ x, z: z + len / 2, hw, hd: len / 2, c: 1, s: 0 });
+  });
+  // (Fewer houses where the town has less ground: the share of its disc that its room and the
+  // garrison leave, on a grid.)
+  let free = 0, all = 0;
+  for (let gz = -12; gz <= 12; gz++)
+    for (let gx = -12; gx <= 12; gx++) {
+      const x = (gx * Rmax) / 12, z = (gz * Rmax) / 12, d = Math.hypot(x, z);
+      if (d > Rmax) continue;
+      all++;
+      if (d <= plan.edge(x, z) && !plan.zones.some(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) < zr) && !plan.clear.some((B) => Math.abs(x - B.x) < B.hw && Math.abs(z - B.z) < B.hd)) free++;
+    }
+  const N = cityCounts(size, Math.max(1, Math.min(1.9, ((q * q) / (k * k)) * 0.72)) * (free / all));
   plan.lane([[0, 0.12 * q], [0, Rmax + 0.2]], 0.03 * k);
 
   // The landmark at the back of the square (a great tree's crown may spread over the houses).
@@ -4501,8 +4611,8 @@ function cityLayout(ctx) {
   const cityTower = (n) => ({ asset: "bld.tower", variant: towerV[n % towerV.length], scale: (f === "elven" ? 0.9 : 0.82) * (deep ? 1.45 : 1) * k });
 
   // The square: a well, stalls, banners flanking the way to the landmark; a fire for a camp,
-  // braziers for an infernal court.
-  const sq = { x: lm.x * 0.5, z: 0.12 * q };
+  // braziers for an infernal court. (Drawn back from a river in front of the town.)
+  const sq = { x: lm.x * 0.5, z: room ? Math.max(0.03, Math.min(0.12 * q, roomAt(room, 0, 1) - 0.15)) : 0.12 * q };
   plan.zone(sq.x, sq.z, 0.075 * (1 + (q - 1) * 0.3));
   for (const s of [-1, 1]) plan.add("bld.banner", L.banner, lm.x + s * 0.09 * k, lm.z + 0.16 * k, L.banner ? -0.4 : 0, k, { ghost: true });
   if (L.well) plan.try("bld.well", 0, sq.x + r.sign() * r.range(0.05, 0.08) * q, sq.z - r.range(0.02, 0.05) * q, r.range(0, TAU), k, { tol: 0 });
@@ -4521,6 +4631,7 @@ function cityLayout(ctx) {
     for (const s of [-1, 1])
       for (const z of [0.2 * q, 0.42 * q]) {
         if (z > Rmax - 0.02 && !(walls && z < Rw)) continue;
+        if (!inRoom(s * 0.075 * k, z, walls ? wallIn : 0.02)) continue;
         plan.add("bld.brazier", 0, s * 0.075 * k, z, 0, 1.1 * k, { ghost: true });
         out.emit.push({ dx: s * 0.075 * k, dz: z, dy: 0.08 * k, color: "#ff6a20", size: 0.0045 * k, rise: 0.34, count: 2, spread: 0.012 * k });
       }
@@ -4602,30 +4713,53 @@ function cityLayout(ctx) {
     for (const p of out)
       if (p.asset === "bld.keep") for (const s of [-1, 1]) out.emit.push({ dx: p.x + s * 0.06 * p.scale, dz: p.z - 0.07 * p.scale, dy: 0.31 * p.scale, color: "#ffb050", size: 0.0045, rise: 0.4, count: 3, spread: 0.01 });
   if (sub === "arcane") for (const p of out) if (p.asset === "bld.tower" && p.variant === 2) out.emit.push({ dx: p.x, dz: p.z, dy: 0.56 * p.scale, color: "#b89aff", size: 0.0065, rise: 0.12, count: 5, spread: 0.05 });
-  if (walls) wallRing(out, r, P, Rw, plan.height, k);
+  if (walls) wallRing(out, r, P, Rw, plan.height, k, { ok: plan.ok, lim: room ? (x, z) => roomAt(room, x, z) - wallIn : null, stands: G });
   return out;
 }
 
+/** How far a town wall keeps from where the garrison stands (a figure's feet and the wall's
+ *  thickness). */
+const WALL_CLEAR = 0.1;
+
+/** The distance from point (x, z) to the segment p-q. */
+function segDist(x, z, p, q) {
+  const ex = q[0] - p[0], ez = q[1] - p[1];
+  const t = Math.max(0, Math.min(1, ((x - p[0]) * ex + (z - p[1]) * ez) / (ex * ex + ez * ez || 1)));
+  return Math.hypot(x - p[0] - ex * t, z - p[1] - ez * t);
+}
+
 /** A ring of wall segments of radius R with towers and a gate at +z, its pieces `k` times their
- *  size (a segment's length is the ring's own): none standing in water, nor across a slope too
- *  steep to wall (the cliff is the wall there). */
-function wallRing(out, r, P, R, height = null, k = 1) {
-  const wet = (x, z) => !!height && height(x, z) < 0.005;
+ *  size (a segment's length is the ring's own): bowed out round the garrison's `stands` near or
+ *  beyond it (a small town's wall would run through its garrison), pulled in to `lim(x, z)` (the
+ *  town's room, less the wall's thickness) where that is nearer; none standing in water or where
+ *  `ok` says no (townGround), across a slope too steep to wall (the cliff is the wall there) or
+ *  where a figure would still stand in it. */
+function wallRing(out, r, P, R, height = null, k = 1, { ok = null, lim = null, stands = [] } = {}) {
+  const wet = (x, z) => (!!height && height(x, z) < 0.005) || (!!ok && !ok(x, z));
   const steep = (p, q) => !!height && Math.abs(height(p[0], p[1]) - height(q[0], q[1])) > 0.07 * k;
   const N = Math.max(8, Math.round((TAU * R) / (0.2 * k)));
   const D = TAU / N;
-  const V = [];
-  for (let i = 0; i < N; i++) {
-    const a = (i + 0.5) * D;
-    const rr = R * (1 + (i === 0 || i === N - 1 ? 0 : r.range(-0.035, 0.02)));
-    V.push([Math.sin(a) * rr, Math.cos(a) * rr]);
+  const rad = [];
+  for (let i = 0; i < N; i++) rad.push(R * (1 + (i === 0 || i === N - 1 ? 0 : r.range(-0.035, 0.02))));
+  // The two corners either side of a stand go far enough out that the wall between them passes
+  // WALL_CLEAR beyond it.
+  for (const [sx, sz] of stands) {
+    const i0 = Math.floor(((Math.atan2(sx, sz) + TAU) % TAU) / D - 0.5);
+    const need = (Math.hypot(sx, sz) + WALL_CLEAR) / Math.cos(D / 2);
+    for (const i of [(i0 + N) % N, (i0 + 1) % N]) rad[i] = Math.max(rad[i], need);
   }
+  const V = rad.map((rr, i) => {
+    const a = (i + 0.5) * D;
+    if (lim) rr = Math.min(rr, lim(Math.sin(a), Math.cos(a)));
+    return [Math.sin(a) * rr, Math.cos(a) * rr];
+  });
+  const onStand = (p, q, d) => stands.some(([sx, sz]) => segDist(sx, sz, p, q) < d);
   for (let i = 0; i < N; i++) {
     const p = V[(i + N - 1) % N], q = V[i];
     const cx = (p[0] + q[0]) / 2, cz = (p[1] + q[1]) / 2;
     const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
     const yaw = Math.atan2(-(q[1] - p[1]), q[0] - p[0]);
-    if (wet(cx, cz) || (i && steep(p, q))) continue;
+    if (wet(cx, cz) || (i && steep(p, q)) || onStand(p, q, 0.06)) continue;
     if (i === 0) out.push({ asset: "bld.gate", param: P, x: cx, z: cz, yaw, scale: k, sx: L / 0.2 });
     else out.push({ asset: "bld.wall", param: P, x: cx, z: cz, yaw, scale: k, sx: (L / 0.2) * 1.02 });
   }
@@ -4633,7 +4767,7 @@ function wallRing(out, r, P, R, height = null, k = 1) {
     if (i === 0 || i === N - 1) continue;
     if (i % 2 === 1 && i !== N - 2) continue;
     const [x, z] = V[i];
-    if (wet(x, z)) continue;
+    if (wet(x, z) || onStand(V[i], V[i], 0.08)) continue;
     out.push({ asset: "bld.walltower", param: P, variant: (i % 4 === 0 ? 1 : 0) + 2 * (Math.floor(i / 4) % 2), x, z, yaw: Math.atan2(x, z), scale: k });
   }
 }

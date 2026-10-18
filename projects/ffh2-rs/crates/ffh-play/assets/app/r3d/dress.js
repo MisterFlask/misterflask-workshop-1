@@ -13,7 +13,7 @@ import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
 import { hexLinear, clamp, smoothstep } from "./math.js";
 import { KIND, FEAT, GROUND, SEA, DRAFT, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
-import { roadLinks, inField } from "./fields.js";
+import { roadLinks, inField, fieldLayout } from "./fields.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -25,6 +25,29 @@ const CITY_UNIT_SPOT = [-0.27, 0.32];
 const VOLCANO_UNIT_SPOT = [-0.14, 0.38];
 const STRUCTURE_SPOT = [0.02, -0.12];
 const BONUS_SPOT = [-0.26, 0.2];
+/** A stack's head and the two of its company behind it, from the stack's spot. */
+const COMPANY = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
+
+/** Where a city's garrison stands (plot-local [x, z], the head first, then its company): at the
+ *  city's front-left corner (CITY_UNIT_SPOT), or, where one of them would stand in a river, on its
+ *  cut bank or on a town wall along its bank, at the front-right (a river along the west edge) or
+ *  drawn back from the water (a river along the front). A pure function of the plot and the
+ *  rivers, shared by dressUnits (which stands the stack there) and the town plan (which keeps the
+ *  ground clear of houses and its wall round it). */
+function garrisonOf(world, x, y) {
+  const stands = (sx, sz) => COMPANY.map(([u, v]) => [sx + u, sz + v]);
+  if (!world.riverCells.size) return stands(...CITY_UNIT_SPOT);
+  let best = null, bestD = -1;
+  for (const back of [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]) {
+    for (const sx of [CITY_UNIT_SPOT[0], -CITY_UNIT_SPOT[0], -0.12, 0.12]) {
+      const s = stands(sx, CITY_UNIT_SPOT[1] - back);
+      const d = Math.min(...s.map(([lx, lz]) => world.riverDist(x + 0.5 + lx, y + 0.5 - lz)));
+      if (d >= RIVER_BANK + 0.08) return s;
+      if (d > bestD) [best, bestD] = [s, d];
+    }
+  }
+  return best;
+}
 
 let nextId = 1;
 const ids = new Map();
@@ -274,8 +297,8 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         const family = CATALOG.family?.(civ, city) ?? "human";
         const team = hexRgb(teamColour(city.owner));
         const cr = rng(hash32(city.id * 977 + 13));
-        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y, coast: ctx.coast, river: ctx.river };
-        const parts = CATALOG.city?.(cctx) ?? basicCity(cctx);
+        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y, coast: ctx.coast, river: ctx.river, ...townGround(world, map, cityAt, x, y) };
+        const parts = clearOfUnits(CATALOG.city?.(cctx) ?? basicCity(cctx), unitsRound(world, env, x, y));
         for (const e of parts.emit ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5 + (e.dx ?? 0), y + 0.5 - (e.dz ?? 0)) + (e.dy ?? 0.2), z: -(y + 0.5 - (e.dz ?? 0)) });
         const cid = idOf(`city${city.id}`);
         for (const p of parts) {
@@ -288,6 +311,74 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
     }
   }
   return { list: out, emitters, cities, byPlot };
+}
+
+/** The ground a city on plot (x, y) may build on, for the town plan (the catalog's city context;
+ *  architecture.js townGround), plot-local (x east, z south): `buildable(dx, dz)`, whether the plot
+ *  under a point is on the map and known (docs/R3D.md §9: nothing stands on, or is shaped by, an
+ *  unrevealed plot); `riverDist(dx, dz)`, the distance to a river; `keep`, what stands on the
+ *  neighbouring plots -- a farm's fields (fields.js fieldLayout), an improvement's buildings (within
+ *  0.45 of its centre: settlementOf, the props), a neighbouring city's half of the ground -- as
+ *  discs {x, z, r} and rectangles {x0, z0, x1, z1}; and `garrison`, where its units stand. */
+function townGround(world, map, cityAt, x, y) {
+  const buildable = (dx, dz) => {
+    const j = world.index(Math.floor(x + 0.5 + dx), Math.floor(y + 0.5 - dz));
+    return j >= 0 && world.kind[j] !== KIND.VOID;
+  };
+  const keep = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = dx || dy ? world.index(x + dx, y + dy) : -1;
+      if (j < 0 || world.kind[j] === KIND.VOID || world.isWater(j)) continue;
+      if (cityAt.has(j)) keep.push({ x: dx, z: -dy, r: 0.5 });
+      else if (map.improvement[j] >= 0) {
+        keep.push({ x: dx, z: -dy, r: 0.47 });
+        const lay = fieldLayout(j, tname("ImprovementType", map.improvement[j]), map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null);
+        if (!lay) continue;
+        // The fields' bounds, with their fences.
+        let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+        for (const f of lay.fields) [x0, z0, x1, z1] = [Math.min(x0, f.x0), Math.min(z0, f.z0), Math.max(x1, f.x1), Math.max(z1, f.z1)];
+        keep.push({ x0: dx + x0 - 0.04, z0: -dy + z0 - 0.04, x1: dx + x1 + 0.04, z1: -dy + z1 + 0.04 });
+      }
+    }
+  }
+  return { buildable, riverDist: (dx, dz) => world.riverDist(x + 0.5 + dx, y + 0.5 - dz), keep, garrison: garrisonOf(world, x, y) };
+}
+
+/** Where the units stand on the plots round plot (x, y), in its plot-local coordinates. */
+function unitsRound(world, env, x, y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = dx || dy ? world.index(x + dx, y + dy) : -1;
+      if (j < 0 || !env.unitAt.has(j)) continue;
+      const s = env.cityAt.has(j) ? garrisonOf(world, x + dx, y + dy)[0] : world.feat[j] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+      out.push([dx + s[0], -dy + s[1]]);
+    }
+  }
+  return out;
+}
+
+/** A town's parts without those that would crowd a unit on a neighbouring plot (`units`,
+ *  unitsRound): no house, tower or tree on its ring, and no tower or tree between it and the
+ *  camera (in front of it, south). They are left out of the planned town rather than planned
+ *  round, so that a unit walking past does not rebuild the town; the wall stays whole. */
+function clearOfUnits(parts, units) {
+  if (!units.length) return parts;
+  const tall = /^(bld\.(tower|walltower|hall)|tree\.)/;
+  const dropped = [];
+  const out = parts.filter((p) => {
+    if (p.asset === "bld.keep" || p.asset === "bld.wall" || p.asset === "bld.gate") return true;
+    const hit = units.some(([ux, uz]) => {
+      const dx = p.x - ux, dz = p.z - uz;
+      return Math.hypot(dx, dz) < 0.22 || (tall.test(p.asset) && Math.abs(dx) < 0.18 && dz > 0 && dz < 0.5);
+    });
+    if (hit) dropped.push(p);
+    return !hit;
+  });
+  // (And the particles they carried.)
+  out.emit = (parts.emit ?? []).filter((e) => !dropped.some((p) => Math.hypot((e.dx ?? 0) - p.x, (e.dz ?? 0) - p.z) < 0.08));
+  return out;
 }
 
 /** Where the water is around plot (x, y): the plot-local directions ([dx, dz], x east, z south)
@@ -567,8 +658,9 @@ function basicCity(c) {
   return out;
 }
 
-/** The unit stacks in sight: one figure for the stack's top unit at the plot centre (at a city's
- *  gate on a city plot), with up to two of its company behind it. */
+/** The unit stacks in sight: one figure for the stack's top unit at the plot centre (on a city
+ *  plot at its front corner, out of the river: garrisonOf), with up to two of its company behind
+ *  it. */
 export function dressUnits(world, map) {
   const out = [];
   const stacks = [];
@@ -594,12 +686,13 @@ export function dressUnits(world, map) {
     const st = stackState(units, sctx);
     const top = st?.head ?? units[0];
     const onCity = map.city[i] >= 0;
-    // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera.
-    const spot = onCity ? CITY_UNIT_SPOT : world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+    // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera. A
+    // city's garrison stands at its front corner, out of the river (garrisonOf).
+    const spot = world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+    const stands = onCity ? garrisonOf(world, u0.x, u0.y) : COMPANY.map(([u, v]) => [spot[0] + u, spot[1] + v]);
     const team = hexRgb(teamColour(top.owner));
     // Company behind the head, strongest first (the badge count is unchanged).
     const order = [top, ...units.filter((u) => u !== top).sort((a, b) => strength(b) - strength(a))].slice(0, 3);
-    const slots = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
     let anchor = null;
     order.forEach((u, k) => {
       const name = tname("UnitType", u.type);
@@ -609,8 +702,7 @@ export function dressUnits(world, map) {
       const domain = info ? tname("DomainType", info.domain) : null;
       const combat = info ? tname("UnitCombatType", info.unit_combat) : null;
       const look = CATALOG.unit?.(name, { info, civ, unit: u, domain, combat, family: CATALOG.family?.(civ, null) ?? "human", r: rng(u.id), name }) ?? { asset: "basic.unit", param: "" };
-      const lx = spot[0] + slots[k][0];
-      const lz = spot[1] + slots[k][1];
+      const [lx, lz] = stands[k];
       const mx = u0.x + 0.5 + lx;
       const my = u0.y + 0.5 - lz;
       const s = (look.scale ?? 1) * (k === 0 ? 1 : onCity ? 0.6 : 0.78);
@@ -627,7 +719,7 @@ export function dressUnits(world, map) {
       out.push(it);
       if (k === 0) anchor = { x: mx, y: yy, z: -my, height: (look.height ?? 0.5) * s };
     });
-    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot, mark: st?.state?.mark ?? null, hero: st?.state?.hero ?? false });
+    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot: stands[0], mark: st?.state?.mark ?? null, hero: st?.state?.hero ?? false });
   }
   return { list: out, stacks };
 }

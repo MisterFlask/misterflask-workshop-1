@@ -188,6 +188,39 @@ export function showcase(data) {
   return { map, view, focus: [12, Y(7)] };
 }
 
+/** A great walled town by a river (down its west side, then along its front), a farm beside it, a
+ *  cottage and farms round it, a unit on the plot behind it and its garrison, and a small walled
+ *  town with its garrison: the towns keep out of the water and off their neighbours' ground, their
+ *  garrisons stand on dry ground inside their walls (docs/R3D.md §6). Best framed at ts=150. */
+export function riverTown(data) {
+  const rows = ["..........", "....,,....", "..f.......", "..........", "..........", "...,,....."];
+  const rivers = riverBits([[3, 6], [3, 5], [3, 4], [3, 3], [4, 3], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3]]);
+  const town = { id: 1, owner: 0, x: 3, y: 3, name: "Riverford", capital: true, size: 10, walls: true };
+  const fort = { id: 2, owner: 0, x: 6, y: 4, name: "Stoneholt", capital: false, size: 3, walls: true };
+  const routes = [[3, 3], [4, 3], [5, 3], [6, 4], [3, 2], [3, 1]];
+  const map = buildMap(data, rows, {
+    rivers,
+    routes,
+    improvements: [[4, 3, "IMPROVEMENT_FARM"], [4, 4, "IMPROVEMENT_COTTAGE"], [2, 4, "IMPROVEMENT_FARM"], [4, 2, "IMPROVEMENT_FARM"]],
+    bonuses: [[4, 3, "BONUS_WHEAT"]],
+    owners: [[0, 0, 9, 5, 0]],
+    cities: [town, fort],
+  });
+  const view = buildView(data, {
+    players: [{ civ: "CIVILIZATION_BANNOR" }],
+    cities: [town, fort],
+    units: [
+      { type: "UNIT_SWORDSMAN", x: 3, y: 3 },
+      { type: "UNIT_ARCHER", x: 3, y: 3 },
+      { type: "UNIT_WARRIOR", x: 3, y: 3 },
+      { type: "UNIT_HORSEMAN", x: 3, y: 4 },
+      { type: "UNIT_ARCHER", x: 6, y: 4 },
+      { type: "UNIT_WARRIOR", x: 6, y: 4 },
+    ],
+  });
+  return { map, view, focus: [4.7, 3.5] };
+}
+
 /** The look target (docs/R3D.md §16): the composition of the owner's reference image -- a walled
  *  town on golden grass at the top, a river winding from the north-east to the south-west under two
  *  stone bridges, a crossroads of dirt roads, farms with a cottage and haystacks on the right, a
