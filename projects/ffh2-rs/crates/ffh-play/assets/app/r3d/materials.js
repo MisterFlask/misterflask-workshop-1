@@ -2,12 +2,12 @@
 // detail -- grass blades, wind-combed straw, packed dirt with pebbles, tilled soil, ripe grain,
 // vegetable beds, sand, tundra's moss and lichen, wind-carved snow, reeds, rock (the hell grounds
 // borrow the value of sand, lichen and rock) -- painted by code into typed arrays once at start-up
-// (about 100-250 ms; no image is loaded,
-// docs/R3D.md §15) and kept in one TEXTURE_2D_ARRAY with mipmaps. The terrain shader (shaders.js
-// TERRAIN_FS, matAt/matPair) samples them anchored to the map and keeps the broad, plot-scale
-// painting procedural (which ground lies where, the meadow's golden patches, a plot's centre pinned
-// to its own ground, fields and roads from the decal); the mipmaps fade the detail with distance,
-// so it is not faded by hand with the zoom and does not shimmer.
+// (about 100-250 ms; no image is loaded, docs/R3D.md §15) and kept in one TEXTURE_2D_ARRAY with
+// mipmaps. The terrain shader (shaders.js TERRAIN_FS, matAt/matPair) samples them anchored to the
+// map and keeps the broad, plot-scale painting procedural (which ground lies where, the meadow's
+// golden patches, a plot's centre pinned to its own ground, fields and roads from the decal); the
+// mipmaps fade the detail with distance, so it is not faded by hand with the zoom and does not
+// shimmer.
 //
 // Each layer is RGBA8: the albedo (authored like the shader's colours, which converts them with
 // srgb()) and a height (the relief the light picks out, and what decides which of two layers
@@ -349,9 +349,9 @@ function dirt(t, r) {
     t.blob(r() * n, r() * n, 0, 0.6 + 0.6 * r(), 0.6 + 0.5 * r(), dark ? [0.37, 0.29, 0.21] : [0.71, 0.63, 0.49], dark ? 0.25 : 0.55, 0, 0.6 + 0.3 * r());
   }
   const PEB = [[0.58, 0.55, 0.50], [0.69, 0.64, 0.55], [0.53, 0.45, 0.35], [0.46, 0.44, 0.42]];
-  for (let k = 0; k < 90; k++) {
-    const x = r() * n, y = r() * n, ang = r() * Math.PI, rx = 1.6 + 2.4 * r() * r(), ry = rx * (0.6 + 0.35 * r());
-    t.blob(x + 0.5, y - 0.5, ang, rx + 0.9, ry + 0.9, [0.33, 0.26, 0.19], 0.3, 0, 0.45);
+  for (let k = 0; k < 110; k++) {
+    const x = r() * n, y = r() * n, ang = r() * Math.PI, rx = 2 + 3.2 * r() * r(), ry = rx * (0.6 + 0.35 * r());
+    t.blob(x + 0.8, y + 0.45, ang, rx + 1.2, ry + 1.2, [0.30, 0.23, 0.17], 0.3, 0, 0.55);
     t.blob(x, y, ang, rx, ry, mul3(PEB[Math.floor(r() * 4)], 0.9 + 0.2 * r()), 0.8 + 0.2 * r(), 0.55, 1, 0.4);
   }
 }
@@ -488,7 +488,7 @@ function sand(t, r) {
   }
   for (let k = 0; k < 28; k++) {
     const x = r() * n, y = r() * n, rx = 1.2 + 1.6 * r(), ang = r() * Math.PI;
-    t.blob(x + 0.4, y - 0.4, ang, rx + 0.7, rx * 0.8 + 0.7, [0.55, 0.44, 0.32], 0.3, 0, 0.4);
+    t.blob(x + 0.4, y + 0.25, ang, rx + 0.7, rx * 0.8 + 0.7, [0.55, 0.44, 0.32], 0.3, 0, 0.4);
     t.blob(x, y, ang, rx, rx * 0.8, mix3([0.62, 0.55, 0.46], [0.72, 0.62, 0.5], r()), 0.85, 0.5, 1, 0.4);
   }
 }
