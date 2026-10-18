@@ -447,7 +447,7 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // The pools are peaty, darker and greener than open water (marsh is land), with a faint
     // drifting sheen of the sky.
     float sheen = smoothstep(0.35, 0.8, mstroke(m + vec2(uTime * 0.02, 0.0), 5.0, 4.0));
-    vec3 water = mix(vec3(0.11, 0.17, 0.16), vec3(0.30, 0.35, 0.36), sheen * 0.25);
+    vec3 water = mix(vec3(0.15, 0.23, 0.24), vec3(0.34, 0.40, 0.42), sheen * 0.3);
     return srgb(mix(c, water, pool * 0.85));
   }
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
