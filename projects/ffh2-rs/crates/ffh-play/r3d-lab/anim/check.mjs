@@ -152,6 +152,7 @@ export const LIMITS = {
   fallDir: 35,
   groundEvent: 0.067, // the declared `ground` event within 67 ms of the measured contact
   bounce: 0.008,
+  landing: 1.3, // a part's landing speed / free fall from its highest point (a topple's tip: 1.22)
   still: 0.0005,
   settle: 0.5,
   lieCom: 0.45, // lying on the side with gear keeps the centre of mass at ~0.36 of standing
@@ -270,7 +271,28 @@ export function model(b) {
   for (const s of ["L", "R"]) for (const [t0, t1] of b.clip.contacts?.[s] ?? []) for (let f = fr(t0); f <= fr(t1); f++) planted[s][f] = true;
   const coms = Array.from({ length: F }, (_, f) => com(f));
   const strikes = Array.from({ length: F }, (_, f) => strikeAt(f));
-  return { b, F, n, X, R0, feet, footSet, d0, weaponKey, weapon, isBow, arrow, string, bowLimbs, shield, byBone, head, centroid, coms, strikes, planted, fr, sec, loop: !!b.clip.loop, dims: b.rest.meta?.dims };
+  // Ground arrivals of the trunk (body, head, legs; every second vertex): a vertex that comes
+  // down at least 0.008 within four frames, the last two of them falling, and stops near the
+  // ground (within 0.02 of it, still for the next two frames). A landing stops what lands in a frame: a contact, not a pop.
+  const arrivals = new Map(); // vertex -> [{f, ground, bone}]
+  const near = Math.max(d0, 0) + 0.02;
+  for (const bone of [BONE.BODY, BONE.HEAD, BONE.LEG_L, BONE.LEG_R]) {
+    for (const v of (byBone.get(bone) ?? []).filter((_, k) => k % 2 === 0)) {
+      const y = (f) => b.pos[(f * n + v) * 3 + 1];
+      const list = [];
+      for (let f = 1; f + 2 < F; f++) {
+        if (y(f) > near || Math.abs(y(f + 1) - y(f)) > 0.003 || Math.abs(y(f + 2) - y(f)) > 0.005) continue;
+        let hi = -Infinity;
+        for (let k = Math.max(0, f - 4); k < f; k++) hi = Math.max(hi, y(k));
+        // Coming down for two frames (a fall), not a one-frame pop up and back.
+        if (hi < y(f) + 0.008 || f < 2 || y(f - 1) <= y(f) + 0.001 || y(f - 2) <= y(f - 1) + 0.001) continue;
+        if (list.length && f - list[list.length - 1].f <= 4) continue;
+        list.push({ f, ground: y(f), bone });
+      }
+      if (list.length) arrivals.set(v, list);
+    }
+  }
+  return { b, F, n, X, R0, feet, footSet, d0, weaponKey, weapon, isBow, arrow, string, bowLimbs, shield, byBone, head, centroid, coms, strikes, planted, arrivals, fr, sec, loop: !!b.clip.loop, dims: b.rest.meta?.dims };
 }
 
 /** A metric's result. */
@@ -720,7 +742,8 @@ function balance(m) {
 function tracks(m) {
   const { b, F, X, byBone, arrow, string, strikes } = m;
   const out = [];
-  for (const k of Object.keys(b.joints[0])) out.push({ name: k, trunk: !/hand|elbow|shoulder/.test(k), at: (f) => b.joints[f][k] });
+  const boneOf = (k) => (/^(hip|knee|ankle)L$/.test(k) ? BONE.LEG_L : /^(hip|knee|ankle)R$/.test(k) ? BONE.LEG_R : /^(head|headTop|neck)$/.test(k) ? BONE.HEAD : BONE.BODY);
+  for (const k of Object.keys(b.joints[0])) out.push({ name: k, bone: boneOf(k), trunk: !/hand|elbow|shoulder/.test(k), at: (f) => b.joints[f][k] });
   // A bow's striking point is the nocked arrow's tip, which jumps by design when an arrow is
   // loosed or nocked (its snap is checked by rigid.arrow and shot.release, not here).
   if (!m.isBow) out.push({ name: "strike", trunk: false, at: (f) => strikes[f] });
@@ -729,7 +752,7 @@ function tracks(m) {
     const step = Math.max(1, Math.floor(vs.length / 48));
     for (let i = 0; i < vs.length; i += step) {
       const v = vs[i];
-      out.push({ name: `bone${bone}`, trunk: bone === BONE.BODY || bone === BONE.HEAD || bone === BONE.LEG_L || bone === BONE.LEG_R, at: (f) => X(f, v) });
+      out.push({ name: `bone${bone}`, bone, trunk: bone === BONE.BODY || bone === BONE.HEAD || bone === BONE.LEG_L || bone === BONE.LEG_R, at: (f) => X(f, v) });
     }
   }
   void F;
@@ -757,12 +780,21 @@ function continuity(m) {
   const idx = (k) => (loop ? ((k % F) + F) % F : k);
   let wt = 0, ft = 0, nt = "";
   let spike = 0, sf = 0, sn = "", jit = 0, jf = 0, jn = "";
+  // What lands on the ground stops in a frame (a contact, judged by death.landing in a fall): a
+  // part's residual is not a pop within two frames of it landing (a leg lands as one piece).
+  const landedB = new Map();
+  for (const list of m.arrivals.values()) {
+    for (const { f, bone } of list) {
+      if (!landedB.has(bone)) landedB.set(bone, new Set());
+      for (let d = -2; d <= 2; d++) landedB.get(bone).add(f + d);
+    }
+  }
   for (const t of T) {
     const P = Array.from({ length: F }, (_, f) => t.at(f));
     // The trunk: cubic residual.
     if (t.trunk) {
       for (let k = loop ? 0 : 2; k < (loop ? F : F - 2); k++) {
-        if (snaps.has(k)) continue;
+        if (snaps.has(k) || landedB.get(t.bone)?.has(k)) continue;
         const p = P[idx(k)], a = P[idx(k - 2)], bb = P[idx(k - 1)], c = P[idx(k + 1)], d = P[idx(k + 2)];
         const pred = [0, 1, 2].map((i) => (-a[i] + 4 * bb[i] + 4 * c[i] - d[i]) / 6);
         const e = len(sub(p, pred));
@@ -1357,11 +1389,11 @@ function death(m) {
     }
   }
   if (ti > 0) {
-    // The final descent: back from the impact while the centre of mass sinks at all (its last
-    // high point before the ground); a descent that never sinks faster than 0.1 plots/s is a
-    // body lowered, not a fall.
+    // The final descent: back from the impact while the centre of mass sinks (faster than 0.03
+    // plots/s: a sag slower than that is a hang, still); a descent that never sinks faster than
+    // 0.1 plots/s is a body lowered, not a fall.
     ts = ti - 1;
-    while (ts > 1 && vy[ts] < 0) ts--;
+    while (ts > 1 && vy[ts] < -0.03) ts--;
     if (ts >= ti - 1) ts = Math.max(1, ti - 2);
     if (Math.min(...vy.slice(ts, ti + 1)) >= -0.1) ts = -1;
   }
@@ -1395,6 +1427,28 @@ function death(m) {
     lo = Math.min(lo, coms[k][1]);
     bounce = Math.max(bounce, coms[k][1] - lo);
   }
+  // Every part lands no faster than falling from its own highest point since the fall began (a
+  // dead limb has no muscle to drive it: a rigid topple's tip arrives at 1.22x free fall, a limb
+  // slammed down by its keys at several times it). Slack: 0.15 plots/s.
+  let slam = 0, slamF = ts, slamB = "";
+  for (const [v, list] of m.arrivals) {
+    let from = ts;
+    for (const { f, ground, bone } of list) {
+      if (f <= ts) continue;
+      const y = (k) => b.pos[(k * n + v) * 3 + 1];
+      let apex = -Infinity;
+      for (let k = from; k <= f; k++) apex = Math.max(apex, y(k));
+      const speed = Math.max(y(f - 1) - y(f), f >= 2 ? y(f - 2) - y(f - 1) : 0) * fps; // its last two steps
+      const r = speed / (Math.sqrt(2 * GRAV * Math.max(0, apex - ground)) + 0.15);
+      if (r > slam) {
+        slam = r;
+        slamF = f;
+        slamB = { [BONE.BODY]: "body", [BONE.HEAD]: "head", [BONE.LEG_L]: "left leg", [BONE.LEG_R]: "right leg" }[bone];
+      }
+      from = f;
+    }
+  }
+  out.push(M("death.landing", "body", true, slam <= LIMITS.landing, r4(slam), LIMITS.landing, `each part's landing speed against falling from its highest point (ratio${slamB ? "; worst: " + slamB : ""})`, slamF));
   out.push(M("death.bounce", "body", true, bounce <= LIMITS.bounce, r4(bounce), LIMITS.bounce, "the body's rebound after it lands (plots)", ti));
   const stepAt = (f) => {
     let d = 0;

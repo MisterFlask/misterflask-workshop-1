@@ -508,7 +508,7 @@ export const MUTATIONS = [
   },
   {
     // A slow-motion fall: from its onset to the ground played at a third of the speed.
-    name: "slowFall", kinds: ["death"], targets: ["death.fallTime", "death.gravity"],
+    name: "slowFall", kinds: ["death"], targets: ["death.fallTime", "death.gravity", "death.accelerates", "death.energy"],
     post: (b) => {
       const m = model(b);
       const vy = m.coms.map((c, k) => (k === 0 ? 0 : (c[1] - m.coms[k - 1][1]) * b.fps));
@@ -519,6 +519,30 @@ export const MUTATIONS = [
       const out = retime(b, b.frames + add, (g) => (g <= ts ? g : g >= ti + add ? g - add : ts + (g - ts) / 3) / b.fps);
       out.clip = { ...b.clip, dur: b.clip.dur + add / b.fps };
       return out;
+    },
+  },
+  {
+    // A leg slammed down: after the body lands, the leg lying on the ground (death.landing judges
+    // landings on the ground, not on the body) lifts 8 cm over a fifth of a second and is driven
+    // back down in two frames (keys driving a dead limb faster than it can fall).
+    name: "slam", kinds: ["death"], targets: ["death.landing"],
+    post: (b) => {
+      const lowAt = (bone) => {
+        let y = Infinity;
+        for (let v = 0; v < b.count; v++) if (b.bone[v] === bone) y = Math.min(y, b.pos[((b.frames - 1) * b.count + v) * 3 + 1]);
+        return y;
+      };
+      const which = lowAt(BONE.LEG_L) <= lowAt(BONE.LEG_R) ? BONE.LEG_L : BONE.LEG_R;
+      const s = which === BONE.LEG_L ? "L" : "R";
+      const leg = [];
+      for (let v = 0; v < b.count; v++) if (b.bone[v] === which) leg.push(v);
+      const kg = groundFrame(b), up = Math.max(3, Math.round(0.2 * b.fps));
+      const lift = (k) => (k <= up ? 0.08 * Math.sin((Math.PI / 2) * (k / up)) : k === up + 1 ? 0.04 : 0);
+      for (let f = kg + 2; f < Math.min(b.frames, kg + 4 + up); f++) {
+        const dy = lift(f - kg - 2);
+        edit(b, f, leg, (p) => [p[0], p[1] + dy, p[2]], [`hip${s}`, `knee${s}`, `ankle${s}`]);
+      }
+      return b;
     },
   },
   {
