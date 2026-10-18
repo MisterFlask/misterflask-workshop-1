@@ -586,7 +586,11 @@ function shield(mb, g, shape, o = {}) {
       });
     }
     setMat(mb, o.rim ?? g.metal2, MAT.METAL);
-    mb.part(() => ringTube(mb, rr, rr, 0.0045, 10, 3, {}));
+    // The rim round the disk's edge (in the disk's plane, as the disk is turned to face +z).
+    mb.part(() => {
+      mb.rotateX(Math.PI / 2);
+      ringTube(mb, rr, rr, 0.0045, 10, 3, {});
+    });
     setMat(mb, o.boss ?? g.metal, MAT.METAL);
     ball(mb, [0, 0, 0.01], rr * 0.24, 0, [1, 1, 0.7]);
     return;
@@ -688,7 +692,8 @@ const STANCES = {
  *           turns (radians, figure space) of what the hand holds about the hand, {arrow} 0..1
  *           (a nocked arrow's scale toward the string: 0 = loosed), {arrowLen} (a fixed arrow
  *           length, so the arrow slides with the string instead of stretching), {string} 0..1
- *           (a bowstring at the drawing hand .. back at the bow; the archer's bow reads these).
+ *           (a bowstring at the drawing hand .. back at the bow; the archer's bow reads these);
+ *           the recipe applies {root, rootRot, pivot, settle} after the build (placePosed).
  * Returns {mb, hands, headC, top, joints, parts}: joints are the posed skeleton's points (pelvis,
  * neck, head, and per side hip, knee, ankle, shoulder, elbow, hand); parts the vertex ranges
  * [first, end) of the feet and of what the hands hold (weapon, shield, arrow) with the weapon's
@@ -2062,7 +2067,10 @@ for (const [name, [variants, make]] of Object.entries(SPECS)) {
 /** Appends a posed figure `f` under the frame's root motion: `root` [dx, dy, dz] moves the whole
  *  figure, `rootRot` [x, y, z] (Euler radians, as eulerTurn) turns it about `pivot` [x, y, z]
  *  (figure space, before the turn; a fall pivots about the feet). Positions in a human's plots,
- *  scaled to the race. Returns `f` with its joints moved the same way and the root's matrix. */
+ *  scaled to the race. `settle` (0..1) lays a fallen body on the ground: soft parts (tails, capes)
+ *  flatten onto it and the whole figure moves so its lowest point rests on it (feet at their sole
+ *  depth) -- a pivot cannot do that for every race, whose girths differ. Returns `f` with its
+ *  joints moved the same way and the root's matrix. */
 function placePosed(mb, f, pose, race, s = 1) {
   const pk = (RACES[race] ?? RACES.human).shY / RACES.human.shY;
   const root = pose.root ?? [0, 0, 0], rot = pose.rootRot ?? [0, 0, 0], pv = pose.pivot ?? [0, 0, 0];
@@ -2073,12 +2081,33 @@ function placePosed(mb, f, pose, race, s = 1) {
   M.rotateZ(rot[2]).rotateY(rot[1]).rotateX(rot[0]);
   M.translate(-pv[0] * pk, -pv[1] * pk, -pv[2] * pk);
   if (s !== 1) M.scale(s);
+  const m0 = mb.mark();
   mb.part(() => {
     mb.apply(M.m);
     mb.append(f.mb);
   });
   const joints = {};
   for (const [k, p] of Object.entries(f.joints)) joints[k] = M.xp(p);
+  const st = pose.settle ?? 0;
+  if (st > 0) {
+    const v = mb.v, F = 13, i0 = m0 * F;
+    for (let i = i0; i < v.length; i += F) {
+      if ((v[i + 11] === BONE.TAIL || v[i + 11] === BONE.CAPE) && v[i + 1] < 0) v[i + 1] -= st * v[i + 1];
+    }
+    const feet = new Set();
+    for (const k of ["foot_l", "foot_r"]) {
+      const r = f.parts?.[k]?.range;
+      if (r) for (let j = r[0]; j < r[1]; j++) feet.add(j);
+    }
+    let lo = Infinity;
+    for (let i = i0, j = 0; i < v.length; i += F, j++) {
+      if (v[i + 11] === BONE.TAIL || v[i + 11] === BONE.CAPE) continue;
+      lo = Math.min(lo, v[i + 1] - (feet.has(j) ? -0.014 : 0));
+    }
+    const dy = -st * lo;
+    for (let i = i0; i < v.length; i += F) v[i + 1] += dy;
+    for (const k of Object.keys(joints)) joints[k] = [joints[k][0], joints[k][1] + dy, joints[k][2]];
+  }
   return { ...f, joints, root: M.m };
 }
 

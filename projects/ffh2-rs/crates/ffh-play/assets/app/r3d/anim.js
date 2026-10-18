@@ -17,7 +17,8 @@
 // human's plots), rElbow, lElbow (added to the elbow poles), rRot, lRot (Euler turns of what the
 // hand holds), root ([dx, dy, dz]), rootRot (Euler turn of the whole figure about `pivot`);
 // scalars lean, twist, roll, headYaw, headTilt (radians), arrow (1 nocked .. 0 loosed), string
-// (1 at the drawing hand .. 0 back at the bow).
+// (1 at the drawing hand .. 0 back at the bow), settle (0 .. 1: a fallen body laid on the ground,
+// its lowest point resting on it and its tail or cape flat).
 //
 // Tracks: a channel's track is the keys that set it. Before its first key it holds the rest
 // value (or the first key's value when that key is at t = 0); a looping clip ends where it began
@@ -26,7 +27,8 @@
 // is a held instant) and keeps moving through a passing key. A key's `i` sets the segment after
 // it: "hold" (stay until the next key), "linear", "in" (accelerating into the next key: a fall),
 // "out" (decelerating from it), default smooth; an object sets it per channel ({arrow: "hold",
-// default: "in"}). `waves` add sines on top:
+// default: "in"}). `bumps` add a smooth local change on top, whatever the keys: {ch, t (centre),
+// w (half-width, s), v (a value of the channel's shape)}, a raised cosine. `waves` add sines:
 // {ch, amp (a value of the channel's shape), n (whole cycles per clip, so a loop is seamless),
 // phase (0..1)}.
 
@@ -35,7 +37,7 @@ import { buildPosed } from "./assets/registry.js";
 export const FPS = 30;
 
 const VEC = ["pelvis", "fl", "fr", "rHand", "lHand", "rElbow", "lElbow", "rRot", "lRot", "root", "rootRot"];
-const SCALAR = ["lean", "twist", "roll", "headYaw", "headTilt", "arrow", "string"];
+const SCALAR = ["lean", "twist", "roll", "headYaw", "headTilt", "arrow", "string", "settle"];
 const REST = { arrow: 1, string: 1 };
 const restOf = (ch) => (VEC.includes(ch) ? [0, 0, 0] : REST[ch] ?? 0);
 
@@ -138,6 +140,15 @@ export function poseAt(clip, t) {
   for (const [ch, pts] of Object.entries(clip.tracks)) {
     const v = sampleTrack(pts, t);
     pose[ch] = VEC.includes(ch) ? v : v[0];
+  }
+  for (const k of clip.bumps ?? []) {
+    const d = Math.abs(t - k.t);
+    if (d >= k.w) continue;
+    const s = 0.5 + 0.5 * Math.cos((Math.PI * d) / k.w);
+    const v = [].concat(k.v);
+    const cur = pose[k.ch] !== undefined ? [].concat(pose[k.ch]) : [].concat(restOf(k.ch));
+    const out = cur.map((x, j) => x + v[j] * s);
+    pose[k.ch] = VEC.includes(k.ch) ? out : out[0];
   }
   for (const w of clip.waves ?? []) {
     const s = Math.sin(2 * Math.PI * ((w.n ?? 1) * (t / clip.dur) + (w.phase ?? 0)));

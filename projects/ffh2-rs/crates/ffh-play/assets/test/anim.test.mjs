@@ -51,6 +51,13 @@ for (const [recipe, clip] of CLIPS) {
     const bad = rows.filter((x) => !x.ok);
     assert.equal(bad.length, 0, bad.map((x) => `${x.name}: ${x.note}`).join("\n"));
     assert.ok(rows.length > 4, "mutations apply");
+    // Every hard metric of the clip is some applicable mutation's target (the runtime's own
+    // metrics aside): an untested metric is not trusted.
+    const b = A.bakeClip(recipe, 0, "human", clip);
+    const isBow = (b.parts.weapon_l ?? b.parts.weapon_r)?.kind === "bow";
+    const targeted = new Set(MU.applicable(A.clipOf(recipe, clip), isBow).flatMap((m) => m.targets));
+    const untested = K.check(b).filter((x) => x.hard && !targeted.has(x.id) && !MU.RUNTIME.includes(x.id)).map((x) => x.id);
+    assert.deepEqual(untested, [], "hard metrics no mutation targets");
   });
 }
 

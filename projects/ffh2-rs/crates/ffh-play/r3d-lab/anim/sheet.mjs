@@ -57,8 +57,24 @@ export function sheet(b, opts = {}) {
   const blind = !!opts.blind;
   const results = blind ? null : opts.results ?? check(b);
   const frames = sample(b, opts.cells ?? 24);
-  const cell = 56, K = 3, per = 8;
-  const W = Math.max(per * cell * K + 20, 1240);
+  // Cells frame everything the clip covers at the gameplay zoom (a corpse lies half a plot from
+  // its feet), at least 56 px.
+  const probe = camera({ ts: 96, yaw, w: 1, h: 1, ox: 0, oy: 0 });
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let f = 0; f < b.frames; f += Math.max(1, Math.floor(b.frames / 12))) {
+    for (let v = 0; v < b.count; v += 5) {
+      const q = (f * b.count + v) * 3;
+      const p = probe.project([b.pos[q], b.pos[q + 1], b.pos[q + 2]]);
+      x0 = Math.min(x0, p[0]);
+      x1 = Math.max(x1, p[0]);
+      y0 = Math.min(y0, p[1]);
+      y1 = Math.max(y1, p[1]);
+    }
+  }
+  const cell = Math.max(56, Math.ceil(Math.max(x1 - x0, y1 - y0) + 8));
+  const fx = cell / 2 - (x0 + x1) / 2, fy = cell / 2 - (y0 + y1) / 2;
+  const K = cell > 80 ? 2 : 3, per = cell > 80 ? 6 : 8;
+  const W = Math.max(per * (cell * K + 4) + 20, frames.length * (cell + 2) + 20, 1240);
   const rowsA = Math.ceil(frames.length / per);
   const H = 30 + cell + 26 + rowsA * (cell * K + 18) + 440 + (blind ? 0 : 20 + Math.min(40, results.filter((r) => !r.pass).length + 6) * 12);
   const out = new Image(W, H, BG);
@@ -70,7 +86,7 @@ export function sheet(b, opts = {}) {
   y += 22;
   // A: the true-size strip, then the enlarged cells.
   const game = (f, w = cell, h = cell) => {
-    const cam = camera({ ts: 96, yaw, w, h, oy: h * 0.78 });
+    const cam = camera({ ts: 96, yaw, w, h, ox: fx, oy: fy });
     const im = groundTile(cam);
     renderFrame(b, f, cam, { into: im, team: opts.team });
     return im;

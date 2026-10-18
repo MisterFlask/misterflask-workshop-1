@@ -13,10 +13,11 @@
 //   node tools/r3d-anim.mjs mutants [--recipe ..] [--clip ..] [--out DIR]
 //     the mutation self-test: each degradation (r3d-lab/anim/mutate.mjs) must trip the metric
 //     it targets while the good clip passes; with --out, a sheet of each mutant.
-//   node tools/r3d-anim.mjs judge-pack --out DIR [--recipe ..] [--clip ..]
+//   node tools/r3d-anim.mjs judge-pack --out DIR [--recipe ..] [--clip ..] [--before FILE,..]
 //     blind stimuli for vision judges (docs/ANIMATION.md "Vision judges"): DIR/stimuli/*.png under
 //     random names, DIR/questions.json (what each judge is shown and asked; nothing names a clip,
-//     a mutation or a verdict) and DIR/key.json (the answers, never shown to a judge).
+//     a mutation or a verdict) and DIR/key.json (the answers, never shown to a judge). --before
+//     names clip modules (an earlier anim-*.js) whose clips are paired against the current ones.
 //   node tools/r3d-anim.mjs lab --out DIR --recipe unit.warrior --clip attack [--param human]
 //        [--times 0,0.43,0.53] [--ts 200] [--gpu]
 //     key frames with the real renderer (tools/r3d-lab.mjs, headless Chromium).
@@ -27,7 +28,7 @@ import { spawnSync } from "node:child_process";
 import { ROOT, parseArgs } from "./web-lib.mjs";
 
 const PLAY = path.join(ROOT, "crates", "ffh-play");
-const args = parseArgs(process.argv.slice(3), { recipe: "v", clip: "v", param: "v", variant: "v", races: "flag", json: "v", out: "v", yaw: "v", blind: "flag", times: "v", ts: "v", gpu: "flag" });
+const args = parseArgs(process.argv.slice(3), { recipe: "v", clip: "v", param: "v", variant: "v", races: "flag", json: "v", out: "v", yaw: "v", blind: "flag", times: "v", ts: "v", gpu: "flag", before: "v" });
 const cmd = process.argv[2];
 
 await import(path.join(PLAY, "assets/app/r3d/assets/index.js"));
@@ -141,7 +142,7 @@ if (cmd === "judge-pack") {
     return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down (toward the viewer)" : "up (away from the viewer)";
   };
   // The 2AFC mutants per kind: gross versions of the commonest ways animation goes wrong.
-  const PAIRS = { idle: ["statue", "swim", "lockstep"], attack: ["noAnticipation", "linearTiming", "timid", "easedImpact"], death: ["floatyFall", "propped", "twitch"] };
+  const PAIRS = { idle: ["statue", "swim", "lockstep"], attack: ["noAnticipation", "linearTiming", "timid", "easedImpact"], death: ["floatyFall", "sitUp", "twitch"] };
   const PAIRS_BOW = { attack: ["softRelease", "noRecoil", "lingeringArrow"] };
   const questions = { recognize: [], pairs: [] }, key = { recognize: {}, pairs: {} };
   for (const j of jobs()) {
@@ -184,6 +185,35 @@ if (cmd === "judge-pack") {
         const first = order === 0 ? good : bad, second = order === 0 ? bad : good;
         questions.pairs.push({ id, group: `${j.recipe}/${j.clip}/${mn}`, labels: [ta, tb], files: [first, second] });
         key.pairs[id] = { recipe: j.recipe, clip: j.clip, mutant: mn, good: order === 0 ? ta : tb, order };
+      }
+    }
+  }
+  // T2 against an earlier version: each --before module's clips (registered over the current
+  // ones once these are baked) against the current clip, both orders. The current one counts as
+  // the better: the pair asks whether the revisions read as better.
+  const pair = (j, label, goodFile, badFile) => {
+    for (const order of [0, 1]) {
+      const id = token() + token();
+      const [ta, tb] = [token(), token()];
+      questions.pairs.push({ id, group: `${j.recipe}/${j.clip}/${label}`, labels: [ta, tb], files: order === 0 ? [goodFile, badFile] : [badFile, goodFile] });
+      key.pairs[id] = { recipe: j.recipe, clip: j.clip, mutant: label, good: order === 0 ? ta : tb, order };
+    }
+  };
+  if (args.before) {
+    const current = new Map();
+    for (const j of jobs()) current.set(`${j.recipe}/${j.clip}`, { j, file: save(sheet(A.bakeClip(j.recipe, j.variant, j.param, j.clip), { blind: true })) });
+    for (const [i, file] of args.before.split(",").entries()) {
+      // The module imports "../anim.js": a copy beside the pack imports the engine by its path.
+      const anim = new URL(`file://${path.join(PLAY, "assets/app/r3d/anim.js")}`).href;
+      const src = fs.readFileSync(file, "utf8").replace(/from "\.\.\/anim\.js"/g, `from "${anim}"`);
+      const copy = path.join(dir, `before-${i}.mjs`);
+      fs.writeFileSync(copy, src);
+      const was = new Map([...current.keys()].map((k) => [k, A.clipOf(...k.split("/"))]));
+      await import(`file://${copy}`);
+      for (const [k, { j }] of current) {
+        const [r, c] = k.split("/");
+        if (A.clipOf(r, c) === was.get(k)) continue; // not redefined by this module
+        pair(j, `before${i}`, current.get(k).file, save(sheet(A.bakeClip(r, j.variant, j.param, c), { blind: true })));
       }
     }
   }

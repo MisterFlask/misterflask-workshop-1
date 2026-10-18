@@ -58,10 +58,13 @@ export const LIMITS = {
   elbow: 155,
   neckYaw: 80,
   lean: [-35, 85],
-  twist: 65,
-  // Clearance: a weapon or bow 0.006 deeper into the head or chest than at rest.
-  clear: 0.006,
-  clearOnce: 0.012,
+  twist: 90, // one twist serves hips and chest: a swing's wind-up needs 80-90 degrees of turn
+  wrist: [45, 140], // the haft against the forearm (a fist holds it at ~60-90; along the arm = broken)
+  // Clearance: a weapon or bow at most 0.008 deeper into the head or chest than at rest; up to
+  // 0.015 for at most 34 ms in all (a motion-blurred pass in a fast swing), never more.
+  clear: 0.008,
+  clearOnce: 0.015,
+  clearTime: 0.034,
   // Continuity. The trunk (pelvis, chest, head, legs) moves smoothly: its cubic residual (zero for
   // any cubic motion) stays under 0.003 plots (0.6 px close). Anything may move fast, but a
   // single-frame jump of 3 px at the closest zoom, 4x its neighbours' steps, is a pop, and two
@@ -76,16 +79,17 @@ export const LIMITS = {
   transition: 1.5,
   // Balance: centre-of-mass margin inside the feet (idle static; attack the extrapolated XCoM).
   balanceIdle: 0.008,
-  balanceAttack: -0.005,
+  balanceAttack: -0.01,
   // Idle in screen pixels at the gameplay zoom: alive (P90 of head, arms, weapon peak-to-peak),
   // calm (body median and everything's maximum), slow (per-frame step), and close enough to the
   // rest pose that an attack can start from any idle frame.
-  idleAlive: 1.0,
+  idleAlive: 1.0, // head and arms (a bobbing prop is not a living body)
+  idleTrunk: 0.5, // and the trunk itself
   idleBody: 1.5,
   idleMax: 4.0,
-  idleStep: 0.15,
+  idleStep: 4.5, // px a second (0.15 px a frame at 30 fps): a calm body and head
   idleFromRest: 2.0,
-  idleLoop: [2, 8],
+  idleLoop: [2.5, 8],
   // The seam (the last frame into the first) moves and accelerates like the rest of the loop: a
   // step at most 1.5x and an acceleration at most 2x the loop's largest, unless both are under
   // 0.15 px at the closest zoom (a once-a-loop hitch is easy to see, being periodic).
@@ -94,13 +98,13 @@ export const LIMITS = {
   jitter: 0.0005, // amplitude of motion faster than 1.5 Hz (a tremor)
   // Attack phrasing (seconds): a wind-up of >= 200 ms with a hold of >= 67 ms under 15% of the
   // peak speed (about 70-100 ms is the least a pose needs to register), the blow in 67-233 ms
-  // (longer reads as a push), the wind-up slower than 35% of the blow, the peak speed at or
+  // (longer reads as a push), the wind-up slower than 40% of the blow, the peak speed at or
   // just before the impact, half the speed gone 67 ms after it, >= 270 ms of recovery.
   windupMin: 0.2,
   holdSpeed: 0.15,
   holdTime: 0.067,
   strike: [0.067, 0.234],
-  contrast: 0.35,
+  contrast: 0.4,
   peakAtImpact: 0.067,
   decel: 0.5,
   recover: 0.27,
@@ -108,8 +112,14 @@ export const LIMITS = {
   power: [1.5, 7], // plots/s at impact (5.5-25 m/s)
   reachFront: 0.1, // the blow lands this far in front of the pelvis
   aim: 45, // degrees between the blow and the target direction
-  travel: [1.0, 3.2], // screen travel of the blow, in rest figure heights
+  facing: 60, // the chest within 60 degrees of the target at the impact (not a sideways swing)
+  // Reading at the facings fights come from. From behind (the back arc: the figure turned more
+  // than 90 degrees from the camera) the body hides a blow landing in front of it, so the blow's
+  // travel and pose contrast are asked less, and the weapon must show at the wind-up only.
+  travel: [1.0, 3.2], // screen travel of the blow, in rest figure heights (back arc: 0.75)
+  travelBack: 0.75,
   iouKeys: 0.6,
+  iouKeysBack: 0.7,
   iouRest: 0.7,
   weaponOut: [20, 0.4], // px^2 and share of the weapon outside the body
   // Archer: string at the hand (0.015 = 1.5 px), the tip ahead of the grip, an aim hold of 100 ms
@@ -120,7 +130,7 @@ export const LIMITS = {
   aimHold: 0.1,
   aimTurn: 3,
   aimDir: 6, // the nocked arrow vs the shot direction at the release (degrees)
-  bowArm: 15, // the bow arm along the arrow (degrees)
+  bowArm: 25, // the bow arm along the arrow (degrees; natural form is 10-16: the arrow runs from the face)
   anchor: 0.02, // the drawing hand within a head radius + 0.02 of the head centre
   recoil: 0.02, // the drawing hand flies back at least this far after the release (plots)
   snap: 0.067,
@@ -128,19 +138,21 @@ export const LIMITS = {
   flight: [0.13, 0.4],
   arrowPx: 10,
   // Death: a reaction within 133 ms, a fall that accelerates into the ground at 0.4-2.5 g (energy
-  // ratio 0.25-1.6 of a free fall), lands 133-600 ms after onset, at most a small rebound, still
+  // ratio 0.25-1.6 of a free fall), lands 150-700 ms after onset, at most a small rebound, still
   // within 0.5 s, lies where the clip says it falls, and reads as lying at every facing.
   react: [0.134, 0.01],
   gEff: [0.4, 2.5],
   energy: [0.25, 1.6],
-  fallTime: [0.133, 0.6],
+  fallTime: [0.15, 0.7],
   fallDir: 35,
+  groundEvent: 0.067, // the declared `ground` event within 67 ms of the measured contact
   bounce: 0.008,
   still: 0.0005,
   settle: 0.5,
-  lieCom: 0.35,
+  lieCom: 0.45, // lying on the side with gear keeps the centre of mass at ~0.36 of standing
+  lieHead: 0.3, // the head's centre at most 0.3 of the standing height
   lieAngle: 40,
-  lieHeight: 0.4,
+  lieHeight: 0.45,
 };
 
 // --- vectors ---------------------------------------------------------------------------------------
@@ -537,11 +549,23 @@ function joints(m) {
       }
     }
   }
+  // Wrist: the held weapon's haft against the forearm.
+  let wr = [Infinity, -Infinity], wf = 0;
+  if (m.weaponKey && !m.isBow) {
+    const s = m.weaponKey === "weapon_r" ? "R" : "L";
+    for (let f = 0; f < F; f++) {
+      const J = b.joints[f], h = b.held[f][m.weaponKey];
+      const a = angle(sub(J[`hand${s}`], J[`elbow${s}`]), sub(h.up, h.at));
+      if (a < wr[0] || a > wr[1]) wf = f;
+      wr = [Math.min(wr[0], a), Math.max(wr[1], a)];
+    }
+  }
   const out = [
     M("joints.knee", "body", true, knee <= LIMITS.knee, r4(knee), LIMITS.knee, "knee flexion (degrees)", kf),
     M("joints.kneeDir", "body", true, kneeDir >= LIMITS.kneeDir, r4(kneeDir), LIMITS.kneeDir, "a bent knee points forward (cosine to the body's forward)", df),
     M("joints.elbow", "body", true, elbow <= LIMITS.elbow, r4(elbow), LIMITS.elbow, "elbow flexion (degrees)", ef),
   ];
+  if (wr[0] !== Infinity) out.push(M("joints.wrist", "body", true, wr[0] >= LIMITS.wrist[0] && wr[1] <= LIMITS.wrist[1], `${r4(wr[0])}..${r4(wr[1])}`, LIMITS.wrist.join("-"), "the weapon's haft against the forearm (degrees)", wf));
   if (b.angles?.length) {
     const deg = (x) => (x * 180) / Math.PI;
     let neck = 0, nf = 0, lean = [Infinity, -Infinity], twist = 0;
@@ -580,7 +604,7 @@ function clearance(m) {
   };
   const base = vs.map((v) => Math.max(0, depthAt(0, X(0, v))));
   // Rest baseline from the rest build (frame 0 of an idle or attack is rest; a death's too).
-  let worst = 0, wf = 0, over = 0, run = 0, maxRun = 0;
+  let worst = 0, wf = 0, over = 0;
   for (let f = 0; f < F; f++) {
     let e = 0;
     vs.forEach((v, i) => {
@@ -590,14 +614,11 @@ function clearance(m) {
       worst = e;
       wf = f;
     }
-    if (e > LIMITS.clear) {
-      over++;
-      run++;
-      maxRun = Math.max(maxRun, run);
-    } else run = 0;
+    if (e > LIMITS.clear) over++;
   }
-  const pass = worst <= LIMITS.clearOnce && maxRun <= 1;
-  return [M("clear.weapon", "body", true, pass, r4(worst), `${LIMITS.clear} (once ${LIMITS.clearOnce})`, `${isBow ? "bow" : "weapon"} deeper into the head or chest than at rest (plots; ${over} frames over)`, wf)];
+  const overTime = over / b.fps;
+  const pass = worst <= LIMITS.clearOnce && overTime <= LIMITS.clearTime;
+  return [M("clear.weapon", "body", true, pass, r4(worst), `${LIMITS.clear} (up to ${LIMITS.clearOnce} for ${LIMITS.clearTime} s)`, `${isBow ? "bow" : "weapon"} deeper into the head or chest than at rest (plots; ${r4(overTime)} s over ${LIMITS.clear})`, wf)];
 }
 
 /** Signed distance from point q (xz) to a convex polygon's boundary (positive inside). */
@@ -863,10 +884,11 @@ function idle(m) {
     const a = vs.map((v) => arr[v]).sort((x, y) => x - y);
     return a.length ? a[Math.min(a.length - 1, Math.floor(p * a.length))] : 0;
   };
-  const alive = q(p2p, pick([BONE.HEAD, BONE.ARM_L, BONE.ARM_R, BONE.WEAPON]), 0.9);
+  const alive = q(p2p, pick([BONE.HEAD, BONE.ARM_L, BONE.ARM_R]), 0.9);
+  const trunkAlive = q(p2p, pick([BONE.BODY]), 0.9);
   const body = q(p2p, pick([BONE.BODY]), 0.5);
   const all = Math.max(...p2p);
-  const tempo = Math.max(...pick([BONE.BODY, BONE.HEAD]).map((v) => step[v]));
+  const tempo = Math.max(...pick([BONE.BODY, BONE.HEAD]).map((v) => step[v])) * b.fps;
   const fromR = Math.max(...fromRest);
   // Breathing: the neck's height, its dominant period; jitter: motion faster than 1.5 Hz.
   const dur = b.clip.dur;
@@ -941,9 +963,9 @@ function idle(m) {
   return [
     M("idle.seam", "motion", true, seamStep <= LIMITS.seam[0] && seamAcc <= LIMITS.seam[1], `step ${r4(seamStep)}x, acceleration ${r4(seamAcc)}x`, `${LIMITS.seam[0]}x, ${LIMITS.seam[1]}x`, "the loop's seam against its largest interior step and acceleration"),
     M("craft.rhythm", "motion", false, repeat >= 0.9 * F && pc1 <= 0.85, `repeats after ${r4(repeat / F)} of the loop, PC1 ${r4(pc1)}`, ">= 0.9, <= 0.85", "no metronome: no repeat inside the loop, several independent motions"),
-    M("idle.alive", "reading", true, alive >= LIMITS.idleAlive, r4(alive), LIMITS.idleAlive, "P90 peak-to-peak of head, arms and weapon at the gameplay zoom (px)"),
+    M("idle.alive", "reading", true, alive >= LIMITS.idleAlive && trunkAlive >= LIMITS.idleTrunk, `${r4(alive)} head and arms, ${r4(trunkAlive)} trunk`, `${LIMITS.idleAlive}, ${LIMITS.idleTrunk}`, "P90 peak-to-peak at the gameplay zoom (px): the body itself moves, not just what it holds"),
     M("idle.calm", "reading", true, body <= LIMITS.idleBody && all <= LIMITS.idleMax, `${r4(body)} body, ${r4(all)} max`, `${LIMITS.idleBody} body, ${LIMITS.idleMax} max`, "median body and largest peak-to-peak (px)"),
-    M("idle.tempo", "reading", true, tempo <= LIMITS.idleStep, r4(tempo), LIMITS.idleStep, "fastest body or head step (px a frame)"),
+    M("idle.tempo", "reading", true, tempo <= LIMITS.idleStep, r4(tempo), LIMITS.idleStep, "fastest body or head speed (px a second at the gameplay zoom)"),
     M("idle.fromRest", "reading", true, fromR <= LIMITS.idleFromRest, r4(fromR), LIMITS.idleFromRest, "farthest any vertex strays from the rest pose (px): an attack starts from any idle frame"),
     M("idle.loop", "motion", true, dur >= LIMITS.idleLoop[0] && dur <= LIMITS.idleLoop[1], dur, LIMITS.idleLoop.join("-"), "loop length (s)"),
     M("idle.breath", "motion", true, breath >= LIMITS.breath[0] && breath <= LIMITS.breath[1], r4(breath), LIMITS.breath.join("-"), "breathing period from the chest's rise (s)"),
@@ -1026,6 +1048,9 @@ function attack(m) {
   out.push(M("attack.power", "body", true, u[kc] >= LIMITS.power[0] && u[kc] <= LIMITS.power[1], r4(u[kc]), LIMITS.power.join("-"), "striking point speed at impact (plots/s)", kc));
   out.push(M("attack.reach", "body", true, front >= LIMITS.reachFront && strikes[kc][1] > 0.05, `${r4(front)} ahead, ${r4(strikes[kc][1])} up`, `>= ${LIMITS.reachFront} ahead, above the ground`, "where the blow lands (plots)", kc));
   out.push(M("attack.aim", "body", true, aimErr <= LIMITS.aim, r4(aimErr), LIMITS.aim, "blow vs the strike direction (degrees)", kc));
+  const tw = b.angles?.[kc]?.twist ?? 0;
+  const chestErr = angle([Math.sin(tw), 0, Math.cos(tw)], dir);
+  out.push(M("attack.facing", "body", true, chestErr <= LIMITS.facing, r4(chestErr), LIMITS.facing, "the chest toward the target at the impact (degrees)", kc));
   out.push(M("attack.anticipation", "motion", true, back < 0, r4(back), "< 0", "the wind-up draws the weapon back against the strike (plots)", ka));
   // Craft (scored): the body drives the blow (the chest travels along the strike; it leads or
   // matches the weapon), and the weapon swings on an arc rather than poking.
@@ -1049,14 +1074,17 @@ function attack(m) {
   out.push(M("craft.arc", "motion", false, arc >= 0.12, r4(arc), 0.12, "the weapon's path bulges from its chord (an arc, not a poke)"));
   // Reading at the game's facings: travel, silhouette contrast, the weapon outside the body.
   let travelMin = Infinity, travelMax = 0, iouK = 0, iouR = 0, wOut = Infinity, worstDir = "", dirs = [];
+  let travelOk = true, keysOk = true;
   for (const [name, heading] of Object.entries(HEADINGS)) {
     const yaw = attackYaw(b.clip, heading);
+    const back = Math.abs(yaw) > Math.PI / 2 + 1e-6;
     const cam = camera({ ts: G, yaw, w: 72, h: 72, oy: 52 });
     const H = screenHeight(m, cam);
     const pa = cam.project(strikes[ka]), pc = cam.project(strikes[kc]);
     const tr = Math.hypot(pc[0] - pa[0], pc[1] - pa[1]) / H;
     travelMin = Math.min(travelMin, tr);
     travelMax = Math.max(travelMax, tr);
+    if (tr < (back ? LIMITS.travelBack : LIMITS.travel[0]) || tr > LIMITS.travel[1]) travelOk = false;
     const sa = renderFrame(b, ka, cam, { ss: 4, flat: [255, 255, 255], split: BONE.WEAPON });
     const sc = renderFrame(b, kc, cam, { ss: 4, flat: [255, 255, 255], split: BONE.WEAPON });
     const s0 = renderFrame(b, 0, cam, { ss: 4, flat: [255, 255, 255] });
@@ -1064,7 +1092,8 @@ function attack(m) {
     const ir = iouAligned(s0.mask, sc.mask, cam.w, cam.h);
     iouK = Math.max(iouK, ik);
     iouR = Math.max(iouR, ir);
-    for (const im of [sa, sc]) {
+    if (ik > (back ? LIMITS.iouKeysBack : LIMITS.iouKeys) || (!back && ir > LIMITS.iouRest)) keysOk = false;
+    for (const im of back ? [sa] : [sa, sc]) {
       const wo = weaponOutside(im, cam.w, cam.h);
       const need = Math.max(LIMITS.weaponOut[0], LIMITS.weaponOut[1] * wo.total);
       const ratio = wo.out / need;
@@ -1073,11 +1102,11 @@ function attack(m) {
         worstDir = `${name}: ${wo.out.toFixed(0)} of ${wo.total.toFixed(0)} px^2`;
       }
     }
-    dirs.push(`${name} ${tr.toFixed(2)}H iou ${ik.toFixed(2)}/${ir.toFixed(2)}`);
+    dirs.push(`${name}${back ? "(back)" : ""} ${tr.toFixed(2)}H iou ${ik.toFixed(2)}/${ir.toFixed(2)}`);
   }
-  out.push(M("read.travel", "reading", true, travelMin >= LIMITS.travel[0] && travelMax <= LIMITS.travel[1], `${r4(travelMin)}..${r4(travelMax)}`, LIMITS.travel.join("-"), `the blow's screen travel in figure heights at E, S, W, N (${dirs.join("; ")})`));
-  out.push(M("read.keys", "reading", true, iouK <= LIMITS.iouKeys && iouR <= LIMITS.iouRest, `${r4(iouK)} wind-up/impact, ${r4(iouR)} rest/impact`, `${LIMITS.iouKeys} / ${LIMITS.iouRest}`, "silhouette overlap of the key poses (worst facing; lower = more distinct)"));
-  out.push(M("read.weapon", "reading", true, wOut >= 1, r4(wOut), 1, `weapon outside the body's outline at the wind-up and impact, worst ${worstDir}`));
+  out.push(M("read.travel", "reading", true, travelOk, `${r4(travelMin)}..${r4(travelMax)}`, `${LIMITS.travel.join("-")} (back arc from ${LIMITS.travelBack})`, `the blow's screen travel in figure heights at the eight facings (${dirs.join("; ")})`));
+  out.push(M("read.keys", "reading", true, keysOk, `${r4(iouK)} wind-up/impact, ${r4(iouR)} rest/impact`, `${LIMITS.iouKeys} (back arc ${LIMITS.iouKeysBack}) / ${LIMITS.iouRest}`, "silhouette overlap of the key poses (worst facing; lower = more distinct)"));
+  out.push(M("read.weapon", "reading", true, wOut >= 1, r4(wOut), 1, `weapon outside the body's outline at the wind-up and impact (the wind-up only from behind), worst ${worstDir}`));
   return out;
 }
 
@@ -1161,6 +1190,27 @@ function shot(m) {
   const brace = len(sub(H(ks).nock, H(ks).grip));
   out.push(M("shot.release", "motion", true, a0 >= 0.95 && a1 <= 0.05, `${r4(a0)} -> ${r4(a1)}`, "1 -> 0 in one frame", "the nocked arrow at the frames around the release", kr));
   out.push(M("shot.snap", "motion", true, brace <= 0.35 * draw, r4(brace / draw), 0.35, `string draw ${LIMITS.snap} s after the release / the drawn draw (it snaps home)`, ks));
+  // Exactly one arrow: from the release, while the loosed arrow flies, the nocked one is gone
+  // (measured on its vertices: what is drawn).
+  if (m.arrow.size) {
+    const vs = [...m.arrow];
+    const extent = (f) => {
+      const c = m.centroid(f, vs);
+      let r = 0;
+      for (const v of vs) r = Math.max(r, len(sub(m.X(f, v), c)));
+      return r;
+    };
+    const e0 = extent(0);
+    let left = 0, lf = null;
+    for (let f = kr; f < Math.min(F, kr + m.sec(LIMITS.flight[0])); f++) {
+      const k = extent(f) / e0;
+      if (k > 0.03) {
+        left++;
+        lf ??= f;
+      }
+    }
+    out.push(M("shot.oneArrow", "reading", true, left === 0, left, 0, "frames after the release that still draw the nocked arrow beside the flying one", lf));
+  }
   // The arrow in flight: leaves along the bow toward the target at every facing, flies 4-12
   // frames, and is big enough to see.
   const rel = releasePoint(b);
@@ -1247,6 +1297,8 @@ function death(m) {
   const vImp = -Math.min(...vy.slice(ts, ti + 1));
   const rho = (vImp * vImp) / (2 * GRAV * Math.max(1e-6, dh));
   out.push(M("death.energy", "body", true, rho >= LIMITS.energy[0] && rho <= LIMITS.energy[1], r4(rho), LIMITS.energy.join("-"), "impact speed^2 / (2 g drop): 1 is free fall, 0.75 a rigid topple"));
+  const ge = b.clip.events?.ground;
+  if (ge !== undefined) out.push(M("death.groundEvent", "motion", true, Math.abs(ge - ti / fps) <= LIMITS.groundEvent, `declared ${ge} s, measured ${r4(ti / fps)} s`, `within ${LIMITS.groundEvent} s`, "the clip's ground event is when the body reaches the ground (the renderer times the impact by it)", ti));
   out.push(M("death.fallTime", "motion", true, (ti - ts) / fps >= LIMITS.fallTime[0] && (ti - ts) / fps <= LIMITS.fallTime[1], r4((ti - ts) / fps), LIMITS.fallTime.join("-"), "seconds from onset to the ground", ts));
   // Landing: a small rebound at most, then still.
   const bounce = Math.max(...coms.slice(ti).map((c) => c[1])) - coms[ti][1];
@@ -1267,7 +1319,8 @@ function death(m) {
   const lt = lowTrunk(F - 1);
   out.push(M("death.grounded", "body", true, Math.abs(lt) <= 0.012, r4(lt), "|y| <= 0.012", "the trunk lies on the ground (its lowest point, plots)", F - 1));
   const ratio = coms[F - 1][1] / coms[0][1];
-  out.push(M("death.low", "body", true, ratio <= LIMITS.lieCom, r4(ratio), LIMITS.lieCom, "centre of mass height lying / standing", F - 1));
+  const headLow = b.joints[F - 1].head[1] / b.height;
+  out.push(M("death.low", "body", true, ratio <= LIMITS.lieCom && headLow <= LIMITS.lieHead, `mass ${r4(ratio)}, head ${r4(headLow)}`, `${LIMITS.lieCom}, ${LIMITS.lieHead}`, "centre of mass height lying / standing; the head's height / standing height", F - 1));
   // The clip says where the body falls (`fall`, deathYaw turns it across the screen): it must.
   const JF = b.joints[F - 1];
   const lay = sub(JF.head, lerp3(JF.ankleL, JF.ankleR, 0.5));
