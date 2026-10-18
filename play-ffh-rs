@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# play-ffh-rs: build ffh-play and start a human-playable game of ffh2-rs in your browser.
+#
+# The game lives in projects/ffh2-rs (a Rust port of Fall from Heaven 2). Its
+# ffh-play crate serves a browser client (projects/ffh2-rs/docs/HUMAN.md) on
+# http://127.0.0.1:8642/. This builds the release binary, runs `ffh-play serve`,
+# and opens the page in your browser once the server is up. Stop with Ctrl-C.
+#
+# This is the macOS/Linux/WSL launcher (run it from a terminal). On Windows,
+# double-click play-ffh-rs.cmd instead.
+#
+#   ./play-ffh-rs                        build, serve, open the browser
+#   ./play-ffh-rs --new --seed 3         start a game at once (serve's GAME flags)
+#   ./play-ffh-rs --world WORLDSIZE_SMALL --new
+#   ./play-ffh-rs --port 9000            serve on a different port
+#   ./play-ffh-rs --load game-3/auto/T0040.ffhsave   resume a save
+#   ./play-ffh-rs --no-build             skip the build (a binary already exists)
+#   ./play-ffh-rs --no-open              do not open a browser
+#   ./play-ffh-rs --3d                   open the experimental 3D map (plain preset; needs a GPU)
+#
+# Any flag not listed above is passed through to `ffh-play serve`; HUMAN.md lists
+# the GAME flags (--seed, --world, --civ, --leader, --new, --load, --saves,
+# --port, --bind, ...). The server prints the real URL on startup, so --port 0 (a
+# free port) and --bind still work -- the browser just is not opened for you then.
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")" && pwd)"
+proj="$repo_root/projects/ffh2-rs"
+bin="$proj/target/release/ffh-play"
+
+if [ ! -d "$proj" ]; then
+  echo "play-ffh-rs: cannot find projects/ffh2-rs next to this script ($proj)" >&2
+  exit 1
+fi
+
+build=1
+open=1
+three_d=0
+port=8642
+can_open=1        # whether we can predict the URL to open (off for --port 0 / --bind)
+serve_args=()
+
+usage() { echo "play-ffh-rs: $1" >&2; echo "run './play-ffh-rs --help' for usage" >&2; exit 2; }
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-build) build=0 ;;
+    --no-open)  open=0 ;;
+    --3d)       three_d=1 ;;
+    -h|--help)
+      # Print the header comment above (drop the shebang and the leading "# ").
+      sed -n '2,24p' "$0" | sed 's/^#\( \|$\)//'
+      exit 0
+      ;;
+    --port)
+      serve_args+=("$1"); shift || usage "--port needs a value"
+      serve_args+=("$1"); port="$1"
+      [ "$port" = 0 ] && can_open=0
+      ;;
+    --bind)
+      serve_args+=("$1"); shift || usage "--bind needs a value"
+      serve_args+=("$1")
+      can_open=0    # a non-default bind address; let the server announce the URL
+      ;;
+    *) serve_args+=("$1") ;;
+  esac
+  shift
+done
+
+if [ "$build" = 1 ]; then
+  echo "play-ffh-rs: building ffh-play (release)..."
+  ( cd "$proj" && cargo build --release -p ffh-play )
+fi
+if [ ! -x "$bin" ]; then
+  echo "play-ffh-rs: $bin not found (build it without --no-build)" >&2
+  exit 1
+fi
+
+# --3d opens the experimental 3D renderer with the lighter "plain" preset (docs/R3D.md). It needs a
+# GPU-accelerated browser; without one the client shows a message and keeps the 2D map (it no longer
+# freezes). Pass nothing for the default 2D pixel-art map.
+query=""
+[ "$three_d" = 1 ] && query="?renderer=3d&r3d=plain"
+url="http://127.0.0.1:${port}/${query}"
+
+# A best-effort browser opener; absent in a headless/cloud session, which is fine.
+opener=""
+if [ -n "${BROWSER:-}" ]; then opener="$BROWSER"
+elif command -v xdg-open >/dev/null 2>&1; then opener="xdg-open"
+elif command -v open >/dev/null 2>&1; then opener="open"
+elif command -v wslview >/dev/null 2>&1; then opener="wslview"
+fi
+
+# Wait for the server to accept connections, then open the browser once.
+open_when_ready() {
+  local i
+  for ((i = 0; i < 150; i++)); do          # ~30s (150 * 0.2s)
+    if (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null; then
+      exec 3>&- 2>/dev/null || true
+      "$opener" "$url" >/dev/null 2>&1 || true
+      return
+    fi
+    sleep 0.2
+  done
+}
+
+[ "$three_d" = 1 ] && echo "play-ffh-rs: 3D needs a GPU-accelerated browser; without one it shows a message and uses the 2D map"
+if [ "$open" = 1 ] && [ "$can_open" = 1 ] && [ -n "$opener" ]; then
+  echo "play-ffh-rs: will open $url when the server is ready"
+  open_when_ready &
+elif [ "$open" = 1 ] && [ "$three_d" = 1 ]; then
+  echo "play-ffh-rs: open the server's URL with ?renderer=3d&r3d=plain once it is serving (printed below)"
+elif [ "$open" = 1 ]; then
+  echo "play-ffh-rs: open the game in your browser once it is serving (URL printed below)"
+fi
+
+echo "play-ffh-rs: starting ffh-play serve (Ctrl-C to stop)"
+cd "$proj"
+exec "$bin" serve ${serve_args[@]+"${serve_args[@]}"}

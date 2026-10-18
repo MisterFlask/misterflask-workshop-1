@@ -63,7 +63,8 @@ for (const [name, cfg] of CONFIGS.filter(([n]) => !args.configs || args.configs.
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   const q = cfg === "plain" ? "plain" : JSON.stringify({ animate: false, ...cfg });
-  await page.goto(`${server.url}/?renderer=3d&r3d=${encodeURIComponent(q === "plain" ? "plain" : q)}`);
+  // force3d=1 bypasses the GPU guard (docs/R3D.md §1): this tool runs under SwiftShader on purpose.
+  await page.goto(`${server.url}/?renderer=3d&r3d=${encodeURIComponent(q === "plain" ? "plain" : q)}&force3d=1`);
   await page.waitForFunction(() => window.ffh?.ready && window.ffh.S.map && window.ffh.mapView.r3d?.cam, null, { timeout: 300000 });
   for (const ts of ZOOMS) {
     const r = await page.evaluate(

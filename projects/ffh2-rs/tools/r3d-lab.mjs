@@ -77,7 +77,8 @@ if (args.serve) {
     page.on("console", (m) => (m.type() === "error" || m.type() === "warning") && logs.push(`[${m.type()}] ${m.text()}`));
     page.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
     const q = s.query ?? "";
-    await page.goto(`${base}/lab/lab.html?${q}${q.includes("r3d=") ? "" : "&r3d=" + encodeURIComponent('{"animate":false}')}`);
+    // force3d=1 bypasses the GPU guard (docs/R3D.md §1): the lab renders under SwiftShader on purpose.
+    await page.goto(`${base}/lab/lab.html?${q}${q.includes("r3d=") ? "" : "&r3d=" + encodeURIComponent('{"animate":false}')}&force3d=1`);
     try {
       await page.waitForFunction(() => window.lab?.ready || window.lab?.error, null, { timeout: Number(args.timeout ?? 120000) });
       const err = await page.evaluate(() => window.lab.error);
@@ -120,7 +121,7 @@ async function stability(browser) {
   const configs = (args.configs ?? 'plain;{"animate":false};{"animate":false,"kuwahara":0}').split(";");
   for (const cfg of configs) {
     const page = await browser.newPage({ viewport: { width: Number(args.w ?? 900), height: Number(args.h ?? 600) } });
-    await page.goto(`${base}/lab/lab.html?${q}&r3d=${encodeURIComponent(cfg)}`);
+    await page.goto(`${base}/lab/lab.html?${q}&r3d=${encodeURIComponent(cfg)}&force3d=1`);
     await page.waitForFunction(() => window.lab?.ready || window.lab?.error, null, { timeout: Number(args.timeout ?? 120000) });
     const out = await page.evaluate((shift) => {
       const r = window.lab.r3d, v = window.lab.view, gl = r.gl;

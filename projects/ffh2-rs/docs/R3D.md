@@ -29,7 +29,14 @@ cargo build --release
   of the pipeline (§12), with
   the frame time and per-pass GPU times.
 * `?r3d=plain`, `?r3d=painterly` or `?r3d={"kuwahara":0,"outline":0}` override the look for one page.
-* It needs WebGL2. Without it the client says so and keeps the 2D map.
+* It needs WebGL2 **with GPU acceleration**. Without a WebGL2 context, or when the context is a
+  software rasteriser (SwiftShader, llvmpipe, Microsoft Basic Render, a software ANGLE adapter —
+  where the painterly pipeline would run at seconds per frame and look like a frozen tab, §14), the
+  client says so and keeps the 2D map. `map3d.js` reads the renderer through
+  `WEBGL_debug_renderer_info` and refuses a software one; `?force3d=1` overrides the guard (used by
+  the `tools/web-smoke.mjs` 3D step and by the `r3d-lab`/`r3d-compare`/`r3d-perf` tools, which render
+  under software GL on purpose). When the renderer string is hidden by the browser the guard cannot
+  tell and does not block.
 * The feature flag is `EXPERIMENTAL_3D` in `assets/app/look.js`: false hides the option and ignores
   `?renderer=3d`; the module is then never loaded (it is loaded on demand even when the flag is on).
 
@@ -291,10 +298,11 @@ and cooled; no unit is drawn there (the view has none). Particles fade out of si
   only registered recipes and places nothing on an unrevealed plot.
 * `tools/r3d-perf.mjs` (§11) and `tools/r3d-compare.mjs` (the same scene in every renderer).
 * **Software or GPU.** The lab, compare and perf tools render with SwiftShader by default (software:
-  works anywhere, including GPU-less containers, but a 3D frame takes seconds). On a machine with a
-  GPU, `--gpu` draws with it (Chromium's full headless mode); each tool prints the WebGL renderer
-  it got first, so a silent fallback to software is visible. Real frame rates come only from a
-  GPU run (`node tools/r3d-perf.mjs --gpu --save ...`) or from the panel in a browser.
+  works anywhere, including GPU-less containers, but a 3D frame takes seconds). They pass `force3d=1`
+  so the software-GL guard (§1) lets them draw rather than falling back to the 2D map. On a machine
+  with a GPU, `--gpu` draws with it (Chromium's full headless mode); each tool prints the WebGL
+  renderer it got first, so a silent fallback to software is visible. Real frame rates come only from
+  a GPU run (`node tools/r3d-perf.mjs --gpu --save ...`) or from the panel in a browser.
 * `ffh-play stage corrupt DIR`: the vertical slice's real game (below).
 
 ### 10.1 The vertical slice

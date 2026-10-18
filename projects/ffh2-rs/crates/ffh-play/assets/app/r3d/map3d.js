@@ -22,6 +22,30 @@ import "./assets/index.js";
 const ZOOMS = [28, 40, 56, 72, 96, 128, 168, 220];
 export const DEFAULT_ZOOM = 96;
 
+/** The WebGL2 renderer string and whether it is a software rasteriser (no usable GPU). Browsers
+ *  expose the real adapter through WEBGL_debug_renderer_info; software fallbacks (SwiftShader,
+ *  llvmpipe, Microsoft Basic Render, a software ANGLE adapter) are recognised by name. When the
+ *  string is hidden (a privacy setting) `software` is false -- we cannot tell, so we do not block. */
+function rendererInfo(gl) {
+  let name = "";
+  try {
+    const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    name = String((dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || "");
+  } catch {
+    name = "";
+  }
+  return { name, software: /swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(name) };
+}
+
+/** `?force3d=1` plays the 3D map even on a software renderer (for a test, or when the guess is wrong). */
+function force3d() {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? "").get("force3d") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export class Map3D {
   constructor(view) {
     this.view = view;
@@ -36,6 +60,16 @@ export class Map3D {
     if (!gl) {
       this.canvas.remove();
       throw new Error("WebGL2 is not available");
+    }
+    // Guard against a software WebGL2 rasteriser (no usable GPU): the painterly pipeline then runs
+    // at seconds per frame and looks like a frozen tab (docs/R3D.md §14). Refuse and let the caller
+    // fall back to the 2D map, unless `?force3d=1` says to try anyway.
+    const { name: glName, software } = rendererInfo(gl);
+    if (software && !force3d()) {
+      this.canvas.remove();
+      const err = new Error(`WebGL2 is rendering in software (${glName || "unknown renderer"}); the 3D map needs GPU acceleration.`);
+      err.code = "software-webgl";
+      throw err;
     }
     this.gl = gl;
     this.pipeline = new Pipeline(gl);

@@ -91,6 +91,9 @@ export class MapView {
     /** The experimental 3D renderer (`r3d/map3d.js`, `?renderer=3d`, docs/R3D.md) when it draws
      *  the map, else null. Loaded on demand: the page never fetches it otherwise. */
     this.r3d = null;
+    /** The error from the last failed `useR3d(true)`, so the caller can report why (e.g. a
+     *  software WebGL2 renderer: `code === "software-webgl"`). Cleared on a successful start. */
+    this.r3dError = null;
     this.queued = false;
     /** An in-flight camera glide (`glideTo`): `{ sx, sy, dx, dy, t0, dur }`, else null. Direct
      *  manipulation (drag, zoom, pan) cancels it; `prefers-reduced-motion` skips it. */
@@ -444,6 +447,7 @@ export class MapView {
     if (!!on === !!this.r3d) return true;
     if (on) {
       let mod;
+      this.r3dError = null;
       try {
         mod = await import("./r3d/map3d.js");
         if (this.iso) this.useIso(false);
@@ -454,6 +458,7 @@ export class MapView {
         this.r3d = new mod.Map3D(this);
       } catch (e) {
         console.error("3d map:", e);
+        this.r3dError = e;
         return false;
       }
       this.snapZoom(mod.DEFAULT_ZOOM);

@@ -68,7 +68,8 @@ for (const s of SHOTS) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   const cfg = s.cfg === "plain" ? "plain" : s.cfg ? { animate: false, ...s.cfg, ...JSON.parse(args.cfg ?? "{}") } : null;
-  await page.goto(`${server.url}/?renderer=${s.renderer}${cfg ? `&r3d=${enc(cfg)}` : ""}`);
+  // force3d=1 bypasses the GPU guard for the 3D shots (docs/R3D.md §1): SwiftShader on purpose.
+  await page.goto(`${server.url}/?renderer=${s.renderer}${cfg ? `&r3d=${enc(cfg)}` : ""}${s.renderer === "3d" ? "&force3d=1" : ""}`);
   await page.waitForFunction(() => window.ffh?.ready && window.ffh.S.map, null, { timeout: 300000 });
   await page.evaluate(() => {
     document.body.classList.add("bottom-closed");
