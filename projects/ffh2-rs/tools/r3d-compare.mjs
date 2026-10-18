@@ -94,6 +94,9 @@ for (const s of SHOTS) {
       const r = window.ffh.mapView.r3d;
       r.running = false;
       cancelAnimationFrame(r.raf);
+      // Full quality for the comparison shots, never the degraded ladder levels.
+      r.cfg.autoQuality = 0;
+      r.autoLevel = 0;
       const px = new Uint8Array(4);
       for (let k = 0; k < 3; k++) {
         r.render(1.5);

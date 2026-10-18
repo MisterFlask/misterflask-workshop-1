@@ -87,6 +87,11 @@ if (args.serve) {
         const r3d = window.lab.r3d;
         r3d.running = false;
         cancelAnimationFrame(r3d.raf);
+        // Off the quality ladder: a scripted capture renders a fixed few frames, and it must always
+        // be at full quality, never degraded by the ladder (it would never step up here, but do not
+        // rely on the frame count staying under the threshold).
+        r3d.cfg.autoQuality = 0;
+        r3d.autoLevel = 0;
         const px = new Uint8Array(4);
         const t0 = performance.now();
         for (let k = 0; k < 2; k++) {
@@ -121,6 +126,8 @@ async function stability(browser) {
       const r = window.lab.r3d, v = window.lab.view, gl = r.gl;
       r.running = false;
       cancelAnimationFrame(r.raf);
+      r.cfg.autoQuality = 0;
+      r.autoLevel = 0;
       const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
       const grab = () => {
         r.render(1);

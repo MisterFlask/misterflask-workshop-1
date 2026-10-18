@@ -73,6 +73,11 @@ for (const [name, cfg] of CONFIGS.filter(([n]) => !args.configs || args.configs.
         r3d.running = false;
         cancelAnimationFrame(r3d.raf);
         r3d.cfg.animate = false;
+        // The quality ladder must be off while measuring: under SwiftShader every frame is far over
+        // the step-down threshold, so the warmup would drop the paint filter and render scale and the
+        // per-pass costs below would be those of a degraded frame, not the full pipeline this measures.
+        r3d.cfg.autoQuality = 0;
+        r3d.autoLevel = 0;
         mv.cam = { ...mv.cam, ts };
         r3d.ts = ts;
         if (x !== undefined) mv.centerOn(x, y, { animate: false });

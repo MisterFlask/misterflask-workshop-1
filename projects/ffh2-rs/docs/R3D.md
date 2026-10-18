@@ -343,7 +343,10 @@ Measured in headless Chromium with SwiftShader (a CPU rasteriser; WebGL renderer
 only the _relative_ costs of the passes carry over.** `--gpu` measures on the machine's GPU; the
 owner can run `node tools/r3d-perf.mjs --gpu --save DIR/corrupt.ffhsave --x 48 --y 15`.
 
-Per-pass GPU cost (SwiftShader, painterly preset, one run), with each pass's share of the frame:
+Per-pass GPU cost (SwiftShader, painterly preset, one run; `r3d-perf` disables the quality ladder
+while measuring, so these are the full pipeline's costs, not a degraded level), with each pass's
+share of the frame (absolute times vary by tens of percent run to run on a shared software
+rasteriser -- only the shares carry over):
 
 | pass | ts 40 (far) | ts 96 (gameplay) |
 |---|---|---|
