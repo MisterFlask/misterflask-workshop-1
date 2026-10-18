@@ -11,7 +11,7 @@ state only: no rule, save, protocol or simulation code changed for it.
 Contents: 1 running it · 2 the existing renderers (what was there) · 3 architecture · 4 the world ·
 5 the pipeline · 6 asset recipes · 7 placement · 8 readability and interaction · 9 fog of war ·
 10 the lab, tests and tools · 11 performance · 12 configuration · 13 removing it · 14 limitations
-and next steps · 15 provenance.
+and next steps · 15 provenance · 16 the look target.
 
 ---
 
@@ -158,8 +158,9 @@ swims when the camera moves.
 **The meadow.** Grassland and prairie are painted as one ground: green grass broken by golden dry
 grass where a noise field (about 1, 0.5 and 0.3 plots) passes a threshold set by the prairie's share
 of the point (the smooth plot weights), so about a sixth of grassland lies golden and five sixths of
-prairie, a plot's centre still reads as its own terrain, and the plot grid no longer shows in the
-ground (no noise is broader than a plot, so a whole region never flips). Patch edges fray along the
+prairie -- in a plot's rim only: within ~0.16-0.34 of its centre the ground is pinned to its own
+terrain (grassland and plains differ in yield) -- and the plot grid no longer shows in the ground (no
+noise is broader than a plot, so a whole region never flips). Patch edges fray along the
 wind and blend through interleaved marks. Green blades are lit at the tip and dark at the root; a
 streak hatch (17 and 38 a plot) carries fine texture even where the marks are below a few pixels,
 with sparse drifts of white, yellow and violet flower flecks; golden grass is wind-combed straw over
@@ -171,10 +172,28 @@ contours: teal over the shelf to indigo over the deep. Rivers are ribbons wider 
 beds: the banks cut the water's edge. It is drawn over a grab of the scene, seen into, mirroring,
 with waves, glitter and surf: §5.2.
 
-**Decal and light layers** (`decals.js`), painted with a 2D canvas when the map changes: roads (each
-routed plot to its routed neighbours, bowed so a network reads as tracks), fields (farms, plantations,
-the gardens of villages), wet banks, settlement ground; and pools of local light (towns, lava, mana
-nodes, ancient forests) that light the terrain and the props.
+**Decal and light layers** (`decals.js`), painted with a 2D canvas when the map changes: roads, fields
+(farms, plantations, vineyards, worked land, the gardens of villages), wet banks, settlement ground;
+and pools of local light (towns, lava, mana nodes, ancient forests) that light the terrain and the
+props. The channels: r roads, g crops, b wet banks, a settlement ground and farmyards.
+
+* **Roads**: r holds a distance ramp, 1 on a track's centre line falling to 0 at `ROAD_RAMP` (0.3
+  plot), painted as one path per ramp step (cheap enough to repaint at every map change); the terrain
+  shader cuts from it a crisp packed-dirt track ~0.14 plot wide at any zoom (mottled dirt, darker
+  broken margins, wheel ruts close up, a frayed edge, a verge of worn grass). The links come from
+  `fields.js` `roadLinks`: each routed plot to its routed neighbours, bowed by a hash of the pair, a
+  diagonal skipped when a routed orthogonal neighbour already joins the two (no triangle at every
+  corner of the network), straight over a river onto its bridge. `dress.js` `roadsOf` traces the same
+  tracks so plants keep off them.
+* **Fields**: `fields.js` lays out each worked plot (`fieldLayout`: a farm's two front fields and a
+  third beside the farmstead's yard; plantations, vineyards and worked land more simply), shared by
+  the decal and the props so a barn stands in its yard, not in the wheat. g stores the crop by value
+  (`CROP_LEVEL`: 0.33 vegetable beds, 0.67 tilled soil, 1 grain), read back as the highest of the four
+  texels round a point; rows are world-anchored (14 bed rows, 18 grain rows a plot) and the props'
+  low 3D rows (`imp.beds`, `imp.grain`) stand on the painted ones, with fences (`imp.fence`), stooks
+  (`imp.stook`) and haystacks; wheat, corn and rice farms grow golden grain, others vegetable beds
+  beside bare tilled soil. Fields keep `ROAD_CLEAR` (0.12) from a road, and loose plants keep off
+  them (`inField`).
 
 ## 5. The pipeline (`pipeline.js`, `shaders.js`)
 
@@ -403,7 +422,10 @@ drifts and bare ground between them on plains, clear of a unit's ring, an improv
 the roads (`roadsOf` traces them as decals.js paints them), the river, the beach, the resource
 marker and a town's reach, trees also out of the line of sight to what stands on the plot, behind
 it, or a city; a structure moves to the back of its plot when a
-unit stands there; resources at the front-left; bridges where a road crosses a river edge; a unit
+unit stands there; resources at the front-left; bridges where a road crosses a river edge (the
+catalog's `bridge(ctx)`: an arched stone humpback, one arch or two on a pier, mostly on east-west
+roads where the arch shows, or a flat slab bridge with low walls, mostly north-south; 0.68 long with
+footings on the bank tops, centred where the road meets the river's line); a unit
 stack shows its top unit with up to two of its company behind it (at a city, at its gate).
 
 ## 8. Readability and interaction
@@ -619,3 +641,23 @@ sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 
 Every mesh, texture and pattern is generated by code in this repository at run time; no external
 art asset, model, texture, font or library was added.
+
+## 16. The look target
+
+The owner's reference image (a bright, saturated, hand-painted fantasy strategy map: a walled town
+with colourful roofs on golden grass, a winding turquoise river with white flow under stone bridges,
+a crossroads of dirt roads, farms with haystacks, dense shrubs, rocks and trees) is the target the
+renderer's look is moved toward. The lab's `scene=reference` lays out its composition (best at
+`ts=150` with `&r3d={"grid":0}`, the reference having no grid), so every change is judged against
+the same frame. The first batch toward it (five areas worked in parallel -- ground and light,
+vegetation and clutter, water, architecture, farms/roads/bridges -- then one review round on the
+merged result) brought: the meadow ground, broad rivers with foam and rocky banks, towns that grow
+with their size, dense clumped clutter and fuller trees, crop fields, crisp roads and stone bridges,
+and a brighter grade (saturation 1.1, contrast 1.12, little haze or cloud shadow, a lighter paint
+filter and ink).
+
+Still short of the target: tree crowns are smooth lumps rather than leafy masses; the ground's detail
+is all computed per pixel from noise (no baked material textures), which caps how much fine detail
+it can afford and has to be faded by hand with the zoom; the paint filter and the stepped light
+(Kuwahara, ink, gouache value steps) imitate paint over the image, where the target is painted in
+its materials under ordinary, continuous light.
