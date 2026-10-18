@@ -429,9 +429,10 @@ float gKeep = 0.0;
 
 // Ground marks: one flat-toned mark per cell of a jittered lattice (about f per plot), periodic like
 // mnoise, each turned to 'ang' (radians from the map's x) give or take 'jit', drawn out 'elong'
-// times, three-lobed like dab2, with an edge about a pixel wide at any zoom ('aa': cells per pixel).
-// Returns (pick, tone, cover): two hashes of the mark that covers the point, and how firmly.
-vec3 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float aa) {
+// times, 'lobe' three-lobed like dab2 (0: a plain tapered stroke), with an edge about a pixel wide
+// at any zoom ('aa': cells per pixel). Returns (pick, tone, cover): two hashes of the mark that
+// covers the point, and how firmly.
+vec3 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float lobe, float aa) {
   float P = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) : 4096.0;
   vec2 p = uWrapX > 0.5 ? vec2(m.x * P / uMapSize.x, m.y * f) : m * f;
   vec2 i = floor(p);
@@ -451,7 +452,7 @@ vec3 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float
       vec2 q = r / (rad * (0.7 + 0.6 * hs) * vec2(sqrt(el), 1.0 / sqrt(el)));
       float len = length(q);
       float c = q.x / max(len, 1e-4);
-      float d = len * (1.0 + 0.2 * (4.0 * c * c * c - 3.0 * c));
+      float d = len * (1.0 + lobe * (4.0 * c * c * c - 3.0 * c));
       float w = (1.0 - smoothstep(1.0 - soft, 1.0, d)) * (0.55 + 0.45 * hs);
       if (w > best) { best = w; pick = vec2(hash12(cell + 9.1), hash12(cell + 5.3)); }
     }
@@ -459,62 +460,166 @@ vec3 gmarks(vec2 m, float f, float ang, float jit, float elong, float rad, float
   return vec3(pick, best);
 }
 
-// Open grassland and prairie, painted: the broad masses (as masses(), with a slow drift between a
-// warm and a cool green or straw), then marks laid over them at three sizes -- the finest only
-// close up, each fading before it would sparkle or swell into a blot -- each mark one of four
-// related colours of about the ground's own value, so the ground reads as laid strokes of broken
-// colour while its value stays quiet round roads, rings and figures. Grass takes short upright
-// strokes; prairie long ones swept along a slowly turning wind.
-vec3 meadow(vec2 m, vec3 dark, vec3 base, vec3 light, vec3 c0, vec3 c1, vec3 c2, vec3 c3, bool prairie) {
-  float big = mfbm(m, 0.45);
-  float mid = mnoise(m + 11.0, 1.6);
+// --- Laid marks on the open ground. Each ground: its broad masses (as masses(), without the soft
+// dabs), a slow drift between a warm and a cool colour of its own, then marks laid over them at up
+// to three sizes (4.5, 11 and 26 a plot) -- each fading in once its marks are a few pixels and out
+// before they would swell into blots, so at the gameplay zoom the two larger are laid and close up
+// the finest joins them -- each mark one of four related colours, so the ground reads as strokes of
+// broken colour while its value stays quiet round roads, rings and figures. Every ground its own
+// hand: upright strokes on grass and in reed beds, long ones swept along the wind on prairie and
+// snow, round clumps on tundra and in perdition, strokes along the dunes' crests in the deserts,
+// each basalt plate its own direction. A ground holding only a sliver of a blend lays none
+// (gMarkW: no muddy double layer at borders).
+float gMarkW = 1.0;
+float gK() { return uStylize * min(uDabs / 1.6, 1.5); }
+vec3 broad(vec2 m, vec3 dark, vec3 base, vec3 light, float scale, out float big) {
+  big = mfbm(m, 0.45 * scale);
+  float mid = mnoise(m + 11.0, 1.6 * scale);
   vec3 c = mix(base, dark, smoothstep(0.52, 0.8, big) * 0.6);
-  c = mix(c, light, smoothstep(0.38, 0.78, big) * smoothstep(0.45, 0.8, mid) * 0.5);
-  float k = uStylize * min(uDabs / 1.6, 1.5);
-  c = mix(c, mix(c1, c0, smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7))), 0.22 * k);
-  float ang = prairie ? 0.35 + (mnoise(m + 41.0, 0.3) - 0.5) * 1.6 : 1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6;
-  float jit = prairie ? 0.35 : 0.8;
-  gKeep = 0.5 * min(k, 1.0);
-  float elong = prairie ? 4.5 : 2.2;
-  for (int o = 0; o < 3; o++) {
-    float f = o == 0 ? 4.5 : o == 1 ? 11.0 : 26.0;
-    float aa = gPpx * f;
-    // In while a mark is a few pixels or more, out again once it would be a blot over ~40 px.
-    float lod = (1.0 - smoothstep(0.22, 0.5, aa)) * smoothstep(0.02, 0.03, aa);
-    if (lod <= 0.0 || k <= 0.0) continue;
-    vec3 mk = gmarks(m + float(o) * 13.1, f, ang, jit, elong, o == 2 ? 0.6 : 0.55, aa);
-    vec3 pc = mk.x < 0.3 ? c0 : mk.x < 0.55 ? c1 : mk.x < 0.8 ? c2 : c3;
-    pc *= 0.86 + 0.28 * mk.y;
-    c = mix(c, pc, mk.z * lod * k * (o == 0 ? (prairie ? 0.42 : 0.5) : o == 1 ? 0.42 : 0.36));
+  return mix(c, light, smoothstep(0.38, 0.78, big) * smoothstep(0.45, 0.8, mid) * 0.5);
+}
+vec3 drift(vec2 m, vec3 c, vec3 ca, vec3 cb, float a) {
+  return mix(c, mix(cb, ca, smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7))), a * gK());
+}
+// The wind over open country (radians from the map's x), turning slowly.
+float gWind(vec2 m) { return 0.35 + (mnoise(m + 41.0, 0.3) - 0.5) * 1.6; }
+// A palette: four colours and the cumulative pick thresholds of the first three.
+mat4 P4(vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 cuts) { return mat4(vec4(c0, cuts.x), vec4(c1, cuts.y), vec4(c2, cuts.z), vec4(c3, 1.0)); }
+// One size of marks laid over c: 'str' how firmly, 'tone' the value spread of the marks (+-),
+// 'hueOnly' takes each mark's value from c (only its hue from the palette), 'seed' decorrelates sizes.
+vec3 lay(vec2 m, vec3 c, mat4 pal, float f, float str, float ang, float jit, float elong, float rad, float lobe, float tone, bool hueOnly, float seed) {
+  float aa = gPpx * f;
+  float s = str * (1.0 - smoothstep(0.22, 0.5, aa)) * smoothstep(0.02, 0.03, aa) * gK() * gMarkW;
+  if (s <= 0.0) return c;
+  vec3 mk = gmarks(m + seed, f, ang, jit, elong, rad, lobe, aa);
+  vec3 pc = mk.x < pal[0].w ? pal[0].rgb : mk.x < pal[1].w ? pal[1].rgb : mk.x < pal[2].w ? pal[2].rgb : pal[3].rgb;
+  if (hueOnly) pc *= lum(c) / max(lum(pc), 1e-4);
+  return mix(c, pc * (1.0 - tone + 2.0 * tone * mk.y), mk.z * s);
+}
+// Dunes: crests across the map's diagonal, sinuous; dunes(phase) = (the lit back slope rising to the
+// crest, the shadow dropping at once behind it), the crest's edge about two pixels wide. The phase
+// runs a whole number of cycles over a wrapping map's width (no seam).
+float dunePh(vec2 m) {
+  float fx = uWrapX > 0.5 ? floor(uMapSize.x * 1.146 + 0.5) / uMapSize.x : 1.146;
+  return m.x * fx + m.y * 1.432 + 1.432 * mfbm(m, 0.8);
+}
+vec2 dunes(float ph) {
+  float t = fract(ph - 0.25), e = 2.2 * gPpx;
+  return vec2(smoothstep(0.25, 1.0, t) * (1.0 - smoothstep(1.0 - e, 1.0, t)),
+              (1.0 - smoothstep(0.0, 0.3, t)) * smoothstep(0.0, e, t));
+}
+// mcells with the nearest cell's id (a hash of its wrapped cell, 0..1).
+vec3 mcellsId(vec2 m, float f) {
+  float P = uWrapX > 0.5 ? max(1.0, floor(uMapSize.x * f + 0.5)) : 4096.0;
+  vec2 p = uWrapX > 0.5 ? vec2(m.x * P / uMapSize.x, m.y * f) : m * f;
+  vec2 i = floor(p);
+  vec2 fr = fract(p);
+  float d1 = 8.0, d2 = 8.0, id = 0.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 g = vec2(float(x), float(y));
+      vec2 cell = mod(i + g, vec2(P, 4096.0));
+      vec2 o = hash22(cell);
+      float d = length(g + o - fr);
+      if (d < d1) { d2 = d1; d1 = d; id = hash12(cell + 2.9); } else if (d < d2) { d2 = d; }
+    }
   }
-  return c;
+  return vec3(d1, d2, id);
 }
 
 vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
-  // Grass: yellow-green, blue-green, olive and sap.
-  if (g == G_GRASS) return srgb(meadow(m, vec3(0.16, 0.24, 0.17), vec3(0.27, 0.36, 0.21), vec3(0.43, 0.49, 0.28),
-    vec3(0.41, 0.47, 0.23), vec3(0.19, 0.32, 0.25), vec3(0.38, 0.40, 0.21), vec3(0.22, 0.31, 0.15), false));
-  // Prairie: straw, ochre, sage and russet.
-  if (g == G_PLAINS) return srgb(meadow(m, vec3(0.34, 0.31, 0.21), vec3(0.48, 0.42, 0.28), vec3(0.62, 0.54, 0.37),
-    vec3(0.64, 0.56, 0.35), vec3(0.54, 0.43, 0.24), vec3(0.43, 0.44, 0.31), vec3(0.50, 0.39, 0.27), true));
-  if (g == G_DESERT) {
-    vec3 c = masses(m, vec3(0.58, 0.46, 0.32), vec3(0.71, 0.59, 0.42), vec3(0.82, 0.72, 0.55), 0.8);
-    float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
-    c *= 0.92 + 0.1 * smoothstep(-0.2, 0.9, dune);
+  float big;
+  // Grass: yellow-green, blue-green, olive and sap, in short upright strokes -- each mark takes its
+  // value from the masses under it (only its hue from the palette), so the grass keeps its light
+  // and dark design and the plot grid, roads and rings still read over it.
+  if (g == G_GRASS) {
+    vec3 c = broad(m, vec3(0.16, 0.24, 0.17), vec3(0.27, 0.36, 0.21), vec3(0.43, 0.49, 0.28), 1.0, big);
+    vec3 g0 = vec3(0.42, 0.47, 0.22), g1 = vec3(0.22, 0.33, 0.23), g2 = vec3(0.38, 0.40, 0.21), g3 = vec3(0.24, 0.33, 0.16);
+    vec3 dr = mix(g1, g0, smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7)));
+    c = mix(c, dr * lum(c) / max(lum(dr), 1e-4), 0.22 * gK());
+    float a = 1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.6;
+    mat4 pal = P4(g0, g1, g2, g3, vec3(0.3, 0.55, 0.8));
+    gKeep = 0.5 * min(gK(), 1.0);
+    c = lay(m, c, pal, 4.5, 0.5, a, 0.8, 4.0, 0.55, 0.0, 0.08, true, 0.0);
+    c = lay(m, c, pal, 11.0, 0.42, a, 0.8, 4.0, 0.55, 0.0, 0.08, true, 13.1);
+    c = lay(m, c, pal, 26.0, 0.36, a, 0.8, 4.0, 0.6, 0.0, 0.08, true, 26.2);
     return srgb(c);
   }
-  if (g == G_TUNDRA) {
-    vec3 c = masses(m, vec3(0.33, 0.35, 0.30), vec3(0.45, 0.46, 0.38), vec3(0.58, 0.57, 0.48), 1.2);
-    float st = smoothstep(0.78, 0.86, mnoise(m, 7.0));
-    return srgb(mix(c, vec3(0.30, 0.30, 0.31), st * 0.7));
+  // Prairie: straw, ochre, sage and russet, in long strokes swept along the wind.
+  if (g == G_PLAINS) {
+    vec3 c = broad(m, vec3(0.34, 0.31, 0.21), vec3(0.48, 0.42, 0.28), vec3(0.62, 0.54, 0.37), 1.0, big);
+    vec3 p0 = vec3(0.64, 0.56, 0.35), p1 = vec3(0.54, 0.43, 0.24), p2 = vec3(0.43, 0.44, 0.31), p3 = vec3(0.50, 0.39, 0.27);
+    c = drift(m, c, p0, p1, 0.22);
+    float a = gWind(m);
+    mat4 pal = P4(p0, p1, p2, p3, vec3(0.3, 0.55, 0.8));
+    gKeep = 0.5 * min(gK(), 1.0);
+    c = lay(m, c, pal, 4.5, 0.42, a, 0.35, 4.5, 0.55, 0.2, 0.14, false, 0.0);
+    c = lay(m, c, pal, 11.0, 0.42, a, 0.35, 4.5, 0.55, 0.2, 0.14, false, 13.1);
+    c = lay(m, c, pal, 26.0, 0.36, a, 0.35, 4.5, 0.6, 0.2, 0.14, false, 26.2);
+    return srgb(c);
   }
-  if (g == G_SNOW) return srgb(masses(m, vec3(0.70, 0.76, 0.84), vec3(0.85, 0.88, 0.92), vec3(0.95, 0.96, 0.97), 0.7));
+  // Desert: pale sand cut by sinuous dune crests -- the back slope brightening to the crest, a cool
+  // rose shadow behind it (the sun is from the south-west) -- with long low sheets of sand laid
+  // along the crests, and close up ripples in the lit slopes and finer grains.
+  if (g == G_DESERT) {
+    vec3 c = broad(m, vec3(0.58, 0.46, 0.32), vec3(0.71, 0.59, 0.42), vec3(0.82, 0.72, 0.55), 0.8, big);
+    vec3 d0 = vec3(0.78, 0.68, 0.50), d1 = vec3(0.60, 0.48, 0.40), d2 = vec3(0.74, 0.58, 0.36), d3 = vec3(0.68, 0.60, 0.47);
+    c = drift(m, c, d0, d1, 0.15);
+    float ph = dunePh(m);
+    vec2 dn = dunes(ph);
+    c *= 0.91 + 0.12 * dn.x;
+    c = mix(c, vec3(0.58, 0.46, 0.40), 0.35 * dn.y);
+    float rs = fract(ph * 6.0), er = 13.2 * gPpx;
+    float band = smoothstep(0.5, 0.5 + er, rs) * (1.0 - smoothstep(0.75, 0.75 + er, rs));
+    float rlod = 1.0 - smoothstep(0.12, 0.2, 11.0 * gPpx);
+    gKeep = 0.5 * min(gK(), 1.0);
+    c = lay(m, c, P4(d0, d3, d2, d3, vec3(0.35, 0.6, 0.8)), 4.5, 0.35, 2.46, 0.35, 3.0, 0.55, 0.2, 0.08, false, 0.0);
+    c = lay(m, c, P4(d0, d1, d1, d3, vec3(0.35, 0.6, 0.85)), 11.0, 0.7 * band * rlod, 2.46, 0.2, 5.0, 0.5, 0.2, 0.08, false, 13.1);
+    c = lay(m, c, P4(d0, d1, d2, d3, vec3(0.2, 0.5, 0.8)), 26.0, 0.35, 2.46, 0.8, 1.8, 0.6, 0.2, 0.10, false, 26.2);
+    return srgb(c);
+  }
+  // Tundra: lichen and moss mottling in round clumps -- moss, rust dwarf shrub, pale lichen, slate --
+  // all near one value; late snow only in the hollows, as the larger patches.
+  if (g == G_TUNDRA) {
+    vec3 c = broad(m, vec3(0.33, 0.35, 0.30), vec3(0.45, 0.46, 0.38), vec3(0.58, 0.57, 0.48), 1.2, big);
+    vec3 t0 = vec3(0.41, 0.45, 0.36), t1 = vec3(0.49, 0.42, 0.33), t2 = vec3(0.54, 0.55, 0.48), t3 = vec3(0.36, 0.37, 0.38);
+    c = drift(m, c, t0, t1, 0.15);
+    float hollow = smoothstep(0.55, 0.75, big);
+    vec3 cuts = vec3(0.40, 0.62, 0.85);
+    mat4 pal = P4(t0, t1, t2, t3, cuts);
+    gKeep = 0.5 * min(gK(), 1.0);
+    c = lay(m, c, P4(t0, t1, mix(t2, vec3(0.78, 0.82, 0.86), 0.6 * hollow), t3, cuts), 4.5, 0.34, 0.6, 1.2, 1.6, 0.5, 0.2, 0.12, false, 0.0);
+    c = lay(m, c, pal, 11.0, 0.40, 0.6, 1.2, 1.6, 0.5, 0.2, 0.12, false, 13.1);
+    c = lay(m, c, pal, 26.0, 0.32, 0.6, 1.2, 1.6, 0.5, 0.2, 0.12, false, 26.2);
+    return srgb(c);
+  }
+  // Snow: carved by the wind -- blue and lilac shadow streaks on warm white, laid along the same
+  // wind as the prairie's, so it runs on across a border.
+  if (g == G_SNOW) {
+    vec3 c = broad(m, vec3(0.70, 0.76, 0.84), vec3(0.85, 0.88, 0.92), vec3(0.95, 0.96, 0.97), 0.7, big);
+    mat4 pal = P4(vec3(0.96, 0.94, 0.90), vec3(0.60, 0.68, 0.84), vec3(0.68, 0.66, 0.82), vec3(0.84, 0.88, 0.94), vec3(0.30, 0.52, 0.68));
+    float a = gWind(m);
+    gKeep = 0.5 * min(gK(), 1.0);
+    c = lay(m, c, pal, 4.5, 0.60, a, 0.3, 5.0, 0.5, 0.2, 0.06, false, 0.0);
+    c = lay(m, c, pal, 11.0, 0.65, a, 0.3, 5.0, 0.5, 0.2, 0.06, false, 13.1);
+    c = lay(m, c, pal, 26.0, 0.40, a, 0.3, 5.0, 0.5, 0.2, 0.06, false, 26.2);
+    return srgb(c);
+  }
   if (g == G_MARSH) {
-    vec3 c = masses(m, vec3(0.20, 0.24, 0.17), vec3(0.29, 0.34, 0.21), vec3(0.40, 0.42, 0.26), 1.3);
+    vec3 c = broad(m, vec3(0.20, 0.24, 0.17), vec3(0.29, 0.34, 0.21), vec3(0.40, 0.42, 0.26), 1.3, big);
     // Shallow pools among the reeds, catching the sky; a darker muddy rim around each.
     float pn = mfbm(m + 7.0, 2.6) + 0.03;
     float rimM = smoothstep(0.56, 0.62, pn) * (1.0 - smoothstep(0.62, 0.66, pn));
     float pool = smoothstep(0.63, 0.67, pn);
+    // Reed beds: stiff upright strokes in straw-olive, dark sedge, bronze and wet peat (none in the
+    // water), darker and browner than grass.
+    float a = 1.5708 + (mnoise(m + 41.0, 0.5) - 0.5) * 0.3;
+    mat4 pal = P4(vec3(0.42, 0.40, 0.24), vec3(0.22, 0.28, 0.20), vec3(0.36, 0.31, 0.19), vec3(0.20, 0.21, 0.15), vec3(0.30, 0.60, 0.80));
+    gKeep = 0.5 * min(gK(), 1.0);
+    float dry = 1.0 - pool;
+    c = lay(m, c, pal, 4.5, 0.25 * dry, a, 0.35, 3.6, 0.5, 0.2, 0.12, false, 0.0);
+    c = lay(m, c, pal, 11.0, 0.32 * dry, a, 0.35, 3.6, 0.5, 0.2, 0.12, false, 13.1);
+    c = lay(m, c, pal, 26.0, 0.30 * dry, a, 0.35, 3.6, 0.5, 0.2, 0.12, false, 26.2);
     c = mix(c, c * 0.7, rimM);
     // The pools are peaty, darker and greener than open water (marsh is land), with a faint
     // drifting sheen of the sky.
@@ -525,33 +630,52 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
   if (g == G_BURNING || g == G_BROKEN || g == G_PERDITION) {
     // Corrupted ground, each hell terrain its own material (F3): burning sands (ash-orange dunes),
     // broken lands (grey basalt split into plates), fields of perdition (wine-red with festering
-    // pools). Mid-value bases so daylight and the dabs register; a sparse smouldering crack line
+    // pools). Mid-value bases so daylight and the marks register; a sparse smouldering crack line
     // (not iso-line rings); brightest where the corruption runs deepest; a slow pulse; anchored.
     vec3 c = vec3(0.0);
     vec3 hot = vec3(1.0, 0.4, 0.1);
     if (g == G_BURNING) {
-      // Ash-orange sand with the desert dune ripple.
-      c = masses(m, vec3(0.26, 0.15, 0.09), vec3(0.40, 0.25, 0.16), vec3(0.56, 0.38, 0.22), 0.9);
-      float dune = sin((m.x * 0.8 + m.y) * 9.0 + mfbm(m, 0.8) * 9.0);
-      c *= 0.9 + 0.12 * smoothstep(-0.2, 0.9, dune);
+      // The desert's hell twin: the same dunes, lower, with char-dark lee shadows, and broken flakes
+      // of ash, burnt orange, rust and char laid along the crests.
+      c = broad(m, vec3(0.26, 0.15, 0.09), vec3(0.40, 0.25, 0.16), vec3(0.56, 0.38, 0.22), 0.9, big);
+      vec2 dn = dunes(dunePh(m));
+      c *= 0.94 + 0.08 * dn.x;
+      c = mix(c, vec3(0.24, 0.14, 0.10), 0.15 * dn.y);
+      mat4 pal = P4(vec3(0.44, 0.39, 0.36), vec3(0.52, 0.29, 0.14), vec3(0.36, 0.21, 0.13), vec3(0.24, 0.15, 0.11), vec3(0.18, 0.52, 0.82));
+      c = lay(m, c, pal, 4.5, 0.25, 2.46, 0.8, 2.5, 0.45, 0.2, 0.12, false, 0.0);
+      c = lay(m, c, pal, 11.0, 0.30, 2.46, 0.8, 2.5, 0.45, 0.2, 0.12, false, 13.1);
+      c = lay(m, c, pal, 26.0, 0.25, 2.46, 0.8, 2.5, 0.45, 0.2, 0.12, false, 26.2);
       hot = vec3(1.0, 0.42, 0.10);
     } else if (g == G_BROKEN) {
-      // Grey basalt cut into plates by cell edges (the F_ICE idiom), dark seams between them.
-      c = masses(m, vec3(0.20, 0.18, 0.18), vec3(0.30, 0.27, 0.26), vec3(0.42, 0.39, 0.37), 1.1);
-      vec2 cl = mcells(m, 3.2);
+      // Grey basalt cut into plates by cell edges (the F_ICE idiom), dark seams between them; each
+      // plate painted as its own facet: its own tone and stroke direction, strokes stopping at the
+      // seams. Only the two finer sizes (the seams already make it the busiest ground).
+      c = broad(m, vec3(0.20, 0.18, 0.18), vec3(0.30, 0.27, 0.26), vec3(0.42, 0.39, 0.37), 1.1, big);
+      vec3 cl = mcellsId(m, 3.2);
+      c *= 0.9 + 0.2 * cl.z;
+      mat4 pal = P4(vec3(0.30, 0.30, 0.33), vec3(0.36, 0.29, 0.24), vec3(0.44, 0.41, 0.39), vec3(0.19, 0.18, 0.19), vec3(0.35, 0.65, 0.82));
+      c = lay(m, c, pal, 11.0, 0.35, cl.z * 3.1416, 0.3, 2.4, 0.5, 0.2, 0.10, false, 13.1);
+      c = lay(m, c, pal, 26.0, 0.30, cl.z * 3.1416, 0.3, 2.4, 0.5, 0.2, 0.10, false, 26.2);
       float seam = 1.0 - smoothstep(0.015, 0.06, cl.y - cl.x);
       c = mix(c, c * 0.5, seam * 0.8);
       hot = vec3(1.0, 0.36, 0.08);
     } else {
-      // Fields of perdition: wine-red with dark festering pools (the marsh pool/rim idiom).
-      c = masses(m, vec3(0.22, 0.10, 0.13), vec3(0.34, 0.15, 0.19), vec3(0.48, 0.24, 0.27), 1.2);
+      // Fields of perdition: wine-red with dark festering pools (the marsh pool/rim idiom), the
+      // ground between them clotted in round dabs of crimson, bruise, sick flesh and clot.
+      c = broad(m, vec3(0.22, 0.10, 0.13), vec3(0.34, 0.15, 0.19), vec3(0.48, 0.24, 0.27), 1.2, big);
       float pn = mfbm(m + 7.0, 2.4) + 0.03;
       float rimP = smoothstep(0.56, 0.62, pn) * (1.0 - smoothstep(0.62, 0.66, pn));
       float poolP = smoothstep(0.63, 0.67, pn);
+      mat4 pal = P4(vec3(0.46, 0.16, 0.18), vec3(0.30, 0.14, 0.24), vec3(0.50, 0.28, 0.26), vec3(0.18, 0.06, 0.08), vec3(0.35, 0.65, 0.85));
+      float dry = 1.0 - poolP;
+      c = lay(m, c, pal, 4.5, 0.25 * dry, 0.0, 6.283, 1.3, 0.55, 0.2, 0.12, false, 0.0);
+      c = lay(m, c, pal, 11.0, 0.30 * dry, 0.0, 6.283, 1.3, 0.55, 0.2, 0.12, false, 13.1);
+      c = lay(m, c, pal, 26.0, 0.28 * dry, 0.0, 6.283, 1.3, 0.55, 0.2, 0.12, false, 26.2);
       c = mix(c, c * 0.6, rimP);
       c = mix(c, vec3(0.10, 0.03, 0.05), poolP * 0.8);
       hot = vec3(0.95, 0.18, 0.12);
     }
+    gKeep = 0.5 * min(gK(), 1.0);
     // Blight: scorch masses keep the dark contrast without a uniformly low base.
     float scorch = smoothstep(0.5, 0.82, mstroke(m, 3.0, 4.0));
     c = mix(c, c * 0.6, scorch * 0.4);
@@ -700,6 +824,7 @@ void main() {
     if (wk < 0.004) continue;
     vec3 e = vec3(0.0);
     gKeep = 0.0;
+    gMarkW = smoothstep(0.08, 0.2, wk);
     alb += groundAlbedo(gs[k], m, h, e) * wk;
     keepG += gKeep * wk;
     emit += e * wk;
