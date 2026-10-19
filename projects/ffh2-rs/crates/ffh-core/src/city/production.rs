@@ -129,6 +129,18 @@ impl Game {
         self.cities[c].num_buildings >= max
     }
 
+    /// True if `unit` is the city's civilization's unit for its class: the units FfH's city screen
+    /// (`CvMainInterface.py`: `getCivilizationUnits(i)` of the city's civilization) and the C++ AI
+    /// (`CvCityAI::AI_bestUnit` and the like) walk, the only ones `canTrain` is ever asked about
+    /// there. Not a C++ function and not a rule: `canTrain` itself checks a unit with `UpgradeCiv`
+    /// (Ogres, Centaurs, Vampires, Goblins, Balor, ...) only against that civilization's line, so
+    /// asked directly it admits them in any city. Code that walks every unit type filters with
+    /// this, so no civilization trains another's unique units.
+    pub fn city_offers_unit(&self, c: CityId, unit: UnitType) -> bool {
+        let d = self.d;
+        d.units[unit].unit_class_type.is_some_and(|class| d.civ_unit(self.city_civilization_type(c), class) == Some(unit))
+    }
+
     /// C++ `CvCity::canTrain(UnitTypes, ...)` (CvCity.cpp:1832-1850). FFH: min level and
     /// settlement checks, then `canUpgrade`. (C++ returns false for `NO_UNIT`; callers holding
     /// an `Option` check it first.)
@@ -1430,6 +1442,27 @@ mod tests {
         let id = g.cities.next_id();
         let c = g.player_add_city(PlayerId(0), City::new(d, num_players, num_teams, id, PlayerId(0), 3, 3, 0));
         (g, c)
+    }
+
+    /// `canTrain` checks a unit with `UpgradeCiv` only against that civilization's line, so it is
+    /// no guard against another civilization's unique units; `city_offers_unit` is, as FfH's city
+    /// screen and AI walk only the city's own units (the Khazad and the Lanun AI fielded Ogres and
+    /// Centaurs by the dozen before the AI and the ffh-play city screen filtered with it).
+    #[test]
+    fn city_offers_only_its_own_civilizations_units() {
+        let (mut g, c) = game_with_city();
+        let d = g.d;
+        g.setup.players[0].civ = Some(d.t::<CivilizationType>("CIVILIZATION_KHAZAD"));
+        let civ = g.city_civilization_type(c);
+        let foreign: Vec<UnitType> = d.units.keys().filter(|&u| d.units[u].upgrade_civ.is_some_and(|uc| uc != civ)).collect();
+        assert!(!foreign.is_empty(), "another civilization's UpgradeCiv units (Ogre, Centaur, ...)");
+        for u in foreign {
+            let class = d.units[u].unit_class_type.expect("a unit class");
+            assert_eq!(g.city_offers_unit(c, u), d.civ_unit(civ, class) == Some(u), "{}", d.units[u].base.type_);
+            if let Some(own) = d.civ_unit(civ, class) {
+                assert!(g.city_offers_unit(c, own), "{}", d.units[own].base.type_);
+            }
+        }
     }
 
     #[test]

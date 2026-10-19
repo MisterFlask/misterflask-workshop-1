@@ -33,7 +33,9 @@ On branch `claude/serene-keller-fdfsk2` (based on master `d1e745c`; not yet merg
   and an entry the end of any failed one.
 - Next, from what failed: combat casting (FfH's casting before a stack attacks is not ported, so
   casters only buff; the reason the caster civilizations' changes failed), `PrereqBuilding` units
-  in production and research, foreign units through `UpgradeCiv`.
+  in production and research. Foreign units through `UpgradeCiv` (other civilizations' unique
+  units trained by the AI and offered to the human) are fixed (`city_offers_unit`, docs/AI.md);
+  the per-civilization measurements predate that fix.
 - Found by these games: an Airship stack overflow (`unit_convert`, rules fix), a
   `great_person` capital panic, and a panic when a Hidden attacker that wins is killed by losing
   Hidden next to an enemy with no free plot (`unit_combat_won`, C++ reads the freed unit), all

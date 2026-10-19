@@ -23,7 +23,7 @@ pub fn buildable(v: &Viewer, c: CityId) -> Json {
     let d = g.d;
     let mut out = Vec::new();
     for u in d.units.keys() {
-        if g.city_can_train(c, u, false, true, false, false) {
+        if g.city_offers_unit(c, u) && g.city_can_train(c, u, false, true, false, false) {
             out.push(crate::jobj! {
                 "order" => Json::idx(OrderType::ORDER_TRAIN), "type" => Json::idx(u),
                 "enabled" => g.city_can_train(c, u, false, false, false, false),

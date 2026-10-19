@@ -528,7 +528,7 @@ pub(crate) fn best_trainable_attack(g: &Game, p: PlayerId) -> Option<(i32, bool)
         if info.domain_type != Some(DomainType::DOMAIN_LAND) || info.combat <= 0 || info.only_defensive {
             continue;
         }
-        if !g.city_can_train(c, u, false, false, false, false) {
+        if !g.city_offers_unit(c, u) || !g.city_can_train(c, u, false, false, false, false) {
             continue;
         }
         best_attack = best_attack.max((info.combat + info.damage_type_combat.iter().sum::<i32>()) * (100 + info.city_attack_modifier.max(0)));

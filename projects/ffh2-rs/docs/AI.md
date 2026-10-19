@@ -1085,9 +1085,13 @@ earlier cast is the first thing to measure.
   `research::unit_available` skips such units, so research never values Warhorses for the
   Hornguard or Engineering for the Gargoyle. The Mage Guild (all adepts) is the
   `PrereqBuildingClass` case with a value of 0.
-- **Foreign units through `UpgradeCiv`**: the Luchuirp Studio opens the Clan's Ogre, and the
-  Khazad and Lanun field Centaurs and Ogres by the dozen in full games; a fix changes what the
-  Studio, Stable and Workshop experiments are worth, so they are worth re-measuring after it.
+- **Foreign units through `UpgradeCiv`** (fixed): the Luchuirp Studio opened the Clan's Ogre, and
+  the Khazad and Lanun fielded Centaurs and Ogres by the dozen in full games. `canTrain` admits a
+  unit with `UpgradeCiv` in any city (it checks the unit only against that civilization's line);
+  FfH's UI and AI never offer it, because they enumerate the city civilization's unit per class
+  (`getCivilizationUnits`). The port's AI and ffh-play walked every unit type, so they now filter
+  with `city_offers_unit`. The per-civilization measurements above predate the fix; the Studio,
+  Stable and Workshop experiments are worth re-measuring.
 - **Workers stuck on a move the path finder refuses**: the worker logic picks a target by its own
   danger map, but `MISSION_MOVE_TO` with `MOVE_SAFE_TERRITORY` is refused by the rules' AI path
   finder (`AI_getPlotDanger`) and the worker retries every turn (a Lanun work boat at (42,23),
