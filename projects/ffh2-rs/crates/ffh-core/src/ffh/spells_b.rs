@@ -287,15 +287,9 @@ fn req_pirate_cove(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
-/// `reqMarchOfTheTrees(caster)`.
-fn req_march_of_the_trees(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        let team = g.players[p].team;
-        if g.team_get_at_war_count(team, true) < 2 {
-            return false;
-        }
-    }
+/// `reqMarchOfTheTrees(caster)`. Change from FFH2: its only condition was AI-only (at war with two
+/// teams); it is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_march_of_the_trees(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -322,14 +316,9 @@ fn spell_march_of_the_trees(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqMotherLode(caster)`.
-fn req_mother_lode(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        if g.players[p].improvement_count[g.d.t::<ImprovementType>("IMPROVEMENT_MINE")] < 10 {
-            return false;
-        }
-    }
+/// `reqMotherLode(caster)`. Change from FFH2: its only condition was AI-only (10 mines); it is AI
+/// timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_mother_lode(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -429,43 +418,9 @@ fn spell_promote_settlement(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqRagingSeas(caster)`.
-fn req_raging_seas(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let d = g.d;
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        let team = g.players[p].team;
-        let arcane = d.t::<UnitClassType>("UNITCLASS_ARCANE_BARGE");
-        let caravel = d.t::<UnitClassType>("UNITCLASS_CARAVEL");
-        let galley = d.t::<UnitClassType>("UNITCLASS_GALLEY");
-        let frigate = d.t::<UnitClassType>("UNITCLASS_FRIGATE");
-        let galleon = d.t::<UnitClassType>("UNITCLASS_GALLEON");
-        let man_o_war = d.t::<UnitClassType>("UNITCLASS_MAN_O_WAR");
-        let privateer = d.t::<UnitClassType>("UNITCLASS_PRIVATEER");
-        let queen_of_the_line = d.t::<UnitClassType>("UNITCLASS_QUEEN_OF_THE_LINE");
-        let trireme = d.t::<UnitClassType>("UNITCLASS_TRIREME");
-        for p2 in g.player_ids() {
-            if g.players[p2].alive {
-                let team2 = g.players[p2].team;
-                if g.teams[team].at_war[team2] {
-                    let counts = &g.players[p2].unit_class_count;
-                    let mut count = counts[arcane];
-                    count += counts[caravel];
-                    count += counts[galley];
-                    count += counts[frigate] * 2;
-                    count += counts[galleon] * 2;
-                    count += counts[man_o_war] * 3;
-                    count += counts[privateer];
-                    count += counts[queen_of_the_line] * 3;
-                    count += counts[trireme];
-                    if count > 10 {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
+/// `reqRagingSeas(caster)`. Change from FFH2: its only condition was AI-only (at war with a player
+/// whose fleet is worth more than 10); it is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_raging_seas(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -522,17 +477,13 @@ fn spell_raise_skeleton(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqRally(caster)`.
+/// `reqRally(caster)`. Change from FFH2: its AI-only branch (5 cities) is AI timing, in ffh-ai
+/// `world_spells` (docs/PORTING.md).
 fn req_rally(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let d = g.d;
     let p = g.units[caster].owner;
     if g.players[p].civics[d.t::<CivicOptionType>("CIVICOPTION_CULTURAL_VALUES")] != Some(d.t::<CivicType>("CIVIC_CRUSADE")) {
         return false;
-    }
-    if !g.players[p].human {
-        if g.players[p].num_cities() < 5 {
-            return false;
-        }
     }
     true
 }
@@ -747,17 +698,10 @@ fn spell_release_from_cage(g: &mut Game, caster: UnitId, _call: &PyCall) {
     g.plot_set_improvement_type(plot, None);
 }
 
-/// `reqReligiousFervor(caster)`.
+/// `reqReligiousFervor(caster)`. Change from FFH2: its AI-only branch (5 cities with the state
+/// religion) is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
 fn req_religious_fervor(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    let Some(religion) = g.player_get_state_religion(p) else { return false };
-    if !g.players[p].human {
-        let count = py_city_list(g, p).into_iter().filter(|&c| g.cities[c].has_religion[religion]).count();
-        if count < 5 {
-            return false;
-        }
-    }
-    true
+    g.player_get_state_religion(g.units[caster].owner).is_some()
 }
 
 /// `spellReligiousFervor(caster)`.
@@ -943,16 +887,12 @@ fn spell_reveal(g: &mut Game, caster: UnitId, _call: &PyCall) {
     g.units[caster].ignore_hide = true;
 }
 
-/// `reqRevelry(caster)`.
+/// `reqRevelry(caster)`. Change from FFH2: its AI-only branch (25 population) is AI timing, in
+/// ffh-ai `world_spells` (docs/PORTING.md).
 fn req_revelry(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let p = g.units[caster].owner;
     if g.player_is_golden_age(p) {
         return false;
-    }
-    if !g.players[p].human {
-        if g.players[p].total_population < 25 {
-            return false;
-        }
     }
     true
 }
@@ -1069,16 +1009,12 @@ fn spell_ring_of_flames(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqRiverOfBlood(caster)`.
+/// `reqRiverOfBlood(caster)`. Change from FFH2: its AI-only branch (5 cities) is AI timing, in
+/// ffh-ai `world_spells` (docs/PORTING.md).
 fn req_river_of_blood(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let p = g.units[caster].owner;
     if g.players[p].num_cities() == 0 {
         return false;
-    }
-    if !g.players[p].human {
-        if g.players[p].num_cities() < 5 {
-            return false;
-        }
     }
     true
 }
@@ -1335,17 +1271,12 @@ fn spell_sanctify(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqSanctuary(caster)`.
+/// `reqSanctuary(caster)`. Change from FFH2: its AI-only branch (at war with two teams) is AI
+/// timing, in ffh-ai `world_spells` (docs/PORTING.md).
 fn req_sanctuary(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let p = g.units[caster].owner;
     if g.players[p].num_cities() == 0 {
         return false;
-    }
-    if !g.players[p].human {
-        let team = g.players[p].team;
-        if g.team_get_at_war_count(team, true) < 2 {
-            return false;
-        }
     }
     true
 }
@@ -1613,14 +1544,9 @@ fn req_sprint(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
-/// `reqStasis(caster)`.
-fn req_stasis(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        if g.players[p].num_cities() < 5 {
-            return false;
-        }
-    }
+/// `reqStasis(caster)`. Change from FFH2: its only condition was AI-only (5 cities); it is AI
+/// timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_stasis(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -2118,18 +2044,9 @@ fn req_upgrade_doviello_warrior(g: &Game, caster: UnitId, _call: &PyCall) -> boo
     true
 }
 
-/// `reqVeilOfNight(caster)`.
-fn req_veil_of_night(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        if g.players[p].num_units() < 25 {
-            return false;
-        }
-        let team = g.players[p].team;
-        if g.team_get_at_war_count(team, true) > 0 {
-            return false;
-        }
-    }
+/// `reqVeilOfNight(caster)`. Change from FFH2: its only condition was AI-only (25 units and at
+/// peace); it is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_veil_of_night(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -2211,18 +2128,9 @@ fn req_wane(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
-/// `reqWarcry(caster)`.
-fn req_warcry(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        if g.players[p].num_units() < 25 {
-            return false;
-        }
-        let team = g.players[p].team;
-        if g.team_get_at_war_count(team, true) == 0 {
-            return false;
-        }
-    }
+/// `reqWarcry(caster)`. Change from FFH2: its only condition was AI-only (25 units and at war); it
+/// is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_warcry(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -2250,18 +2158,9 @@ fn req_whiteout(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
-/// `reqWildHunt(caster)`.
-fn req_wild_hunt(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        let team = g.players[p].team;
-        if g.team_get_at_war_count(team, true) == 0 {
-            return false;
-        }
-        if g.players[p].num_units() < 20 {
-            return false;
-        }
-    }
+/// `reqWildHunt(caster)`. Change from FFH2: its only condition was AI-only (at war and 20 units);
+/// it is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_wild_hunt(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -2428,16 +2327,11 @@ fn spell_wonder(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqWorldbreak(caster)`.
-fn req_worldbreak(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
+/// `reqWorldbreak(caster)`. Change from FFH2: its AI-only branch (an Armageddon counter of 50) is
+/// AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_worldbreak(g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     if g.get_global_counter() == 0 {
         return false;
-    }
-    let p = g.units[caster].owner;
-    if !g.players[p].human {
-        if g.get_global_counter() < 50 {
-            return false;
-        }
     }
     true
 }

@@ -104,7 +104,7 @@ pub fn choose_spell(g: &Game, u: UnitId) -> Option<SpellType> {
     let here = g.unit_plot(u);
     let team = g.unit_get_team(u);
     for spell in d.spells.keys() {
-        if !g.unit_can_cast(u, spell, false) {
+        if !g.unit_can_cast(u, spell, false) || !crate::world_spells::ready(g, g.units[u].owner, spell) {
             continue;
         }
         let info = &d.spells[spell];

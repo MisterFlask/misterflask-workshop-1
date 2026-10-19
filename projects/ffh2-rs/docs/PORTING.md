@@ -147,9 +147,22 @@ the differences; it does not ask for them to be undone.
   Guilds, no cottages under Aristocracy, no windmills under Arete). These encode the old AI's
   build policy, so they are not rules (`py_can_build` always answers -1); `ffh-ai` applies the
   `canBuild` bans itself. All branches that apply to every player are ported.
-- **AI-only branches in spell requirements are kept.** Unlike CvGameUtils, the
-  `isHuman() == False` checks in CvSpellInterface `req*` functions are ported as written:
-  they decide whether a spell is castable at all for AI players (their game, their rules).
+- **World spells have the same requirements for every player** (user decision, 2026-10-18).
+  FFH2's `req*` functions of 20 of the 21 world spells (`CvSpellInterface.py`) add AI-only
+  conditions under `if pPlayer.isHuman() == False:` -- Stasis, Legends, Rally, River of Blood and
+  Gifts of Nantosuelta at 5 cities, Warcry at war with 25 units, Veil of Night at peace with 25,
+  Wild Hunt at war with 20, Into the Mist at 40 units, Sanctuary, March of the Trees and Divine
+  Retribution at war with two teams, Raging Seas at war with a fleet worth more than 10, Ardor at
+  5 great people, Revelry at 25 population, Religious Fervor with 5 cities of the state religion,
+  For the Horde with 60 barbarian units, Mother Lode at 10 mines, Arcane Lacuna with 7 typed mana
+  bonuses on the map, Worldbreak at an Armageddon counter of 50. They are the old AI's timing for
+  its once-a-game spell, not rules: the port drops them from the rules, and ffh-ai applies the
+  same conditions as its default timing (`world_spells::ready`), so the move alone changes no AI
+  game. Hyborem's Whisper had none.
+- **AI-only branches in the other spells' requirements are kept.** Unlike CvGameUtils, the
+  `isHuman() == False` checks in the other CvSpellInterface `req*` functions are ported as
+  written: they decide whether a spell is castable at all for AI players (their game, their
+  rules).
 - **`CustomFunctions.warScript`/`dogpile`** (AI war declarations called from
   `onBeginPlayerTurn` for AI players) are AI behaviour and are replaced by the new
   AI's diplomacy.

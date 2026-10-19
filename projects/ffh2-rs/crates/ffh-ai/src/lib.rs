@@ -43,6 +43,7 @@ pub mod values;
 pub mod victory;
 pub mod view;
 pub mod workers;
+pub mod world_spells;
 
 /// Debug tracing: `FFH_AI_TRACE=all` or `FFH_AI_TRACE=<player id>` prints AI decisions to
 /// stderr. Read once; it only prints, so it cannot change the game.

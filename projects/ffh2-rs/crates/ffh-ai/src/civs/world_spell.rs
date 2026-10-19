@@ -1,7 +1,7 @@
 //! World spells held for a moment of the AI's choosing (group-d civilizations): the civilization's
 //! `spell_value` returns 0 for the spell, so the end-of-turn spell choice never casts it, and its
-//! `turn` hook casts it through [`cast`] when the moment comes (the rules' requirement, AI-only
-//! gates included, must allow it).
+//! `turn` hook casts it through [`cast`] when the moment comes (the rules' requirement and the
+//! AI's default timing, `world_spells::ready`, must both allow it).
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -11,7 +11,7 @@ use ffh_data::*;
 /// the army keeps its turn); true if cast.
 pub fn cast(g: &mut Game, p: PlayerId, name: &str) -> bool {
     let Some(spell) = g.d.ty::<SpellType>(name) else { return false };
-    if g.players[p].feat_accomplished[FeatType::FEAT_GLOBAL_SPELL] {
+    if g.players[p].feat_accomplished[FeatType::FEAT_GLOBAL_SPELL] || !crate::world_spells::ready(g, p, spell) {
         return false;
     }
     let units: Vec<UnitId> = g.players[p].units.clone();
