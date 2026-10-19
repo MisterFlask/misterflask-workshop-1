@@ -132,10 +132,9 @@ impl Game {
     /// True if `unit` is the city's civilization's unit for its class: the units FfH's city screen
     /// (`CvMainInterface.py`: `getCivilizationUnits(i)` of the city's civilization) and the C++ AI
     /// (`CvCityAI::AI_bestUnit` and the like) walk, the only ones `canTrain` is ever asked about
-    /// there. Not a C++ function and not a rule: `canTrain` itself checks a unit with `UpgradeCiv`
-    /// (Ogres, Centaurs, Vampires, Goblins, Balor, ...) only against that civilization's line, so
-    /// asked directly it admits them in any city. Code that walks every unit type filters with
-    /// this, so no civilization trains another's unique units.
+    /// there. Not a C++ function and not a rule: since `city_can_train` refuses other
+    /// civilizations' `UpgradeCiv` units (Ogres, Centaurs, Vampires, Goblins, Balor, ...), it
+    /// differs from it only for an Assimilation player's conquered cities (the owner's own units).
     pub fn city_offers_unit(&self, c: CityId, unit: UnitType) -> bool {
         let d = self.d;
         d.units[unit].unit_class_type.is_some_and(|class| d.civ_unit(self.city_civilization_type(c), class) == Some(unit))
@@ -151,6 +150,19 @@ impl Game {
         }
         if self.cities[c].settlement {
             return false;
+        }
+        // Changed from FFH2: `canUpgrade` checks a unit with `UpgradeCiv` only against that
+        // civilization's line, so that a Centaur in anyone's hands upgrades to a Centaur Archer.
+        // As a training check that let any city train other civilizations' unique units; a
+        // city trains them only as its own (or its owner's) civilization's unit for the class,
+        // as it does every other unit.
+        let d = self.d;
+        if d.units[unit].upgrade_civ.is_some() {
+            let class = unit_class_of(d, unit);
+            let owner_civ = self.player_get_civilization_type(self.cities[c].owner);
+            if d.civ_unit(self.city_civilization_type(c), class) != Some(unit) && owner_civ.and_then(|civ| d.civ_unit(civ, class)) != Some(unit) {
+                return false;
+            }
         }
         self.city_can_upgrade(c, unit, cont, test_visible, ignore_cost, ignore_upgrades)
     }
@@ -1444,10 +1456,9 @@ mod tests {
         (g, c)
     }
 
-    /// `canTrain` checks a unit with `UpgradeCiv` only against that civilization's line, so it is
-    /// no guard against another civilization's unique units; `city_offers_unit` is, as FfH's city
-    /// screen and AI walk only the city's own units (the Khazad and the Lanun AI fielded Ogres and
-    /// Centaurs by the dozen before the AI and the ffh-play city screen filtered with it).
+    /// `canTrain` refuses another civilization's unique units (in FFH2 any city could train
+    /// units with `UpgradeCiv`, and the Khazad and Lanun AI fielded Ogres and Centaurs by the
+    /// dozen), and so does `city_offers_unit`.
     #[test]
     fn city_offers_only_its_own_civilizations_units() {
         let (mut g, c) = game_with_city();
@@ -1463,6 +1474,38 @@ mod tests {
                 assert!(g.city_offers_unit(c, own), "{}", d.units[own].base.type_);
             }
         }
+    }
+
+    /// `canUpgrade` checks a unit with `UpgradeCiv` only against that civilization's line, so a
+    /// Centaur upgrades to a Centaur Archer in anyone's hands; `canTrain` no longer lets any city
+    /// train it (docs/PORTING.md, "Changes from FFH2").
+    #[test]
+    fn city_trains_only_its_own_civilizations_upgrade_civ_units() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 5));
+        g.autorun = true;
+        g.game_init();
+        let p = PlayerId(0);
+        let site = g.map.plot_ids().find(|&q| !g.plot_is_water(q) && !g.plot_is_peak(q) && g.map.plots[q].units.is_empty()).expect("a land plot");
+        let (x, y) = g.map.xy(site);
+        let c = g.player_init_city(p, x, y, true, true);
+        let team = g.players[p].team;
+        g.teams[team].has_tech = IdxVec::from_elem(true, d.techs.len());
+        let civ = g.city_civilization_type(c);
+
+        let mut upgradable = Vec::new();
+        for u in d.units.keys().filter(|&u| d.units[u].upgrade_civ.is_some_and(|uc| uc != civ)) {
+            let class = d.units[u].unit_class_type.expect("a unit class");
+            if d.civ_unit(civ, class) == Some(u) {
+                continue;
+            }
+            // `getUpgradeCity` asks `canUpgrade` without cost; tier and resources aside.
+            if g.city_can_upgrade(c, u, false, true, true, true) {
+                upgradable.push(d.units[u].base.type_.as_str());
+                assert!(!g.city_can_train(c, u, false, true, true, true), "{} is another civilization's", d.units[u].base.type_);
+            }
+        }
+        assert!(upgradable.len() >= 3, "other civilizations' units on lines this city can upgrade into: {upgradable:?}");
     }
 
     #[test]
