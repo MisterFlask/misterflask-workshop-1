@@ -857,6 +857,11 @@ share@end +171 (t 1.34). The eight civilizations with nothing kept (Bannor, Dovi
 Grigori, Khazad, Ljosalfar, Malakim, Svartalfar) play the same game with the switch on or off in
 64 of 64 seeds. The Infernals and the Mercurians join mid-game and cannot be forced into a slot;
 they were measured over the fresh games they appear in, replayed with their logic off (below).
+In ordinary games (random civilizations, every AI the same code, seeds 5001-5048), the integrated
+tip before the reverts against the base: development per civ unchanged (legacy score at turn 300
+-0.4%, t -0.3; full games at turn 500 -1.6%, t -0.7), victories 25 -> 27 of 48, cities taken from
+the barbarians +17% (t 2.0: Rantine). The civilization logic changes who wins, not how far the
+world develops.
 
 **The base AI per civilization** (census: 40 full games each, seeds 1-40, base `2d95e9c`):
 

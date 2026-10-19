@@ -127,8 +127,8 @@ the differences; it does not ask for them to be undone.
 - **Headless.** No active player: mission timers stay 0 and combat is always quick (no
   animation delay); "active player" UI branches never run.
 - **Kuriotates settlements**: the human-only `BUTTONPOPUP_CONFIRMSETTLEMENT` (city or settlement)
-  has no controller hook yet; a human's new city stays as it is (radius 2, not a settlement), as
-  with an unanswered popup. AI players follow the C++ rule (radius 3).
+  is the controller's `confirm_settlement` (ffh-play asks the human); with no answer the city stays
+  as it is (radius 2, not a settlement). AI players follow the C++ rule (radius 3).
 - **Team attitude value** (`CvTeamAI::AI_getAttitudeVal`, used to pick the worst enemy) averages
   the controller's `AttitudeType` (0-4) instead of the C++ raw attitude score.
 - **Barbarian city founding unit**: C++ asks `CvCityAI::AI_bestUnitAI(UNITAI_CITY_DEFENSE)`
@@ -159,10 +159,10 @@ the differences; it does not ask for them to be undone.
   its once-a-game spell, not rules: the port drops them from the rules, and ffh-ai applies the
   same conditions as its default timing (`world_spells::ready`), so the move alone changes no AI
   game. Hyborem's Whisper had none.
-- **AI-only branches in the other spells' requirements are kept.** Unlike CvGameUtils, the
-  `isHuman() == False` checks in the other CvSpellInterface `req*` functions are ported as
-  written: they decide whether a spell is castable at all for AI players (their game, their
-  rules).
+- **AI-only branches in the other spells' requirements are kept** (for now). Unlike CvGameUtils,
+  the `isHuman() == False` checks in the other CvSpellInterface `req*` functions are ported as
+  written: they decide whether a spell is castable at all for AI players. They are AI policy like
+  the world spells' (docs/AI_ONLY_RULES.md, with every other AI-only branch of the rules).
 - **`CustomFunctions.warScript`/`dogpile`** (AI war declarations called from
   `onBeginPlayerTurn` for AI players) are AI behaviour and are replaced by the new
   AI's diplomacy.
@@ -223,7 +223,7 @@ the differences; it does not ask for them to be undone.
 - Free tech, keep/raze/disband and elections are answered during the rules call that raises them
   (C++ shows the free tech and election popups later; keep/raze is immediate there too).
 - The keep/raze and disband popups share one modal (the controller cannot tell them apart); there
-  is no gift button; Kuriotates settlements are still not offered to humans.
+  is no gift button.
 - Commands are applied only when no human group is busy; the exe's automatic end of turn (when
   nothing is left to move) is not ported: the human ends the turn.
 - Automated and FfH AI-controlled human units idle (no `update_automated_group` AI yet).
@@ -233,9 +233,9 @@ the differences; it does not ask for them to be undone.
 1. **Save/load**: done (`crates/ffh-core/src/save/`, `Game::save` / `Game::load`; resume test in
    `crates/ffh-ai/tests/save_resume.rs`). Scenarios (world-builder saves + ScenarioFunctions.py) are out
    of scope for now; the focus is the sandbox game.
-2. **Controller hooks** for the remaining rules-side stand-ins: `confirm_settlement` (Kuriotates
-   `BUTTONPOPUP_CONFIRMSETTLEMENT`), the barbarian city defender (`AI_bestUnitAI`), and the
-   favorite religion (`AI_doFavoriteReligion`).
+2. **Controller hooks** for the remaining rules-side stand-ins: the barbarian city defender
+   (`AI_bestUnitAI`) and the favorite religion (`AI_doFavoriteReligion`); `confirm_settlement`
+   (Kuriotates `BUTTONPOPUP_CONFIRMSETTLEMENT`) is done.
 3. **AI quality**: see `docs/AI.md` for the current AI and its known gaps.
 4. Keep the stress matrix green after rules changes (`ffh-stress batch --matrix all`, also on the
    checked build).

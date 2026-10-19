@@ -209,5 +209,6 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
   (1) why it made sense, (2) why it did not move the win rate, from the games themselves (what
   happened when it fired: counts, checkpoints, `FFH_AI_TRACE` replays), (3) what that implies.
   Leave the reverted code's module comment naming the attempt and the log entry.
-- AI timing and AI-only restrictions belong in `ffh-ai`, not in the rules (the world spells'
-  AI-only Python gates were moved there; docs/PORTING.md, "Changes from FFH2").
+- AI timing and AI-only restrictions belong in `ffh-ai`, not in the rules. The world spells'
+  AI-only Python gates were moved there (docs/PORTING.md, "Changes from FFH2"); the rules' other
+  AI-only branches are listed in docs/AI_ONLY_RULES.md, each group moved by its own decision.
