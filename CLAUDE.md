@@ -1,7 +1,7 @@
 # Claude Code Project Instructions
 
 The active project in this repository is the Rust port in `projects/ffh2-rs/`
-(start with `projects/ffh2-rs/CLAUDE.md` and `projects/ffh2-rs/docs/HANDOFF.md`).
+(start with `projects/ffh2-rs/CLAUDE.md`).
 Other top-level directories hold standalone writing, research and tooling.
 
 ### Agent worktrees are sparse

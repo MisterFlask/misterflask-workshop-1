@@ -1337,6 +1337,9 @@ Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-94
 
 ## Tools
 
+For A/B tests compare `legacy_score`, techs, cities, research and the like, not `score`: the
+share score (docs/SCORE.md) averages 10000/N whatever the AI does.
+
 - `ffh stats --seed N --at T1,T2,.. [--every N]` plays one game and prints one JSON line:
   per-civ snapshots after the given numbers of turns played (and always at the end), game-wide
   values at the same turns, whole-game events (captures by and from barbarians, wars, peace,
@@ -1562,7 +1565,16 @@ Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-94
   would have to avoid *creating* the exposure -- danger-aware movement that ends each turn on a
   safe plot -- without making stacks passive, which is a pathfinding change, not a retreat rule.
 - No hurrying beyond the civic-gated gold/population hurries, no wonder racing, no vassals or
-  defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults.
+  defensive pacts; the vote sources (Overcouncil / Undercouncil) use the defaults: every AI
+  abstains and an AI secretary never picks a resolution, so both councils are inert.
+- Speed: path finding is about 30% of late-game time.
+- Measured on branches never merged (built on the master of 2026-10-15, not re-measured on fresh
+  seeds; expect conflicts): `origin/handoff/ai3b-siege-estimate` (exact strike odds over the
+  defender's health states, `odds.rs`, instead of the expected-value simulation: strike success
+  82%->88%, units lost in failed strikes 116->51 over 96 seeds, economy flat; the war-execution
+  lever the war-conversion gap above points at) and `origin/handoff/ai3b-kuriotates-tuning`
+  (Kuriotates settlements without the research collapse: +54 legacy score, t 2.3, over 80 games;
+  possibly superseded by `civs/kuriotates.rs`).
 - Victories: nearly every decided game is a cultural victory. The Tower of Mastery needs 16
   manas and the AI neither trades resources nor conquers for mana, so the estimate is out of
   reach in every measured game; Great Prophets lightbulb instead of building the six altar

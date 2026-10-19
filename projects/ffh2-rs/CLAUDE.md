@@ -1,6 +1,10 @@
 # ffh2-rs: Fall from Heaven 2 (0.41) ported to Rust
 
-**New session? Read `docs/HANDOFF.md` first** (what is merged, what is on `origin/handoff/*`, next steps).
+**New session?** Read this file, `README.md` and the doc for the area you touch (`docs/PORTING.md`,
+`docs/AI.md` + `docs/AI_LOG.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`, `docs/ART.md`, `docs/R3D.md`,
+`docs/SCORE.md`). What is merged is what git says (`git log origin/master`); open work and known
+gaps live in the area docs, not in a session log. Out of scope for now (the owner's call):
+scenarios, and porting the C++ AI.
 
 Port of the FFH2 0.41 Civ4 mod (base mod only), the base for a game of its own. The rules
 engine (DLL C++ + rules Python) was ported function by function; the AI is new. FFH2 0.41 is
@@ -194,6 +198,9 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
 - Work in small, compiling steps; commit with clear messages.
 - Update docs/PORTING.md when a C++/Python unit is ported (file, functions, status).
 - Tests: unit tests next to code; data spot-checks in `crates/ffh-data/tests/`.
+- Tests that rely on a seed's story (`crates/ffh-play/tests/*`: a bot survives, a city is
+  captured) break when the AI changes; make them robust to that (their comments say how, e.g.
+  re-pick a seed with `ffh-play bot --seed S`) rather than asserting one game's outcome.
 
 ## AI changes
 
