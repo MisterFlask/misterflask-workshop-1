@@ -27,9 +27,12 @@ export const LIGHTING = {
 
 // The painterly preset was moved toward the owner's look target (docs/R3D.md §16: a bright,
 // saturated hand-painted strategy map): more saturation and a little more contrast (the target's
-// deep shade against high-key light), little haze or cloud shadow, a lighter ink so painted detail
-// stays crisp, and the Kuwahara paint filter off (owner decision: it blurred detail the target has
-// and cost ~40% of a software frame; the switch stays in the panel).
+// deep shade against high-key light), little haze or cloud shadow, and the paint imitated over the
+// image retired as the materials took over its work (docs/R3D.md §16): the Kuwahara paint filter off
+// (owner decision: it blurred detail the target has and cost ~40% of a software frame), then the ink
+// outlines and the stepped light off once crowns, rocks and the ground carried their own form and
+// detail. The brush marks on objects stay for now (buildings and rocks still take their strokes
+// from them). Every switch stays in the panel.
 export const PRESETS = {
   painterly: {
     lighting: "daylight",
@@ -40,7 +43,7 @@ export const PRESETS = {
     kuwaharaRadius: 4,
     sharp: 8,
     aniso: 1,
-    outline: 0.4,
+    outline: 0,
     outlineWidth: 1,
     grade: 1,
     saturation: 1.1,
@@ -48,7 +51,7 @@ export const PRESETS = {
     grain: 0.02,
     vignette: 0.1,
     paint: 1,
-    bands: 0.55,
+    bands: 0,
     wrapLight: 0.45,
     rim: 0.35,
     stylize: 1,

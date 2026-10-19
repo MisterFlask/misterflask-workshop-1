@@ -637,7 +637,10 @@ shadows), rim, clouds, reflections, refraction and caustics (the water, §5.2), 
 grain, vignette, borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing),
 autoQuality (the measured-frame-time quality ladder: paint filter and the water's reflection march
 off -- it keeps mirroring the sky -- then render scale 0.75). The paint filter (`kuwahara`) is off in
-the painterly preset since the look-target batch (owner decision, §16); the switch stays.
+the painterly preset since the first look-target batch (owner decision, §16), and the ink outlines
+(`outline`) and stepped light (`bands`) since the second, once crowns, rocks and the ground carried
+their own form; the brush marks on objects (`brush`) stay for buildings and rocks. Every switch stays
+in the panel.
 
 ## 13. Removing it
 
@@ -714,8 +717,15 @@ on objects) as well was compared and not kept yet: without them the trees read a
 and buildings lose their edge, because those passes stand in for detail the models and materials do
 not have yet; they go once the materials carry it.
 
-Still short of the target: tree crowns are smooth lumps rather than leafy masses; the ground's detail
-is all computed per pixel from noise (no baked material textures), which caps how much fine detail
-it can afford and has to be faded by hand with the zoom; the paint filter and the stepped light
-(Kuwahara, ink, gouache value steps) imitate paint over the image, where the target is painted in
-its materials under ordinary, continuous light.
+The second batch (ground materials baked at startup, leaf-cluster crowns with cut rims, clutter
+massed at edges, grey formed rocks, denser towns ringed by trees; then one review round and a fix
+pass measured against the target) let the paint imitation go: with the materials carrying the
+detail, the ink outlines and the stepped light are off by default as well (the reference frame
+holds up without them: crowns keep their leaves, rocks and conifers their form, units their hue and
+value). The brush marks on objects stay until buildings and rocks carry their strokes as material.
+
+Still short of the target (measured on the reference frame): dark foliage masses ~6-7% of the frame
+against ~11.7% in the target (more and darker trees, especially round the town); the river is about
+half the target's width (`RIVER_HALF`; widening it means re-checking bridges and the river rules of
+towns and fields); green/golden in-between hues 24% of the ground against 31%; the panning
+stability's mean difference is above the first batch's (crisper detail).
