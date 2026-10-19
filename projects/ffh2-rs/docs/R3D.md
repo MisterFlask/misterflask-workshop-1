@@ -515,6 +515,19 @@ marks the edge of the unexplored as a coast, and remembered water calms (§5.2).
   every unit type of the game gets a figure that builds; a scene's dressing is deterministic, uses
   only registered recipes and places nothing on an unrevealed plot.
 * `tools/r3d-perf.mjs` (§11) and `tools/r3d-compare.mjs` (the same scene in every renderer).
+* **GPU bench** (`r3d-lab/bench.html` + `bench.js`, assembled by `tools/r3d-bench.mjs`): the real
+  renderer on a real game's map (`--save`: an `ffh-play` save, e.g. `stage corrupt`; its data, map
+  and view replies, the whole map revealed, are exported to `lab/game.json`) at two spots, three
+  zooms (40, 96, 150) and three resolutions (720p, 1080p, 1440p), plus the quality ladder's 75%
+  render scale at 1080p, with the default look and the ladder off. Per case: the median wall time of
+  a synchronous frame and, where the browser offers GPU timers, the passes' GPU times; plus the world
+  build. Published as a claude.ai artifact, it runs on its own when opened, on that browser's GPU,
+  and stores each run in the artifact's database (`runs`, the `db` capability), so results from
+  real cards come back without anyone copying commands or numbers; anyone the owner shares it with
+  can run it, and saving needs Contributor access or more. `node tools/r3d-bench.mjs --save SAVE
+  --check` runs one case headless (`#quick-software`) to prove the page works; `--serve` serves it.
+  The location hash takes plain tokens: `#quick` (one case), `#software` (run on a software
+  rasteriser too; `globalThis.FFH_FORCE3D`, the page's form of `?force3d=1`).
 * **Software or GPU.** The lab, compare and perf tools render with SwiftShader by default (software:
   works anywhere, including GPU-less containers, but a 3D frame takes seconds). They pass `force3d=1`
   so the software-GL guard (§1) lets them draw rather than falling back to the 2D map. On a machine
@@ -621,7 +634,8 @@ ts 96, `{"animate":false}`): mean |diff| 3.90 -> 4.47, pixels off by > 24: 5.19%
 share that moves is unchanged; the mean rises with crisper, higher-contrast detail). The paragraph
 above predates the paint filter going off and the materials; its 1.6 / 1.1% figures are older still.
 
-GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
+GPU numbers: from the GPU bench (§10), whose runs on real cards land in its artifact's database;
+`r3d-perf --gpu` measures the same on a machine with a GPU.
 
 ## 12. Configuration
 

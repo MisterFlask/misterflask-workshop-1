@@ -1,0 +1,136 @@
+<title>ffh-rs GPU Bench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one workbench column -- the live render beside the verdict, then this run's cases, then
+   every recorded run (the GPU table the bench exists to fill). Navy and gold, as the game's own UI. */
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --ink: #18223a;
+  --muted: #5b6680;
+  --line: #d3d9e6;
+  --accent: #946512;
+  --stage: #0d1322;
+  --good: #2f7d4b;
+  --warn: #a8700c;
+  --bad: #b23b31;
+  --display: "Alegreya Sans SC", "Alegreya Sans", "Trebuchet MS", sans-serif;
+  --body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1424; --panel: #151d31; --ink: #ebe5d3; --muted: #9aa3b8; --line: #27314a;
+    --accent: #d9a441; --stage: #070b15; --good: #5cbf7c; --warn: #e0a83a; --bad: #e0675b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1424; --panel: #151d31; --ink: #ebe5d3; --muted: #9aa3b8; --line: #27314a;
+  --accent: #d9a441; --stage: #070b15; --good: #5cbf7c; --warn: #e0a83a; --bad: #e0675b;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+.page {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+  display: grid; gap: 28px;
+}
+header { display: grid; gap: 6px; }
+h1 { font: 700 2rem/1.1 var(--display); letter-spacing: 0.02em; margin: 0; text-wrap: balance; }
+h2 { font: 700 1.2rem/1.2 var(--display); letter-spacing: 0.03em; margin: 0 0 10px; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+.top { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .top { grid-template-columns: minmax(0, 1fr); } }
+#stage {
+  position: relative; aspect-ratio: 16 / 9; max-width: 100%; overflow: hidden;
+  background: var(--stage); border-radius: 6px; border: 1px solid var(--line);
+}
+#stage canvas.map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#stage .r3d-btn { display: none; }
+.verdict { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; min-width: 0; }
+.label { font: 500 0.78rem/1.2 var(--display); letter-spacing: 0.08em; color: var(--muted); }
+.gpu { font: 600 1rem/1.35 var(--mono); overflow-wrap: anywhere; }
+.meta { font-size: 0.9rem; color: var(--muted); }
+.figure { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#big { font: 600 2.4rem/1 var(--mono); font-variant-numeric: tabular-nums; }
+#bigfps { font: 500 1.1rem/1 var(--mono); color: var(--muted); }
+.chip { justify-self: start; font: 500 0.85rem/1 var(--body); padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.good { color: var(--good); border-color: currentColor; }
+.chip.warn { color: var(--warn); border-color: currentColor; }
+.chip.bad { color: var(--bad); border-color: currentColor; }
+progress { width: 100%; height: 6px; accent-color: var(--accent); }
+#status { font-size: 0.92rem; min-height: 2.8em; margin: 0; }
+button {
+  font: 600 0.95rem/1 var(--body); padding: 10px 16px; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: var(--bg); border: 1px solid var(--accent); justify-self: start;
+}
+button:disabled { opacity: 0.5; cursor: progress; }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+#saved { font-size: 0.9rem; color: var(--muted); margin: 0; }
+.table-wrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font: 500 0.78rem/1.2 var(--display); letter-spacing: 0.08em; color: var(--muted); }
+tbody tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.gpu { font-size: 0.86rem; white-space: normal; min-width: 14em; }
+.pip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; background: var(--line); vertical-align: 1px; }
+.pip.good { background: var(--good); }
+.pip.warn { background: var(--warn); }
+.pip.bad { background: var(--bad); }
+.empty { padding: 14px 12px; color: var(--muted); margin: 0; }
+.fine { font-size: 0.85rem; color: var(--muted); max-width: 75ch; margin: 10px 0 0; }
+code { font-family: var(--mono); font-size: 0.85em; }
+</style>
+
+<main class="page">
+  <header>
+    <h1>ffh-rs GPU Bench</h1>
+    <p class="lede">Runs the game's 3D map on this device's graphics card: two spots on a real game's map (an AI game at turn 200), three zooms, three resolutions, the full painterly look. It starts on its own and takes a minute or two. Keep this tab in front while it runs.</p>
+  </header>
+
+  <section class="top" aria-label="This device">
+    <div id="stage"><canvas class="map"></canvas></div>
+    <div class="verdict">
+      <div class="label">Graphics card</div>
+      <div class="gpu" id="gpu">Detecting…</div>
+      <div class="meta" id="gpu-meta"></div>
+      <div class="label">1080p, gameplay zoom</div>
+      <div class="figure"><span id="big">–</span><span id="bigfps"></span></div>
+      <span class="chip" id="chip">Waiting for the run</span>
+      <div class="meta" id="gpuline"></div>
+      <progress id="progress" value="0" max="1"></progress>
+      <p id="status" aria-live="polite">Loading the renderer…</p>
+      <button id="run" type="button">Run the bench</button>
+      <p id="saved"></p>
+    </div>
+  </section>
+
+  <section aria-labelledby="cases-h">
+    <h2 id="cases-h">This run</h2>
+    <div class="table-wrap">
+      <table id="cases">
+        <thead><tr><th>Scene</th><th>Zoom</th><th>Resolution</th><th class="num">Frame ms</th><th class="num">GPU ms</th><th class="num">fps</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="fine">Frame ms is one complete frame, CPU and GPU in turn, the median of up to 40. GPU ms is the sum of the render passes as the GPU timed them, where the browser offers GPU timers. The 75% scale rows are the quality ladder's last step, which the game takes on its own when frames run slow.</p>
+  </section>
+
+  <section aria-labelledby="runs-h">
+    <h2 id="runs-h">Recorded runs</h2>
+    <div class="table-wrap">
+      <table id="runs">
+        <thead><tr><th>Graphics card</th><th>Browser</th><th class="num">1080p ms</th><th class="num">GPU ms</th><th class="num">fps</th><th>Date</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty" id="runs-empty" hidden>No runs recorded yet. The first run on this page adds one.</p>
+    </div>
+    <p class="fine" id="runs-note">Each run stores the graphics card's name, the browser's user-agent string, CPU thread count and screen size with its timings, visible to everyone who can open this page. Renderer build <code id="build"></code>.</p>
+  </section>
+</main>
+<script type="module" src="lab/bench.js"></script>
