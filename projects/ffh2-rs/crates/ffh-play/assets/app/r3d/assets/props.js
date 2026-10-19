@@ -288,28 +288,34 @@ function rockPaint(kind, r) {
   // Stone of the same family as the terrain's own rock (shaders.js: cool grey-violet in shadow,
   // warm grey where lit). The sun is warm (config.js: in linear light its blue is half its red),
   // so a neutral grey reads sandy beige under it: the stone is painted cool -- violet-grey sides,
-  // pale mauve-grey tops -- so it lands on the look target's grey (pale warm-grey tops, mauve-grey
-  // flanks, dark clefts). The coats are muted (the sun saturates greens and yellows a lot: moss stays a
-  // dark olive, lichen a pale grey-ochre, never lime).
+  // mauve-grey tops -- so it lands on the look target's grey (warm-grey tops, mauve-grey flanks,
+  // dark clefts). A mid value, not a pale one: under the strong sun a pale stone reads as white
+  // confetti on the meadow (the target's rocks sit at a median lightness of ~0.4 on screen, their
+  // lit tops ~0.7, their flanks ~0.27). The coats are muted (the sun saturates greens and yellows
+  // a lot: moss stays a dark olive, lichen a grey-ochre, never lime). The desert's sandstone stays
+  // warm and paler than the grey stone, basalt near black.
   switch (kind) {
     case "lichen":
-      return { base: J("#57535e", r, 0.04), top: J("#9c949c", r, 0.04), coat: ["#7e7a5c", "#8a6e4c", "#6e6e5e"], cover: 0.42 };
+      return { base: J("#3c3940", r, 0.04), top: J("#5f5a5f", r, 0.04), coat: ["#6a6650", "#74603e", "#5e5e50"], cover: 0.42 };
     case "moss":
-      return { base: J("#55525c", r, 0.04), top: J("#9a929a", r, 0.04), coat: ["#3e4826", "#47522a", "#525a34"], cover: 0.36 };
+      return { base: J("#3a383f", r, 0.04), top: J("#5e595e", r, 0.04), coat: ["#363e22", "#3e4726", "#474e2e"], cover: 0.36 };
     case "snow":
-      return { base: J("#4e4e5c", r, 0.04), top: J("#7c7a88", r, 0.04), coat: [T.snow, T.snow, T.snowShade], cover: 0.6 };
+      return { base: J("#36363f", r, 0.04), top: J("#4c4a53", r, 0.04), coat: [T.snow, T.snow, T.snowShade], cover: 0.6 };
     case "sand":
-      return { base: J(T.sandBand, r, 0.05), top: J(T.sandLight, r), coat: ["#c8ad84"], cover: 0.25 };
+      return { base: mulc(J(T.sandBand, r, 0.05), 0.66), top: mulc(J(T.sandLight, r), 0.66), coat: ["#ae9670"], cover: 0.25 };
     case "basalt":
       return { base: J("#252228", r, 0.05), top: J("#3a3640", r), coat: ["#4a2e26", "#3e3836"], cover: 0.25 };
     default:
-      return { base: J("#59535d", r, 0.04), top: J("#a1979d", r, 0.04), coat: ["#5e5e46", "#444c2a"], cover: 0.16 };
+      return { base: J("#3d3841", r, 0.04), top: J("#625b60", r, 0.04), coat: ["#5e5e46", "#444c2a"], cover: 0.16 };
   }
 }
 
-/** A shade function for a painted rock (facet value + top coat by noise): pale tops, the flanks in
- *  the base colour, and the steep and undercut facets low down sunk toward a dark cleft colour
- *  (the dark crevices that make a boulder read as split stone, not a smooth lump). */
+/** A shade function for a painted rock (facet value + top coat by noise): lit tops, the flanks in
+ *  the base colour and darker the steeper they stand, the steep and undercut facets low down sunk
+ *  toward a dark cleft colour (the dark crevices that make a boulder read as split stone, not a
+ *  smooth lump), and the foot dark where it meets the ground. The value structure is painted in
+ *  (the sun stands on the camera's side, so its light alone flattens a rock's front): a rock reads
+ *  as a form without ink outlines. */
 function rockShader(p, seed, { bands = 0, bandC = null, bandF = 70 } = {}) {
   const cleft = mulc(p.base, 0.42);
   return (n, y, a, b, c) => {
@@ -318,6 +324,8 @@ function rockShader(p, seed, { bands = 0, bandC = null, bandF = 70 } = {}) {
       const s = Math.sin(y * bandF + seed * 3);
       if (s > 0.35) base = mixl(base, bandC, bands);
     }
+    // Flanks darken as they steepen (a standing face at 0.6 of the base).
+    base = mulc(base, 0.6 + 0.4 * clamp(n[1] / 0.7, 0, 1));
     // Steep facets facing down or away (the clefts between the chisel cuts) darken, more so near
     // the ground.
     if (n[1] < 0.2) base = mixl(base, cleft, clamp((0.2 - n[1]) * 1.6, 0, 0.7) * clamp(1.2 - y * 14, 0.35, 1));
@@ -331,8 +339,9 @@ function rockShader(p, seed, { bands = 0, bandC = null, bandF = 70 } = {}) {
         col = mixl(col, faceShade(coat, n, { lit: 0.1 }), 0.85);
       }
     }
-    // Faint per-facet value variation (painted, not flat).
-    const v = 0.94 + 0.12 * hashf(Math.round(a[0] * 1e4), Math.round(b[1] * 1e4), Math.round(c[2] * 1e4));
+    // Faint per-facet value variation (painted, not flat), and the foot in the grass: the contact
+    // shadow, darkest where the stone meets the ground.
+    const v = (0.94 + 0.12 * hashf(Math.round(a[0] * 1e4), Math.round(b[1] * 1e4), Math.round(c[2] * 1e4))) * (0.55 + 0.45 * clamp((y + 0.004) / 0.03, 0, 1));
     return [col[0] * v, col[1] * v, col[2] * v];
   };
 }
@@ -988,7 +997,7 @@ function buildOverhang(mb, r, variant, param) {
   for (let k = 0; k < n; k++) {
     // The first few are the under-layer: low, dark, hanging furthest down (the wet line); the
     // rest arch higher and catch the light. (The tips stay just above the water: the roots stand
-    // 0.02-0.045 above it, on the top of the cut bank.)
+    // ~0.04 above it, on the bank top just behind the cut bank, dress.js placeBank.)
     const under = k < 4;
     const a = r.range(-0.65, 0.65) * (under ? 0.7 : 1);
     const dir = [Math.cos(a), 0, Math.sin(a)];
