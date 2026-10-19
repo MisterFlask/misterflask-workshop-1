@@ -3,6 +3,10 @@
 // to look around (drag, wheel, the 3D panel).
 //
 //   lab.html?scene=showcase                     the vertical-slice scene
+//   lab.html?scene=reference&ts=160             the look target's composition (docs/R3D.md §16)
+//   lab.html?scene=rivertown&ts=150             a great town by a river among farms, a unit
+//                                               behind it, a small walled town; their garrisons
+//   lab.html?scene=fields                       farms, pastures and the like along a river
 //   lab.html?grid=tree.oak,tree.pine&variants=6 recipes in rows of variants on flat grass
 //            &param=x (all rows) or &params=a,b,c (one per row; repeat a name for several params)
 //            &ground=.  &spacing=1
@@ -14,12 +18,13 @@
 //        &walls=8&coast=1                      settlements side by side: a row per civilization
 //                                              (coast=1: water south of each row)
 //   rows=ffff.aaaa,jjjj.wwww                   a map from legend rows (scenes.js LEGEND, north
-//                                              first), dressed by the real placement
+//                                              first), dressed by the real placement; separate the
+//                                              rows with ';' when they hold ',' (plains)
 //   &sel=x,y&select=1&hover=x,y&targets=x,y;x,y&path=x,y;x,y&attack=1&layer=political  overlays
 
 import { S, setData, setView, setMap } from "/app/state.js";
 import { Map3D } from "/app/r3d/map3d.js";
-import { showcase, grid, settlements, fromRows } from "./scenes.js";
+import { showcase, reference, riverTown, fields, grid, settlements, fromRows } from "./scenes.js";
 
 const q = new URLSearchParams(location.search);
 
@@ -31,10 +36,17 @@ async function main() {
     const names = q.get("grid").split(",").filter(Boolean);
     scene = grid(data, names, Number(q.get("variants") ?? 6), { ground: q.get("ground") ?? ".", spacing: Number(q.get("spacing") ?? 1) });
   } else if (q.get("rows")) {
-    scene = fromRows(data, q.get("rows").split(","));
+    const rows = q.get("rows");
+    scene = fromRows(data, rows.split(rows.includes(";") ? ";" : ","));
   } else if (q.get("scene") === "cities") {
     const list = (k, d) => (q.get(k) ?? d).split(",").filter(Boolean);
     scene = settlements(data, list("civs", "CIVILIZATION_BANNOR"), list("sizes", "2,6,12").map(Number), list("imps", ""), { walls: Number(q.get("walls") ?? 8), coast: q.get("coast") === "1" });
+  } else if (q.get("scene") === "reference") {
+    scene = reference(data);
+  } else if (q.get("scene") === "rivertown") {
+    scene = riverTown(data);
+  } else if (q.get("scene") === "fields") {
+    scene = fields(data);
   } else {
     scene = showcase(data);
   }

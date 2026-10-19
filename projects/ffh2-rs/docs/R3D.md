@@ -11,7 +11,7 @@ state only: no rule, save, protocol or simulation code changed for it.
 Contents: 1 running it · 2 the existing renderers (what was there) · 3 architecture · 4 the world ·
 5 the pipeline · 6 asset recipes · 7 placement · 8 readability and interaction · 9 fog of war ·
 10 the lab, tests and tools · 11 performance · 12 configuration · 13 removing it · 14 limitations
-and next steps · 15 provenance.
+and next steps · 15 provenance · 16 the look target.
 
 ---
 
@@ -124,47 +124,224 @@ low shoulder (overlapping into ridges where hills neighbour); desert lowlands ge
 **Ground painting** (terrain shader). Each fragment blends the materials of the four plots around it
 with weights sharpened by brush-dab noise, so borders between terrains are bands of interleaved
 strokes; the lookup is warped up to most of a plot between plot centres and not at all at them, so a
-plot's centre always shows its own ground while grass, plains and desert meet in organic shapes. Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they
-rise) with impressionist brush dabs at two sizes (oriented elliptical marks on a jittered lattice,
-one painter's hand: orientations within a 60° fan). Over that: features' floors (forest litter, ice,
-flood silt, ash), beaches on the lowest rim of the land, rock with tilted strata on steep ground and
-high slopes (warm lit faces, cool shaded ones), snow on summits and gentle high ledges, wet banks,
-fields, trodden settlement ground and roads (from the decal layer), marsh pools. Hell terrains are
-ash and scorched earth split by a few meandering smouldering fissures (iso-lines of broad noise,
-emissive, pulsing slowly). All patterns are anchored to the map, periodic over its width when it
-wraps (no seam), so nothing swims when the camera moves.
+plot's centre always shows its own ground while grass, plains and desert meet in organic shapes.
+Each material is a three-tone painted mass (broad soft shapes, a lighter tone where they rise) with
+impressionist brush dabs at two sizes (oriented elliptical marks on a jittered lattice, one
+painter's hand: orientations within a 60° fan) -- now only on the coast's floor; every open ground
+lays marks instead (`lay`, `gmarks`): over its broad masses (on grass, prairie, desert and tundra
+with a slow drift between a warm and a cool colour of their own), flat-toned marks at up to three
+sizes (4.5, 11 and 26 a plot), each one of four related colours, so the ground reads as strokes of
+broken colour while its value stays quiet round roads, rings and figures. Each ground has its own
+hand: short upright strokes on grass (each mark's value taken from the masses under it, only its hue
+from the palette -- yellow-green, blue-green, olive, sap -- so the grass keeps its light and dark
+design and the plot grid still reads); long strokes swept along a slowly turning wind on prairie
+(straw, ochre, sage, russet) and on snow (blue and lilac shadow streaks on warm white); round lichen
+and moss clumps on tundra, late snow only in its hollows; upright reed strokes in a marsh, none in
+its pools; sinuous dune crests in the desert and the burning sands (lit back slope, a cool rose or
+char shadow dropping at once behind the crest; wrap-safe), with sheets of sand or ash flakes laid
+along the crests and, close up, ripples on the desert's lit back slopes (not the slip faces); each
+basalt plate of the broken lands its own tone and stroke direction; clotted round dabs between
+perdition's pools. A mark's edge is about a pixel wide at any zoom; each size fades in once its
+marks are a few render-target pixels and out before they would swell into blots, so at the gameplay
+zoom the 4.5 and 11 sizes are laid and from about 110 px a plot the finest (and the desert's
+ripples) join them. A ground holding only a sliver of a blend lays none (no muddy double layer at
+borders). Marked ground spares half of the paint filter (alpha keep 0.5; the ink pass ignores the
+keep of the ground and water), so close up its marks stay laid paint instead of being smeared. Over
+that: features' floors (forest litter, ice, flood silt, ash), beaches on the lowest rim of the land,
+rock with tilted strata on steep ground and high slopes (warm lit faces, cool shaded ones), snow on
+summits and gentle high ledges, wet banks, fields, trodden settlement ground and roads (from the
+decal layer), marsh pools. Hell terrains (burning sands, broken lands, fields of perdition) are
+split by a few meandering smouldering fissures (iso-lines of broad noise, emissive, pulsing slowly).
+All patterns are anchored to the map, periodic over its width when it wraps (no seam), so nothing
+swims when the camera moves.
+
+**The meadow.** Grassland and prairie are painted as one ground: green grass broken by golden dry
+grass where a noise field (about 1, 0.5 and 0.3 plots) passes a threshold set by the prairie's share
+of the point (the smooth plot weights), so about a sixth of grassland lies golden and five sixths of
+prairie -- easing in from a plot's rim: the ground is pinned to its own terrain at the centre, the pin
+easing out over 0.06-0.6 of a plot (grassland and plains differ in yield, so a player reads it there)
+-- and the plot grid no longer shows in the ground (no noise is broader than a plot, so a whole
+region never flips). A patch meets the green in a broad blend about a quarter of a plot wide, as in
+the target: the green turns olive as it nears a patch, the straw greens at its edge, and the two
+interleave over the middle. The blades themselves are the baked materials' (below): green grass in
+clumps of deeper green with thinner grass between and a few dry olive blades, golden grass
+wind-combed straw over olive ochre, with sparse flower flecks.
+
+**Materials.** Each ground's fine detail is a tiling material painted by code at startup
+(`materials.js`: 12 layers of 256² -- grass, straw, dirt, soil, grain, vegetable beds, a utility
+noise, sand, lichen, snow, reeds, rock -- painted from strokes, stamps and periodic noise into typed
+arrays, uploaded as one mipmapped RGBA8 `TEXTURE_2D_ARRAY`, RGB albedo and A height, ~4 MB,
+~100-300 ms to bake). `TERRAIN_FS` keeps only the broad, plot-scale design procedural (which ground
+where, the golden patches, the plot-centre pin, dunes, pools, basalt plates, fissures, flowers, road
+ruts, the coast floor, feature floors), scales each material onto it (`matTint`; the hell grounds
+take only the value of sand, rock or lichen, `matShade`) and samples it with `textureGrad` at two
+scales (f and 1.37f mirrored, the taller texel winning, tipped by a broad noise) so the tiling does
+not show; mipmaps fade the detail with the zoom (no hand-tuned per-zoom fades, no shimmer). Every
+tile repeats a whole number of times over a wrapping map's width (no seam). Crop rows are baked a
+whole number per tile, so they stay under the props' 3D rows. The material height replaces the old
+impasto bump.
 
 **Water.** The sea is one plane at sea level; its shader reads the sea floor's height (a texture at
 4 samples a plot) through a warped, averaged lookup, so the shelf's colour bands follow soft
-contours: teal over the shelf to indigo over the deep. Waves are two drifting noise layers in the
-normal; restrained sun glints; foam on the surf line and a slower line offshore. Rivers are ribbons
-wider than their carved beds: the banks cut the water's edge; flecks drift downstream.
+contours: teal over the shelf to indigo over the deep. Rivers are ribbons wider than their carved
+beds: the banks cut the water's edge. It is drawn over a grab of the scene, seen into, mirroring,
+with waves, glitter and surf: §5.2.
 
-**Decal and light layers** (`decals.js`), painted with a 2D canvas when the map changes: roads (each
-routed plot to its routed neighbours, bowed so a network reads as tracks), fields (farms, plantations,
-the gardens of villages), wet banks, settlement ground; and pools of local light (towns, lava, mana
-nodes, ancient forests) that light the terrain and the props.
+**Decal and light layers** (`decals.js`), painted with a 2D canvas when the map changes: roads, fields
+(farms, plantations, vineyards, worked land, the gardens of villages), wet banks, settlement ground;
+and pools of local light (towns, lava, mana nodes, ancient forests) that light the terrain and the
+props. The channels: r roads, g crops, b wet banks, a settlement ground and farmyards.
+
+* **Roads**: r holds a distance ramp, 1 on a track's centre line falling to 0 at `ROAD_RAMP` (0.3
+  plot), painted as one path per ramp step (cheap enough to repaint at every map change); the terrain
+  shader cuts from it a crisp packed-dirt track ~0.14 plot wide at any zoom (mottled dirt, darker
+  broken margins, wheel ruts close up, a frayed edge, a verge of worn grass). The links come from
+  `fields.js` `roadLinks`: each routed plot to its routed neighbours, bowed by a hash of the pair, a
+  diagonal skipped when a routed orthogonal neighbour already joins the two (no triangle at every
+  corner of the network), straight over a river onto its bridge. `dress.js` `roadsOf` traces the same
+  tracks so plants keep off them.
+* **Fields**: `fields.js` lays out each worked plot (`fieldLayout`: a farm's two front fields and a
+  third beside the farmstead's yard; plantations, vineyards and worked land more simply), shared by
+  the decal and the props so a barn stands in its yard, not in the wheat. g stores the crop by value
+  (`CROP_LEVEL`: 0.33 vegetable beds, 0.67 tilled soil, 1 grain), read back as the highest of the four
+  texels round a point; rows are world-anchored (14 bed rows, 18 grain rows a plot) and the props'
+  low 3D rows (`imp.beds`, `imp.grain`) stand on the painted ones, with fences (`imp.fence`), stooks
+  (`imp.stook`) and haystacks; wheat, corn and rice farms grow golden grain, others vegetable beds
+  beside bare tilled soil. Fields keep `ROAD_CLEAR` (0.12) from a road, and loose plants, rocks and
+  bank dressing keep off them (`inField`). Worked land keeps to a river's bank tops: `fieldLayout`
+  takes the plot's rivers (`riversAround`), squeezes its fields, fences and yard off a river edge to
+  `RIVER_BANK` and cuts them back from a corner a river touches. A pasture paints an oval of grazed
+  turf (`CROP.TURF`, 0.2) inside its paddock's rails with trodden ground at the gate, the trough and
+  where the herd stands; mushrooms an unfenced patch of trodden earth. Team rings and the path ribbon
+  ride a river's water surface (`world.riverPoint`), not its bed.
 
 ## 5. The pipeline (`pipeline.js`, `shaders.js`)
 
 | pass | what | optional |
 |---|---|---|
 | shadow | sun depth maps over the ground in view, texel-snapped (no shimmer when panning): the props in a 2048² map (crisp, 12-tap rotated Poisson PCF), the terrain in a 1024² one (6 wide taps, soft) applied at part strength, so a hill's cast shadow darkens the plain behind it a little instead of punching a hole in it | `shadows`, `terrainShadow` |
-| scene | depth pre-pass (each pixel shaded once), then terrain, sea, rivers, props into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id | — |
+| scene | depth pre-pass of terrain and props (each pixel shaded once), then the terrain (the sea floor and river beds too; the deep floor, which no one can see through the water, cheaply) and the props, with their brushwork (§5.1), into three targets: lit colour (linear HDR; alpha = keep sharp), view normal + linear depth, emission + object id (negated on a prop's crown) | `brush` |
+| water | the scene's colour and normal/depth grabbed (blit), then the sea and rivers drawn over them, writing depth (the overlays sit on the surface): seen through to the floor, mirroring what stands round them or a painted sky with drifting clouds, waves, glitter and surf (§5.2) | `refraction`, `reflections`, `caustics` |
 | ssao | half-resolution scalable ambient obscurance, depth-aware blur | `ssao` |
 | glow | emission blurred at half resolution | `glow` |
 | compose | occlusion, glow, exposure, ACES-fitted filmic curve → display colour | — |
-| paint | structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared | `kuwahara`, `kuwaharaRadius` |
-| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance, coloured from the paint below (sepia ink, not black); split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `grade`, `grain`, `vignette` |
+| paint | (off by default since §16) structure tensor → smoothed → anisotropic Kuwahara (Kyprianidis et al., polynomial sector weights); radius grows with the zoom (the brush belongs to the world) and so does the strength (0.35 at the gameplay zooms, full close up: the filter erases what is narrower than its radius, and at 96 px a plot that is roads and pool rims); units (keep-sharp mask) mostly spared, foliage partly (its own marks, anchored to the world, are the paint there) | `kuwahara`, `kuwaharaRadius` |
+| finish | ink outlines from depth (far side of a jump only), creases and object-id boundaries on props, faded with distance; no line where one crown's lobes overlap and a light one between crowns (a prop's crown writes its object id negated), so a wood reads as a mass; lost and found (the weight wanders along a line, anchored to the world, and lightens in the light; firmer on buildings and rock than on foliage) and coloured (a deep version of the paint below, not one sepia), units keeping their whole line; split-tone grade, saturation/contrast, paper grain anchored to the world (reconstructed from depth), vignette | `outline`, `inkLost`, `inkColour`, `grade`, `grain`, `vignette` |
 | aa | FXAA (Timothy Lottes' console variant) on the finished colour before the overlays: takes the stair-step off silhouettes and the ink outlines and stops them crawling when panning (the HUD is a separate 2D canvas, so it stays crisp) | `fxaa` |
 | overlay | borders (crisp ink line + soft owner band), political wash, grid, target/path/hover/selection frames on the ground mesh (depth-equal), team rings and the path ribbon draped on the ground; each also drawn ghosted where something stands in front; units hidden behind scenery as hatched team-coloured x-ray silhouettes (depth test GREATER); particles (additive) | `borders`, `grid`, `particles` |
 
-The light model (scene pass): a wrapped, softly stepped sun term (broad light masses), coloured
-shadows (a cool sky ambient and a shadow tint), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
+The light model (scene pass): a wrapped, softly stepped sun term (broad light masses) whose boundary
+the brush marks break (§5.1), coloured
+shadows (a cool sky ambient and a shadow tint; a cast shadow's floor is lit by a cooler sky fill
+rather than a dimmed sun, so shade stays saturated), broad cloud shadows drifting slowly, anchored to the world (two octaves: no plot-sized blots), local
 light pools, rim light on silhouettes (stronger on units), soft metal highlights, light through
 leaves, an aerial haze with distance and valley mist, and the fog of war (§9). HUD text and the
 interface marks are never filtered: the strategic overlays draw after the post passes and the
 labels on the 2D canvas.
+
+### 5.1 Brushwork on objects
+
+At the gameplay zoom the paint filter runs at a third of its strength (it would erase roads and
+units), so the painting on trees, buildings and rocks has to be on the surfaces themselves. The
+prop shader (`PROP_FS`) lays brush marks in each object's own space (`vObj`, scaled to the map but
+not posed or swayed, so the marks ride on swaying leaves and never swim under the camera):
+
+* **Marks** (`dab2`/`objDabs`): one per cell of a jittered lattice, projected onto the surface from
+  the three axis planes. Each has its own size, length and tone, a three-lobed rather than
+  elliptical outline, and an orientation within one fan (one hand); where marks overlap, the one
+  pressed hardest wins, so a surface reads as stroke laid over stroke. Tones come from a triangular
+  distribution: most marks near the middle, few strong accents (no polka dots). Foliage takes leaf
+  clusters at two sizes (a few to a crown at 96 px a plot, more close up), everything else longer
+  strokes; each size fades out as it shrinks below a few pixels. On a crown a dark mark fades toward
+  the fully lit planes and a light one toward the turned-away planes, so the marks turn the form at
+  its turning instead of punching holes in the light mass. Matte and painted props (rock, timber,
+  plaster) take the strokes strongest: their flat facets are where the brush must show.
+* **They push the light**: a mark's tone moves the sun term before the light/shade band
+  (`lightAtJ`), so where light turns to shade the boundary is laid in marks, each light or dark, and
+  likewise a cast shadow's soft edge. Light marks lean warm, dark ones cool (broken colour).
+* **Gouache values**: a crown's final value is laid in flat half-stop steps, each mark shifting
+  where the steps fall, so a crown reads as a few values of overlapping marks rather than a shaded
+  ball (the baked colour ramp, the ambient and the occlusion gradients are all flattened alike,
+  while the hues stay broken). Other props get a gentler version (flat-painted planes), the marks
+  deciding more of where the steps fall on matte ones. Units get a light hand and no steps: they
+  must read at a glance.
+* Crowns lose most of the sky rim (it models them as balls), and their lobes merge in the ink pass
+  (above). Only a prop's foliage is a crown: a unit's foliage (a wing membrane, a treant's leaves,
+  moss) keeps the unit's light hand, its full line and its own object id (the x-ray ghost knows a
+  figure's own surface by it), and blades of grass and reed (`MAT.BLADE`) are lit as leaves but
+  drawn as lines, with the full ink and kept sharp by the paint filter.
+
+### 5.2 Water
+
+The sea is one plane at sea level (`SEA = 0`); lakes share it (only their floor differs); rivers are
+ribbons along their beds (`vExtra` = across the channel, -1..1, and the distance downstream). The
+water is drawn last, over a grab of the scene (`Pipeline.grab`), so `WATER_FS` can read what lies
+under and around it:
+
+* **Rivers** are broad: `world.js` `RIVER_HALF` (0.19) from the river line to the water's edge, which
+  wanders by up to `RIVER_WANDER` (0.03; at most 0.44 plot of water), and `RIVER_BANK` (0.3) to the
+  bank tops. The lines are Chaikin-smoothed from the plot corners (turns of radius ~0.35, so the wide
+  ribbon never folds), with a long low meander that fades at the ends; at a junction the main line
+  runs straight through and the tributary ends inside its water. The bed is flat under the water,
+  then a steep cut bank; the terrain mesh is too coarse to draw that shoreline, so `WATER_FS` draws
+  it (a world-anchored wandering edge, antialiased, rounded where a river is capped). Ribbons carry
+  the bend and the distance past the river's end (`aFlow`). River water is painted rather than seen
+  into (`riverDeep`): turquoise at the banks, blue mid-channel, deep blue in the deepest band, with
+  bands and short ripple strokes drifting with the current and lighter water on the inside of bends.
+  Foam (`riverFoam`): thin tapered streaks down the channel swinging into swirls, white water piled
+  against the outer bank of bends, a foam line along the banks, rings round rocks and wakes behind
+  them (from the grabbed depth); each layer moves at one speed, and remembered water stays still.
+  Banks: dark wet earth under grass (no sand), and `dress.js` `placeBank` lays clusters of boulders
+  at the water's edge, a few out in the stream, reeds and grass, and `feat.overhang` (bank grass rooted
+  just behind the cut bank's top, `RIVER_BANK` + 0.005-0.04, arching out so its tips fringe the
+  water's edge, its lowest blades dark as a wet line), clear of road crossings, towns, fields and held
+  plot centres.
+* **Seen through**: the floor (and a hull's keel, a pier's legs) bent by the waves and absorbed along
+  the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
+  turquoise, then the deep's own blue. Only the waves' tilt bends the view (a flat surface is seen
+  straight through), and less in the shallows. Rivers carry silt and close over their beds sooner;
+  their edges dissolve into the banks, and where a ribbon runs out over the sea (the ground under it,
+  uncut by the channel, is below sea level) the sea shows instead, along a broken edge. At the far zooms the ground is coarse, so the water never reads clearer than the height
+  field's true depth (else a small lake reads as a pale salt pan). The floor carries **caustics**
+  where it is seen: two drifting cellular nets, warped into curves, found where the view ray meets
+  the floor and added through the water (`WATER_FS`), dimmed at the gameplay zoom (a close-up
+  detail).
+* **Mirroring**: the reflected ray is marched through the grabbed depth (banks, trees, sails); where
+  it finds nothing, a painted sky with the very cloud field that shadows the land, met at the
+  clouds' height, so cloud reflections drift. Fresnel would make the mirror all but invisible from
+  the game's camera, so its strength is painted: a floor plus Fresnel toward the horizon, broken into
+  level strokes (warped, drifting) on the sea and along the current on a river. The deep mirrors
+  less and tints what it mirrors with its own blue, so open sea stays darker than the shelf (coast
+  against ocean reads by value).
+* **Waves**: a swell of long crests travelling across the map's diagonal under two drifting ripple
+  layers, all anchored to the map (periodic over a wrapping map); a river's ripples are drawn out
+  along its current (its direction recovered per pixel from how the downstream distance changes on
+  screen) and run fastest mid-channel (a fast layer weighing most there, a slow one at the banks:
+  each layer moves at one speed, since a speed varying across the channel would shear the pattern
+  further every second).
+* **Glitter**: the sun is on the camera's side, so a flat sea never reflects it; small steep facets
+  on the swell's crests do, flashing as short level marks that twinkle -- in the sun only, in sight
+  only. Each has its own length, width and slant; as the zoom shrinks the cells a glint keeps about a pixel's width,
+  and fades out only once even its length would be a few pixels. They bloom a little and the paint
+  filter spares them.
+* **Surf**: the swash breathes up and down the beach in lacy foam and rollers run in to it (only
+  where the floor shelves toward a shore: over a flat or bumpy floor the depth's contours would close
+  into rings offshore, and the floor must keep rising toward land across the pixel's neighbourhood,
+  else a bump's flank makes a lens); rivers lace their banks and carry flecks; a foam collar laps wherever
+  something breaks the surface offshore (found from the grabbed depth round the pixel). The edge of
+  the unexplored is no coast, so no surf is drawn within half a plot of it. Hulls sit at a small
+  draft (`world.js` `DRAFT`: ships, boats, wrecks, swimmers), so their keels are in the water; what
+  lies on the surface (a resource's ripples, a whirlpool, a floe) floats at the sea's level.
+* Remembered water calms: its surface lies flat, without glitter or caustics, its surf, lace, mottle
+  and the strokes breaking its mirror at rest (only the mirrored clouds drift on, as cloud shadows
+  drift over remembered land). Across the frontier the moving and the calm values are mixed, never the
+  time itself (time scaled by the fog would shear the waves further every second). The fog of war
+  and the haze apply to what the water adds, not twice to what is seen through it (the grab has
+  them already). Marsh pools (painted in the terrain) are peaty, darker and greener than open water
+  (marsh is land), with a faint drifting sheen.
+* Seeing into the water and the mirror read the grabbed view depth, which only a float target holds:
+  without float colour buffers the water is drawn opaque, mirroring only the painted sky (no
+  reflected banks or ships).
 
 ## 6. Asset recipes
 
@@ -191,13 +368,37 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 * **Vertex format**: position, normal, linear albedo, and `aMat` = (material, sway, bone, baked
   occlusion). Materials: matte, foliage (light through leaves), metal, team (the owner's colour times
   the vertex colour's luminance), emissive, skin, team glow. Bones drive a small idle animation in
-  the vertex shader (breathing, arms, cape, wings, tail); sway drives wind.
+  the vertex shader (breathing, arms, cape, wings, tail); sway drives wind. Recipes do not paint
+  brushwork: the prop shader lays marks in each object's own space (§5.1), so a recipe models form
+  and colour and gets the paint for free.
 * **Palette** (`assets/palette.js`): every recipe takes its colours from one designed palette
   (warm daylight key; saturation spent on owner colours, magic and fire), plus the mana schools'
   colours.
-* **Scale contract**: one unit = one plot; a humanoid ~0.48 tall, broadleaf trees 0.30-0.42,
-  conifers 0.34-0.50, great ancient trees 0.8-1.1, houses ~0.15, keeps 0.3-0.4, towers 0.4-0.55,
-  resource markers 0.10-0.20, a city within ~0.48 of its plot centre. Foundations, roots and trunk
+* **Scale contract**: one unit = one plot; a humanoid ~0.48 tall, broadleaf trees modelled 0.30-0.36
+  and conifers 0.36-0.45 but placed at 1.2-1.3x (on the map a broadleaf stands ~0.38-0.46, a conifer
+  ~0.43-0.52, x0.75-1.25 in woods and x0.8-1.15 in the open), a grass tuft ~0.11, a bush ~0.1 tall
+  and 0.15 across, great ancient trees 0.8-1.1, houses ~0.15, keeps 0.3-0.4, towers 0.4-0.55,
+  resource markers 0.10-0.20. A city reaches `CATALOG.cityReach` from its plot centre, growing
+  with its size s (+1 for a capital): a wall ring at min(0.85, 0.34 + 0.04 s), an unwalled town at
+  min(0.78, 0.33 + 0.035 s), its buildings scaled 1.06-1.42 (size 2: ~0.4; size 6: ~0.54; a walled
+  size-9 capital ~0.79 with its wall; a size-12+ capital ~0.9), so a great town spills onto its
+  neighbours' plots; their trees, clutter, rocks and bank dressing keep out of its reach (`dress.js`
+  `ctx.inTown`), it grows only where it has room (`townRoom`, 64 rays from its centre): it keeps
+  to revealed plots on the map, out of a river's water and off its neighbours' fields and buildings
+  (and half the ground toward a neighbouring city), its wall pulling in along a bank or a hedge;
+  houses, towers and trees on or in front of a unit's ring on a neighbouring plot are dropped from the
+  finished plan; its houses keep clear of where the garrison stands and the strip in front of it
+  (`dress.js` `garrisonOf`, shared by the plan and the unit figures, mirrored or drawn back out of a
+  river); its plate stands in front of its walls. A walled town's wall line (`wallLine`) is planned
+  first, slightly out of round and following the ground's contours, and its houses keep inside it;
+  after packing, smaller houses and `Plan.fill` close the gaps with back yards (`bld.shed`: woodshed,
+  store, kitchen garden, rick; `imp.cart`) and garden trees, and walled human and dwarven towns stand
+  in 5-7 clumps of trees at their wall foot (on ground the town may use, off roads: `roadsRound`).
+  Town walls and plaster sit at mid values (the human palette x0.8, the palest families x0.9) so a
+  town does not glare. Rocks are a mid-value cool grey whose form `rockShader` paints in (lit tops,
+  flanks darker as they steepen, dark clefts and foot), so they read without ink; sandstone stays
+  warm, basalt and obsidian as they were. Farms: rounded grain rows over furrows, fuller stooks, soft
+  haystacks, and now and then a cart or tools in the yard. Foundations, roots and trunk
   flares reach below y = 0 so nothing floats on sloping ground.
 
 ### 6.1 The recipe modules
@@ -212,7 +413,8 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
 | `fx.js` | particle emitters: hell embers, fire and volcano sparks and ash, soul wisps, ancient-forest motes, city sparks by family | `emitters` |
 
 Budgets (triangles, full detail): trees ≤ ~700 (great trees ~2100), units ≤ ~2000, houses ≤ ~250,
-keeps ≤ ~1800, a walled size-12 capital ~3–11k, rocks ≤ 200, improvements ~600, resource markers
+keeps ≤ ~1800, a walled size-12 capital ~3–15k (simplified ~6k), ground clutter (tufts, flowers) ≤ 40
+and bushes ≤ 150 and cast no shadow-map shadow (a recipe's `shadow: false`), rocks ≤ 200, improvements ~600, resource markers
 ≤ ~340, landmarks ≤ ~2500. A recipe also gets the generic simplified copy (`buildAssetLOD`) for
 distance and shadows whenever simplifying saves at least a third of its triangles.
 
@@ -246,9 +448,20 @@ plot owner's architectural family), `improvement`, `bonus`, `family` (civilizati
 `city` (a settlement's layout from its size, capital, walls, family), `unit` (unit type, combat
 class, domain and the owner's civilization → figure and race), `emitters` (particles). Recipe
 modules fill entries; anything unfilled falls back to `basic.js`. Placement is a pure function of
-the state and the plot index: trees on a jittered grid thinned toward open neighbours, with a glade
-where a unit, city or structure holds the plot; a structure moves to the back of its plot when a
-unit stands there; resources at the front-left; bridges where a road crosses a river edge; a unit
+the state and the plot index: woods on a jittered grid (4x4 bigger trees in temperate woods, sizes
+x0.75-1.25, the shorter ones tinted darker as the wood's interior) thinned toward open neighbours,
+whose thinned edge slots take the catalog's `edge` bushes and saplings, with a glade where a unit,
+city or structure holds the plot; open ground scattered by `scatterFlora`: each flora entry in
+clumps (`clump`, `spread`) that survive by world-anchored density fields (a meadow field for clutter,
+a grove field for trees, `dense` setting how strongly), ~20-30 instances on a grass plot, straw
+drifts and bare ground between them on plains, clear of a unit's ring, an improvement's fields,
+the roads (`roadsOf` traces them as decals.js paints them), the river, the beach, the resource
+marker and a town's reach, trees also out of the line of sight to what stands on the plot, behind
+it, or a city; a structure moves to the back of its plot when a
+unit stands there; resources at the front-left; bridges where a road crosses a river edge (the
+catalog's `bridge(ctx)`: an arched stone humpback, one arch or two on a pier, mostly on east-west
+roads where the arch shows, or a flat slab bridge with low walls, mostly north-south; 0.68 long with
+footings on the bank tops, centred where the road meets the river's line); a unit
 stack shows its top unit with up to two of its company behind it (at a city, at its gate).
 
 ## 8. Readability and interaction
@@ -271,8 +484,13 @@ The 3D renderer sees only what the other renderers see: the server's map arrays 
 are -1 everywhere; fogged plots carry what was seen) and the units in sight. Unrevealed plots are
 modelled as flat *void* (no hidden plot shapes the height of its neighbours, no river or road is
 traced through them, nothing is placed on them) and painted as dark parchment behind a brushy,
-burnt-paper frontier. Remembered plots keep their remembered terrain, structures and cities, dimmed
-and cooled; no unit is drawn there (the view has none). Particles fade out of sight.
+burnt-paper frontier. A town builds only on revealed plots on the map: its shape follows the edge of the known, never
+what lies beyond (the plots' visibility is part of its layout's cache key). Remembered plots keep
+their remembered terrain, structures and cities, dimmed
+and cooled; no unit is drawn there (the view has none). Particles fade out of sight. The water
+reveals nothing either: it mirrors and is seen through only to what was already drawn (the grabbed
+scene), no water is drawn on an unrevealed plot (the parchment below shows, as on land), no surf
+marks the edge of the unexplored as a coast, and remembered water calms (§5.2).
 
 ## 10. The lab, tests and tools
 
@@ -358,20 +576,27 @@ rasteriser -- only the shares carry over):
 
 | pass | ts 40 (far) | ts 96 (gameplay) |
 |---|---|---|
-| scene (geometry + shading) | 2903 ms (~67%) | 5309 ms (~66%) |
-| kuwahara (paint filter) | 857 ms (~20%) | 2164 ms (~27%) |
-| shadow | 224 ms | 211 ms |
-| overlay | 118 ms | 161 ms |
-| glow | 63 ms | 55 ms |
-| finish (ink + grade) | 57 ms | 49 ms |
-| ssao | 41 ms | 59 ms |
-| fxaa | 42 ms | 24 ms |
-| compose | 26 ms | 19 ms |
-| **whole frame** | **4364 ms** | **8083 ms** |
+| scene (geometry + shading, brushwork) | 2585 ms (~60%) | 3693 ms (~64%) |
+| kuwahara (paint filter) | 673 ms (~16%) | 1386 ms (~24%) |
+| water (grab + sea and rivers) | 368 ms (~9%) | 324 ms (~6%) |
+| shadow | 275 ms | 128 ms |
+| overlay | 79 ms | 102 ms |
+| finish (ink + grade) | 40 ms | 32 ms |
+| glow | 32 ms | 33 ms |
+| ssao | 26 ms | 20 ms |
+| fxaa | 12 ms | 11 ms |
+| compose | 10 ms | 9 ms |
+| **whole frame** | **4291 ms** | **5793 ms** |
 
-The scene pass dominates and the Kuwahara paint filter is the clear second; FXAA (§5, F17) and the
-other post passes are cheap. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
-first and the render scale (which scales the scene pass) second.
+The scene pass dominates and the Kuwahara paint filter is the clear second; the water (one
+full-screen-ish pass over the sea: refraction, a 20-step mirror march, glitter, surf) is a distant
+third, and FXAA (§5, F17) and the other post passes are cheap. The ground's laid marks (§4) cost
+next to nothing in themselves (the scene pass measures the same with `dabs` 0, `r3d-perf --configs
+no-dabs`); the larger terrain shader that carries every ground's hand costs SwiftShader about 13-15%
+of the scene pass (about 7% of the frame) against the earlier smooth ground. The quality ladder (§12 `autoQuality`) therefore drops the paint filter
+(now off by default anyway) and the water's reflection march first and the render scale (which scales
+the scene pass) second. With the paint filter off (the default since the look-target batch) a
+software frame of the reference scene took ~18 s against ~31 s with it at 0.45 (one run each).
 
 Initial world sync (CPU, this slice): textures 195 ms + dressing 425 ms + instance upload 436 ms +
 paint layers 236 ms + world 41 ms, about 1.3 s for the full redress of ~10.8k props and 123 unit
@@ -379,23 +604,43 @@ figures; per-move redressing is incremental. On a more crowded map this is the ~
 JavaScript noted in §14 -- spreading it over frames or onto a worker is a next step.
 
 Panning stability (`tools/r3d-lab.mjs --stability`, showcase at 96 px; pan, then re-align by the best
-whole-pixel shift and compare): mean |diff| about 1.5 of 255 with 1.6% of pixels off by more than 24
-for the painterly preset (1.2% plain, 1.7% painterly with the paint filter off) -- low crawl, from
-the texel-snapped shadow frustum and the world-anchored paint and grain. FXAA is on in the painterly
-figure.
+whole-pixel shift and compare): mean |diff| about 1.6 of 255 with 1.1% of pixels off by more than 24
+for the painterly preset (1.1 / 1.2% plain, 1.7 / 1.3% painterly with the paint filter off) -- low
+crawl, from the texel-snapped shadow frustum and the world-anchored paint, brush marks and grain.
+Over water (`--query "scene=showcase&cx=3&cy=6&ts=150"`): 0.8 / 0.4% painterly, 0.6 / 0.4% plain;
+what is left sits on parallax edges and ship rigging, from the screen-space refraction and mirror
+taps. FXAA is on in the painterly figures.
+
+Milestone A/B, look-target batch 2 (baked ground materials, leaf-cluster crowns, clutter massing;
+`r3d-perf` on the `stage corrupt` save at (48, 15), ts 96, painterly, one run each, the same binary
+with each tree's assets; SwiftShader): frame 6024 -> 5353 ms; scene 4950 -> 4155 ms (the terrain
+shader went from ~60 noise sites with lattice loops to ~25 broad noise calls plus 2-8 texture taps);
+shadow 150 -> 307 ms (the leaf cut in the shadow map); water 544 -> 516 ms. Start-up: dressing
+238 -> 311 ms, world 16 -> 37 ms, props 23.9k -> 25.0k. Panning stability (`--stability`, showcase
+ts 96, `{"animate":false}`): mean |diff| 3.90 -> 4.47, pixels off by > 24: 5.19% -> 5.03% (the
+share that moves is unchanged; the mean rises with crisper, higher-contrast detail). The paragraph
+above predates the paint filter going off and the materials; its 1.6 / 1.1% figures are older still.
 
 GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 
 ## 12. Configuration
 
 `r3d/config.js`: `PRESETS.painterly` (default) and `PRESETS.plain` (every stylisation off: an
-ordinary real-time render of the same geometry, for comparison), `LIGHTING` (one `daylight` look:
-always daylight by design, a warm high sun at about 42 degrees; a saved light that is no longer
+ordinary real-time render of the same geometry, for comparison; it keeps the water's reflections,
+transparency and caustics, which are ordinary rendering, not stylisation), `LIGHTING` (one `daylight` look:
+always daylight by design, a warm high sun at about 48 degrees, shadows ~0.9x an object's height; a saved light that is no longer
 offered -- a "dusk", "afternoon" or "day" -- falls back to it), and the switches of the panel
-(`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width), paint (pigment variation),
-bands (stepped light), stylize (coloured shadows), rim, clouds, haze, mist, grade, grain, vignette,
-borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing), autoQuality (the
-measured-frame-time quality ladder).
+(`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width, inkLost: lost-and-found
+line weight, inkColour: coloured ink), paint (pigment variation), dabs (now only the ground's colour drift and flowers: its marks are the baked materials'),
+brush (brush marks and gouache values on objects, §5.1), bands (stepped light), stylize (coloured
+shadows), rim, clouds, reflections, refraction and caustics (the water, §5.2), haze, mist, grade,
+grain, vignette, borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing),
+autoQuality (the measured-frame-time quality ladder: paint filter and the water's reflection march
+off -- it keeps mirroring the sky -- then render scale 0.75). The paint filter (`kuwahara`) is off in
+the painterly preset since the first look-target batch (owner decision, §16), and the ink outlines
+(`outline`) and stepped light (`bands`) since the second, once crowns, rocks and the ground carried
+their own form; the brush marks on objects (`brush`) stay for buildings and rocks. Every switch stays
+in the panel.
 
 ## 13. Removing it
 
@@ -425,15 +670,62 @@ What is not there, or not good enough yet, as of this prototype:
   unexplored is dark parchment, not modelled.
 * **Particles** draw after the paint passes and cannot be occluded behind tall props per pixel
   (a point sprite is depth-tested at its centre).
-* **Water** has no reflections and no waterfalls where rivers drop.
+* **Water** mirrors only what is on screen (a screen-space march; past the frame's edge it falls back
+  to the painted sky), has no waterfalls where rivers drop (nothing along a river records a drop),
+  and lakes share the sea's surface and colours (only their floor differs). The rollers follow the
+  depth's contours, gated to where the floor rises toward land; a baked distance-to-shore field would
+  run them parallel to every coast by construction. Where a river crosses the beach into the sea a
+  short sliver of river colour can remain (the ribbon is cut where the uncut ground is below sea
+  level, not exactly at the waterline).
+* **Flat-faced props** (rocks, mines, plaster walls) carry only moderate brushwork: stronger marks
+  on their small facets sank shaded flanks into dark streaks, so the marks are bounded there.
+* **Crown silhouettes**: broadleaf crowns (`MAT.LEAF`: dark inner masses under ~12-triangle leaf
+  pads, each pad with its own normals, lit top and dark belly) have their rims cut into leaves in the
+  props' depth prepass and shadow map (`PROP_DEPTH_FS`, `leafCut`, world-anchored noise); the colour
+  pass then shades props with depth EQUAL, so only the depth pass discards (early-z kept) and the ink,
+  the x-ray ghost and SSAO see the same holes. It works because each cluster carries its own normals;
+  the mallorn and jungle plate crowns stay uncut (their soft lighting normals do not track their true
+  silhouette). The cut roughly doubled the shadow pass (still ~6% of a frame, §11).
 
-Next steps, roughly by value: profile on real GPUs (the quality ladder -- paint filter off, then
-render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
+Next steps, roughly by value: profile on real GPUs (the quality ladder -- reflection march and paint
+filter off, then render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
 is not yet a ladder step); spread the initial world sync over frames or a worker (about 2 s of
-JavaScript on a crowded map); combat and work animations; a reflection or sky term for water; the
+JavaScript on a crowded map); combat and work animations; waterfalls (rivers need their drops); the
 sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 
 ## 15. Provenance
 
 Every mesh, texture and pattern is generated by code in this repository at run time; no external
-art asset, model, texture, font or library was added.
+art asset, model, texture, font or library was added. The ground's material textures (§4) are
+painted by `materials.js` at startup from strokes, stamps and periodic noise -- still no image file.
+
+## 16. The look target
+
+The owner's reference image (a bright, saturated, hand-painted fantasy strategy map: a walled town
+with colourful roofs on golden grass, a winding turquoise river with white flow under stone bridges,
+a crossroads of dirt roads, farms with haystacks, dense shrubs, rocks and trees) is the target the
+renderer's look is moved toward. The lab's `scene=reference` lays out its composition (best at
+`ts=150` with `&r3d={"grid":0}`, the reference having no grid), so every change is judged against
+the same frame. The first batch toward it (five areas worked in parallel -- ground and light,
+vegetation and clutter, water, architecture, farms/roads/bridges -- then one review round on the
+merged result) brought: the meadow ground, broad rivers with foam and rocky banks, towns that grow
+with their size, dense clumped clutter and fuller trees, crop fields, crisp roads and stone bridges,
+and a brighter grade (saturation 1.1, contrast 1.12, little haze or cloud shadow, a lighter ink), and
+the paint filter off by default: crisper and much cheaper, and the target has no smeared paint.
+Turning off the rest of the paint imitation (ink, stepped light, the brush marks and gouache steps
+on objects) as well was compared and not kept yet: without them the trees read as smooth clay balls
+and buildings lose their edge, because those passes stand in for detail the models and materials do
+not have yet; they go once the materials carry it.
+
+The second batch (ground materials baked at startup, leaf-cluster crowns with cut rims, clutter
+massed at edges, grey formed rocks, denser towns ringed by trees; then one review round and a fix
+pass measured against the target) let the paint imitation go: with the materials carrying the
+detail, the ink outlines and the stepped light are off by default as well (the reference frame
+holds up without them: crowns keep their leaves, rocks and conifers their form, units their hue and
+value). The brush marks on objects stay until buildings and rocks carry their strokes as material.
+
+Still short of the target (measured on the reference frame): dark foliage masses ~6-7% of the frame
+against ~11.7% in the target (more and darker trees, especially round the town); the river is about
+half the target's width (`RIVER_HALF`; widening it means re-checking bridges and the river rules of
+towns and fields); green/golden in-between hues 24% of the ground against 31%; the panning
+stability's mean difference is above the first batch's (crisper detail).

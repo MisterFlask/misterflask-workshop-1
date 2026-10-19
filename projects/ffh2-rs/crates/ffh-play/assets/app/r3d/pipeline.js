@@ -1,8 +1,10 @@
 // The render pipeline of the 3D map (docs/R3D.md "Pipeline"):
 //
 //   shadow   sun's depth map over the ground in view (texel-snapped: no shimmer when panning)
-//   scene    terrain, water, rivers, props -> colour (linear HDR, a = keep sharp), view normal +
-//            linear depth, emission (+ object id)
+//   scene    terrain, props -> colour (linear HDR, a = keep sharp), view normal + linear depth,
+//            emission (+ object id; negated on leaves)
+//   water    the scene grabbed, then the sea and rivers over it: seen through to the floor,
+//            mirroring the sky and what stands round them, writing depth
 //   ssao     half resolution, depth-aware blur
 //   glow     emission, blurred at half resolution
 //   compose  occlusion, glow, exposure, filmic curve -> display colour
@@ -38,7 +40,7 @@ export class Pipeline {
       prop: P("prop", C + SH.PROP_VS, C + SH.PROP_FS),
       water: P("water", C + SH.WATER_VS, C + SH.WATER_FS),
       shadowTerrain: P("shadow-terrain", C + SH.SHADOW_TERRAIN_VS, SH.SHADOW_FS),
-      shadowProp: P("shadow-prop", C + SH.PROP_VS, SH.SHADOW_FS),
+      shadowProp: P("shadow-prop", C + SH.PROP_VS, C + SH.PROP_DEPTH_FS),
       ssao: P("ssao", FULLSCREEN_VS, C + SH.SSAO_FS),
       aoBlur: P("ao-blur", FULLSCREEN_VS, SH.AO_BLUR_FS),
       blur: P("blur", FULLSCREEN_VS, SH.BLUR_FS),
@@ -86,6 +88,9 @@ export class Pipeline {
       tensorB: texture(gl, w, h, F),
       aa: texture(gl, w, h),
       final: texture(gl, w, h),
+      // The scene before the water (grab): what the water is seen through and what it mirrors.
+      sceneCopy: texture(gl, w, h, F),
+      ndCopy: texture(gl, w, h, { ...F, filter: gl.NEAREST }),
     };
     this.depth = depthBuffer(gl, w, h);
     const t = this.t;
@@ -101,7 +106,23 @@ export class Pipeline {
       tensorB: framebuffer(gl, [t.tensorB]),
       aa: framebuffer(gl, [t.aa]),
       final: framebuffer(gl, [t.final], this.depth),
+      sceneCopy: framebuffer(gl, [t.sceneCopy]),
+      ndCopy: framebuffer(gl, [t.ndCopy]),
     };
+  }
+
+  /** Copies the scene's colour and normal/depth targets (the water reads them: it may not sample
+   *  the targets it draws into). */
+  grab() {
+    const gl = this.gl, W = this.w, H = this.h;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.f.scene);
+    for (const [i, dst] of [[0, this.f.sceneCopy], [1, this.f.ndCopy]]) {
+      gl.readBuffer(gl.COLOR_ATTACHMENT0 + i);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, dst);
+      gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    }
+    gl.readBuffer(gl.COLOR_ATTACHMENT0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.f.scene);
   }
 
   disposeTargets() {
@@ -202,7 +223,7 @@ export class Pipeline {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFbo);
         gl.viewport(0, 0, SHADOW_SIZE, SHADOW_SIZE);
         gl.clear(gl.DEPTH_BUFFER_BIT);
-        scene.drawProps(this.p.shadowProp, SU, true);
+        scene.drawProps(this.p.shadowProp, { ...SU, uSunView: 1 }, true);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadowFboT);
         gl.viewport(0, 0, TERRAIN_SHADOW_SIZE, TERRAIN_SHADOW_SIZE);
         gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -211,7 +232,8 @@ export class Pipeline {
       });
     }
 
-    // --- scene
+    // --- scene, then the water over it
+    const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
     this.timed("scene", () => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.f.scene);
       gl.viewport(0, 0, W, H);
@@ -220,19 +242,33 @@ export class Pipeline {
       gl.clearBufferfv(gl.COLOR, 2, [0, 0, 0, 0]);
       gl.clear(gl.DEPTH_BUFFER_BIT);
       // Depth first (cheap vertex-only passes), then each pixel is shaded once: the ground under
-      // a forest or under the sea is never painted only to be covered.
+      // a forest is never painted only to be covered. The water is not in it: the sea floor and
+      // the river beds are painted (cheaply where too deep to see), grabbed, and the water is
+      // drawn last, seen through to them and mirroring what stands around it.
+      // The props' depth also cuts the leafy crowns' rims into leaves (PROP_DEPTH_FS), sized by
+      // the frame's pixels a plot (uPlotPx: one size over the whole view, so the cut holds still
+      // while panning); the props are then shaded only where that depth is their own (EQUAL), so
+      // the colour pass needs no discard of its own and keeps its early depth test.
       gl.colorMask(false, false, false, false);
       scene.drawTerrain(this.p.shadowTerrain, U, false);
-      scene.drawWater(this.p.shadowTerrain, U, true);
-      scene.drawProps(this.p.shadowProp, U, false);
+      scene.drawProps(this.p.shadowProp, { ...U, uSunView: 0, uPlotPx: U.uPx * (fr.scale ?? 1) }, false);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);
-      const SU = { ...U, uShadowMap: this.shadowMap, uShadowMapT: this.shadowMapT, uShadowOn: cfg.shadows ? 1 : 0 };
       scene.drawTerrain(this.p.terrain, SU, false);
-      scene.drawWater(this.p.water, SU);
+      gl.depthFunc(gl.EQUAL);
       scene.drawProps(this.p.prop, SU, false);
+      gl.depthFunc(gl.LEQUAL);
+    });
+    this.timed("water", () => {
+      this.grab();
+      // The water writes its depth (the overlays and markers sit on its surface).
+      gl.viewport(0, 0, W, H);
       gl.depthMask(true);
+      // Seeing into the water and the mirror read the grabbed view depth, which only a float target
+      // holds (an 8-bit one clamps it to 1): without one the water is drawn opaque, unmirrored.
+      const hdr = this.hdr ? 1 : 0;
+      scene.drawWater(this.p.water, { ...SU, uSceneColor: this.t.sceneCopy, uSceneND: this.t.ndCopy, uReflect: (cfg.reflections ?? 1) * hdr, uRefract: (cfg.refraction ?? 1) * hdr });
     });
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
@@ -309,6 +345,10 @@ export class Pipeline {
         uLightGrade: [1.06, 1.0, 0.9],
         uGrain: cfg.grain,
         uVignette: cfg.vignette,
+        uInkLost: cfg.inkLost ?? 1,
+        uInkColour: cfg.inkColour ?? 0.5,
+        uMapSize: [scene.world.w, scene.world.h],
+        uWrapX: scene.world.wrapX ? 1 : 0,
         uTan: fr.tan,
         uInvView: fr.invView,
       });

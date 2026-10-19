@@ -4,8 +4,13 @@
 //
 // Entries (all optional; each returns null when it has nothing to say):
 //   forest(feat, ctx)      -> [{asset, variant?, param?, scale, weight?}]  species mix of a wooded plot
-//   flora(ctx)             -> [{asset, scale, count, param?, variant?}]  loose plants on open
-//                              ground (bushes, reeds); a forest mix's `under` entries take the same
+//   flora(ctx)             -> [{asset, scale, count, param?, variant?, clump?, spread?, size?,
+//                              dense?, mix?}]  open ground's plants, scattered in clumps of
+//                              `clump` ([min, max]) within `spread`, `count` at most (a density
+//                              field anchored to the map thins it by `dense`, 0..1); `size` 0 low
+//                              clutter, 1 bushes, 2 trees (`mix`: [{asset, scale, weight}] per
+//                              tree); a forest mix's `under` and `edge` entries take {asset, scale,
+//                              count?, param?, variant?}
 //   rocks(ctx)             -> [{asset, scale, count, param?, variant?, prefer?}]  boulders/
 //                              outcrops on hills, peaks, tundra (prefer "ridge": on high ground)
 //   settlement(type, ctx)  -> part or [parts]  a settlement-like improvement (cottage, hamlet,
@@ -17,12 +22,24 @@
 //                              emit?: [emitter] (offsets in the part's frame: turned and scaled
 //                              with it)}
 //   bonus(type, ctx)       -> {asset, param?, scale?, water?}   a resource's marker
+//   bridge(ctx)            -> {asset, variant?} (or an asset name)  a road's bridge over a river
+//                              edge of the plot, modelled along z with its deck's ends at y = 0
+//                              (ctx: the plot ctx, crossing (the plot across), alongX (the road
+//                              runs east-west))
 //   feature(feat, ctx)     -> [{asset, param?, scale?, dx?, dz?}] one-off features (oasis, volcano)
 //   family(civType)        -> string   a civilization's architectural family
 //   city(ctx)              -> [{asset, variant?, param?, x, z, yaw, scale, lift?}] (+ optional
-//                              `.emit` array property: chimney smoke, braziers) a settlement's
-//                              buildings around its plot centre (ctx: size, capital, walls,
-//                              family, civ, seed, height(dx, dz), coast, river)
+//                              `.emit` array property: chimney smoke, braziers; `.reach`: how far
+//                              from the plot centre it stands) a settlement's buildings around its
+//                              plot centre (ctx: size, capital, walls, family, civ, seed,
+//                              height(dx, dz), coast, river; the ground it may use: buildable(dx,
+//                              dz) (known plots on the map), riverDist(dx, dz), keep (its
+//                              neighbours' fields and buildings: discs {x, z, r}, rectangles {x0,
+//                              z0, x1, z1}); garrison: where its units stand, [[x, z], ...]); a
+//                              great city spills over its plot where that ground is free
+//   cityReach(ctx)         -> number  how far a city's buildings reach from its plot centre (ctx:
+//                              size, capital, walls): ~0.4 for a small town to ~0.9 for a great
+//                              walled capital (its plate, its neighbours' woods keep clear of it)
 //   unit(type, ctx)        -> {asset, param?, variant?, scale?, height?, float?, fly?}  a unit's
 //                              figure (ctx: info, civ, family, domain "DOMAIN_SEA"/"DOMAIN_LAND"/
 //                              "DOMAIN_AIR", combat "UNITCOMBAT_MELEE"..., unit, name)
@@ -40,7 +57,8 @@
 // improvement (type names or null), world, coast ([[dx, dz], ...] plot-local directions of the
 // water around the plot: a harbour faces them; empty inland), river (a river runs along the plot),
 // cityNear (a city stands on a neighbouring plot), cityBehind ({n, e, w}: a city on the plot north,
-// north-east, north-west: this plot stands between it and the camera).
+// north-east, north-west: this plot stands between it and the camera), woods (how many of the
+// eight neighbours are wooded), roadDist(lx, lz) (distance to the road through the plot).
 //
 // ctx always carries `r` (a seeded generator for the plot or object) and `name` (the type name).
 

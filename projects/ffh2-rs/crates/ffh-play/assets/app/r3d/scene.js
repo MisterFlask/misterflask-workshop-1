@@ -6,19 +6,29 @@
 
 import { ATTR, Mesh, texture, upload, INSTANCE_FLOATS, PROP_LAYOUT } from "./gl.js";
 import { TerrainMeshes, MapTextures, CHUNK, RES, LOW_RES } from "./terrain.js";
+import { materialTexture } from "./materials.js";
 import { buildAsset, buildAssetLOD } from "./assets/registry.js";
 import { rasterDecals, rasterLight } from "./decals.js";
-import { SEA } from "./world.js";
+import { SEA, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
 import { hexLinear } from "./math.js";
 import { rng } from "./noise.js";
 
 const RIVER_LAYOUT = { aPos: 3, aExtra: 4 };
+/** The sea and the rivers: aExtra (across the river, down it, over the sea), aFlow (the river's
+ *  bend, how far past its end) -- the sea's are zero. */
+const WATER_LAYOUT = { aPos: 3, aExtra: 4, aFlow: 2 };
 /** Below this size on screen (bounding radius in pixels) a prop draws its simplified copy. */
 const LOD_PX = 22;
 /** Props are bucketed by squares of this many plots (finer than the terrain chunks: the frustum
  *  test then skips more of what is off screen, for a few more draw calls). */
 const BUCKET = 8;
 const PARTICLE_LAYOUT = { aPos: 3, aNormal: 3, aExtra: 4 };
+
+/** A river's water surface over the point (mx, my) of its line (the ribbon lies flat across the
+ *  channel there): a little under the banks, never under the sea's. */
+function riverLevel(world, mx, my) {
+  return Math.max(SEA + 0.004, world.heightAt(mx, my) + 0.045);
+}
 
 /** One asset's vertex buffer, shared by its per-chunk instance buckets. */
 class AssetBatch {
@@ -30,6 +40,7 @@ class AssetBatch {
     this.count = built.count;
     this.radius = built.radius;
     this.hi = built.hi[1];
+    this.shadow = built.shadow !== false;
   }
 
   /** A VAO over this asset's vertices and a new instance buffer (or `shared`, another bucket's,
@@ -90,6 +101,8 @@ export class Scene {
     this.gl = gl;
     this.terrain = new TerrainMeshes(gl);
     this.tex = new MapTextures(gl);
+    // The ground's material textures (materials.js), painted once: {tex, mean, bakeMs, uploadMs, bytes}.
+    this.materials = materialTexture(gl);
     this.assets = new Map(); // asset key -> AssetBatch
     this.layers = { static: [], units: [] }; // [{batch, chunk: [cx, cy], top, bucket}]
     this.world = null;
@@ -223,23 +236,30 @@ export class Scene {
     const v = [];
     const idx = [];
     const nx = Math.ceil(w / step) + 1, ny = Math.ceil(h / step) + 1;
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) v.push(Math.min(w, i * step), SEA, -Math.min(h, j * step), 0, 0, 0, 0);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) v.push(Math.min(w, i * step), SEA, -Math.min(h, j * step), 0, 0, 0, 0, 0, 0);
     for (let j = 0; j + 1 < ny; j++) {
       for (let i = 0; i + 1 < nx; i++) {
         const a = j * nx + i;
         idx.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1);
       }
     }
-    this.water = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT, { indices: new Uint32Array(idx) });
+    this.water = new Mesh(gl, new Float32Array(v), WATER_LAYOUT, { indices: new Uint32Array(idx) });
   }
 
-  /** The rivers: ribbons along the smoothed river lines, their surface a little under the banks. */
+  /** The rivers: ribbons along the smoothed river lines, their surface a little under the banks,
+   *  a little wider than the water (the water shader draws its wandering edge, WATER_FS) and
+   *  capped at both ends (a source, a confluence). Per vertex: aExtra = across the channel (1 at
+   *  the water's mean edge, RIVER_HALF), the distance downstream, 1 over the sea; aFlow = how the
+   *  river bends (radians a plot, + to the left looking downstream), how far past its end (in
+   *  RIVER_HALFs, as across). */
   buildRivers() {
     const gl = this.gl;
     this.rivers?.dispose();
     this.rivers = null;
     const world = this.world;
     const v = [];
+    // Half the ribbon's width: the widest the water's edge may wander, and a pixel or two more.
+    const half = RIVER_HALF + RIVER_WANDER + 0.02;
     for (const line of world.rivers) {
       // Resample to an even spacing.
       const pts = [];
@@ -254,30 +274,54 @@ export class Scene {
       const h0 = world.heightAt(pts[0][0], pts[0][1]);
       const h1 = world.heightAt(pts[pts.length - 1][0], pts[pts.length - 1][1]);
       if (h0 < h1) pts.reverse();
-      let along = 0;
-      // Wider than the bed: the banks cut the water's edge (an organic shore line).
-      const width = 0.125;
-      const ring = [];
-      for (let k = 0; k < pts.length; k++) {
-        const p = pts[k];
-        const a = pts[Math.max(0, k - 1)], b = pts[Math.min(pts.length - 1, k + 1)];
-        let tx = b[0] - a[0], ty = b[1] - a[1];
-        const l = Math.hypot(tx, ty) || 1;
-        tx /= l;
-        ty /= l;
-        if (k > 0) along += Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]);
-        const y = Math.max(SEA + 0.004, world.heightAt(p[0], p[1]) + 0.045);
-        ring.push([[p[0] - ty * width, y, -(p[1] + tx * width)], [p[0] + ty * width, y, -(p[1] - tx * width)], along]);
-      }
-      for (let k = 0; k + 1 < ring.length; k++) {
-        const [a0, a1, s0] = ring[k];
-        const [b0, b1, s1] = ring[k + 1];
-        const V = (p, u, s) => v.push(p[0], p[1], p[2], u, s, 0, 0);
-        V(a0, -1, s0); V(b0, -1, s1); V(a1, 1, s0);
-        V(a1, 1, s0); V(b0, -1, s1); V(b1, 1, s1);
+      const N = pts.length;
+      // Tangents, the distance downstream, and the bend: the heading's change a plot, averaged over
+      // about a third of a plot each way (white water gathers on the outside of a whole bend).
+      const tan = pts.map((p, k) => {
+        const a = pts[Math.max(0, k - 1)], b = pts[Math.min(N - 1, k + 1)];
+        const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        return [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
+      });
+      const along = [0];
+      for (let k = 1; k < N; k++) along.push(along[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+      const turn = tan.map((t, k) => {
+        if (k === 0 || k === N - 1) return 0;
+        const a = tan[k - 1], b = tan[k + 1];
+        return Math.atan2(a[0] * b[1] - a[1] * b[0], a[0] * b[0] + a[1] * b[1]) / Math.max(1e-6, along[k + 1] - along[k - 1]);
+      });
+      const bend = turn.map((_, k) => {
+        let s = 0, n = 0;
+        for (let j = Math.max(0, k - 4); j <= Math.min(N - 1, k + 4); j++, n++) s += turn[j];
+        return s / n;
+      });
+      const level = (p) => riverLevel(world, p[0], p[1]);
+      const rows = [];
+      const row = (p, t, y, s, b, past) => rows.push([[p[0] - t[1] * half, y, -(p[1] + t[0] * half)], [p[0] + t[1] * half, y, -(p[1] - t[0] * half)], s, b, past]);
+      // The river and a cap past each end (the shader rounds it). A cap sits a hair lower, more the
+      // further out: where it overlaps another river's water (a confluence), the ribbon nearest its
+      // own line is the one drawn.
+      const CAPS = 4;
+      const capRow = (k, dir, j) => {
+        const d = (half * j) / CAPS;
+        const p = [pts[k][0] + tan[k][0] * d * dir, pts[k][1] + tan[k][1] * d * dir];
+        row(p, tan[k], level(pts[k]) - 0.002 - 0.01 * d, along[k] + d * dir, 0, d);
+      };
+      for (let j = CAPS; j > 0; j--) capRow(0, -1, j);
+      for (let k = 0; k < N; k++) row(pts[k], tan[k], level(pts[k]), along[k], bend[k], 0);
+      for (let j = 1; j <= CAPS; j++) capRow(N - 1, 1, j);
+      // aExtra.z: 1 where the ribbon runs out over the sea (the ground under it, uncut by the
+      // channel, is below sea level): the water shader leaves the sea there (WATER_FS).
+      const sea = (p) => (world.heightAt(p[0], -p[2], false) < SEA - 0.005 ? 1 : 0);
+      const u = half / RIVER_HALF;
+      for (let k = 0; k + 1 < rows.length; k++) {
+        const [a0, a1, s0, b0, p0] = rows[k];
+        const [c0, c1, s1, b1, p1] = rows[k + 1];
+        const V = (p, uu, s, b, past) => v.push(p[0], p[1], p[2], uu, s, sea(p), 0, b, past / RIVER_HALF);
+        V(a0, -u, s0, b0, p0); V(c0, -u, s1, b1, p1); V(a1, u, s0, b0, p0);
+        V(a1, u, s0, b0, p0); V(c0, -u, s1, b1, p1); V(c1, u, s1, b1, p1);
       }
     }
-    if (v.length) this.rivers = new Mesh(gl, new Float32Array(v), RIVER_LAYOUT);
+    if (v.length) this.rivers = new Mesh(gl, new Float32Array(v), WATER_LAYOUT);
   }
 
   /** Team rings (unit stacks, cities) and the path ribbon, draped on the ground. `rings`:
@@ -299,35 +343,54 @@ export class Scene {
       this.ringWorld = world;
     }
     const v = [];
-    // Draped on the surface the player sees: on a sea plot heightAt is the sea floor, so clamp to
-    // the water level so rings and the path ribbon sit on the water, not under it (F7).
-    const ground = (mx, my) => Math.max(SEA, world.heightAt(mx, my));
-    const push = (mx, my, lift, c, a, H = ground) => v.push(mx, H(mx, my) + lift, -my, c[0], c[1], c[2], a);
+    // Draped on the surface the player sees: on a sea plot heightAt is the sea floor and under a
+    // river its bed, so rings and the path ribbon sit on the water, not under it (F7). A river's
+    // water lies at its ribbon's level by the nearest point of its line (riverLevel), over the
+    // channel and up the cut bank to where the ground rises out of it; that level changes slowly
+    // along the line, so it is looked up once a twentieth of a plot.
+    const rivers = world.riverCells.size > 0;
+    const levels = new Map();
+    const water = (mx, my) => {
+      const p = world.riverPoint(mx, my);
+      if (!p || p[2] >= RIVER_BANK) return -Infinity;
+      const key = `${Math.round(p[0] * 20)},${Math.round(p[1] * 20)}`;
+      let l = levels.get(key);
+      if (l === undefined) levels.set(key, (l = riverLevel(world, p[0], p[1])));
+      return l;
+    };
+    const ground = (mx, my) => Math.max(SEA, world.heightAt(mx, my), rivers ? water(mx, my) : -Infinity);
+    const push = (mx, my, y, c, a) => v.push(mx, y, -my, c[0], c[1], c[2], a);
     // A ring is draped on a 5 x 5 patch of the ground's height under it (bilinear), not on a
-    // height lookup per vertex: hundreds of stacks re-ring on every move.
+    // height lookup per vertex: hundreds of stacks re-ring on every move. Beside a river each of its
+    // points looks up the water as well: the patch would smear the water's edge (and where the far
+    // side lies low, sink the ring's edge under the surface).
     const patch = (cx, cy, R) => {
       const N = 4;
       const hs = new Float64Array((N + 1) * (N + 1));
       for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) hs[j * (N + 1) + i] = Math.max(SEA, world.heightAt(cx - R + (2 * R * i) / N, cy - R + (2 * R * j) / N));
-      return (mx, my) => {
+      const P = (mx, my) => {
         const u = Math.min(N - 1e-6, Math.max(0, ((mx - cx + R) / (2 * R)) * N));
         const t = Math.min(N - 1e-6, Math.max(0, ((my - cy + R) / (2 * R)) * N));
         const i = Math.floor(u), j = Math.floor(t), fu = u - i, ft = t - j;
         const h = (a, b) => hs[b * (N + 1) + a];
         return (h(i, j) * (1 - fu) + h(i + 1, j) * fu) * (1 - ft) + (h(i, j + 1) * (1 - fu) + h(i + 1, j + 1) * fu) * ft;
       };
+      return rivers && world.riverDist(cx, cy) < R + RIVER_BANK ? (mx, my) => Math.max(P(mx, my), water(mx, my)) : P;
     };
     const N = 28;
     const cs = Array.from({ length: N + 1 }, (_, k) => [Math.cos((k / N) * Math.PI * 2), Math.sin((k / N) * Math.PI * 2) * 0.92]);
     const annulus = (cx, cy, r0, r1, c, a, lift, H) => {
-      const corner = (r, k) => push(cx + cs[k][0] * r, cy + cs[k][1] * r, lift, c, a, H);
+      // Each point of the two circles is draped once.
+      const circle = (r) => cs.map(([cu, cv]) => [cx + cu * r, cy + cv * r]).map(([mx, my]) => [mx, my, H(mx, my) + lift]);
+      const A = circle(r0), B = circle(r1);
+      const corner = (p) => push(p[0], p[1], p[2], c, a);
       for (let k = 0; k < N; k++) {
-        corner(r0, k);
-        corner(r1, k);
-        corner(r1, k + 1);
-        corner(r0, k);
-        corner(r1, k + 1);
-        corner(r0, k + 1);
+        corner(A[k]);
+        corner(B[k]);
+        corner(B[k + 1]);
+        corner(A[k]);
+        corner(B[k + 1]);
+        corner(A[k + 1]);
       }
     };
     for (const g of rebuildRings ? rings : []) {
@@ -357,7 +420,7 @@ export class Scene {
           if (s % 2 === 1) continue; // dashed
           const p0 = [ax + (bx - ax) * t0, ay + (by - ay) * t0], p1 = [ax + (bx - ax) * t1, ay + (by - ay) * t1];
           const q = [[p0[0] - ty * wd, p0[1] + tx * wd], [p0[0] + ty * wd, p0[1] - tx * wd], [p1[0] + ty * wd, p1[1] - tx * wd], [p1[0] - ty * wd, p1[1] + tx * wd]];
-          for (const [mx, my] of [q[0], q[1], q[2], q[0], q[2], q[3]]) push(mx, my, 0.02, c, 0.95);
+          for (const [mx, my] of [q[0], q[1], q[2], q[0], q[2], q[3]]) push(mx, my, ground(mx, my) + 0.02, c, 0.95);
         }
       }
     }
@@ -432,6 +495,8 @@ export class Scene {
       uDecal: this.decal,
       uOwner: this.tex.owner,
       uHeight: this.tex.height,
+      uMat: this.materials.tex,
+      uMatMean: this.materials.mean,
     };
   }
 
@@ -460,7 +525,8 @@ export class Scene {
   drawWater(prog, U, depthOnly = false) {
     if (!this.water) return;
     prog.use().set(U);
-    if (!depthOnly) prog.set(this.mapUniforms());
+    // uCoarse: the far zoom's ground is coarse, so the water reads its depth from the height field.
+    if (!depthOnly) prog.set({ ...this.mapUniforms(), uCoarse: this.far ? 1 : 0 });
     for (const copy of this.copies) {
       prog.set({ uCopyX: copy, uRiver: 0 });
       if (!depthOnly) prog.set({ uRiverLift: 0 });
@@ -484,11 +550,12 @@ export class Scene {
       prog.set({ uCopyX: copy });
       for (const layer of ["static", "units"]) {
         // Detail culling: decoration a few pixels across at this zoom is not drawn, and the
-        // smallest things cast no shadow (units always draw).
+        // smallest things and ground clutter (recipes with `shadow: false`) cast no shadow
+        // (units always draw).
         const minPx = layer === "units" ? 0 : shadow ? 6 : 2.5;
         for (const b of this.layers[layer]) {
           const px = b.batch.radius * this.px;
-          if (px < minPx) continue;
+          if (px < minPx || (shadow && !b.batch.shadow)) continue;
           if (!this.chunkVisible(b.cx, b.cy, copy, shadow ? 3 : 1.5, BUCKET)) continue;
           if (!shadow && !this.boxVisible(b.cx * BUCKET + copy - 0.6, b.cy * BUCKET - 0.6, BUCKET + 1.2, b.top + 0.05)) continue;
           // The simplified copy when the thing is small on screen, and always for the shadows.
@@ -579,7 +646,7 @@ export class Scene {
     }
     this.assets.clear();
     for (const m of [this.water, this.rivers, this.markers, this.ringMesh, this.particles]) m?.dispose();
-    for (const t of [this.decal, this.light, this.marks]) if (t) gl.deleteTexture(t);
+    for (const t of [this.decal, this.light, this.marks, this.materials.tex]) if (t) gl.deleteTexture(t);
   }
 }
 

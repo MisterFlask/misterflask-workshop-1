@@ -445,7 +445,7 @@ export class Map3D {
           const x = tw.fx + (it.x - tw.fx) * e;
           const z = tw.fz + (it.z - tw.fz) * e;
           // On foot over the ground's relief; ships and fliers straight between their heights.
-          const y = it.ground && this.world ? standHeight(this.world, x, -z, it.foot) : tw.fy + (it.y - tw.fy) * e;
+          const y = it.ground && this.world ? Math.max(SEA, standHeight(this.world, x, -z, it.foot)) : tw.fy + (it.y - tw.fy) * e;
           o = { ...o, x, z, y: y + (it.ground ? Math.abs(Math.sin(t * Math.PI * 3)) * 0.012 : 0) };
         }
       }
@@ -545,6 +545,8 @@ export class Map3D {
       uClouds: cfg.clouds,
       uTerrainShadow: cfg.terrainShadow ?? 1,
       uDabs: cfg.dabs ?? 1,
+      uBrush: cfg.brush ?? 1,
+      uCaustics: cfg.caustics ?? 1,
       uShadowMat: lightViewProj,
       uShadowTexel: [1 / 2048, 1 / 2048],
       uWind: cfg.wind,
@@ -617,14 +619,16 @@ export class Map3D {
     this.tuneQuality(ms);
   }
 
-  /** The config with the quality ladder applied: at level 1 the Kuwahara paint filter is off, at
-   *  level 2 the render scale drops to 0.75 as well. */
+  /** The config with the quality ladder applied: at level 1 the Kuwahara paint filter (off by
+   *  default, but a player may have turned it on) and the water's screen-space reflections go (it
+   *  keeps mirroring the sky and its clouds), at level 2 the render scale drops to 0.75 as well. */
   qualityCfg() {
     if (this.autoLevel <= 0) return this.cfg;
     return {
       ...this.cfg,
       kuwahara: 0,
       renderScale: this.cfg.renderScale * (this.autoLevel >= 2 ? 0.75 : 1),
+      reflections: 0,
     };
   }
 

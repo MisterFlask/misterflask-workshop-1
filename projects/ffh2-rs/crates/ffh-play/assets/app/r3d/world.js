@@ -92,6 +92,24 @@ const BASE = [0.035, -0.42, -0.12, 0.1, 0.1, 0.1, 0.025];
 
 export const SEA = 0;
 
+/** How deep a hull sits in the water: its keel is under the surface, so the water is seen over it
+ *  (refracted, tinted) and laps at its waterline in a collar of foam (shaders.js WATER_FS). Only
+ *  hulls (ships, boats, wrecks, swimmers) take it; what lies on the surface (a resource's ripples, a
+ *  whirlpool, a floe) floats at the sea's level. */
+export const DRAFT = 0.012;
+
+/** Half a river's width of water, in plots (from its centre line to the water's edge): a broad
+ *  river, the painted map's centrepiece. The edge wanders by up to RIVER_WANDER either way (the
+ *  water shader draws it, WATER_FS), so the water is at most 2 * (RIVER_HALF + RIVER_WANDER) =
+ *  0.44 plot wide -- also where a road crosses it, so a bridge of 0.6 plot spans it with its feet on
+ *  the banks -- and with the line's meander the plot centres (where units stand) stay dry. */
+export const RIVER_HALF = 0.19;
+export const RIVER_WANDER = 0.03;
+/** From a river's centre line to the top of its banks (the carved channel's full half-width). */
+export const RIVER_BANK = 0.3;
+/** How far round a river `riverDist` measures exactly (its cell index reaches this far). */
+const RIVER_NEAR = 0.45;
+
 /** Where the hell terrains begin (corrupted ground glows, ash falls). */
 export function isHell(g) {
   return g === GROUND.BURNING_SANDS || g === GROUND.BROKEN_LANDS || g === GROUND.PERDITION;
@@ -216,7 +234,7 @@ export class World {
   }
 
   /** The ground height at map point (mx, my). */
-  heightAt(mx, my) {
+  heightAt(mx, my, carve = true) {
     // Warp the blend lookup so coastlines and hill feet wander off the grid lines.
     // Two octaves: broad bays and headlands, then a ragged edge (plot centres stay inside their
     // plot: the warp never reaches half a plot).
@@ -281,15 +299,18 @@ export class World {
       h += dry * this.summits(mx, my) * (0.75 + 0.35 * r2);
     }
     if (voidW > 0) h = h * (1 - voidW) + BASE[KIND.VOID] * voidW;
-    // Rivers carve their channel.
-    if (this.riverCells.size) {
+    // Rivers carve their channel (`carve` false: the ground the river runs over, uncut).
+    if (carve && this.riverCells.size) {
       const d = this.riverDist(mx, my);
-      if (d < 0.32) {
-        // A channel with sloping banks: full depth across the bed, easing out to the bank tops.
-        const carve = 1 - smoothstep(0.05, 0.24, d);
-        h = Math.min(h, h - 0.08 * carve * carve * (3 - 2 * carve));
-        // A river's bed never rises over its banks' sea level side.
-        if (carve > 0.5) h = Math.max(h, -0.06);
+      if (d < RIVER_BANK) {
+        // A flat bed under all the water the shader may draw (its edge wanders, RIVER_WANDER), then
+        // a steep cut bank up to the bank tops. The bed runs on under the water's edge: the terrain
+        // mesh (RES vertices a plot) is too coarse to draw the shore, so the water shader does.
+        const cv = 1 - smoothstep(RIVER_HALF + RIVER_WANDER, RIVER_BANK, d);
+        h -= 0.09 * cv * cv * (3 - 2 * cv);
+        // A river's bed never sinks deep under sea level -- on land: over the sea the floor stays
+        // the sea's (raised, it would show through the clear water as a sandbar along the river).
+        if (cv > 0.5) h = Math.max(h, -0.06 - 0.5 * smoothstep(0.3, 0.7, water));
       }
     }
     return h;
@@ -414,14 +435,24 @@ export class World {
     });
     const used = new Uint8Array(segs.length);
     const lines = [];
-    // Walks from corner `from` along segment `start`, through corners shared by exactly two
-    // segments, until an end or a junction.
+    // The way out of corner `p` along segment k (a unit step; across the seam, the short way).
+    const step = (k, p) => {
+      const s = segs[k];
+      const o = key(s[0]) === key(p) ? s[1] : s[0];
+      let dx = o[0] - p[0];
+      if (this.wrapX) dx -= Math.round(dx / w) * w;
+      return [dx, o[1] - p[1]];
+    };
+    // Walks from corner `from` along segment `start`, through corners shared by two segments and
+    // straight on through a junction (a broad river must not break into a sharp corner where a
+    // tributary joins it: the tributary ends there, in its water), until an end.
     const walk = (start, from) => {
       const line = [from.slice()];
       let cur = start;
       let p = from;
       for (;;) {
         used[cur] = 1;
+        const [dx, dy] = step(cur, p);
         const s = segs[cur];
         const other = key(s[0]) === key(p) ? s[1] : s[0];
         // Keep the line continuous across the wrap seam.
@@ -432,26 +463,33 @@ export class World {
         p = other;
         const all = at.get(key(p)) ?? [];
         const next = all.filter((k) => !used[k]);
-        if (all.length !== 2 || next.length !== 1) break;
-        cur = next[0];
+        if (all.length === 2 && next.length === 1) cur = next[0];
+        else {
+          const on = all.length > 2 ? next.find((k) => { const [ex, ey] = step(k, p); return ex * dx + ey * dy > 0.5; }) : undefined;
+          if (on === undefined) break;
+          cur = on;
+        }
       }
       return line;
     };
-    // Start from ends and junctions (corners not shared by exactly two segments), then any loops.
-    for (const [kk, ks] of at) {
-      if (ks.length === 2) continue;
-      for (const k of ks) {
-        if (used[k]) continue;
-        const s = segs[k];
-        lines.push(walk(k, key(s[0]) === kk ? s[0] : s[1]));
+    // Start from ends, then from junctions (what is left of them: the tributaries), then any loops.
+    for (const pass of [1, 3]) {
+      for (const [kk, ks] of at) {
+        if (pass === 1 ? ks.length !== 1 : ks.length < 3) continue;
+        for (const k of ks) {
+          if (used[k]) continue;
+          const s = segs[k];
+          lines.push(walk(k, key(s[0]) === kk ? s[0] : s[1]));
+        }
       }
     }
     segs.forEach((s, k) => {
       if (!used[k]) lines.push(walk(k, s[0]));
     });
-    // Subdivide before smoothing so even a one-edge reach (2 points, a straight bar otherwise) gets
-    // interior points that chaikin and meander can bend (F18).
-    this.rivers = lines.map((l) => meander(chaikin(chaikin(subdivide(l, 0.3)))));
+    // Smoothed from the corners themselves (a turn rounds to about a third of a plot's radius: a
+    // broad river's ribbon would fold over itself in a tighter one), then subdivided so even a
+    // one-edge reach (2 points, a straight bar otherwise) has interior points to meander (F18).
+    this.rivers = lines.map((l) => meander(subdivide(chaikin(chaikin(chaikin(l))), 0.1)));
     // Segment index by cell.
     this.riverCells = new Map();
     this.riverSegs = [];
@@ -460,8 +498,8 @@ export class World {
         const a = line[i], b = line[i + 1];
         const k = this.riverSegs.length;
         this.riverSegs.push([a[0], a[1], b[0], b[1]]);
-        const x0 = Math.floor(Math.min(a[0], b[0]) - 0.35), x1 = Math.floor(Math.max(a[0], b[0]) + 0.35);
-        const y0 = Math.floor(Math.min(a[1], b[1]) - 0.35), y1 = Math.floor(Math.max(a[1], b[1]) + 0.35);
+        const x0 = Math.floor(Math.min(a[0], b[0]) - RIVER_NEAR), x1 = Math.floor(Math.max(a[0], b[0]) + RIVER_NEAR);
+        const y0 = Math.floor(Math.min(a[1], b[1]) - RIVER_NEAR), y1 = Math.floor(Math.max(a[1], b[1]) + RIVER_NEAR);
         for (let y = y0; y <= y1; y++) {
           for (let x = x0; x <= x1; x++) {
             const ck = `${this.wrapX ? ((x % w) + w) % w : x},${y}`;
@@ -473,7 +511,8 @@ export class World {
     }
   }
 
-  /** Distance from map point (mx, my) to the nearest river (Infinity when none is near). */
+  /** Distance from map point (mx, my) to the nearest river (exact within RIVER_NEAR; beyond it
+   *  larger, or Infinity when none is near). */
   riverDist(mx, my) {
     const w = this.w;
     const cx = Math.floor(mx);
@@ -491,6 +530,27 @@ export class World {
         bx += s;
       }
       best = Math.min(best, segDist(mx, my, ax, ay, bx, by));
+    }
+    return best;
+  }
+
+  /** The nearest point of a river line to map point (mx, my) and its distance, [x, y, d] (within
+   *  RIVER_NEAR), or null when no river is near: where the water's surface over (mx, my) is laid
+   *  (scene.js riverLevel). */
+  riverPoint(mx, my) {
+    const w = this.w;
+    const cx = Math.floor(mx);
+    const list = this.riverCells.get(`${this.wrapX ? ((cx % w) + w) % w : cx},${Math.floor(my)}`);
+    if (!list) return null;
+    let best = null;
+    for (const k of list) {
+      const [ax0, ay, bx0, by] = this.riverSegs[k];
+      const s = this.wrapX ? Math.round((mx - ax0) / w) * w : 0;
+      const ax = ax0 + s, bx = bx0 + s;
+      const dx = bx - ax, dy = by - ay;
+      const t = clamp(((mx - ax) * dx + (my - ay) * dy) / (dx * dx + dy * dy || 1e-9), 0, 1);
+      const px = ax + dx * t, py = ay + dy * t, d = Math.hypot(mx - px, my - py);
+      if (!best || d < best[2]) best = [px, py, d];
     }
     return best;
   }
@@ -532,8 +592,13 @@ function chaikin(pts) {
   return out;
 }
 
-/** A gentle sideways wander along a polyline (deterministic by position). */
+/** A gentle sideways wander along a polyline (deterministic by position): long, low swings (a
+ *  broad river's ribbon must not fold in a tight wiggle; the water's edge wanders finer, in the
+ *  shader), fading in from the ends so a river still meets its mouth or its tributary's corner. */
 function meander(pts) {
+  const along = [0];
+  for (let i = 1; i < pts.length; i++) along.push(along[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = along[along.length - 1];
   return pts.map((p, i) => {
     if (i === 0 || i === pts.length - 1) return p;
     const a = pts[i - 1], b = pts[i + 1];
@@ -541,7 +606,8 @@ function meander(pts) {
     const l = Math.hypot(tx, ty) || 1;
     tx /= l;
     ty /= l;
-    const o = 0.13 * noise2(p[0] * 1.7 + 0.5, p[1] * 1.7 - 0.5) + 0.04 * noise2(p[0] * 5.1 - 2.5, p[1] * 5.1 + 1.5);
+    const ends = smoothstep(0, 0.6, Math.min(along[i], total - along[i]));
+    const o = ends * (0.075 * noise2(p[0] * 0.9 + 0.5, p[1] * 0.9 - 0.5) + 0.025 * noise2(p[0] * 2.1 - 2.5, p[1] * 2.1 + 1.5));
     return [p[0] - ty * o, p[1] + tx * o];
   });
 }

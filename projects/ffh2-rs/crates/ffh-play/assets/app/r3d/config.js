@@ -8,13 +8,14 @@ import { hexLinear } from "./math.js";
 const KEY = "ffh.r3d.config";
 
 /** The light of the scene: sun direction (toward the sun) and colours (linear).
- * The map is always in daylight. There is one light, `daylight`: a warm, high sun (about 42
- * degrees up) so shadows stay short (about 1.2x object height) and the shaded side keeps its
- * colour. No dusk, night or time-of-day cycle (owner decision); the old `afternoon`/`day` pair,
- * whose low (27 degrees) sun cast the long near-black shadows F1 reported, is merged into this. */
+ * The map is always in daylight. There is one light, `daylight`: a warm, high sun (about 48
+ * degrees up, from the south-west) so shadows stay short (about 0.9x object height, as in the
+ * look target) and the shaded side keeps its colour. No dusk, night or time-of-day cycle (owner
+ * decision); the old `afternoon`/`day` pair, whose low (27 degrees) sun cast the long near-black
+ * shadows F1 reported, is merged into this. */
 export const LIGHTING = {
   daylight: {
-    sunDir: [-0.65, 0.67, 0.35],
+    sunDir: [-0.589, 0.743, 0.317],
     sun: [hexLinear("#ffe2bc"), 2.8],
     sky: [hexLinear("#7e93bf"), 0.68],
     ground: [hexLinear("#6c5a44"), 0.26],
@@ -24,33 +25,47 @@ export const LIGHTING = {
   },
 };
 
+// The painterly preset was moved toward the owner's look target (docs/R3D.md §16: a bright,
+// saturated hand-painted strategy map): more saturation and a little more contrast (the target's
+// deep shade against high-key light), little haze or cloud shadow, and the paint imitated over the
+// image retired as the materials took over its work (docs/R3D.md §16): the Kuwahara paint filter off
+// (owner decision: it blurred detail the target has and cost ~40% of a software frame), then the ink
+// outlines and the stepped light off once crowns, rocks and the ground carried their own form and
+// detail. The brush marks on objects stay for now (buildings and rocks still take their strokes
+// from them). Every switch stays in the panel.
 export const PRESETS = {
   painterly: {
     lighting: "daylight",
     shadows: true,
     ssao: 0.75,
     glow: 0.55,
-    kuwahara: 0.85,
+    kuwahara: 0,
     kuwaharaRadius: 4,
     sharp: 8,
     aniso: 1,
-    outline: 0.75,
+    outline: 0,
     outlineWidth: 1,
     grade: 1,
-    saturation: 1.02,
-    contrast: 1.06,
-    grain: 0.035,
-    vignette: 0.14,
+    saturation: 1.1,
+    contrast: 1.12,
+    grain: 0.02,
+    vignette: 0.1,
     paint: 1,
-    bands: 0.55,
+    bands: 0,
     wrapLight: 0.45,
     rim: 0.35,
     stylize: 1,
-    clouds: 0.45,
+    clouds: 0.1,
     terrainShadow: 0.45,
     dabs: 1.6,
-    haze: 0.32,
-    mist: 0.35,
+    brush: 1,
+    inkLost: 1,
+    inkColour: 0.5,
+    reflections: 1,
+    refraction: 1,
+    caustics: 1,
+    haze: 0.12,
+    mist: 0.12,
   },
   plain: {
     lighting: "daylight",
@@ -70,6 +85,13 @@ export const PRESETS = {
     clouds: 0,
     terrainShadow: 1,
     dabs: 0,
+    brush: 0,
+    inkLost: 0,
+    inkColour: 0,
+    // Seeing into and mirrored in water is ordinary real-time rendering, not stylization.
+    reflections: 1,
+    refraction: 1,
+    caustics: 1,
     haze: 0,
     mist: 0,
   },
@@ -105,10 +127,16 @@ export const PANEL = [
   ["outlineWidth", "  outline width (px)", "range", 0.5, 2.5, 0.25],
   ["paint", "Pigment variation", "range", 0, 1.5, 0.05],
   ["dabs", "Brush dabs", "range", 0, 2.5, 0.05],
+  ["brush", "Brushwork on objects (leaves, strokes)", "range", 0, 1.5, 0.05],
+  ["inkLost", "  lost-and-found ink", "range", 0, 1, 0.05],
+  ["inkColour", "  coloured ink", "range", 0, 1, 0.05],
   ["bands", "Light banding", "range", 0, 1, 0.05],
   ["stylize", "Coloured shadows", "range", 0, 1, 0.05],
   ["rim", "Rim light", "range", 0, 1, 0.05],
   ["clouds", "Cloud shadows", "range", 0, 1, 0.05],
+  ["reflections", "Water reflections (banks, ships)", "range", 0, 1, 0.05],
+  ["refraction", "Water transparency (shallows)", "range", 0, 1, 0.05],
+  ["caustics", "  caustics on the shallow floor", "range", 0, 1, 0.05],
   ["haze", "Aerial haze", "range", 0, 1, 0.05],
   ["mist", "Valley mist", "range", 0, 1, 0.05],
   ["grade", "Colour grade", "range", 0, 1, 0.05],
@@ -131,7 +159,10 @@ export function loadConfig() {
   } catch {
     saved = {};
   }
-  const cfg = { ...DEFAULTS, ...saved };
+  // Keys added since the config was saved come from the preset it was saved under, not from the
+  // defaults (a plain look saved before the brushwork existed must not gain brush marks).
+  const base = PRESETS[saved.preset] ? { ...DEFAULTS, ...PRESETS[saved.preset] } : DEFAULTS;
+  const cfg = { ...base, ...saved };
   // The map is always in daylight; a light no longer offered (a saved "dusk", "afternoon" or
   // "day") falls back to the single "daylight" look.
   if (!LIGHTING[cfg.lighting]) cfg.lighting = DEFAULTS.lighting;

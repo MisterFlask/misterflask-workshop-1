@@ -52,6 +52,7 @@ const CONFIGS = [
   ["painterly", {}],
   ["no-kuwahara", { kuwahara: 0 }],
   ["no-ssao", { ssao: 0 }],
+  ["no-dabs", { dabs: 0 }],
   ["no-shadows", { shadows: false }],
   ["no-outline+grade", { outline: 0, grade: 0 }],
   ["plain", "plain"],

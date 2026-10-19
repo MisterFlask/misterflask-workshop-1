@@ -11,8 +11,9 @@ import { S, tname, me, isBarbarian } from "../state.js";
 import * as T from "../tiles.js";
 import { headUnit, stackState } from "../stacks.js";
 import { rng, hash32, hashf } from "./noise.js";
-import { hexLinear, clamp } from "./math.js";
-import { KIND, FEAT, GROUND, SEA } from "./world.js";
+import { hexLinear, clamp, smoothstep } from "./math.js";
+import { KIND, FEAT, GROUND, SEA, DRAFT, RIVER_HALF, RIVER_WANDER, RIVER_BANK } from "./world.js";
+import { roadLinks, inField, fieldLayout, riversAround } from "./fields.js";
 import { CATALOG } from "./assets/catalog.js";
 import { hasRecipe, buildAsset } from "./assets/registry.js";
 
@@ -24,6 +25,29 @@ const CITY_UNIT_SPOT = [-0.27, 0.32];
 const VOLCANO_UNIT_SPOT = [-0.14, 0.38];
 const STRUCTURE_SPOT = [0.02, -0.12];
 const BONUS_SPOT = [-0.26, 0.2];
+/** A stack's head and the two of its company behind it, from the stack's spot. */
+const COMPANY = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
+
+/** Where a city's garrison stands (plot-local [x, z], the head first, then its company): at the
+ *  city's front-left corner (CITY_UNIT_SPOT), or, where one of them would stand in a river, on its
+ *  cut bank or on a town wall along its bank, at the front-right (a river along the west edge) or
+ *  drawn back from the water (a river along the front). A pure function of the plot and the
+ *  rivers, shared by dressUnits (which stands the stack there) and the town plan (which keeps the
+ *  ground clear of houses and its wall round it). */
+function garrisonOf(world, x, y) {
+  const stands = (sx, sz) => COMPANY.map(([u, v]) => [sx + u, sz + v]);
+  if (!world.riverCells.size) return stands(...CITY_UNIT_SPOT);
+  let best = null, bestD = -1;
+  for (const back of [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]) {
+    for (const sx of [CITY_UNIT_SPOT[0], -CITY_UNIT_SPOT[0], -0.12, 0.12]) {
+      const s = stands(sx, CITY_UNIT_SPOT[1] - back);
+      const d = Math.min(...s.map(([lx, lz]) => world.riverDist(x + 0.5 + lx, y + 0.5 - lz)));
+      if (d >= RIVER_BANK + 0.08) return s;
+      if (d > bestD) [best, bestD] = [s, d];
+    }
+  }
+  return best;
+}
 
 let nextId = 1;
 const ids = new Map();
@@ -141,8 +165,10 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       const ctx = { r, x, y, i, kind, feat, ground, world, hills: kind === KIND.HILLS, peak: kind === KIND.PEAK, held, city: !!city, owner: ownerId, civ, family, unit: unitAt.has(i), bonus, improvement: imp, coast: shoreOf(world, x, y), river: map.river[i] > 0 };
       const at = (lx, lz) => [x + 0.5 + lx, y + 0.5 - lz]; // plot-local (x east, z south) -> map
       // Nothing grows in a river's channel.
-      const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < 0.2;
+      const nearRiver = (lx, lz) => world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < RIVER_HALF + RIVER_WANDER + 0.05;
       ctx.nearRiver = nearRiver;
+      // The rivers round the plot, as its fields keep off them (fields.js fieldLayout).
+      ctx.rivers = riversAround(world, map, x, y);
       // Something stands on the plot behind this one (north): its trees in front of it keep low.
       const north = world.index(x, y + 1);
       ctx.northHeld = north >= 0 && (unitAt.has(north) || cityAt.has(north));
@@ -156,9 +182,27 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // A city on any neighbouring plot (wide crowns keep clear of its buildings).
       ctx.cityNear = false;
       for (let dy = -1; dy <= 1 && !ctx.cityNear; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && cityAt.has(world.index(x + dx, y + dy))) ctx.cityNear = true;
+      // A great town spills over its plot (the catalog's cityReach, up to ~0.9): nothing grows or
+      // lies within its reach, on its own plot or the neighbouring ones, else trees and rocks stand
+      // inside its walls.
+      const towns = city ? [[0, 0, (CATALOG.cityReach?.({ size: city.size ?? 1, walls: !!city.walls, capital: !!city.capital }) ?? 0.45) + 0.06]] : [];
+      if (ctx.cityNear) {
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const c = (dx || dy) && cityAt.get(world.index(x + dx, y + dy));
+          if (c) towns.push([dx, -dy, (CATALOG.cityReach?.({ size: c.size ?? 1, walls: !!c.walls, capital: !!c.capital }) ?? 0.45) + 0.06]);
+        }
+      }
+      ctx.inTown = (lx, lz) => towns.some(([cx, cz, R]) => Math.hypot(lx - cx, lz - cz) < R);
+      // Wooded neighbours (open ground next to a wood takes more trees and bushes: the wood's
+      // edge spills over) and the road through the plot (plants keep off it).
+      ctx.woods = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && WOODED.has(world.feat[world.index(x + dx, y + dy)])) ctx.woods++;
+      const roads = roadsOf(world, map, x, y, i);
+      ctx.roadDist = (lx, lz) => roadDist(roads, lx, lz);
       const place = (asset, lx, lz, o = {}) => {
         const [mx, my] = at(lx, lz);
-        const yy = o.float ? Math.max(SEA, H(mx, my)) : H(mx, my);
+        // A floating thing rides at the sea's level, a hull a little under it (its draft).
+        const yy = o.float ? Math.max(SEA - (o.draft ?? 0), H(mx, my)) : H(mx, my);
         out.push(inst(asset, mx, yy + (o.lift ?? 0), -my, { plot: i, id: o.id ?? idOf(`s${i}:${out.length - base}`), ...o }));
       };
 
@@ -166,20 +210,12 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // city or structure holds the plot.
       if (feat === FEAT.FOREST || feat === FEAT.JUNGLE || feat === FEAT.ANCIENT || feat === FEAT.BURNT || feat === FEAT.YOUNG) {
         if (!city) placeTrees(world, ctx, place);
-      } else if (kind === KIND.LAND || kind === KIND.HILLS) {
-        // Open ground: a few loose plants.
-        const flora = CATALOG.flora?.(ctx) ?? [{ asset: "basic.tree", scale: 0.45, count: r() < 0.25 ? 1 : 0 }];
-        for (const f of flora) {
-          for (let k = 0; k < (f.count ?? 1); k++) {
-            const lx = r.range(-0.42, 0.42), lz = r.range(-0.42, 0.42);
-            if (held && Math.hypot(lx, lz) < 0.3) continue;
-            if (city) continue;
-            if (nearRiver(lx, lz)) continue;
-            place(pick(f.asset, "basic.tree"), lx, lz, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: (f.scale ?? 1) * r.range(0.8, 1.15), yaw: r.range(0, 6.28), phase: r(), tint: f.tint });
-          }
-        }
+      } else if ((kind === KIND.LAND || kind === KIND.HILLS) && !city) {
+        // Open ground: plants scattered in clumps, thick in some places and bare in others.
+        const flora = CATALOG.flora?.(ctx) ?? [{ asset: "basic.tree", scale: 0.45, count: r() < 0.25 ? 1 : 0, size: 2 }];
+        scatterFlora(world, map, ctx, place, flora);
       }
-      // Rocks on hills, peaks and rough ground.
+      // Rocks on hills, peaks and rough ground (off the roads and out of the river).
       const rocks = CATALOG.rocks?.(ctx) ?? (kind === KIND.HILLS || kind === KIND.PEAK ? [{ asset: "basic.rock", scale: 1, count: kind === KIND.PEAK ? 3 : 1 }] : []);
       for (const rk of rocks) {
         for (let k = 0; k < (rk.count ?? 1); k++) {
@@ -195,14 +231,17 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
             }
           }
           if (held && Math.hypot(lx, lz) < 0.32) continue;
+          if (ctx.roadDist(lx, lz) < 0.12 || nearRiver(lx, lz) || ctx.inTown(lx, lz)) continue;
+          if (imp && inField(i, imp, bonus, ctx.rivers, lx, lz, 0.03)) continue; // not in the crops
           place(pick(rk.asset, "basic.rock"), lx, lz, { variant: rk.variant ?? r.int(0, 7), param: rk.param, scale: (rk.scale ?? 1) * r.range(0.75, 1.3), yaw: r.range(0, 6.28), lift: -0.01, tint: rk.tint });
         }
       }
+      placeBank(world, map, ctx, place);
       // One-off features (oasis, volcano, flood reeds, ice floes, flames).
       const feats = CATALOG.feature?.(feat, ctx) ?? [];
       for (const f of feats) {
         if (city && !f.always) continue;
-        place(f.asset, f.dx ?? 0, f.dz ?? 0, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: f.scale ?? 1, yaw: f.yaw ?? r.range(0, 6.28), float: f.float, tint: f.tint });
+        place(f.asset, f.dx ?? 0, f.dz ?? 0, { variant: f.variant ?? r.int(0, 7), param: f.param, scale: f.scale ?? 1, yaw: f.yaw ?? r.range(0, 6.28), float: f.float, draft: f.draft, tint: f.tint });
       }
       // The improvement's structure (not under a city: the settlement replaces it).
       if (imp && !city) {
@@ -215,7 +254,7 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         for (const im of parts) {
           const px = im.dx ?? spot[0], pz = im.dz ?? spot[1];
           const yaw = im.yaw ?? r.range(-0.4, 0.4), sc = im.scale ?? 1;
-          place(im.asset, px, pz, { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: sc, sx: im.sx, sy: im.sy, sz: im.sz, yaw, float: im.float, id: im.id ?? iid, team, tint: im.tint });
+          place(im.asset, px, pz, { variant: im.variant ?? r.int(0, 7), param: im.param ?? family, scale: sc, sx: im.sx, sy: im.sy, sz: im.sz, yaw, float: im.float, draft: im.draft, id: im.id ?? iid, team, tint: im.tint });
           for (const e of im.emit ?? []) emitters.push(partEmitter(e, x, y, px, pz, yaw, sc, im.float, H));
         }
       }
@@ -231,13 +270,25 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
       // Particles of the ground itself (hell's embers, ancient forests' motes).
       for (const e of CATALOG.emitters?.("plot", ctx) ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5, y + 0.5) + (e.dy ?? 0.05), z: -(y + 0.5 - (e.dz ?? 0)) });
       // Bridges where a road crosses a river edge to a routed neighbour (south and east edges;
-      // each crossing belongs to one plot).
+      // each crossing belongs to one plot). The road runs straight across (decals.js), and the
+      // bridge stands where it passes nearest the river's (smoothed, meandering) line, its deck at
+      // the higher bank top (about 0.3 either side of the line, past water at most 0.44 wide): the
+      // bridges span 0.68, their footings on the bank tops.
       if (map.route[i] >= 0 && map.river[i] > 0) {
         const bridge = (nx, ny, mx, my, yaw) => {
           const j = world.index(nx, ny);
           if (j < 0 || map.route[j] < 0 || map.vis[j] === 0) return;
-          const bank = Math.max(H(mx + Math.sin(yaw) * 0.22, my - Math.cos(yaw) * 0.22), H(mx - Math.sin(yaw) * 0.22, my + Math.cos(yaw) * 0.22), SEA + 0.01);
-          out.push(inst(pick(CATALOG.bridge?.(ctx) ?? "basic.bridge", "basic.bridge"), mx, bank - 0.006, -my, { yaw, variant: r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
+          const ux = nx - x, uy = ny - y; // along the road, map units
+          let best = Infinity, cx = mx, cy = my;
+          for (let k = -8; k <= 8; k++) {
+            const px = mx + ux * k * 0.03, py = my + uy * k * 0.03;
+            const d = world.riverDist(px, py);
+            if (d < best) [best, cx, cy] = [d, px, py];
+          }
+          const bank = Math.max(H(cx + ux * RIVER_BANK, cy + uy * RIVER_BANK), H(cx - ux * RIVER_BANK, cy - uy * RIVER_BANK), SEA + 0.01);
+          const b = CATALOG.bridge?.({ ...ctx, crossing: j, alongX: yaw !== 0 }) ?? null;
+          const asset = typeof b === "string" ? b : b?.asset;
+          out.push(inst(pick(asset, "basic.bridge"), cx, bank - 0.006, -cy, { yaw, variant: b?.variant ?? r.int(0, 1), plot: i, id: idOf(`bridge${i}:${yaw}`) }));
         };
         if (map.river[i] & 1) bridge(x, y - 1, x + 0.5, y, 0);
         if (map.river[i] & 2) bridge(x + 1, y, x + 1, y + 0.5, Math.PI / 2);
@@ -249,8 +300,8 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
         const family = CATALOG.family?.(civ, city) ?? "human";
         const team = hexRgb(teamColour(city.owner));
         const cr = rng(hash32(city.id * 977 + 13));
-        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y, coast: ctx.coast, river: ctx.river };
-        const parts = CATALOG.city?.(cctx) ?? basicCity(cctx);
+        const cctx = { r: cr, size: city.size ?? 1, capital: !!city.capital, walls: !!city.walls, family, civ, seed: city.id, height: (dx, dz) => H(x + 0.5 + dx, y + 0.5 - dz), world, x, y, coast: ctx.coast, river: ctx.river, ...townGround(world, map, cityAt, x, y) };
+        const parts = clearOfUnits(CATALOG.city?.(cctx) ?? basicCity(cctx), unitsRound(world, env, x, y));
         for (const e of parts.emit ?? []) emitters.push({ ...e, x: x + 0.5 + (e.dx ?? 0), y: H(x + 0.5 + (e.dx ?? 0), y + 0.5 - (e.dz ?? 0)) + (e.dy ?? 0.2), z: -(y + 0.5 - (e.dz ?? 0)) });
         const cid = idOf(`city${city.id}`);
         for (const p of parts) {
@@ -265,6 +316,75 @@ export function dressStatic(world, map, plots = null, env = staticEnv(world)) {
   return { list: out, emitters, cities, byPlot };
 }
 
+/** The ground a city on plot (x, y) may build on, for the town plan (the catalog's city context;
+ *  architecture.js townGround), plot-local (x east, z south): `buildable(dx, dz)`, whether the plot
+ *  under a point is on the map and known (docs/R3D.md §9: nothing stands on, or is shaped by, an
+ *  unrevealed plot); `riverDist(dx, dz)`, the distance to a river; `keep`, what stands on the
+ *  neighbouring plots -- a farm's fields (fields.js fieldLayout), an improvement's buildings (within
+ *  0.45 of its centre: settlementOf, the props), a neighbouring city's half of the ground -- as
+ *  discs {x, z, r} and rectangles {x0, z0, x1, z1}; and `garrison`, where its units stand. */
+function townGround(world, map, cityAt, x, y) {
+  const buildable = (dx, dz) => {
+    const j = world.index(Math.floor(x + 0.5 + dx), Math.floor(y + 0.5 - dz));
+    return j >= 0 && world.kind[j] !== KIND.VOID;
+  };
+  const keep = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = dx || dy ? world.index(x + dx, y + dy) : -1;
+      if (j < 0 || world.kind[j] === KIND.VOID || world.isWater(j)) continue;
+      if (cityAt.has(j)) keep.push({ x: dx, z: -dy, r: 0.5 });
+      else if (map.improvement[j] >= 0) {
+        keep.push({ x: dx, z: -dy, r: 0.47 });
+        // The neighbour's fields as dress.js and decals.js lay them (squeezed off its rivers).
+        const lay = fieldLayout(j, tname("ImprovementType", map.improvement[j]), map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null, riversAround(world, map, x + dx, y + dy));
+        if (!lay) continue;
+        // The fields' bounds, with their fences.
+        let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+        for (const f of lay.fields) [x0, z0, x1, z1] = [Math.min(x0, f.x0), Math.min(z0, f.z0), Math.max(x1, f.x1), Math.max(z1, f.z1)];
+        keep.push({ x0: dx + x0 - 0.04, z0: -dy + z0 - 0.04, x1: dx + x1 + 0.04, z1: -dy + z1 + 0.04 });
+      }
+    }
+  }
+  return { buildable, riverDist: (dx, dz) => world.riverDist(x + 0.5 + dx, y + 0.5 - dz), keep, garrison: garrisonOf(world, x, y) };
+}
+
+/** Where the units stand on the plots round plot (x, y), in its plot-local coordinates. */
+function unitsRound(world, env, x, y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = dx || dy ? world.index(x + dx, y + dy) : -1;
+      if (j < 0 || !env.unitAt.has(j)) continue;
+      const s = env.cityAt.has(j) ? garrisonOf(world, x + dx, y + dy)[0] : world.feat[j] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+      out.push([dx + s[0], -dy + s[1]]);
+    }
+  }
+  return out;
+}
+
+/** A town's parts without those that would crowd a unit on a neighbouring plot (`units`,
+ *  unitsRound): no house, tower or tree on its ring, and no tower or tree between it and the
+ *  camera (in front of it, south). They are left out of the planned town rather than planned
+ *  round, so that a unit walking past does not rebuild the town; the wall stays whole. */
+function clearOfUnits(parts, units) {
+  if (!units.length) return parts;
+  const tall = /^(bld\.(tower|walltower|hall)|tree\.)/;
+  const dropped = [];
+  const out = parts.filter((p) => {
+    if (p.asset === "bld.keep" || p.asset === "bld.wall" || p.asset === "bld.gate") return true;
+    const hit = units.some(([ux, uz]) => {
+      const dx = p.x - ux, dz = p.z - uz;
+      return Math.hypot(dx, dz) < 0.22 || (tall.test(p.asset) && Math.abs(dx) < 0.18 && dz > 0 && dz < 0.5);
+    });
+    if (hit) dropped.push(p);
+    return !hit;
+  });
+  // (And the particles they carried.)
+  out.emit = (parts.emit ?? []).filter((e) => !dropped.some((p) => Math.hypot((e.dx ?? 0) - p.x, (e.dz ?? 0) - p.z) < 0.08));
+  return out;
+}
+
 /** Where the water is around plot (x, y): the plot-local directions ([dx, dz], x east, z south)
  *  of its water neighbours (sea, coast or lake), the four edges first. Empty inland. */
 function shoreOf(world, x, y) {
@@ -275,6 +395,102 @@ function shoreOf(world, x, y) {
   }
   return out;
 }
+
+/** A river's banks (docs/R3D.md §5.2): boulders along the water's edge in clusters, now and then
+ *  one out in the stream (the water breaks white round it), reeds standing in the shallows at the
+ *  edge, grass on the bank tops and, between the boulder clusters, grass hanging out over the
+ *  water's edge (feat.overhang, turned to the water). Each plot dresses the banks in its own
+ *  square from a seed of its own (its other dressing draws as before); nothing at a road's
+ *  crossing (a bridge spans it), in a city, round a held plot's centre, on a farm's fields or in a
+ *  paddock (fields.js inField) or out on the sea. */
+function placeBank(world, map, ctx, place) {
+  const { x, y, i } = ctx;
+  if (!world.riverCells.size || ctx.city || world.isWater(i)) return;
+  // Rivers run along plot edges: a plot with none within reach of its square has no bank.
+  if (world.riverDist(x + 0.5, y + 0.5) > 0.5 + RIVER_BANK) return;
+  const known = (j) => j >= 0 && map.vis[j] !== 0;
+  const routed = (j) => known(j) && map.route[j] >= 0;
+  const edge = (px, py, bit, nx, ny) => {
+    const j = world.index(px, py);
+    return known(j) && map.river[j] > 0 && (map.river[j] & bit) !== 0 && routed(j) && routed(world.index(nx, ny));
+  };
+  // The crossings on this plot's four edges (a south or east edge belongs to its plot, dress.js
+  // bridge): where the roads cross, the banks stay clear for the bridge.
+  const cross = [];
+  if (edge(x, y, 1, x, y - 1)) cross.push([x + 0.5, y]);
+  if (edge(x, y + 1, 1, x, y)) cross.push([x + 0.5, y + 1]);
+  if (edge(x, y, 2, x + 1, y)) cross.push([x + 1, y + 0.5]);
+  if (edge(x - 1, y, 2, x, y)) cross.push([x, y + 0.5]);
+  const r = rng(i * 131 + 17);
+  const G = 8;
+  for (let gy = 0; gy < G; gy++) {
+    for (let gx = 0; gx < G; gx++) {
+      // A fixed number of draws per slot, so the dressing of one slot never shifts another's.
+      const lx = -0.5 + (gx + r()) / G, lz = -0.5 + (gy + r()) / G;
+      const roll = r(), sz = r(), yaw = r.range(0, 6.28), variant = r.int(0, 7);
+      const mx = x + 0.5 + lx, my = y + 0.5 - lz;
+      const d = world.riverDist(mx, my);
+      if (d > RIVER_BANK + 0.1) continue;
+      if (cross.some(([cx, cy]) => Math.hypot(mx - cx, my - cy) < 0.42)) continue;
+      if (ctx.held && Math.hypot(lx, lz) < 0.27) continue;
+      if (ctx.inTown(lx, lz)) continue;
+      if (ctx.improvement && inField(i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, 0.03)) continue;
+      if (world.heightAt(mx, my, false) < SEA) continue;
+      // Clusters: rocks where the broad noise is high, reeds where it is low.
+      const clump = clamp(0.5 + world.n2(mx, my, 1.3, 3.1, 7.7) * 1.2, 0, 1);
+      const inWater = d < RIVER_HALF + RIVER_WANDER;
+      if (d < RIVER_HALF - 0.09) {
+        if (roll < 0.05 * clump) place(pick("rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.6 + sz * 0.35, yaw, lift: 0.03 });
+      } else if (d < RIVER_HALF + 0.08) {
+        if (roll < 0.75 * clump * clump) place(pick(variant < 3 ? "rock.boulder.moss" : "rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.5 + sz * 0.6, yaw, lift: inWater ? 0.018 : -0.004 });
+        else if (d > RIVER_HALF - 0.05 && roll > 1 - 0.4 * (1 - clump)) place(pick("reeds", "basic.tree"), lx, lz, { variant, scale: 0.7 + sz * 0.5, yaw, phase: sz });
+      } else if (d > RIVER_BANK - 0.06) {
+        if (roll < 0.25 * clump * clump) place(pick("rock.boulder", "basic.rock"), lx, lz, { variant, scale: 0.35 + sz * 0.3, yaw, lift: -0.004 });
+        else if (roll > 0.55) place(pick("plant.grass", "basic.tree"), lx, lz, { variant, scale: 1.0 + sz * 0.6, yaw, phase: sz });
+      }
+    }
+  }
+  // Grass hanging over the water's edge (the catalog's feat.overhang): rooted along the bank top,
+  // turned to the water and combed out over it, between the boulder clusters (thinned where the
+  // rocks cluster). Its roots stand just behind the top of the cut bank (RIVER_BANK + 0.005-0.04),
+  // so the tips fringe the water's edge rather than covering the channel. Its own seed and a fixed
+  // number of draws per slot, so the rocks and reeds above keep their places. Not in the hells or
+  // on snow, sparse and straw-dry in the desert.
+  if (!hasRecipe("feat.overhang") || isHellGround(ctx.ground) || ctx.ground === GROUND.SNOW) return;
+  const ro = rng(i * 173 + 41);
+  const desert = ctx.ground === GROUND.DESERT;
+  const GO = 8;
+  for (let gy = 0; gy < GO; gy++) {
+    for (let gx = 0; gx < GO; gx++) {
+      let mx = x + (gx + ro()) / GO, my = y + 1 - (gy + ro()) / GO;
+      const roll = ro(), sz = ro(), variant = ro.int(0, 3), want = ro.range(RIVER_BANK + 0.005, RIVER_BANK + 0.04), dry = ro(), turn = ro.range(-0.35, 0.35);
+      const d = world.riverDist(mx, my);
+      if (d < RIVER_HALF || d > RIVER_BANK + 0.08) continue;
+      // Step across the bank to the root line, along the way to the water.
+      const e = 0.01;
+      let vx = world.riverDist(mx - e, my) - world.riverDist(mx + e, my), vy = world.riverDist(mx, my - e) - world.riverDist(mx, my + e);
+      const vl = Math.hypot(vx, vy);
+      if (vl < 1e-4) continue;
+      vx /= vl;
+      vy /= vl;
+      mx += vx * (d - want);
+      my += vy * (d - want);
+      const lx = mx - x - 0.5, lz = y + 0.5 - my;
+      if (Math.abs(lx) > 0.5 || Math.abs(lz) > 0.5) continue;
+      if (cross.some(([cx, cy]) => Math.hypot(mx - cx, my - cy) < 0.44)) continue;
+      if (ctx.held && Math.hypot(lx, lz) < 0.27) continue;
+      if (ctx.inTown(lx, lz)) continue;
+      if (ctx.improvement && inField(i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, 0.03)) continue;
+      if (world.heightAt(mx, my, false) < SEA) continue;
+      const clump = clamp(0.5 + world.n2(mx, my, 1.3, 3.1, 7.7) * 1.2, 0, 1);
+      if (roll > (desert ? 0.3 : 0.92) - 0.55 * clump * clump) continue;
+      const param = desert || (ctx.ground === GROUND.PLAINS && dry < 0.3) || ctx.ground === GROUND.TUNDRA ? "dry" : "";
+      place("feat.overhang", lx, lz, { variant, param, scale: 0.8 + sz * 0.4, yaw: Math.atan2(vy, vx) + turn, phase: sz });
+    }
+  }
+}
+
+const isHellGround = (g) => g === GROUND.BURNING_SANDS || g === GROUND.BROKEN_LANDS || g === GROUND.PERDITION;
 
 /** An emitter carried by an improvement's part (`e.dx/dy/dz` in the part's own frame), placed in
  *  the world: turned with the part's yaw (as the prop shader turns it) and scaled with it. */
@@ -287,8 +503,199 @@ function partEmitter(e, x, y, px, pz, yaw, sc, float, H) {
   return { ...e, x: mx, y: ground + (e.dy ?? 0.1) * sc, z: -my };
 }
 
+const WOODED = new Set([FEAT.FOREST, FEAT.JUNGLE, FEAT.ANCIENT, FEAT.BURNT, FEAT.YOUNG]);
+
+/** The road through plot (x, y) as the decal layer paints it (decals.js: from the plot's centre to
+ *  the edge midpoint toward each routed neighbour, bowed by a hash of the pair), as plot-local
+ *  polylines (x east, z south); a routed plot with no routed neighbour is a dot at its centre. */
+function roadsOf(world, map, x, y, i) {
+  if (map.route[i] < 0) return [];
+  const out = [];
+  const riv = (k, bit) => map.river[k] > 0 && (map.river[k] & bit) !== 0;
+  for (const [dx, dy] of roadLinks(world, map, x, y)) {
+    const j = world.index(x + dx, y + dy);
+    // As decals.js: straight over a river, onto its bridge.
+    const bridged = (dy < 0 && !dx && riv(i, 1)) || (dy > 0 && !dx && riv(j, 1)) || (dx > 0 && !dy && riv(i, 2)) || (dx < 0 && !dy && riv(j, 2));
+    const bow = bridged ? 0 : (hashf(Math.min(i, j), Math.max(i, j)) - 0.5) * 0.16 * (i < j ? 1 : -1);
+    const l = Math.hypot(dx, dy);
+    const kx = dx * 0.25 - (dy / l) * bow, ky = dy * 0.25 + (dx / l) * bow;
+    const line = [];
+    for (let k = 0; k <= 4; k++) {
+      const t = k / 4;
+      line.push([2 * (1 - t) * t * kx + t * t * dx * 0.5, -(2 * (1 - t) * t * ky + t * t * dy * 0.5)]);
+    }
+    out.push(line);
+  }
+  return out.length ? out : [[[0, 0]]];
+}
+
+/** The distance from plot-local (lx, lz) to the nearest of `roads` (roadsOf); Infinity off them. */
+function roadDist(roads, lx, lz) {
+  let best = Infinity;
+  for (const line of roads) {
+    if (line.length === 1) best = Math.min(best, Math.hypot(lx - line[0][0], lz - line[0][1]));
+    for (let k = 0; k + 1 < line.length; k++) {
+      const [ax, az] = line[k], [bx, bz] = line[k + 1];
+      const ex = bx - ax, ez = bz - az;
+      const t = clamp(((lx - ax) * ex + (lz - az) * ez) / (ex * ex + ez * ez || 1), 0, 1);
+      best = Math.min(best, Math.hypot(lx - ax - ex * t, lz - az - ez * t));
+    }
+  }
+  return best;
+}
+
+/** How far each size of plant keeps from things (flora `size`: 0 low clutter -- grass, flowers --
+ *  1 bushes, 2 trees): its footprint, and its clearance from the unit's spot at the plot centre. */
+const FOOT = [0.03, 0.055, 0.09];
+const UNIT_CLEAR = [0.25, 0.32, 0.36];
+
+/** How strongly each size of plant gathers at the edges (`edgeOf`): the share of its clumps
+ *  kept out in open meadow, away from every edge (1 at an edge), and how much the pick of a clump's
+ *  centre leans toward the edges (low plants and bushes only: trees keep to their groves). Bushes
+ *  are all kept: the target's open meadows are dotted with them (dark masses over the grass), and
+ *  only the low clutter thins out there. */
+const OPEN_KEEP = [0.45, 1, 1];
+const EDGE_PULL = [3, 3.5, 0];
+
+/** The fields and paddocks round plot (x, y), its own and its neighbours' (fields.js fieldLayout),
+ *  as [dx, dz, layout] with the plot-local offset of the plot they belong to (x east, z south). */
+function layoutsAround(world, map, x, y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const j = world.index(x + dx, y + dy);
+      if (j < 0 || map.vis[j] === 0 || map.improvement[j] < 0) continue;
+      const imp = tname("ImprovementType", map.improvement[j]);
+      const bonus = map.bonus[j] >= 0 ? tname("BonusType", map.bonus[j]) : null;
+      const lay = fieldLayout(j, imp, bonus, riversAround(world, map, x + dx, y + dy));
+      if (lay && (lay.fields.length || lay.paddock)) out.push([dx, -dy, lay]);
+    }
+  }
+  return out;
+}
+
+/** The distance from plot-local (lx, lz) to the nearest field or paddock of `lay` (0 on one). */
+function layoutDist(lay, lx, lz) {
+  let best = Infinity;
+  for (const f of lay.fields) best = Math.min(best, Math.hypot(Math.max(f.x0 - lx, 0, lx - f.x1), Math.max(f.z0 - lz, 0, lz - f.z1)));
+  const p = lay.paddock;
+  if (p) best = Math.min(best, Math.max(0, Math.hypot((lx - p.x) / p.rx, (lz - p.z) / p.rz) - 1) * Math.min(p.rx, p.rz));
+  return best;
+}
+
+/** Where the low plants and bushes mass, 0..1 at plot-local (lx, lz) -- as in the look target,
+ *  along the edges of things: a road's verges, a river's banks, the margins of fields and paddocks
+ *  (this plot's and its neighbours', `lays`: layoutsAround) and the edge of a wood next door
+ *  (`woods`: the plot-local offsets of wooded neighbours); 0 out in the open meadow between. */
+function edgeOf(world, ctx, lays, woods, lx, lz) {
+  let e = 0;
+  const rd = ctx.roadDist(lx, lz);
+  if (rd < 0.4) e = 1 - smoothstep(0.14, 0.36, rd);
+  if (world.riverCells.size > 0) {
+    const d = world.riverDist(ctx.x + 0.5 + lx, ctx.y + 0.5 - lz) - RIVER_HALF - RIVER_WANDER;
+    if (d < 0.4) e = Math.max(e, 1 - smoothstep(0.06, 0.34, d));
+  }
+  for (const [dx, dz, lay] of lays) e = Math.max(e, 0.9 * (1 - smoothstep(0.02, 0.22, layoutDist(lay, lx - dx, lz - dz))));
+  for (const [dx, dz] of woods) e = Math.max(e, 0.7 * (1 - smoothstep(0.08, 0.4, Math.hypot(Math.max(Math.abs(lx - dx) - 0.5, 0), Math.max(Math.abs(lz - dz) - 0.5, 0)))));
+  return e;
+}
+
+/** Open ground's plants (the catalog's flora entries, catalog.js): each entry's `count` in clumps
+ *  of `clump` ([min, max]) within `spread` of a centre, a clump kept or dropped by a slow density
+ *  field anchored to the map (`dense`: how much it follows it), so meadows run thick in some places
+ *  and bare in others across plot borders and trees gather in groves. Low plants and bushes mass
+ *  along the edges of things (`edgeOf`: road verges, river banks, field margins, wood edges): a
+ *  clump's centre is picked from three with odds rising steeply toward an edge, a clump of low
+ *  clutter out in the open is mostly dropped (`OPEN_KEEP`; bushes stay, dark masses dotting the
+ *  meadow) and one at an edge stands a little taller, so the open meadow between lies calm. Nothing stands on a road, in a river, on a beach or on a resource's
+ *  marker; on an improved plot plants keep to its rim (its fields and buildings fill the rest);
+ *  round a unit only low clutter, outside its ring; trees keep out of the way of what stands on
+ *  the plot, behind it and in front of it. */
+function scatterFlora(world, map, ctx, place, flora) {
+  const { x, y } = ctx;
+  // A stream of its own, so how the plants fall never shifts the rest of the plot's dressing.
+  const r = rng(hash32(ctx.i * 977 + 0x51f1));
+  const field = (lx, lz, f, o) => world.n2(x + 0.5 + lx, y + 0.5 - lz, f, o, o * 0.7);
+  const meadow = (lx, lz) => smoothstep(-0.55, 0.45, field(lx, lz, 0.75, 3.1) + 0.5 * field(lx, lz, 2.1, 7.7));
+  const grove = (lx, lz) => smoothstep(-0.3, 0.4, field(lx, lz, 0.4, 11.3) + 0.3 * field(lx, lz, 1.3, 5.9));
+  const lays = layoutsAround(world, map, x, y);
+  const woods = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && WOODED.has(world.feat[world.index(x + dx, y + dy)])) woods.push([dx, -dy]);
+  const edge = (lx, lz) => edgeOf(world, ctx, lays, woods, lx, lz);
+  const cityBehind = ctx.cityBehind.n || ctx.cityBehind.e || ctx.cityBehind.w;
+  // The low clutter of a plot is one object to the ink (no outline between overlapping tufts).
+  const low = idOf(`fl${ctx.i}`);
+  const free = (lx, lz, size) => {
+    if (Math.abs(lx) > 0.49 || Math.abs(lz) > 0.49) return false;
+    const foot = FOOT[size];
+    if (ctx.unit && Math.hypot(lx - UNIT_SPOT[0], lz - UNIT_SPOT[1]) < UNIT_CLEAR[size]) return false;
+    if (ctx.improvement && Math.max(Math.abs(lx), Math.abs(lz)) < 0.38) return false;
+    if (ctx.improvement && inField(ctx.i, ctx.improvement, ctx.bonus, ctx.rivers, lx, lz, foot)) return false;
+    if (ctx.bonus && Math.hypot(lx - BONUS_SPOT[0], lz - BONUS_SPOT[1]) < 0.09 + foot) return false;
+    if (ctx.roadDist(lx, lz) < 0.08 + foot) return false;
+    if (ctx.inTown(lx, lz)) return false;
+    if (world.riverCells.size > 0 && world.riverDist(x + 0.5 + lx, y + 0.5 - lz) < RIVER_HALF + RIVER_WANDER + 0.02 + foot) return false;
+    if (ctx.coast.length && world.heightAt(x + 0.5 + lx, y + 0.5 - lz) < SEA + 0.02) return false;
+    if (size === 2) {
+      // A tree hides what stands up to about its height behind it: none in front of a unit or a
+      // structure on this plot, in front of whatever holds the plot behind, or before a city.
+      if ((ctx.unit || ctx.improvement) && lz > -0.12 && Math.abs(lx) < 0.32) return false;
+      if (ctx.northHeld && lz < -0.15 && Math.abs(lx) < 0.32) return false;
+      if (cityBehind && lz < 0.15) return false;
+    }
+    return true;
+  };
+  for (const f of flora) {
+    const size = f.size ?? 0;
+    const [c0, c1] = Array.isArray(f.clump) ? f.clump : [f.clump ?? 1, f.clump ?? 1];
+    const spread = f.spread ?? 0.06, dense = f.dense ?? 0.7;
+    const total = f.mix ? f.mix.reduce((a, m) => a + (m.weight ?? 1), 0) : 0;
+    for (let left = f.count ?? 1; left > 0; ) {
+      const n = Math.min(left, r.int(c0, c1));
+      left -= n;
+      // The clump's centre: one of three, the odds rising steeply toward an edge.
+      let cx = 0, cz = 0, ce = 0, sum = 0;
+      const cand = [];
+      for (let k = 0; k < 3; k++) {
+        const px = r.range(-0.44, 0.44), pz = r.range(-0.44, 0.44), e = edge(px, pz);
+        const wt = 0.2 + e * e * EDGE_PULL[size];
+        cand.push([px, pz, e, wt]);
+        sum += wt;
+      }
+      let t = r() * sum;
+      for (const c of cand) {
+        [cx, cz, ce] = c;
+        if ((t -= c[3]) <= 0) break;
+      }
+      // Kept by the slow density field, out in the open mostly dropped, at an edge nearly always
+      // kept and fuller (a few more round the clump).
+      const keep = (1 - dense + dense * (size === 2 ? grove(cx, cz) : meadow(cx, cz))) * OPEN_KEEP[size];
+      if (r() > keep + (1 - keep) * ce * (size < 2 ? 0.85 : 0)) continue;
+      const fill = size < 2 ? Math.round(ce * ce * (c1 + 1) * 0.6) : 0;
+      for (let k = 0; k < n + fill; k++) {
+        // The first of a clump near its centre, the rest round it (trees a trunk's width apart).
+        const a = r.range(0, Math.PI * 2), d = spread * (k ? 0.45 + 0.55 * Math.sqrt(r()) : 0.3 * r());
+        const lx = cx + Math.cos(a) * d, lz = cz + Math.sin(a) * d;
+        let m = f;
+        if (f.mix) {
+          let t = r() * total;
+          for (const e of f.mix) if ((t -= e.weight ?? 1) <= 0) { m = e; break; }
+        }
+        const s = (m.scale ?? 1) * (f.mix ? f.scale ?? 1 : 1) * r.range(0.8, 1.15) * (size === 2 && ctx.cityNear ? 0.8 : 1) * (size < 2 ? 1 + (size ? 0.15 : 0.3) * ce : 1);
+        const yaw = r.range(0, 6.28), phase = r(), variant = m.variant ?? r.int(0, 7);
+        if (!free(lx, lz, size)) continue;
+        const o = { variant, param: m.param, scale: s, yaw, phase, tint: m.tint, lift: size === 2 ? -0.008 : 0 };
+        if (size === 0) o.id = low;
+        place(pick(m.asset, "basic.tree"), lx, lz, o);
+      }
+    }
+  }
+}
+
 /** A wooded plot's trees: a jittered grid of slots, each a tree of the plot's species mix, thinned
- *  toward open neighbours (soft forest edges) and cleared around the centre when the plot is held. */
+ *  toward open neighbours (soft forest edges, where bushes and saplings stand instead), shorter
+ *  trees darker (in the shade of the canopy), and cleared around the centre when the plot is held
+ *  and off the road through it. */
 function placeTrees(world, ctx, place) {
   const { r, x, y, feat } = ctx;
   const mix = CATALOG.forest?.(feat, ctx) ?? [{ asset: feat === FEAT.FOREST && (ctx.ground === GROUND.TUNDRA || ctx.ground === GROUND.SNOW || ctx.hills) ? "basic.pine" : "basic.tree", scale: feat === FEAT.YOUNG ? 0.6 : 1 }];
@@ -305,6 +712,7 @@ function placeTrees(world, ctx, place) {
     return f === FEAT.FOREST || f === FEAT.JUNGLE || f === FEAT.ANCIENT || f === FEAT.BURNT || f === FEAT.YOUNG;
   };
   const open = { e: !wooded(1, 0), w: !wooded(-1, 0), n: !wooded(0, 1), s: !wooded(0, -1) };
+  const edge = mix.edge ?? [];
   const grid = mix[0].grid ?? (feat === FEAT.ANCIENT ? 2 : 4);
   const cell = 1 / grid;
   for (let gy = 0; gy < grid; gy++) {
@@ -317,12 +725,21 @@ function placeTrees(world, ctx, place) {
       if (open.w) keep *= clamp((lx + 0.5) / 0.35, 0.25, 1);
       if (open.s) keep *= clamp((0.5 - lz) / 0.35, 0.25, 1);
       if (open.n) keep *= clamp((lz + 0.5) / 0.35, 0.25, 1);
-      if (r() > keep) continue;
       // A glade where something holds the plot (and in front of it, toward the camera).
-      if (ctx.held && (Math.hypot(lx, lz) < 0.26 || (lz > 0 && Math.abs(lx) < 0.2))) continue;
-      if (ctx.nearRiver(lx, lz)) continue;
+      const glade = ctx.held && (Math.hypot(lx, lz) < 0.26 || (lz > 0 && Math.abs(lx) < 0.2));
+      if (r() > keep) {
+        // The wood's edge: bushes and saplings where the trees thin out.
+        const e = edge.length && r() < 0.75 ? edge[r.int(0, edge.length - 1)] : null;
+        if (e && !glade && !ctx.nearRiver(lx, lz) && !ctx.inTown(lx, lz) && ctx.roadDist(lx, lz) > 0.12) place(e.asset, lx, lz, { variant: e.variant ?? r.int(0, 7), param: e.param, scale: (e.scale ?? 1) * r.range(0.8, 1.2), yaw: r.range(0, 6.28), phase: r() });
+        continue;
+      }
+      if (glade) continue;
+      if (ctx.nearRiver(lx, lz) || ctx.inTown(lx, lz) || ctx.roadDist(lx, lz) < 0.1) continue;
       const m = choose();
-      let s = (m.scale ?? 1) * r.range(0.8, 1.2);
+      const v = r.range(0.75, 1.25);
+      let s = (m.scale ?? 1) * v;
+      // The shorter trees stand in the shade of the canopy: darker, the wood's interior.
+      const dark = 0.78 + 0.22 * smoothstep(0.75, 1.15, v);
       // Adjacent to a city, keep the trees shorter so the town (and its own great tree) shows over
       // the canopy instead of being buried (F2: Evermore in the ancient wood).
       if (ctx.cityNear) s *= 0.75;
@@ -337,7 +754,8 @@ function placeTrees(world, ctx, place) {
         if (toward > 0.5) continue;
         s *= 1 - toward * 0.9;
       }
-      place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint: m.tint, lift: -0.008 });
+      const tint = (m.tint ?? [1, 1, 1]).map((c) => c * dark);
+      place(m.asset, lx, lz, { variant: m.variant ?? r.int(0, 15), param: m.param, scale: s, yaw: r.range(0, 6.28), phase: r(), tint, lift: -0.008 });
     }
   }
   // Undergrowth between the trunks.
@@ -345,7 +763,7 @@ function placeTrees(world, ctx, place) {
     for (let k = 0; k < (u.count ?? 2); k++) {
       const lx = r.range(-0.45, 0.45), lz = r.range(-0.45, 0.45);
       if (ctx.held && Math.hypot(lx, lz) < 0.26) continue;
-      if (ctx.nearRiver(lx, lz)) continue;
+      if (ctx.nearRiver(lx, lz) || ctx.inTown(lx, lz) || ctx.roadDist(lx, lz) < 0.1) continue;
       place(u.asset, lx, lz, { variant: u.variant ?? r.int(0, 7), param: u.param, scale: (u.scale ?? 1) * r.range(0.7, 1.2), yaw: r.range(0, 6.28), phase: r() });
     }
   }
@@ -365,8 +783,9 @@ function basicCity(c) {
   return out;
 }
 
-/** The unit stacks in sight: one figure for the stack's top unit at the plot centre (at a city's
- *  gate on a city plot), with up to two of its company behind it. */
+/** The unit stacks in sight: one figure for the stack's top unit at the plot centre (on a city
+ *  plot at its front corner, out of the river: garrisonOf), with up to two of its company behind
+ *  it. */
 export function dressUnits(world, map) {
   const out = [];
   const stacks = [];
@@ -392,12 +811,13 @@ export function dressUnits(world, map) {
     const st = stackState(units, sctx);
     const top = st?.head ?? units[0];
     const onCity = map.city[i] >= 0;
-    // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera.
-    const spot = onCity ? CITY_UNIT_SPOT : world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+    // On a volcano the cone fills the plot: the stack stands at its foot, toward the camera. A
+    // city's garrison stands at its front corner, out of the river (garrisonOf).
+    const spot = world.feat[i] === FEAT.VOLCANO ? VOLCANO_UNIT_SPOT : UNIT_SPOT;
+    const stands = onCity ? garrisonOf(world, u0.x, u0.y) : COMPANY.map(([u, v]) => [spot[0] + u, spot[1] + v]);
     const team = hexRgb(teamColour(top.owner));
     // Company behind the head, strongest first (the badge count is unchanged).
     const order = [top, ...units.filter((u) => u !== top).sort((a, b) => strength(b) - strength(a))].slice(0, 3);
-    const slots = [[0, 0], [-0.17, -0.12], [0.17, -0.12]];
     let anchor = null;
     order.forEach((u, k) => {
       const name = tname("UnitType", u.type);
@@ -407,15 +827,16 @@ export function dressUnits(world, map) {
       const domain = info ? tname("DomainType", info.domain) : null;
       const combat = info ? tname("UnitCombatType", info.unit_combat) : null;
       const look = CATALOG.unit?.(name, { info, civ, unit: u, domain, combat, family: CATALOG.family?.(civ, null) ?? "human", r: rng(u.id), name }) ?? { asset: "basic.unit", param: "" };
-      const lx = spot[0] + slots[k][0];
-      const lz = spot[1] + slots[k][1];
+      const [lx, lz] = stands[k];
       const mx = u0.x + 0.5 + lx;
       const my = u0.y + 0.5 - lz;
       const s = (look.scale ?? 1) * (k === 0 ? 1 : onCity ? 0.6 : 0.78);
       const asset = pick(look.asset, "basic.unit");
       const foot = look.float || look.fly ? 0 : footOf(asset, look.variant ?? 0, look.param ?? "", s);
       const ground = standHeight(world, mx, my, foot);
-      const yy = look.float ? Math.max(SEA + 0.005, ground) : look.fly ? Math.max(SEA, ground) + look.fly : ground;
+      // Every floating unit is a hull or a swimmer: it sits at the draft. A land unit on a sea plot
+      // is cargo: it stands at the waterline (on the deck), not on the sea floor.
+      const yy = look.float ? Math.max(SEA - DRAFT, ground) : look.fly ? Math.max(SEA, ground) + look.fly : Math.max(SEA, ground);
       const it = inst(asset, mx, yy, -my, { param: look.param ?? "", variant: look.variant ?? 0, yaw: look.yaw ?? (k === 0 ? 0.25 : 0.25 + (k === 1 ? 0.3 : -0.3)), scale: s, phase: hashf(u.id, 3), team, protect: 1, id: idOf(`u${u.id}`), plot: i });
       it.uid = u.id;
       it.ground = !look.float && !look.fly;
@@ -423,7 +844,7 @@ export function dressUnits(world, map) {
       out.push(it);
       if (k === 0) anchor = { x: mx, y: yy, z: -my, height: (look.height ?? 0.5) * s };
     });
-    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot, mark: st?.state?.mark ?? null, hero: st?.state?.hero ?? false });
+    stacks.push({ units, top, x: u0.x, y: u0.y, k: i, anchor, picked: sel.includes(top.id), team: teamColour(top.owner), spot: stands[0], mark: st?.state?.mark ?? null, hero: st?.state?.hero ?? false });
   }
   return { list: out, stacks };
 }

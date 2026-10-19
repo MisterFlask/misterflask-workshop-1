@@ -10,8 +10,8 @@ import * as St from "../app/state.js";
 
 const data = JSON.parse(fs.readFileSync(fileURLToPath(new URL("../../r3d-lab/data.json", import.meta.url)), "utf8"));
 St.setData(data);
-const { buildMap, buildView, showcase, riverBits } = await import("../../r3d-lab/scenes.js");
-const { World, KIND } = await import("../app/r3d/world.js");
+const { buildMap, buildView, showcase, fields, riverBits } = await import("../../r3d-lab/scenes.js");
+const { World, KIND, RIVER_HALF, RIVER_WANDER } = await import("../app/r3d/world.js");
 const R = await import("../app/r3d/assets/registry.js");
 await import("../app/r3d/assets/index.js");
 const { CATALOG } = await import("../app/r3d/assets/catalog.js");
@@ -156,4 +156,96 @@ test("a plot's dressing depends only on its neighbourhood: a moving unit redress
   }
   assert.ok(changed > 0, "the move changed the dressing around the unit");
   St.setView(scene.view);
+});
+
+test("a great town keeps to known land, out of the river and off its neighbours' fields; its garrison stands dry", () => {
+  const rows = Array.from({ length: 7 }, () => ".".repeat(7));
+  const wet = RIVER_HALF + RIVER_WANDER;
+  // A walled capital with a river down its west side, the unknown east of it and a farm north; and
+  // one at the map's west edge with a river along its front.
+  for (const [cx, rivers, hidden, farm] of [
+    [3, riverBits(Array.from({ length: 8 }, (_, y) => [3, 7 - y])), [[4, 2], [4, 3], [4, 4]], [3, 4]],
+    [0, riverBits(Array.from({ length: 8 }, (_, x) => [x, 3])), [], [1, 3]],
+  ]) {
+    const town = { id: 1, owner: 0, x: cx, y: 3, name: "T", capital: true, size: 12, walls: true };
+    const map = buildMap(data, rows, { rivers, hidden, improvements: [[...farm, "IMPROVEMENT_FARM"]], cities: [town], owners: [[0, 0, 6, 6, 0]] });
+    const units = [0, 1, 2].map(() => ({ type: "UNIT_WARRIOR", x: cx, y: 3 }));
+    St.setView(buildView(data, { players: [{ civ: "CIVILIZATION_BANNOR" }], cities: [town], units }));
+    St.setMap(map);
+    const w = new World(map);
+    const d = dressStatic(w, map);
+    const parts = d.byPlot.get(3 * 7 + cx).list;
+    assert.ok(parts.length > 25, "a great town");
+    for (const it of parts) {
+      const j = w.index(Math.floor(it.x), Math.floor(-it.z));
+      assert.ok(j >= 0 && map.vis[j] !== 0, `${it.asset} off the map or on an unrevealed plot`);
+      assert.ok(w.riverDist(it.x, -it.z) > wet, `${it.asset} in the river`);
+    }
+    for (const f of d.byPlot.get(farm[1] * 7 + farm[0]).list) {
+      if (!/^imp\./.test(f.asset)) continue;
+      for (const it of parts) assert.ok(Math.hypot(it.x - f.x, it.z - f.z) > 0.05, `${it.asset} on the farm's ${f.asset}`);
+    }
+    for (const it of dressUnits(w, map).list) assert.ok(w.riverDist(it.x, -it.z) > wet + 0.03, `${it.asset} of the garrison in the river`);
+  }
+});
+
+test("worked land keeps to a river's banks: no field, fence or crop in the water, no rock or reed on the crops", async () => {
+  const { fieldLayout, inField, riversAround } = await import("../app/r3d/fields.js");
+  const { RIVER_HALF, RIVER_WANDER } = await import("../app/r3d/world.js");
+  const scene = fields(data);
+  St.setView(scene.view);
+  St.setMap(scene.map);
+  const map = scene.map;
+  const w = new World(map);
+  const d = dressStatic(w, map);
+  let worked = 0;
+  for (let i = 0; i < map.w * map.h; i++) {
+    if (map.improvement[i] < 0) continue;
+    const x = i % map.w, y = (i - x) / map.w;
+    const t = data.tables.ImprovementType[map.improvement[i]].type;
+    const b = map.bonus[i] >= 0 ? data.tables.BonusType[map.bonus[i]].type : null;
+    const rv = riversAround(w, map, x, y);
+    const lay = fieldLayout(i, t, b, rv);
+    assert.ok(lay, `${t} at (${x}, ${y}) has a layout`);
+    if (/PASTURE|MUSHROOMS/.test(t)) assert.ok(lay.paddock, `${t} at (${x}, ${y}) has its paddock`);
+    const dry = (lx, lz, what) => assert.ok(w.riverDist(x + 0.5 + lx, y + 0.5 - lz) > RIVER_HALF + RIVER_WANDER, `${what} of ${t} at (${x}, ${y}) in the river`);
+    for (const f of lay.fields) for (let u = 0; u <= 4; u++) for (let v = 0; v <= 4; v++) dry(f.x0 + ((f.x1 - f.x0) * u) / 4, f.z0 + ((f.z1 - f.z0) * v) / 4, "a field");
+    for (const [[ax, az], [bx, bz]] of lay.fences) for (let u = 0; u <= 4; u++) dry(ax + ((bx - ax) * u) / 4, az + ((bz - az) * u) / 4, "a fence");
+    for (const it of d.byPlot.get(i).list) {
+      const lx = it.x - (x + 0.5), lz = y + 0.5 + it.z;
+      if (/^(imp|anim)\./.test(it.asset)) dry(lx, lz, it.asset);
+      else if (/rock|reeds|plant\.grass|feat\.overhang/.test(it.asset)) assert.ok(!inField(i, t, b, rv, lx, lz), `${it.asset} on the fields of ${t} at (${x}, ${y})`);
+    }
+    worked++;
+  }
+  assert.ok(worked >= 10, "the scene's worked plots");
+});
+
+test("every panel switch has a default; plain turns the painting off but keeps the water's realism", async () => {
+  const { PRESETS, DEFAULTS, PANEL } = await import("../app/r3d/config.js");
+  for (const [key] of PANEL) assert.notEqual(DEFAULTS[key], undefined, `panel switch ${key} has no default`);
+  // The brushwork on objects and the painted ink are stylisation: off in the plain comparison.
+  for (const key of ["brush", "inkLost", "inkColour"]) {
+    assert.ok(PRESETS.painterly[key] > 0, `${key} is on in the painterly look`);
+    assert.equal(PRESETS.plain[key], 0, `${key} is off in the plain render`);
+  }
+  // Seeing into and mirrored in water is ordinary rendering: on in both.
+  for (const key of ["reflections", "refraction", "caustics"]) {
+    for (const name of ["painterly", "plain"]) assert.ok(PRESETS[name][key] > 0, `${key} is on in ${name}`);
+  }
+});
+
+test("a look saved before a switch existed takes that switch from its own preset, not the defaults", async () => {
+  const { loadConfig, PRESETS } = await import("../app/r3d/config.js");
+  const saved = { ...PRESETS.plain, preset: "plain" };
+  for (const key of ["brush", "inkLost", "inkColour"]) delete saved[key];
+  const prev = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => JSON.stringify(saved), setItem() {} } });
+  try {
+    const cfg = loadConfig();
+    for (const key of ["brush", "inkLost", "inkColour"]) assert.equal(cfg[key], 0, `${key} stays off in a saved plain look`);
+  } finally {
+    if (prev) Object.defineProperty(globalThis, "localStorage", prev);
+    else delete globalThis.localStorage;
+  }
 });

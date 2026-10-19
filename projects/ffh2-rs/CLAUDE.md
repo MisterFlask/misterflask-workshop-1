@@ -212,3 +212,40 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
 - AI timing and AI-only restrictions belong in `ffh-ai`, not in the rules. The world spells'
   AI-only Python gates were moved there (docs/PORTING.md, "Changes from FFH2"); the rules' other
   AI-only branches are listed in docs/AI_ONLY_RULES.md, each group moved by its own decision.
+
+## Verifying renderer and visual work (r3d, lab, client look)
+
+This is a game. The owner looks at the result and reports regressions, and a regression costs a
+follow-up fix, not harm. Verify in proportion: fast iteration beats exhaustive pre-checking. These
+rules hold even when ultracode is on: use workflows to fan out *work* (independent areas, design
+alternatives, research), not to multiply verification. Rules-engine work keeps the hard rules above.
+
+Tiers (pick by the change):
+- **Small** (a constant, a palette, a doc, a one-function fix): self-check only. One cropped render
+  of what changed, or none if it isn't visual. No review agent.
+- **Medium** (a new effect, a reworked area): self-check, then at most one reviewer agent working
+  from the code and the renders already made (at most 2 small new frames). No refute round: judge
+  its findings yourself (would the author's one-line reply win? then drop it).
+- **Large** (a new look across the map, a pipeline change): one review round with 2-3 critics in
+  parallel; a refute pass only for high-severity findings that would change direction. At most one
+  round per batch.
+
+Rendering (SwiftShader here: 10-30 s a frame on 4 shared cores; workflows run 2 agents at a time):
+- Iterate on small renders (`--w 512 --h 320`) or crops of the changed region. Full 1024x640 sets
+  and a real-game capture (`tools/r3d-compare.mjs`) only for a batch's final check.
+- Review agents read existing renders and render only if they truly must.
+- Never wait idle on a render, perf run or review: run it in the background and work on the next
+  independent item meanwhile.
+
+Batching:
+- Group related items: one verification round and one final render set per batch, not per item.
+- `tools/r3d-perf.mjs` and `tools/r3d-lab.mjs --stability` only at milestones (a batch that changes
+  shader cost or anything world-anchored), as one A/B against the previous milestone: same save,
+  same binary, the old tree via `git archive`. Update docs/R3D.md section 11 then.
+
+Every commit still needs the hard-rule gate (`tools/agents/build-tree.sh --test`, `ffh data` with 0
+warnings) plus `bash tools/web-check.sh`. Run `node tools/web-smoke.mjs --bin <built>/ffh-play`
+before pushing to master. Regressions the owner reports get fixed in the next batch; don't try to
+pre-empt every conceivable one.
+
+When a batch passes the gate, fast-forward master and push it without asking.
