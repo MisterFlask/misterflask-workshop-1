@@ -22,9 +22,12 @@ On branch `claude/serene-keller-fdfsk2` (based on master `d1e745c`; not yet merg
   failing on fresh seeds: Amurites, Calabim, Hippus, Illians, Sheaim, Infernals (docs/AI.md,
   "Civilization-specific").
 - **Rules change (user decision):** the world spells' AI-only Python gates are AI timing now
-  (`crates/ffh-ai/src/world_spells.rs`, docs/PORTING.md); no AI game changed. Open: the AI's own
-  timing for the gates that almost never open (Arcane Lacuna, Worldbreak, Raging Seas, March of
-  the Trees, Sanctuary).
+  (`crates/ffh-ai/src/world_spells.rs`, docs/PORTING.md); no AI game changed. Measured on top
+  (commit `0e4945b`, not merged): five spells cast at moments of their own. Stasis on the
+  Illians' first turns won big (fresh 4.7% -> 23.4%, 13 / 1) but freezes every rival's opening, a
+  human's included (the ffh-play T1 bot lost its only city by turn 50): **held for the user's
+  balance decision**. Raging Seas, Sanctuary, March of the Trees and Worldbreak at their new
+  moments did not raise win rates (docs/AI_LOG.md).
 - **`docs/AI_LOG.md`**: every AI change that failed, why it made sense, why it failed in the
   games, what that implies. CLAUDE.md "AI changes" makes reading it the start of any AI change
   and an entry the end of any failed one.

@@ -849,6 +849,9 @@ with its logic and not without / without and not with; share diff with the paire
 | Illians | ritual projects | 15.6% -> 14.1% | 2 / 3 | -9 (t -1.61) | -40 (t -0.56) |
 | Sheaim | Mage Guild and adepts at war | 0.0% -> 1.6% | 1 / 0 | -22 (t -0.87) | -88 (t -0.97; @400 -144, t -2.17) |
 
+Measured separately and held for a balance decision: the Illians' Stasis cast on their first
+turns ("World spells: AI timing" below; fresh seeds 6001-6064 against FfH's condition, win 4.7% ->
+23.4%, 13 / 1).
 Over the six kept civilizations (384 games): win rate 11.2% -> 19.3%, seeds won by one side only
 39 / 8 (sign test p 0.000006); this round's new logic alone (Balseraphs, Clan of Embers, Sidar):
 17.7% -> 24.5%, 16 / 3 (p 0.004). The Kuriotates' new part alone (round 3's logic against this
@@ -1032,8 +1035,33 @@ religion; For the Horde with 60 barbarian units; Mother Lode at 10 mines; Arcane
 typed mana bonuses on the whole map; Worldbreak at an Armageddon counter of 50 (Hyborem's Whisper
 had none). Several almost never hold, so their spell is never cast: Arcane Lacuna (0 of 40 games),
 Worldbreak (about 3%, near the end), Raging Seas (5 of 40, around turn 590), March of the Trees and
-Sanctuary (16 and 15 of 40, late) -- the AI's own timing for these is the open work. What the
-group-C diagnosis would choose: Raging Seas the turn before a stack strikes a coastal city (its
+Sanctuary (16 and 15 of 40, late).
+
+**Moments of their own** (an experiment, not merged: `world_spells::turn`, once a turn before units
+move, commit `0e4945b`, reachable from the `fanout/ws-*` job branches; measured with the
+civilization forced against the same binary with FfH's condition, `FFH_AI_WS_DEFAULT=SPELL_X`,
+development seeds 1-40 then fresh seeds 6001-6064):
+
+| spell | moment | development | fresh | |
+|---|---|---|---|---|
+| Stasis (Illians) | as soon as they have a city | win 15.0% -> 22.5% (4 / 1), share@end -4 | **4.7% -> 23.4% (13 / 1, p 0.002)**, share@300 +419 (t 3.26), share@end +551 (t 3.05) | held: a balance decision |
+| Raging Seas (Lanun) | a strike on a coastal city, or a coastal city in peril | 37.5% -> 25.0% (0 / 5) | 28.1% -> 25.0% (2 / 4), share@end +44 | not kept |
+| Sanctuary (Elohim) | a city in peril in a civ war | 10.3% -> 10.3%, share@end +198 | 7.8% -> 6.2% (0 / 1), share@end +8 | not kept |
+| March of the Trees (Ljosalfar) | a city in peril with 6+ of our forests near | 32.5% -> 30.0%, share@end -158 | 37.5% -> 28.1% (2 / 8), share@end -60 | not kept |
+| Worldbreak (Sheaim) | a strike, counter 20+ | 5.0% -> 5.0% | 3.1% -> 1.6% (0 / 1), share@end -58 | not kept |
+
+Stasis freezes every other player's production and research for 20 turns; FfH's condition (5
+cities) cast it around turn 205, the new moment on turn 1-2, when the rivals' whole opening is at
+stake. It is the largest single win-rate lever measured so far, and a balance question rather than an
+AI one: an Illian player who casts it at once takes the first 20 turns of production and research
+from every rival, a human's included. In the ffh-play bot test (`t1_scripted_bot_games`, seed 1, a
+peaceful game) the bot standing in for a human lost its only city by turn 50, its opening frozen
+while the barbarians roamed. A human could always do this; FfH's AI-only gate kept its AI from
+it. Not merged until that is decided (cast at once, a later moment that does not cripple an
+opening, or a rule such as no Stasis before some turn). Why the other
+four failed is in docs/AI_LOG.md (in short: the defensive triggers fired during the civilization's
+own winning offensives, and March of the Trees costs the elves their Ancient Forests for good).
+What the group-C diagnosis would choose: Raging Seas the turn before a stack strikes a coastal city (its
 defenders on a coast plot take ~35-50% damage); March of the Trees at one war when a city is in
 peril with 8+ of our forest plots within 2 of the threat; Legends right after the third full
 city; Gifts of Nantosuelta after the last planned city; Mother Lode when the windfall lifts the

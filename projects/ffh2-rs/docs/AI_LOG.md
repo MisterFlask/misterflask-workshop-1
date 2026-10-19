@@ -150,6 +150,66 @@ Infernal team won no game on either side.
    protocol above now asks for a fresh check over at least tens of games where the mechanic
    fires.
 
+### World spells at moments of their own (round 5, `0e4945b` on `scratch/ws-timing`)
+
+After the world spells' AI-only gates moved into the AI (`world_spells.rs`), five spells got a
+moment of their own instead of FfH's condition; each was measured with its civilization forced,
+against the same binary with FfH's condition (`FFH_AI_WS_DEFAULT=SPELL_X`), development seeds 1-40
+and fresh seeds 6001-6064. Stasis as soon as the Illians have a city won big (fresh win 4.7% ->
+23.4%, 13 / 1) and is held for a balance decision: it freezes every rival's opening, a human's
+included (docs/AI.md). Not kept:
+
+- **Raging Seas** (Lanun: 75 damage to every non-Lanun unit on a plot next to water, a quarter
+  of the other civilizations' coastal improvements destroyed) at a strike on a coastal city or a
+  coastal city of ours in peril in a civ war. Dev 37.5% -> 25.0% (0 / 5), share@end +42; fresh
+  28.1% -> 25.0% (2 / 4), share@end +44 (t 0.55). 1: FfH's condition (at war with a fleet worth
+  10+) held in 6-7 of 40-64 games, around turn 580, and 75 damage to every coastal defender looked
+  decisive. 2: cast in 25 / 44 games instead, around turn 370-390, mostly on "a coastal city in
+  peril" during the Lanun's own winning offensives (traced: turns 322-359, cities falling to them
+  around the cast). The Lanun ended slightly richer (commerce +47 and research +36 at turn 600,
+  captures and losses unchanged), but the damage is world-wide and reshuffles who else rises
+  (share at turn 450, own minus default: Clan -565 in seed 30, Ljosalfar -911 in seed 6023). In
+  the three traced lost games another civilization won instead: a rival's supremacy at turn 526,
+  ten turns before the Lanun's cultural victory without the cast (seed 14, where the Lanun were
+  weaker after it: share at turn 500 2026 against 2219); a time victory for the team that got the
+  Mercurians (seed 30, where the Lanun were stronger and held 36% of the world); a Lanun without
+  the cultural goal at the end and stronger in share (seed 6023). 3: the
+  win-rate loss (2 / 9 over both sets, p about 0.07) is not explained by one mechanism; what is
+  clear is that a defensive trigger spends the spell on fights already being won, and that a spell
+  that hits everyone but us mostly changes which rival rises. If tried again: only the strike
+  trigger, gated on a strike the odds say fails without it.
+- **Sanctuary** (Elohim: no foreign unit may enter our land for 30 turns, those inside thrown
+  out) at a city in peril in a civ war. Dev 10.3% -> 10.3% (2 / 2), share@end +198 (t 1.51);
+  fresh 7.8% -> 6.2% (0 / 1), share@end +8 (t 0.10). 1: FfH's condition (two wars at once) opened
+  in few games and late (cast in 27 of 64, around turn 420). 2: cast in 47 of 64 around turn 323;
+  cities lost, captures and every checkpoint measure unchanged (lost cities at turn 600 2.9 ->
+  2.8): "a city in peril" (the visible threat exceeds the garrison) is a weak signal, and the
+  30-turn lockout delays an attacker the Elohim would have held anyway. The development gain did
+  not repeat. 3: a lockout only matters against an invasion that would take cities; the trigger
+  has to be that (several cities threatened, or a losing war), and even then the measured value
+  of delaying a war is small for this AI.
+- **March of the Trees** (Ljosalfar: a Treant for 5 turns on every forest of ours, the forests
+  turned to New Forest) at a city in peril with 6+ of our forests within 2. Dev 32.5% -> 30.0% (2 /
+  3), share@end -158 (t -1.33); fresh 37.5% -> 28.1% (2 / 8), share@end -60. 1: FfH's condition
+  (two wars) cast it in 19 of 64 games, late (turn ~420), and Treants on every forest plot looked
+  like a decisive defense. 2: it fired at the start of the Ljosalfar's own offensives (traced:
+  turns 235, 331, 386, each a few turns after their declaration, while their stacks were taking
+  cities), so the Treants defended against little; and the price is permanent: every Ancient
+  Forest becomes a New Forest, losing its +1 food for good (Ancient Forests never regrow) and half
+  its health. After the cast the elves fell behind: military -34 at turn 500 (t -2.7), units -3.7
+  (t -2.0), population -12 and production -14 at turn 600 (population t -2.3), one more city lost
+  (t 1.9). 3: the spell trades the elves' forest economy for five turns of Treants; it is a last
+  stand, and FfH's two-wars condition approximates "only in desperation". If cast at all: when
+  cities would fall (several in peril, or the capital), never on an offensive.
+- **Worldbreak** (Sheaim: every unit in a foreign city takes the Armageddon counter as damage,
+  cities may burn) at a strike with a counter of 20+. Dev 5.0% -> 5.0% (0 / 0), share@end +23;
+  fresh 3.1% -> 1.6% (0 / 1), share@end -58 (t -1.45); 49 of 64 fresh games unchanged. 1: FfH's
+  condition (counter 50) was never met (0 casts). 2: the counter reaches 20 late (casts around
+  turn 457-475, in 8 / 15 games), so the damage was 20-40 on defenders the Sheaim, the weakest
+  civilization here (2-5% wins), mostly could not exploit; no checkpoint measure moved
+  significantly. 3: Worldbreak's value grows with the counter, which this AI rarely raises; the
+  Sheaim's problem is elsewhere (their economy and army), and the spell is not the lever.
+
 ### Tried in development, not kept (round 5)
 
 Each failed already on seeds 1-40 (most also on a second development set); the numbers and more
