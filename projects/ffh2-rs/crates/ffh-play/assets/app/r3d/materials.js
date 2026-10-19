@@ -236,6 +236,11 @@ const put = (o, a, b, t, s, h) => {
   o[3] = h;
 };
 const mul3 = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+/** GLSL's smoothstep. */
+const smooth = (e0, e1, x) => {
+  const u = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return u * u * (3 - 2 * u);
+};
 /** One of `pal` by the cumulative weights `cuts` (the last is 1). */
 const pick = (r, pal, cuts) => {
   const x = r();
@@ -245,13 +250,16 @@ const pick = (r, pal, cuts) => {
 
 /** Tufts over a jittered grid (an even cover without clumps of tufts): `count` tufts of `blades`
  *  strokes each from about one root (`spread` texels), fanned about `ang`; `blade(r, b)` -> the
- *  stroke's arguments for blade b of its tuft (b = 0 starts a tuft). */
-function tufts(t, r, count, blades, ang, fan, blade, spread = 1.2) {
+ *  stroke's arguments for blade b of its tuft (b = 0 starts a tuft). With `dens` (0..1 a texel,
+ *  periodic over the tile) a tuft grows only with that chance at its root: the cover gathers into
+ *  clumps. */
+function tufts(t, r, count, blades, ang, fan, blade, spread = 1.2, dens = null) {
   const g = Math.max(1, Math.round(Math.sqrt(count)));
   const cell = t.n / g;
   for (let gy = 0; gy < g; gy++) {
     for (let gx = 0; gx < g; gx++) {
       const x = (gx + r()) * cell, y = (gy + r()) * cell;
+      if (dens && r() >= dens[(Math.floor(y) & t.mask) * t.n + (Math.floor(x) & t.mask)]) continue;
       const nb = blades[0] + Math.floor(r() * (blades[1] - blades[0] + 1));
       // Each tuft its own lean and spread (no stamped look).
       const lean = r.gauss(0.14), fn = fan * (0.6 + 0.8 * r());
@@ -270,34 +278,39 @@ function tufts(t, r, count, blades, ang, fan, blade, spread = 1.2) {
 /** The meadow's green sward, as the look target paints it: soft and warm, its variety mostly at the
  *  middle scale -- a mottled under-layer, then broad soft upright dabs of lighter and deeper greens
  *  (yellow-green, sap, olive, a little cool green) -- and the grass in it fine and quiet: thin blades
- *  drawn in the light and shade of the paint under them (darker at the root, lit at the tip), a few
- *  bright yellow-green blades catching the sun. */
+ *  drawn in the light and shade of the paint under them (darker at the root, a little lighter at the
+ *  tip), gathered in clumps of deeper green with thinner grass between (not an even cover: that
+ *  reads as a lawn), a few dry olive blades among them. */
 function grass(t, r) {
   const n = t.n;
   const a = tfbm(n, 4, 3, 11), b = tnoise(n, 10, 12);
+  // Where the blades gather: a tile-periodic fbm (about 6 clumps across a tile), so the tile still
+  // repeats without a seam.
+  const cl = tfbm(n, 6, 3, 13);
+  const dens = cl.map((v) => 0.15 + 0.85 * smooth(0.44, 0.6, v));
   const lo = [0.19, 0.27, 0.12], hi = [0.29, 0.37, 0.15];
   t.fill((k, i, j, o) => {
     const v = a[k] * 0.5 + b[k] * 0.5;
-    put(o, lo, hi, v, 1, 0.2 + 0.2 * v);
+    put(o, lo, hi, v, 1.03 - 0.06 * dens[k], 0.2 + 0.2 * v);
   });
-  const DAB = [[0.36, 0.45, 0.17], [0.26, 0.36, 0.14], [0.33, 0.41, 0.15], [0.26, 0.37, 0.18]];
+  const DAB = [[0.33, 0.42, 0.16], [0.26, 0.36, 0.14], [0.33, 0.41, 0.15], [0.26, 0.37, 0.18]];
   const CUTS = [0.32, 0.6, 0.84];
   tufts(t, r, 240, [1, 2], Math.PI / 2, 0.5, (r) => {
-    const c = mul3(pick(r, DAB, CUTS), 0.9 + 0.2 * r());
-    return { len: 12 + 16 * r(), w: 6 + 5 * r(), w1: 3, c0: mul3(c, 0.94), c1: mul3(c, 1.04), h0: 0.3, h1: 0.45, a: 0.6 };
+    const c = mul3(pick(r, DAB, CUTS), 0.94 + 0.12 * r());
+    return { len: 12 + 16 * r(), w: 6 + 5 * r(), w1: 3, c0: mul3(c, 0.94), c1: mul3(c, 1.04), h0: 0.3, h1: 0.45, a: 0.4 };
   }, 3);
   const blades = (count, nb, len, w, root, tip, h0, h1) =>
     tufts(t, r, count, nb, Math.PI / 2, 0.9, (r) => {
       const v = 0.92 + 0.16 * r();
       return { len: len[0] + (len[1] - len[0]) * r(), w: w[0] + (w[1] - w[0]) * r(), c0: mul3(root, v), c1: mul3(tip, v), h0, h1, tint: true };
-    }, 1.5);
-  blades(1000, [2, 4], [6, 13], [1.3, 2.0], [0.84, 0.86, 0.84], [1.1, 1.12, 0.98], 0.25, 0.75);
-  blades(420, [2, 3], [7, 14], [1.3, 1.9], [0.92, 0.94, 0.88], [1.22, 1.22, 1.0], 0.5, 1.0);
-  // A few bright blades in the sun.
+    }, 1.5, dens);
+  blades(1000, [2, 4], [6, 13], [1.3, 2.0], [0.88, 0.9, 0.88], [1.06, 1.08, 0.97], 0.25, 0.75);
+  blades(420, [2, 3], [7, 14], [1.3, 1.9], [0.92, 0.94, 0.88], [1.08, 1.08, 0.97], 0.5, 1.0);
+  // A few dry olive blades (not bright lime ones: those read as plastic).
   tufts(t, r, 120, [1, 3], Math.PI / 2, 0.8, (r) => {
-    const c = mix3([0.46, 0.55, 0.2], [0.55, 0.6, 0.24], r());
-    return { len: 7 + 6 * r(), w: 1.3 + 0.5 * r(), c0: mul3(c, 0.8), c1: c, h0: 0.6, h1: 1.0 };
-  }, 1.5);
+    const c = mix3([0.30, 0.33, 0.14], [0.35, 0.36, 0.16], r());
+    return { len: 7 + 6 * r(), w: 1.3 + 0.5 * r(), c0: mul3(c, 0.85), c1: c, h0: 0.6, h1: 1.0 };
+  }, 1.5, dens);
 }
 
 /** The golden dry grass, as the target paints it: light and smooth, combed along the wind
