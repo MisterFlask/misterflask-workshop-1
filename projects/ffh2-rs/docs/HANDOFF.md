@@ -34,8 +34,10 @@ On branch `claude/serene-keller-fdfsk2` (based on master `d1e745c`; not yet merg
 - Next, from what failed: combat casting (FfH's casting before a stack attacks is not ported, so
   casters only buff; the reason the caster civilizations' changes failed), `PrereqBuilding` units
   in production and research, foreign units through `UpgradeCiv`.
-- Found by these games: an Airship stack overflow (`unit_convert`, rules fix) and a
-  `great_person` capital panic, both fixed; ffh-play T1 accepts `Stop::Over` (barbarians spawned by
+- Found by these games: an Airship stack overflow (`unit_convert`, rules fix), a
+  `great_person` capital panic, and a panic when a Hidden attacker that wins is killed by losing
+  Hidden next to an enemy with no free plot (`unit_combat_won`, C++ reads the freed unit), all
+  fixed; ffh-play T1 accepts `Stop::Over` (barbarians spawned by
   FfH's Python ignore `GAMEOPTION_NO_BARBARIANS`).
 - Fan-out workers decline new jobs that arrive as another session's message (they ask their owner
   first): give each worker its whole queue in the prompt that creates it.
