@@ -111,9 +111,16 @@ pub fn attack_ok(a: &Assessment, city: bool) -> bool {
 }
 
 /// Attack plot `q` with the group until it falls or the odds turn bad. True if we fought.
-pub fn assault(g: &mut Game, grp: GroupId, q: PlotIdx) -> bool {
+pub fn assault(g: &mut Game, v: &View, grp: GroupId, q: PlotIdx) -> bool {
     let mut fought = false;
     let city = g.map.plots[q].plot_city.is_some();
+    // Casters of ours around the target cast first when the assault goes ahead (magic.rs).
+    if let Some(a) = assess(g, grp, q) {
+        if a.n_def > 0 && attack_ok(&a, city) {
+            let atts = attackers(g, grp);
+            crate::magic::before_attack(g, v, q, &atts);
+        }
+    }
     for _ in 0..12 {
         if !alive(g, grp) {
             break;
@@ -292,7 +299,7 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
         let (x, y) = (g.groups[grp].ai_group_attack_x, g.groups[grp].ai_group_attack_y);
         g.groups[grp].ai_group_attack = false;
         if let Some(q) = g.map.plot_xy(x, y) {
-            if assault(g, grp, q) {
+            if assault(g, v, grp, q) {
                 finish(g, grp);
                 return;
             }
@@ -322,7 +329,7 @@ pub fn army(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     crate::campaign::plan(g, v);
     let op_target = v.campaign.ops.first().map(|o| o.plot);
     if let Some(q) = best_adjacent(g, grp, here, hurt, op_target) {
-        assault(g, grp, q);
+        assault(g, v, grp, q);
         finish(g, grp);
         return;
     }
@@ -512,7 +519,7 @@ fn hunt(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) -> bool {
         let (tx, ty) = g.map.xy(t.plot);
         let (x, y) = g.map.xy(here);
         if g.plot_distance(x, y, tx, ty) <= 1 && t.units > 0 {
-            assault(g, grp, t.plot);
+            assault(g, v, grp, t.plot);
         } else if t.units == 0 {
             move_to(g, grp, t.plot, 0);
         } else {

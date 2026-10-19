@@ -3,7 +3,9 @@
 //! (`CvUnit::chooseSpell`), then buff (`CvUnitAI::AI_BuffCast`) and summon
 //! (`CvUnitAI::AI_SummonCast`) spells. The valuation follows `chooseSpell` term by term; the
 //! C++ AI's `AI_promotionValue` / `AI_unitValue` / `AI_buildingValue` are replaced by this
-//! AI's own estimates.
+//! AI's own estimates. A player whose spellcasting is this AI's own (`magic::enabled`) chooses
+//! by `magic::choose_turn_spell` instead, which keeps these terms for the spells it does not
+//! model; its summons attack as FfH's do ([`summons_attack`]).
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -15,14 +17,26 @@ use crate::view::{type_attack_power, type_defense_power, View};
 
 pub fn end_turn(g: &mut Game, v: &View) {
     let p = v.p;
+    let magic = crate::magic::enabled(g, p);
     // C++ AI_setSummonSuicideMode(true): summons created now attack on their own.
     g.players[p].sum_sui_mode = true;
     for u in g.players[p].units.clone() {
         if !g.units.contains(u) {
             continue;
         }
+        if magic {
+            // C++ quirk: a unit another unit's spell has just killed (delayed death: Form Wolf
+            // Pack's second wolf) still casts, as in FfH's loop below.
+            if let Some((spell, value)) = crate::magic::choose_turn_spell(g, v, u) {
+                cast_and_act(g, v, u, spell, "turn", value);
+                continue;
+            }
+            // Nothing is worth casting by what it does: FfH's own choice below, a free cast (Haste
+            // or a Dance of Blades that blesses no one) that keeps the game FfH's where the values
+            // see no difference (a cast rolls for a miscast and ends promotions casting removes).
+        }
         if let Some(spell) = choose_spell(g, u) {
-            cast_and_act(g, v, u, spell);
+            cast_and_act(g, v, u, spell, "turn", 0);
         }
         if !g.units.contains(u) || g.units[u].death_delay {
             continue;
@@ -38,18 +52,28 @@ pub fn end_turn(g: &mut Game, v: &View) {
     g.players[p].sum_sui_mode = false;
 }
 
-/// Cast, then let summons created in suicide mode attack at once (C++ `castCreateUnit` runs
+/// Cast (`value`: the cast's value, for `FFH_AI_TRACE_CAST`), then let the summons it made attack
+/// ([`summons_attack`]).
+fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType, ctx: &str, value: i32) {
+    let newest = g.players[v.p].units.iter().copied().max();
+    crate::magic::cast(g, u, spell, ctx, value);
+    summons_attack(g, v, newest);
+}
+
+/// Summons created in suicide mode since unit `newest` attack at once (C++ `castCreateUnit` runs
 /// their `AI_update` -> `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`, i.e. any target
 /// at odds of 5% or better). Unit ids are never reused, so new units have larger ids.
-fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType) {
+///
+/// Tried, not kept (docs/AI_LOG.md, "Spellcasting"): the summons of a player casting by
+/// `magic.rs` attacked the adjacent plot where they took most hit points, at any odds and then at
+/// 5% or better; Loki's puppets, cast every turn, fought more and the Balseraphs lost.
+pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
     let p = v.p;
-    let max_before = g.players[p].units.iter().copied().max();
-    g.unit_cast(u, spell);
     let summons: Vec<UnitId> = g.players[p]
         .units
         .iter()
         .copied()
-        .filter(|&n| max_before.map_or(true, |m| n > m) && g.units[n].ai_suicide_summon)
+        .filter(|&n| newest.map_or(true, |m| n > m) && g.units[n].ai_suicide_summon)
         .collect();
     for n in summons {
         // Attack while alive with moves left (blitzing summons may attack more than once).
@@ -101,99 +125,139 @@ pub fn choose_spell(g: &Game, u: UnitId) -> Option<SpellType> {
     let d = g.d;
     let mut best: Option<SpellType> = None;
     let mut best_value = 0;
-    let here = g.unit_plot(u);
-    let team = g.unit_get_team(u);
     for spell in d.spells.keys() {
         if !g.unit_can_cast(u, spell, false) || !crate::world_spells::ready(g, g.units[u].owner, spell) {
             continue;
         }
-        let info = &d.spells[spell];
-        let range = info.range;
-        let mut value = 0;
-        if info.create_unit_type.is_some() {
-            value += summon_value(g, u, spell);
-        }
-        if info.damage != 0 {
-            let (x, y) = (g.units[u].x, g.units[u].y);
-            for i in -range..=range {
-                for j in -range..=range {
-                    let Some(q) = g.plot_xy(x, y, i, j) else { continue };
-                    if q == here {
-                        continue;
-                    }
-                    for &t in &g.map.plots[q].units {
-                        if g.unit_is_immune_to_spell(t, u, spell) {
-                            continue;
-                        }
-                        let enemy = g.unit_is_enemy(t, Some(team), None);
-                        if enemy && g.units[t].damage < info.damage_limit {
-                            value += info.damage * 10;
-                        }
-                        let tteam = g.unit_get_team(t);
-                        if tteam == team {
-                            value -= info.damage * 20;
-                        }
-                        if tteam != team && !enemy {
-                            value -= 1000;
-                        }
-                    }
-                }
-            }
-        }
-        for promo in [info.add_promotion_type1, info.add_promotion_type2, info.add_promotion_type3].into_iter().flatten() {
-            value += promotion_value(g, u, promo);
-        }
-        for promo in [info.remove_promotion_type1, info.remove_promotion_type2, info.remove_promotion_type3].into_iter().flatten() {
-            value -= promotion_value(g, u, promo);
-        }
-        if let Some(cu) = info.convert_unit_type {
-            value += unit_value(d, cu) - unit_value(d, g.units[u].unit_type);
-        }
-        if let Some(b) = info.create_building_type {
-            if let Some(c) = g.map.plots[here].plot_city {
-                value += building_value(g, c, b, 0);
-            }
-        }
-        if info.create_feature_type.is_some() {
-            value += 10;
-        }
-        if info.create_improvement_type.is_some() {
-            value += 10;
-        }
-        if info.dispel {
-            value += 25 * (range + 1) * (range + 1);
-        }
-        if info.push {
-            value += 20 * (range + 1) * (range + 1);
-            if g.map.plots[here].plot_city.is_some() {
-                value *= 3;
-            }
-        }
-        if info.change_population != 0 {
-            value += 50 * info.change_population;
-        }
-        if info.cost != 0 {
-            value -= 4 * info.cost;
-        }
-        if info.immobile_turns != 0 {
-            value += 20 * info.immobile_turns * (range + 1) * (range + 1);
-        }
-        if info.sacrifice_caster {
-            value -= g.units[u].level * unit_value(d, g.units[u].unit_type);
-        }
-        if info.resistable {
-            value /= 2;
-        }
-        value += info.ai_weight;
         // Civilization-specific values (civs/: e.g. Luchuirp units in our cities leave a Golden
         // Hammer to become an Engineer).
-        let value = crate::civs::spell_value(g, u, spell, value);
+        let value = crate::civs::spell_value(g, u, spell, ffh_value(g, u, spell));
         if value > best_value {
             best_value = value;
             best = Some(spell);
         }
     }
     best
+}
+
+/// `chooseSpell`'s value of one castable spell (before the civilization's say).
+pub fn ffh_value(g: &Game, u: UnitId, spell: SpellType) -> i32 {
+    let d = g.d;
+    let here = g.unit_plot(u);
+    let team = g.unit_get_team(u);
+    let info = &d.spells[spell];
+    let range = info.range;
+    let mut value = 0;
+    if info.create_unit_type.is_some() {
+        value += summon_value(g, u, spell);
+    }
+    if info.damage != 0 {
+        let (x, y) = (g.units[u].x, g.units[u].y);
+        for i in -range..=range {
+            for j in -range..=range {
+                let Some(q) = g.plot_xy(x, y, i, j) else { continue };
+                if q == here {
+                    continue;
+                }
+                for &t in &g.map.plots[q].units {
+                    if g.unit_is_immune_to_spell(t, u, spell) {
+                        continue;
+                    }
+                    let enemy = g.unit_is_enemy(t, Some(team), None);
+                    if enemy && g.units[t].damage < info.damage_limit {
+                        value += info.damage * 10;
+                    }
+                    let tteam = g.unit_get_team(t);
+                    if tteam == team {
+                        value -= info.damage * 20;
+                    }
+                    if tteam != team && !enemy {
+                        value -= 1000;
+                    }
+                }
+            }
+        }
+    }
+    for promo in [info.add_promotion_type1, info.add_promotion_type2, info.add_promotion_type3].into_iter().flatten() {
+        value += promotion_value(g, u, promo);
+    }
+    for promo in [info.remove_promotion_type1, info.remove_promotion_type2, info.remove_promotion_type3].into_iter().flatten() {
+        value -= promotion_value(g, u, promo);
+    }
+    if let Some(cu) = info.convert_unit_type {
+        value += unit_value(d, cu) - unit_value(d, g.units[u].unit_type);
+    }
+    if let Some(b) = info.create_building_type {
+        if let Some(c) = g.map.plots[here].plot_city {
+            value += building_value(g, c, b, 0);
+        }
+    }
+    if info.create_feature_type.is_some() {
+        value += 10;
+    }
+    if info.create_improvement_type.is_some() {
+        value += 10;
+    }
+    if info.dispel {
+        value += 25 * (range + 1) * (range + 1);
+    }
+    if info.push {
+        value += 20 * (range + 1) * (range + 1);
+        if g.map.plots[here].plot_city.is_some() {
+            value *= 3;
+        }
+    }
+    if info.change_population != 0 {
+        value += 50 * info.change_population;
+    }
+    if info.cost != 0 {
+        value -= 4 * info.cost;
+    }
+    if info.immobile_turns != 0 {
+        value += 20 * info.immobile_turns * (range + 1) * (range + 1);
+    }
+    if info.sacrifice_caster {
+        value -= g.units[u].level * unit_value(d, g.units[u].unit_type);
+    }
+    if info.resistable {
+        value /= 2;
+    }
+    value + info.ai_weight
+}
+
+/// `chooseSpell`'s terms for what a spell costs or gives besides its effect on units (for
+/// `magic::turn_value`): a unit conversion, a feature or improvement, a push, population, gold,
+/// the caster's sacrifice.
+pub fn ffh_misc_value(g: &Game, u: UnitId, spell: SpellType) -> i32 {
+    let d = g.d;
+    let info = &d.spells[spell];
+    let range = info.range;
+    let mut value = 0;
+    if let Some(cu) = info.convert_unit_type {
+        value += unit_value(d, cu) - unit_value(d, g.units[u].unit_type);
+    }
+    if info.create_feature_type.is_some() {
+        value += 10;
+    }
+    if info.create_improvement_type.is_some() {
+        value += 10;
+    }
+    if info.push {
+        value += 20 * (range + 1) * (range + 1);
+        if g.map.plots[g.unit_plot(u)].plot_city.is_some() {
+            value *= 3;
+        }
+    }
+    if info.change_population != 0 {
+        value += 50 * info.change_population;
+    }
+    if info.cost != 0 {
+        value -= 4 * info.cost;
+    }
+    if info.sacrifice_caster {
+        value -= g.units[u].level * unit_value(d, g.units[u].unit_type);
+    }
+    value
 }
 
 /// C++ `CvUnitAI::isBuffer`: can cast a spell adding a beneficial promotion.
@@ -231,7 +295,7 @@ fn buff_cast(g: &mut Game, v: &View, u: UnitId) {
         }
     }
     if let Some(s) = best {
-        cast_and_act(g, v, u, s);
+        cast_and_act(g, v, u, s, "buff", 0);
     }
 }
 
@@ -253,6 +317,6 @@ fn summon_cast(g: &mut Game, v: &View, u: UnitId) {
         }
     }
     if let Some(s) = best {
-        cast_and_act(g, v, u, s);
+        cast_and_act(g, v, u, s, "summon", 0);
     }
 }

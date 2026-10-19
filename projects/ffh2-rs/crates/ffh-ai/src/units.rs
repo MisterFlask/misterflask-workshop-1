@@ -278,6 +278,10 @@ pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType) -> i32 {
     if caster {
         v += info.spell_caster_xp * 3;
     }
+    // The spells it opens (magic.rs): a caster's sphere by what it can cast with it.
+    if crate::magic::enabled(g, unit.owner) {
+        v += crate::magic::promotion_value(g, u, promo);
+    }
     v.max(1)
 }
 
@@ -601,12 +605,26 @@ pub(crate) fn missionary(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
 }
 
 /// Casters stay where the fighting is (spells are cast at the end of the turn, see
-/// `casting.rs`): with the army when at war, else in the most threatened city.
+/// `casting.rs`): with the army when at war, else in the most threatened city. A player casting
+/// by `magic.rs` sends them where it says (`magic::caster_target`): with the stacks of an
+/// operation under way, to the units its blessings are for, to the cities its city spells are for.
 fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     let here = g.unit_plot(u);
     if crate::victory::mana_node(g, v, grp, u) { return; } // victory-pursuit
-    if let Some(target) = crate::military::war_target(g, v) {
+    if crate::magic::enabled(g, p) {
+        crate::campaign::plan(g, v);
+        if let Some((q, why)) = crate::magic::caster_target(g, v, u) {
+            crate::trace!(g, p, "caster {} at {:?} -> {:?} ({})", g.d.units[g.units[u].unit_type].base.type_, g.map.xy(here), g.map.xy(q), why);
+            if q != here {
+                move_to(g, grp, q, 0);
+            }
+            if alive(g, grp) && g.group_ready_to_move(grp, false) {
+                skip(g, grp);
+            }
+            return;
+        }
+    } else if let Some(target) = crate::military::war_target(g, v) {
         let tp = g.city_plot(target);
         let (tx, ty) = g.map.xy(tp);
         let reach = v.flood.run(g, u, 15, false);

@@ -401,7 +401,7 @@ fn assault_landed(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, amph: &Am
         if can_strike {
             let name = g.cities[amph.city].name.clone();
             crate::trace!(g, v.p, "landed stack {:?} ({} units) assaults {} at {:?}", grp, g.groups[grp].units.len(), name, g.map.xy(tp));
-            crate::military::assault(g, grp, tp);
+            crate::military::assault(g, v, grp, tp);
             let taken = !g.cities.contains(amph.city) || g.cities[amph.city].owner == v.p;
             crate::trace!(g, v.p, "landed assault on {}: {}", name, if taken { "taken" } else { "holds" });
         } else if rally.is_some_and(|r| r != here) {

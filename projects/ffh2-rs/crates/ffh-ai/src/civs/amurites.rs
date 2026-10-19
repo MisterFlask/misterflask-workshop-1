@@ -11,6 +11,11 @@
 //! -25 (t -0.31). The casters come too late to change these games. Arcane Lacuna is never cast: its
 //! AI-only gate (7 typed mana nodes on the whole map) is never met (docs/AI.md,
 //! "Civilization-specific").
+//!
+//! The generic spellcasting (`magic.rs`) casts with the casters there are and trains none:
+//! training adepts for the Fireball they would cast as mages was tried there and lost (the
+//! palace's Fire, Body and Metamagic give an adept nothing for a fight; docs/AI_LOG.md,
+//! "Spellcasting").
 
 use super::CivPlay;
 

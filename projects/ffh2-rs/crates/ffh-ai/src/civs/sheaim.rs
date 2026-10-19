@@ -11,6 +11,10 @@
 //! (t -0.97). The guilds (2.0 a game) and adepts come around turn 250 and cost more than they
 //! bring.
 //! Also tried: the Planar Gate valued by the creatures its city can call (0.1 a game, no effect).
+//!
+//! The generic spellcasting (`magic.rs`) casts with the casters there are and trains none
+//! (docs/AI_LOG.md, "Spellcasting"); adepts for Raise Skeleton, an army unit a turn while at war,
+//! are untried (docs/AI.md, "Known gaps").
 
 use super::CivPlay;
 

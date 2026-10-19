@@ -31,6 +31,74 @@ Each entry answers three questions, from the games themselves (counts with `ffh 
   `FFH_AI_TRACE` (a throwaway trace line is fine on a scratch branch; it must not change the
   checksum) and compare the snapshots per checkpoint (`civ_ab.py --load`, the snapshot fields).
 
+## Spellcasting (2026-10-19, `magic.rs`)
+
+The kept version is in docs/AI.md, "Spellcasting". Development measured each civilization forced
+into slot 0, its spellcasting on against the same binary with `FFH_AI_MAGIC_OFF` for it (every
+other civilization casting by `magic.rs`), seeds 1-20, full games (6 civs, standard map). These
+variants failed there (the last one on a first fresh set, 8101-8120, spent by it) and were
+changed before the final validation; the way each failed was found by replaying the seeds where
+the two sides first split (`ffh autoplay --turns N` checksums bisect the turn, `FFH_AI_TRACE` and
+`FFH_AI_TRACE_CAST` show the casts).
+
+- **Summons at the end of the turn attacking where they take most hit points.** 1: a temporary
+  summon dies at the start of our next turn anyway, so a hit point it takes from an enemy looked
+  free whatever the odds; FfH's AI attacks with it only at 5% or better (`AI_summonAttackMove`),
+  taking the best odds. 2: the Balseraphs' Loki casts Create Puppet every turn (FfH's weight
+  1000) on his way to Disrupt a city; in seed 9 a barbarian Spectre shadowed him and his puppet
+  attacked it every turn at hopeless odds, the Spectre then attacked the stack, Loki defended and
+  lost 75 hit points, and hurt he was no longer sent to Disrupt (`civs/balseraphs.rs` gives up
+  over 20 damage): no city taken by turn 110 instead of 2. Balseraphs win 45% -> 30% (3 / 6),
+  share@end -456 (t -1.14), captures down from turn 200 (2.0 -> 1.6, t -2.3). With FfH's 5% floor
+  but the target still chosen by hit points they still lost (45% -> 20%, 0 / 5; share@300 -208,
+  t -2.13): fewer puppets alive at every checkpoint (turn 200 1.2 -> 0.9, t -2.3), and seed 8 split
+  from the game without the change at turn 165 on a puppet's target alone. 3: a summon also
+  defends what it stands with, and Loki's puppets are worth more as FfH plays them (the round-5
+  entry on Create Puppet below says the same); summons attack as FfH's do
+  (`casting::summons_attack`), and seed 8 is then the same game until turn 172.
+- **Training casters for their spells** (two variants). 1: with spells cast where they help, a
+  caster's worth could be read from them: one caster for every five field units when an adept
+  could cast something worth taking to a fight with our mana, and the Mage Guild in our most
+  productive safe city while no city could train one. The first variant also counted the second
+  sphere promotions' spells (Fireball) at 3/4 for Arcane leaders (1/2 otherwise) once mages were
+  within reach, and one more caster at war. 2: First variant: the Amurites' palace mana (Fire,
+  Body, Metamagic) gives adepts Haste and Floating Eye (Blaze is not for the AI); their guild and
+  one or two adepts came around turn 250 (casters at turn 300 0.1 -> 1.1) and cast nothing -- no
+  Amurite cast in 100 turns of seed 9, where a one-city empire at war built the guild and an adept
+  (the war's extra caster) and died at turn 338. Share@300 -16 (t -1.85), land at turn 350 -10 (t
+  -2.1), research -22 (t -2.0), share@end -188 (t -1.56). Second variant, an adept's own spells
+  only and no war bonus: only the Enchantment civilizations trained casters (Grigori, Illians,
+  Luchuirp, Sidar: Enchanted Blade); 1.4 casters at turn 300 cost the Luchuirp a fifth of their
+  research (t -1.7) and the Grigori a tenth by turn 350, the Illians and the Sidar had more army
+  later, and against the same spellcasting without caster production (a scratch switch) the four
+  lost wins: 17.5% -> 10.0% (3 / 9), share@300 -10 (t -1.5), share@end -4 (t -0.04). 3: a caster
+  is hammers and upkeep paid around turn 250 for blessings and curses that pay only in the fights
+  that follow, and this AI's late, small wars do not repay them (the third such result, after the
+  Amurites and the Sheaim in round 5). Not kept: `magic.rs` trains no casters. Before trying
+  again: magic earlier (research toward Knowledge of the Ether), or casters for a lasting summon
+  (Raise Skeleton: an army unit a turn).
+- **Skipping units that another unit's spell has just killed.** 1: a unit in delayed death
+  should not act. 2: FfH's end-of-turn loop (`CvGame::updateMoves`) skips a unit only after its
+  own cast killed it, so the second wolf a Form Wolf Pack consumes still casts Form Wolf Pack in
+  its turn, forming a further pack from wolves already spent. Skipping it cost the Doviello packs
+  (seed 13 split at turn 166 on that alone; share@end -250, t -1.83). 3: that is a C++ quirk of the
+  AI loop, which `casting::end_turn` keeps for both paths (marked there); whether the AI should
+  keep the extra packs is a separate decision, not part of the spellcasting change.
+- **Casting nothing when nothing is worth casting.** 1: a cast that does nothing (Haste on a quiet
+  turn, Dance of Blades where no unit can take it) is not worth a unit's turn, so the end of the
+  turn cast only what had a value. 2: a cast is never quite a no-op -- it rolls for a miscast when
+  the unit or spell has a chance of one, ends the promotions casting removes -- so every skipped
+  cast split the game from FfH's: the Balseraphs' games split on a puppet's Dance of Blades on
+  nobody (seed 10 at turn 85, seed 8114 at turn 193), and on fresh seeds 8101-8120 the first six
+  civilizations went 1 / 7 in wins, share@end -85 (t -1.76), the Balseraphs -332 (t -2.29), most
+  of it play that had nothing to do with spells after such splits. 3: when nothing is worth
+  casting, the unit casts what FfH would: free, and the same game where the values see no
+  difference (seed 8114 then plays the same through turn 300), so what a measurement shows is the
+  change's own.
+
+The kept version passed on fresh seeds 8201-8220: win 17.7% -> 18.5% (11 / 8), share@end +36
+(t 1.39) (docs/AI.md, "Spellcasting").
+
 ## Round 5 (2026-10-18): civilization mechanics
 
 Numbers are full games (6 civs, standard map, to a decision or turn 690); "dev" is seeds 1-40
@@ -68,7 +136,7 @@ promotions first). Amurites: dev 5.0% -> 7.5% (2 / 1), share@end +108 (t 1.06); 
    cast damage and summons right before it attacks, promotions chosen for that (Fire for
    Fireball, Death for Raise Skeleton), and only then does a Mage Guild have a value (the casters
    it enables), for every civilization. Not a balance verdict: FfH's casters are strong in human
-   hands.
+   hands. (That generic version is "Spellcasting" above.)
 
 ### Warcry held for the strike (Hippus, `ebb1427`)
 

@@ -28,6 +28,7 @@ pub mod empire;
 pub mod events;
 pub mod expansion;
 pub mod finance;
+pub mod magic;
 pub mod military;
 pub mod naval;
 pub mod offers;

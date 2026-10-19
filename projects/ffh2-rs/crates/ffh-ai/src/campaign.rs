@@ -987,6 +987,11 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
     }
     let pool: Vec<UnitId> = groups.iter().filter(|&&grp| alive(g, grp)).flat_map(|&grp| g.groups[grp].units.clone()).collect();
     let name = g.cities[op.city].name.clone();
+    // Our casters around the city soften its defenders and summon attackers first (magic.rs); the
+    // strike below then weighs the defenders as they are left (a summon may even take or raze
+    // the city), and blesses our attackers once it goes ahead.
+    let ready: Vec<UnitId> = pool.iter().copied().filter(|&u| next_to(g, u) && g.unit_moves_left(u) > 0 && attack_power(g, u) > 0 && g.unit_can_attack(u)).collect();
+    crate::magic::soften(g, v, tp, &ready);
     let mut done: Vec<UnitId> = Vec::new();
     let mut fights = 0;
     for _ in 0..48 {
@@ -1022,6 +1027,9 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
         }
         if !go {
             break;
+        }
+        if fights == 0 {
+            crate::magic::bless(g, v, tp, &units);
         }
         // The next attacker.
         let odds = |g: &Game, u: UnitId| g.plot_get_best_defender(tp, None, Some(p), Some(u), false, false, false).map_or(1000, |d| g.get_combat_odds(u, d));

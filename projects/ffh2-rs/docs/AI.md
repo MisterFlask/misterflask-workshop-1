@@ -88,13 +88,17 @@ counters, war success, war plans) that the diplomacy below reads.
    - **field armies** (`military.rs`), see below;
    - **explorers** reveal the nearest unknown area and goody huts, then join the army;
    - **great people** discover, join as specialists or start a golden age;
-   - **missionaries** go to our cities without the state religion; **casters** move with the
-     army or to the most threatened city; barbarians and animals attack what they can beat,
+   - **missionaries** go to our cities without the state religion; **casters** go with the
+     stack nearest an operation's target, to the units their blessings are for, the cities
+     their city spells are for or the land they terraform (`magic::caster_target`), else to
+     the most threatened city; barbarians and animals attack what they can beat,
      else roam; **ships** see Naval. Units aboard a ship get no orders (the ship lands them).
      Any group still idle is skipped so the turn always ends.
 6. **End-of-turn spells** (`casting.rs`): FfH's own AI casts spells at the end of every turn
    (`CvGame::updateMoves`, "BETTER AI (Spellcasting end of turn)"): `CvUnit::chooseSpell`, then
-   buffs and summons, ported term by term with this AI's values.
+   buffs and summons, ported term by term with this AI's values. Every civilization but the
+   barbarians chooses by what each spell does instead (`magic.rs`, see "Spellcasting" below),
+   which also casts before our stacks attack (`campaign::strike`, `military::assault`).
 
 ## Cities
 
@@ -799,6 +803,83 @@ research +2.0% (t 0.8), production +2.5% (t 1.4), research slider +2.9% (t 1.5; 
 200), culture +8.2% (t 1.8); captures, eliminations and wars unchanged. A small lever (a few real
 choices per civ in 300 turns), economy-positive throughout and no regression.
 
+## Spellcasting (`magic.rs`)
+
+FfH's own AI casts by fixed priorities: at the end of every turn the best spell by
+`CvUnit::chooseSpell`'s weights, then a buff, then a summon when an enemy is in reach
+(`casting.rs`, ported term by term), and before every group attack its damage spells, summons and
+buffs (`CvSelectionGroup::groupAttack`, which the rules port leaves to the AI). The base AI had only
+the first: damage and summons fell only when an enemy happened to be in reach at the end of the
+turn, casters spent their turns on Haste and Regeneration, and no AI built a Mage Guild
+(docs/AI_LOG.md, "Casters through a Mage Guild"). `magic.rs` values a spell by what it does to the
+units it reaches, read from the spell data, and uses that value before attacks, at the end of the
+turn, to move casters and to promote them:
+
+- **Effects**, in hit points: damage by the rules' formula (the caster's spell damage bonus, the
+  target's resistance -- twice its defense, twice its level, a quarter of its city's defense, its
+  resistance to the damage type -- up to the spell's limit, and the resist roll of resistable
+  spells); a promotion given or taken as the share of the unit's health its strength change is worth
+  (Enchanted Blade's +20% on an attacker, Rust's lost weapons on a defender, a charmed or slowed
+  attacker that cannot strike); immobility and dispels; a summon by an expected fight of its type
+  against the defender the rules put up, with its collateral damage; Python spells by what their
+  Python does (Crush, Pillar of Fire, Destroy Undead, Domination, Heal, Earthquake, Spring, Scorch,
+  Vitalize). Our own units hit count double against; hitting a third party rules a spell out (spell
+  damage on a neutral's land declares war, C++ `doDamage`).
+- **Before an attack** (`campaign::strike`, `military::assault`): every caster within two plots of
+  the target casts, the best cast of all first and every value recomputed after each: what weakens
+  the defenders, then summons, which attack the target at once (summon-suicide mode, as FfH's
+  end-of-turn casting); the strike then weighs the defenders as they are left, and blessings on the
+  units about to attack come only once it goes ahead (Dance of Blades wears off by our next turn).
+  A unit casts once a turn, so a caster casts here only what is worth more than its best cast at
+  the end of the turn (the Balseraphs' Loki keeps his for the puppet FfH's weight asks for).
+- **At the end of the turn** (`casting::end_turn`): damage, curses and summons on the enemies that
+  can reach us (summons attack as FfH's do, `casting::summons_attack`: the adjacent target with the
+  best odds, at 5% or better); lasting blessings on our units that lack them; short ones by what
+  they add to our defense in the enemies' turn, before they wear off (in full where an enemy we see
+  can strike, a quarter elsewhere: Dance of Blades' first strike; Haste's move adds nothing);
+  healing; terraforming; city spells. World spells, abilities (equipment, crews, cages) and
+  Python-only spells keep FfH's terms (and world spells their timing, `world_spells.rs`); the
+  civilizations keep their say (`civs::spell_value`). A unit for which nothing is worth casting by
+  these values casts what FfH's own AI would (its weights, then a buff, then a summon): a free cast
+  (Haste on a quiet turn), and the same game as FfH's where the values see no difference -- a cast
+  is never quite a no-op (it rolls for a miscast and ends promotions casting removes), and skipping
+  them split games for nothing (docs/AI_LOG.md, "Spellcasting").
+- **Movement** (`units::caster`): a caster that knows a spell for a fight marches with the stack of
+  our operation nearest its target (in the rally city while the force for a war gathers), so it
+  stands next to the city when the strike comes; the others go where their lasting blessings, city
+  spells or terraforming are worth most for the turns it takes. A city spell's building goes when no
+  unit in the city can cast it (`bRequiresCaster`, C++ `CvCity::doTurn`): the caster that keeps one
+  stays unless twice as much waits elsewhere (without this rule casters recast Inspiration a hundred
+  times a game).
+- **Promotions** (`units::promotion_value`): a sphere is worth the spells it opens, plus half of
+  those the next promotion of the sphere opens (a quarter for an adept, which gets Channeling II only
+  as a mage): Fire I for Fireball, Enchantment I for Enchanted Blade.
+- **No caster production**: casters come from FfH's own sources (heroes, priests and other units
+  with spells, the Catacomb Libralus' guilds and production's caster step, the Tower of Mastery's
+  mana nodes). Training adepts and building the Mage Guild for them by what their spells are worth
+  in a fight was tried and lost wins (docs/AI_LOG.md, "Spellcasting").
+
+`FFH_AI_MAGIC_OFF=CIVILIZATION_X,..|X|all` makes those civilizations cast as before (the same
+games: the measurement switch); `FFH_AI_TRACE_CAST=1` prints every AI cast (turn, player,
+civilization, unit, spell, where, value). Tests: `crates/ffh-ai/tests/magic.rs` (a mage Fireballs a
+city before the stack attacks; an adept blesses its stack with Enchanted Blade, and values Haste at
+nothing on a quiet turn; a fresh summon attacks a Warrior but not a Champion) and `magic::tests`
+(the worth table's order).
+
+Measured: each civilization forced into slot 0, its spellcasting on against the same binary with
+`FFH_AI_MAGIC_OFF` for it (every other civilization casting by `magic.rs`), full games (6 civs,
+standard map, to a decision or turn 690), 19 civilizations x 20 seeds (the Infernals and the
+Mercurians are not forced). Fresh seeds 8201-8220, the kept version: win 17.7% -> 18.5% (11 / 8
+seeds won by one side only), share@end +36 (t 1.39), legacy@end +18 (t 0.67), share@300 +0.4; 278
+of 379 games are the same game on both sides (a civilization's own spellcasting changes about a
+quarter of its games). By civilization the end shares run from Calabim +357 (t 1.04) and Clan of
+Embers +315 (t 1.48) to Khazad -142 (t -0.96) and Balseraphs -92 (t -1.73); only Sidar's +85 has
+|t| above 2. Development (seeds 1-20, with the caster production since removed): share@end +34
+(t 1.27), win 19.2% -> 16.8% (9 / 18: victory races between civilizations of equal share, on seeds
+that chose the civilizations' own logic in round 5). The variants that failed along the way, and
+why, are in docs/AI_LOG.md ("Spellcasting"); fresh sets 8001-8020 and 8101-8120 were spent on
+earlier versions.
+
 ## Civilization-specific (`civs/`)
 
 Each civilization has a module in `crates/ffh-ai/src/civs/` implementing `CivPlay`, whose
@@ -1075,9 +1156,10 @@ earlier cast is the first thing to measure.
 
 ### Generic gaps these civilizations exposed (not fixed here)
 
-- **Combat casting**: the AI casts only at the end of the turn (`casting::end_turn`: the best
-  spell, then a buff, then a summon); FfH's casting before a stack attacks is omitted, so damage
-  spells and summons rarely fall in a fight and casters fill their turns with buffs (docs/AI_LOG.md).
+- **Combat casting** (addressed by "Spellcasting" above): the AI cast only at the end of the turn
+  (`casting::end_turn`: the best spell, then a buff, then a summon); FfH's casting before a stack
+  attacks was omitted, so damage spells and summons rarely fell in a fight and casters filled their
+  turns with buffs (docs/AI_LOG.md).
 - **`PrereqBuilding` units**: specific buildings that open units -- the Siege Workshop
   (Trebuchet, Dwarven Cannon, War Tortoise, War Machine), the Stable (Hornguard, Bison Rider),
   the Sculptor's Studio (golems, Gargoyle) -- are never built by the generic production
@@ -1523,11 +1605,11 @@ share score (docs/SCORE.md) averages 10000/N whatever the AI does.
   dampened healthy conquerors, so the upkeep-strained condition was kept.
 - Sieges: one operation at a time; armies are small (at war the operation spends half its turns
   gathering, typically 2-3 units against a need of 4-6), so a barbarian town of 5+ archers is
-  out of reach and is left alone; casters do not join the strike (they only follow the army); a
-  city emptied of defenders is entered even when a counterattack will retake it. Tried and
-  dropped (no measurable effect on seeds 1-48): raiding (pillaging) while a war operation
-  gathers, a "can we hold it" check before the strike, every unit following the victor into the
-  city, stacks marching on a barbarian town turning back for cities in peril (fewer towns
+  out of reach and is left alone; casters cast before the strike but do not attack
+  ("Spellcasting"); a city emptied of defenders is entered even when a counterattack will retake
+  it. Tried and dropped (no measurable effect on seeds 1-48): raiding (pillaging) while a war
+  operation gathers, a "can we hold it" check before the strike, every unit following the victor
+  into the city, stacks marching on a barbarian town turning back for cities in peril (fewer towns
   taken, no fewer cities lost), barbarian targets out to 20 plots, a larger strike margin.
   One prosecution defect WAS fixed: the Strike gate fired off the adjacent ring alone
   (`ok_adj = covers(adj, spare=false)`) while a committed stack one plot out (dist 2) was not yet
@@ -1580,9 +1662,14 @@ share score (docs/SCORE.md) averages 10000/N whatever the AI does.
   reach in every measured game; Great Prophets lightbulb instead of building the six altar
   stages; domination needs two thirds of the land and the siege operations take about one city
   per war; the religious victory (80% of the world's people) is not pursued.
-- Casters use FfH's own end-of-turn spell choice (the best spell, then a buff, then a summon):
-  no casting before a stack attacks, so casters spend their turns on buffs (Haste, Regeneration,
-  Dance of Blades) and no AI builds a Mage Guild; there is no planned use of summons or
-  terraforming. Civilization mechanics handled and tried: "Civilization-specific" and
-  docs/AI_LOG.md (Sheaim planar gates, Infernal and Mercurian projects, Khazad vaults and
+- Casters ("Spellcasting"): the AI casts with the casters it has but trains almost none (no AI
+  builds a Mage Guild unless the Catacomb Libralus gives it one); training them for their fight
+  spells cost wins in three attempts (docs/AI_LOG.md). Not tried: casters for a lasting summon (the
+  Sheaim's Raise Skeleton, an army unit a turn while at war), and magic earlier in the game
+  (research values the first caster unit with a flat bonus, not by the spells our mana would give
+  it, and Knowledge of the Ether comes around turn 230). Nothing goes after the mana a sphere needs
+  (no trade for mana, mana nodes only for the Tower of Mastery). Summons attack only next to the
+  caster; a lasting summon is an army unit with no plan of its own; world spells keep their own
+  timing (`world_spells.rs`). Civilization mechanics handled and tried: "Civilization-specific"
+  and docs/AI_LOG.md (Sheaim planar gates, Infernal and Mercurian projects, Khazad vaults and
   Armageddon rituals have no logic).

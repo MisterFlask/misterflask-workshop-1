@@ -170,7 +170,8 @@ the differences; it does not ask for them to be undone.
   (`player_ai_do_favorite_religion`) but not run from `doTurn`, so `favorite_religion` stays unset
   and `canConvert`'s AI-only favorite-religion restriction never applies; `AI_nowHasTech`
   (re-choose production after a tech) is omitted; the AI spell casting before `groupAttack`
-  (`AI_DirectDamageCast`, `AI_SummonCast`, `AI_BuffCast`) is omitted; `CvUnit::found`'s
+  (`AI_DirectDamageCast`, `AI_SummonCast`, `AI_BuffCast`) is omitted from the rules (ffh-ai casts
+  before its own attacks: `magic::before_attack`, docs/AI.md "Spellcasting"); `CvUnit::found`'s
   `isUnitAllowedPermDefense` conversion (CvUnitAI bookkeeping) is omitted.
 
 **Game score (user decision: the score measures relative success)**
