@@ -158,13 +158,28 @@ swims when the camera moves.
 **The meadow.** Grassland and prairie are painted as one ground: green grass broken by golden dry
 grass where a noise field (about 1, 0.5 and 0.3 plots) passes a threshold set by the prairie's share
 of the point (the smooth plot weights), so about a sixth of grassland lies golden and five sixths of
-prairie -- in a plot's rim only: within ~0.16-0.34 of its centre the ground is pinned to its own
-terrain (grassland and plains differ in yield) -- and the plot grid no longer shows in the ground (no
-noise is broader than a plot, so a whole region never flips). Patch edges fray along the
-wind and blend through interleaved marks. Green blades are lit at the tip and dark at the root; a
-streak hatch (17 and 38 a plot) carries fine texture even where the marks are below a few pixels,
-with sparse drifts of white, yellow and violet flower flecks; golden grass is wind-combed straw over
-olive ochre. The meadow keeps 0.8 of its paint from the paint filter.
+prairie -- easing in from a plot's rim: the ground is pinned to its own terrain at the centre, the pin
+easing out over 0.06-0.6 of a plot (grassland and plains differ in yield, so a player reads it there)
+-- and the plot grid no longer shows in the ground (no noise is broader than a plot, so a whole
+region never flips). A patch meets the green in a broad blend about a quarter of a plot wide, as in
+the target: the green turns olive as it nears a patch, the straw greens at its edge, and the two
+interleave over the middle. The blades themselves are the baked materials' (below): green grass in
+clumps of deeper green with thinner grass between and a few dry olive blades, golden grass
+wind-combed straw over olive ochre, with sparse flower flecks.
+
+**Materials.** Each ground's fine detail is a tiling material painted by code at startup
+(`materials.js`: 12 layers of 256² -- grass, straw, dirt, soil, grain, vegetable beds, a utility
+noise, sand, lichen, snow, reeds, rock -- painted from strokes, stamps and periodic noise into typed
+arrays, uploaded as one mipmapped RGBA8 `TEXTURE_2D_ARRAY`, RGB albedo and A height, ~4 MB,
+~100-300 ms to bake). `TERRAIN_FS` keeps only the broad, plot-scale design procedural (which ground
+where, the golden patches, the plot-centre pin, dunes, pools, basalt plates, fissures, flowers, road
+ruts, the coast floor, feature floors), scales each material onto it (`matTint`; the hell grounds
+take only the value of sand, rock or lichen, `matShade`) and samples it with `textureGrad` at two
+scales (f and 1.37f mirrored, the taller texel winning, tipped by a broad noise) so the tiling does
+not show; mipmaps fade the detail with the zoom (no hand-tuned per-zoom fades, no shimmer). Every
+tile repeats a whole number of times over a wrapping map's width (no seam). Crop rows are baked a
+whole number per tile, so they stay under the props' 3D rows. The material height replaces the old
+impasto bump.
 
 **Water.** The sea is one plane at sea level; its shader reads the sea floor's height (a texture at
 4 samples a plot) through a warped, averaged lookup, so the shelf's colour bands follow soft
@@ -277,8 +292,10 @@ under and around it:
   against the outer bank of bends, a foam line along the banks, rings round rocks and wakes behind
   them (from the grabbed depth); each layer moves at one speed, and remembered water stays still.
   Banks: dark wet earth under grass (no sand), and `dress.js` `placeBank` lays clusters of boulders
-  at the water's edge, a few out in the stream, reeds and grass, clear of road crossings, towns and
-  held plot centres.
+  at the water's edge, a few out in the stream, reeds and grass, and `feat.overhang` (bank grass rooted
+  just behind the cut bank's top, `RIVER_BANK` + 0.005-0.04, arching out so its tips fringe the
+  water's edge, its lowest blades dark as a wet line), clear of road crossings, towns, fields and held
+  plot centres.
 * **Seen through**: the floor (and a hull's keel, a pier's legs) bent by the waves and absorbed along
   the path through the water (the grabbed depth less the surface's): a clear sandy shelf, then
   turquoise, then the deep's own blue. Only the waves' tilt bends the view (a flat surface is seen
@@ -372,7 +389,16 @@ recipe("tree.oak", { variants: 8, build(mb, r, { variant, param }) { /* model wi
   houses, towers and trees on or in front of a unit's ring on a neighbouring plot are dropped from the
   finished plan; its houses keep clear of where the garrison stands and the strip in front of it
   (`dress.js` `garrisonOf`, shared by the plan and the unit figures, mirrored or drawn back out of a
-  river); its plate stands in front of its walls. Foundations, roots and trunk
+  river); its plate stands in front of its walls. A walled town's wall line (`wallLine`) is planned
+  first, slightly out of round and following the ground's contours, and its houses keep inside it;
+  after packing, smaller houses and `Plan.fill` close the gaps with back yards (`bld.shed`: woodshed,
+  store, kitchen garden, rick; `imp.cart`) and garden trees, and walled human and dwarven towns stand
+  in 5-7 clumps of trees at their wall foot (on ground the town may use, off roads: `roadsRound`).
+  Town walls and plaster sit at mid values (the human palette x0.8, the palest families x0.9) so a
+  town does not glare. Rocks are a mid-value cool grey whose form `rockShader` paints in (lit tops,
+  flanks darker as they steepen, dark clefts and foot), so they read without ink; sandstone stays
+  warm, basalt and obsidian as they were. Farms: rounded grain rows over furrows, fuller stooks, soft
+  haystacks, and now and then a cart or tools in the yard. Foundations, roots and trunk
   flares reach below y = 0 so nothing floats on sloping ground.
 
 ### 6.1 The recipe modules
@@ -585,6 +611,16 @@ Over water (`--query "scene=showcase&cx=3&cy=6&ts=150"`): 0.8 / 0.4% painterly, 
 what is left sits on parallax edges and ship rigging, from the screen-space refraction and mirror
 taps. FXAA is on in the painterly figures.
 
+Milestone A/B, look-target batch 2 (baked ground materials, leaf-cluster crowns, clutter massing;
+`r3d-perf` on the `stage corrupt` save at (48, 15), ts 96, painterly, one run each, the same binary
+with each tree's assets; SwiftShader): frame 6024 -> 5353 ms; scene 4950 -> 4155 ms (the terrain
+shader went from ~60 noise sites with lattice loops to ~25 broad noise calls plus 2-8 texture taps);
+shadow 150 -> 307 ms (the leaf cut in the shadow map); water 544 -> 516 ms. Start-up: dressing
+238 -> 311 ms, world 16 -> 37 ms, props 23.9k -> 25.0k. Panning stability (`--stability`, showcase
+ts 96, `{"animate":false}`): mean |diff| 3.90 -> 4.47, pixels off by > 24: 5.19% -> 5.03% (the
+share that moves is unchanged; the mean rises with crisper, higher-contrast detail). The paragraph
+above predates the paint filter going off and the materials; its 1.6 / 1.1% figures are older still.
+
 GPU numbers: none yet (the owner runs `r3d-perf --gpu`).
 
 ## 12. Configuration
@@ -595,7 +631,7 @@ transparency and caustics, which are ordinary rendering, not stylisation), `LIGH
 always daylight by design, a warm high sun at about 48 degrees, shadows ~0.9x an object's height; a saved light that is no longer
 offered -- a "dusk", "afternoon" or "day" -- falls back to it), and the switches of the panel
 (`PANEL`): shadows, ssao, glow, kuwahara (+ radius), outline (+ width, inkLost: lost-and-found
-line weight, inkColour: coloured ink), paint (pigment variation), dabs (brush dabs on the ground),
+line weight, inkColour: coloured ink), paint (pigment variation), dabs (now only the ground's colour drift and flowers: its marks are the baked materials'),
 brush (brush marks and gouache values on objects, §5.1), bands (stepped light), stylize (coloured
 shadows), rim, clouds, reflections, refraction and caustics (the water, §5.2), haze, mist, grade,
 grain, vignette, borders, grid, fogWar, particles, animate, renderScale, fxaa (anti-aliasing),
@@ -640,11 +676,13 @@ What is not there, or not good enough yet, as of this prototype:
   level, not exactly at the waterline).
 * **Flat-faced props** (rocks, mines, plaster walls) carry only moderate brushwork: stronger marks
   on their small facets sank shaded flanks into dark streaks, so the marks are bounded there.
-* **Crown silhouettes** are the outlines of the leaf masses (lumpy lobes, painted, but not ragged
-  with leaves). Cutting the silhouette band into leaf clusters in the depth prepass was tried and
-  dropped: the soft lighting normals do not track the true silhouette of the mallorn and jungle
-  plates, so it exposed what the rims hide (the mallorn's lanterns) and left slivers at the real edge.
-  A per-vertex envelope normal from the recipes would make it reliable.
+* **Crown silhouettes**: broadleaf crowns (`MAT.LEAF`: dark inner masses under ~12-triangle leaf
+  pads, each pad with its own normals, lit top and dark belly) have their rims cut into leaves in the
+  props' depth prepass and shadow map (`PROP_DEPTH_FS`, `leafCut`, world-anchored noise); the colour
+  pass then shades props with depth EQUAL, so only the depth pass discards (early-z kept) and the ink,
+  the x-ray ghost and SSAO see the same holes. It works because each cluster carries its own normals;
+  the mallorn and jungle plate crowns stay uncut (their soft lighting normals do not track their true
+  silhouette). The cut roughly doubled the shadow pass (still ~6% of a frame, §11).
 
 Next steps, roughly by value: profile on real GPUs (the quality ladder -- reflection march and paint
 filter off, then render scale -- is in, but its thresholds are tuned only against SwiftShader, and shadow-map size
@@ -655,7 +693,8 @@ sub-pixel ship geometry (rigging, floats) that FXAA cannot recover.
 ## 15. Provenance
 
 Every mesh, texture and pattern is generated by code in this repository at run time; no external
-art asset, model, texture, font or library was added.
+art asset, model, texture, font or library was added. The ground's material textures (§4) are
+painted by `materials.js` at startup from strokes, stamps and periodic noise -- still no image file.
 
 ## 16. The look target
 
