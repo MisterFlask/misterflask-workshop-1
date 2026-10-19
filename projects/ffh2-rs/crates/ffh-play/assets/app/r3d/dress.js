@@ -551,8 +551,10 @@ const UNIT_CLEAR = [0.25, 0.32, 0.36];
 
 /** How strongly each size of plant gathers at the edges (`edgeOf`): the share of its clumps
  *  kept out in open meadow, away from every edge (1 at an edge), and how much the pick of a clump's
- *  centre leans toward the edges (low plants and bushes only: trees keep to their groves). */
-const OPEN_KEEP = [0.45, 0.42, 1];
+ *  centre leans toward the edges (low plants and bushes only: trees keep to their groves). Bushes
+ *  are all kept: the target's open meadows are dotted with them (dark masses over the grass), and
+ *  only the low clutter thins out there. */
+const OPEN_KEEP = [0.45, 1, 1];
 const EDGE_PULL = [3, 3.5, 0];
 
 /** The fields and paddocks round plot (x, y), its own and its neighbours' (fields.js fieldLayout),
@@ -603,9 +605,9 @@ function edgeOf(world, ctx, lays, woods, lx, lz) {
  *  field anchored to the map (`dense`: how much it follows it), so meadows run thick in some places
  *  and bare in others across plot borders and trees gather in groves. Low plants and bushes mass
  *  along the edges of things (`edgeOf`: road verges, river banks, field margins, wood edges): a
- *  clump's centre is picked from three with odds rising steeply toward an edge, a clump out in the
- *  open is mostly dropped (`OPEN_KEEP`) and one at an edge stands a little taller, so the open
- *  meadow between lies calm. Nothing stands on a road, in a river, on a beach or on a resource's
+ *  clump's centre is picked from three with odds rising steeply toward an edge, a clump of low
+ *  clutter out in the open is mostly dropped (`OPEN_KEEP`; bushes stay, dark masses dotting the
+ *  meadow) and one at an edge stands a little taller, so the open meadow between lies calm. Nothing stands on a road, in a river, on a beach or on a resource's
  *  marker; on an improved plot plants keep to its rim (its fields and buildings fill the rest);
  *  round a unit only low clutter, outside its ring; trees keep out of the way of what stands on
  *  the plot, behind it and in front of it. */

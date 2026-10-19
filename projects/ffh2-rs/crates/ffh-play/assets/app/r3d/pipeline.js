@@ -245,12 +245,13 @@ export class Pipeline {
       // a forest is never painted only to be covered. The water is not in it: the sea floor and
       // the river beds are painted (cheaply where too deep to see), grabbed, and the water is
       // drawn last, seen through to them and mirroring what stands around it.
-      // The props' depth also cuts the leafy crowns' rims into leaves (PROP_DEPTH_FS); the props
-      // are then shaded only where that depth is their own (EQUAL), so the colour pass needs no
-      // discard of its own and keeps its early depth test.
+      // The props' depth also cuts the leafy crowns' rims into leaves (PROP_DEPTH_FS), sized by
+      // the frame's pixels a plot (uPlotPx: one size over the whole view, so the cut holds still
+      // while panning); the props are then shaded only where that depth is their own (EQUAL), so
+      // the colour pass needs no discard of its own and keeps its early depth test.
       gl.colorMask(false, false, false, false);
       scene.drawTerrain(this.p.shadowTerrain, U, false);
-      scene.drawProps(this.p.shadowProp, { ...U, uSunView: 0 }, false);
+      scene.drawProps(this.p.shadowProp, { ...U, uSunView: 0, uPlotPx: U.uPx * (fr.scale ?? 1) }, false);
       gl.colorMask(true, true, true, true);
       gl.depthMask(false);
       gl.depthFunc(gl.LEQUAL);

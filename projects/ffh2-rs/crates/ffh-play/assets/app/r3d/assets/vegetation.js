@@ -40,7 +40,7 @@ const TAU = Math.PI * 2;
 const OAK = ["#0f1f19", "#1c3a26", "#324030", "#4d573e"];
 const OAK_AUTUMN = ["#16261e", "#2c4127", "#4e5c2e", "#868340"];
 const BIRCH = ["#1a3222", "#2e4f30", "#4c5b43", "#646d52"];
-const PINE = ["#0a1b14", "#13301f", "#26342a", "#3b4736"];
+const PINE = ["#0d2219", "#183c27", "#304135", "#4a5944"];
 const JUNGLE = ["#08191a", "#112e22", "#1d4630", "#456a3c"];
 const WILLOW = ["#1b2a23", "#2e4330", "#4b6244", "#7e8e68"];
 const ANCIENT = ["#0b1d1f", "#15322f", "#244840", "#486a53", "#aab27e"];
@@ -213,17 +213,19 @@ function crown(mb, r, { C, W, hc, fork, layout, squash = 0.78, amp = 0.32, flat 
   }
   const m0 = mb.mark();
   // A crown of leaf clusters: the masses become its shaded depth (simpler, darker, each with its
-  // own normals so their rims cut cleanly), the clusters on them its leaves.
+  // own normals so their rims cut cleanly), the clusters on them its leaves. The masses keep the
+  // crown's full size and the clusters sit on their surface (`out` 1), standing out from it: the
+  // crown is as broad as a painted one, its leaves on the outside of it, not inside its outline.
   mb.mat = clusters ? MAT.LEAF : MAT.FOLIAGE;
   const cores = [];
   for (const [a, d, dy, rad, detail] of layout) {
     mb.color = vscale(jitter(WHITE, r, 0.07), clusters ? 0.62 : 1);
     const c = [C[0] + Math.cos(a) * d * W, C[1] + dy * hc, C[2] + Math.sin(a) * d * W];
-    leafMass(mb, c, rad * W * (clusters ? 0.92 : 1), { detail: clusters ? 0 : detail ?? 1, amp: clusters ? amp * 0.6 : amp, squash, flat, seed: r.range(0, 50), self: clusters ? 0.9 : self, tone, freq });
+    leafMass(mb, c, rad * W, { detail: clusters ? 0 : detail ?? 1, amp: clusters ? amp * 0.6 : amp, squash, flat, seed: r.range(0, 50), self: clusters ? 0.9 : self, tone, freq });
     cores.push([c, rad * W, squash]);
   }
   if (clusters) {
-    leafClusters(mb, r, cores, clusters, W, { centre: C });
+    leafClusters(mb, r, cores, clusters, W, { centre: C, out: 1 });
     // A little of the crown's own roundness in every cluster's normals: the crown keeps a lit
     // and a shaded side as one mass, and the rim the prepass cuts is mostly the crown's outline.
     mb.sphereNormals(m0, [C[0], C[1] - hc * 0.5, C[2]], 0.4);
@@ -354,7 +356,9 @@ function plate(mb, r, c, R, T, { seg = 11, lobes = 5, scallop = 0.2, lump = 0.3,
 function buildOak(mb, r, variant, cols = OAK) {
   const shape = variant % 4;
   const H = r.range(0.3, 0.355) * (shape === 1 ? 1.06 : 1);
-  const W = r.range(0.134, 0.146) * (shape === 0 ? 1.05 : 1);
+  // (Broad: the prepass cuts the rims of the crown's clusters and masses into leaves, so the
+  // crown is modelled a little wider than the mass it reads as.)
+  const W = r.range(0.146, 0.16) * (shape === 0 ? 1.05 : 1);
   const forkY = H * (shape === 1 ? r.range(0.15, 0.19) : r.range(0.19, 0.24));
   const la = r.range(0, TAU);
   const ln = (shape === 2 ? r.range(0.025, 0.035) : r.range(0.004, 0.015));
@@ -1292,16 +1296,17 @@ function buildBush(mb, r, variant) {
   mb.mat = MAT.LEAF;
   const ph = r.range(0, TAU);
   // The main mass (two side by side for the two-lobed shape): the bush's shaded depth, under
-  // clusters of leaves, each lit on top and dark at its belly, that make its outline.
+  // clusters of leaves, each lit on top and dark at its belly, that make its outline: at the
+  // mass's full size, the clusters standing out of it (as a crown's).
   const mains = shape === 4 ? [[Math.cos(ph) * W * 0.32, Math.sin(ph) * W * 0.32, 0.5], [-Math.cos(ph) * W * 0.36, -Math.sin(ph) * W * 0.36, 0.44]] : [[0, 0, 0.62]];
   const cores = [];
   for (const [x, z, s] of mains) {
     mb.color = vscale(jitter(WHITE, r, 0.06), 0.66);
     const sq = (H * 0.55) / (W * s);
-    leafMass(mb, [x, H * 0.45, z], W * s * 0.92, { detail: 0, squash: sq, flat: 0, seed: r.range(0, 50), amp: 0.2, self: 0.9, tone: 0.5 });
+    leafMass(mb, [x, H * 0.45, z], W * s, { detail: 0, squash: sq, flat: 0, seed: r.range(0, 50), amp: 0.2, self: 0.9, tone: 0.5 });
     cores.push([[x, H * 0.45, z], W * s, sq]);
   }
-  leafClusters(mb, r, cores, bloom || shape === 4 ? 7 : 8, W, { size: [0.26, 0.34], out: 0.78, low: -0.2, centre: [0, H * 0.3, 0], squash: 0.82 });
+  leafClusters(mb, r, cores, bloom || shape === 4 ? 7 : 8, W, { size: [0.26, 0.34], out: 0.92, low: -0.2, centre: [0, H * 0.3, 0], squash: 0.82 });
   mb.sphereNormals(m0, [0, 0, 0], 0.3);
   // Sink the bottom into the ground.
   eachVert(mb, m0, (v, i) => {
@@ -1510,24 +1515,49 @@ function buildMushrooms(mb, r, variant, glow) {
 recipe("plant.mushroom", { variants: 4, build: (mb, r, { variant }) => buildMushrooms(mb, r, variant, false) });
 recipe("plant.mushroom.glow", { variants: 4, build: (mb, r, { variant }) => buildMushrooms(mb, r, variant, true) });
 
-/** A tuft of meadow grass (the open ground's commonest clutter): a fan of broad, pointed leaves
- *  splaying from a dense foot, dark at the root, lit at the tips -- a painted clump of strokes, not
- *  hair-fine blades (which would read as scribbles at the game's zoom); green (variants 0-3, 4-5 tall
- *  and seeding) or, with param "dry", golden straw (the plains). 36 triangles. */
+/** A thin blade arching from `p` along `dir` (unit, horizontal): up to `h`, leaning out by `lean`
+ *  and bowed over by `droop` at its tip, in two tapering segments and a tip (5 triangles),
+ *  coloured base -> tip. Its normal faces up and toward the camera (+z, as a blossom's), leaning a
+ *  little out of the clump (`out`): the side the game's view sees is then the front of every
+ *  blade, lit as a blade in the open -- a back face's flipped normal would point down into the
+ *  ground and turn the far blades of a tuft dark. */
+function wisp(mb, p, dir, h, w, lean, out, kBase, kTip, droop) {
+  const side = [-dir[2] * w, 0, dir[0] * w];
+  const at = (f, up) => [p[0] + dir[0] * lean * f, p[1] + up, p[2] + dir[2] * lean * f];
+  const m1 = at(0.22, h * 0.5), m2 = at(0.58, h * 0.88 - droop * 0.25), t = at(1, h - droop);
+  const n = vnorm([out[0] * 0.35, 1, out[2] * 0.35 + 0.45]);
+  const k1 = vlerp(kBase, kTip, 0.45), k2 = vlerp(kBase, kTip, 0.8);
+  const a = vsub(p, side), b = vadd(p, side);
+  const c = vadd(m1, vscale(side, 0.7)), d = vsub(m1, vscale(side, 0.7));
+  const e = vadd(m2, vscale(side, 0.4)), f = vsub(m2, vscale(side, 0.4));
+  triC(mb, a, b, c, n, kBase, kBase, k1);
+  triC(mb, a, c, d, n, kBase, k1, k1);
+  triC(mb, d, c, e, n, k1, k1, k2);
+  triC(mb, d, e, f, n, k1, k2, k2);
+  triC(mb, f, e, t, n, k2, k2, kTip);
+}
+
+/** A tuft of meadow grass (the open ground's commonest clutter): a sparse fan of thin blades
+ *  arching out of a dense foot, pale -- a wisp catching the light, a little darker at the root,
+ *  not a dark clump with lime tips: the ground's own material carries the meadow's blades, and a
+ *  tuft is a light accent over it. Green straw (variants 0-3, 4-5 tall and seeding) or, with param
+ *  "dry", golden straw (the plains). 40 triangles. */
 function buildGrass(mb, r, variant, param) {
   const dry = param === "dry";
-  const tips = (dry ? ["#e2c25a", "#f0d478", "#cfa444"] : ["#a6c44e", "#c2d064", "#8cb244"]).map(pal);
-  const base = vlerp(pal(dry ? "#6a5a24" : "#2a4619"), tips[0], 0.3);
+  const tips = (dry ? ["#c8ac5e", "#d4ba70", "#b89a50"] : ["#a2a05a", "#b0ac68", "#96964e"]).map(pal);
+  const base = vlerp(pal(dry ? "#86763e" : "#4e6236"), tips[0], 0.35);
   const tall = (variant >= 4 ? 1.3 : 1) * r.range(0.9, 1.1);
   mb.mat = MAT.FOLIAGE;
   const ph = r.range(0, TAU);
-  for (let k = 0; k < 12; k++) {
-    const a = ph + (k / 12) * TAU + r.range(-0.3, 0.3), u = k < 4 ? 0.2 : r.range(0.5, 1), d = u * 0.016;
+  for (let k = 0; k < 8; k++) {
+    const a = ph + (k / 8) * TAU + r.range(-0.35, 0.35), u = k < 3 ? 0.2 : r.range(0.5, 1), d = u * 0.014;
     const la = a + r.range(-0.3, 0.3);
-    const h = r.range(0.06, 0.09) * tall * (1 - 0.3 * u);
-    blade(mb, [Math.cos(a) * d, -0.012, Math.sin(a) * d], [Math.cos(la), 0, Math.sin(la)], h, r.range(0.007, 0.0095), r.range(0.012, 0.03) + 0.03 * u, [Math.cos(a), 0, Math.sin(a)], jitter(base, r, 0.1), jitter(r.pick(tips), r, 0.08), r.range(0, 0.015) * tall);
+    const h = r.range(0.065, 0.095) * tall * (1 - 0.25 * u);
+    // The outer blades lean out further and bow over more: the tuft arches open like a fountain.
+    const droop = h * (0.08 + 0.3 * u) * r.range(0.8, 1.2);
+    wisp(mb, [Math.cos(a) * d, -0.012, Math.sin(a) * d], [Math.cos(la), 0, Math.sin(la)], h, r.range(0.0042, 0.0058), r.range(0.02, 0.032) + 0.04 * u, [Math.cos(a), 0, Math.sin(a)], jitter(base, r, 0.08), jitter(r.pick(tips), r, 0.06), droop);
   }
-  mb.heightSway(0, 0, 0.08 * tall, 1);
+  mb.heightSway(0, 0, 0.085 * tall, 1);
 }
 
 recipe("plant.grass", { variants: 6, shadow: false, build: (mb, r, { variant, param }) => buildGrass(mb, r, variant, param) });
@@ -1546,10 +1576,13 @@ function buildFlowers(mb, r, variant) {
   }
   mb.mat = MAT.MATTE;
   const c = pal([BLOOM.white, BLOOM.white, BLOOM.yellow, BLOOM.gold, BLOOM.pink, BLOOM.lilac][variant % 6]);
+  // Small heads: a speck of colour over the leaves, the white ones smallest (white reads loudest
+  // against the meadow, a confetti of it does not belong to the target's calm ground).
+  const white = variant % 6 < 2;
   for (let k = 0; k < 9; k++) {
     const a = r.range(0, TAU), d = Math.sqrt(r()) * 0.032;
     mb.color = jitter(c, r, 0.08);
-    blossom(mb, [Math.cos(a) * d, r.range(0.036, 0.055) - d * 0.4, Math.sin(a) * d], r.range(0.011, 0.015), r.range(0, TAU));
+    blossom(mb, [Math.cos(a) * d, r.range(0.036, 0.055) - d * 0.4, Math.sin(a) * d], r.range(0.008, 0.011) * (white ? 0.8 : 1), r.range(0, TAU));
   }
   mb.heightSway(0, 0, 0.05, 0.8);
 }
@@ -1659,33 +1692,34 @@ function floraOf(ctx) {
     if (g === GROUND.BURNING_SANDS) return [{ asset: "tree.dead", scale: 0.55, count: r() < 0.15 ? 1 : 0, size: 2 }];
     return [{ asset: "tree.blighted", scale: 0.6, count: r() < 0.25 ? r.int(1, 2) : 0, size: 2 }, { asset: "tree.dead", scale: 0.55, count: r() < 0.2 ? 1 : 0, size: 2 }];
   }
-  if (ctx.feat === FEAT.SCRUB) return [scrub(r.int(3, 6), { clump: [1, 2], spread: 0.08 }), { asset: "shrub.dry", scale: 1.3, count: r.int(0, 2), size: 1 }, grass(r.int(4, 8), { param: "dry", scale: 1.3 })];
-  if (ctx.feat === FEAT.FLOOD) return [{ asset: "reeds", scale: 1.1, count: r.int(3, 6), clump: [1, 3], spread: 0.08, size: 1 }, grass(r.int(4, 8))];
+  if (ctx.feat === FEAT.SCRUB) return [scrub(r.int(3, 6), { clump: [1, 2], spread: 0.08 }), { asset: "shrub.dry", scale: 1.3, count: r.int(0, 2), size: 1 }, grass(r.int(1, 3), { param: "dry", scale: 1.3 })];
+  if (ctx.feat === FEAT.FLOOD) return [{ asset: "reeds", scale: 1.1, count: r.int(3, 6), clump: [1, 3], spread: 0.08, size: 1 }, grass(r.int(1, 3))];
   switch (g) {
     case GROUND.GRASS:
       // Meadow: tufts and flowers in drifts, bushes, and trees in clumps, conifers among the
       // broadleaves (pines leading on hills).
       return [
-        grass(r.int(18, 30)),
-        grass(r.int(0, 6), { param: "dry" }),
-        flowers(r.int(4, 10), [0, 1, 2, 3, 4, 5]),
+        grass(r.int(6, 10)),
+        grass(r.int(0, 2), { param: "dry" }),
+        flowers(r.int(3, 7), [0, 2, 3]),
         bushes(r.int(3, 6) + (woods ? 2 : 0) + (ctx.hills ? 1 : 0)),
         bushes(r.int(0, 2), { scale: 1.9, clump: [1, 2] }),
         grove(ctx.hills ? OPEN_TREES.hills : OPEN_TREES.grass, trees(ctx.hills ? 0.6 : 0.5, 5)),
       ];
     case GROUND.PLAINS:
-      // Golden grass: dry tufts in drifts, a few bushes and flowers, lone conifers.
+      // Golden grass: dry tufts in drifts, bushes dotted over it and conifers alone or in pairs (dark
+      // masses on the gold, as in the look target), a few flowers.
       return [
-        grass(r.int(18, 30), { param: "dry", scale: 1.65, clump: [3, 7], spread: 0.1, dense: 0.9 }),
-        grass(r.int(1, 4), { clump: [1, 3] }),
+        grass(r.int(6, 10), { param: "dry", scale: 1.65, clump: [3, 7], spread: 0.1, dense: 0.9 }),
+        grass(r.int(0, 2), { clump: [1, 3] }),
         flowers(r.int(0, 4), [2, 3, 0]),
-        bushes(r.int(0, 2) + (woods ? 1 : 0) + (ctx.hills ? 1 : 0), { scale: 1.15 }),
+        bushes(r.int(1, 3) + (woods ? 1 : 0) + (ctx.hills ? 1 : 0), { scale: 1.25 }),
         scrub(r.int(0, 2)),
-        grove(ctx.hills ? OPEN_TREES.hills : OPEN_TREES.plains, trees(0.42, 3), [1, 2]),
+        grove(ctx.hills ? OPEN_TREES.hills : OPEN_TREES.plains, trees(0.6, 4), [1, 2]),
       ];
     case GROUND.TUNDRA:
       return [
-        grass(r.int(5, 10), { param: "dry", scale: 1.3 }),
+        grass(r.int(2, 4), { param: "dry", scale: 1.3 }),
         flowers(r.int(0, 2), [0, 5]),
         bushes(r.int(0, 2), { scale: 0.95 }),
         grove(OPEN_TREES.tundra, trees(0.35, 3), [1, 3]),
@@ -1693,11 +1727,11 @@ function floraOf(ctx) {
     case GROUND.SNOW:
       return [grove([{ asset: "tree.pine.snow", scale: 0.85 }], trees(0.15, 2), [1, 2])];
     case GROUND.DESERT:
-      return [{ asset: "shrub.dry", scale: 1.3, count: r.int(1, 3), clump: [1, 2], spread: 0.08, size: 1 }, grass(r.int(0, 3), { param: "dry", scale: 1.2, clump: [1, 2] })];
+      return [{ asset: "shrub.dry", scale: 1.3, count: r.int(1, 3), clump: [1, 2], spread: 0.08, size: 1 }, grass(r.int(0, 1), { param: "dry", scale: 1.2, clump: [1, 2] })];
     case GROUND.MARSH:
       return [
         { asset: "reeds", scale: 1.1, count: r.int(4, 7), clump: [1, 3], spread: 0.08, size: 1 },
-        grass(r.int(4, 8)),
+        grass(r.int(1, 3)),
         bushes(r.int(0, 2), { scale: 1.1 }),
         grove([{ asset: "tree.willow", scale: 0.95 }], trees(0.2, 2), [1, 2]),
       ];
