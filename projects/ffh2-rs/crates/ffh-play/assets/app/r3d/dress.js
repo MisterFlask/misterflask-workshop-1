@@ -452,8 +452,10 @@ function placeBank(world, map, ctx, place) {
   }
   // Grass hanging over the water's edge (the catalog's feat.overhang): rooted along the bank top,
   // turned to the water and combed out over it, between the boulder clusters (thinned where the
-  // rocks cluster). Its own seed and a fixed number of draws per slot, so the rocks and reeds
-  // above keep their places. Not in the hells or on snow, sparse and straw-dry in the desert.
+  // rocks cluster). Its roots stand just behind the top of the cut bank (RIVER_BANK + 0.005-0.04),
+  // so the tips fringe the water's edge rather than covering the channel. Its own seed and a fixed
+  // number of draws per slot, so the rocks and reeds above keep their places. Not in the hells or
+  // on snow, sparse and straw-dry in the desert.
   if (!hasRecipe("feat.overhang") || isHellGround(ctx.ground) || ctx.ground === GROUND.SNOW) return;
   const ro = rng(i * 173 + 41);
   const desert = ctx.ground === GROUND.DESERT;
@@ -461,7 +463,7 @@ function placeBank(world, map, ctx, place) {
   for (let gy = 0; gy < GO; gy++) {
     for (let gx = 0; gx < GO; gx++) {
       let mx = x + (gx + ro()) / GO, my = y + 1 - (gy + ro()) / GO;
-      const roll = ro(), sz = ro(), variant = ro.int(0, 3), want = ro.range(RIVER_BANK - 0.025, RIVER_BANK + 0.01), dry = ro(), turn = ro.range(-0.35, 0.35);
+      const roll = ro(), sz = ro(), variant = ro.int(0, 3), want = ro.range(RIVER_BANK + 0.005, RIVER_BANK + 0.04), dry = ro(), turn = ro.range(-0.35, 0.35);
       const d = world.riverDist(mx, my);
       if (d < RIVER_HALF || d > RIVER_BANK + 0.08) continue;
       // Step across the bank to the root line, along the way to the water.
