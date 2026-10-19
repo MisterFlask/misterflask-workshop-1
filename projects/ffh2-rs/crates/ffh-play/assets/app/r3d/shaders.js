@@ -331,16 +331,19 @@ float strokeMarks(vec3 po, vec3 nO, vec3 dpo) {
   return t;
 }
 
-// A leafy crown's rim (MAT.LEAF): where a cluster of leaves turns away from the eye -- or, for the
-// shadow map, from the sun -- its rim is cut into leaves. Noise in the object's own space at two
+// A leafy crown's rim (MAT.LEAF): where a cluster of leaves turns away from the camera -- or, for
+// the shadow map, from the sun -- its rim is cut into leaves. Noise in the object's own space at two
 // sizes (bites out of a cluster's outline at the gameplay zoom, single leaves close up, each faded
 // in once its marks are a few pixels) sets how far into the rim a gap reaches, so every cluster's
 // outline is ragged and what lies behind it -- the next cluster, the crown's shaded depth, the
-// ground -- shows through. 'facing' is |n.V| (the recipes give each cluster its own normals, so
-// the rim follows its outline); 'pf' the size of a pixel there, measured across the view (it does
-// not grow on the rim itself, where the surface runs along the view). Returns how far past the
-// rim's cut the point lies: > 0 is cut away. The depth prepass and the shadow pass own the cut
-// (PROP_DEPTH_FS); the colour pass draws what they left.
+// ground -- shows through. 'facing' is |n.B| against the view's axis B (the recipes give each
+// cluster its own normals, so the rim follows its outline); 'pf' the size of a pixel in world
+// units. Both must stay the same while the view pans, or the leaves open and close as a tree
+// crosses the screen: toward the camera they are its back axis (camBack) and the frame's pixel
+// size at the camera's target (not the per-pixel eye vector, which swings across the view, nor a
+// screen derivative, which grows toward the top of it). Returns how far past the rim's cut the
+// point lies: > 0 is cut away. The depth prepass and the shadow pass own the cut (PROP_DEPTH_FS);
+// the colour pass draws what they left.
 const float LEAFCUT_F = 26.0, LEAFCUT_F2 = 70.0;
 float leafCut(vec3 po, float facing, float pf) {
   float w = 1.0 - smoothstep(0.2, 0.42, pf * LEAFCUT_F);
@@ -372,6 +375,10 @@ float leafTexture(vec3 po, vec3 nO, vec3 dpo) {
 float pixelAcross(vec3 dx, vec3 dy, vec3 V) {
   return max(length(dx - dot(dx, V) * V), length(dy - dot(dy, V) * V));
 }
+
+// The camera's back axis (from its target toward the eye; uView's third row), the same for every
+// pixel of a frame and unchanged by a pan, which moves the eye but not the pitch.
+vec3 camBack() { return vec3(uView[0][2], uView[1][2], uView[2][2]); }
 
 #endif
 
@@ -1220,47 +1227,44 @@ void main() {
   vec3 dpo = fwidth(po);
   vec3 nO = normalize(vObjN);
   vec3 alb = vColor * vTint.rgb;
-  // How squarely the surface faces the eye (a leaf cluster's rim is where the prepass cut it).
-  float facing = abs(dot(n, V));
+  // How squarely the surface faces the camera (a leaf cluster's rim is where the prepass cut it:
+  // measured as the cut measures it, against the view's axis, so the rim's glow stays put too).
+  float facing = abs(dot(n, camBack()));
   if (kind == 3) alb = srgb(vTeam.rgb) * (0.38 + 1.25 * lum(vColor)) * vTint.rgb;
   // Pigment variation in the object's own space (stays on the object); the brush marks below
   // carry the finer variation, so the fine pigment steps back as they come in.
   float pg = vnoise3(vLocal * 22.0 + vTint.a * 50.0);
   float pg2 = vnoise3(vLocal * 6.0 + vTint.a * 31.0);
   alb *= 1.0 + uPaint * ((pg - 0.5) * 0.22 * (1.0 - 0.6 * uBrush) + (pg2 - 0.5) * 0.3);
-  // Brushwork: leaf clusters on crowns, strokes on everything else, each mark its own value
-  // (tone) and pushing the light/shade boundary (jit). Units take a lighter hand: they must read
-  // at a glance, and the paint filter keeps them sharp too. Matte and painted props (rock, timber,
+  // Marks: leaves on crowns (their material, always on), brush strokes on everything else (the
+  // brushwork), each mark its own value (tone) and pushing the light/shade boundary (jit). Units
+  // take a lighter hand: they must read at a glance, and the paint filter keeps them sharp too. Matte and painted props (rock, timber,
   // plaster) take the strokes strongest: flat facets are where the brush must show.
   float tone = 0.0, jit = 0.0;
   float matte = (kind == 0 || kind == 3) ? 1.0 - vTeam.a : 0.0;
   // How squarely the plane faces the sun (before the shadows): where a mark may go dark or light.
   float d0 = clamp((dot(n, uSunDir) + uWrapLight) / (1.0 + uWrapLight), 0.0, 1.0);
-  if (leaves) {
-    // The leaves are the material here (leafTexture): on with the brushwork off too; the
-    // brushwork adds its gouache steps below.
-    tone = leafTexture(po, nO, dpo);
-    tone *= tone < 0.0 ? mix(0.35, 1.0, 1.0 - smoothstep(0.4, 0.85, d0)) : mix(0.5, 1.0, smoothstep(0.05, 0.45, d0));
-    jit = tone * 0.95;
+  if (crown) {
+    // A crown's leaves are its material, on with the brushwork off too (the brushwork adds only
+    // its gouache steps below): a crown of leaf clusters (MAT.LEAF) takes single leaves
+    // (leafTexture; its clusters and their cut rims are the larger forms), every other crown --
+    // conifer tiers, canopy plates, fronds, willow curtains, blighted boughs -- masses of leaves a
+    // cluster in size and smaller ones close up (leafMarks), where a leafy crown has its clusters.
+    tone = leaves ? leafTexture(po, nO, dpo) : leafMarks(po, nO, dpo).x;
+    // A dark mark fades toward the lit planes and a light one toward the turned-away ones: the
+    // marks turn the form at its turning, rather than punch holes in the light mass.
+    tone *= tone < 0.0 ? mix(leaves ? 0.35 : 0.25, 1.0, 1.0 - smoothstep(0.4, 0.85, d0)) : mix(leaves ? 0.5 : 0.4, 1.0, smoothstep(0.05, 0.45, d0));
+    jit = tone * (leaves ? 0.95 : 0.75);
     alb *= 1.0 + tone * 0.6;
   } else if (uBrush > 0.0 && kind != 4 && kind != 6) {
-    if (crown) {
-      tone = leafMarks(po, nO, dpo).x * uBrush;
-      // A dark mark fades toward the lit planes and a light one toward the turned-away ones: the
-      // marks turn the form at its turning, rather than punch holes in the light mass.
-      tone *= tone < 0.0 ? mix(0.25, 1.0, 1.0 - smoothstep(0.4, 0.85, d0)) : mix(0.4, 1.0, smoothstep(0.05, 0.45, d0));
-      jit = tone * 0.75;
-      alb *= 1.0 + tone * 0.6;
-    } else {
-      tone = strokeMarks(po, nO, dpo) * uBrush * (1.0 - 0.6 * vTeam.a) * (1.0 + matte);
-      // On a matte prop a dark mark fades where the plane already turns from the sun, and no mark
-      // goes past a bound: the doubled strokes would otherwise sink a tower's shaded flank into a
-      // near-black streak.
-      if (tone < 0.0) tone *= mix(1.0, mix(0.4, 1.0, smoothstep(0.05, 0.4, d0)), matte);
-      tone = mix(tone, clamp(tone, -0.3, 0.6), matte);
-      jit = tone * mix(0.5, 0.7, matte) * (1.0 - vTeam.a);
-      alb *= 1.0 + tone * 0.6;
-    }
+    tone = strokeMarks(po, nO, dpo) * uBrush * (1.0 - 0.6 * vTeam.a) * (1.0 + matte);
+    // On a matte prop a dark mark fades where the plane already turns from the sun, and no mark
+    // goes past a bound: the doubled strokes would otherwise sink a tower's shaded flank into a
+    // near-black streak.
+    if (tone < 0.0) tone *= mix(1.0, mix(0.4, 1.0, smoothstep(0.05, 0.4, d0)), matte);
+    tone = mix(tone, clamp(tone, -0.3, 0.6), matte);
+    jit = tone * mix(0.5, 0.7, matte) * (1.0 - vTeam.a);
+    alb *= 1.0 + tone * 0.6;
   }
   float ao = vMat.w;
   // The inside of a cluster, seen through the gaps at its rim: the crown's depth, its leaves at a
@@ -1312,9 +1316,9 @@ void main() {
     // edge-on catches a little of it, not a blue sheen; the back of a thin card less still.
     float rim = pow(1.0 - max(dot(n, V), 0.0), 3.0) * uRim * (0.5 + vTeam.a);
     rim *= mix(0.35, 1.0, clamp(lum(alb) * 2.5, 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : 0.5);
-    // Leaves take little of it: a sky rim round every crown models it as a ball, the thing the
-    // painted crown must not be.
-    if (crown) rim *= mix(1.0, 0.3, uBrush);
+    // Leaves take little of it, with the brushwork on or off: a sky rim round every crown models
+    // it as a ball, the thing the painted crown must not be.
+    if (crown) rim *= 0.3;
     col += uSkyColor * rim * 0.6 * ao;
     // Gouache: the value is laid in flat steps (foliage half a stop apart), each mark shifting
     // where the steps fall, so a crown reads as a few values of overlapping marks, not a shaded
@@ -1375,13 +1379,22 @@ in vec4 vTeam;
 flat in vec4 vMat;
 in vec3 vObj;
 uniform float uSunView;
+uniform float uPlotPx; // pixels a plot spans at the camera's target (the frame's pixel size)
 out vec4 o;
 void main() {
   // (The test is constant over a triangle -- a flat material, a per-instance team -- so the
   // derivatives inside it are taken by whole quads.)
   if (int(vMat.x + 0.5) == 9 && vTeam.a < 0.5) {
-    vec3 V = uSunView > 0.5 ? uSunDir : normalize(uEye - vWorld);
-    float pf = pixelAcross(dFdx(vWorld), dFdy(vWorld), V);
+    // Toward the sun the view is orthographic and texel-snapped, so the derivatives give one
+    // texel's size everywhere; toward the camera the cut takes the view's axis and the frame's
+    // pixel size, both constant over the frame and while panning (leafCut).
+    vec3 V = uSunDir;
+    float pf;
+    if (uSunView > 0.5) pf = pixelAcross(dFdx(vWorld), dFdy(vWorld), V);
+    else {
+      V = camBack();
+      pf = 1.0 / max(uPlotPx, 1.0);
+    }
     if (leafCut(vObj + vTint.a * 61.0, abs(dot(normalize(vNormal), V)), pf) > 0.0) discard;
   }
   o = vec4(1.0);
