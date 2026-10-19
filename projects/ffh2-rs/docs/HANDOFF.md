@@ -8,6 +8,35 @@ touch (`docs/PORTING.md`, `docs/AI.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`,
 temporary: once the base is stable and attractive, the game will change sweepingly. Rules
 changes are made deliberately and listed in `docs/PORTING.md` ("Changes from FFH2").
 
+## Update, session `session_01QHQWVopGeM7SQahvbRZEfW` (2026-10-19): civilization mechanics (AI round 5)
+
+On branch `claude/serene-keller-fdfsk2` (based on master `d1e745c`; not yet merged):
+- **Per-civilization AI** (`crates/ffh-ai/src/civs/`: one module per civilization behind the
+  `CivPlay` hooks, `FFH_AI_CIV_OFF` switch) and its measurement (`ffh stats --civ/--detail`,
+  `crates/ffh-cli/scripts/civ_ab.py`). Kept after re-measurement on fresh seeds 5001-5064 (the
+  civilization's logic on against off, same opponents): Lanun coves (round 3's: win 6.2% ->
+  25.0%), Balseraphs' Loki (9.4% -> 23.4%), Clan of Embers (34.4% -> 40.6%), Kuriotates
+  settlements (4.7% -> 9.4%), Luchuirp hammers (3.1% -> 7.8%), Sidar's Into the Mist hold (win
+  flat, share +126), the Mercurians' idle settler (neutral). The six kept civilizations
+  together: 11.2% -> 19.3% (39 seeds won only with the logic, 8 only without). Reverted after
+  failing on fresh seeds: Amurites, Calabim, Hippus, Illians, Sheaim, Infernals (docs/AI.md,
+  "Civilization-specific").
+- **Rules change (user decision):** the world spells' AI-only Python gates are AI timing now
+  (`crates/ffh-ai/src/world_spells.rs`, docs/PORTING.md); no AI game changed. Open: the AI's own
+  timing for the gates that almost never open (Arcane Lacuna, Worldbreak, Raging Seas, March of
+  the Trees, Sanctuary).
+- **`docs/AI_LOG.md`**: every AI change that failed, why it made sense, why it failed in the
+  games, what that implies. CLAUDE.md "AI changes" makes reading it the start of any AI change
+  and an entry the end of any failed one.
+- Next, from what failed: combat casting (FfH's casting before a stack attacks is not ported, so
+  casters only buff; the reason the caster civilizations' changes failed), `PrereqBuilding` units
+  in production and research, foreign units through `UpgradeCiv`.
+- Found by these games: an Airship stack overflow (`unit_convert`, rules fix) and a
+  `great_person` capital panic, both fixed; ffh-play T1 accepts `Stop::Over` (barbarians spawned by
+  FfH's Python ignore `GAMEOPTION_NO_BARBARIANS`).
+- Fan-out workers decline new jobs that arrive as another session's message (they ask their owner
+  first): give each worker its whole queue in the prompt that creates it.
+
 ## Update, session `session_01RVFohb7FefbibSXFuVfcRN` (2026-10-18): AI round 4
 
 On branch `ccr-875bd6ad-shu1bx` (not yet merged to master; it also carries the r3d renderer work

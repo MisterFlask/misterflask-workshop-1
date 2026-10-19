@@ -194,3 +194,20 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
 - Work in small, compiling steps; commit with clear messages.
 - Update docs/PORTING.md when a C++/Python unit is ported (file, functions, status).
 - Tests: unit tests next to code; data spot-checks in `crates/ffh-data/tests/`.
+
+## AI changes
+
+- **Start from `docs/AI_LOG.md`**, the log of AI changes that did not move the win rate, for the
+  area you are about to change: each entry says why the idea made sense, why it failed in the
+  games, and what that implies about the right version (or about the game's balance) -- both a
+  warning and a source of better ideas.
+- Measure on development seeds, then validate on seeds never used to choose anything, the change
+  on against the same binary with it off (`civ_ab.py --off-base` / `FFH_AI_CIV_OFF` for a
+  civilization's logic; docs/AI.md, "Tools"). Keep a change only if neither the win rate nor the
+  share at the end falls; development-seed gains alone are not results.
+- **Every measured change that fails gets an entry in `docs/AI_LOG.md` before it is reverted**:
+  (1) why it made sense, (2) why it did not move the win rate, from the games themselves (what
+  happened when it fired: counts, checkpoints, `FFH_AI_TRACE` replays), (3) what that implies.
+  Leave the reverted code's module comment naming the attempt and the log entry.
+- AI timing and AI-only restrictions belong in `ffh-ai`, not in the rules (the world spells'
+  AI-only Python gates were moved there; docs/PORTING.md, "Changes from FFH2").

@@ -1,6 +1,6 @@
 //! Khazad: nothing kept.
 //!
-//! Tried and measured (docs/civ-ai-c.md): their siege engines (Trebuchet, Dwarven Cannon) need a
+//! Tried and measured (docs/AI_LOG.md): their siege engines (Trebuchet, Dwarven Cannon) need a
 //! Siege Workshop and their knight (Hornguard) a Stable, specific buildings (`PrereqBuilding`) the
 //! generic production never builds. Building the Workshop in the most productive city when the
 //! operation wants siege, and a Stable where it opens the Hornguard, got Trebuchets and Cannons

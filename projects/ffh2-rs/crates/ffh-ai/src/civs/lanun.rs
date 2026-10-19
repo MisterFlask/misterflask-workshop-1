@@ -3,7 +3,7 @@
 //! Port, 3/2/6 on coast). [`Lanun::production`] trains a work boat for a city with a valid cove
 //! plot it works; [`Lanun::sea_worker`] takes it there and casts.
 //!
-//! Tried, not kept (docs/civ-ai-c.md): leaving the cove to boats without orders (FfH's
+//! Tried, not kept (docs/AI_LOG.md): leaving the cove to boats without orders (FfH's
 //! end-of-turn spell choice also casts it from a boat sailing to a sea resource), better on seeds
 //! 1-40 and worse on 41-80; a Siege Workshop where it opens the War Tortoise (`PrereqBuilding`):
 //! 0.3 Tortoises a game, no effect.

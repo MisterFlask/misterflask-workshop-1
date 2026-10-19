@@ -1,5 +1,8 @@
 # AI design (ffh-ai)
 
+Before changing the AI, read `docs/AI_LOG.md`: the changes that did not move the win rate, why,
+and what that implies (CLAUDE.md, "AI changes").
+
 The C++ AI (CvPlayerAI/CvCityAI/CvUnitAI/CvTeamAI, ~60k lines, plus the Python AI hooks
 in CvGameUtils.py such as `AI_chooseTech`/`AI_chooseProduction`) is not ported. It is the
 main cause of FFH2's late-game turn times (per-unit re-evaluation of every plot, repeated A*
@@ -57,7 +60,8 @@ counters, war success, war plans) that the diplomacy below reads.
    an explorer and buildings by value per point; then `ADVANCEDSTARTACTION_EXIT`.
 1. **Empire** (`empire.rs`): research when the queue is empty (a broke empire first
    researches its way out, see Finance; the victory goal's techs beeline, see Victory pursuit);
-   civics every 10 turns when the gain beats the anarchy (sooner under a structural deficit);
+   civics every 10 turns when the summed gain in civic value exceeds a flat 100 (the anarchy's
+   length is not weighed; sooner under a structural deficit);
    state religion; the culture slider a cultural victory wants, then the highest research
    slider that keeps the treasury from running dry; unit support that holds research below its
    target is cut first (see Finance); a bankrupt empire (slider at the bottom, still losing
@@ -112,8 +116,8 @@ counters, war success, war plans) that the diplomacy below reads.
    transport; while growing toward a settler the city builds only short items (warriors
    that explore and escort); a settler 3 turns from done (or waiting in the city) with no
    fighter to spare gets the cheapest adequate escort queued behind it (`expansion.rs`);
-   then civilization-specific items (Kuriotates settlement settlers, Lanun cove boats; see
-   Civilization-specific below);
+   then civilization-specific items (Kuriotates settlers for settlements and full cities and
+   settlement garrisons, Lanun cove boats; see Civilization-specific below);
 6. FfH tier-2 units need a building in the training city (Archery Range for archers,
    Training Yard for axemen, ...): when one would open a defender or attacker a third
    stronger, about half the cities build it;
@@ -795,51 +799,281 @@ research +2.0% (t 0.8), production +2.5% (t 1.4), research slider +2.9% (t 1.5; 
 200), culture +8.2% (t 1.8); captures, eliminations and wars unchanged. A small lever (a few real
 choices per civ in 300 turns), economy-positive throughout and no regression.
 
-## Civilization-specific (`civs.rs`)
+## Civilization-specific (`civs/`)
 
-Rules a few civilizations have that the generic logic does not see. Each branch checks the
-player's civilization (by type name), so games without these civilizations play exactly as
-before (same checksums).
+Each civilization has a module in `crates/ffh-ai/src/civs/` implementing `CivPlay`, whose
+methods default to "nothing special"; a civilization without logic of its own is a documented
+stub naming what was tried. The generic AI calls the hooks at fixed points (marked
+`// civ-mechanics`): `production` (after the settler step), `turn` (once per turn before units
+move), `unit` (a group's orders before its role logic), `sea_worker`, `spell_value` (the
+end-of-turn spell choice; 0 = not cast there), `building_value`, `tech_value`, `promotion_value`,
+`civic_value` and `site_value`. Every hook dispatches on `civs::civ`, so a game without a
+civilization that has logic plays exactly as before (same checksum), and
+`FFH_AI_CIV_OFF=CIVILIZATION_X` (comma-separated, `X` alone, or `all`) makes a civilization play
+as a generic one: the measurement switch. `civs/world_spell.rs` holds a world spell for a chosen
+moment (`spell_value` returns 0 for it and the `turn` hook casts it once the rules and the AI's
+default timing allow it). The older research flavours in `tech_plan.rs` are outside the switch.
 
-- **Kuriotates**: past their city limit (3 on a standard map) a new city is a *settlement*
-  (`CvCity::init`): radius 2, -75% yields, nothing to build, but no maintenance or civic
-  upkeep, and its borders claim land and resources. The settler step stops at the limit;
-  `civs::production`, asked right after it, builds one settler at a time for a settlement
-  site on the city's landmass (from a city of size 5+ or at its happy cap, at peace, not
-  broke). The sites are `sites.rs`'s: the ported `AI_foundValue` already scores
-  settlement-sized sites (9 plots) for a sprawling player at its limit and favours sites more
-  than 4 plots from its cities. 15 games (52 seeds): cities and settlements at turn 300
-  3.2 -> 8.9 (14/14 changed games better), score +16% (+137 +- 49), pop and techs a little up.
-- **Lanun**: a work boat can turn an empty coast plot of theirs into a Pirate Cove
-  (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port, 3/2/6
-  on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
+**How it was measured.** `ffh stats --civ CIVILIZATION_X` forces a civilization into slot 0 (the
+leader picked by the seed; the other slots stay random and avoid it), and
+`crates/ffh-cli/scripts/civ_ab.py` plays the same seeds twice and follows that civilization only:
+win rate (it decided the game -- victory, last standing or `--until-supremacy`'s clear supremacy
+-- or held the largest share at the turn cap), with the seeds won by one side only and an exact
+sign test; world share (score v2, basis points, 10000 = the world, fair share 1667 with six civs;
+dead = 0) and legacy score at checkpoints, a finished game's last value carried forward, with the
+paired t; survival, rank, world-spell use, and the unit, building and project counts that differ
+(`ffh stats --detail`). All games are full games (6 civs, standard map, to a decision or turn 690,
+`--until-supremacy`). Development (round 5, one implementer per group of five civilizations, in
+parallel) used seeds 1-40 against the base `2d95e9c`, with the group's other civilizations
+switched off so each number is that civilization's own. Seeds 1-40 chose among variants, so they
+flatter what was kept; every civilization was then re-measured on fresh seeds 5001-5064, the
+integrated tip (`d4ff7e3`) with its logic on against the same binary with it off
+(`civ_ab.py --off-base`, identical opponents), and a civilization's logic was kept only if
+neither its fresh win rate nor its fresh share at the end fell. What failed, and why in the
+games, is in docs/AI_LOG.md.
+
+**Result on fresh seeds** (64 games each; "won by one side only" = seeds the civilization won
+with its logic and not without / without and not with; share diff with the paired t):
+
+| civ | logic | win, off -> on | won by one side only (p) | share@300 | share@end |
+|---|---|---|---|---|---|
+| Lanun | coves (round 3, unchanged) | 6.2% -> 25.0% | 14 / 2 (0.004) | +229 (t 3.71) | +404 (t 2.26) |
+| Balseraphs | Loki's Disrupt (new) | 9.4% -> 23.4% | 9 / 0 (0.004) | +228 (t 2.70) | +530 (t 3.18) |
+| Clan of Embers | Warrens, Rantine, For the Horde (new) | 34.4% -> 40.6% | 7 / 3 (0.34) | +172 (t 2.43) | +147 (t 0.77) |
+| Kuriotates | settlements (round 3) + placement, garrisons, rebuild (new) | 4.7% -> 9.4% | 5 / 2 (0.45) | +159 (t 3.42) | +215 (t 1.58) |
+| Luchuirp | Golden Hammers (round 4, unchanged) | 3.1% -> 7.8% | 4 / 1 (0.38) | +42 (t 1.04) | +79 (t 0.55) |
+| Sidar | Into the Mist held for a war (new) | 9.4% -> 9.4% | 0 / 0 | -3 (t -1.34) | +126 (t 1.81) |
+| *reverted:* Amurites | Mage Guild and casters | 4.7% -> 1.6% | 0 / 2 | -13 (t -0.47) | -25 (t -0.31) |
+| Calabim | vampires, Feast, River of Blood held | 10.9% -> 4.7% | 2 / 6 | +21 (t 0.83) | -77 (t -0.61) |
+| Hippus | Warcry held for the strike | 14.1% -> 10.9% | 1 / 3 | -1 (t -0.06) | -6 (t -0.07) |
+| Illians | ritual projects | 15.6% -> 14.1% | 2 / 3 | -9 (t -1.61) | -40 (t -0.56) |
+| Sheaim | Mage Guild and adepts at war | 0.0% -> 1.6% | 1 / 0 | -22 (t -0.87) | -88 (t -0.97; @400 -144, t -2.17) |
+
+Over the six kept civilizations (384 games): win rate 11.2% -> 19.3%, seeds won by one side only
+39 / 8 (sign test p 0.000006); this round's new logic alone (Balseraphs, Clan of Embers, Sidar):
+17.7% -> 24.5%, 16 / 3 (p 0.004). The Kuriotates' new part alone (round 3's logic against this
+round's, same seeds and opponents): win 4.7% -> 9.4% (5 / 2), share@300 +40 (t 0.83),
+share@end +171 (t 1.34). The eight civilizations with nothing kept (Bannor, Doviello, Elohim,
+Grigori, Khazad, Ljosalfar, Malakim, Svartalfar) play the same game with the switch on or off in
+64 of 64 seeds. The Infernals and the Mercurians join mid-game and cannot be forced into a slot;
+they were measured over the fresh games they appear in, replayed with their logic off (below).
+
+**The base AI per civilization** (census: 40 full games each, seeds 1-40, base `2d95e9c`):
+
+| civ | win rate | alive at end | share@300 | share@end | world spell cast |
+|---|---|---|---|---|---|
+| Amurites | 5% | 50% | 1281 | 884 | 0/40 |
+| Balseraphs | 22% | 65% | 1785 | 1640 | 32/40 |
+| Bannor | 15% | 62% | 1379 | 1323 | 18/40 |
+| Calabim | 10% | 62% | 1364 | 1001 | 32/40 |
+| Clan of Embers | 35% | 88% | 2094 | 2394 | 34/40 |
+| Doviello | 22% | 65% | 1575 | 1424 | 30/40 |
+| Elohim | 15% | 60% | 1526 | 1240 | 15/40 |
+| Grigori | 15% | 75% | 1707 | 1609 | 31/40 |
+| Hippus | 15% | 65% | 1578 | 1497 | 30/40 |
+| Illians | 12% | 75% | 1626 | 1460 | 35/40 |
+| Khazad | 28% | 74% | 1758 | 1837 | 28/39 |
+| Kuriotates | 5% | 60% | 1777 | 1112 | 36/40 |
+| Lanun | 40% | 70% | 1788 | 1930 | 5/40 |
+| Ljosalfar | 28% | 72% | 1642 | 1707 | 16/40 |
+| Luchuirp | 25% | 80% | 1833 | 2049 | 35/40 |
+| Malakim | 30% | 72% | 1619 | 1642 | 22/40 |
+| Sheaim | 2% | 52% | 1310 | 912 | 0/40 |
+| Sidar | 5% | 70% | 1531 | 1333 | 22/40 |
+| Svartalfar | 20% | 78% | 1512 | 1513 | 32/40 |
+
+Unique content the base AI never used in those games: the Amurites' Arcane Lacuna and Cave of
+Ancestors, the Clan's Warrens, the Sheaim's Worldbreak (Planar Gate 1/40), the Luchuirp's
+Blasting Workshop, Pallens Engine and Adularia Chamber, the heroes Corlindale (Elohim), Wilboman
+(Illians), War Machine (Doviello) and Eurabatres (Kuriotates), and every civ's adepts (no AI
+built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
+
+### Kept
+
+- **Lanun** (round 3, unchanged): a work boat can turn an empty coast plot of theirs into a
+  Pirate Cove (`SPELL_PIRATE_COVE`: +2 commerce; it grows into a Pirate Harbor and a Pirate Port,
+  3/2/6 on coast; no other cove within 2 plots). As in C++ `AI_neededSeaWorkers` /
   `AI_buildPirateCove`, a city that works a plot where one can go trains a work boat (one at a
   time), and a Lanun work boat with no sea resource to improve in reach sails to the best site
-  (worked plots of big cities first) and casts there. 23 games (52 seeds): score at turn 300
-  +23% (+134 +- 51), pop +24%, techs +22% (Lanun that never research Fishing are unchanged).
-- **Luchuirp**: Gifts of Nantosuelta leaves a Golden Hammer in each city, which can become a free
-  Engineer there (`SPELL_GIVE_HAMMER_TO_CRAFTSMAN`) or +1 strength on a unit that takes it
-  (`SPELL_TAKE_GOLDEN_HAMMER_UNIT`). FfH's end-of-turn spell choice (`casting::choose_spell`) valued
-  the take higher, so the garrison warriors took nearly every hammer (seeds 1-16: 59 takes, 13
-  gives). Units in our own cities now leave it, and the hammer gives itself. Seeds 801-944, the
-  47 games where Luchuirp cast Gifts, Luchuirp civs at turn 300: production +11.8% (t 2.5), great
-  people +47% (t 5.3), power +11.4% (t 2.4), techs +4.0% (t 2.8), legacy +4.2% (t 1.9); the
-  world as a whole is unchanged (the neighbours pay part of it).
-- **Ljosalfar / Svartalfar**: nothing needed. Their `MaintainFeatures` keeps the forest under
-  every improvement they build on their own plots (FfH's check in `setImprovementType`), and
-  workers build only there: `FFH_LOG` shows no forest cleared by them (the clearings in the
-  logs are other civilizations'; seed 5: 79 clearings, none by the Svartalfar).
-- **Khazad** (tried, not kept): the Dwarven Vault gives every city -2 to +3 happiness (and up
-  to +40% production) by the treasury's gold per city (`cf_do_turn_khazad`); the AI holds
-  11-20 gold per city, the Empty Vault (-2). A vault target (the level whose happiness and
-  production repay its gold within 30 turns, also the reserve for the sliders, hurrying and
-  upgrades) was saved for by lowering research. From the start (20-30 points, 6 games):
-  population +10%, techs -15% to -20%, lower score. Once commerce reached 8 per city, research
-  down at most 10 points (40 Khazad games against the same code without it): gold per city at
-  turn 300 17 -> 61, population +2% (+0.9 +- 2.4), techs -3% (-0.6 +- 0.9), score -5 +- 37
-  (other limits, 0 or 20 points, gave the same picture). 100 gold per city costs 5-15 turns of
-  the empire's whole commerce and the extra citizens repay it in 25+ turns more: by turn 300
-  the hoarded gold is research the empire has not got back.
+  (worked plots of big cities first) and casts there. Round 3 measured it at 300 turns (score
+  +23% in 23 games); the fresh full games above are its first measurement as a civilization's win
+  rate, and it is the largest lever of the set. Fishing already comes at turns 30-65. Raging Seas
+  is rare (5 of 40 games, around turn 590; see "World spells" below).
+- **Balseraphs**: Loki (`bRivalTerritory`) casts Disrupt in another team's city: 0-2 of the
+  owner's culture there is lost (`spellDisrupt`), and a city left with none becomes the
+  Balseraphs' without war (its owner's attitude -4). The generic AI used him as a 2-strength
+  fighter. At peace he goes to the nearest reachable (12 turns) revealed city of a civ we are not
+  at war with whose owner culture is below 20 and whose culture rate is 0 (one Disrupt a turn
+  drains one point on average, so a city producing culture never falls) and casts every turn:
+  1-10 cities a game in traced games (about 3). Development: win 17.5% -> 20.0% (5 / 4),
+  share@300 +168 (t 2.16), share@end +267 (t 1.52), cities +1.1 at turn 300 (t 2.4). Revelry (a
+  golden age at 25 population) stays with the default timing. Risk: each flip costs -4 attitude
+  with a civ at peace with us.
+- **Clan of Embers**: Warrens (Masonry, 180 hammers: every unit finished in the city that is not
+  a world, national, siege or naval unit gets a free copy; Python only, so valued 0 and never
+  built) are valued as the hammers the copies add (half the city's production): 3.4 a game by
+  turn 300, 7.6 by the end. Rantine casts Convert City in a barbarian city whose units are no
+  stronger than him -- the Clan is at peace with the barbarians (`TRAIT_BARBARIAN`), so no army
+  ever went there -- walking to the nearest such city within 15 turns while no civ war is on:
+  +1.2 cities at turn 300 (t 3.2). For the Horde (half the barbarian orcs become the Clan's) is
+  held for a civ war or its preparation (first seen around turn 320 instead of 218), so the
+  converts arrive with a war to fight and the barbarians keep harassing the Clan's rivals
+  meanwhile. Development: win 33.3% -> 43.6% (6 / 2), share@300 +147 (t 1.95), share@end +588
+  (t 2.94); leave-one-out at 300 turns: Rantine +93 (t 2.0), For the Horde +141 (t 2.4), Warrens
+  -40 (t -1.8), but share@end +588 with the Warrens against +362 without, so they pay late.
+- **Kuriotates** (round 3's settlements, with this round's placement, garrisons and rebuild):
+  past their limit of full cities (3 on a standard map) a new city is a settlement
+  (`CvCity::init`: radius 2, -75% yields, nothing to build, no maintenance or civic upkeep; it
+  claims land and resources). Round 3 builds one settler at a time for a settlement site on the
+  city's landmass, from a full city of size 5+ (or at its happy cap) at peace; the ported
+  `AI_foundValue` already scores settlement-sized sites for a sprawling player at its limit. In
+  full games that alone hurt late: a plot is worked by the city nearest to it
+  (`CvPlot::updateWorkingCity`), so a settlement 4-5 plots from a full city takes the full city's
+  third-ring plots and works one of them at a quarter of its yield (development, the base with
+  and without settlements: population at turn 300 37 against 41, commerce 117 against 159, share
+  at the end 1095 against 1385, t -1.8; but share@200 +202, t 4.9: the land). Now: no settlement
+  site within 5 plots of a full city (`site_value`, in `sites::compute`); the nearest full city
+  trains a defender for a settlement that has none (settlements cannot train units); and after
+  losing a full city a settler re-founds one (the generic settler step counts settlements towards
+  the limit and never built another: seed 6 of the base sat with one full city and eight
+  settlements from turn 233). Development (this round's part alone): seeds 1-40 win 5.1% ->
+  5.1%, share@300 +69 (t 1.07); seeds 41-80 win 2.5% -> 12.5% (4 / 0). Their late decline is not
+  fixed (5-7 cities lost by turn 450-500 with or without it). Legends keeps the default timing
+  (5 cities, settlements counted; about turn 200).
+- **Luchuirp** (round 4, unchanged): Gifts of Nantosuelta leaves a Golden Hammer in each city,
+  which can become a free Engineer there (`SPELL_GIVE_HAMMER_TO_CRAFTSMAN`) or +1 strength on a
+  unit that takes it (`SPELL_TAKE_GOLDEN_HAMMER_UNIT`). FfH's end-of-turn spell choice valued the
+  take higher, so the garrison warriors took nearly every hammer (seeds 1-16: 59 takes, 13
+  gives); units in our own cities now leave it, and the hammer gives itself (round 4, the 47 games
+  where Luchuirp cast Gifts: production +11.8% at turn 300, t 2.5, great people +47%).
+- **Sidar**: Into the Mist (every unit gets `PROMOTION_HIDDEN`: invisible to other teams outside
+  our cities and +1 first strike, until it fights or casts; units trained later do not get it)
+  was cast the first turn the default timing (40 units) allowed, usually at peace, and the army
+  lost it against barbarians before any war. It is held for a war: cast when at war with a
+  civilization or preparing one, so the army marches unseen and opens with an extra first strike;
+  with no war, once it has 60 units. Development: win 5.0% -> 7.5% (1 / 0), share@end +74
+  (t 0.94); fresh: the hold changes the cast in 15 of 64 games, share@end +126 (t 1.81).
+
+### Measured over the games they join (Infernals, Mercurians)
+
+- **Mercurians** (kept; they join the team of the civilization that built the Mercurian Gate,
+  and Basium converts the gate city). Their starting settler had no site (their one city stands
+  in the builder's culture, where `sites.rs` finds nothing) and waited all game paying support;
+  with no site on its landmass 20 turns after it appeared, it is disbanded. Development (the 76
+  of 120 games where they appear on both sides): settlers left at the end 68 -> 9, share
+  351 -> 385 (t 1.21). Fresh (the 35 games of seeds 5001-5064, Bannor forced, where they appear,
+  replayed with their logic off): idle settlers at the end 0.83 -> 0.06 a game, their team's
+  share at the end flat (2958 -> 2956, t -0.02), their team won 9 -> 12 games (3 / 0). Judged on
+  the team, whose result it is: a small fix, neutral on share, kept.
+- **Infernals** (reverted; docs/AI_LOG.md): Fallow cities never grow except through Manes (Add to
+  City, which FfH's spell value never casts); Manes in a city with another defender there added
+  themselves. Development (6 games): share 1056 -> 1557 (t 2.21); fresh (the 60 games of seeds
+  5001-5064 where they appear, logic on against off): population +5.0 (t 2.23) but units -6.2
+  (t -2.77), alive 0.8 -> 0.7, share -29 (t -0.68): the Manes were their army.
+
+### Reverted, and tried without effect
+
+Each module keeps a stub comment naming the attempt and its numbers; the diagnosis of each
+failure from the games (what happened when it fired, and what that implies) is in
+docs/AI_LOG.md. In short: the casters of the Amurites and the Sheaim (Mage Guilds and adepts)
+cast almost only buffs and cost army and economy; the Hippus' held Warcry fell on the same strikes
+the cast at the declaration already covered; the Illians' White Hand came at turns 325-372 for
+three priests that only summon; the Calabim's vampire rules barely fire (vampires from turn 280+);
+holding Stasis, Religious Fervor, Wild Hunt or never casting Veil of Night lost already in
+development; the Khazad's, Luchuirp's and Lanun's `PrereqBuilding` units (siege engines,
+Hornguard, golems, War Tortoise) did not change their wars; Bannor's Crusade timing, Grigori
+Medics, Elohim's Sanctuary hold, more Ljosalfar workers and the Kuriotates variants (no
+settlements, extra defenders) were flat or worse. Older civilization notes kept for the record:
+the Khazad's Dwarven Vault target (round 3: saving gold for the vault level cost more research
+than the happiness repaid, score -5 +- 37 over 40 games) and the elves' forests (`MaintainFeatures`
+keeps the forest under every improvement they build on their own plots; `FFH_LOG` shows no
+forest cleared by them).
+
+### What the round shows
+
+- **Development seeds mislead at this size.** Of the nine forced-civ changes kept after
+  development, five lost on fresh seeds, and the Infernals' (six games in development, sixty
+  fresh) too. The survivors act early and directly on what the score counts -- cities (Loki's
+  flips, Rantine's conversions, settlement placement) and commerce (coves, Engineers) -- while the
+  failures pay late (casters from turn 230-250, ritual projects after turn 300, rare vampires) or
+  only retime a world spell. A 40-seed development A/B with |t| < 2 is a candidate, not a result.
+- **World spells: the cast at the gate is hard to beat.** Holding one for a better moment lost in
+  development for Stasis, Religious Fervor, Veil of Night (never cast) and Wild Hunt, and on fresh
+  seeds for Warcry and River of Blood (with the Calabim's other changes): a spell cast at its
+  gate keeps its effect for the rest of the game. The holds that remain are For the Horde, inside
+  the Clan's package (its development leave-one-out: share@300 +141, t 2.4), and Into the Mist.
+- **Casters are a generic gap, not a civilization's.** No AI builds a Mage Guild (value 0 in
+  `building_value`), so no civilization has adepts; and when the Amurites and the Sheaim had
+  them, the casters spent their turns on Haste, Regeneration and Dance of Blades, because the AI
+  casts only at the end of the turn (the port omits FfH's casting before a stack attacks).
+  Casters worth their cost need combat casting in strikes first, for every civilization.
+
+### World spells: AI timing (`world_spells.rs`)
+
+FfH 0.41 timed the AI's world spells in the rules, as AI-only branches of the spells' Python
+requirements (`if pPlayer.isHuman() == False:` in `CvSpellInterface.py` `req*`). Those are AI
+policy, so the port took them out of the rules (docs/PORTING.md, "Changes from FFH2"; a human's
+requirements were never affected) and the AI applies them itself: `world_spells::ready` holds
+FfH's condition per spell, and `casting::choose_spell` and the held casts (`civs/world_spell.rs`)
+cast a world spell only once it holds. The move alone changes no AI game (every playable
+civilization forced, two fresh seeds each, full games: the same checksums before and after).
+
+FfH's conditions, the AI's default timing: Stasis, Legends, Rally, River of Blood and Gifts of
+Nantosuelta at 5 cities; Warcry at war with 25 units; Veil of Night at peace with 25 units; Wild
+Hunt at war with 20 units; Into the Mist at 40 units; Sanctuary, March of the Trees and Divine
+Retribution at war with two teams; Raging Seas at war with a player whose fleet is worth more than
+10; Ardor at 5 great people; Revelry at 25 population; Religious Fervor with 5 cities of the state
+religion; For the Horde with 60 barbarian units; Mother Lode at 10 mines; Arcane Lacuna with 7
+typed mana bonuses on the whole map; Worldbreak at an Armageddon counter of 50 (Hyborem's Whisper
+had none). Several almost never hold, so their spell is never cast: Arcane Lacuna (0 of 40 games),
+Worldbreak (about 3%, near the end), Raging Seas (5 of 40, around turn 590), March of the Trees and
+Sanctuary (16 and 15 of 40, late) -- the AI's own timing for these is the open work. What the
+group-C diagnosis would choose: Raging Seas the turn before a stack strikes a coastal city (its
+defenders on a coast plot take ~35-50% damage); March of the Trees at one war when a city is in
+peril with 8+ of our forest plots within 2 of the threat; Legends right after the third full
+city; Gifts of Nantosuelta after the last planned city; Mother Lode when the windfall lifts the
+Dwarven Vault a level. Group D's: Worldbreak the turn a campaign strikes a city, once the counter
+is 20+ (half-health defenders in every enemy city); Divine Retribution only when the enemy's demons
+and undead outweigh ours and the neutrals' (it hits everyone); Into the Mist at the start of a war
+(as now held); Veil of Night early, as soon as the army is built (its peace condition is a real
+constraint); Religious Fervor once the religion is in most cities and a war is near. Hyborem's
+Whisper needs Malevolent Designs, never reached in these games. Given the round's lesson, an
+earlier cast is the first thing to measure.
+
+### Generic gaps these civilizations exposed (not fixed here)
+
+- **Combat casting**: the AI casts only at the end of the turn (`casting::end_turn`: the best
+  spell, then a buff, then a summon); FfH's casting before a stack attacks is omitted, so damage
+  spells and summons rarely fall in a fight and casters fill their turns with buffs (docs/AI_LOG.md).
+- **`PrereqBuilding` units**: specific buildings that open units -- the Siege Workshop
+  (Trebuchet, Dwarven Cannon, War Tortoise, War Machine), the Stable (Hornguard, Bison Rider),
+  the Sculptor's Studio (golems, Gargoyle) -- are never built by the generic production
+  (`enabler_building` and `campaign::siege_building` read only `PrereqBuildingClass`), and
+  `research::unit_available` skips such units, so research never values Warhorses for the
+  Hornguard or Engineering for the Gargoyle. The Mage Guild (all adepts) is the
+  `PrereqBuildingClass` case with a value of 0.
+- **Foreign units through `UpgradeCiv`**: the Luchuirp Studio opens the Clan's Ogre, and the
+  Khazad and Lanun field Centaurs and Ogres by the dozen in full games; a fix changes what the
+  Studio, Stable and Workshop experiments are worth, so they are worth re-measuring after it.
+- **Workers stuck on a move the path finder refuses**: the worker logic picks a target by its own
+  danger map, but `MISSION_MOVE_TO` with `MOVE_SAFE_TERRITORY` is refused by the rules' AI path
+  finder (`AI_getPlotDanger`) and the worker retries every turn (a Lanun work boat at (42,23),
+  seed 7, turns 200-239). The flee code passes `MOVE_IGNORE_DANGER` for this reason; the build
+  move does not.
+- **Allied barbarians count as a threat**: the Clan of Embers and the Doviello's Charadon are at
+  peace with the barbarians, but the garrison and research counts (`production::barbarians_near`)
+  treat nearby barbarians as a threat all the same.
+- **AI-to-AI deals ignore `player_can_contact`** (`diplomacy::manage`, `implement_deal`), so a
+  Crusading Bannor (`bNoDiplomacyWithEnemies`) still makes peace with its enemies; only
+  `offers.rs` (deals with humans) checks it.
+- **Rules questions**: Wane and Kidnap (Sidar, Svartalfar) lack `bAllowAI`, so the AI can never
+  cast them; `GAMEOPTION_NO_BARBARIANS` does not stop barbarians spawned by FfH's Python (a
+  barbarian city holding the Dragon's Horde keeps sending units); C++ `AI_foundValue`'s
+  settlement-site switch counts settlements as cities.
+- Fixed in this round, found by these games: `units::great_person` read `Player::capital_city`
+  raw and panicked on a dangling id (the Clan's conversions; now `player_get_capital_city`), and
+  `unit_convert` could leave a converted unit as its own transport (an Airship, a stack overflow;
+  a rules fix, docs/PORTING.md).
 
 ## Measured together
 
@@ -1122,6 +1356,20 @@ Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-94
   victories before the time limit). With the agents' cache present it replays games already played
   from the shared run cache and takes a machine-wide CPU slot per game; `tools/agents/ab.sh` runs
   it on a base and on your worktree (docs/AGENTS.md).
+- **Per-civilization measurement.** `ffh stats --civ CIVILIZATION_X` (repeatable: slots 0, 1,
+  ...) forces civilizations into the first slots, each with a leader picked by the seed (the
+  other slots stay random and avoid them; `ai_metrics.py --civ` passes it through). Every
+  snapshot row has `world_spell` (the player has cast its world spell); `--detail` adds per-type
+  counts: `unit_types`, `building_types` (cities with the building) and `project_types`.
+  `FFH_AI_CIV_OFF=CIVILIZATION_X,...` (or `X`, or `all`) makes those civilizations play without
+  their civilization-specific logic (`civs/`; the run cache keys runs by every `FFH_*`
+  variable). `crates/ffh-cli/scripts/civ_ab.py --civ X|all --seeds S --new-bin N [--off-base |
+  --base-bin B] [--out-dir D | --load D] [--at T,..] [--summary-json F]` plays (or reloads) the
+  same seeds on two sides and reports the forced civilization only: win rate with the seeds won
+  by one side only and an exact sign test, share and legacy score per checkpoint (a finished
+  game's last value carried forward) with the paired t, survival, rank, world-spell use, the games
+  that are identical on both sides and the per-type counts that differ; `--off-base` makes the
+  base side the same binary with `FFH_AI_CIV_OFF` for that civilization (identical opponents).
 - `crates/ffh-cli/scripts/victory_check.py --seeds 1-24 [--out games.json | --load games.json]
   [--compare base.json] [--min-share 0.5]` plays full games (to turn 690 or an earlier
   victory) and reports the share decided before the time limit, per victory type, the decision
@@ -1283,7 +1531,9 @@ Each of these gained on seeds 1-96 and was re-measured on reserved seeds (801-94
   reach in every measured game; Great Prophets lightbulb instead of building the six altar
   stages; domination needs two thirds of the land and the siege operations take about one city
   per war; the religious victory (80% of the world's people) is not pursued.
-- Casters use FfH's own end-of-turn spell choice; there is no planned use of summons or
-  terraforming, and no dedicated logic for most civ-specific mechanics (Sheaim planar gates,
-  Infernal and Mercurian projects, Khazad vaults, Armageddon rituals; see `civs.rs` for the
-  ones handled).
+- Casters use FfH's own end-of-turn spell choice (the best spell, then a buff, then a summon):
+  no casting before a stack attacks, so casters spend their turns on buffs (Haste, Regeneration,
+  Dance of Blades) and no AI builds a Mage Guild; there is no planned use of summons or
+  terraforming. Civilization mechanics handled and tried: "Civilization-specific" and
+  docs/AI_LOG.md (Sheaim planar gates, Infernal and Mercurian projects, Khazad vaults and
+  Armageddon rituals have no logic).
