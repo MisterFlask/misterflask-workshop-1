@@ -615,24 +615,26 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // The meadow: grassland and prairie painted as one ground (main folds the prairie in), green
     // grass broken by golden dry grass. Where it lies golden: organic patches (about 1, 0.5 and 0.3
     // plots, the finest drawn out along the map's diagonal) that ignore the plot grid, the prairie's
-    // share of the point (gDry) tipping the balance -- about a sixth of a grassland lies golden, five
-    // sixths of a prairie, and no broader noise than a plot, so a whole region never flips -- only
-    // in a plot's rim: its centre is pinned to its own ground (grassland and plains differ in yield,
-    // so a player must read it there), while the grid no longer shows in the grass.
+    // share of the point (gDry) tipping the balance -- about a tenth of a grassland lies golden (and
+    // as much again olive round it), three quarters of a prairie, and no broader noise than a plot,
+    // so a whole region never flips -- only in a plot's rim: its centre (about a fifth of a plot
+    // round it) is pinned to its own ground, easing out to the rim (grassland and plains differ in
+    // yield, so a player must read it there), while the grid no longer shows in the grass.
+    // A patch meets the green in a broad blend (about a quarter of a plot, as in the target), not a
+    // cut: dry runs over a wide band of the noise and the two grasses interleave over its middle.
     float dn = mnoise(m + 61.0, 0.85) * 0.35 + mnoise(m - 27.0, 1.9) * 0.4 + mstroke(m + 13.0, 3.6, 2.5) * 0.25;
-    float t = mix(0.63, 0.37, gDry);
-    // A ragged edge: finer fingers combed along the wind where a patch meets the green (only there).
-    if (abs(dn - t) < 0.18) dn += (mstroke(m - 7.0, 11.0, 3.0) - 0.5) * 0.14;
-    dry = smoothstep(t - 0.12, t + 0.12, dn);
-    dry = mix(gDry, dry, smoothstep(0.16, 0.34, length(fract(m) - 0.5)));
+    float t = mix(0.66, 0.40, gDry);
+    dry = smoothstep(t - 0.28, t + 0.28, dn);
+    dry = mix(gDry, dry, smoothstep(0.06, 0.6, length(fract(m) - 0.5)));
     big = mfbm(m, 0.45);
     float mid = mnoise(m + 11.0, 1.6), mot = mnoise(m + 5.0, 2.4);
     // Green: yellow-green with darker blue-green mottling at two sizes (the broad shapes and
-    // half-plot blotches), drifting slowly between a yellower and a bluer green.
+    // half-plot blotches), drifting slowly between a yellower and a bluer green; as deep as the
+    // target's (lighter read as astroturf).
     vec3 cg = mass3(vec3(0.18, 0.27, 0.17), vec3(0.27, 0.35, 0.22), vec3(0.35, 0.415, 0.24), big, mid);
     cg = mix(cg, vec3(0.17, 0.26, 0.17), smoothstep(0.55, 0.8, mot) * 0.42);
     vec3 dr = mix(vec3(0.20, 0.31, 0.21), vec3(0.33, 0.40, 0.20), smoothstep(0.3, 0.7, mnoise(m - 23.0, 0.7)));
-    cg = mix(cg, dr * lum(cg) / max(lum(dr), 1e-4), 0.22 * gK());
+    cg = mix(cg, dr * lum(cg) / max(lum(dr), 1e-4), 0.22 * gK()) * 0.85;
     // Golden: straw over ochre, combed by the wind into lighter and darker streaks; its shade an
     // olive ochre (not russet: the warm sun and the grade's saturation would turn that orange).
     vec3 cd = mass3(vec3(0.37, 0.30, 0.185), vec3(0.50, 0.42, 0.265), vec3(0.62, 0.54, 0.355), big, mid);
@@ -642,12 +644,19 @@ vec3 groundAlbedo(int g, vec2 m, float h, inout vec3 emit) {
     // The sward's detail is baked (materials.js): tufts of upright blades on the green, long straw
     // combed along the wind on the golden, each over its masses. Where the meadow turns golden each
     // texel takes the taller of the two, the straw raised by how dry the point is, so a patch's edge
-    // is blades of green standing through straw rather than an olive mix; the green there yellows a
-    // little.
+    // is blades of green standing through straw (the straw lowered by 0.15, else it takes over early:
+    // the two swap in the middle of the blend, and none stands on its green side). Both meet
+    // in an olive -- the green turning to it as it nears a patch, first in hue, then in value, the
+    // straw at its edge -- so the hue passes through the olive between them, as the target's does
+    // (the plot's centre keeps its own: dry is pinned there).
     vec4 tg = matPair(m, M_GRASS, 1.0);
     vec4 tw = matPair(m + 7.3, M_STRAW, 0.8);
-    float k = smoothstep(-0.3, 0.3, tw.a - tg.a + (dry - 0.5) * 2.0);
-    c = mix(matTint(tg, M_GRASS, mix(cg, cd, dry * 0.35)), matTint(tw, M_STRAW, cd), k);
+    float k = smoothstep(-0.3, 0.3, tw.a - tg.a - 0.15 + (dry - 0.5) * 1.2) * smoothstep(0.08, 0.3, dry);
+    const vec3 olive = vec3(0.37, 0.38, 0.19);
+    float ho = smoothstep(0.05, 0.6, dry) * 0.9;
+    vec3 cgE = mix(cg, olive * mix(lum(cg) / lum(olive), 1.0, ho), ho);
+    vec3 cdE = mix(cd, olive, (1.0 - smoothstep(0.45, 0.9, dry)) * 0.8);
+    c = mix(matTint(tg, M_GRASS, cgE), matTint(tw, M_STRAW, cdE), k);
     gH = mix(tg.a, tw.a, k);
   } else if (g == G_DESERT) {
     // Desert: pale sand cut by sinuous dune crests -- the back slope brightening to the crest, a cool
