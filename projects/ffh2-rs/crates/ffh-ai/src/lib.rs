@@ -127,6 +127,7 @@ impl Controller for Ai {
             // War declarations change the picture.
             v = view::View::new(g, p);
             civs::turn(self, g, &mut v); // civ-mechanics
+            world_spells::turn(g, &mut v); // world-spells
         }
         units::play(self, g, &mut v);
         casting::end_turn(g, &v);

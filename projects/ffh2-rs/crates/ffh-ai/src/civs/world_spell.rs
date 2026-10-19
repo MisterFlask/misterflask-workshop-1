@@ -14,16 +14,7 @@ pub fn cast(g: &mut Game, p: PlayerId, name: &str) -> bool {
     if g.players[p].feat_accomplished[FeatType::FEAT_GLOBAL_SPELL] || !crate::world_spells::ready(g, p, spell) {
         return false;
     }
-    let units: Vec<UnitId> = g.players[p].units.clone();
-    let caster = units
-        .iter()
-        .copied()
-        .filter(|&u| g.unit_can_cast(u, spell, false))
-        .min_by_key(|&u| (g.units[u].ai_type != Some(UnitAIType::UNITAI_CITY_DEFENSE), u));
-    let Some(u) = caster else { return false };
-    crate::trace!(g, p, "world spell {} by {}", name, g.d.units[g.units[u].unit_type].base.type_);
-    g.unit_cast(u, spell);
-    true
+    crate::world_spells::cast_now(g, p, spell, "held")
 }
 
 /// True if `spell` is world spell `name`.
