@@ -1085,13 +1085,37 @@ earlier cast is the first thing to measure.
   `research::unit_available` skips such units, so research never values Warhorses for the
   Hornguard or Engineering for the Gargoyle. The Mage Guild (all adepts) is the
   `PrereqBuildingClass` case with a value of 0.
-- **Foreign units through `UpgradeCiv`** (fixed): the Luchuirp Studio opened the Clan's Ogre, and
-  the Khazad and Lanun fielded Centaurs and Ogres by the dozen in full games. `canTrain` admits a
-  unit with `UpgradeCiv` in any city (it checks the unit only against that civilization's line);
-  FfH's UI and AI never offer it, because they enumerate the city civilization's unit per class
-  (`getCivilizationUnits`). The port's AI and ffh-play walked every unit type, so they now filter
-  with `city_offers_unit`. The per-civilization measurements above predate the fix; the Studio,
-  Stable and Workshop experiments are worth re-measuring.
+- **Foreign units through `UpgradeCiv`** (fixed; the owner's decision: a bug, closed in the
+  rules). FfH's `canTrain` checks a unit with `UpgradeCiv` (Kuriotates Centaurs, the Clan's Ogres,
+  Goblins and Wolf Riders, Calabim Vampires and Brujah, the Infernal Balor) only against that
+  civilization's line, so it admits them in any city; FfH's UI and AI never ask, because they walk
+  the city civilization's unit per class (`getCivilizationUnits`). The port's AI and ffh-play
+  walked every unit type, so every AI trained them (the Luchuirp Studio opened the Clan's Ogre; the
+  Khazad and Lanun fielded Centaurs and Ogres by the dozen). First the AI and ffh-play filtered with
+  `city_offers_unit` (`b7d67f6`); then `city_can_train` itself refused another civilization's
+  `UpgradeCiv` units (docs/PORTING.md, "Changes from FFH2"; `canUpgrade` unchanged, so a captured
+  Centaur still upgrades to a Centaur Archer). The rules change plays the same games as the filter
+  (identical sync checksums, seeds 7001-7008). The Airship is not part of this: it has no
+  `UpgradeCiv`, and a Frigate upgrades to it only in the Kuriotates' hands or an Assimilation
+  player's (`getUpgradeCity` checks the owner's line).
+  Measured as the filter's commit against its parent, fresh seeds:
+  - other civilizations' `UpgradeCiv` units at turn 300, of all civ units: 8.6% -> 0.0% in
+    Kuriotates games, 8.1% -> 0.0% in Clan games (mostly Centaurs, Centaur Chargers and Archers);
+  - 300 turns, seeds 7001-7048 (48 games): legacy score +3.4% (t 1.1), production +7.0% (t 2.0),
+    gold -20% (t -2.4), every other metric |t| < 1.6; civ cities captured -16% (t -1.5);
+  - full games, seeds 7101-7124 (24, `--until-supremacy`): legacy at turn 300 -1.6% (t -0.4), at
+    500 -0.9% (t -0.1); supremacy 11 -> 12, cultural 9 -> 10, time limit 4 -> 2; decided 34 turns
+    earlier (t -0.9);
+  - Kuriotates forced (`civ_ab.py`, full games, seeds 7201-7232): win 6.2% -> 3.1% (won by one
+    side only 0 / 1, p 1.0), share@300 -29 (t -0.2), share@end +129 (t 0.6), legacy@end +306
+    (t 1.6); Centaur Archers 9.7 -> 11.2 per game, Ogres 1.1 -> 0. The rivals' Centaurs did not
+    cost them a measurable edge;
+  - Clan of Embers forced (same seeds): win 43.8% -> 34.4% (1 / 4, p 0.38), share@300 -3 (t 0.0),
+    share@end -27 (t -0.1); the Clan had fielded 10 Kuriotates Centaur Archers a game and builds
+    Axemen (4.8 -> 11.8), its own Wolf Riders (0 -> 5.9) and Lizardman Rangers instead.
+  Neutral overall; the Clan's win-rate dip is within noise (5 seeds differ) and is the number to
+  watch when the Clan's army logic is next measured. The per-civilization measurements above
+  predate the fix; the Studio, Stable and Workshop experiments are worth re-measuring.
 - **Workers stuck on a move the path finder refuses**: the worker logic picks a target by its own
   danger map, but `MISSION_MOVE_TO` with `MOVE_SAFE_TERRITORY` is refused by the rules' AI path
   finder (`AI_getPlotDanger`) and the worker retries every turn (a Lanun work boat at (42,23),
