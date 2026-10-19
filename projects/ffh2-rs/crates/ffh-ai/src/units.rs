@@ -180,6 +180,7 @@ pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
         if !alive(g, grp) || !g.units.contains(head) {
             continue;
         }
+        if !v.barbarian && crate::civs::unit(ai, g, v, grp, head) { continue; } // civ-mechanics
         match role {
             Role::Settler => crate::expansion::settler(ai, g, v, grp, head),
             Role::Worker => crate::workers::worker(g, v, grp, head, false),
@@ -286,7 +287,7 @@ fn best_promotion(g: &Game, u: UnitId) -> Option<PromotionType> {
         if !g.unit_can_promote(u, Some(promo), None) {
             continue;
         }
-        let v = promotion_value(g, u, promo);
+        let v = crate::civs::promotion_value(g, u, promo, promotion_value(g, u, promo)); // civ-mechanics
         if best.map_or(true, |(_, b)| v > b) {
             best = Some((promo, v));
         }
@@ -529,7 +530,7 @@ fn great_person(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     let p = v.p;
     if crate::victory::great_work(g, v, grp, u) { return; } // victory-pursuit
     let here = g.unit_plot(u);
-    let Some(capital) = g.players[p].capital_city else {
+    let Some(capital) = g.player_get_capital_city(p) else {
         hold(g, grp);
         return;
     };

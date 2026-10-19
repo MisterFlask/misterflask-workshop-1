@@ -605,6 +605,17 @@ impl Game {
                 // FfH: Added by Kael 05/15/2007
                 self.unit_combat_won(u, defender, true);
 
+                // C++ quirk: `combatWon` can kill the attacker (it loses Hidden next to an enemy
+                // with no free plot around, see there), and C++ goes on with the deleted unit, up
+                // to `getGroup()->clearMissionQueue()` on a NULL group. Here the defender still
+                // dies (`kill(false)`, as in both branches below), uncaptured as nobody advances;
+                // the attacker's own follow-up is skipped (its group's missions were cleared when
+                // it left the group).
+                if !self.units.contains(u) {
+                    self.unit_kill(defender, false, None);
+                    return;
+                }
+
                 // report event to Python, along with some other key state
                 // FfH: Modified by Kael 08/02/2008
                 if d.defines.use_combat_result_callback != 0 {
@@ -1765,6 +1776,14 @@ impl Game {
                 }
                 if promotion_info.removed_by_combat {
                     self.unit_set_has_promotion(u, promotion, false);
+                    // C++ quirk: losing an invisible promotion (Hidden is removed by combat) on a
+                    // plot with a visible enemy withdraws the winner, and kills it at once when no
+                    // plot around is free (`changeInvisibleFromPromotion` ->
+                    // `withdrawlToNearestValidPlot(true)` -> `kill(false)`); C++ then goes on using
+                    // the deleted unit. Everything left here is about the winner, so it is skipped.
+                    if !self.units.contains(u) {
+                        return;
+                    }
                 }
                 if let Some(apply) = promotion_info.promotion_combat_apply {
                     let loser_plot = self.unit_plot(loser);
@@ -2686,5 +2705,68 @@ mod tests {
         g2.unit_do_defensive_strike(defender, attacker);
         assert_eq!(g2.soren_rand, rng);
         assert!(!g2.units[defender].made_attack);
+    }
+
+    /// A Hidden attacker that wins loses Hidden (removed by combat) in `combatWon`, turns visible
+    /// on a plot it shares with an enemy that could not see it, and with no free plot around is
+    /// killed on the spot (`withdrawlToNearestValidPlot(true)`). The combat must still finish
+    /// without it: the defender dies, uncaptured (seed 36 with the Elohim forced, turn 607: a
+    /// Champion that panicked `unit_combat_won` with a dangling id).
+    #[test]
+    fn attacker_killed_by_losing_hidden_still_finishes_the_combat() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 5));
+        g.autorun = true;
+        g.game_init();
+        let (p0, p1) = (PlayerId(0), PlayerId(1));
+        declare_war(&mut g, p0, p1);
+        let warrior = d.t::<UnitType>("UNIT_WARRIOR");
+        let worker = d.t::<UnitType>("UNIT_WORKER");
+        let hidden = d.t::<PromotionType>("PROMOTION_HIDDEN");
+        assert!(d.promotions[hidden].removed_by_combat && d.promotions[hidden].invisible);
+
+        // The plot and its eight neighbours (those on the map).
+        let block = |g: &Game, p: PlotIdx| -> Vec<PlotIdx> {
+            let (x, y) = g.map.xy(p);
+            (-1..=1).flat_map(|i| (-1..=1).map(move |j| (i, j))).filter_map(|(i, j)| g.plot_xy(x, y, i, j)).collect()
+        };
+        let empty = |g: &Game, p: PlotIdx| g.map.plots[p].units.is_empty() && g.map.plots[p].plot_city.is_none();
+        let open_land = |g: &Game, p: PlotIdx| !g.plot_is_water(p) && !g.plot_is_impassable(p);
+        // An open land plot `a` in an empty block, next to open land `b`.
+        let (a, b) = g
+            .map
+            .plot_ids()
+            .filter(|&a| open_land(&g, a) && block(&g, a).iter().all(|&p| empty(&g, p)))
+            .find_map(|a| block(&g, a).into_iter().find(|&b| b != a && open_land(&g, b)).map(|b| (a, b)))
+            .expect("an open land plot next to open land");
+        let ((ax, ay), (bx, by)) = (g.map.xy(a), g.map.xy(b));
+
+        let attacker = g.player_init_unit(p0, warrior, ax, ay, None, None);
+        g.unit_set_has_promotion(attacker, hidden, true);
+        assert!(g.unit_is_invisible(attacker, g.players[p1].team, true));
+        // An enemy that does not see it moves in; every other way out is closed: enemies on the land
+        // around, and the defender on `b` (a worker, which cannot defend: no combat rolls).
+        let lurker = g.player_init_unit(p1, warrior, ax, ay, None, None);
+        assert_eq!(g.map.plots[a].units, vec![attacker, lurker]);
+        for p in block(&g, a) {
+            if p != a && p != b && g.plot_is_valid_domain_for_location(p, attacker) {
+                let (x, y) = g.map.xy(p);
+                g.player_init_unit(p1, warrior, x, y, None, None);
+            }
+        }
+        let defender = g.player_init_unit(p1, worker, bx, by, None, None);
+        for p in block(&g, a) {
+            assert!(!g.unit_can_move_into(attacker, p, false, false, false), "no way out");
+        }
+        let (ours, theirs) = (g.players[p0].units.len(), g.players[p1].units.len());
+
+        g.unit_attack(attacker, b);
+
+        assert!(!g.units.contains(attacker), "visible next to the lurker with nowhere to go: killed");
+        assert!(!g.units.contains(defender), "the defender still dies");
+        assert_eq!(g.players[p0].units.len(), ours - 1, "nobody captures the worker");
+        assert_eq!(g.players[p1].units.len(), theirs - 1);
+        assert!(g.map.plots[b].units.is_empty());
+        assert_eq!(g.map.plots[a].units, vec![lurker]);
     }
 }

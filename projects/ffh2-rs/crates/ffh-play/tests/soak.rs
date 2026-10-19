@@ -30,12 +30,23 @@ fn t5_ai_as_human_soak_smoke() {
     let d = ffh_data::global();
     let mut popups = 0;
     let (mut research_left_open, mut research_ai_picks) = (0, 0);
-    for seed in [1, 2] {
+    // Two games that reach turn 150. The AI playing the human can lose, which ends a game early
+    // and is not a session failure, so such a game is skipped (which seeds lose changes with
+    // the AI); anything else that ends a game early fails the test.
+    let mut full = 0;
+    for seed in 1..=6 {
+        if full == 2 {
+            break;
+        }
         let mut g = game(seed, "WORLDSIZE_SMALL", 150);
         g.ng.opponents = 3;
         let o = play(&g, &RunOptions::default());
         eprintln!("{}: {} turn {} {:?} {:?} cities {} vs {:?}", g.describe(d), o.end_text(d), o.turn, o.stats, o.session, o.human_cities, o.ai_cities);
+        if matches!(o.end, End::Over { human_alive: false, .. }) {
+            continue;
+        }
         assert_eq!(o.end, End::Turns, "seed {seed}");
+        full += 1;
         assert_eq!(o.turn, 150);
         assert!(o.stats.turns_played >= 75, "seed {seed}: {:?}", o.stats);
         assert!(o.stats.checks >= 30 && o.stats.save_checks >= 6, "{:?}", o.stats);
@@ -44,6 +55,7 @@ fn t5_ai_as_human_soak_smoke() {
         research_left_open += o.stats.research_left_open;
         research_ai_picks += o.session.research_ai_picks;
     }
+    assert_eq!(full, 2, "the human was eliminated in most games");
     assert!(popups > 0, "no deferred popup in two games");
     // A research popup left open on a quiet turn reaches the forced end turn open (the AI's
     // own research choice is cleared), where C++ makes the AI_chooseResearch pick.

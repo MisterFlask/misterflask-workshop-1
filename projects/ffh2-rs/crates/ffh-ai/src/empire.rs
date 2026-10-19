@@ -244,7 +244,7 @@ pub(crate) fn civic_value(g: &Game, p: PlayerId, civic: CivicType) -> i32 {
     for k in 0..CommerceType::NUM {
         v += info.specialist_extra_commerce[k] * pl.cities.iter().map(|&c| g.cities[c].specialist_population).sum::<i32>() * 8;
     }
-    v
+    crate::civs::civic_value(g, p, civic, v) // civ-mechanics
 }
 
 fn civics(g: &mut Game, p: PlayerId) {

@@ -133,7 +133,8 @@ Limits (defaults; override in `/home/user/.cache/ffh2-rs/config.json`, e.g.
 `{"workspaces": 2, "max_total_gb": 8}`): `workspaces` 3, `keep_outputs` 12 per profile,
 `runs_max_mb` 512 and `runs_max_days` 30 for the run cache, `max_total_gb` 12 for everything
 (above it the target dirs of the least recently used workspaces go first), `slots` 0 (= nproc).
-Locks are `flock`s, released when their process dies; a workspace left mid-build by a killed
+With 12 outputs kept, a long A/B queue can lose its binaries to the collection: rebuild them
+(`build-tree.sh` / `build-rev.sh` are cheap when nothing changed). Locks are `flock`s, released when their process dies; a workspace left mid-build by a killed
 build is put back by the next one. Deleting the whole directory is always safe when nothing runs.
 
 ## Fan-out to sibling cloud sessions
@@ -145,6 +146,9 @@ deterministic git and run-cache work; the agent drives the sessions (the `create
 point: every game a worker plays is re-keyed into the orchestrator's **local** run cache, so once
 the batch is collected a normal `ai_metrics.py --seeds ...` (or `ab.sh`) with the same binary and
 arguments is all cache hits.
+
+Give each worker its whole job queue in the prompt that creates it: a worker declines a new job
+that arrives later as another session's message (it asks its owner first).
 
 This relies only on the simulation being deterministic (same seed + same rules → same game,
 verified below), not on builds being byte-identical across containers: `collect` stores each

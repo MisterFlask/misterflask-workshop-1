@@ -208,7 +208,7 @@ fn make_ctx(g: &Game, p: PlayerId) -> Ctx {
     // believing they had one while their settlers waited in port. No port: nothing to ship.
     let ports: Vec<CityId> = pl.cities.iter().copied().filter(|&c| crate::naval::is_coastal_city(g, c)).collect();
     ctx.has_transport = ports.is_empty()
-        || g.d.units.keys().any(|u| crate::naval::is_transport_type(&g.d.units[u]) && ports.iter().any(|&c| g.city_can_train(c, u, false, false, false, false)));
+        || g.d.units.keys().any(|u| crate::naval::is_transport_type(&g.d.units[u]) && ports.iter().any(|&c| g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false)));
     let (def, att) = best_military(g, p, &ctx, &[]);
     ctx.best_defense = def;
     ctx.best_attack = att;
@@ -711,7 +711,7 @@ fn tech_value(g: &Game, p: PlayerId, t: TechType, ctx: &Ctx) -> i32 {
             }
         }
     }
-    value.max(1)
+    crate::civs::tech_value(g, p, t, value).max(1) // civ-mechanics
 }
 
 #[cfg(test)]

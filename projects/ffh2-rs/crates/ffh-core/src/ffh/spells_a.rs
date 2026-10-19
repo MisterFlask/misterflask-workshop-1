@@ -815,14 +815,11 @@ fn count_mana_bonuses(g: &Game) -> i32 {
     MANA_TYPES.iter().map(|name| g.map.num_bonus[g.d.t::<BonusType>(name)]).sum()
 }
 
-/// `reqArcaneLacuna(caster)`.
-fn req_arcane_lacuna(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
+/// `reqArcaneLacuna(caster)`. Change from FFH2: its AI-only branch (7 typed mana bonuses on the
+/// map) is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_arcane_lacuna(g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     let count = count_mana_bonuses(g);
     if count == 0 {
-        return false;
-    }
-    if !g.players[p].human && count < 7 {
         return false;
     }
     true
@@ -859,13 +856,11 @@ fn spell_arcane_lacuna(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqArdor(caster)`.
+/// `reqArdor(caster)`. Change from FFH2: its AI-only branch (5 great people) is AI timing, in
+/// ffh-ai `world_spells` (docs/PORTING.md).
 fn req_ardor(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let player = &g.players[g.units[caster].owner];
     if player.great_people_created == 0 {
-        return false;
-    }
-    if !player.human && player.great_people_created < 5 {
         return false;
     }
     true
@@ -1512,12 +1507,9 @@ fn spell_disrupt(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqDivineRetribution(caster)`.
-fn req_divine_retribution(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
-    if !g.players[p].human && g.team_get_at_war_count(g.players[p].team, true) < 2 {
-        return false;
-    }
+/// `reqDivineRetribution(caster)`. Change from FFH2: its only condition was AI-only (at war with
+/// two teams); it is AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_divine_retribution(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -1820,17 +1812,14 @@ fn spell_feed(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqForTheHorde(caster)`.
+/// `reqForTheHorde(caster)`. Change from FFH2: its AI-only branch (the barbarians have 60 units) is
+/// AI timing, in ffh-ai `world_spells` (docs/PORTING.md).
 fn req_for_the_horde(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let p = g.units[caster].owner;
     let barbarian = g.barbarian_player();
     if caster_at_war(g, caster, g.players[barbarian].team) {
         return false;
     }
     if g.players[barbarian].num_units() == 0 {
-        return false;
-    }
-    if !g.players[p].human && g.players[barbarian].num_units() < 60 {
         return false;
     }
     true
@@ -1903,13 +1892,11 @@ fn spell_form_wolf_pack(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqGiftsOfNantosuelta(caster)`.
+/// `reqGiftsOfNantosuelta(caster)`. Change from FFH2: its AI-only branch (5 cities) is AI timing,
+/// in ffh-ai `world_spells` (docs/PORTING.md).
 fn req_gifts_of_nantosuelta(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let player = &g.players[g.units[caster].owner];
     if player.num_cities() == 0 {
-        return false;
-    }
-    if !player.human && player.num_cities() < 5 {
         return false;
     }
     true
@@ -2276,12 +2263,9 @@ fn spell_inquisition(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqIntoTheMist(caster)`.
-fn req_into_the_mist(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
-    let player = &g.players[g.units[caster].owner];
-    if !player.human && player.num_units() < 40 {
-        return false;
-    }
+/// `reqIntoTheMist(caster)`. Change from FFH2: its only condition was AI-only (40 units); it is AI
+/// timing, in ffh-ai `world_spells` (docs/PORTING.md).
+fn req_into_the_mist(_g: &Game, _caster: UnitId, _call: &PyCall) -> bool {
     true
 }
 
@@ -2387,13 +2371,11 @@ fn spell_kidnap(g: &mut Game, caster: UnitId, _call: &PyCall) {
     }
 }
 
-/// `reqLegends(caster)`.
+/// `reqLegends(caster)`. Change from FFH2: its AI-only branch (5 cities) is AI timing, in ffh-ai
+/// `world_spells` (docs/PORTING.md).
 fn req_legends(g: &Game, caster: UnitId, _call: &PyCall) -> bool {
     let player = &g.players[g.units[caster].owner];
     if player.num_cities() == 0 {
-        return false;
-    }
-    if !player.human && player.num_cities() < 5 {
         return false;
     }
     true

@@ -127,8 +127,8 @@ the differences; it does not ask for them to be undone.
 - **Headless.** No active player: mission timers stay 0 and combat is always quick (no
   animation delay); "active player" UI branches never run.
 - **Kuriotates settlements**: the human-only `BUTTONPOPUP_CONFIRMSETTLEMENT` (city or settlement)
-  has no controller hook yet; a human's new city stays as it is (radius 2, not a settlement), as
-  with an unanswered popup. AI players follow the C++ rule (radius 3).
+  is the controller's `confirm_settlement` (ffh-play asks the human); with no answer the city stays
+  as it is (radius 2, not a settlement). AI players follow the C++ rule (radius 3).
 - **Team attitude value** (`CvTeamAI::AI_getAttitudeVal`, used to pick the worst enemy) averages
   the controller's `AttitudeType` (0-4) instead of the C++ raw attitude score.
 - **Barbarian city founding unit**: C++ asks `CvCityAI::AI_bestUnitAI(UNITAI_CITY_DEFENSE)`
@@ -147,9 +147,22 @@ the differences; it does not ask for them to be undone.
   Guilds, no cottages under Aristocracy, no windmills under Arete). These encode the old AI's
   build policy, so they are not rules (`py_can_build` always answers -1); `ffh-ai` applies the
   `canBuild` bans itself. All branches that apply to every player are ported.
-- **AI-only branches in spell requirements are kept.** Unlike CvGameUtils, the
-  `isHuman() == False` checks in CvSpellInterface `req*` functions are ported as written:
-  they decide whether a spell is castable at all for AI players (their game, their rules).
+- **World spells have the same requirements for every player** (user decision, 2026-10-18).
+  FFH2's `req*` functions of 20 of the 21 world spells (`CvSpellInterface.py`) add AI-only
+  conditions under `if pPlayer.isHuman() == False:` -- Stasis, Legends, Rally, River of Blood and
+  Gifts of Nantosuelta at 5 cities, Warcry at war with 25 units, Veil of Night at peace with 25,
+  Wild Hunt at war with 20, Into the Mist at 40 units, Sanctuary, March of the Trees and Divine
+  Retribution at war with two teams, Raging Seas at war with a fleet worth more than 10, Ardor at
+  5 great people, Revelry at 25 population, Religious Fervor with 5 cities of the state religion,
+  For the Horde with 60 barbarian units, Mother Lode at 10 mines, Arcane Lacuna with 7 typed mana
+  bonuses on the map, Worldbreak at an Armageddon counter of 50. They are the old AI's timing for
+  its once-a-game spell, not rules: the port drops them from the rules, and ffh-ai applies the
+  same conditions as its default timing (`world_spells::ready`), so the move alone changes no AI
+  game. Hyborem's Whisper had none.
+- **AI-only branches in the other spells' requirements are kept** (for now). Unlike CvGameUtils,
+  the `isHuman() == False` checks in the other CvSpellInterface `req*` functions are ported as
+  written: they decide whether a spell is castable at all for AI players. They are AI policy like
+  the world spells' (docs/AI_ONLY_RULES.md, with every other AI-only branch of the rules).
 - **`CustomFunctions.warScript`/`dogpile`** (AI war declarations called from
   `onBeginPlayerTurn` for AI players) are AI behaviour and are replaced by the new
   AI's diplomacy.
@@ -195,6 +208,13 @@ the differences; it does not ask for them to be undone.
   units whose per-player slot was below the unit count, so some lair events silently failed.
 - **Unspecified C++ evaluation order** (two RNG draws in one expression) follows MSVC x86:
   call arguments right to left, binary operands left to right (see CLAUDE.md).
+- **`convert` never makes a unit its own transport.** `initUnit` places a new unit before its free
+  promotions, so the Kuriotates Airship (a land unit that flies by its free Flying promotion, with
+  room for land units) made by upgrading a Frigate at sea boards that Frigate; `convert` then hands
+  the Frigate's cargo, the Airship included, to the Airship, which in FFH2 becomes its own
+  transport (`isHiddenNationality` then recurses without end; FFH2's AI never got there, as
+  `cannotTrain` keeps AI players from Airships, but a human could). The port takes the new unit
+  off the unit it replaces first: the Airship stays on the water plot with the Frigate's cargo.
 
 **Human play (ffh-play; docs/PLAY_DESIGN.md §10)**
 
@@ -203,7 +223,7 @@ the differences; it does not ask for them to be undone.
 - Free tech, keep/raze/disband and elections are answered during the rules call that raises them
   (C++ shows the free tech and election popups later; keep/raze is immediate there too).
 - The keep/raze and disband popups share one modal (the controller cannot tell them apart); there
-  is no gift button; Kuriotates settlements are still not offered to humans.
+  is no gift button.
 - Commands are applied only when no human group is busy; the exe's automatic end of turn (when
   nothing is left to move) is not ported: the human ends the turn.
 - Automated and FfH AI-controlled human units idle (no `update_automated_group` AI yet).
@@ -213,9 +233,9 @@ the differences; it does not ask for them to be undone.
 1. **Save/load**: done (`crates/ffh-core/src/save/`, `Game::save` / `Game::load`; resume test in
    `crates/ffh-ai/tests/save_resume.rs`). Scenarios (world-builder saves + ScenarioFunctions.py) are out
    of scope for now; the focus is the sandbox game.
-2. **Controller hooks** for the remaining rules-side stand-ins: `confirm_settlement` (Kuriotates
-   `BUTTONPOPUP_CONFIRMSETTLEMENT`), the barbarian city defender (`AI_bestUnitAI`), and the
-   favorite religion (`AI_doFavoriteReligion`).
+2. **Controller hooks** for the remaining rules-side stand-ins: the barbarian city defender
+   (`AI_bestUnitAI`) and the favorite religion (`AI_doFavoriteReligion`); `confirm_settlement`
+   (Kuriotates `BUTTONPOPUP_CONFIRMSETTLEMENT`) is done.
 3. **AI quality**: see `docs/AI.md` for the current AI and its known gaps.
 4. Keep the stress matrix green after rules changes (`ffh-stress batch --matrix all`, also on the
    checked build).

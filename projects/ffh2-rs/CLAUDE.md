@@ -1,6 +1,10 @@
 # ffh2-rs: Fall from Heaven 2 (0.41) ported to Rust
 
-**New session? Read `docs/HANDOFF.md` first** (what is merged, what is on `origin/handoff/*`, next steps).
+**New session?** Read this file, `README.md` and the doc for the area you touch (`docs/PORTING.md`,
+`docs/AI.md` + `docs/AI_LOG.md`, `docs/PLAY_DESIGN.md` + `docs/HUMAN.md`, `docs/ART.md`, `docs/R3D.md`,
+`docs/SCORE.md`). What is merged is what git says (`git log origin/master`); open work and known
+gaps live in the area docs, not in a session log. Out of scope for now (the owner's call):
+scenarios, and porting the C++ AI.
 
 Port of the FFH2 0.41 Civ4 mod (base mod only), the base for a game of its own. The rules
 engine (DLL C++ + rules Python) was ported function by function; the AI is new. FFH2 0.41 is
@@ -194,6 +198,27 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
 - Work in small, compiling steps; commit with clear messages.
 - Update docs/PORTING.md when a C++/Python unit is ported (file, functions, status).
 - Tests: unit tests next to code; data spot-checks in `crates/ffh-data/tests/`.
+- Tests that rely on a seed's story (`crates/ffh-play/tests/*`: a bot survives, a city is
+  captured) break when the AI changes; make them robust to that (their comments say how, e.g.
+  re-pick a seed with `ffh-play bot --seed S`) rather than asserting one game's outcome.
+
+## AI changes
+
+- **Start from `docs/AI_LOG.md`**, the log of AI changes that did not move the win rate, for the
+  area you are about to change: each entry says why the idea made sense, why it failed in the
+  games, and what that implies about the right version (or about the game's balance) -- both a
+  warning and a source of better ideas.
+- Measure on development seeds, then validate on seeds never used to choose anything, the change
+  on against the same binary with it off (`civ_ab.py --off-base` / `FFH_AI_CIV_OFF` for a
+  civilization's logic; docs/AI.md, "Tools"). Keep a change only if neither the win rate nor the
+  share at the end falls; development-seed gains alone are not results.
+- **Every measured change that fails gets an entry in `docs/AI_LOG.md` before it is reverted**:
+  (1) why it made sense, (2) why it did not move the win rate, from the games themselves (what
+  happened when it fired: counts, checkpoints, `FFH_AI_TRACE` replays), (3) what that implies.
+  Leave the reverted code's module comment naming the attempt and the log entry.
+- AI timing and AI-only restrictions belong in `ffh-ai`, not in the rules. The world spells'
+  AI-only Python gates were moved there (docs/PORTING.md, "Changes from FFH2"); the rules' other
+  AI-only branches are listed in docs/AI_ONLY_RULES.md, each group moved by its own decision.
 
 ## Verifying renderer and visual work (r3d, lab, client look)
 

@@ -189,7 +189,7 @@ fn escort_unit(g: &Game, c: CityId) -> Option<UnitType> {
         if matches!(info.default_unit_ai_type, Some(UnitAIType::UNITAI_HERO) | Some(UnitAIType::UNITAI_MAGE) | Some(UnitAIType::UNITAI_EXPLORE)) {
             continue;
         }
-        if !g.city_can_train(c, u, false, false, false, false) {
+        if !g.city_offers_unit(c, u) || !g.city_can_train(c, u, false, false, false, false) {
             continue;
         }
         cands.push((u, crate::production::type_city_defense(info), g.city_production_turns_left_unit(c, u, 0)));

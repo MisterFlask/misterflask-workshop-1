@@ -796,7 +796,10 @@ pub fn validate(g: &Game, h: PlayerId, cmd: &Command, ctx: &Ctx) -> Result<Plan,
             city_of(g, h, *city)?;
             let c = *city;
             let ok = match *order {
-                OrderType::ORDER_TRAIN => g.city_can_train(c, UnitType::from_usize(in_range("unit type", *data, d.units.len())?), false, false, false, false),
+                OrderType::ORDER_TRAIN => {
+                    let u = UnitType::from_usize(in_range("unit type", *data, d.units.len())?);
+                    g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false)
+                }
                 OrderType::ORDER_CONSTRUCT => g.city_can_construct(c, BuildingType::from_usize(in_range("building", *data, d.buildings.len())?), false, false, false),
                 OrderType::ORDER_CREATE => g.city_can_create(c, ProjectType::from_usize(in_range("project", *data, d.projects.len())?), false, false),
                 OrderType::ORDER_MAINTAIN => g.city_can_maintain(c, ProcessType::from_usize(in_range("process", *data, d.processes.len())?), false),

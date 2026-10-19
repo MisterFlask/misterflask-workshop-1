@@ -43,6 +43,7 @@ pub mod values;
 pub mod victory;
 pub mod view;
 pub mod workers;
+pub mod world_spells;
 
 /// Debug tracing: `FFH_AI_TRACE=all` or `FFH_AI_TRACE=<player id>` prints AI decisions to
 /// stderr. Read once; it only prints, so it cannot change the game.
@@ -125,6 +126,7 @@ impl Controller for Ai {
             offers::to_humans(g, &v); // ai-offers: deals offered to human players
             // War declarations change the picture.
             v = view::View::new(g, p);
+            civs::turn(self, g, &mut v); // civ-mechanics
         }
         units::play(self, g, &mut v);
         casting::end_turn(g, &v);

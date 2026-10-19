@@ -842,7 +842,7 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         if info.domain_type != Some(domain) || !role_ok(info, role) {
             continue;
         }
-        if !g.city_can_train(c, u, false, false, false, false) {
+        if !g.city_offers_unit(c, u) || !g.city_can_train(c, u, false, false, false, false) {
             continue;
         }
         let turns = g.city_production_turns_left_unit(c, u, 0).max(1) as i64;
@@ -892,7 +892,7 @@ fn strongest_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
     let d = g.d;
     d.units
         .keys()
-        .filter(|&u| d.units[u].domain_type == Some(DomainType::DOMAIN_LAND) && role_ok(&d.units[u], role) && g.city_can_train(c, u, false, false, false, false))
+        .filter(|&u| d.units[u].domain_type == Some(DomainType::DOMAIN_LAND) && role_ok(&d.units[u], role) && g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false))
         .max_by_key(|&u| (type_attack_power(d, u), d.units[u].production_cost, std::cmp::Reverse(u)))
 }
 
@@ -900,7 +900,7 @@ fn best_missionary(g: &Game, c: CityId, r: ReligionType) -> Option<UnitType> {
     g.d.units.keys().filter(|&u| {
         let info = &g.d.units[u];
         info.unit_ai_type[UnitAIType::UNITAI_MISSIONARY] && info.religion_spreads[r] > 0
-    }).find(|&u| g.city_can_train(c, u, false, false, false, false))
+    }).find(|&u| g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false))
 }
 
 /// Marginal value of building `b` in city `c` (roughly: value points per turn, a hammer being
@@ -952,7 +952,14 @@ fn is_economy_building(g: &Game, c: CityId, b: BuildingType, threat: i32) -> boo
     ev > 0 && ev * 2 >= building_value(g, c, b, threat).max(1)
 }
 
+/// What building `b` is worth in city `c`: the generic estimate, then the civilization's own
+/// (civs/, e.g. a unique building whose effect lives in Python).
 pub fn building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
+    crate::civs::building_value(g, c, b, generic_building_value(g, c, b, threat)) // civ-mechanics
+}
+
+/// The generic part of [`building_value`].
+fn generic_building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> i32 {
     let d = g.d;
     let info = &d.buildings[b];
     let city = &g.cities[c];

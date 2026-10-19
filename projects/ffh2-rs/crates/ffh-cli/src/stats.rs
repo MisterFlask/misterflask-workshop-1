@@ -146,7 +146,7 @@ fn short<'a>(name: &'a str, prefix: &str) -> &'a str {
     name.strip_prefix(prefix).unwrap_or(name)
 }
 
-fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
+fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>, detail: bool) -> String {
     let d = g.d;
     let hero = d.ty::<PromotionType>("PROMOTION_HERO");
     let people = d.ty::<SpecialUnitType>("SPECIALUNIT_PEOPLE");
@@ -437,7 +437,28 @@ fn snapshot(g: &Game, civ_events: &BTreeMap<PlayerId, CivEvents>) -> String {
             .int("lost_other", ev.lost_other)
             .int("founded", ev.founded)
             .int("cities_lost_rule", pl.cities_lost)
-            .int("players_killed", pl.players_killed);
+            .int("players_killed", pl.players_killed)
+            // FfH world spell (once per game; FEAT_GLOBAL_SPELL is set when it is cast).
+            .boolean("world_spell", pl.feat_accomplished[FeatType::FEAT_GLOBAL_SPELL]);
+        if detail {
+            // Per type: units owned, cities with the building, the team's projects.
+            let mut units: BTreeMap<&str, i32> = BTreeMap::new();
+            for &u in &pl.units {
+                *units.entry(short(&d.units[g.units[u].unit_type].base.type_, "UNIT_")).or_default() += 1;
+            }
+            let mut buildings: BTreeMap<&str, i32> = BTreeMap::new();
+            for &c in &pl.cities {
+                for b in d.buildings.keys() {
+                    if g.city_num_building(c, b) > 0 {
+                        *buildings.entry(short(&d.buildings[b].base.type_, "BUILDING_")).or_default() += 1;
+                    }
+                }
+            }
+            let projects: BTreeMap<&str, i32> =
+                d.projects.keys().filter(|&j| g.teams[team].project_count[j] > 0).map(|j| (short(&d.projects[j].base.type_, "PROJECT_"), g.teams[team].project_count[j])).collect();
+            let map_json = |m: &BTreeMap<&str, i32>| format!("{{{}}}", m.iter().map(|(k, v)| format!("\"{k}\":{v}")).collect::<Vec<_>>().join(","));
+            o.raw("unit_types", &map_json(&units)).raw("building_types", &map_json(&buildings)).raw("project_types", &map_json(&projects));
+        }
         // Victory progress (ffh-ai's victory planner; reads the game only).
         if !barbarian && pl.alive {
             use ffh_ai::victory;
@@ -561,14 +582,14 @@ pub fn cmd_stats(cfg: &RunConfig, at: &[i32]) {
         ev.peace_made += wars.iter().filter(|x| !w.contains(x)).count() as i32;
         wars = w;
         if at.contains(&played) {
-            snaps.push((played, snapshot(g, &civ_ev), world_snapshot(g)));
+            snaps.push((played, snapshot(g, &civ_ev, cfg.detail), world_snapshot(g)));
         }
     });
     let stats = played.stats;
     // Always snapshot the final state (a game decided between two `--at` turns, or the cap).
     let final_turn = stats.last().map_or(0, |s| s.turn + 1);
     if snaps.last().map_or(true, |s| s.0 != final_turn) {
-        snaps.push((final_turn, snapshot(&g, &civ_ev), world_snapshot(&g)));
+        snaps.push((final_turn, snapshot(&g, &civ_ev, cfg.detail), world_snapshot(&g)));
     }
     let outcome_json = match played.outcome {
         run::Outcome::TurnLimit => "{\"kind\":\"turn_limit\"}".to_string(),

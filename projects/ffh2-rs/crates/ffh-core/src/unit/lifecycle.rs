@@ -313,6 +313,17 @@ impl Game {
             self.unit_set_name(u, name);
         }
 
+        // C++ quirk: `initUnit` places the new unit (`setXY`) before its free promotions, so a land
+        // unit that only flies by one boards a transport when it is created on water -- `from`
+        // itself when a Frigate upgrades into the Kuriotates Airship (land domain, room for land
+        // units). The cargo loop below then makes the new unit its own transport, and the next
+        // `isHiddenNationality` (which asks a cargo unit's transport) recurses until the stack
+        // overflows. Here the new unit leaves `from` first, as it replaces it (docs/PORTING.md,
+        // "Changes from FFH2").
+        if self.unit_transport(u) == Some(from) {
+            self.unit_set_transport_unit(u, None);
+        }
+
         if let Some(transport) = self.unit_transport(from) {
             self.unit_set_transport_unit(from, None);
             self.unit_set_transport_unit(u, Some(transport));
@@ -1871,5 +1882,38 @@ mod tests {
         assert!(g.unit_can_apply_event(u, event));
         g.units[u].has_promotion[promotion] = true;
         assert!(!g.unit_can_apply_event(u, event));
+    }
+
+    /// A Frigate at sea upgrading into the Kuriotates Airship (`upgrade` = `initUnit` + `convert`):
+    /// the Airship, a land unit placed before its free Flying promotion, boards the Frigate as it
+    /// is created. `convert` must not then make it its own transport, as the C++ does (the next
+    /// `isHiddenNationality` recursed until the stack overflowed: seed 3, Khazad forced, turn 384).
+    #[test]
+    fn convert_does_not_make_the_new_unit_its_own_transport() {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 5));
+        g.autorun = true;
+        g.game_init();
+        let p = PlayerId(0);
+        let sea = g.map.plot_ids().find(|&q| g.plot_is_water(q) && g.map.plots[q].units.is_empty()).expect("a water plot");
+        let (x, y) = g.map.xy(sea);
+
+        let frigate = g.player_init_unit(p, d.t::<UnitType>("UNIT_FRIGATE"), x, y, None, None);
+        let warrior = g.player_init_unit(p, d.t::<UnitType>("UNIT_WARRIOR"), x, y, None, None);
+        assert_eq!(g.units[warrior].transport_unit, Some(frigate), "a land unit created at sea boards the ship");
+        let airship = g.player_init_unit(p, d.t::<UnitType>("UNIT_AIRSHIP"), x, y, None, None);
+        assert_eq!(g.units[airship].transport_unit, Some(frigate), "so does the Airship, before it can fly");
+        assert!(g.unit_can_move_all_terrain(airship), "its free promotions make it fly");
+        assert_eq!(g.units[frigate].cargo, 2);
+
+        g.unit_convert(airship, frigate);
+
+        assert_eq!(g.units[airship].transport_unit, None, "the Airship takes the Frigate's place");
+        assert_eq!(g.units[warrior].transport_unit, Some(airship), "and its cargo");
+        assert_eq!((g.units[airship].cargo, g.units[frigate].cargo), (1, 0));
+        assert!(!g.unit_is_hidden_nationality(warrior));
+        assert!(g.units[frigate].death_delay);
+        assert!(g.unit_do_delayed_death(frigate));
+        assert!(g.units.contains(airship) && g.units.contains(warrior));
     }
 }
