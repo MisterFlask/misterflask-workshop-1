@@ -401,34 +401,38 @@ function gem(mb, r, h = r * 1.6) {
 }
 
 // --- styles -----------------------------------------------------------------------------------------
-// Each family's palette (sRGB hex; resolved per building with a little jitter).
+// Each family's palette (sRGB hex; resolved per building with a little jitter). Walls and stone
+// sit at mid values, the palest families (arcane, northern, elven, desert) a step below white: in
+// the strong sun a pale town reads as a blot (STY.human).
 
 const STY = {
-  // Whitewashed plaster and cream stone under red-brown tile, some orange and blue slate.
+  // Plaster and cream stone under red-brown tile, some orange and blue slate. Mid values, not
+  // pale ones: in the strong sun a whitewashed town reads as a pale blot (the look target's town
+  // sits at a median lightness of ~0.44 on screen, its tiled roofs at a value of ~0.57).
   human: {
-    wall: ["#b8ab94", "#bcad92", "#b2a58c", "#b9ad98", "#bbab8c"],
-    stone: ["#a39a8a", "#968e82", "#a89c88"],
-    stoneLight: ["#b4a78e", "#ad9f88", "#b7aa92"],
+    wall: ["#938976", "#968a75", "#8e8470", "#948a7a", "#968970"],
+    stone: ["#827b6e", "#787268", "#867d6d"],
+    stoneLight: ["#908672", "#8a7f6d", "#928875"],
     timber: "#4a3022",
-    roof: [["#8a5446", 3.2], ["#7a4a40", 2], ["#946250", 1.6], ["#9a705a", 0.6], ["#4c5884", 0.55], ["#5e4660", 0.3]],
-    tile: "#8a5446",
-    slate: "#4c5884",
-    slateDark: "#303c6c",
-    thatch: "#d2b67c",
+    roof: [["#6e4338", 3.2], ["#623b33", 2], ["#764e40", 1.6], ["#7b5a48", 0.6], ["#3d466a", 0.55], ["#4b384d", 0.3]],
+    tile: "#6e4338",
+    slate: "#3d466a",
+    slateDark: "#263056",
+    thatch: "#a89263",
     glass: "#2a282c",
     lit: "#ffbf6a",
     door: "#4a3020",
-    chimney: "#8e8478",
+    chimney: "#726a60",
     board: "#74462f",
-    spire: "#4a5a90",
+    spire: "#3b4873",
     pitch: 1,
     litP: 0.32,
   },
   // The Amurites and Sidar: pale lilac stone under violet and blue slate (a little copper green).
   arcane: {
-    wall: ["#e2dcd4", "#dcd4cc", "#e6e0d6"],
+    wall: ["#cbc6bf", "#c6bfb8", "#cfcac1"],
     stone: ["#8e8a96", "#848090", "#96909a"],
-    stoneLight: ["#cfc8d2", "#c8c0cc", "#d6d0d6"],
+    stoneLight: ["#bab4bd", "#b4adb8", "#c1bbc1"],
     timber: "#3a2e3a",
     roof: [["#4a3c7a", 3], ["#3a4a84", 2.4], ["#5a3c6c", 1.2], ["#3e7470", 0.9], ["#9c4a3a", 0.6]],
     tile: "#4a3c7a",
@@ -446,9 +450,9 @@ const STY = {
   },
   // The Illians: grey fieldstone and dark timber under steep frost-blue slate and turf-dark shingle.
   north: {
-    wall: ["#d2d0c8", "#c8c6be", "#d8d4ca"],
+    wall: ["#bdbbb4", "#b4b2ab", "#c2bfb6"],
     stone: ["#7c7a78", "#727070", "#84807a"],
-    stoneLight: ["#b4b4b0", "#aaaaa8", "#bcbab4"],
+    stoneLight: ["#a2a29e", "#999997", "#a9a7a2"],
     timber: "#2e2622",
     roof: [["#465468", 3], ["#3c4a5a", 2], ["#5a5e66", 1.4], ["#6a4434", 0.6]],
     tile: "#5a4a40",
@@ -808,7 +812,7 @@ function humanTower(mb, r, v, sub) {
     // A wizard's tower: slender, with a swelling upper chamber ringed by lit windows and a tall
     // concave spire of blue slate.
     const arc = sub === "arcane";
-    const wallC = J(arc ? "#b8b0c4" : "#a8a092", r, 0.04);
+    const wallC = J(arc ? "#b8b0c4" : "#868075", r, 0.04);
     mb.color = mulc(wallC, 0.85);
     drum(mb, 0.056, 0.052, -0.05, 0.02, 9);
     mb.color = wallC;
@@ -1340,7 +1344,7 @@ function thorns(mb, r, pts, len = 0.016) {
 
 const ELF = {
   light: {
-    bark: "#7c7564", barkDark: "#5e5848", wall: ["#cfc0a0", "#c6b694", "#d4c7a6"],
+    bark: "#7c7564", barkDark: "#5e5848", wall: ["#baad90", "#b2a485", "#bfb395"],
     roof: [["#3f5f52", 3], ["#4c6648", 2.2], ["#7e6a40", 1.4], ["#5a6e5a", 1]],
     gold: "#76643c",
     leaf: ["#173d37", "#2a5a48", "#4a7a4a", "#8aab6a"],
@@ -3089,10 +3093,10 @@ function tribalWallTower(mb, r, v) {
 // --- desert: sandstone cubes, flat roofs, domes and minarets (the Malakim) ------------------------
 
 const SAND = {
-  wall: ["#c9b58e", "#d2c09c", "#bfa982", "#d6c6a4"],
+  wall: ["#b5a380", "#bdad8c", "#ac9875", "#c1b294"],
   stone: "#a88e68",
   dark: "#86704f",
-  dome: [["#d8ccb4", 2], ["#3e7a72", 1.5], ["#b8923e", 1]],
+  dome: [["#c2b8a2", 2], ["#3e7a72", 1.5], ["#b8923e", 1]],
   wood: "#6a4a30",
   lit: "#ffc070",
   glass: "#2a2018",
@@ -4907,7 +4911,9 @@ function cityLayout(ctx) {
   // broadleaf by its towers), for the human and dwarven builders: on ground the town may use
   // (townGround) and reach (its room: never across a river, past a neighbour's farm or the known),
   // within the ground its neighbours leave it (cityReach), off the roads, the way in and the
-  // garrison's ground.
+  // garrison's ground. Five to seven clumps spread round it (the gate's own front, toward the
+  // camera, stays open), the trees nearly full size: the target's town sits in a ring of dark
+  // foliage, a tree or two flanking its gate, that sets its bright roofs off.
   const outside = !line ? [] : f === "dwarven" || sub === "north" || sub === "gothic" ? ["tree.pine"] : f === "human" ? (sub === "arcane" ? ["tree.birch", "tree.pine"] : ["tree.pine", "tree.oak", "tree.pine"]) : [];
   if (outside.length && outside.every((t) => hasRecipe(t))) {
     const road = roadsRound(ctx);
@@ -4917,12 +4923,12 @@ function cityLayout(ctx) {
       !plan.zones.some(([zx, zz, zr]) => Math.hypot(x - zx, z - zz) < zr + 0.03) &&
       !plan.clear.some((B) => nearPoint(B, x, z, 0.04)) && !plan.lanes.some(([lx, lz, h]) => Math.hypot(x - lx, z - lz) < h + 0.04);
     const stood = [];
-    const clumps = 2 + (size >= 8 ? 1 : 0) + (r() < 0.5 ? 1 : 0);
+    const clumps = 5 + (size >= 8 ? 1 : 0) + (r() < 0.5 ? 1 : 0);
     for (let c = 0; c < clumps; c++) {
-      const a = r.range(0.6, TAU - 0.6), n = r.int(2, 3);
+      const a = 0.42 + ((TAU - 0.84) * (c + r.range(0.2, 0.8))) / clumps, n = r.int(2, 3);
       const sx = Math.sin(a), sz = Math.cos(a), w0 = line.at(sx, sz);
       for (let t = 0; t < n; t++) {
-        const b = a + r.range(-0.12, 0.12), d = r.range(w0 + 0.045 * k, Math.max(w0 + 0.05 * k, far));
+        const b = a + r.range(-0.18, 0.18), d = r.range(w0 + 0.045 * k, Math.max(w0 + 0.05 * k, far));
         const x = Math.sin(b) * d, z = Math.cos(b) * d, wb = line.at(x, z);
         if (d < wb + 0.04 * k || d > far + 0.01 || (room && d > roomAt(room, x, z))) continue;
         // (The way from the wall out to the tree is the town's ground too.)
@@ -4931,7 +4937,7 @@ function cityLayout(ctx) {
         stood.push([x, z]);
         // (Slender conifers as tall as the towers; a broadleaf lower, its crown wide.)
         const kind = outside[r.int(0, outside.length - 1)];
-        out.push({ asset: kind, param: "", variant: r.int(0, 7), x, z, yaw: r.range(0, TAU), scale: r.range(0.55, 0.7) * k * (kind === "tree.pine" ? 1 : 0.8) });
+        out.push({ asset: kind, param: "", variant: r.int(0, 7), x, z, yaw: r.range(0, TAU), scale: r.range(0.75, 0.95) * k * (kind === "tree.pine" ? 1 : 0.8) });
       }
     }
   }
