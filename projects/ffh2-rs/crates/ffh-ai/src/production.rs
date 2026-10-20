@@ -789,17 +789,20 @@ pub(crate) fn unit_building(d: &GameData, civ: CivilizationType, info: &UnitInfo
 }
 
 /// A building that would let this city train a defender or attacker at least a third better than
-/// its best now ([`unit_building`]), cheap enough to build soon. Better as [`best_unit`] weighs it,
-/// strength squared per hammer: by strength alone the Luchuirp's Sculptor's Studio (Wood Golems,
-/// 6) came before the Archery Range, which then looked no gain for the Dwarven Slingers (5 and a
-/// first strike, +25% in cities, two thirds of the price), and golems held their cities.
+/// its best now ([`unit_building`]), cheap enough to build soon: a third stronger, or a third
+/// stronger per hammer. By strength alone the Luchuirp's Sculptor's Studio (Wood Golems, 6) came
+/// before the Archery Range, which then looked no gain for the Dwarven Slingers (5 and a first
+/// strike, +25% in cities: 14% stronger, but at two thirds of the price), and golems held their
+/// cities. (By strength squared per hammer, as [`best_unit`] weighs a choice, a Warrior beat an
+/// Axeman and the Training Yards were no longer built.)
 fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
     let d = g.d;
     let p = g.cities[c].owner;
     let civ = g.player_get_civilization_type(p)?;
-    let worth = |power: i64, info: &UnitInfo| power * power / info.production_cost.max(1) as i64;
-    let cur_def = best_unit(g, c, Role::Defense).map_or(0, |u| worth(type_city_defense(&d.units[u]), &d.units[u]));
-    let cur_att = best_unit(g, c, Role::Attack).map_or(0, |u| worth(type_attack_power(d, u) as i64, &d.units[u]));
+    let best = |role: Role, power: &dyn Fn(UnitType) -> i64| best_unit(g, c, role).map(|u| (power(u), d.units[u].production_cost.max(1) as i64)).filter(|&(strength, _)| strength > 0);
+    let cur_def = best(Role::Defense, &|u| type_city_defense(&d.units[u]));
+    let cur_att = best(Role::Attack, &|u| type_attack_power(d, u) as i64);
+    let better = |power: i64, cost: i64, cur: Option<(i64, i64)>| cur.map_or(0, |(cp, cc)| (power * 100 / cp).max(power * cc * 100 / (cp * cost.max(1))));
     let mut best: Option<(BuildingType, i64)> = None;
     for u in d.units.keys() {
         let info = &d.units[u];
@@ -826,8 +829,9 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
         if have > g.players[p].cities.len() / 2 {
             continue;
         }
-        let gain = if role_ok(info, Role::Defense) && cur_def > 0 { worth(type_city_defense(info), info) * 100 / cur_def } else { 0 }
-            .max(if role_ok(info, Role::Attack) && cur_att > 0 { worth(type_attack_power(d, u) as i64, info) * 100 / cur_att } else { 0 });
+        let cost = info.production_cost as i64;
+        let gain = if role_ok(info, Role::Defense) { better(type_city_defense(info), cost, cur_def) } else { 0 }
+            .max(if role_ok(info, Role::Attack) { better(type_attack_power(d, u) as i64, cost, cur_att) } else { 0 });
         if gain < 133 {
             continue;
         }
