@@ -740,21 +740,6 @@ fn summon_value(g: &Game, caster: UnitId, spell: SpellType, ctx: Ctx) -> i32 {
                 let near = v.danger_at(here) > 0 || v.at_war();
                 return if near { strength * 10 * n } else { 0 };
             }
-            if !crate::casting::summons_new(g, p) {
-                // It attacks the best target next to the caster.
-                let mut best = 0;
-                for dir in 0..DirectionType::NUM {
-                    let Some(q) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
-                    if g.plot_is_water(q) != (uinfo.domain_type == Some(DomainType::DOMAIN_SEA)) {
-                        continue;
-                    }
-                    if !g.map.plots[q].units.iter().any(|&t| side(g, t, v.team) == Side::Enemy) {
-                        continue;
-                    }
-                    best = best.max(summon_strike(g, p, ut, q));
-                }
-                return best * 4 / 5 * n;
-            }
             // It attacks what `casting::summons_attack` picks: of the plots with enemies next to a
             // plot it reaches with moves left (its own moves, the caster's way of moving), the one
             // where its odds are best, at 5% or better; nothing when none is.

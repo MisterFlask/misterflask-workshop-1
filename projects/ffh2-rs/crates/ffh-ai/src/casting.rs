@@ -58,37 +58,22 @@ pub fn end_turn(g: &mut Game, v: &View) {
 fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType, ctx: &str, value: i32) {
     let newest = g.players[v.p].units.iter().copied().max();
     crate::magic::cast(g, u, spell, ctx, value);
-    // TEMPORARY trace (FFH_AI_SUMMON_TRACE): what the summons of this cast did.
-    let made: Vec<UnitId> = g.players[v.p].units.iter().copied().filter(|&n| newest.map_or(true, |m| n > m) && g.units[n].ai_suicide_summon).collect();
-    let moves: Vec<i32> = made.iter().map(|&n| g.unit_moves_left(n)).collect();
     summons_attack(g, v, newest);
-    if !made.is_empty() && std::env::var("FFH_AI_SUMMON_TRACE").is_ok() {
-        let attacked = made.iter().filter(|&&n| !g.units.contains(n) || g.units[n].made_attack).count();
-        let moved = made.iter().zip(&moves).filter(|(&n, &m)| g.units.contains(n) && g.unit_moves_left(n) != m).count();
-        eprintln!(
-            "SUMMONTRACE t{} p{} spell={} ctx={} value={} made={} attacked={} moved={}",
-            g.game_turn(),
-            v.p.0,
-            g.d.spells[spell].base.type_,
-            ctx,
-            value,
-            made.len(),
-            attacked,
-            moved
-        );
-    }
 }
 
 /// Summons created in suicide mode since unit `newest` attack at once (C++ `castCreateUnit` runs
-/// their `AI_update` -> `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`, i.e. any target
-/// at odds of 5% or better). Unit ids are never reused, so new units have larger ids.
+/// their `AI_update` -> `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`): the target of
+/// [`summon_target`], again while they have moves left. Unit ids are never reused, so new units
+/// have larger ids. The barbarians' summons attack only next to them, at 5% or better: with the
+/// reach of [`summon_target`] they took more cities from the civilizations (docs/AI.md,
+/// "Spellcasting").
 ///
 /// Tried, not kept (docs/AI_LOG.md, "Spellcasting"): the summons of a player casting by
 /// `magic.rs` attacked the adjacent plot where they took most hit points, at any odds and then at
 /// 5% or better; Loki's puppets, cast every turn, fought more and the Balseraphs lost.
 pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
     let p = v.p;
-    let new = summons_new(g, p);
+    let barbarian = g.player_is_barbarian(p);
     let summons: Vec<UnitId> = g.players[p]
         .units
         .iter()
@@ -102,7 +87,7 @@ pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
                 break;
             }
             let Some(grp) = g.units[n].group else { break };
-            if !new {
+            if barbarian {
                 if !crate::units::attack_adjacent(g, v, grp, n, 50) {
                     break;
                 }
@@ -122,30 +107,6 @@ pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
             }
         }
     }
-}
-
-/// TEMPORARY measurement switch (work in progress): `FFH_AI_SUMMONS_OLD=CIVILIZATION_X,..|all`
-/// keeps the listed civilizations on the summon rules from before [`summon_target`] (adjacent
-/// targets only, valued at any odds).
-pub(crate) fn summons_new(g: &Game, p: PlayerId) -> bool {
-    static TABLE: std::sync::OnceLock<Vec<bool>> = std::sync::OnceLock::new();
-    let d = g.d;
-    let table = TABLE.get_or_init(|| {
-        let old: Vec<String> = std::env::var("FFH_AI_SUMMONS_OLD")
-            .unwrap_or_default()
-            .split(',')
-            .map(|s| s.trim().trim_start_matches("CIVILIZATION_").to_ascii_uppercase())
-            .filter(|s| !s.is_empty())
-            .collect();
-        d.civilizations
-            .keys()
-            .map(|c| {
-                let name = d.civilizations[c].base.type_.trim_start_matches("CIVILIZATION_");
-                old.iter().any(|o| o == "ALL" || o == name)
-            })
-            .collect()
-    });
-    g.player_get_civilization_type(p).map_or(true, |c| !table[c.idx()])
 }
 
 /// The plot fresh summon `n` attacks (C++ `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`):

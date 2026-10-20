@@ -835,8 +835,10 @@ turn, to move casters and to promote them:
   A unit casts once a turn, so a caster casts here only what is worth more than its best cast at
   the end of the turn (the Balseraphs' Loki keeps his for the puppet FfH's weight asks for).
 - **At the end of the turn** (`casting::end_turn`): damage, curses and summons on the enemies that
-  can reach us (summons attack as FfH's do, `casting::summons_attack`: the adjacent target with the
-  best odds, at 5% or better); lasting blessings on our units that lack them; short ones by what
+  can reach us (summons attack as FfH's do, `casting::summons_attack`: of the enemies next to the
+  plots they reach with moves left this turn, the one where their odds are best, at 5% or better,
+  never a stack of temporary summons; a summon is worth the fight it would take, nothing when it
+  would take none); lasting blessings on our units that lack them; short ones by what
   they add to our defense in the enemies' turn, before they wear off (in full where an enemy we see
   can strike, a quarter elsewhere: Dance of Blades' first strike; Haste's move adds nothing);
   healing; terraforming; city spells. World spells, abilities (equipment, crews, cages) and
@@ -861,12 +863,13 @@ turn, to move casters and to promote them:
   mana nodes). Training adepts and building the Mage Guild for them by what their spells are worth
   in a fight was tried and lost wins (docs/AI_LOG.md, "Spellcasting").
 
-`FFH_AI_MAGIC_OFF=CIVILIZATION_X,..|X|all` makes those civilizations cast as before (the same
-games: the measurement switch); `FFH_AI_TRACE_CAST=1` prints every AI cast (turn, player,
-civilization, unit, spell, where, value). Tests: `crates/ffh-ai/tests/magic.rs` (a mage Fireballs a
-city before the stack attacks; an adept blesses its stack with Enchanted Blade, and values Haste at
-nothing on a quiet turn; a fresh summon attacks a Warrior but not a Champion) and `magic::tests`
-(the worth table's order).
+`FFH_AI_MAGIC_OFF=CIVILIZATION_X,..|X|all` makes those civilizations cast by FfH's terms
+(`casting.rs`; their summons attack as everyone's do: the measurement switch); `FFH_AI_TRACE_CAST=1`
+prints every AI cast (turn, player, civilization, unit, spell, where, value). Tests:
+`crates/ffh-ai/tests/magic.rs` (a mage Fireballs a city before the stack attacks; an adept
+blesses its stack with Enchanted Blade, and values Haste at nothing on a quiet turn; a fresh
+summon attacks a Warrior but not a Champion; a Spectre walks two plots to a wounded Warrior, and
+is worth nothing next to a city it cannot hurt) and `magic::tests` (the worth table's order).
 
 Measured: each civilization forced into slot 0, its spellcasting on against the same binary with
 `FFH_AI_MAGIC_OFF` for it (every other civilization casting by `magic.rs`), full games (6 civs,

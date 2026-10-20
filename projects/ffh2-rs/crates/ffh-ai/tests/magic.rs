@@ -185,6 +185,21 @@ fn a_summon_with_two_moves_reaches_an_enemy_two_plots_away() {
     let v = View::new(&g, us);
     ffh_ai::casting::summons_attack(&mut g, &v, newest);
     assert!(!g.units.contains(warrior) || g.units[warrior].damage > 60, "the Spectre walked up to the Warrior and attacked");
+
+    // The barbarians' summons attack only next to them (with this reach they took more cities).
+    let barbarian = g.barbarian_player();
+    assert!(g.at_war(g.players[barbarian].team, ut));
+    let axeman = g.player_init_unit(us, d.t::<UnitType>("UNIT_AXEMAN"), 14, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+    g.units[axeman].damage = 60;
+    let newest = g.players[barbarian].units.iter().copied().max();
+    let barbarian_spectre = g.player_init_unit(barbarian, d.t::<UnitType>("UNIT_SPECTRE"), 14, 7, Some(UnitAIType::UNITAI_ATTACK), None);
+    g.units[barbarian_spectre].ai_suicide_summon = true;
+    // (Its orders run in the barbarians' turn.)
+    g.players[us].turn_active = false;
+    g.players[barbarian].turn_active = true;
+    let v = View::new(&g, barbarian);
+    ffh_ai::casting::summons_attack(&mut g, &v, newest);
+    assert!(g.units.contains(axeman) && g.units[axeman].damage == 60, "the barbarian Spectre stays out of reach");
 }
 
 #[test]
