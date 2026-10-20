@@ -20,5 +20,16 @@
    "dE": 3.51,
    "iou": 0.987
   }
+ },
+ "3": {
+  "variant": "r2_2",
+  "raw": "strike_f3_r2_2.png",
+  "why": "r2 wording fixed the long low blade (tip x 23 vs pose 22, at head height); r2_2 over r2_1: tip closer to the pose, less hair, smaller change from frame 2. 3 px of tip outline at x 15",
+  "k": 1.0023,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 2.94,
+   "iou": 0.984
+  }
  }
 }
