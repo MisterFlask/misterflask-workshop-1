@@ -617,11 +617,17 @@ fn terraform_value(g: &Game, p: PlayerId, s: SpellType, q: PlotIdx) -> i32 {
 /// the defender the rules put up -- its health if the summon wins, else the rounds the summon wins
 /// before it falls -- and its collateral damage on the others (C++ `collateralCombat`).
 fn summon_strike(g: &Game, p: PlayerId, ut: UnitType, tp: PlotIdx) -> i32 {
+    summon_fight(g, p, ut, tp).map_or(0, |(_, v)| v)
+}
+
+/// [`summon_strike`] with the summon's odds of winning (of 1000) by the same estimate; `None`
+/// when it cannot fight there.
+fn summon_fight(g: &Game, p: PlayerId, ut: UnitType, tp: PlotIdx) -> Option<(i32, i32)> {
     let d = g.d;
     let info = &d.units[ut];
     let a = (info.combat + info.damage_type_combat.iter().sum::<i32>()) * 100;
     if a <= 0 || info.only_defensive {
-        return 0;
+        return None;
     }
     let team = g.players[p].team;
     let defs: Vec<UnitId> = g.map.plots[tp]
@@ -631,7 +637,7 @@ fn summon_strike(g: &Game, p: PlayerId, ut: UnitType, tp: PlotIdx) -> i32 {
         .filter(|&e| g.unit_is_enemy(e, Some(team), None) && g.unit_can_defend(e, Some(tp)) && !g.unit_is_invisible(e, team, false))
         .collect();
     if defs.is_empty() {
-        return 0;
+        return None;
     }
     let max_hp = d.defines.max_hit_points.max(1);
     let strength = |e: UnitId| g.unit_max_combat_str(e, Some(tp), None, None);
@@ -686,7 +692,7 @@ fn summon_strike(g: &Game, p: PlayerId, ut: UnitType, tp: PlotIdx) -> i32 {
             v += dmg.min(cap - g.units[o].damage).max(0) as i64;
         }
     }
-    v as i32
+    Some((odds as i32, v as i32))
 }
 
 /// Value of the summons of `spell` cast by `caster` (temporary summons attack at once; a lasting
@@ -718,19 +724,51 @@ fn summon_value(g: &Game, caster: UnitId, spell: SpellType, ctx: Ctx) -> i32 {
                 let near = v.danger_at(here) > 0 || v.at_war();
                 return if near { strength * 10 * n } else { 0 };
             }
-            // It attacks the best target next to the caster.
-            let mut best = 0;
-            for dir in 0..DirectionType::NUM {
-                let Some(q) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
-                if g.plot_is_water(q) != (uinfo.domain_type == Some(DomainType::DOMAIN_SEA)) {
-                    continue;
+            if !crate::casting::summons_new(g, p) {
+                // It attacks the best target next to the caster.
+                let mut best = 0;
+                for dir in 0..DirectionType::NUM {
+                    let Some(q) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
+                    if g.plot_is_water(q) != (uinfo.domain_type == Some(DomainType::DOMAIN_SEA)) {
+                        continue;
+                    }
+                    if !g.map.plots[q].units.iter().any(|&t| side(g, t, v.team) == Side::Enemy) {
+                        continue;
+                    }
+                    best = best.max(summon_strike(g, p, ut, q));
                 }
-                if !g.map.plots[q].units.iter().any(|&t| side(g, t, v.team) == Side::Enemy) {
-                    continue;
-                }
-                best = best.max(summon_strike(g, p, ut, q));
+                return best * 4 / 5 * n;
             }
-            best * 4 / 5 * n
+            // It attacks what `casting::summons_attack` picks: of the plots with enemies next to a
+            // plot it reaches with moves left (its own moves, the caster's way of moving), the one
+            // where its odds are best, at 5% or better; nothing when none is.
+            let moves = (uinfo.moves + g.unit_get_extra_spell_move(caster)) * d.defines.move_denominator;
+            let reach = crate::reach::Flood::default().run_moves(g, caster, moves, 0, 0, false);
+            let mut seen: Vec<PlotIdx> = Vec::new();
+            let mut best: Option<(i32, i32)> = None;
+            for r in reach.iter().filter(|r| r.turns == 0) {
+                let (rx, ry) = g.map.xy(r.plot);
+                for dir in 0..DirectionType::NUM {
+                    let Some(q) = g.plot_direction(rx, ry, DirectionType::from_usize(dir)) else { continue };
+                    if seen.contains(&q) {
+                        continue;
+                    }
+                    seen.push(q);
+                    if g.plot_is_water(q) != (uinfo.domain_type == Some(DomainType::DOMAIN_SEA)) {
+                        continue;
+                    }
+                    let units = &g.map.plots[q].units;
+                    if !units.iter().any(|&t| side(g, t, v.team) == Side::Enemy) || units.iter().all(|&t| g.units[t].duration > 0) {
+                        continue;
+                    }
+                    let Some((odds, value)) = summon_fight(g, p, ut, q) else { continue };
+                    let score = odds + if g.map.plots[q].plot_city.is_some() { 100 } else { 0 };
+                    if odds >= 50 && best.map_or(true, |(s, _)| score > s) {
+                        best = Some((score, value));
+                    }
+                }
+            }
+            best.map_or(0, |(_, value)| value) * 4 / 5 * n
         }
     }
 }

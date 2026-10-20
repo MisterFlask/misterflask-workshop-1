@@ -50,14 +50,22 @@ impl Flood {
     /// lets the last step enter a plot holding enemies (for attack targets).
     /// Returns reached plots in nondecreasing cost order (deterministic tie-break on index).
     pub fn run(&mut self, g: &Game, u: UnitId, max_turns: i32, allow_enemy_target: bool) -> Vec<Reached> {
+        let max_moves = g.unit_max_moves(u).max(1);
+        // Moves already spent this turn count against the first turn.
+        let spent = (max_moves - g.unit_moves_left(u)).max(0);
+        self.run_moves(g, u, max_moves, spent, max_turns, allow_enemy_target)
+    }
+
+    /// [`Flood::run`] for a unit of `max_moves` moves (in `MOVE_DENOMINATOR` units), `spent` of
+    /// them used this turn, that moves as `u` does (its passability and movement costs): a unit
+    /// `u` is about to create on its plot, such as a summon.
+    pub fn run_moves(&mut self, g: &Game, u: UnitId, max_moves: i32, spent: i32, max_turns: i32, allow_enemy_target: bool) -> Vec<Reached> {
         let num_plots = g.map.num_plots();
         self.reset(num_plots);
         let start = g.unit_plot(u);
         let team = g.unit_get_team(u);
-        let max_moves = g.unit_max_moves(u).max(1);
+        let max_moves = max_moves.max(1);
         let budget = max_moves * (max_turns + 1);
-        // Moves already spent this turn count against the first turn.
-        let spent = (max_moves - g.unit_moves_left(u)).max(0);
         let mut out = Vec::new();
 
         self.cost[start.idx()] = spent;

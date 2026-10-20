@@ -7,13 +7,14 @@
 //! by `magic::choose_turn_spell` instead, which keeps these terms for the spells it does not
 //! model; its summons attack as FfH's do ([`summons_attack`]).
 
+use ffh_core::defs::*;
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
 
 use crate::production::building_value;
 use crate::units::promotion_value;
-use crate::view::{type_attack_power, type_defense_power, View};
+use crate::view::{attack_power, type_attack_power, type_defense_power, View};
 
 pub fn end_turn(g: &mut Game, v: &View) {
     let p = v.p;
@@ -57,7 +58,25 @@ pub fn end_turn(g: &mut Game, v: &View) {
 fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType, ctx: &str, value: i32) {
     let newest = g.players[v.p].units.iter().copied().max();
     crate::magic::cast(g, u, spell, ctx, value);
+    // TEMPORARY trace (FFH_AI_SUMMON_TRACE): what the summons of this cast did.
+    let made: Vec<UnitId> = g.players[v.p].units.iter().copied().filter(|&n| newest.map_or(true, |m| n > m) && g.units[n].ai_suicide_summon).collect();
+    let moves: Vec<i32> = made.iter().map(|&n| g.unit_moves_left(n)).collect();
     summons_attack(g, v, newest);
+    if !made.is_empty() && std::env::var("FFH_AI_SUMMON_TRACE").is_ok() {
+        let attacked = made.iter().filter(|&&n| !g.units.contains(n) || g.units[n].made_attack).count();
+        let moved = made.iter().zip(&moves).filter(|(&n, &m)| g.units.contains(n) && g.unit_moves_left(n) != m).count();
+        eprintln!(
+            "SUMMONTRACE t{} p{} spell={} ctx={} value={} made={} attacked={} moved={}",
+            g.game_turn(),
+            v.p.0,
+            g.d.spells[spell].base.type_,
+            ctx,
+            value,
+            made.len(),
+            attacked,
+            moved
+        );
+    }
 }
 
 /// Summons created in suicide mode since unit `newest` attack at once (C++ `castCreateUnit` runs
@@ -69,6 +88,7 @@ fn cast_and_act(g: &mut Game, v: &View, u: UnitId, spell: SpellType, ctx: &str, 
 /// 5% or better; Loki's puppets, cast every turn, fought more and the Balseraphs lost.
 pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
     let p = v.p;
+    let new = summons_new(g, p);
     let summons: Vec<UnitId> = g.players[p]
         .units
         .iter()
@@ -82,11 +102,86 @@ pub fn summons_attack(g: &mut Game, v: &View, newest: Option<UnitId>) {
                 break;
             }
             let Some(grp) = g.units[n].group else { break };
-            if !crate::units::attack_adjacent(g, v, grp, n, 50) {
+            if !new {
+                if !crate::units::attack_adjacent(g, v, grp, n, 50) {
+                    break;
+                }
+                continue;
+            }
+            if attack_power(g, n) == 0 || !g.unit_can_attack(n) {
+                break;
+            }
+            let Some(q) = summon_target(g, n) else { break };
+            let (x, y) = (g.units[n].x, g.units[n].y);
+            let (qx, qy) = g.map.xy(q);
+            let flags = if g.plot_distance(x, y, qx, qy) == 1 { MOVE_DIRECT_ATTACK } else { 0 };
+            let moves = g.unit_moves_left(n);
+            crate::units::move_to(g, grp, q, flags);
+            if g.units.contains(n) && g.unit_moves_left(n) == moves {
                 break;
             }
         }
     }
+}
+
+/// TEMPORARY measurement switch (work in progress): `FFH_AI_SUMMONS_OLD=CIVILIZATION_X,..|all`
+/// keeps the listed civilizations on the summon rules from before [`summon_target`] (adjacent
+/// targets only, valued at any odds).
+pub(crate) fn summons_new(g: &Game, p: PlayerId) -> bool {
+    static TABLE: std::sync::OnceLock<Vec<bool>> = std::sync::OnceLock::new();
+    let d = g.d;
+    let table = TABLE.get_or_init(|| {
+        let old: Vec<String> = std::env::var("FFH_AI_SUMMONS_OLD")
+            .unwrap_or_default()
+            .split(',')
+            .map(|s| s.trim().trim_start_matches("CIVILIZATION_").to_ascii_uppercase())
+            .filter(|s| !s.is_empty())
+            .collect();
+        d.civilizations
+            .keys()
+            .map(|c| {
+                let name = d.civilizations[c].base.type_.trim_start_matches("CIVILIZATION_");
+                old.iter().any(|o| o == "ALL" || o == name)
+            })
+            .collect()
+    });
+    g.player_get_civilization_type(p).map_or(true, |c| !table[c.idx()])
+}
+
+/// The plot fresh summon `n` attacks (C++ `AI_summonAttackMove`: `AI_anyAttack(baseMoves(), 5)`):
+/// of the plots with visible enemies next to a plot it reaches with moves left this turn, the one
+/// where its odds are best, at 5% or better (a city counts 10% more, as in
+/// `units::attack_adjacent`). A plot holding only temporary summons is left alone, as in FfH:
+/// they are gone before they could act again. FfH also walks toward targets up to `baseMoves()`
+/// turns away; a summon gone at the start of our next turn only attacks what it reaches now.
+fn summon_target(g: &Game, n: UnitId) -> Option<PlotIdx> {
+    let owner = g.units[n].owner;
+    let reach = crate::reach::Flood::default().run(g, n, 0, false);
+    let mut seen: Vec<PlotIdx> = Vec::new();
+    let mut best: Option<(PlotIdx, i32)> = None;
+    for r in reach.iter().filter(|r| r.turns == 0) {
+        let (x, y) = g.map.xy(r.plot);
+        for dir in 0..DirectionType::NUM {
+            let Some(q) = g.plot_direction(x, y, DirectionType::from_usize(dir)) else { continue };
+            if seen.contains(&q) {
+                continue;
+            }
+            seen.push(q);
+            if !g.plot_is_visible_enemy_unit_for_unit(q, n) || !g.unit_can_move_or_attack_into(n, q, false) {
+                continue;
+            }
+            if g.map.plots[q].units.iter().all(|&e| g.units[e].duration > 0) {
+                continue;
+            }
+            let Some(def) = g.plot_get_best_defender(q, None, Some(owner), Some(n), false, false, false) else { continue };
+            let odds = g.get_combat_odds(n, def);
+            let score = odds + if g.map.plots[q].plot_city.is_some() { 100 } else { 0 };
+            if odds >= 50 && best.map_or(true, |(_, s)| score > s) {
+                best = Some((q, score));
+            }
+        }
+    }
+    best.map(|(q, _)| q)
 }
 
 fn unit_value(d: &GameData, ut: UnitType) -> i32 {

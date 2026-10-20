@@ -163,3 +163,56 @@ fn a_summon_attacks_only_at_fair_odds() {
     assert_eq!(g.units[champion].damage, 0);
     assert!(!g.units.contains(warrior) || g.units[warrior].damage > 0, "the Earth Elemental attacks the Warrior");
 }
+
+#[test]
+fn a_summon_with_two_moves_reaches_an_enemy_two_plots_away() {
+    let d = ffh_data::global();
+    let mut g = one_landmass_game(14);
+    let (us, them) = (PlayerId(0), PlayerId(1));
+    if !magic::enabled(&g, us) {
+        return;
+    }
+    g.player_found(us, 3, 5);
+    g.player_found(them, 16, 5);
+    let (ut, tt) = (g.players[us].team, g.players[them].team);
+    g.team_declare_war(ut, tt, true, None);
+    let warrior = g.player_init_unit(them, d.t::<UnitType>("UNIT_WARRIOR"), 9, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+    g.units[warrior].damage = 60;
+    // A fresh Spectre (two moves) two plots away, nothing next to it.
+    let newest = g.players[us].units.iter().copied().max();
+    let spectre = g.player_init_unit(us, d.t::<UnitType>("UNIT_SPECTRE"), 7, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+    g.units[spectre].ai_suicide_summon = true;
+    let v = View::new(&g, us);
+    ffh_ai::casting::summons_attack(&mut g, &v, newest);
+    assert!(!g.units.contains(warrior) || g.units[warrior].damage > 60, "the Spectre walked up to the Warrior and attacked");
+}
+
+#[test]
+fn a_summon_is_worth_only_the_fights_it_would_take() {
+    let d = ffh_data::global();
+    let mut g = one_landmass_game(15);
+    let (us, them) = (PlayerId(0), PlayerId(1));
+    if !magic::enabled(&g, us) {
+        return;
+    }
+    g.player_found(us, 3, 5);
+    g.player_found(them, 12, 5);
+    for _ in 0..2 {
+        g.player_init_unit(them, d.t::<UnitType>("UNIT_CHAMPION"), 12, 5, Some(UnitAIType::UNITAI_CITY_DEFENSE), None);
+    }
+    let (ut, tt) = (g.players[us].team, g.players[them].team);
+    g.team_declare_war(ut, tt, true, None);
+    // A mage that knows Summon Spectre next to a city its Spectre could not hurt at 5% odds.
+    let mage = g.player_init_unit(us, d.t::<UnitType>("UNIT_MAGE"), 11, 5, Some(UnitAIType::UNITAI_MAGE), None);
+    give(&mut g, mage, &["PROMOTION_DEATH1", "PROMOTION_DEATH2"]);
+    let spectre = d.t::<SpellType>("SPELL_SUMMON_SPECTRE");
+    assert!(g.unit_can_cast(mage, spectre, false));
+    let weight = d.spells[spectre].ai_weight;
+    let v = View::new(&g, us);
+    assert_eq!(magic::turn_value(&g, &v, mage, spectre), Some(weight), "a Spectre that would not attack is worth nothing");
+    // A wounded Warrior two plots away: the Spectre walks up and takes it on.
+    let warrior = g.player_init_unit(them, d.t::<UnitType>("UNIT_WARRIOR"), 9, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+    g.units[warrior].damage = 60;
+    let v = View::new(&g, us);
+    assert!(magic::turn_value(&g, &v, mage, spectre).is_some_and(|value| value > weight), "the Warrior in reach is worth a Spectre");
+}
