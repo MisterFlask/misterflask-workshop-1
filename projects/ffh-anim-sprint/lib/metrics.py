@@ -197,11 +197,12 @@ def _pose_blade_vs_shield(anim, i, poses=None):
     return None if abs(d) < 8 else (1 if d > 0 else -1)
 
 
-def gates(anim, frames, poses=None, facing="lower-left"):
+def gates(anim, frames, poses=None, facing="lower-left", head_only=False):
     """Heuristic flags, confirmed by eye: facing flip (the face/skin centroid should be on the facing side of the hair
     centroid), hand swap (blade vs shield on the opposite sides from the pose: poses = {anim: [pose, ...]}, default
     poses.json), missing sword. The colour parts are the swordsman's. A lower-right facer is checked as the mirror
-    image of a lower-left one."""
+    image of a lower-left one. head_only: compare the hair with the skin around the head only (a raised sword hand
+    otherwise drags the skin centroid; recipe.py uses it for every non-legacy unit)."""
     if facing == "lower-right":
         from PIL import ImageOps
         import guides
@@ -212,12 +213,18 @@ def gates(anim, frames, poses=None, facing="lower-left"):
         pm = part_masks(f)
         lying = anim == "death" and i >= 4
         hair, skin, steel, wood = (centroid(pm[k]) for k in ("hair", "skin", "steel", "wood"))
+        if head_only and hair is not None:
+            band = np.zeros_like(pm["skin"])
+            y0, x0 = int(hair[1]), int(hair[0])
+            band[max(0, y0 - 6):y0 + 20, max(0, x0 - 20):x0 + 20] = True
+            skin = centroid(pm["skin"] & band)
         if pm["steel"].sum() < 15:
             flags.append(f"frame {i}: little or no steel (sword missing?)")
         if lying or hair is None or skin is None:
             continue
         if skin[0] > hair[0] + 6:
-            flags.append(f"frame {i}: face is right of the hair (facing flip?)")
+            side = "left" if facing == "lower-right" else "right"  # frames are mirrored for a lower-right facer
+            flags.append(f"frame {i}: face is {side} of the hair (facing flip?)")
         exp = _pose_blade_vs_shield(anim, i, poses)
         if steel and wood and exp is not None:
             got = steel[0] - wood[0]
@@ -226,9 +233,10 @@ def gates(anim, frames, poses=None, facing="lower-left"):
     return flags
 
 
-def anim_metrics(frames, anim, poses=None, facing="lower-left"):
+def anim_metrics(frames, anim, poses=None, facing="lower-left", head_only=False):
     m = {"nonrigid": nonrigid(frames, wide=(anim == "death")), "overlap": overlap(frames), "drift_dE": drift(frames),
-         "boil": boil(frames), "arc": [tip_point(f) for f in frames], "gates": gates(anim, frames, poses, facing)}
+         "boil": boil(frames), "arc": [tip_point(f) for f in frames],
+         "gates": gates(anim, frames, poses, facing, head_only)}
     if anim in ("idle", "flinch"):
         m["jitter"] = jitter(frames)
     nr = [v for v in m["nonrigid"][1:]]
@@ -250,7 +258,8 @@ def arm_metrics(arm, anims=ANIMS, root=None):
         if not (d / anim / "manifest.json").exists():
             continue
         frames, _ = ak.load_anim(arm, anim, root=root)
-        out[anim] = anim_metrics(frames, anim, unit.get("anims"), unit.get("facing", "lower-left"))
+        out[anim] = anim_metrics(frames, anim, unit.get("anims"), unit.get("facing", "lower-left"),
+                                 head_only=bool(unit) and not unit.get("legacy"))
     mp.write_text(json.dumps(out, indent=1))
     return {k: v for k, v in out.items() if k in anims}
 

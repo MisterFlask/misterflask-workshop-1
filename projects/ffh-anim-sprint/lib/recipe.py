@@ -237,10 +237,10 @@ def make_sheet(u, poses, name, wdir, style):
     return geom, prompt(u, LABEL[name], texts, style)
 
 
-def score_variant(diag, cand, poses=None, facing="lower-left"):
+def score_variant(diag, cand, poses=None, facing="lower-left", head_only=False):
     """Lower is better: gate flags (x100), reference-redraw colour error, scale error, size of ground snaps.
     cand = {anim: frames with the right frame indices} for the gate check."""
-    g = sum(len(metrics.gates(a, fr, poses=poses, facing=facing)) for a, fr in cand.items())
+    g = sum(len(metrics.gates(a, fr, poses=poses, facing=facing, head_only=head_only)) for a, fr in cand.items())
     ref = (diag.get("ref_redraw_dE") or {}).get("dE") or 20
     snap = sum(abs(v) for v in diag.get("ground_snap", {}).values())
     return g * 100 + ref + abs(diag["k"] - 1) * 200 + snap * 0.5
@@ -333,7 +333,7 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         best = None
         for k, raw in enumerate(raw_files(wdir, name), 1):
             fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
-            sc = score_variant(diag, candidates(name, fr, base), poses, u["facing"])
+            sc = score_variant(diag, candidates(name, fr, base), poses, u["facing"], head_only=not u.get("legacy"))
             report[f"{name}_{k}"] = {"score": round(sc, 2), "k": diag["k"], "ref": diag.get("ref_redraw_dE"),
                                      "snap": diag.get("ground_snap"), "warnings": diag["warnings"]}
             if picks.get(name) == k or (name not in picks and (best is None or sc < best[0])):
@@ -378,7 +378,8 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
                     fr2 = finish.apply_hit_fx(fr2)
             write(d, a, fr2, base, u)
         (d / "unit_poses.json").write_text(json.dumps({"unit": u["name"], "facing": u["facing"], "pose_set": u["pose_set"],
-                                                       "mirrored": u["mirror"], "anims": poses}))
+                                                       "mirrored": u["mirror"], "legacy": bool(u.get("legacy")),
+                                                       "anims": poses}))
     picked = {k: v[1] for k, v in chosen.items()}
     (wdir / "build_report.json").write_text(json.dumps({"picked": picked, "variants": report}, indent=1))
     return picked, report

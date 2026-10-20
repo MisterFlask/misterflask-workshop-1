@@ -1,0 +1,42 @@
+{
+ "unit": "hyborem",
+ "facing": "lower-right",
+ "arm": "final_hyborem",
+ "anim": "flinch",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": false,
+ "hold_last": false,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 120,
+   "events": []
+  }
+ ],
+ "warnings": [
+  "frame 0 leaves the safe region x (16, 144): bbox (10, 2, 130, 126)",
+  "frame 1 leaves the safe region x (16, 144): bbox (12, 38, 129, 126)"
+ ]
+}

@@ -44,9 +44,49 @@ def swap_sides(text):
     return re.sub(r"\b(left|right|Left|Right|LEFT|RIGHT)\b", lambda m: sw[m.group(1)], text)
 
 
-# The near set (poses_near.json): a unit that looks LOWER-RIGHT with the weapon in the near, screen-left hand. Same
-# timings and events as BEATS; texts describe that set's poses.
-BEATS_NEAR = {anim: [dict(b, text=swap_sides(b["text"])) for b in frames] for anim, frames in BEATS.items()}
+# The near set (poses_near.json, lib/poses_near_src.py): a unit that looks LOWER-RIGHT with the weapon in the near,
+# screen-left hand. Same timings and events as BEATS; the texts describe that set's poses. recipe.py mirrors them
+# (swap_sides) for a lower-left unit with the weapon in its screen-right hand.
+_NEAR_TEXT = {
+    "idle": [b["text"] for b in BEATS["idle"]],
+    "strike": [
+        "ready: the reference pose exactly",
+        "anticipation: weight shifts back onto the rear leg, torso leans back toward the upper-left, the sword is lifted "
+        "beside the head with the tip pointing up and back",
+        "wind-up extreme: body coiled back and crouched, the sword hand behind the head and the blade hanging down behind "
+        "the shoulders to the left, shield tucked across the belly",
+        "swing: the front foot steps toward the lower-right, the torso whips round, the sword arm sweeps across in front "
+        "of the chest and the blade is level, pointing to the right",
+        "contact: sword arm fully extended toward the lower-right, the blade slashing down-right, front knee bent, body "
+        "low and leaning in, shield arm swung back behind the shoulders for balance",
+        "follow-through: the blade carries on down until its tip nearly touches the ground at the lower-right, torso "
+        "twisted, hair trailing back",
+        "recover: body rises, front foot pulls back halfway, the sword comes back up on the near side toward the ready "
+        "angle, shield tucked across the belly",
+        "settle: almost the ready pose, sword a touch lower than in the reference",
+    ],
+    "flinch": [
+        "impact: hit from the lower-right; head snaps back toward the upper-left, eyes squeezed shut, torso jolts back, "
+        "both arms jerk outward (sword arm thrown up and out to the left, shield flung out to the right)",
+        "recoil extreme: leaning back further toward the upper-left, knees bent, sword dipping, shield still held out",
+        "recovering: halfway back to the ready pose",
+        "settle: nearly the ready pose",
+    ],
+    "death": [
+        "impact: hit from the lower-right; head snaps back, eyes squeezed shut, torso jolts back, arms jerk outward",
+        "stagger back: a step back toward the upper-left, body thrown back, sword arm flung up, shield drooping",
+        "knees buckle: hips drop, knees fold forward, torso slumps forward, head droops, sword lowering",
+        "kneeling: on both knees, slumped forward, the sword tip resting on the ground at the lower-right, shield arm "
+        "hanging",
+        "falling back: torso tips back toward the upper-left, the sword slips out of the hand, legs slide forward",
+        "hits the ground: lying on his back along the ground, feet toward the lower-right and head toward the upper-left; "
+        "the sword lies on the ground at the lower-right; the shield lies flat beside him",
+        "bounce: head and shoulders lift slightly off the ground, the shield rocks",
+        "corpse: lying flat and still on his back, eyes closed, sword and shield on the ground beside him",
+    ],
+}
+BEATS_NEAR = {anim: [dict(b, text=t) for b, t in zip(frames, _NEAR_TEXT[anim])] for anim, frames in BEATS.items()}
+assert all(len(_NEAR_TEXT[a]) == len(BEATS[a]) for a in BEATS)
 
 LOOP = {"idle": True, "strike": False, "flinch": False, "death": False}
 HOLD_LAST = {"idle": False, "strike": False, "flinch": False, "death": True}
