@@ -1,0 +1,522 @@
+{
+ "idle": {
+  "nonrigid": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "tunic": [
+     null,
+     null,
+     null,
+     null
+    ],
+    "hair": [
+     0.0,
+     0.0,
+     0.06,
+     0.0
+    ],
+    "wood": [
+     0.0,
+     0.0,
+     0.04,
+     0.0
+    ]
+   },
+   "peak_frame": {
+    "hair": 2,
+    "wood": 2
+   },
+   "overlap_index": 0.0
+  },
+  "drift_dE": [
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   },
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   },
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   },
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   }
+  ],
+  "boil": [
+   0.04,
+   0.38,
+   0.36
+  ],
+  "arc": [
+   [
+    108,
+    30
+   ],
+   [
+    108,
+    30
+   ],
+   [
+    108,
+    30
+   ],
+   [
+    108,
+    30
+   ]
+  ],
+  "gates": [
+   "frame 0: face is right of the hair (facing flip?)",
+   "frame 0: blade and shield on the wrong sides (hands swapped?)",
+   "frame 1: face is right of the hair (facing flip?)",
+   "frame 1: blade and shield on the wrong sides (hands swapped?)",
+   "frame 2: face is right of the hair (facing flip?)",
+   "frame 2: blade and shield on the wrong sides (hands swapped?)",
+   "frame 3: face is right of the hair (facing flip?)",
+   "frame 3: blade and shield on the wrong sides (hands swapped?)"
+  ],
+  "jitter": {
+   "bottom_std": 0.0,
+   "feet_x_std": 0.0,
+   "bottoms": [
+    125,
+    125,
+    125,
+    125
+   ]
+  },
+  "summary": {
+   "nonrigid_mean": 0.0,
+   "overlap_index": 0.0,
+   "drift_mean": 1.51,
+   "boil_mean": 0.26,
+   "n_gate_flags": 8
+  }
+ },
+ "strike": {
+  "nonrigid": [
+   0.0,
+   0.383,
+   0.337,
+   0.508,
+   0.446,
+   0.399,
+   0.319,
+   0.007
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     26.53,
+     44.75,
+     79.95,
+     95.77,
+     101.75,
+     70.17,
+     1.06
+    ],
+    "tunic": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "hair": [
+     0.0,
+     8.1,
+     9.13,
+     12.81,
+     15.94,
+     16.3,
+     10.12,
+     1.04
+    ],
+    "wood": [
+     0.0,
+     7.31,
+     8.8,
+     19.53,
+     16.61,
+     18.8,
+     10.76,
+     0.97
+    ]
+   },
+   "peak_frame": {
+    "steel": 5,
+    "hair": 5,
+    "wood": 3
+   },
+   "overlap_index": 0.943
+  },
+  "drift_dE": [
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   },
+   {
+    "mean": 1.84,
+    "p95": 4.4
+   },
+   {
+    "mean": 1.76,
+    "p95": 4.25
+   },
+   {
+    "mean": 2.01,
+    "p95": 4.88
+   },
+   {
+    "mean": 1.72,
+    "p95": 4.22
+   },
+   {
+    "mean": 1.78,
+    "p95": 4.36
+   },
+   {
+    "mean": 1.79,
+    "p95": 4.48
+   },
+   {
+    "mean": 1.51,
+    "p95": 4.36
+   }
+  ],
+  "boil": [
+   100.75,
+   90.6,
+   118.74,
+   144.65,
+   82.07,
+   121.91,
+   98.52
+  ],
+  "arc": [
+   [
+    108,
+    30
+   ],
+   [
+    93,
+    0
+   ],
+   [
+    117,
+    78
+   ],
+   [
+    32,
+    41
+   ],
+   [
+    29,
+    100
+   ],
+   [
+    33,
+    121
+   ],
+   [
+    34,
+    45
+   ],
+   [
+    108,
+    31
+   ]
+  ],
+  "gates": [
+   "frame 0: face is right of the hair (facing flip?)",
+   "frame 0: blade and shield on the wrong sides (hands swapped?)",
+   "frame 1: face is right of the hair (facing flip?)",
+   "frame 1: blade and shield on the wrong sides (hands swapped?)",
+   "frame 3: face is right of the hair (facing flip?)",
+   "frame 4: face is right of the hair (facing flip?)",
+   "frame 5: face is right of the hair (facing flip?)",
+   "frame 6: face is right of the hair (facing flip?)",
+   "frame 7: face is right of the hair (facing flip?)",
+   "frame 7: blade and shield on the wrong sides (hands swapped?)"
+  ],
+  "summary": {
+   "nonrigid_mean": 0.343,
+   "overlap_index": 0.943,
+   "drift_mean": 1.74,
+   "boil_mean": 108.18,
+   "n_gate_flags": 10
+  }
+ },
+ "flinch": {
+  "nonrigid": [
+   0.0,
+   0.342,
+   0.364,
+   0.411
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     42.07,
+     41.58,
+     44.11
+    ],
+    "tunic": [
+     null,
+     null,
+     null,
+     null
+    ],
+    "hair": [
+     null,
+     null,
+     null,
+     null
+    ],
+    "wood": [
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "peak_frame": {
+    "steel": 3
+   },
+   "overlap_index": 0.0
+  },
+  "drift_dE": [
+   {
+    "mean": 2.62,
+    "p95": 5.11
+   },
+   {
+    "mean": 1.64,
+    "p95": 4.14
+   },
+   {
+    "mean": 1.61,
+    "p95": 4.26
+   },
+   {
+    "mean": 1.5,
+    "p95": 4.32
+   }
+  ],
+  "boil": [
+   160.31,
+   96.16,
+   91.7
+  ],
+  "arc": [
+   [
+    106,
+    35
+   ],
+   [
+    32,
+    54
+   ],
+   [
+    19,
+    47
+   ],
+   [
+    109,
+    31
+   ]
+  ],
+  "gates": [
+   "frame 1: face is right of the hair (facing flip?)",
+   "frame 2: face is right of the hair (facing flip?)",
+   "frame 3: face is right of the hair (facing flip?)",
+   "frame 3: blade and shield on the wrong sides (hands swapped?)"
+  ],
+  "jitter": {
+   "bottom_std": 0.43,
+   "feet_x_std": 4.66,
+   "bottoms": [
+    125,
+    125,
+    125,
+    126
+   ]
+  },
+  "summary": {
+   "nonrigid_mean": 0.372,
+   "overlap_index": 0.0,
+   "drift_mean": 1.84,
+   "boil_mean": 116.06,
+   "n_gate_flags": 4
+  }
+ },
+ "death": {
+  "nonrigid": [
+   0.0,
+   0.378,
+   0.378,
+   0.383,
+   0.475,
+   0.437,
+   0.436,
+   0.461
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     54.74,
+     63.71,
+     67.75,
+     59.96,
+     59.62,
+     64.18,
+     63.46
+    ],
+    "tunic": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "hair": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "wood": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "peak_frame": {
+    "steel": 3
+   },
+   "overlap_index": 0.0
+  },
+  "drift_dE": [
+   {
+    "mean": 2.62,
+    "p95": 5.11
+   },
+   {
+    "mean": 1.58,
+    "p95": 4.0
+   },
+   {
+    "mean": 1.45,
+    "p95": 3.59
+   },
+   {
+    "mean": 1.52,
+    "p95": 3.59
+   },
+   {
+    "mean": 1.64,
+    "p95": 3.97
+   },
+   {
+    "mean": 1.43,
+    "p95": 3.35
+   },
+   {
+    "mean": 1.44,
+    "p95": 3.35
+   },
+   {
+    "mean": 1.37,
+    "p95": 3.23
+   }
+  ],
+  "boil": [
+   168.61,
+   136.76,
+   119.38,
+   133.47,
+   120.76,
+   76.76,
+   55.18
+  ],
+  "arc": [
+   [
+    106,
+    35
+   ],
+   [
+    56,
+    11
+   ],
+   [
+    26,
+    108
+   ],
+   [
+    32,
+    119
+   ],
+   [
+    36,
+    111
+   ],
+   [
+    41,
+    113
+   ],
+   [
+    31,
+    114
+   ],
+   [
+    29,
+    114
+   ]
+  ],
+  "gates": [
+   "frame 1: face is right of the hair (facing flip?)",
+   "frame 2: face is right of the hair (facing flip?)",
+   "frame 3: face is right of the hair (facing flip?)"
+  ],
+  "summary": {
+   "nonrigid_mean": 0.421,
+   "overlap_index": 0.0,
+   "drift_mean": 1.63,
+   "boil_mean": 115.85,
+   "n_gate_flags": 3
+  }
+ }
+}
