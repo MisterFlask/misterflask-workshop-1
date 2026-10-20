@@ -1,5 +1,6 @@
 {
- "unit": "swordsman",
+ "unit": "ogre",
+ "facing": "lower-left",
  "arm": "final_ogre_nofx",
  "anim": "flinch",
  "canvas": [
@@ -33,9 +34,5 @@
    "ms": 120,
    "events": []
   }
- ],
- "warnings": [
-  "frame 1 leaves the safe region x (16, 144): bbox (15, 39, 141, 126)",
-  "frame 2 leaves the safe region x (16, 144): bbox (15, 32, 129, 126)"
  ]
 }

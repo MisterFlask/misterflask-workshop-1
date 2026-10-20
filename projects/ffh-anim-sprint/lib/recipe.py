@@ -58,11 +58,9 @@ def load_unit(path):
     for k in ("name", "sprite", "description", "joints"):
         if k not in u:
             raise SystemExit(f"unit file {path} is missing '{k}' (see ANIMATING_UNITS.md, step 1)")
-    if "facing" not in u:
-        print(f"warning: {path} has no 'facing'; assuming lower-left (ANIMATING_UNITS.md, step 1)", file=sys.stderr)
-        u["facing"] = "lower-left"
-    if u["facing"] not in FACINGS:
-        raise SystemExit(f"{path}: facing must be one of {FACINGS}, not {u['facing']!r}")
+    if u.get("facing") not in FACINGS:  # the strike goes where the sprite looks (ANIMATING_UNITS.md, the rules)
+        raise SystemExit(f"{path}: 'facing' must be one of {FACINGS}, the way the sprite looks; got {u.get('facing')!r} "
+                         "(ANIMATING_UNITS.md, step 1b)")
     missing = [j for j in JOINTS if j not in u["joints"]]
     if missing:
         raise SystemExit(f"{path}: joints {missing} are missing (every joint except shield is required)")

@@ -1,5 +1,6 @@
 {
- "unit": "swordsman",
+ "unit": "ogre",
+ "facing": "lower-left",
  "arm": "final_ogre_nofx",
  "anim": "idle",
  "canvas": [

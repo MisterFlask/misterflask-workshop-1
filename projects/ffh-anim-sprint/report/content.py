@@ -11,7 +11,7 @@ TITLE = "FfH Animation Sprint"
 ANIMS = ["idle", "strike", "flinch", "death"]
 ARM_ORDER = ["FINAL", "FN", "HYB", "A0", "R", "G0", "G1", "G2", "K", "C"]
 TRIAL_ARMS = ["A0", "R", "G0", "G1", "G2", "K", "C"]
-ARM_DIRS = {"FINAL": "final", "FN": "final_nofx", "HYB": "final_hyborem"}
+ARM_DIRS = {"FINAL": "final", "FN": "final_nofx", "HYB": "final_hyborem_v1"}
 ARMS = {
     "FINAL": {"name": "Recommended recipe", "family": "recipe"},
     "FN": {"name": "Recommended recipe (no FX)", "family": "recipe"},
@@ -405,7 +405,7 @@ def render(ctx):
 <footer class="wrap"><p>Everything is in <code>projects/ffh-anim-sprint/</code> on branch <code>ccr-4acd4727-7uk22m</code>:
 <code>spec.md</code>, <code>beats.md</code>, <code>poses.json</code>; <code>lib/</code> (harness and <code>recipe.py</code>);
 <code>arms/&lt;method&gt;/</code> with frames, manifests, sheets, notes, timings and <code>sequence_*.{{gif,mp4}}</code>;
-<code>final/</code> and <code>final_hyborem/</code> for the recipe; <code>judging/</code> with every judge's JSON, the keys and
+<code>final/</code> and <code>final_hyborem_v1/</code> for the recipe; <code>judging/</code> with every judge's JSON, the keys and
 <code>scores.json</code>; <code>spend.jsonl</code>.</p></footer>
 """
 
@@ -426,10 +426,11 @@ RECIPE = """
     canvas point (80, 126) on the tile centre and places the banner from the idle frame-0 box.</li>
 </ol>
 <pre><code>cd projects/ffh-anim-sprint
-python3 lib/recipe.py --unit units/swordsman.json --out final                  # 3 calls, writes final/ and final_nofx/
-python3 lib/recipe.py --unit units/swordsman.json --out final --rebuild --pick strike=2   # re-cut, no API calls
+python3 lib/recipe.py --unit units/swordsman_judged.json --out final --rebuild --pick strike=2   # re-cut, no API calls
 python3 lib/preview.py --arm final --root final                               # strips, sequence_*.gif/mp4, vignette
-python3 lib/recipe.py --unit units/hyborem.json --out final_hyborem            # another unit: grey guides, retargeted poses</code></pre>
+python3 lib/recipe.py --unit units/hyborem_v1.json --out final_hyborem_v1 --rebuild   # another unit, re-cut</code></pre>
+<p class="read">Since the sprint, the recipe follows a further rule (the strike goes where the sprite looks); the sets
+above predate it. The how-to for new units is <code>ANIMATING_UNITS.md</code>.</p>
 <p class="read">A unit with purple or magenta art (Sheaim, liches) would need a cyan key, which M7's static pipeline offers but
 this recipe does not support yet (its prompt and slicer assume magenta). The de-fringe step already skips itself when the
 sprite contains purple.</p>

@@ -1,5 +1,6 @@
 {
- "unit": "swordsman",
+ "unit": "ogre",
+ "facing": "lower-left",
  "arm": "final_ogre",
  "anim": "strike",
  "canvas": [
@@ -57,8 +58,8 @@
   }
  ],
  "warnings": [
-  "frame 3 leaves the safe region x (16, 144): bbox (0, 17, 138, 126)",
-  "frame 4 leaves the safe region x (16, 144): bbox (0, 29, 146, 126)",
-  "frame 5 leaves the safe region x (16, 144): bbox (30, 37, 145, 126)"
+  "frame 2 leaves the safe region x (16, 144): bbox (56, 28, 146, 126)",
+  "frame 3 leaves the safe region x (16, 144): bbox (0, 15, 126, 126)",
+  "frame 4 leaves the safe region x (16, 144): bbox (7, 40, 116, 126)"
  ]
 }

@@ -1,6 +1,8 @@
 {
  "name": "swordsman",
  "sprite": "m7/roster/units/unit_swordsman.png",
+ "facing": "lower-right",
+ "tag": "anim/units",
  "description": "a swordsman foot soldier: blue sleeveless tunic over a cream shirt, brown leather belt, blue shorts, tan leggings, brown leather boots, brown tousled hair, a short steel sword in his RIGHT hand and a round wooden shield with a steel boss on his LEFT arm",
  "hands": "the sword stays in his right hand on the screen-left side and the shield on his left arm on the screen-right side",
  "guide_style": "colour",
@@ -80,6 +82,5 @@
    98,
    123
   ]
- },
- "tag": "anim/final"
+ }
 }

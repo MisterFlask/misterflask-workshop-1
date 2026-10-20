@@ -1,6 +1,7 @@
 {
  "name": "ogre",
  "sprite": "m7/roster/units/unit_ogre_embers.png",
+ "facing": "lower-left",
  "tag": "anim/units",
  "description": "an Ogre, a huge hunched brute with olive-green skin, red war-paint stripes on his face, arms and belly, a black topknot, small fierce eyes and jutting lower tusks, a necklace of bone fangs, a shaggy brown fur mantle with a bleached bone skull pauldron on his left shoulder, a brown belt hung with bone fangs over a red loincloth, brown fur bracers and fur leg wraps, bare green feet, and a huge wooden club studded with steel spikes in his RIGHT hand, a few tiny orange embers drifting off the club head",
  "hands": "the spiked club stays in his right hand on the screen-left side and his left hand is an empty fist on the screen-right side",
@@ -34,12 +35,12 @@
    75
   ],
   "r_ha": [
-   38,
-   90
+   47,
+   56
   ],
   "tip": [
-   8,
-   19
+   119,
+   30
   ],
   "l_sh": [
    101,

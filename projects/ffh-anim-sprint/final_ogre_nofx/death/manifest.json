@@ -1,5 +1,6 @@
 {
- "unit": "swordsman",
+ "unit": "ogre",
+ "facing": "lower-left",
  "arm": "final_ogre_nofx",
  "anim": "death",
  "canvas": [
@@ -53,10 +54,5 @@
    "ms": 400,
    "events": []
   }
- ],
- "warnings": [
-  "frame 2 leaves the safe region x (16, 144): bbox (14, 40, 117, 126)",
-  "frame 4 leaves the safe region x (16, 144): bbox (22, 45, 151, 126)",
-  "frame 7 leaves the safe region x (16, 144): bbox (15, 73, 137, 126)"
  ]
 }
