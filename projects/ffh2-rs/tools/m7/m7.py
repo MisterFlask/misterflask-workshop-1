@@ -17,6 +17,7 @@ work/<name>/calls.jsonl. You then LOOK at the review sheet and accept one varian
   python m7.py roster-sheet --out anchors/anchor_roster_elves.png roster/units/unit_a.png roster/units/unit_b.png ...
   python m7.py scene    [--layout layouts/layout_ref.json] [--out work/scene.png]
   python m7.py spend
+  python m7.py pair --name tile_desert   (make tile_desert_b tile with tile_desert; no API cost)
   python m7.py export   (the roster -> the game's isometric renderer, crates/ffh-play/assets/app/iso)
 Add --dry-run to any generating command to print the prompt and image list without calling the API.
 Needs OPENAI_API_KEY; budget caps live in budget.json (tag root must be listed there).
@@ -462,6 +463,24 @@ def scene(a):
     print(out, s.size)
 
 
+def pair(a):
+    """Makes roster tile <name>_b (or --variant) tile with <name>: its border band becomes <name>'s
+    (lib/tiles.py pair_variant). Variants cut from other windows of a raw are each seamless only with
+    themselves; paired, the engine can mix them freely. Run once per variant, after accepting it."""
+    man_p = ROOT / "roster" / "manifest.json"
+    man = json.loads(man_p.read_text())
+    base = ROOT / "roster" / "terrain" / f"{a.name}.png"
+    var = a.variant or f"{a.name}_b"
+    vp = ROOT / "roster" / "terrain" / f"{var}.png"
+    if man.get(var, {}).get("paired_with"):
+        raise SystemExit(f"{var} is already paired with {man[var]['paired_with']}; re-accept it first")
+    px = man.get(var, {}).get("p") or man.get(a.name, {}).get("p") or 3
+    n = tiles.pair_variant(base, vp, vp, p=int(px))
+    man.setdefault(var, {})["paired_with"] = a.name
+    man_p.write_text(json.dumps(man, indent=1))
+    print(json.dumps({"paired": var, "with": a.name, "own_px": n, "p": px}))
+
+
 GAME_ISO = ROOT.parent.parent / "crates" / "ffh-play" / "assets" / "app" / "iso"
 
 
@@ -540,6 +559,8 @@ def main():
     p = sub.add_parser("scene"); p.add_argument("--layout", default="layouts/layout_ref.json")
     p.add_argument("--out", default="work/scene.png"); p.add_argument("--extra-assets", nargs="*", default=[])
     sub.add_parser("spend")
+    p = sub.add_parser("pair"); p.add_argument("--name", required=True, help="the base tile, e.g. tile_desert")
+    p.add_argument("--variant", help="default: <name>_b")
     p = sub.add_parser("export"); p.add_argument("--out", help="default: the game's crates/ffh-play/assets/app/iso")
     a = ap.parse_args()
 
@@ -557,6 +578,8 @@ def main():
         roster_sheet(a)
     elif a.cmd == "scene":
         scene(a)
+    elif a.cmd == "pair":
+        pair(a)
     elif a.cmd == "export":
         export(a)
     elif a.cmd == "spend":

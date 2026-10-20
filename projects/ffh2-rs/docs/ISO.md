@@ -78,7 +78,8 @@ picks the figure's plot.
 The tables are at the top of `iso.js`; every lookup has fallbacks, so a missing sprite never
 leaves a hole.
 
-- **Terrain:** one tile per base terrain, its `_b` variant on about half the plots (a stable hash);
+- **Terrain:** one tile per base terrain, its `_b` variant on about half the plots (a stable hash;
+  the variants are `pair`ed with their base, so they meet without seams);
   coast and shallows use `tile_water`. **Hills** are an overlay chosen by the terrain: green
   (`ovl_hills`), dry (`ovl_hills_dry`: plains, desert, hell terrains) or snowy (`ovl_hills_snow`:
   tundra, snow). **Peaks** are `feat_mountain` (`feat_mountain_hell` on hell terrains); a volcano

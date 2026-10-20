@@ -52,6 +52,8 @@ draws). Changes made here since the package arrived:
   `m7.py`): without it the model drew walled footprints at about 1.4:1 (base cover 0.60-0.71).
 - `accept` keeps the sprite's own `size` in the manifest (the image-generation size is
   `gen_size`; it used to overwrite `size`).
+- **`pair`** makes a terrain variant tile seamlessly with its base (see Terrain a); every shipped
+  `_b` tile is paired.
 - `budget.json` caps this folder's spend; `spend.jsonl` is committed, so the caps count every call
   made for the game so far.
 
@@ -294,6 +296,11 @@ python m7.py retile --name tile_desert --seed 2 --cx 0.4 --cy 0.6
 python m7.py accept --name tile_desert --variant 1 --as tile_desert_b
 ```
 Alternatively, accept another generated variant `--as tile_desert_c`.
+
+Variants cut from other windows tile with themselves but **not with each other**: a seam shows
+wherever an A tile meets a B (worst on snow). After accepting a variant, run
+`python m7.py pair --name tile_desert` (or `--variant tile_desert_c`): the variant keeps its own
+texture inside and takes the base tile's pixels near the edges, so A and B mix without seams.
 
 ### b) Tile = base terrain + an object: the inset path
 Use this for farms, hills, pasture, quarry, oasis, cottage plots, flood plains and other improvements.

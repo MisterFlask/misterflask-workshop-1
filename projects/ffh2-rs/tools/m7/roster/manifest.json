@@ -501,7 +501,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_plains"
  },
  "ovl_farm": {
   "kind": "overlay",
@@ -3182,7 +3183,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_desert"
  },
  "tile_tundra": {
   "kind": "tile",
@@ -3252,7 +3254,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_tundra"
  },
  "tile_snow": {
   "kind": "tile",
@@ -3322,7 +3325,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_snow"
  },
  "tile_marsh": {
   "kind": "tile",
@@ -3392,7 +3396,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_marsh"
  },
  "tile_ocean": {
   "kind": "tile",
@@ -3462,7 +3467,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_ocean"
  },
  "tile_burning_sands": {
   "kind": "tile",
@@ -3534,7 +3540,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_burning_sands"
  },
  "tile_broken_lands": {
   "kind": "tile",
@@ -3604,7 +3611,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_broken_lands"
  },
  "tile_fields_of_perdition": {
   "kind": "tile",
@@ -3674,7 +3682,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_fields_of_perdition"
  },
  "tile_grass_b": {
   "kind": "tile",
@@ -3709,7 +3718,8 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
-  "gen_size": "1024x1024"
+  "gen_size": "1024x1024",
+  "paired_with": "tile_grass"
  },
  "tile_hills_dry": {
   "kind": "tile",

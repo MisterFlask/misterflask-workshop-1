@@ -190,6 +190,24 @@ def overlay_path(out):
     return out.with_name(out.stem + ".ovl.png")
 
 
+def pair_variant(a_png, b_png, out, p=3, inner=0.5, outer=0.78, seed=5):
+    """Variant b made to tile with its base a: b keeps its own top face inside, and takes a's pixels near the
+    diamond's edges (a dithered cross-fade, p-px blocks, between `inner` and `outer` of the way from the centre
+    to the edge), skirt included. a tiles with itself, so a|b, b|a and b|b neighbours all meet on a's border."""
+    A = np.asarray(Image.open(a_png).convert("RGBA"))
+    B = np.asarray(Image.open(b_png).convert("RGBA"))
+    ys, xs = np.mgrid[0:128, 0:192]
+    d = np.abs(xs + 0.5 - 96) / 96 + np.abs(ys + 0.5 - 48) / 48
+    w = np.clip((d - inner) / (outer - inner), 0, 1)
+    blocks = (-(-128 // p), -(-192 // p))
+    r = np.repeat(np.repeat(smooth_noise(blocks, 1.0, seed), p, 0), p, 1)[:128, :192]
+    take_b = (dmask() > 0) & (r >= w)
+    o = A.copy()
+    o[take_b] = B[take_b]
+    Image.fromarray(o, "RGBA").save(out)
+    return int(take_b.sum())
+
+
 def lift_shadow(inp, out, lift=6, dx=4, dy=3, alpha=0.35, colour=(12, 40, 10)):
     """Lift a feature `lift` px above its anchor and put a dark silhouette copy offset (dx, dy) under it."""
     im = Image.open(inp).convert("RGBA")
