@@ -4,7 +4,7 @@
 
 Prose lives in report/content.py (written after judging); this file only assembles data and layout.
 """
-import html, json, shutil, sys
+import html, json, shutil, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,7 +64,7 @@ def collect():
     spend = spend_by_arm()
     data = {"tile": "assets/tile_grass.png", "arms": []}
     for arm in C.ARM_ORDER:
-        d = ROOT / ("final" if arm == "FINAL" else f"arms/{arm}")
+        d = ROOT / getattr(C, "ARM_DIRS", {}).get(arm, f"arms/{arm}")
         if not d.exists():
             continue
         entry = {"id": arm, "name": C.ARMS[arm]["name"], "family": C.ARMS[arm]["family"], "anims": {}, "files": {}}
@@ -79,11 +79,15 @@ def collect():
             hit = next((i for i, f in enumerate(man["frames"]) if "hit" in f.get("events", [])), None)
             entry["anims"][anim] = {"sheet": f"assets/{dst.name}", "ms": [f["ms"] for f in man["frames"]], "hit": hit,
                                     "loop": man["loop"], "hold": man["hold_last"]}
-        for name in ("sequence_3x.mp4", "vignette.mp4"):
+        for name, t in (("sequence_3x.mp4", "2.55"), ("vignette.mp4", "1.55")):
             if (d / name).exists():
                 dst = ASSETS / f"{arm}_{name}"
                 shutil.copy(d / name, dst)
                 entry["files"][name] = f"assets/{dst.name}"
+                poster = ASSETS / f"{arm}_{name[:-4]}_poster.jpg"
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", t, "-i", str(d / name), "-frames:v", "1", "-q:v", "3",
+                                str(poster)], check=True)
+                entry["files"][name + ":poster"] = f"assets/{poster.name}"
         entry["metrics"] = {a: v.get("summary") for a, v in (load_json(d / "metrics.json", {}) or {}).items()}
         entry["spend"] = spend.get(arm, {"usd": 0.0, "calls": 0, "images": 0})
         entry["minutes"] = minutes_by_arm(d)

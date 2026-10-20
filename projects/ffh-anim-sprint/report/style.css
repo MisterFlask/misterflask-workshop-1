@@ -69,17 +69,17 @@ figure { margin: 0; display: grid; gap: 4px; min-width: 0; }
 figure.cell canvas { display: block; background: var(--stage); border-radius: 3px; image-rendering: pixelated; }
 figure.cell figcaption, figcaption { font: 0.75rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.2em; }
 .none { color: var(--muted); font-size: 0.85rem; }
-.feature { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; padding: 14px; }
-.feature figure canvas { width: 100%; height: auto; }
-.videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.feature { display: flex; flex-wrap: wrap; gap: 16px; padding: 14px; overflow-x: auto; }
+.feature figure { flex: 0 0 auto; }
+.videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
 video { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); background: var(--stage); image-rendering: pixelated; }
 
 /* quiz */
-.quizzes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 16px; }
+.quizzes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 16px; }
 .quiz { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 10px; }
 .quiz .pair { display: flex; gap: 10px; flex-wrap: wrap; }
 .quiz .pair figure { flex: 1 1 128px; }
-.quiz .pair canvas { width: 100%; height: auto; }
+.quiz .pair { overflow-x: auto; }
 .quiz .picks { display: flex; gap: 8px; }
 .quiz [data-reveal] { font-size: 0.9rem; color: var(--muted); }
 

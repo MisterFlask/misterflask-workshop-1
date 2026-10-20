@@ -171,6 +171,34 @@ def aggregate():
     return summ
 
 
+def aggregate_verify(key_path=None):
+    """judging/verify_*.json + the verification key -> judging/verify_scores.json (per animation, per arm)."""
+    key = json.loads(Path(key_path or J / "key_verify.json").read_text())
+    l2a = key["letter_to_arm"]
+    acc = {}
+    for f in sorted(J.glob("verify_[0-9]*.json")):
+        jd = json.loads(f.read_text())
+        for anim, res in jd.get("animations", {}).items():
+            for L, sc in res.get("scores", {}).items():
+                a = l2a.get(L)
+                if not a:
+                    continue
+                rank = res.get("ranking", []).index(L) + 1 if L in res.get("ranking", []) else None
+                acc.setdefault(anim, {}).setdefault(a, []).append(dict(sc, rank=rank,
+                                                                       weighted=sum(sc[k] * v for k, v in RUBRIC.items())))
+    by_anim = {an: {a: {"weighted": round(float(np.mean([r["weighted"] for r in rs])), 2),
+                        "mean_rank": round(float(np.mean([r["rank"] for r in rs if r["rank"]])), 2),
+                        **{m: round(float(np.mean([r[m] for r in rs])), 2) for m in RUBRIC}, "n": len(rs)}
+                    for a, rs in d.items()} for an, d in acc.items()}
+    by_arm = {}
+    for an, d in by_anim.items():
+        for a, v in d.items():
+            by_arm.setdefault(a, {})[an] = v
+    out = {"by_anim": by_anim, "by_arm": by_arm}
+    (J / "verify_scores.json").write_text(json.dumps(out, indent=1))
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["packets", "aggregate"])
