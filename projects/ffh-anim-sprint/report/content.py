@@ -312,7 +312,7 @@ def answer(ctx):
     its drawings, so every sheet idle boiled (judge scores 3.8–5.8). Warping the real sprite scored 7.8–8.1.</li>
   <li><strong>Small, targeted fixes were measurable.</strong> The round-1 comments led to three fixes that cost no new image
     calls: picking the clean strike variant, sharpening the warped frames and removing the magenta fringe. In a fresh blind
-    round the fixed recipe ranked first for all four animations, 0.5–1.3 points above its own first build and 0.2–0.5
+    round the fixed recipe ranked first for all four animations, 0.5–1.3 points above its own first build and 0.2–0.6
     above the best single method for each animation (the idle gap over the rig, 0.2, is within noise).</li>
   <li><strong>What is left is shared by every model method</strong>: a thin magenta keying fringe (the recipe now removes
     it), corpses lying flatter than the isometric axis, occasional off-model faces on hit frames, and one variant in two
