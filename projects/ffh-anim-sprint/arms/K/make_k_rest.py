@@ -17,6 +17,9 @@ Final: frame 0 and keys 3, 5 from pass 1; frames 1, 2, 4, 6, 7 from pass 2.
   python3 arms/K/make_k_rest.py p2 gen r1
   python3 arms/K/make_k_rest.py p2 slice r1
   python3 arms/K/make_k_rest.py write              # assemble the final frames (PICK below) with ak.write_anim
+
+Reproduce the written death from the saved raws (no model calls):
+  p1 template; p1 slice r2; p2 template; p2 slice r2; write
 """
 import json, sys, time
 from pathlib import Path
@@ -39,8 +42,8 @@ P2_FRAMES = [1, 2, 3, 4, 5, 6, 7]  # death frames on pass-2 cells 2..8
 P2_KEYS = [3, 5]                 # frames pasted as finished art on pass 2 (cells 4 and 6)
 
 # Choices made by eye (filled in as the work goes; see notes_rest.md)
-KEYS = None   # pass-1 variant whose keys are accepted, e.g. "p1_r1_2"
-PICK = None   # pass-2 variant whose in-betweens are used, e.g. "p2_r1_1"
+KEYS = "p1_r2_1"   # pass-1 variant whose keys are accepted
+PICK = "p2_r2_2"   # pass-2 variant whose in-betweens are used
 
 
 def guide(i):
@@ -57,6 +60,14 @@ P1_EXTRA = {
            "frames. Cells 5, 6, 7 and 8 (the whole bottom row) are deliberately empty and must stay plain flat "
            "magenta with nothing drawn in them."),
 }
+# r2: r1 variant 1 kept the reference scale and followed the guides, but drew a 2-4 px darker-magenta cast shadow
+# under the kneeling and lying keys, which keys out as a purple smear (it cannot be separated from the sprite's own
+# dark-purple outline colour); r1 variant 2 drew every key ~5 % larger than cell 1 and its lying figure left the safe
+# region. r2 = r1 plus one sentence on shadows and size.
+P1_EXTRA["r2"] = P1_EXTRA["r1"] + (
+    " Draw no shadow, darker patch or outline glow on the ground under or around any figure, not even under the "
+    "kneeling and lying ones: the magenta touching each figure's outline stays pure #FF00FF; and draw every figure at "
+    "exactly the same size as cell 1, with the whole sword inside its cell.")
 
 
 def p1_texts():
@@ -78,15 +89,29 @@ P2_EXTRA = {
            "death frames 4 and 6). Cells 1, 4 and 6 must stay exactly as they are, pixel for pixel. The blockout "
            "cells 2, 3, 5, 7 and 8 get the in-between frames: draw each one so it connects smoothly with its "
            "neighbouring cells (same character, same size, same sword and shield, and each pose part-way between "
-           "the cells before and after it), so the eight cells play as one continuous fall."),
+           "the cells before and after it), so the eight cells play as one continuous fall; cells 7 and 8 keep the "
+           "lying body, sword and shield of cell 6 almost unchanged, with only the small movement described for "
+           "them. Draw no shadow or darker patch on the ground under any figure: the magenta touching each figure's "
+           "outline stays pure #FF00FF."),
+}
+P2_EXTRA["r2"] = P2_EXTRA["r1"]
+
+
+# r2: r1 variant 1 was good everywhere except cell 7 (frame 6, the bounce): both variants sat the upper body half up
+# (head 16 px / 9 px above the lying key instead of the beat's 2 px). r2 rewords only cell 7.
+P2_REWORD = {
+    "r1": {},
+    "r2": {6: "bounce: almost exactly the lying body of cell 6, still flat on his back along the ground with the "
+              "back, hips and legs exactly where they are in cell 6; only the head and shoulders are lifted a tiny "
+              "amount (about the thickness of the sword blade) off the ground, and the shield is tilted slightly"},
 }
 
 
-def p2_texts():
+def p2_texts(rnd="r1"):
     out = []
     for j, i in enumerate(P2_FRAMES):
         tag = "finished key frame, keep exactly as drawn" if i in P2_KEYS else "in-between"
-        out.append((2 + j, f"frame {i + 1} of 8 ({tag}), {text(i)}"))
+        out.append((2 + j, f"frame {i + 1} of 8 ({tag}), {P2_REWORD[rnd].get(i, text(i))}"))
     return out
 
 
@@ -105,7 +130,7 @@ def p2_template():
 
 
 def p2_prompt(rnd):
-    return gen.sheet_prompt(ANIM, p2_texts(), guide="colour", extra=P2_EXTRA[rnd])
+    return gen.sheet_prompt(ANIM, p2_texts(rnd), guide="colour", extra=P2_EXTRA[rnd])
 
 
 # ---------------------------------------------------------------- shared

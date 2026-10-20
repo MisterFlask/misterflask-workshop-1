@@ -54,6 +54,16 @@ ROUNDS = {
                   "1's sword in every cell, following the blockout blade's length and tip position."),
     },
 }
+# r3: r2 fixed the cell 4 blade (inside the safe region in both variants) and the cell 2 clip. Neither r2 variant
+# shows the follow-through's hair trailing back or a visible torso twist in cell 6, and r2_2's cell 8 sword tilts
+# well past the ready angle (a pop back into idle). Same as r2, plus concrete wording for cells 6 and 8.
+ROUNDS["strike"]["r3"] = dict(
+    texts=_reword(ROUNDS["strike"]["r2"]["texts"], {
+        6: "follow-through: the blade carries on down until its tip nearly touches the ground at the lower-left, the "
+           "torso twisted so the chest turns toward the lower-left, the hair swept back toward the upper-right",
+        8: "settle: almost exactly the reference pose of cell 1, with the sword at the same angle as in cell 1, only a "
+           "touch lower",
+    }), extra=ROUNDS["strike"]["r2"]["extra"])
 
 
 def template(anim):

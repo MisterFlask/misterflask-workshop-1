@@ -48,6 +48,36 @@ def _reword(texts, new):
 # Per-round prompt data. A round may only change the per-cell wording or add ONE sentence via extra.
 ROUNDS = {"A": {"r1": dict(texts=base_texts("A"), extra="")},
           "B": {"r1": dict(texts=base_texts("B"), extra="")}}
+# A r2: both r1 variants posed every cell well, but idle cells 2-4 were full redraws of the character (different face
+# and expression, fluffier hair, a reshaped shield and sword hand), so against the true sprite in idle frame 0 the
+# loop boils (mean frame-to-frame change 41-46 vs 15-16 for the sprite against the model's own copy of cell 1).
+# r2 rewords cells 2-4 as "copy cell 1, move only what the blockout moves" and adds one sentence; flinch unchanged.
+ROUNDS["A"]["r2"] = dict(
+    texts=_reword(base_texts("A"), {
+        2: "idle frame 1: breathing in. Copy cell 1 exactly, pixel for pixel (same face and expression, same hair, "
+           "outfit, sword and shield drawing); only the head and chest are one pixel higher, as in the blockout",
+        3: "idle frame 2: top of the breath. Copy cell 1 exactly, pixel for pixel; the head and chest are still one "
+           "pixel higher, and the sword tip and the shield are raised by one or two pixels, as in the blockout",
+        4: "idle frame 3: breathing out. Copy cell 1 exactly, pixel for pixel; the head and chest are back down and "
+           "only the sword tip is still one pixel high, as in the blockout",
+    }),
+    extra="Cells 2, 3 and 4 are a subtle breathing loop: they must look like exact copies of the cell 1 sprite (same "
+          "face and expression, same hair shape, same shading and outline pixels), differing from it only by the "
+          "one- or two-pixel shifts of their blockouts.")
+# A r3: "copy pixel for pixel" changed nothing (r2_1 idle boil 44, r2_2 61): cells 2-4 were still fresh redraws, and
+# they follow the blockout's slightly more upright sword and rounder shield rather than cell 1's. r3 words cells 2-4
+# as "a duplicate of cell 1 nudged by a pixel" and the one extra sentence says to follow cell 1 where the two disagree.
+ROUNDS["A"]["r3"] = dict(
+    texts=_reword(base_texts("A"), {
+        2: "idle frame 1 (breathing in): a duplicate of cell 1 with the head and chest nudged up by one pixel; the "
+           "same face, hair, sword angle, shield and legs as cell 1",
+        3: "idle frame 2 (top of the breath): a duplicate of cell 1 with the head and chest one pixel up and the "
+           "sword and shield nudged up by one or two pixels; the same face, hair, sword angle and legs as cell 1",
+        4: "idle frame 3 (breathing out): a duplicate of cell 1 with only the sword nudged up by one pixel; the same "
+           "face, hair, chest, shield and legs as cell 1",
+    }),
+    extra="For cells 2, 3 and 4, where the blockout and cell 1 disagree, follow cell 1: make them by duplicating cell "
+          "1 and nudging parts by a pixel or two, not by redrawing the face, hair, sword or shield.")
 
 
 def template(s):
