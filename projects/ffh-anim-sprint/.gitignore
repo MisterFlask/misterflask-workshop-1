@@ -5,3 +5,4 @@ __pycache__/
 arms/*/preview/*.gif
 final/preview/*.gif
 judging/packets/
+report/site/
