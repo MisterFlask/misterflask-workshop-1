@@ -1,0 +1,38 @@
+{
+ "unit": "swordsman",
+ "arm": "R",
+ "anim": "idle",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": true,
+ "hold_last": false,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 250,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 250,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 250,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 250,
+   "events": []
+  }
+ ],
+ "note": "R rig: sprite split into body/sword/shield; body bent by rigid MLS (sharpened displacement), sword and shield follow a frame late (make_r_rest.py)"
+}

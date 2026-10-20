@@ -129,6 +129,19 @@ ROUNDS["A"]["r3"] = dict(texts=_reword(ROUNDS["A"]["r2"]["texts"], {
           "figure in cell 1 with its sword fully inside its cell.")
 
 
+# r3 (sheet B): r2 fixed the motion arcs and the shadows (both variants clean) and r2_2 lies close to the iso axis
+# (body slope ~0.46 vs 0.5). Left over: the shield stands up on its rim beside him instead of lying flat, and the knees
+# stay a little bent. One more sample with those two cells made more concrete.
+ROUNDS["B"]["r3"] = dict(texts=_reword(ROUNDS["B"]["r2"]["texts"], {
+    6: "hits the ground: lying flat on his back with his legs straight, his body running diagonally across the cell "
+       "from his boots at the lower-left up to his head at the upper-right (along the edge of an isometric floor "
+       "tile); the sword lies on the ground at the lower-left near his boots; the shield lies flat on the ground "
+       "beside his left side, seen from above as a wide oval; no shadow under him",
+    8: "corpse: the same diagonal lying pose as cell 6, settled flat and still on his back with his legs straight, "
+       "eyes closed, sword and shield lying flat on the ground beside him",
+}), extra=SIZE_SENTENCE)
+
+
 # ---------------------------------------------------------------- template / generate
 def template(sh):
     return sheet.make_template([ak.base_canvas()] + [None] * 7, out=W / f"template_{sh}.png")

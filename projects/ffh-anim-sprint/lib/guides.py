@@ -42,10 +42,18 @@ def rot(v, deg):
 
 
 def render_guide(p, style="colour"):
-    pal = COLOUR if style == "colour" else GREY
+    """Optional pose keys for other units (recipe.py): head_r, limb (width scale), palette (dict overriding COLOUR /
+    GREY entries); a pose without "shield" draws no shield."""
+    pal = dict(COLOUR if style == "colour" else GREY, **p.get("palette", {}))
     im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     g = lambda k: tuple(p[k][:2])
+    HEAD_R = p.get("head_r", POSES["head_r"])
+    ls = p.get("limb", 1.0)
+    capsule_ = globals()["capsule"]
+
+    def capsule(d, a, b, w, col):  # noqa: F811  (limb widths scale with the unit)
+        capsule_(d, a, b, max(2, round(w * ls)), col)
 
     def leg(side, k):
         hip, kn, ft = g(side + "_hip"), g(side + "_kn"), g(side + "_ft")
@@ -102,6 +110,8 @@ def render_guide(p, style="colour"):
         capsule(d, (hilt[0] - ux * 3, hilt[1] - uy * 3), base, 3, _c(pal["hilt"]))
 
     def shield():
+        if "shield" not in p:
+            return
         cx, cy, rx, ry = p["shield"]
         d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=_c(pal["wood"]), outline=_c(pal["rim"]), width=2)
         d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=_c(pal["boss"]))

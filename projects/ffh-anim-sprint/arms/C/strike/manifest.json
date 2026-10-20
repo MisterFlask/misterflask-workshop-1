@@ -1,0 +1,60 @@
+{
+ "unit": "swordsman",
+ "arm": "C",
+ "anim": "strike",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": false,
+ "hold_last": false,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 100,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 160,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 50,
+   "events": []
+  },
+  {
+   "file": "frame_04.png",
+   "ms": 120,
+   "events": [
+    "hit"
+   ]
+  },
+  {
+   "file": "frame_05.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_06.png",
+   "ms": 100,
+   "events": []
+  },
+  {
+   "file": "frame_07.png",
+   "ms": 100,
+   "events": []
+  }
+ ],
+ "note": "C strike: chained per-frame generation; f1=r1_2, f2=r1_2, f3=r2_2, f4=r2_2, f5=r1_1, f6=r1_2, f7=r1_2; safe-region clip (px removed per frame): {\"3\": 6}"
+}

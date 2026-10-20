@@ -43,6 +43,10 @@ EXTRA = {
                          "ends where the blockout's blade tip ends, well inside the cell with clear magenta to its "
                          "left; the arm is raised as in the blockout. Keep the hair exactly as small and neat as in "
                          "the original sprite.",
+    # r1 (both variants) again drew the blade longer than the blockout's: tip at x 12-14, outside the safe region
+    ("strike", 4, "r2"): "The blade is exactly as long as the sword in the original sprite, no longer, and its tip "
+                         "ends where the blockout's blade tip ends, well inside the cell with clear magenta to its "
+                         "left. Keep the hair exactly as small and neat as in the original sprite.",
 }
 
 
@@ -230,10 +234,29 @@ def rebuild(anim):
     chain_path(anim).write_text(json.dumps(ch, indent=1))
 
 
+def safe_clip(f):
+    """Zero the alpha of any pixel outside the safe region x 16..143 (spec). Returns (frame, pixels removed)."""
+    a = np.asarray(f).copy()
+    out = np.zeros(a.shape[1], bool)
+    out[:ak.SAFE_X[0]] = True
+    out[ak.SAFE_X[1]:] = True
+    n = int((a[:, out, 3] > 0).sum())
+    a[:, out] = 0
+    return Image.fromarray(a, "RGBA"), n
+
+
 def write(anim):
-    frames = [accepted(anim, k) for k in range(beats.COUNTS[anim])]
+    frames, clipped = [], {}
+    for k in range(beats.COUNTS[anim]):
+        f, n = safe_clip(accepted(anim, k))
+        if n:
+            clipped[k] = n
+        frames.append(f)
     ch = load_chain(anim)
     note = "C %s: chained per-frame generation; " % anim + ", ".join(f"f{k}={v['variant']}" for k, v in ch.items())
+    if clipped:
+        note += "; safe-region clip (px removed per frame): " + json.dumps(clipped)
+        print("safe-region clip", clipped)
     man = ak.write_anim(ARM, anim, frames, note=note)
     print(json.dumps({"written": anim, "warnings": man.get("warnings") if man else None}))
 
