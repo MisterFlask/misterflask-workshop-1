@@ -329,9 +329,9 @@
    0.262,
    0.341,
    0.39,
-   0.461,
-   0.433,
-   0.491
+   0.435,
+   0.392,
+   0.443
   ],
   "overlap": {
    "displacement": {
@@ -417,10 +417,10 @@
    184.29,
    110.71,
    108.25,
-   148.32,
-   86.85,
+   113.37,
+   89.62,
    84.32,
-   72.18
+   61.98
   ],
   "arc": [
    [
@@ -445,10 +445,10 @@
    "frame 7: little or no steel (sword missing?)"
   ],
   "summary": {
-   "nonrigid_mean": 0.377,
+   "nonrigid_mean": 0.36,
    "overlap_index": 0.0,
    "drift_mean": 2.58,
-   "boil_mean": 113.56,
+   "boil_mean": 107.51,
    "n_gate_flags": 7
   }
  }

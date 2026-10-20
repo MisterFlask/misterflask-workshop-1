@@ -218,6 +218,8 @@ guide (`slid -24`: the model drew the figure 24 px off) or moved up or down onto
 - **size pop:** a figure noticeably bigger than the sprite (often frame 1 or the hit frames), or swollen hair;
 - **wrong pose:** the weapon in the wrong hand, a missing or doubled prop, or a pose that ignores the guide;
 - **off-model face:** a different face, squeezed manga eyes, or a front-facing head;
+- **floating:** a frame labelled `FLOATS n` hangs n px above the ground (the recipe snaps up to 40 px; a held corpse
+  that floats stays floating forever);
 - **sideways slide:** the feet jump between frames even after the slide (compare with frame 0);
 - **cropping:** a weapon or limb cut off at the canvas edge;
 - **magenta or purple specks** on outlines or seams (the recipe recolours most of them);
@@ -291,8 +293,11 @@ sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (fr
   and poses (a draw-and-release or a cast, in `lib/poses_src.py`, `lib/poses_near_src.py` and `lib/beats.py`). Mounted
   units, animals and ships are untested.
 - **Facing.** Lower-left and lower-right only (see the engine contract).
-- **The near set** (`poses_near.json`, lower-right) was written after the sprint for the strike-direction rule. It has
-  not been through a blind bake-off like the far set.
+- **The near set** (`poses_near.json`, lower-right) was written after the sprint for the strike-direction rule and has
+  not been through a bake-off like the far set; it has been judged only as guides and in the post-rule checks. Its
+  weakest point is the shield on the strike: the far arm swings it behind the back on the 50 ms swing frame, and judges
+  in both checks read that as the shield vanishing and reappearing behind him, or swapping arms. Keeping the shield on
+  the far side of the body through frames 3–5 is the obvious change (in `lib/poses_near_src.py`); it is untested.
 - **Remaining model defects.** Even the best variants carry small smudges, a corpse a little flatter than the isometric
   axis, and occasionally a death bounce that is too big. The pick in step 3 is the control.
 - **Model choice.** `gpt-image-2.5-sunburst` at medium quality, 1536×1024, two variants per call (`lib/gen.py`
@@ -345,7 +350,21 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
   lower-right, so his first post-rule set struck the wrong way. The round also exposed a prompt bug (the per-cell facing
   sentence was sent unformatted) and gaps in this guide found by a second cold run (on the worker). All are fixed, and
   the three worked examples were made again.
-- VERIFY-B-PLACEHOLDER
+- **Blind verification, round B** (`judging/post_rule/round_b.json`), on the regenerated sets: every new set strikes
+  where its sprite looks (3 of 3 judges each), and the sprint's swordsman set fails again (3 of 3). Old set → new set,
+  weighted scores, idle / strike / flinch / death (gaps under about 0.5 are within judge noise):
+
+  | Unit (old set) | Old | New |
+  |---|---|---|
+  | ogre (the cold-test agent's set) | 5.25 / 6.83 / 6.10 / 6.38 | 7.23 / 5.92 / 7.27 / 6.93 |
+  | swordsman (the sprint's judged set) | 7.17 / 6.03 / 6.52 / 6.52 | 7.17 / 6.28 / 7.30 / 7.13 |
+  | Hyborem (`final_hyborem_v1/`) | 5.70 / 6.60 / 6.97 / 6.98 | 7.33 / 7.73 / 7.33 / 5.63 |
+
+  The two clear losses, the ogre's strike and Hyborem's death, were frames floating 21–22 px above the ground: the
+  slicer only snapped up to 20 px and left them, and the pick by eye missed them. It now snaps up to 40 px and the
+  variant sheets label any float; both sets were re-cut from the same picks, so every frame touches the ground, but the
+  re-cut sets were not judged again. The swordsman's idle is unchanged because both sets use the same warp of his
+  sprite.
 
 ## Worked examples
 

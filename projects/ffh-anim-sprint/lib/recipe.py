@@ -274,6 +274,20 @@ def generate(u, out, anims, style, n=2):
     return log
 
 
+def ground_limit(u):
+    """How far (px) the slicer may move a redrawn frame up or down onto the ground row. Every beat keeps something on
+    the ground, so a figure drawn high in its cell belongs on it; the sprint's 20 px left 21-22 px floats in place
+    (the ogre's hit frame, Hyborem's corpse), so new units get 40."""
+    return 20 if u.get("legacy") else 40
+
+
+def floating(frame, ground=ak.ANCHOR[1] - 1):
+    """Px between the frame's lowest opaque row and the ground row (0 when it touches)."""
+    import numpy as np
+    rows = np.nonzero((np.asarray(frame.getchannel("A")) >= 128).any(axis=1))[0]
+    return int(ground - rows.max()) if len(rows) else 0
+
+
 def x_snap(frame, guide, y0=50, lim=40, min_gain=0.05):
     """The model places each figure a little differently inside its cell, and the slicer only corrects height. Slide a
     standing frame sideways onto its guide: the dx (within +-lim) that best overlaps the two alpha masks below y0 (legs
@@ -335,7 +349,7 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
         best = None
         for k, raw in enumerate(raw_files(wdir, name), 1):
-            fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
+            fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u))
             sc = score_variant(diag, candidates(name, fr, base), poses, u["facing"], head_only=not u.get("legacy"))
             report[f"{name}_{k}"] = {"score": round(sc, 2), "k": diag["k"], "ref": diag.get("ref_redraw_dE"),
                                      "snap": diag.get("ground_snap"), "warnings": diag["warnings"]}
@@ -350,6 +364,10 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         fr, moved = prepare(u, name, fr, poses, style, base)
         chosen[name] = (sc, k, fr)
         report[f"{name}_{k}"]["x_snap"] = moved
+        fl = {f"{a} {i}": floating(f) for (a, i), f in zip(SHEETS[name], fr[1:]) if floating(f) > 3}
+        if fl:
+            report[f"{name}_{k}"]["floating"] = fl
+            print(f"warning: {name} variant {k} has frames above the ground: {fl}", file=sys.stderr)
     warp = lambda p: rig.warp_to_pose(base, rest, p, sharpen=u.get("sharpen", 3.0))
     frames = {}
     if "idle" in anims:
@@ -396,7 +414,7 @@ def review_sheet(wdir, name, base, u, poses, style):
     geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
     rows = []
     for k, raw in enumerate(raw_files(wdir, name), 1):
-        fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
+        fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u))
         fr, moved = prepare(u, name, fr, poses, style, base)
         snaps = diag.get("ground_snap", {})
         cells = [base] + fr[1:]
@@ -415,6 +433,9 @@ def review_sheet(wdir, name, base, u, poses, style):
                 sn = snaps.get(str(i), snaps.get(i, 0)) if isinstance(snaps, dict) else 0
                 if sn and abs(sn) >= 4:
                     lab += f"  ground {sn:+.0f}"
+                fl = floating(f)
+                if fl > 3:
+                    lab += f"  FLOATS {fl}"
             d.text((i * 256 + 4, 22), lab, fill=(30, 34, 40, 255))
         rows.append(row)
     if rows:
