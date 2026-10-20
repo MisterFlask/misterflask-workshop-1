@@ -1,0 +1,505 @@
+{
+ "idle": {
+  "nonrigid": [
+   0.0,
+   0.018,
+   0.027,
+   0.01
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     0.01,
+     1.45,
+     0.55
+    ],
+    "tunic": [
+     0.0,
+     0.56,
+     0.56,
+     0.0
+    ],
+    "hair": [
+     0.0,
+     0.29,
+     0.63,
+     0.34
+    ],
+    "wood": [
+     0.0,
+     0.13,
+     0.63,
+     0.25
+    ]
+   },
+   "peak_frame": {
+    "steel": 2,
+    "tunic": 1,
+    "hair": 2,
+    "wood": 2
+   },
+   "overlap_index": 0.433
+  },
+  "drift_dE": [
+   {
+    "mean": 0.0,
+    "p95": 0.0
+   },
+   {
+    "mean": 0.03,
+    "p95": 0.25
+   },
+   {
+    "mean": 0.08,
+    "p95": 0.53
+   },
+   {
+    "mean": 0.05,
+    "p95": 0.35
+   }
+  ],
+  "boil": [
+   8.3,
+   10.81,
+   15.55
+  ],
+  "arc": [
+   [
+    47,
+    52
+   ],
+   [
+    47,
+    52
+   ],
+   [
+    47,
+    50
+   ],
+   [
+    47,
+    51
+   ]
+  ],
+  "gates": [],
+  "jitter": {
+   "bottom_std": 0.0,
+   "feet_x_std": 0.0,
+   "bottoms": [
+    125,
+    125,
+    125,
+    125
+   ]
+  },
+  "summary": {
+   "nonrigid_mean": 0.018,
+   "overlap_index": 0.433,
+   "drift_mean": 0.04,
+   "boil_mean": 11.55,
+   "n_gate_flags": 0
+  }
+ },
+ "strike": {
+  "nonrigid": [
+   0.0,
+   0.345,
+   0.373,
+   0.53,
+   0.47,
+   0.343,
+   0.184,
+   0.028
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     28.77,
+     18.3,
+     22.68,
+     74.18,
+     77.35,
+     7.17,
+     0.8
+    ],
+    "tunic": [
+     0.0,
+     10.23,
+     12.08,
+     6.77,
+     10.54,
+     11.99,
+     3.12,
+     0.77
+    ],
+    "hair": [
+     0.0,
+     8.95,
+     8.46,
+     2.91,
+     2.83,
+     3.99,
+     4.99,
+     0.45
+    ],
+    "wood": [
+     0.0,
+     6.53,
+     9.14,
+     3.2,
+     3.53,
+     5.73,
+     4.28,
+     0.45
+    ]
+   },
+   "peak_frame": {
+    "steel": 5,
+    "tunic": 2,
+    "hair": 1,
+    "wood": 2
+   },
+   "overlap_index": 1.5
+  },
+  "drift_dE": [
+   {
+    "mean": 0.0,
+    "p95": 0.0
+   },
+   {
+    "mean": 0.9,
+    "p95": 2.02
+   },
+   {
+    "mean": 0.9,
+    "p95": 1.99
+   },
+   {
+    "mean": 0.99,
+    "p95": 2.14
+   },
+   {
+    "mean": 0.91,
+    "p95": 1.99
+   },
+   {
+    "mean": 0.91,
+    "p95": 2.02
+   },
+   {
+    "mean": 0.91,
+    "p95": 2.09
+   },
+   {
+    "mean": 0.07,
+    "p95": 0.47
+   }
+  ],
+  "boil": [
+   116.43,
+   113.08,
+   173.14,
+   170.38,
+   95.08,
+   144.13,
+   103.71
+  ],
+  "arc": [
+   [
+    47,
+    52
+   ],
+   [
+    39,
+    23
+   ],
+   [
+    24,
+    83
+   ],
+   [
+    24,
+    83
+   ],
+   [
+    138,
+    111
+   ],
+   [
+    138,
+    122
+   ],
+   [
+    53,
+    47
+   ],
+   [
+    47,
+    53
+   ]
+  ],
+  "gates": [
+   "frame 2: face is left of the hair (facing flip?)"
+  ],
+  "summary": {
+   "nonrigid_mean": 0.325,
+   "overlap_index": 1.5,
+   "drift_mean": 0.7,
+   "boil_mean": 130.85,
+   "n_gate_flags": 1
+  }
+ },
+ "flinch": {
+  "nonrigid": [
+   0.0,
+   0.27,
+   0.368,
+   0.38
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     12.07,
+     10.27,
+     8.99
+    ],
+    "tunic": [
+     0.0,
+     7.05,
+     4.26,
+     3.71
+    ],
+    "hair": [
+     null,
+     null,
+     null,
+     null
+    ],
+    "wood": [
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "peak_frame": {
+    "steel": 1,
+    "tunic": 1
+   },
+   "overlap_index": 0.0
+  },
+  "drift_dE": [
+   {
+    "mean": 2.21,
+    "p95": 4.08
+   },
+   {
+    "mean": 0.91,
+    "p95": 2.18
+   },
+   {
+    "mean": 0.86,
+    "p95": 2.06
+   },
+   {
+    "mean": 0.05,
+    "p95": 0.36
+   }
+  ],
+  "boil": [
+   160.36,
+   133.93,
+   37.22
+  ],
+  "arc": [
+   [
+    22,
+    39
+   ],
+   [
+    31,
+    69
+   ],
+   [
+    44,
+    54
+   ],
+   [
+    46,
+    53
+   ]
+  ],
+  "gates": [],
+  "jitter": {
+   "bottom_std": 0.0,
+   "feet_x_std": 1.91,
+   "bottoms": [
+    125,
+    125,
+    125,
+    125
+   ]
+  },
+  "summary": {
+   "nonrigid_mean": 0.339,
+   "overlap_index": 0.0,
+   "drift_mean": 1.01,
+   "boil_mean": 110.5,
+   "n_gate_flags": 0
+  }
+ },
+ "death": {
+  "nonrigid": [
+   0.0,
+   0.352,
+   0.432,
+   0.431,
+   0.474,
+   0.464,
+   0.463,
+   0.464
+  ],
+  "overlap": {
+   "displacement": {
+    "steel": [
+     0.0,
+     34.0,
+     36.13,
+     43.66,
+     53.55,
+     55.18,
+     55.03,
+     55.76
+    ],
+    "tunic": [
+     0.0,
+     5.25,
+     7.68,
+     13.39,
+     17.88,
+     22.34,
+     22.41,
+     23.02
+    ],
+    "hair": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "wood": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   },
+   "peak_frame": {
+    "steel": 7,
+    "tunic": 7
+   },
+   "overlap_index": 0.0
+  },
+  "drift_dE": [
+   {
+    "mean": 2.21,
+    "p95": 4.08
+   },
+   {
+    "mean": 0.87,
+    "p95": 2.06
+   },
+   {
+    "mean": 0.76,
+    "p95": 1.81
+   },
+   {
+    "mean": 0.8,
+    "p95": 2.04
+   },
+   {
+    "mean": 0.82,
+    "p95": 2.03
+   },
+   {
+    "mean": 0.84,
+    "p95": 2.13
+   },
+   {
+    "mean": 0.81,
+    "p95": 1.96
+   },
+   {
+    "mean": 0.83,
+    "p95": 2.1
+   }
+  ],
+  "boil": [
+   163.36,
+   141.88,
+   97.05,
+   154.87,
+   122.54,
+   79.17,
+   72.49
+  ],
+  "arc": [
+   [
+    22,
+    39
+   ],
+   [
+    35,
+    26
+   ],
+   [
+    108,
+    111
+   ],
+   [
+    110,
+    123
+   ],
+   [
+    141,
+    109
+   ],
+   [
+    140,
+    117
+   ],
+   [
+    138,
+    117
+   ],
+   [
+    140,
+    117
+   ]
+  ],
+  "gates": [
+   "frame 2: face is left of the hair (facing flip?)",
+   "frame 2: blade and shield on the wrong sides (hands swapped?)",
+   "frame 3: face is left of the hair (facing flip?)",
+   "frame 3: blade and shield on the wrong sides (hands swapped?)"
+  ],
+  "summary": {
+   "nonrigid_mean": 0.44,
+   "overlap_index": 0.0,
+   "drift_mean": 0.99,
+   "boil_mean": 118.77,
+   "n_gate_flags": 4
+  }
+ }
+}

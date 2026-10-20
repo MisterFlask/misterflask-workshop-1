@@ -1,0 +1,3 @@
+{"what": "strike", "start": 1792462874.3, "end": 1792463224.1, "seconds": 349.8, "calls": 3, "usd": 0.2361, "picked": "r2_1", "note": "strike only; anim/G1 tag also carries 3 calls by the separate make_g1_rest.py agent"}
+{"what": "idle+flinch (sheet A, rest agent)", "start": 1792462928, "end": 1792463437.0, "seconds": 509.0, "calls": 3, "usd": 0.2365, "note": "one sheet serves both animations; 3 rounds"}
+{"what": "death (sheet B, rest agent)", "start": 1792462928, "end": 1792463437.0, "seconds": 509.0, "calls": 1, "usd": 0.0781, "note": "run in parallel with sheet A; death frame 0 = flinch frame 0 from sheet A r2_1"}

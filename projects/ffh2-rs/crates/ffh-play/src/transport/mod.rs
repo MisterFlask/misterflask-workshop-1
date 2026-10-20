@@ -6,6 +6,8 @@
 //!   thread, an acceptor and a thread per connection; GETs are served from [`shared::Shared`]
 //!   (never waiting for the game thread), `POST /api` carries the envelope to the game thread;
 //!   [`art_files`] lists the art the browser client loads (embedded by `build.rs`).
+//! * [`web`]: the same answers, synchronously, for a page that runs the engine itself
+//!   (WebAssembly in a Web Worker, `crates/ffh-web`; docs/WEB.md).
 //!
 //! The envelope (§4.1) is the same for both: a request is an object with `k` (`cmd`, `q`,
 //! `answer`, `session`) and an optional `id` that the reply echoes; a reply is
@@ -23,6 +25,7 @@ pub mod http;
 pub mod server;
 pub mod shared;
 pub mod stdio;
+pub mod web;
 
 use std::path::{Path, PathBuf};
 use std::cell::RefCell;

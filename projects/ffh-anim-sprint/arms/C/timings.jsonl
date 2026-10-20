@@ -1,0 +1,2 @@
+{"what": "strike", "start": 1792463287, "end": 1792463896.6, "seconds": 609.6, "calls": 9, "usd": 0.8467, "note": "chained per-frame, 7 frames, 9 n=2 calls (frames 3 and 4 took 2 calls); excludes the Responses probe"}
+{"what": "responses probe (API calls)", "start": 1792463497.5, "end": 1792463539, "seconds": 41.5, "calls": 2, "usd": 0.2598, "note": "plus ~4 min writing the probe script"}

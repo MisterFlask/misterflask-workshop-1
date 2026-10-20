@@ -1,0 +1,5 @@
+# Video-model availability probe (2026-10-20T04:17Z)
+GET /v1/models/sora-2 -> {"id":"sora-2","object":"model","created":1759708615,"owned_by":"system","shutdown_date":"2026-09-24"}
+GET /v1/models/sora-2-pro -> {"id":"sora-2-pro","object":"model","created":1759708663,"owned_by":"system","shutdown_date":"2026-09-24"}
+GET /v1/videos?limit=1 -> HTTP 404
+POST /v1/videos -> HTTP 404

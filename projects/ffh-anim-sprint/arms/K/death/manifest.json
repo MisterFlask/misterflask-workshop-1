@@ -1,0 +1,58 @@
+{
+ "unit": "swordsman",
+ "arm": "K",
+ "anim": "death",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": false,
+ "hold_last": true,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 140,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 200,
+   "events": []
+  },
+  {
+   "file": "frame_04.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_05.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_06.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_07.png",
+   "ms": 400,
+   "events": []
+  }
+ ],
+ "note": "K death: frames 0, 3, 5 from pass-1 keys p1_r2_1; frames 1, 2, 4, 6, 7 from pass-2 in-betweens p2_r2_2"
+}

@@ -1,0 +1,15 @@
+{
+ "total": 20.0,
+ "tags": {
+  "anim": 20.0,
+  "anim/calib": 2.0,
+  "anim/G0": 1.2,
+  "anim/G1": 2.0,
+  "anim/G2": 2.0,
+  "anim/K": 2.4,
+  "anim/C": 2.0,
+  "anim/R": 0.6,
+  "anim/final": 5.0,
+  "anim/units": 5.0
+ }
+}

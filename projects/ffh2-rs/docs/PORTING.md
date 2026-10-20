@@ -203,6 +203,14 @@ the differences; it does not ask for them to be undone.
 
 **Small differences**
 
+- **No civilization trains another's unique units** (user decision: an FFH2 bug). FFH2's
+  `canTrain` checks a unit with `UpgradeCiv` (the Kuriotates Centaurs, the Clan of Embers' Ogres,
+  Goblins and Wolf Riders, the Calabim Vampires and Brujah, the Infernal Balor) only against that
+  civilization's line, so any city could train them; FFH2's city screen and AI never asked, since
+  they walk the city civilization's unit per class. `city_can_train` now admits such a unit only
+  as the city's (or its owner's) civilization's unit for its class, like every other unit.
+  `canUpgrade` is unchanged, so a unit with `UpgradeCiv` still upgrades along its civilization's
+  line in anyone's hands (a captured Centaur to a Centaur Archer), as `UpgradeCiv` intends.
 - **`deleteCity` clears the plots' working-city references** to the dead city (C++ leaves them,
   but `getWorkingCity()` then returns NULL, which is equivalent).
 - **Python `getUnitPlayerID`** (CustomFunctions) finds any unit by id; the original only found

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Checks the browser client of ffh-play (docs/PLAY_DESIGN.md §8 item 14): `node --check` of every
-# module and tool script, then the pure-module tests (`node --test crates/ffh-play/assets/test/*.test.mjs`).
+# module and tool script, then the pure-module tests (`node --test crates/ffh-play/assets/test/*.test.mjs`
+# and the static site's page side, `crates/ffh-web/site/test/*.test.mjs`, docs/WEB.md).
 # Skipped (exit 0) when node is not installed. Not part of `cargo test`.
 #
 #   tools/web-check.sh              syntax and unit tests
@@ -45,13 +46,23 @@ for f in "$assets"/app/*.js "$assets"/app/r3d/*.js "$assets"/app/r3d/assets/*.js
   fi
   n=$((n + 1))
 done
-for f in "$assets"/test/*.mjs "$root"/tools/*.mjs; do
+# The static site's page side (docs/WEB.md): modules, and the service worker (a classic script).
+site="$root/crates/ffh-web/site"
+for f in "$site"/boot.js "$site"/engine.js "$site"/wasi.js; do
+  if ! out="$("$node" --input-type=module --check < "$f" 2>&1)"; then
+    echo "web-check: $f does not parse:" >&2
+    echo "$out" >&2
+    exit 1
+  fi
+  n=$((n + 1))
+done
+for f in "$assets"/test/*.mjs "$root"/tools/*.mjs "$site"/coi-sw.js "$site"/test/*.mjs; do
   "$node" --check "$f"
   n=$((n + 1))
 done
 echo "web-check: $n files parse"
 
-"$node" --test "$assets"/test/*.test.mjs
+"$node" --test "$assets"/test/*.test.mjs "$site"/test/*.test.mjs
 
 if [ "$smoke" = 1 ]; then
   "$node" "$root/tools/web-api-smoke.mjs"

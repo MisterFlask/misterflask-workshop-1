@@ -1,0 +1,79 @@
+{
+ "1": {
+  "variant": "r1_2",
+  "raw": "strike_f1_r1_2.png",
+  "why": "closer to the blockout (guide IoU 0.665 vs 0.516), lower colour drift, hair grew less",
+  "k": 1.0023,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 4.38,
+   "iou": 0.983
+  }
+ },
+ "2": {
+  "variant": "r1_2",
+  "raw": "strike_f2_r1_2.png",
+  "why": "follows the blockout: blade hangs behind the shoulders, tip matches pose (117,70 vs 118,68); r1_1 pointed the blade forward-left and redrew cell 1 worse",
+  "k": 1.0018,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 3.51,
+   "iou": 0.987
+  }
+ },
+ "3": {
+  "variant": "r2_2",
+  "raw": "strike_f3_r2_2.png",
+  "why": "r2 wording fixed the long low blade (tip x 23 vs pose 22, at head height); r2_2 over r2_1: tip closer to the pose, less hair, smaller change from frame 2. 3 px of tip outline at x 15",
+  "k": 1.0023,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 2.94,
+   "iou": 0.984
+  }
+ },
+ "4": {
+  "variant": "r2_2",
+  "raw": "strike_f4_r2_2.png",
+  "why": "r2 wording brought the blade tip inside the safe region (x 18 vs pose 20); r2_2 keeps the body low (78 px) as the beat asks, less hair and colour drift than r2_1, cell 1 kept (dE 2.7 vs 12)",
+  "k": 1.0024,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 2.66,
+   "iou": 0.987
+  }
+ },
+ "5": {
+  "variant": "r1_1",
+  "raw": "strike_f5_r1_1.png",
+  "why": "blade steeper and its tip closer to the pose tip (28,121 vs 34,121; r1_2 at 25,120), higher guide IoU; cell 1 kept",
+  "k": 1.0026,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 2.65,
+   "iou": 0.983
+  }
+ },
+ "6": {
+  "variant": "r1_2",
+  "raw": "strike_f6_r1_2.png",
+  "why": "highest guide IoU (0.70), tip nearer the pose (40,52 vs 40,58), stance halfway between frame 5 and ready as the beat asks; r1_1 snapped the feet together and needed a 2 px ground snap",
+  "k": 1.0025,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 2.78,
+   "iou": 0.987
+  }
+ },
+ "7": {
+  "variant": "r1_2",
+  "raw": "strike_f7_r1_2.png",
+  "why": "closest to the static sprite it hands back to (silhouette IoU 0.78 vs 0.75, smaller change), sword 3 px low (beat: a touch low), cell 1 kept (dE 3.3 vs 7.6)",
+  "k": 1.0,
+  "ground_snap": null,
+  "ref_redraw": {
+   "dE": 3.28,
+   "iou": 0.989
+  }
+ }
+}

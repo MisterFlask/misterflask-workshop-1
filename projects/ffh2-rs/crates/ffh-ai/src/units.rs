@@ -537,7 +537,9 @@ pub(crate) fn barbarian(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
     // Wander: a deterministic pseudo-random reachable plot.
     let n = reach.len();
     if n > 1 {
-        let k = (u.0 as usize).wrapping_mul(2654435761).wrapping_add(g.game_turn() as usize * 40503) % n;
+        // In u64 (what `usize` is on 64-bit hosts): the same pick on wasm32 (the static site's
+        // engine, docs/WEB.md), where a `usize` product wraps at 2^32 and the games diverged.
+        let k = ((u.0 as u64).wrapping_mul(2654435761).wrapping_add((g.game_turn() as u64).wrapping_mul(40503)) % n as u64) as usize;
         let target = reach[k].plot;
         move_to(g, grp, target, 0);
         if alive(g, grp) && g.group_ready_to_move(grp, false) {

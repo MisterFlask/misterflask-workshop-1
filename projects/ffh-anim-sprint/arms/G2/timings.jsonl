@@ -1,0 +1,4 @@
+{"what": "strike", "start": 1792463781.0, "end": 1792464257.7, "seconds": 476.7, "calls": 3, "images": 6, "usd": 0.236, "rounds": 3, "picked": "r3_1"}
+{"what": "idle", "start": 1792464758.9, "end": 1792465016.2, "seconds": 257.4, "calls": 3, "images": 6, "usd": 0.2368, "rounds": 3, "picked": "sheetA r2_2", "note": "sheet A calls shared with flinch"}
+{"what": "flinch", "start": 1792465016.3, "end": 1792465046.9, "seconds": 30.6, "calls": 0, "images": 0, "usd": 0.0, "rounds": 3, "picked": "sheetA r1_1", "note": "uses the 3 sheet A calls logged under idle ($0.2368)"}
+{"what": "death", "start": 1792465046.9, "end": 1792465302.6, "seconds": 255.6, "calls": 3, "images": 6, "usd": 0.2361, "rounds": 3, "picked": "sheetB r2_1 (frame 0 = flinch frame 0, sheetA r1_1)"}

@@ -52,6 +52,11 @@
 //!                                      T13 (design §8): the session overhead on the AI turns,
 //!                                      command latency, the view on a huge map, the QueryGuard;
 //!                                      exit code 1 when a budget is missed
+//!   ffh-play export-site OUT [--data DIR]
+//!                                      the static site's files from this binary (docs/WEB.md):
+//!                                      OUT/index.html (loading web/boot.js), the client (app/),
+//!                                      the art (art/) and the game data pack (web/data.pak, from
+//!                                      DIR or the default data directory)
 //!   GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N]
 //!         [--world W] [--civ C] [--leader L] [--handicap H] [--speed S] [--new] [--no-game]
 //!         [--load SAVE] [--take-over SAVE --player P] [--panic-at T]
@@ -81,6 +86,7 @@ fn usage() -> ! {
          \x20      | agent [GAME] [--on-eof quit|end-turn] [--progress]\n\
          \x20      | serve [GAME] [--port N] [--bind ADDR] [--assets DIR] | stage capture|attack|automoves|load|trade|automate|election|settlement|corrupt DIR\n\
          \x20      | bench [--quick] [--seed N] [--turns T] [--runs R] [--world W] [--opponents N] [--ffh PATH] [--json]\n\
+         \x20      | export-site OUT [--data DIR]\n\
          \x20  GAME: [--saves DIR | --no-saves] [--autosaves N] [--setup JSON] [--seed N] [--opponents N] [--world W] [--civ C]\n\
          \x20        [--leader L] [--handicap H] [--speed S] [--new] [--no-game] [--load SAVE] [--take-over SAVE --player P]\n\
          \x20        [--panic-at T]   (see the source header)"
@@ -693,6 +699,31 @@ fn cmd_bench(args: &[String]) {
     }
 }
 
+/// `ffh-play export-site OUT [--data DIR]`: the static site's files that come from this binary
+/// (`ffh_play::site`).
+fn cmd_export_site(args: &[String]) {
+    let mut out = None;
+    let mut data = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--data" => data = Some(std::path::PathBuf::from(flag_value(args, &mut i))),
+            a if out.is_none() && !a.starts_with('-') => out = Some(std::path::PathBuf::from(a)),
+            _ => usage(),
+        }
+        i += 1;
+    }
+    let Some(out) = out else { usage() };
+    let data = data.unwrap_or_else(ffh_data::default_data_dir);
+    match ffh_play::site::export_site(&out, &data) {
+        Ok(e) => println!("ffh-play export-site: {} files in {} (data pack: {} files, {} bytes, from {})", e.files, out.display(), e.data_files, e.pack_bytes, data.display()),
+        Err(e) => {
+            eprintln!("ffh-play export-site: {e}");
+            std::process::exit(1)
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { usage() };
@@ -708,6 +739,7 @@ fn main() {
         "agent" => cmd_agent(&args[1..]),
         "serve" => cmd_serve(&args[1..]),
         "stage" => cmd_stage(&args[1..]),
+        "export-site" => cmd_export_site(&args[1..]),
         _ => usage(),
     }
 }

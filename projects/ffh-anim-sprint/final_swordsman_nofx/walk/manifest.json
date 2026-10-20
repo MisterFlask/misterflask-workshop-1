@@ -1,0 +1,53 @@
+{
+ "unit": "swordsman",
+ "facing": "lower-right",
+ "anim": "walk",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": true,
+ "hold_last": false,
+ "ground_speed_px_per_s": 54.5,
+ "ground_direction": [
+  0.894,
+  0.447
+ ],
+ "note": "move the unit along ground_direction (screen px) at ground_speed while this loops; mirror the frames and the x of the direction for the other lower diagonal",
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 110,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 110,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 110,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 110,
+   "events": []
+  },
+  {
+   "file": "frame_04.png",
+   "ms": 110,
+   "events": []
+  },
+  {
+   "file": "frame_05.png",
+   "ms": 110,
+   "events": []
+  }
+ ]
+}

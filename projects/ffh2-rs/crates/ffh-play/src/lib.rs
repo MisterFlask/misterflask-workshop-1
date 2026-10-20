@@ -25,6 +25,8 @@
 //! * [`transport`]: the JSON envelope over stdio (`ffh-play agent`) and HTTP (`ffh-play serve`),
 //!   which also serves the browser client (`assets/`, P5).
 //! * [`stage`]: saves at staged situations for testing the clients (`ffh-play stage`).
+//! * [`site`]: the static site's client files and data pack (`ffh-play export-site`; the engine
+//!   runs in the page: [`transport::web`], `crates/ffh-web`).
 
 pub mod bench;
 pub mod bot;
@@ -41,6 +43,7 @@ pub mod save;
 pub mod selection;
 pub mod session;
 pub mod setup;
+pub mod site;
 pub mod soak;
 pub mod stage;
 pub mod transport;

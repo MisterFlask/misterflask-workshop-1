@@ -22,6 +22,7 @@ crates/ffh-ai    AI players (new design)
 crates/ffh-cli   `ffh` binary: autoplay, benchmarks, inspection
 crates/ffh-stress `ffh-stress` binary: AI games over a settings matrix, crashes caught per game
 crates/ffh-play  `ffh-play`: human play (docs/PLAY_DESIGN.md, docs/HUMAN.md)
+crates/ffh-web   the engine as WebAssembly and the page side of the static site (docs/WEB.md)
 tools/           fetch-reference.sh, vendor_xml.py, gen_enums.py, gen_defines.py,
                  agents/ (shared builds, run cache, CPU slots: docs/AGENTS.md)
 docs/            ARCHITECTURE.md, DATA.md, PORTING.md (status), AGENTS.md (parallel agents)
@@ -258,5 +259,9 @@ Every commit still needs the hard-rule gate (`tools/agents/build-tree.sh --test`
 warnings) plus `bash tools/web-check.sh`. Run `node tools/web-smoke.mjs --bin <built>/ffh-play`
 before pushing to master. Regressions the owner reports get fixed in the next batch; don't try to
 pre-empt every conceivable one.
+
+A change to the transport, the web host or `crates/ffh-web` also runs the static site's smoke test
+before it goes to master (`tools/web-site.sh OUT`, then `node tools/web-site-smoke.mjs --site OUT`;
+docs/WEB.md): master is deployed to the public site by CI.
 
 When a batch passes the gate, fast-forward master and push it without asking.

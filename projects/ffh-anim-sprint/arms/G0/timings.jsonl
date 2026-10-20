@@ -1,0 +1,4 @@
+{"what": "strike", "start": 1792462329.8, "end": 1792462811.3, "seconds": 481.5, "calls": 3, "usd": 0.2345, "picked": "r2_2"}
+{"what": "idle", "start": 1792463079.0, "end": 1792463342.5, "seconds": 263.5, "calls": 3, "usd": 0.1183, "picked": "A_r2_2", "note": "sheet A (3 calls) shared with flinch; batch time split 30/30/40"}
+{"what": "flinch", "start": 1792463342.5, "end": 1792463606.0, "seconds": 263.5, "calls": 3, "usd": 0.1183, "picked": "A_r2_2", "note": "sheet A (3 calls) shared with idle; batch time split 30/30/40"}
+{"what": "death", "start": 1792463606.0, "end": 1792463957.4, "seconds": 351.4, "calls": 3, "usd": 0.2356, "picked": "B_r2_2 (+A_r2_2 cell 5 as frame 0)", "note": "sheet B; batch time split 30/30/40"}

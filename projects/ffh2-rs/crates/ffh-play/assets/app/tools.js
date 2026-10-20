@@ -296,7 +296,7 @@ export function openOptions() {
   const artFailed = look.art ? "" : `The art did not load${look.error ? `: ${look.error.message ?? look.error}` : ""}`;
   const renderer = [
     ["art", "Pixel art (2D)", artFailed || "The 2D pixel-art map"],
-    ["iso", "Isometric 2.5D", "Songs-of-Conquest-style isometric map (docs/art/SOC_DIRECTION.md)"],
+    ["iso", "Isometric 2.5D", "The isometric map in HD pixel art (docs/ISO.md)"],
     ["flat", "Flat (debug)", "The flat debugging renderer (colours, glyphs, labels)"],
     ...(EXPERIMENTAL_3D ? [["3d", "3D painterly (experimental)", "The experimental 3D renderer (docs/R3D.md); needs WebGL2"]] : []),
   ].map(([val, label, title]) =>

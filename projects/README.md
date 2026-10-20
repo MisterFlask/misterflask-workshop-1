@@ -8,6 +8,7 @@ This directory contains standalone code projects. Each subdirectory is a self-co
 |---------|-------------|------------|
 | [ffh2-rs](./ffh2-rs/) | Fall from Heaven 2 (0.41) ported to Rust | Rust, web client |
 | [openai-image-mcp](./openai-image-mcp/) | MCP server for OpenAI (ChatGPT) image generation in Claude Code | TypeScript, MCP SDK, esbuild |
+| [ffh-anim-sprint](./ffh-anim-sprint/) | Research sprint: idle/strike/flinch/death animation methods for M7 isometric unit sprites | Python, Pillow, OpenAI images API |
 
 ## Adding a New Project
 

@@ -26,7 +26,7 @@ export const DEFAULT_ZOOM = 96;
  *  expose the real adapter through WEBGL_debug_renderer_info; software fallbacks (SwiftShader,
  *  llvmpipe, Microsoft Basic Render, a software ANGLE adapter) are recognised by name. When the
  *  string is hidden (a privacy setting) `software` is false -- we cannot tell, so we do not block. */
-function rendererInfo(gl) {
+export function rendererInfo(gl) {
   let name = "";
   try {
     const dbg = gl.getExtension("WEBGL_debug_renderer_info");
@@ -39,6 +39,9 @@ function rendererInfo(gl) {
 
 /** `?force3d=1` plays the 3D map even on a software renderer (for a test, or when the guess is wrong). */
 function force3d() {
+  // `globalThis.FFH_FORCE3D` is the same switch for pages that cannot take a query string (the GPU
+  // bench published as an artifact, r3d-lab/bench.js).
+  if (globalThis.FFH_FORCE3D === true) return true;
   try {
     return new URLSearchParams(globalThis.location?.search ?? "").get("force3d") === "1";
   } catch {

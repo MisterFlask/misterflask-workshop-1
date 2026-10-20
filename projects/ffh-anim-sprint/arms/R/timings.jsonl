@@ -1,0 +1,4 @@
+{"what": "strike", "start": 1792462275.0, "end": 1792463101.1, "seconds": 826.1, "calls": 0, "usd": 0.0, "note": "cut-out rig from sprite pixels; code fills, no image-model calls"}
+{"what": "idle", "start": 1792463520.0, "end": 1792464006.5, "seconds": 486.5, "calls": 0, "usd": 0.0, "note": "rest agent: whole-sprite MLS body (sharpened), sword/shield lag layers; includes reading the rig"}
+{"what": "flinch", "start": 1792464006.5, "end": 1792464173.3, "seconds": 166.8, "calls": 0, "usd": 0.0, "note": "rest agent: make_r.pose_frame parts+MLS, code-drawn shut eyes, springs, decrumb"}
+{"what": "death", "start": 1792464173.3, "end": 1792464486.6, "seconds": 313.3, "calls": 0, "usd": 0.0, "note": "rest agent: parts + per-frame whole-body affine (lstsq on torso joints), body-space FK limbs, flat shield, dropped sword"}

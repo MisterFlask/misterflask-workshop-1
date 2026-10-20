@@ -1,0 +1,724 @@
+{
+ "direction": {
+  "ogre_agent": {
+   "letter": "P",
+   "looks": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "strike": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "hit_from": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "falls": [
+    "upper-right",
+    "upper-right",
+    "upper-right"
+   ],
+   "matches": [
+    true,
+    true,
+    true
+   ]
+  },
+  "hyborem_new": {
+   "letter": "Q",
+   "looks": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "strike": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "hit_from": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "falls": [
+    "upper-right",
+    "upper-right",
+    "upper-right"
+   ],
+   "matches": [
+    true,
+    true,
+    true
+   ]
+  },
+  "swordsman_judged": {
+   "letter": "R",
+   "looks": [
+    "lower-right",
+    "lower-right",
+    "lower-right"
+   ],
+   "strike": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "hit_from": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "falls": [
+    "upper-right",
+    "upper-right",
+    "upper-right"
+   ],
+   "matches": [
+    false,
+    false,
+    false
+   ]
+  },
+  "swordsman_new": {
+   "letter": "S",
+   "looks": [
+    "lower-right",
+    "lower-right",
+    "lower-right"
+   ],
+   "strike": [
+    "lower-right",
+    "lower-right",
+    "lower-right"
+   ],
+   "hit_from": [
+    "lower-right",
+    "lower-right",
+    "lower-right"
+   ],
+   "falls": [
+    "upper-left",
+    "upper-left",
+    "upper-left"
+   ],
+   "matches": [
+    true,
+    true,
+    true
+   ]
+  },
+  "hyborem_v1": {
+   "letter": "T",
+   "looks": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "strike": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "hit_from": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "falls": [
+    "upper-right",
+    "upper-right",
+    "upper-right"
+   ],
+   "matches": [
+    true,
+    true,
+    true
+   ]
+  },
+  "ogre_new": {
+   "letter": "U",
+   "looks": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "strike": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "hit_from": [
+    "lower-left",
+    "lower-left",
+    "lower-left"
+   ],
+   "falls": [
+    "upper-right",
+    "upper-right",
+    "upper-right"
+   ],
+   "matches": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ "quality": {
+  "ogre_agent": {
+   "idle": [
+    5.3,
+    5.15,
+    5.3
+   ],
+   "strike": [
+    6.8,
+    7,
+    6.7
+   ],
+   "flinch": [
+    5.8,
+    6.5,
+    6
+   ],
+   "death": [
+    6.15,
+    7.15,
+    5.85
+   ],
+   "flaws": {
+    "idle": [
+     "Almost no breath: frames 1-3 differ from frame 0 only by outline pixel noise and ember flicker, so it reads as a frozen still with a shimmering edge",
+     "Almost static: about 80 pixels change in the whole loop (a right-fist twitch on frame 2). No breath reads.",
+     "Hardly moves. Frames 1-2 change only a few pixels of fist shading and frame 3 is identical to frame 0, so there is no breath at all."
+    ],
+    "strike": [
+     "Club is cut off by the left frame edge in the 50ms swing frame and touches the top edge in the raise; hair changes from mohawk to topknot during the action",
+     "The club leaves the frame (top edge on frame 1, left edge on frame 3). Its embers vanish for frames 1-6 and pop back on 7, and the frame-6 recovery holds the club upright in the other hand.",
+     "The club is cut off by the top edge in frame 1 and the left edge in frame 3. The club's fire embers vanish for the whole swing."
+    ],
+    "flinch": [
+     "Bright magenta specks in the hair across frames 0-2, and the club jumps from held vertical at his side straight onto his shoulder in the last frame",
+     "The club snaps from vertical in front (frame 2) to over the shoulder (frame 3), the embers pop back in at the same time, and magenta specks sit by the hair on frames 0-2.",
+     "Off-palette magenta specks at the hair tie in frames 0-2. The club snaps from low in front to over the shoulder between frames 2 and 3."
+    ],
+    "death": [
+     "The held final pose is a tangled pile with a magenta streak artifact and a stray red speck, and the club handle turns pink in frame 4",
+     "Magenta specks and a pink smear on the club handle (frame 4). The club head is also cut off at the top on frame 1.",
+     "The club handle turns into a pinkish smear in frame 4, then merges into the corpse with magenta specks in frames 5-7. The club is also cut off at the top in frame 1."
+    ]
+   }
+  },
+  "ogre_new": {
+   "idle": [
+    6.7,
+    7.5,
+    7.5
+   ],
+   "strike": [
+    5.75,
+    6.1,
+    5.9
+   ],
+   "flinch": [
+    7,
+    7.5,
+    7.3
+   ],
+   "death": [
+    6.4,
+    7.7,
+    6.7
+   ],
+   "flaws": {
+    "idle": [
+     "The 1px rise reads as breath, but the eye and face details change between frames (glint and brow shift)",
+     "The breath is a uniform 1px rise of the chest and arms. Legs and club barely take part, and the embers only flicker on frame 3.",
+     "In frame 3 only the club head and embers have moved, so the club ticks slightly when the loop wraps back to frame 0."
+    ],
+    "strike": [
+     "On the HIT frame the whole ogre floats about 22px off the ground (feet at y=103 vs 125), then drops back, so the blow has no weight; the shoulder bone also turns into a skull",
+     "On the HIT frame (4) the whole ogre floats 22px off the ground (feet at y103 instead of 125), then drops back on frame 5. The club also clips the top edge on frame 1.",
+     "The whole orc floats about 22 px off the ground in the HIT frame (frame 4) and drops back in frame 5. Frame 6 also has the club head sliced flat at row 19."
+    ],
+    "flinch": [
+     "Club spike touches the top frame edge in frame 0; otherwise the recoil, sag and return via the club on his shoulder flow well",
+     "The club tip and embers touch the top edge on frame 0. The return from frame 1 to frame 2 is abrupt.",
+     "Embers are cut off at the top edge in frame 0. Otherwise it eases cleanly back to idle."
+    ],
+    "death": [
+     "The club head flashes maroon/pink in frame 1, a jarring colour pop; the final pose is clean, with the club lying clearly separate",
+     "On frame 1 the club suddenly turns pink/maroon.",
+     "The club suddenly turns maroon in frame 1 and pops back to brown wood afterwards."
+    ]
+   }
+  },
+  "_prefer": {
+   "U1:idle": [
+    "ogre_new",
+    "ogre_new",
+    "ogre_new"
+   ],
+   "U1:strike": [
+    "ogre_agent",
+    "ogre_agent",
+    "ogre_agent"
+   ],
+   "U1:flinch": [
+    "ogre_new",
+    "ogre_new",
+    "ogre_new"
+   ],
+   "U1:death": [
+    "ogre_new",
+    "ogre_new",
+    "ogre_new"
+   ],
+   "U2:idle": [
+    "tie",
+    "tie",
+    "tie"
+   ],
+   "U2:strike": [
+    "swordsman_new",
+    "swordsman_judged",
+    "swordsman_new"
+   ],
+   "U2:flinch": [
+    "swordsman_new",
+    "swordsman_new",
+    "swordsman_new"
+   ],
+   "U2:death": [
+    "swordsman_new",
+    "swordsman_judged",
+    "swordsman_new"
+   ],
+   "U3:idle": [
+    "hyborem_new",
+    "hyborem_new",
+    "hyborem_new"
+   ],
+   "U3:strike": [
+    "hyborem_new",
+    "hyborem_new",
+    "hyborem_new"
+   ],
+   "U3:flinch": [
+    "hyborem_new",
+    "tie",
+    "hyborem_new"
+   ],
+   "U3:death": [
+    "hyborem_v1",
+    "hyborem_v1",
+    "hyborem_v1"
+   ]
+  },
+  "swordsman_new": {
+   "idle": [
+    6.5,
+    7.5,
+    7.5
+   ],
+   "strike": [
+    6.7,
+    4.45,
+    7.7
+   ],
+   "flinch": [
+    6.85,
+    7.35,
+    7.7
+   ],
+   "death": [
+    7,
+    6.7,
+    7.7
+   ],
+   "flaws": {
+    "idle": [
+     "The breath rise reads, but the face redraws slightly differently at the top of the breath (identical to Y)",
+     "Pixel-identical to Y: the motion sits mostly in the head, so it reads more as a head bob than a breath.",
+     "Small shifts in the face (mouth and eye) from frame to frame. Identical to Y."
+    ],
+    "strike": [
+     "The shield vanishes in the 50ms thrust frame, then reappears swung behind his back for the hit and hold frames",
+     "He flips to face right on frames 3-5 and slashes behind his own facing, with the shield swapping arms, then turns back on frame 6. The blow does not land on a target in front of him.",
+     "The shield vanishes in frame 3 and pops in behind his back in frames 4-5. It reads as torso rotation, but it is abrupt."
+    ],
+    "flinch": [
+     "Strong lean-back recoil, but the serene closed-eye, blushing face reads as dozing rather than hurt",
+     "The head and hair are noticeably larger on frames 0-1 than in the rest pose, a size pop on entry and exit.",
+     "The hair silhouette goes rounder and softer in the recoil frames 0-1."
+    ],
+    "death": [
+     "Goes from kneeling to fully supine in one 80ms frame with no falling in-between, and the frame-6 bounce is a bit abrupt",
+     "He falls with his head to the left, toward the attacker, which reverses the body direction from the kneel, and the sword lands on the right. Frame 4 is already nearly flat, so there is little mid-fall.",
+     "A large jump from kneeling (frame 3) to flat on his back (frame 4), and the shield flips from upright to flat."
+    ]
+   }
+  },
+  "swordsman_judged": {
+   "idle": [
+    6.5,
+    7.5,
+    7.5
+   ],
+   "strike": [
+    6.15,
+    6.2,
+    5.75
+   ],
+   "flinch": [
+    6.15,
+    7,
+    6.4
+   ],
+   "death": [
+    6,
+    7.35,
+    6.2
+   ],
+   "flaws": {
+    "idle": [
+     "The breath rise reads, but the face redraws slightly differently at the top of the breath (identical to X)",
+     "The motion sits mostly in the head, plus a 1px sword and shield shift, so it reads more as a head bob than a breath.",
+     "Small shifts in the face (mouth and eye) from frame to frame. Identical to X."
+    ],
+    "strike": [
+     "The blow lands to the lower-left with his face turned left, opposite to his idle facing (lower-right); a tan smudge also sits on the shorts in frames 1-2",
+     "Frames 1-6 draw the swordsman about 15-20% larger (bigger head, thinner outlines, a different face), so he pops up in size at frame 1 and back down at frame 7.",
+     "From frames 3 to 6 his head turns to face left and the blow lands on his left, behind him, the opposite of his right-facing idle. Frame 7 then snaps back to facing right."
+    ],
+    "flinch": [
+     "His hair turns wild and spiky in the hit frames and the body barely recoils (mostly flung arms); a magenta speck at the hair edge",
+     "On frame 1 the sword sweeps down and forward, which reads partly as an attack rather than a recoil. The head shrinks back on the step from frame 2 to frame 3.",
+     "Off-model in frames 0-1: spikier, puffier hair and a front-facing '><' squint. The figure also shifts several px left in frame 1."
+    ],
+    "death": [
+     "He falls face-up with his head to the right (which needs a turn from his facing), and the dropped sword sticks out from under his boots, muddling the final pose",
+     "The sword jumps from his hand (frame 3) to lying under his boots (frame 4), and the shield flips from upright to flat between frames 4 and 5.",
+     "The body sits back up in frame 6, nearly repeating frame 4 with the arm raised. The fall reads as twitching rather than settling, and the wild off-model hair returns in frames 0-1."
+    ]
+   }
+  },
+  "hyborem_v1": {
+   "idle": [
+    5.3,
+    6,
+    5.8
+   ],
+   "strike": [
+    6.5,
+    6.8,
+    6.5
+   ],
+   "flinch": [
+    6.8,
+    7.3,
+    6.8
+   ],
+   "death": [
+    6.8,
+    7.35,
+    6.8
+   ],
+   "flaws": {
+    "idle": [
+     "Effectively static: only a flame tip and outline pixels change, so there is no visible breath",
+     "Almost static: only the blade-tip flame flickers and a hand twitches. The body does not breathe.",
+     "No breath. Only a few flame-tip and hand pixels flicker, so it reads as a still image."
+    ],
+    "strike": [
+     "In the coil frame the arm over the head reads as a red lump on top of the head; magenta specks appear on the fists and legs, and the sword is cut off by the left edge in the 50ms swing",
+     "The frame-2 wind-up is muddled: arm, pauldron and horns tangle over the head. Magenta specks appear on the fist and body on frames 2 and 4-6.",
+     "In the frame 2 wind-up the arm mashes into the head and horns (a muddled red blob), with magenta specks in frames 2 and 4-6."
+    ],
+    "flinch": [
+     "Several magenta specks around the sword hand and legs in the sag frame",
+     "Stray magenta pixels around the feet and lower body on frames 0-1.",
+     "Magenta specks inside the foot flames in frames 0-1, and the cape is trimmed smaller than in idle."
+    ],
+    "death": [
+     "Magenta specks through the fall, and the frame-6 bounce props him almost upright before he flops flat",
+     "The lying frames are slightly muddy and dark, with scattered magenta specks on frames 1-7.",
+     "Magenta specks on several frames and a red smear under the corpse in frames 5-7."
+    ]
+   }
+  },
+  "hyborem_new": {
+   "idle": [
+    7,
+    7.5,
+    7.5
+   ],
+   "strike": [
+    7.5,
+    8,
+    7.7
+   ],
+   "flinch": [
+    7,
+    7.5,
+    7.5
+   ],
+   "death": [
+    5.6,
+    5.65,
+    5.65
+   ],
+   "flaws": {
+    "idle": [
+     "The breath rise reads, but the facial expression flickers slightly (grin, open mouth, grimace)",
+     "The foot flames stay frozen through the whole loop. Only the torso, sword and blade tip move.",
+     "The ground flames around the feet stay frozen while the upper body breathes."
+    ],
+    "strike": [
+     "The sword is cut off by the left frame edge in the 50ms swing frame; otherwise a clean coil and strong cape follow-through after the hit",
+     "The sword tip clips the left edge on frame 3. The rest pose sits 2px higher than the action frames (feet at y123 vs 125).",
+     "The flaming sword is cut off at the top edge in frame 1 and the left edge in frame 3."
+    ],
+    "flinch": [
+     "Small light-coloured holes between the legs in the recovery frame; otherwise nearly the same as X but cleaner",
+     "The recoil is mostly a crouch. The head barely snaps back, so the impact is a bit soft.",
+     "The recoil is only a modest lean and the cape stays stiff. The return from frame 2 to frame 3 is a little abrupt."
+    ],
+    "death": [
+     "From frame 4 through the held final frame the corpse and sword float about 21px above the ground line (bottom at y=104 vs 125), a visible pop off the ground",
+     "On frames 4-7 the falling and lying demon and his sword float about 21px above the ground line (y104 vs 125), and the held last frame stays floating.",
+     "The body jumps up about 21 px when it falls (frame 4), and the held final corpse floats above the ground. The feet also slide about 13 px right in frames 1-2."
+    ]
+   }
+  }
+ },
+ "quality_summaries": [
+  "Overall the split is close: X is preferred 5 times, Y 6 times, with 1 tie (the U2 idles are byte-identical). Y wins both idles that differ, because X's U1 and U3 idles are almost static: only outline noise changes, with no breath. Y is also generally cleaner, with fewer magenta specks, a smoother U1 flinch and a better U3 strike with cape follow-through. Y's main weakness is grounding and colour pops. In the U1 strike the ogre floats about 22px off the ground on the HIT frame. In the U3 death the corpse floats about 21px above the ground through the held final frame. In the U1 death the club flashes maroon for one frame. X keeps feet and bodies planted on the ground line, and in U2 it strikes the way the character faces. Y's U2 strike turns him around to hit lower-left, and its death leaves the sword jammed under his boots. X's recurring flaws are magenta speck artifacts (in the U1 flinch and death and the U3 strike), the shield vanishing in the U2 thrust frame, and weapons cut off by the frame edge in the 50ms swing frames, which both versions share for U1 and U3.",
+  "Overall I prefer Y, with two serious bugs. Each version has a recurring defect.\n\nY wins 8 of 12 animations:\n- It wins two of the three idles. U2's idles are pixel-identical, so that one is a tie. The U1 and U3 X idles are nearly static (about 80-100 changed pixels, no breath).\n- It wins the U2 strike. In X the swordsman flips to face right on frames 3-5 and slashes behind his own facing.\n- It wins the U3 strike (X's wind-up is muddled), the U1 flinch, and the U1 and U2 deaths.\n\nX wins 3:\n- The U1 strike: Y's HIT frame lifts the whole ogre 22px off the ground.\n- The U3 death: Y's falling and lying frames 4-7 float about 21px above the ground, including the held last frame.\n- The U2 flinch, narrowly, for a stronger head-snap recoil.\n\nThe U3 flinch is a tie.\n\nRecurring defects:\n- **X** leaves stray magenta pixels in U1 and U3. It drops the U1 club embers during actions and pops them back in at the end. Its club or blade goes out of frame on U1 strike frames 1 and 3. Its idles barely move.\n- **Y** has the two floating-frame bugs above, a pink club colour pop on U1 death frame 1, and a size and style pop in the U2 strike (the action frames are about 15-20% larger than the rest pose).\n\nWithout the floating frames, Y would be the clear winner on cleanliness, colour and motion.",
+  "Judge 3. Each version wins some animations. Y wins every idle that differs (the U2 idles are byte-identical): X's U1 and U3 idles barely move, while Y's breathe. Y also wins U1 flinch and death and U3 strike and flinch, and it is cleaner throughout, with no magenta specks. Y has two serious defects, though. Twice the figure loses ground contact: the U1 strike HIT frame floats about 22 px up, and the U3 death corpse floats about 21 px up and holds there. And in the U2 strike the hero turns his head to face left and strikes behind himself. X keeps characters grounded and strikes in the facing direction, so it wins U1 strike, U3 death and all three U2 action animations. X's recurring weaknesses are off-palette magenta specks and smears (U1 and U3), weapons cut off at the frame edges, and the fire embers vanishing from U1's club. Timings are identical across versions. Overall I lean slightly towards Y for polish and liveliness, but its floating frames and wrong-way strike would be the most visible problems in game."
+ ],
+ "direction_raw": [
+  {
+   "sets": [
+    {
+     "letter": "P",
+     "looks": "lower-left",
+     "looks_evidence": "Spiked-club orc. The brow, both eyes, the snout and the tusks sit in the left half of the head. The ear shows on the right edge of the head and the far shoulder pad is on the right, so this is a 3/4 view turned to screen-left and toward the viewer. The lead foot is planted forward-left.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the club head is low on the left side of the body, arm stretched down-left; frame 5 follows through further down-left. The face turns left throughout. Flinch frames 0-1: the head snaps back and up to the right with eyes shut and the torso leans right, so the blow came from the front-left. Death: kneels, then topples onto his back with his head at the right and his feet and club at the left."
+    },
+    {
+     "letter": "Q",
+     "looks": "lower-left",
+     "looks_evidence": "Horned fire demon. The one clearly visible yellow eye and the nose sit in the left part of the face. The pointed ear and cheek edge show on the right side of the head, and the big spiked pauldron and cape trail on the right. The flaming sword is held in the screen-left hand and the left foot leads.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the flaming blade extends from the left hand down and out to the lower-left of the body, with the tip near the lower-left of the frame; frame 5 follows through lower. Flinch frames 0-1: the head is thrown back to the right with a grimace and the chest pushes right. Death: drops to a kneel, then falls on his back with his head and horns at the right and his legs and sword at the left."
+    },
+    {
+     "letter": "R",
+     "looks": "lower-right",
+     "looks_evidence": "Swordsman with a shield. Zoomed in, his ear (a skin patch framed by hair) is on the LEFT side of his head. The visible eye, nose and mouth are toward the right, and the chin and cheek edge are on the right, so it is a 3/4 view to screen-right. The shield arm (screen-right) is forward. The strike frames show his face turned the other way (ear on the right, nose pointing left), which confirms the static sprite's face points right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": false,
+     "notes": "HIT frame 4: the sword is in the screen-left hand, thrust down to the lower-left of the body, and the head turns to face left. The whole strike is staged for a lower-left facer, while the static sprite looks lower-right: a mismatch. Flinch: the head tips back and shifts to the right (frame 1), so the hit comes from the lower-left, also opposite his facing. Death: falls on his back with his head at the right and his feet and sword at the left, again backward relative to a lower-left facing, not his own."
+    },
+    {
+     "letter": "S",
+     "looks": "lower-right",
+     "looks_evidence": "The static sprite is identical to R's: the ear is on the left of the head, the eye, nose and mouth point to screen-right, and the shield arm is forward on the right.",
+     "strike_toward": "lower-right",
+     "hit_from": "lower-right",
+     "falls_toward": "upper-left",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: he lunges right with the shield pulled back on the left. The sword blade runs from the hands down and out to the lower-right of the body, and his face turns right. Frame 3 thrusts straight right just before. Flinch frames 0-1: the head is thrown back to the upper-left with eyes shut and the torso leans left, so the blow came from the lower-right. Death: kneels, then falls on his back with his head at the left and his feet and sword at the right."
+    },
+    {
+     "letter": "T",
+     "looks": "lower-left",
+     "looks_evidence": "The static sprite is identical to Q's: the eye and nose are in the left part of the face, the pointed ear and cheek are on the right of the head, the pauldron and cape are on the right, and the sword is in the screen-left hand.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the flaming sword is thrust down-left from the left hand, with the blade to the lower-left of the body; frame 5 sweeps lower-left. Almost the same as Q. Flinch: the head snaps back to the right with a grimace. Death: falls on his back with his head at the right and his feet and sword at the left."
+    },
+    {
+     "letter": "U",
+     "looks": "lower-left",
+     "looks_evidence": "The static sprite is identical to P's: the eyes, snout and tusks are in the left half of the head, the ear is on the right edge, the shoulder pad is on the right, and the lead foot points forward-left.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the club head is on the left side of the body, about waist-to-knee height, arm extended down-left with sparks at the club. Frame 5 follows through to the lower-left corner. One anomaly: in the HIT frame the whole figure floats about 22 native px (66 px at 3x) off the ground. The silhouette bottom is at y=311 against 377 in every other strike frame. Flinch: the head snaps back to the right and the torso leans right, so the blow came from the lower-left. Death: falls on his back with his head at the right and his feet and club at the left."
+    }
+   ]
+  },
+  {
+   "sets": [
+    {
+     "letter": "U",
+     "looks": "lower-left",
+     "looks_evidence": "Ogre head in three-quarter view: the nose and tusks sit left of the head's centre, the one clearly visible eye is just right of the nose, and the pointed ear and side of the skull show on the screen-right edge. Free fist is forward at screen-left and the bone pauldron sits back at right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: arm fully extended down-left and the spiked club head low at the far screen-left, below the body. Flinch frames 0-1: chin thrown up and torso leaning back to the right, so the blow came from lower-left. Death: rears back, kneels, then lies on its back with the head at upper-right (well above foot level) and feet and club toward lower-left. The flinch and death frame 0 are already the recoil pose, not the static sprite. Same sprite as P."
+    },
+    {
+     "letter": "T",
+     "looks": "lower-left",
+     "looks_evidence": "Demon head: the eye, nose and grinning mouth are bunched on the left half of the head between the horn roots, while the pointed ear and back of the skull fill the screen-right side. Sword held forward at screen-left, cape trailing behind at right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: lunging, the flaming blade extends from the hands down and left, tip at the lower-left corner. Flinch frames 0-1: wincing head thrown back and torso leaning right, with the free fist flung out right, so hit from lower-left. Death: kneels, sword down-left, then falls on its back with the head and horns at upper-right and boots and sword toward lower-left. Same sprite as Q."
+    },
+    {
+     "letter": "S",
+     "looks": "lower-right",
+     "looks_evidence": "Swordsman head: the ear and the bulk of the hair are on the screen-left side, while the eye, nose tip and mouth sit on the right half of the face, so the face turns toward the viewer's right. Shield is held forward at right.",
+     "strike_toward": "lower-right",
+     "hit_from": "lower-right",
+     "falls_toward": "upper-left",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: lunging, the shield is pulled back at the upper-left and the sword arm thrusts the blade down and right, tip at the lower-right. Flinch frames 0-1: head snaps back and up and the body leans to the left, so hit from lower-right. Death: kneels, then lies on his back with the head at upper-left and feet, shield and dropped sword toward lower-right. Same sprite as R."
+    },
+    {
+     "letter": "R",
+     "looks": "lower-right",
+     "looks_evidence": "Same static sprite as S (byte-identical file): the ear and hair mass are at screen-left and the eye, nose and mouth are on the right half of the face, so the face turns toward the viewer's right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": false,
+     "notes": "HIT frame 4: head turns to profile-left and the sword arm extends the blade down and left, tip at the lower-left, with the shield kept back at right. That is opposite to where the sprite looks. Flinch frames 0-1: wincing head tilts back and the torso leans right, sword flung down-left, so hit from lower-left. Death: kneels with sword down-left, then lies on his back with the head at upper-right and feet and sword at lower-left. Every animation is built for a lower-left facer, but the sprite looks lower-right."
+    },
+    {
+     "letter": "Q",
+     "looks": "lower-left",
+     "looks_evidence": "Same static sprite as T (byte-identical file): the face features are on the left half of the head and the ear and back of the skull are at screen-right. Sword is forward at left and cape behind at right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: deep crouch, the flaming blade thrust down and left, tip at the lower-left frame edge. Flinch frames 0-1: grimacing head back and torso leaning right, so hit from lower-left. Death: kneels, then lies on its back with the head and horns at upper-right and feet and sword at lower-left. Close to T, with small pose differences such as the cape billowing in frame 5."
+    },
+    {
+     "letter": "P",
+     "looks": "lower-left",
+     "looks_evidence": "Same static sprite as U (byte-identical file): the nose and tusks are left of the head's centre and the ear and side of the skull are at screen-right.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the club arm reaches down and left, spiked head low at the lower-left, and the free fist is held back at right. Flinch frames 0-1: chin up and torso leaning back to the right, so hit from lower-left. Death: rears back, kneels, then lies on its back with the head at upper-right and feet and club at lower-left. Close to U."
+    }
+   ]
+  },
+  {
+   "sets": [
+    {
+     "letter": "S",
+     "looks": "lower-right",
+     "looks_evidence": "Swordsman with shield. On the 4x sprite the ear and the bulk of the hair sit on the left/back of the head. The eye, nose and mouth are on the right half of the face, in a three-quarter view turned right and slightly down toward the viewer. The shield arm is forward on the right.",
+     "strike_toward": "lower-right",
+     "hit_from": "lower-right",
+     "falls_toward": "upper-left",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: lunge to the right with the head turned right. The sword blade points down-right with the tip at the lower right of the frame, and the shield is pulled back to the left. Flinch frame 0 throws the head back, face up, and the whole torso tilts up-left, which means a blow from the lower right. Death: rears back, kneels, then falls onto the back with the head at upper-left and the feet and dropped sword at lower-right. This sprite is pixel-identical to R's."
+    },
+    {
+     "letter": "T",
+     "looks": "lower-left",
+     "looks_evidence": "Horned fire demon. The single visible yellow eye and the fanged mouth sit on the left half of the head. A pointed ear sticks out on the right side, so this is a three-quarter view turned left and down toward the viewer. The flaming sword is held up on the left.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the body leans left with the face turned down-left. The flaming blade extends from the left hand to the lower-left corner of the frame, and the free fist trails back on the right. Flinch frames 0-1 throw the head back up and to the right with a wincing face, and the torso recoils right, so the blow came from the lower left. Death: the sword drops to the lower left and the body falls on its back with the feet at lower-left and the head and horns at upper-right. This sprite is pixel-identical to Q's."
+    },
+    {
+     "letter": "U",
+     "looks": "lower-left",
+     "looks_evidence": "Orc with a spiked club on its shoulder. The eyes (yellow iris), brow and tusked jaw are shifted onto the left part of the head. The only visible ear is on the right side. This reads as a three-quarter view turned left and toward the viewer.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: the club is swung down so the spiked head sits at the far lower-left of the frame. The torso leans left and the face looks down-left. Anomaly: the whole body on the HIT frame is lifted about 22 game px off the ground line (feet at y~311 of 384 vs ~377 on the other frames), so it looks like it floats. Flinch frames 0-1 tip the head back, face up, and lean the torso right, which means a blow from the lower left. Death: the club falls to the lower left and the body ends on its back with the feet at lower-left and the head at upper-right. This sprite is pixel-identical to P's."
+    },
+    {
+     "letter": "P",
+     "looks": "lower-left",
+     "looks_evidence": "Same orc sprite as U (pixel-identical file). The eyes, brow and tusks are on the left of the head and a single ear shows on the right, so it is turned left and toward the viewer in three-quarter view.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: a planted wide stance with the club extended so the spiked head is at the lower-left of the frame. The face looks down-left and the free fist pulls back on the right. The feet stay on the ground line here, unlike U. Flinch frames 0-1 throw the head back to the right with a pained face and the torso recoils right, so the blow came from the lower left. Death: kneels with the club at lower-left, then falls on its back with the feet at lower-left and the head at upper-right."
+    },
+    {
+     "letter": "Q",
+     "looks": "lower-left",
+     "looks_evidence": "Same fire demon sprite as T (pixel-identical file). The visible eye and mouth are on the left half of the face and the pointed ear is on the right, so it is a three-quarter view turned toward the lower left.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": true,
+     "notes": "HIT frame 4: a deep lean left with the face down-left and the flaming blade reaching to the lower-left corner. The cape flares right. Flinch frames 0-1 throw the head back up and to the right while the torso recoils right, so the blow came from the lower left. Death: kneels with the sword at lower-left, then falls on its back with the feet at lower-left and the head at upper-right. Anomaly: lying frames 4-7 sit about 21 game px above the ground line (bottom at y~314 of 384 vs ~377 elsewhere), so the corpse appears to hover."
+    },
+    {
+     "letter": "R",
+     "looks": "lower-right",
+     "looks_evidence": "Same swordsman sprite as S (pixel-identical file). The ear and hair mass are on the left of the head, while the eye, nose and mouth are on the right half, turned right and slightly toward the viewer.",
+     "strike_toward": "lower-left",
+     "hit_from": "lower-left",
+     "falls_toward": "upper-right",
+     "strike_matches_look": false,
+     "notes": "The head turns from facing right in frames 0-2 to facing left in frames 3-6. On HIT frame 4 the face points left and the sword blade extends down-left with the tip at the lower-left of the frame, while the shield stays on the right. The blow therefore goes the opposite way from the static sprite's gaze. Flinch frames 0-1 throw the head back and to the right, and the torso recoils right, so the blow came from the lower left. Death: the sword lands at lower-left and the body falls on its back with the feet at lower-left and the head and shield at upper-right."
+    }
+   ]
+  }
+ ],
+ "key": {
+  "direction": {
+   "P": "ogre_agent",
+   "Q": "hyborem_new",
+   "R": "swordsman_judged",
+   "S": "swordsman_new",
+   "T": "hyborem_v1",
+   "U": "ogre_new"
+  },
+  "pairs": {
+   "U1": {
+    "X": "ogre_agent",
+    "Y": "ogre_new"
+   },
+   "U2": {
+    "X": "swordsman_new",
+    "Y": "swordsman_judged"
+   },
+   "U3": {
+    "X": "hyborem_v1",
+    "Y": "hyborem_new"
+   }
+  }
+ },
+ "_about": "Post-rule verification round B, on the sets regenerated after round A (prompt fixed, Hyborem lower-left). Same protocol as round A, new letter shuffle (seed 20261021)."
+}

@@ -1,0 +1,105 @@
+{
+ "name": "ogre",
+ "sprite": "m7/roster/units/unit_ogre_embers.png",
+ "facing": "lower-left",
+ "tag": "anim/units",
+ "description": "an Ogre, a huge hunched brute with olive-green skin, red war-paint stripes on his face, arms and belly, a black topknot, small fierce eyes and jutting lower tusks, a necklace of bone fangs, a shaggy brown fur mantle with a bleached bone skull pauldron on his left shoulder, a brown belt hung with bone fangs over a red loincloth, brown fur bracers and fur leg wraps, bare green feet, and a huge wooden club studded with steel spikes in his RIGHT hand, a few tiny orange embers drifting off the club head",
+ "hands": "the spiked club stays in his right hand on the screen-left side and his left hand is an empty fist on the screen-right side",
+ "guide_style": "grey",
+ "scale": 1.14,
+ "head_r": 14,
+ "limb": 1.4,
+ "joints": {
+  "head": [
+   73,
+   54
+  ],
+  "neck": [
+   80,
+   66
+  ],
+  "chest": [
+   82,
+   75
+  ],
+  "pelvis": [
+   80,
+   87
+  ],
+  "r_sh": [
+   64,
+   64
+  ],
+  "r_el": [
+   50,
+   75
+  ],
+  "r_ha": [
+   47,
+   56
+  ],
+  "tip": [
+   119,
+   30
+  ],
+  "l_sh": [
+   101,
+   58
+  ],
+  "l_el": [
+   109,
+   77
+  ],
+  "l_ha": [
+   111,
+   97
+  ],
+  "r_hip": [
+   70,
+   90
+  ],
+  "r_kn": [
+   62,
+   101
+  ],
+  "r_ft": [
+   59,
+   114
+  ],
+  "l_hip": [
+   90,
+   90
+  ],
+  "l_kn": [
+   98,
+   103
+  ],
+  "l_ft": [
+   103,
+   117
+  ]
+ },
+ "beats": {
+  "strike": {
+   "1": "anticipation: weight shifts back onto the rear leg, torso leans back, the club is lifted up over the head with the spiked head pointing up and back",
+   "2": "wind-up extreme: body coiled back and slightly crouched, the club cocked behind the head with the spiked head hanging down behind the shoulders, left fist tucked in",
+   "3": "swing: the front foot steps toward the lower-left, the torso whips forward, the arm sweeps over the head and the club is level, its spiked head pointing to the lower-left",
+   "4": "contact: club arm fully extended toward the lower-left, the spiked club head smashing down-left, front knee bent, body low and leaning in, left arm swung back for balance",
+   "5": "follow-through: the club carries on down until its spiked head nearly touches the ground at the lower-left, torso twisted, topknot trailing back",
+   "6": "recover: body rises, front foot pulls back halfway, the club lifts back toward the ready angle"
+  },
+  "flinch": {
+   "0": "impact: hit from the lower-left; head snaps back toward the upper-right, eyes squeezed shut, torso jolts back, both arms jerk outward (left fist flung out to the right, club arm thrown up and out)",
+   "1": "recoil extreme: leaning back further, knees bent, the club dipping, left arm still out"
+  },
+  "death": {
+   "1": "stagger back: a step back with the near foot, body thrown back, club arm flung up, left arm drooping",
+   "2": "knees buckle: hips drop, knees fold forward, torso slumps forward, head droops, the club lowering",
+   "3": "kneeling: on both knees, slumped forward, the club's spiked head resting on the ground, left arm hanging",
+   "4": "falling back: torso tips back toward the upper-right, the club slips out of the hand, legs slide forward",
+   "5": "hits the ground: lying on his back along the ground, feet toward the lower-left and head toward the upper-right; the club lies on the ground at the lower-left; the fur mantle spread under him",
+   "6": "bounce: head and shoulders lift slightly off the ground, the fur mantle settles",
+   "7": "corpse: lying flat and still on his back, eyes closed, the spiked club on the ground beside him"
+  }
+ }
+}

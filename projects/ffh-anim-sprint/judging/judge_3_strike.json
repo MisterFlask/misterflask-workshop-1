@@ -1,0 +1,92 @@
+{"judge": 3, "animations": {
+  "strike": {
+    "ordering": {
+      "B": "u v w q r s p t",
+      "D": "p r v t q u w s",
+      "F": "t q w v r p s u",
+      "H": "r q v u t p w s",
+      "K": "s t v w u q p r",
+      "M": "s u q p r t v w",
+      "P": "r p s u t v q w",
+      "S": "r v q s t w p u"
+    },
+    "odd_frame": {"B": "2", "D": "4", "F": "1", "H": "5", "K": "6", "M": "5", "P": "4", "S": "2"},
+    "defects": {
+      "B": [
+        "frames 1-2: sword-arm sleeve washed out and semi-transparent (ghostly arm)",
+        "frames 1-3: grey stray pixels beside the left hip",
+        "frames 1, 2, 4, 5: visibly blurrier than frame 0, so softness pops in and out",
+        "frames 3-5: legs and torso barely change; contact is upright with no lean or knee bend; shield arm static"
+      ],
+      "D": [
+        "frames 1-7: sword never leaves the ready angle; no overhead raise, no wind-up, no slash on the HIT frame 4",
+        "frames 3-5: whole sprite slides ~13 px left and back; both feet skate",
+        "frames 4-5: slightly softer than frame 0"
+      ],
+      "F": [
+        "frame 1: sword tip cut off by the top edge of the frame",
+        "frame 1: taller, longer-legged, less chibi figure than frame 0",
+        "frames 1-5: both feet slide; rear foot jumps ~13-22 px right at frames 3-4 instead of the front foot stepping in",
+        "frame 1: sword tip points up and forward rather than up and back",
+        "frames 1-7: faint purple fringe on outlines vs frame 0's dark outline",
+        "frame 7: slightly larger than frame 0 (small pop back into idle)"
+      ],
+      "H": [
+        "frame 3: pink smear pixels at the sword hand",
+        "frame 5: magenta streak along the sword forearm",
+        "frames 4-5: rear foot slides ~9 px right",
+        "frame 3: front foot barely steps; body stays upright in the swing",
+        "frames 4-5: shield stays in front, no balance swing",
+        "frames 1-7: light purple outline fringe"
+      ],
+      "K": [
+        "frames 1-7: strong purple/magenta outline fringe, unlike frame 0's dark outline (visible pop 0->1)",
+        "frame 6: figure noticeably bigger and wider than frames 0 and 7",
+        "frames 2 and 4: rear foot shifts 7-11 px",
+        "frame 1: body larger than in frame 0"
+      ],
+      "M": [
+        "frame 3: magenta stray pixels on the feet outline",
+        "frames 4-5: heavier magenta fringe; frame 5 head slightly larger with spikier hair",
+        "frames 4-5: rear foot slides ~9 px right",
+        "frames 4-5: shield stays in front, no balance swing"
+      ],
+      "P": [
+        "frames 1-7: heavy purple fringe and magenta pixels on outlines (worst in frames 4, 5, 7)",
+        "frames 4-5: legs stretched long and hair spikier, less chibi",
+        "frame 7: rear foot 6 px right of frame 0, so it pops when idle resumes",
+        "frame 6: slightly larger than frame 0",
+        "frames 4-5: shield stays in front, no balance swing"
+      ],
+      "S": [
+        "frame 2: different face (rounder anime eyes, softer jaw); reads as another character",
+        "frames 3-6: olive/khaki blotch on the blue shorts (colour shift)",
+        "frame 2: magenta stray pixels by the shield and arm",
+        "frames 1-6: purple outline fringe, gone again in frame 7",
+        "frame 1: sword tip within 4 px of the top edge"
+      ]
+    },
+    "scores": {
+      "F": {"motion": 8, "consistency": 6, "style": 7, "appeal": 8},
+      "K": {"motion": 8, "consistency": 6, "style": 6, "appeal": 8},
+      "H": {"motion": 7, "consistency": 7, "style": 7, "appeal": 6},
+      "M": {"motion": 7, "consistency": 7, "style": 6, "appeal": 6},
+      "S": {"motion": 7, "consistency": 5, "style": 6, "appeal": 7},
+      "P": {"motion": 7, "consistency": 5, "style": 5, "appeal": 7},
+      "B": {"motion": 5, "consistency": 6, "style": 5, "appeal": 4},
+      "D": {"motion": 2, "consistency": 6, "style": 8, "appeal": 2}
+    },
+    "ranking": ["F", "K", "H", "M", "S", "P", "B", "D"],
+    "flaws": {
+      "F": "Frame 1 turns into a taller, longer-legged figure with the sword tip cut off, and both feet slide around through the lunge.",
+      "K": "A heavy purple outline on every generated frame clashes with the dark-outlined frame 0, and frame 6 swells in size.",
+      "H": "Clean but a bit safe: the swing and contact stay fairly upright, and there are magenta specks on the sword hand in frames 3 and 5.",
+      "M": "Nearly the same as H but with more magenta fringing and a slightly larger, spikier-haired head at the follow-through.",
+      "S": "The frame-2 face looks like another character, and an olive blotch appears on the shorts in frames 3-6.",
+      "P": "The lunge is strong, but heavy magenta fringing, stretched legs in frames 4-5 and a 6 px foot pop in the settle frame hurt consistency.",
+      "B": "The body is a rigid cut-out with only a blurry, washed-out sword arm swinging, and the contact pose stays upright.",
+      "D": "It is not a strike at all: the sword never leaves the ready angle while the whole figure slides left and back."
+    },
+    "notes": "For the ordering test I told frame 0 from the settle frame partly by comparing candidate ready frames across letters, since the ref is shared. D's poses were too alike to order (I swapped 1/2 and 3/4); H's 6/7 swap was a near-identical pair. F and K have the strongest key poses. H, M, S and P are close to each other."
+  }
+}}

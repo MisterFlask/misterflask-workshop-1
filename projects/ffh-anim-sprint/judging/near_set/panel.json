@@ -1,0 +1,388 @@
+{
+ "winners": {
+  "strike": "cand_3",
+  "flinch": "cand_3",
+  "death": "cand_3"
+ },
+ "table": "cand_1: strike 5.33 (best x0), flinch 5.67 (best x0), death 5.17 (best x0), rule_ok true/true/true\ncand_2: strike 7.33 (best x1), flinch 7.00 (best x0), death 6.83 (best x0), rule_ok true/true/true\ncand_3: strike 7.83 (best x2), flinch 7.83 (best x3), death 7.83 (best x3), rule_ok true/true/true",
+ "notes": [
+  {
+   "id": "cand_1",
+   "note": "I wrote the near pose set for the swordsman in `work/near_poses/cand_1/`: the script, its JSON output and a render. I checked the render by eye. A script check confirmed:\n- all joints are in bounds;\n- idle 0 and strike 0 are REST exactly;\n- death 0 is the same as flinch 0;\n- strike 7 is within 2 px of REST and flinch 3 within 1 px.\n\nNothing outside the folder was touched, and no image calls were made.\n\n**Line of action, strike:**\n- 0: rest.\n- 1: leans back to the upper-left.\n- 2: coiled back to the upper-left, crouched.\n- 3: torso whips forward; the front (screen-right) foot steps to the lower-right, to (106,124).\n- 4: low and leaning in toward the lower-right.\n- 5: same as 4.\n- 6: rises.\n- 7: settles.\n\nHead, torso and legs come from the mirrored far set, with left and right swapped and moved about 5 px right to line up with the real sprite.\n\n**The swing, near (screen-left) hand:**\n- **Frame 1:** the sword lifts beside the head, hand at (63,49), tip up and back at (48,16).\n- **Frame 2 (wind-up):** hand high behind the near shoulder at the head's top-left (65,47). The blade is cocked behind the shoulders, tip at (35,65), and drawn behind the body.\n- **Frame 3:** the near shoulder twists forward and the arm comes across under the chin. The blade is level, pointing right, tip at (134,73).\n- **Frame 4 (contact):** the arm reaches across the front of the body, hand at (101,88). The blade points down-right at about 27\u00b0, tip at (132,104), clearly out at the lower-right.\n- **Frame 5:** tip nearly on the ground at (121,121).\n- **Frame 6:** the blade comes back up to upright.\n\nThe shield (far arm) is tucked in during the wind-up and pulled back behind the torso from frame 3.\n\n**Death fall:** in frame 3 he kneels with the sword tip resting on the ground in front of him. In frame 4 he tips back toward the upper-left, the sword drops at the lower-right, the shield arm flies up and the near arm reaches back. From frame 5 he lies on his back along the ground axis, head (51,99) to pelvis (84,115) at about 26\u00b0. The sword lies past his feet, the shield lies flat on the far side under his far hand, and he bounces 2 px in frame 6.\n\n**Compromises:**\n- In frame 3 the near arm can't reach over the large head, so it crosses under the chin rather than \"over the head\".\n- The shield in frames 4 and 5 still peeks out at the upper-right of the body.\n- The flinch and dropped-sword blades are foreshortened (24\u201331 px against 36), as in the far set.\n\nFiles are in /home/user/misterflask-workshop-1/projects/ffh-anim-sprint/work/near_poses/cand_1/:\n- poses_near.py\n- poses_near.json\n- render.png"
+  },
+  {
+   "id": "cand_2",
+   "note": "The near pose set for the lower-right swordsman is finished and renders cleanly. The script checks every frame for bounds, bone lengths, how far the warped frames stray from REST, the REST frames, and death frame 0 matching flinch frame 0, and nothing is flagged.\n\n**Swing choice.** He cuts diagonally down from over his near (right) shoulder. An overhead chop won't work here: the arms are about 17 px long and the head is 26 px across, so the hand can't get above the head. So the near arm swings across the front of the chest and the blade carries the big motion. That arm is the one closest to the viewer, so the arm and blade are drawn over the body and never hidden behind it.\n\n**Line of action per strike frame:**\n- **Frame 1:** he leans back to the upper-left onto the rear (screen-left) leg. The hand rises beside the head and the tip points up and back, at (44,23).\n- **Frame 2 (hold):** he coils back and crouches. The sword is cocked behind the head with the blade pointing back to the screen-left, tip at (29,57); the hand is hidden behind the head and the elbow shows. The shield is tucked in.\n- **Frame 3 (smear):** the front foot steps from (98,123) to (107,124) and the torso whips forward while the head lags. The arm crosses the chest and the blade is level, pointing right, tip at (132,76).\n- **Frame 4 (contact):** he lunges low with the rear leg straight and the arm fully out. The blade runs from (101,90) to (132,107), nearly parallel to the (96,48) ground line toward the target tile and well clear of the body. The shield arm has swung back behind the head.\n- **Frame 5:** the tip finishes at (127,120) near the ground. The shield lags a frame behind the sword.\n\nThe tip slows into the follow-through: it moves 31 px, then 14 px.\n\n**Death fall.** He staggers to the upper-left, kneels with the sword tip grounded at the lower-right, then falls back. The corpse lies head upper-left, feet lower-right; the sword lies at the lower-right and the shield lies flat on the far side.\n\n**Compromises:**\n- The head-to-feet line is about 30\u00b0, not 26.6\u00b0, because the head is lifted off the ground rather than sunk into it.\n- The far foot of the corpse is at y 118, because the ground there is farther back and so higher on screen.\n- The flinch-1 blade is shortened by 15% to suggest it pointing away from the viewer.\n\nFiles are in /home/user/misterflask-workshop-1/projects/ffh-anim-sprint/work/near_poses/cand_2/:\n- poses_near.py\n- poses_near.json\n- render.png"
+  },
+  {
+   "id": "cand_3",
+   "note": "I made the near pose set for the swordsman, who faces lower-right. Every strike, flinch and death now moves the way he is looking. All the checks pass:\n- **Frames:** counts are 4/8/4/8. Idle frame 0 and strike frame 0 are exactly REST, and death frame 0 equals flinch frame 0.\n- **Small-motion frames:** strike 7 and flinch 3 stay within 1.4 px of REST.\n- **Per frame:** every frame has `facing: lower-right`, `far: l` and its own `order`.\n- **Files:** only `cand_3` was written.\n\n**Line of action per strike frame:**\n- **1:** leans back toward the upper-left. The fist is beside the back of the head with the tip pointing up and back.\n- **2 (wind-up):** crouched and coiled. The fist is behind the head, the blade hangs down-left behind the shoulders, and the shield is tucked across the belly.\n- **3 (smear):** the torso whips round as the front (far) foot lands. The fist passes the chin and the blade points level to the right.\n- **4 (contact):** one diagonal from the shield, swung back behind the shoulders at the upper-left, through the extended near arm to the blade tip at the lower-right. The blade is at 30\u00b0, close to the 26.6\u00b0 attack line. The front knee is bent and the rear leg straight.\n- **5:** the blade carries on down until the tip is just above the ground at the lower-right.\n- **6:** he rises and the sword comes back up on the near side.\n\n**The tip's path:** down-left behind him, over the top, level to the right, then down to the lower-right. The blade never crosses the head or torso at contact.\n\n**Death:** he staggers back toward the upper-left with the sword flung up, then kneels with the tip resting on the ground at the lower-right. He falls back reaching behind him with the near hand. The corpse lies on its back at about 26\u00b0, head upper-left and feet lower-right, legs spread in a V. The shield lies flat at the upper-right and the sword on the ground at the lower-right.\n\n**Compromises:**\n- The arm is stretched about 30% in strike 1\u20133 so the fist clears the head.\n- In strike 3 the near arm crosses the chin.\n- In death 2\u20133 the blade crosses in front of the knees.\n- The shield in strike 4\u20135 sits behind the back and may read as slung there.\n- The rear leg in strike 4\u20135 is foreshortened.\n\nFiles are in `/home/user/misterflask-workshop-1/projects/ffh-anim-sprint/work/near_poses/cand_3/`:\n- `poses_near.py`\n- `poses_near.json`\n- `render.png`"
+  }
+ ],
+ "verdicts": [
+  {
+   "judge": 1,
+   "candidates": [
+    {
+     "letter": "A",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 5.5,
+      "flaws": [
+       "f1-f5: sword arm stretched. Upper arm is 11-12.7 px and forearm 11.2-12.7 px against 9.5/7.8 at rest (forearm up to +60%), so it reads as a rubber arm. Pull r_el and r_ha back toward rest lengths.",
+       "f1-f5: legs stay almost straight (knee offsets under 2.5 px) and the pelvis drops only 1-4 px (92 at f2, 94 at f4). There is no coil at f2 and no lunge at f4. Drop the pelvis about 8 px and bend the front (l) knee forward over the stepped foot.",
+       "f3: the level blade at y73 runs across the top rim of the shield (shield top about y69) and the hand sits on the rim, so blade and shield merge. Raise the arm and blade clear, or move the shield.",
+       "f4-f5: the shield stays at its rest spot front-right (108,82)/(108,84), right in the blade path, so the blade crosses its lower rim. This ignores the 'shield arm swung back for balance' beat. Swing it back toward the upper-left behind the torso, or up and out.",
+       "f4: head drops only 6 px and leans only 8 px ahead of the pelvis, so the body is not 'low and leaning in'.",
+       "f6: recovering sword stands vertical, leaning slightly right (tip 70,52), rather than angling back toward the ready up-left angle."
+      ]
+     },
+     "flinch": {
+      "score": 5.5,
+      "flaws": [
+       "f0-f1: blade shortened to 25.6 / 23.6 px (rest 35.8). The image model will draw a short sword. Keep it about 35 px.",
+       "f1: shield pulled back in to (102,84), 2 px inside rest, which contradicts 'shield still out'. Keep it near (107,80).",
+       "f0: arm fling is small. The sword hand moves only 8 px out and the blade barely rises, so it reads as a twitch, not a jerk outward.",
+       "f1: knees hardly bend (pelvis drops 3 px), so the recoil extreme is weak.",
+       "f2: shield at (101,88) overshoots 3 px inward of rest."
+      ]
+     },
+     "death": {
+      "score": 5,
+      "flaws": [
+       "d1: the raised forearm and hand (52,56) overlap the left edge of the head (head edge about x55), so the arm merges with the head.",
+       "d2-d3: blade drawn across the shield (tips at 103,112 and 110,119), so silver and brown merge. Route the blade below the shield or lift the shield.",
+       "d3: sword tip (110,119) floats about 4 px above the ground line.",
+       "d4: near leg bends backward with a 7 px thigh (r_hip 71,115 > r_kn 67,121 > r_ft 81,123). Both legs read as a pile of boots, not legs sliding forward.",
+       "d4: sword already lies in its final ground spot (114,112)-(141,120), so the 'slips out of the hand' beat is missing. Put it mid-fall near the hand.",
+       "d4-d7: limbs shrink. Upper arm 7.8, forearm 5.7-7.2 and near thigh 7.2 at d4, against standing lengths of 9.5/7.8/12.6.",
+       "d5-d7: legs crushed into a heap at the canvas bottom (pelvis y115, knees 117-120, feet 123-124). The corpse's head-to-pelvis line is on the iso axis but the legs do not read. Extend them along the 2:1 axis.",
+       "d5-d7: sword hilt (114,112) touches the boots, so they merge."
+      ]
+     }
+    },
+    {
+     "letter": "B",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 7,
+      "flaws": [
+       "f2: blade sticks out level, even slightly upward (hand 64,62 > tip 29,57), instead of hanging down behind the shoulders. Drop the tip to about (35,75).",
+       "f1-f3, f6: near knee splays out to the screen-left of the hip-foot line (r_kn x60-66, offset -5 to -10 px), so the legs look bow-legged. Bend it forward toward the lower-right instead.",
+       "f3: near arm is almost invisible. It is compressed to about 17 px with the hand (96,72) at the chin, so the blade seems to grow out of the neck and passes just over the shield top (y79). Extend the arm visibly to the right, as C does.",
+       "f4-f5: rear (near) shin is nearly horizontal (r_kn 80,116 > r_ft 65,121), so it reads as kneeling or dragging rather than a pushing back leg. Raise the knee a few px.",
+       "f4-f5: shield is raised beside the face (115,71)/(116,67), so it reads as a guard, not 'swung back for balance'. It does keep the blade path clear. It also jumps 22 px up between f3 and f4.",
+       "Strength worth keeping: the deepest coil and lunge of the three (pelvis drops 10 px, front thigh level with the shin vertical at f4) and limb lengths consistent in every frame."
+      ]
+     },
+     "flinch": {
+      "score": 7,
+      "flaws": [
+       "f1: near knee (63,105) splays left and far knee (86,110) points back (offsets -8 / -5 px), so the legs look bow-legged or bent backward while leaning back. Bend the knees forward (toward the lower-right).",
+       "f0: near knee is also slightly behind its line (-2.7 px).",
+       "f2: far elbow kinks outward to (101,77) while the shield goes back to rest, so the elbow pops for one frame.",
+       "Strengths: clear up-out sword fling at f0 (tip 30,44), shield out at f0 and still out at f1 (109,78 > 107,83), sword dips at f1."
+      ]
+     },
+     "death": {
+      "score": 7,
+      "flaws": [
+       "d1: layer order is l_leg, shield, l_arm, so the far forearm is drawn on top of the shield and covers the boss. Draw the shield after l_arm.",
+       "d1: near knee splays left (60,105), the same bow-leg as in strike and flinch.",
+       "d2: near knee is already almost on the ground (r_kn 76,119), so the kneel comes a frame early. The buckle should be halfway down.",
+       "d2-d3: the large low shield (95,101 / 97,110) sits behind the blade, so the blade crosses its lower half and merges.",
+       "d4: sword already lies at its final ground spot (112,123)-(140,109), so the slip-out-of-hand beat is missing.",
+       "d5-d7: sword hilt (112,123) nearly touches the far boot (107,118).",
+       "Strengths: cleanest corpse. The head-feet line runs about 0.57 down-right, close to the iso axis, with both legs straight and readable. The d4 slide is a clean diagonal. The sword tip rests on the ground at d3."
+      ]
+     }
+    },
+    {
+     "letter": "C",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 8,
+      "flaws": [
+       "f1-f2: weight barely shifts back. The pelvis sits at x80 against 82 at rest, and the knees bend forward instead of sitting onto the rear (near) leg. Move the pelvis 4-5 px left and lower the rear knee at f2.",
+       "f2-f3: sword arm stretched. Upper arm 11.4-13.0 px and forearm 10.8-11.7 px against 9.5/7.8 at rest. That is acceptable on the f3 smear but noticeable on the f2 hold.",
+       "f3: far arm is fully hidden behind the torso (l_el 85,75 sits inside the chest), so the shield (74,77) floats behind the near shoulder with no visible arm. The image model may attach it to the sword arm or drop it. Show a sliver of the far forearm, or say so in the prompt.",
+       "f2>f3 and f5>f6: the shield pops 21 px right-to-left and then 26 px back. Add an in-between at f6, for example a shield near (90,82).",
+       "f4-f5: shield at the upper-left sits behind the near upper arm (overlap around 77-85, 73-80), so it could read as a backpack. Nudge it 3-4 px further left and up, clear of the arm.",
+       "f4-f5: the lunge is a bit shallower than B's (pelvis drops 8 px). B's f4 legs could be borrowed.",
+       "Strengths: the blade really hangs down-left behind the shoulders at f2. The arm reads clearly extended at f3. The shield swings back behind the torso (the anatomically correct counter-swing for a lower-right facer) and leaves the blade path clear at f3-f5. The shoulders narrow, which shows torso rotation."
+      ]
+     },
+     "flinch": {
+      "score": 7.5,
+      "flaws": [
+       "f0: torso jolts back only 3 px (chest 81 to 78), so head tilt carries most of the hit. Push chest and pelvis back about 5 px.",
+       "f0: shield moves only 5 px out and 10 px up. Fling it a few px further right so 'both arms jerk outward' reads at 1x.",
+       "f1: pelvis drops only 4 px. Knees bend forward correctly but modestly.",
+       "Strengths: strong up-out sword throw at f0 (tip 24,49), sword dips at f1, shield still out at f1 (107,82), knees bend forward (the correct direction) while leaning back, limb lengths consistent."
+      ]
+     },
+     "death": {
+      "score": 7.5,
+      "flaws": [
+       "d2: near shin stretched to 19.2 px (rest 16.2), r_kn 80,113 > r_ft 63,122.",
+       "d2-d3: far forearm only 4.5 px (l_el 95,91 > l_ha 97,95), so it reads as a stub under the shield.",
+       "d3: far knee is off the ground (l_kn 86,118 against 122 for the near knee) and the far foot is raised to (73,111), so 'on both knees' reads as one knee. Lower the far knee to about y121.",
+       "d3: sword tip (108,118) floats about 5 px above the ground line. Drop it to about y123.",
+       "d4: sword already lies in its final spot (115,124)-(142,116), so the slip-out-of-hand beat is missing.",
+       "d5-d7: far leg drifts up off the axis (l_kn 91,108 > l_ft 108,112, 12 px above the near foot), so the legs splay in a V. Bring the far foot to about (106,119) for a cleaner iso line.",
+       "Strengths: strongest stagger at d1 (head 19 px back, sword flung up, no layering errors), a real forward slump at d2 (head 8 px ahead of the pelvis), the blade runs clear under the shield at d2-d3, the d4 fall has a readable raised far knee, and the corpse's head-to-pelvis line is on the iso axis (0.52) with the sword lying apart from the feet at the lower-right."
+      ]
+     }
+    }
+   ],
+   "best": {
+    "strike": "C",
+    "flinch": "C",
+    "death": "C"
+   },
+   "summary": "All three candidates obey the rule. At strike contact the blade points about 27-30 degrees below horizontal to the lower-right, which is close to the iso angle. Every flinch snaps the head and torso toward the upper-left, every corpse lies with its head at the upper-left and feet at the lower-right, and every dropped sword is at the lower-right. Idle 0 and strike 0 match the sprite's pose exactly in all three, and the idle data is identical across them. Idle 1-3, strike 7 and flinch 3 all stay within 2 px of rest. C is best in all three rows. Its shield swings back behind the torso, which is the correct counter-swing for this facing and leaves the blade path clear. The sword arm reads clearly at f3, the wind-up blade really hangs down behind the shoulders, the flinch knees bend in the right direction, and the death has the strongest stagger and slump with clean blade/shield separation. B has the most powerful body mechanics (deepest coil and lunge, consistent limb lengths) and the cleanest corpse line. Its flaws are a hidden arm at strike f3, a level wind-up blade, bow-legged knees in several frames, a layering bug at death d1 (far arm over the shield) and a blade crossing the shield at d2-d3. A is the weakest: stiff legs and little crouch, a sword arm stretched up to 60%, a blade crossing the shield at strike f3-f5 and death d2-d3, a sword shrunk 30% in flinch f0-f1, a backward-bent leg at death d4, and corpse legs heaped together. Fixer suggestions for C: borrow B's deeper f4-f5 lunge, add an in-between for the shield's return at f6, show a sliver of the far forearm at f3, and at d3 put both knees and the sword tip on the ground. One shared flaw in all three: the sword is already lying in its final spot at death d4, so the 'slips out of the hand' beat is missing.",
+   "map": {
+    "A": "cand_1",
+    "B": "cand_2",
+    "C": "cand_3"
+   }
+  },
+  {
+   "judge": 2,
+   "candidates": [
+    {
+     "letter": "A",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 7,
+      "flaws": [
+       "f1-f3: rear (screen-left) knee bows backward/outward, 5-10 px left of the hip-foot line (f2 r_kn 60,106 vs hip 71,100, foot 66,121; f3 thigh nearly horizontal pointing left). Bend it forward, to the right of the line.",
+       "f2: blade sits level, pointing left at ear height (hand 64,62 hidden behind the head, tip 29,57). The beat wants the blade hanging down behind the shoulders, so drop the tip to about (33,80).",
+       "f3: the near arm shows as a pale bar across the collar/chin (shoulder 80,77 to hand 96,72), and the hand lands on the shield's top rim (shield 92-110 x, 78-108 y), so the blade seems to grow out of the shield. Raise and extend the hand (about 102,64) so arm and blade clear the chin and shield.",
+       "f4-f5: shield raised to (115,71)/(116,67) is drawn behind the head and pressed against the face (head right edge x~111), so head and shield merge into one blob at 1x. Move it out and down (about 122,86) or swing it back to the upper-left.",
+       "f4-f5 are otherwise the strongest contact of the three: deep lunge (pelvis +10 px), front knee bent about 10 px forward, limb lengths kept near rest (arm 9.4/8.9).",
+       "f6: the sword goes from the lower-right follow-through straight back to an almost upright ready angle in one 100 ms frame. A mid-lift angle would smooth the recovery."
+      ]
+     },
+     "flinch": {
+      "score": 7,
+      "flaws": [
+       "f1: both knees bend toward screen-left (r_kn 63,105 and l_kn 86,110 are about 5 px behind their hip-foot lines), so the legs look bowed backward. Push the knees forward (right).",
+       "f1: blade shortened to 30.9 px (rest 35.8). Keep the full length.",
+       "f0: torso jolt is small (pelvis moves 2 px). Only the head and arms sell the impact."
+      ]
+     },
+     "death": {
+      "score": 6.5,
+      "flaws": [
+       "d1: wide bow-legged crouch (r_kn 60,105 out left, l_kn 91,105 out right) reads as bracing, not a stagger. Head is only 7 px behind the pelvis. Straighten the stepping leg and throw the torso further back.",
+       "d1: shield is drawn behind the torso, with the far arm drawn over it (order l_leg, shield, l_arm, torso), so it is half hidden and muddy.",
+       "d2: blade (hand 70,100 to tip 99,121) runs across the shield's lower-left. d3: blade crosses the shield bottom and both boots bunch into one brown mass under the shield, so the kneel is a cluttered lump at 1x.",
+       "d4-d7: the dropped sword's hilt (112,123) touches the boots (l_ft 106-107,118, r_ft 97,123), so sword and feet merge. Move the sword 8-10 px further right.",
+       "d5-d7: the far arm is drawn over the flat shield. The body axis (slope about 0.58) is a little steeper than the 2:1 iso axis."
+      ]
+     }
+    },
+    {
+     "letter": "B",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 8,
+      "flaws": [
+       "f1-f3: sword arm is stretched: upper arm 11.4-13.0 px and forearm 10.8-11.7 px, against 9.5/7.8 at rest (shield arm 10.2/9.4). Shorten it about 15-20% so the image model keeps proportions.",
+       "f3-f5: the shield jumps across behind the back to screen-left (f2 95,91, then f3 74,77) and back to the right at f6 (102,87). Its boss still faces the viewer and no arm connects it, so a model may draw it as held in the sword hand or in front. Show the rim or edge only, or keep part of it at the right of the torso.",
+       "f4: the contact lunge is only moderate (pelvis +8 px, front knee about 3 px forward of the hip-foot line). A deeper front-knee bend would add power.",
+       "f1: sword is almost vertical (hand 63,49, tip 51,16). Tilt it further back to the upper-left to sell 'tip up and back'.",
+       "Strengths: f2 is the clearest wind-up (hand above and behind the head, blade hanging down-back). The f3 arm is clearly extended on the magenta. f4-f5 make an X silhouette (shield back, blade forward and down) with clean layering and no blade/shield overlap."
+      ]
+     },
+     "flinch": {
+      "score": 8,
+      "flaws": [
+       "f0: the sword arm is thrown out, but the blade is almost level (hand 52,71, tip 24,49). The beat says 'up-out', so raise the tip about 10 px.",
+       "f1: lean-back is modest (head 5 px behind the pelvis). Knees bend forward correctly.",
+       "f0/f1: shield is drawn before the torso. No visible problem, but keep it in front of the far arm for consistency with idle."
+      ]
+     },
+     "death": {
+      "score": 8,
+      "flaws": [
+       "d3: the resting sword tip is at (108,118), about 5 px above the ground line (feet at 122-124). Lower it so it actually rests on the ground.",
+       "d5-d7: the far leg lies almost flat (hip 78,105 to foot 108,112, slope 0.14) while the near leg is steep, so the legs splay well off the iso axis. Pull the far foot down to about (106,118).",
+       "d5-d7: the dropped sword lies at slope -0.3 ((115,124) to (142,116)), not on the 2:1 iso axis.",
+       "d2: blade (71,99 to 104,111) almost touches the shield bottom. Keep 2-3 px of clearance.",
+       "Strengths: d1 is the clearest stagger (head 12 px behind the pelvis, foot stepped back up-left). d2 slumps forward with the knees folding the right way. The sword stays clearly separate from the body in d4-d7."
+      ]
+     }
+    },
+    {
+     "letter": "C",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 5,
+      "flaws": [
+       "f1-f5: sword arm is badly stretched: forearm 12.5-12.7 px against 7.8 at rest (+60%), upper arm 11-12.7.",
+       "f2: the hand sits on top of the head (hand 65,47 on the head circle's edge, drawn over the hair), so it reads as scratching the head. Almost no coil (pelvis +2 px, legs straight).",
+       "f3: body upright, legs barely changed. The arm runs level across the chin/collar and merges with the neck. The hand (99,73) sits inside the shield's bounds, so hand, guard and shield rim merge.",
+       "f4-f5: the blade root and hand cross the shield face (shield 99-117 x), so they merge for the image model. Little lunge (pelvis +4 px, front knee about 2 px). The contact reads weak at 1x.",
+       "f6: the near-vertical blade (67,87 to 70,52) runs right along the left edge of the hair."
+      ]
+     },
+     "flinch": {
+      "score": 6,
+      "flaws": [
+       "f0-f2: sword foreshortened to 25.6, 23.6 and 31.4 px (rest 35.8), so it reads as a dagger at 1x. Keep the full length.",
+       "f1: legs almost straight (knees within 1.5 px of the hip-foot line), so the 'knees bent' recoil beat is missing.",
+       "f0: the sword arm is less 'thrown up-out' than in the others (hand 53,78)."
+      ]
+     },
+     "death": {
+      "score": 5.5,
+      "flaws": [
+       "d1: arms stretched (11.7/10.0). Stagger is acceptable.",
+       "d2-d3: the blade lies across the shield face (d2 73,99 to 103,112 over shield 83-101 x), and in d3 the legs bunch into one mass.",
+       "d4: torso still fairly upright, and the shield next to the head (80,79) forms a double-head blob in silhouette. Legs cluster under the pelvis instead of sliding forward to the lower-right.",
+       "d5-d7: legs are foreshortened (shins about 12.5 px against 16-17) and the body sits low in the frame. The sword's hilt (114,112) runs into the boots. The far arm is drawn across the flat shield."
+      ]
+     }
+    }
+   ],
+   "best": {
+    "strike": "B",
+    "flinch": "B",
+    "death": "B"
+   },
+   "summary": "All three candidates obey the rule. Each one strikes toward the lower-right (contact tip at about (132,105) every time), takes the hit from the lower-right with the head snapping to the upper-left, and dies falling to the upper-left. The corpse lies near the 2:1 iso axis (head-to-feet slope 0.45-0.58) with the sword dropped at the lower-right. idle 0 and strike 0 match the sprite exactly in all three. idle 1-3, strike 7 and flinch 3 stay within about 2 px (body joints at most 1.4 px off), so every candidate passes the settle check.\n\nB is the best set overall. It follows the beats most closely: an overhead lift in f1, a true cocked wind-up with the blade hanging down behind in f2, a level smear in f3 with the arm clearly extended, and an X silhouette at contact. Its layering is the cleanest, with no blade-over-shield or hand-over-head merges. It also has the best stagger, buckle and kneel in death, and its flinch knees bend forward correctly.\n\nB's main fixes:\n- Shorten the stretched sword arm in strike f1-f3 (13.0/11.7 px against 9.5/7.8 at rest).\n- Make the shield swinging behind to screen-left in strike f3-f5 readable, or tone it down.\n- Rest the sword tip on the ground in death d3.\n- Flatten the splayed far leg in d5-d7.\n\nA has the most powerful contact: the deepest lunge, with arm lengths true to rest. Its weaknesses:\n- Its f3 arm disappears into the collar and shield.\n- Its f4-f5 shield merges with the face.\n- Its knees bow backward in strike f1-f3, flinch f1 and death d1.\n- Its f2 blade is level, not hanging down.\n- Its d3 kneel is cluttered, and the dropped sword touches the feet.\n\nA's lunge legs from f4-f5 would be a good transplant into B. C is the weakest:\n- Its arm is stretched by up to 60%.\n- In strike f2 the hand sits on top of the head.\n- The strike is upright and has little power.\n- The blade crosses the shield face in strike f4-f5 and death d2-d3.\n- The flinch sword is shortened to dagger length.\n- The death legs are bunched up.\n\nClose-up comparison images are in /tmp/claude-0/-home-user-misterflask-workshop-1/15d5dec7-98b9-59d2-833f-ffb4d8cc1112/scratchpad/j2/ (cmp_*.png per frame, sil_*.png for the 1x silhouettes).",
+   "map": {
+    "A": "cand_2",
+    "B": "cand_3",
+    "C": "cand_1"
+   }
+  },
+  {
+   "judge": 3,
+   "candidates": [
+    {
+     "letter": "A",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 7.5,
+      "flaws": [
+       "1-3: the sword arm is stretched: upper arm plus forearm measure 22.2, 22.8 and 24.7 px against 17.3 px at rest (up to +43%). Shorten them to about 19 px or move r_sh out toward the hand.",
+       "3: the hand rises above the shoulder on the down-swing (r_ha 104,68 vs r_sh 81,75). Bring the hand down to shoulder level so the blade comes down along the arc.",
+       "3-5: the shield jumps behind the torso to screen-left (74-76,73-77), next to the head. At 1x the sword arm and the shield both read on the near side, and an image model may attach the shield to the wrong arm. Frame 6 then pops it back 28 px to 102,87. Keep it at back-right (about 106-110,78-82), or tuck it only partly behind the torso.",
+       "5: nearly a copy of frame 4. The hand moves only 6 px and the blade turns only 8 degrees (-30 to -38). Carry the blade on to about -55 degrees with the tip near 120,124, and add some torso twist.",
+       "4-5: the rear (near) shin shrinks to 12.0-12.8 px against 16.2 px at rest."
+      ]
+     },
+     "flinch": {
+      "score": 8,
+      "flaws": [
+       "0: the shield goes mostly up (104,88 to 109,78) and only 5 px outward. Push it about 4 px further right so 'flung out' reads.",
+       "1: the sword tip reaches 20,66, very far left. The silhouette gets wide but stays readable. Optionally bring the tip in a few px.",
+       "3: head_tilt is still 2 on a warp frame. Harmless, but 0 would settle more cleanly."
+      ]
+     },
+     "death": {
+      "score": 8,
+      "flaws": [
+       "3: the sword tip sits at 108,118, about 5 px above the ground line (about 123). The beat says the tip rests on the ground, so move the tip down to about y 123.",
+       "2: the near shin is stretched to 19.2 px against 16.2 px.",
+       "4: the sword jumps from the hand (76,103 in frame 3) straight to its final ground spot (115,124 to 142,116) in one frame. A mid-fall position would read better.",
+       "5-7: the dropped sword slopes 27:-8, off the 2:1 isometric ground axis. Use about [115,124] to [143,110].",
+       "2-3: the blade crosses both thighs. It reads, but keep it on top and clear of the knees."
+      ]
+     }
+    },
+    {
+     "letter": "B",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 5.5,
+      "flaws": [
+       "2: almost no coil. The pelvis is only 2 px below rest (92 vs 90), both legs are nearly straight and the head moves only 3 px back. Drop the pelvis about 6 px and bend the knees forward.",
+       "1-2 and 4-5: the sword arm is stretched to 23.9-25.2 px against 17.3 px at rest (about +45%).",
+       "3-5: the sword hand and blade sit on top of the shield ellipse (hand 99,73 / 101,88 / 97,94 against the shield at 107-108,82-84). They merge, and an image model may hide the sword behind the shield. Swing the shield out of the way or behind the body.",
+       "3: the arm is a rigid horizontal line at shoulder height across the chest, and the torso stays upright instead of whipping forward.",
+       "4: the contact pose is too upright: the pelvis drops only 4 px (94) and the lean is only 8 px. The shield arm never swings back for balance (shield 108,82, about where it rests).",
+       "4: the front thigh is stretched to 15.8 px against 13.6 px."
+      ]
+     },
+     "flinch": {
+      "score": 5.5,
+      "flaws": [
+       "0-1: the blade shrinks to 25.6 and 23.6 px against 35.8 px, so it reads as a dagger. Keep it about 35 px.",
+       "1: the shield pulls back in (102,84, left of its rest x of 104). The beat says the shield stays out.",
+       "1: both knees stay nearly straight. The 'knees bent' recoil is missing (pelvis drop only 3 px).",
+       "0: the head snaps only 4 px, the weakest of the three."
+      ]
+     },
+     "death": {
+      "score": 5,
+      "flaws": [
+       "2: the knees compress instead of folding forward (thigh 10.3 and shin 10.8 px against 12.6 and 16.2, with the knees on the hip-foot line).",
+       "2-3: the blade crosses the face of the shield (shield 92,100 / 92,106) and they merge.",
+       "4: the legs collapse into a pile of boots (near thigh 7.2 px), and the sword hangs in mid-air at y 112-120.",
+       "5-7: the sword stays at its mid-air coordinates [114,112] to [141,120]. It slopes down-right, off the isometric axis, and doesn't reach the ground by the feet.",
+       "5-7: the two legs nearly overlap (feet at 105,124 and 113,123) and merge into one boot blob."
+      ]
+     }
+    },
+    {
+     "letter": "C",
+     "rule_ok": true,
+     "idle_settle_ok": true,
+     "strike": {
+      "score": 8,
+      "flaws": [
+       "2: the blade points straight back, level or slightly up (hand 64,62 to tip 29,57, 172 degrees), instead of hanging down behind the shoulders. The hand sits at ear height inside the head circle. Lift the hand above the head and drop the tip to about -140 degrees.",
+       "1-3: the near knee is pushed toward screen-left (r_kn 66,105 / 60,106 / 69,105), 7-10 px off the hip-foot line. That reads as a knee bending backward. Bend it forward (screen-right) instead.",
+       "3: the blade grazes the top of the shield rim (blade y about 73, shield top 78 at x about 101). Raise the blade or lower the shield 3 px.",
+       "4-5: the shield is raised beside the face (115,71 / 116,67) and overlaps the edge of the head. It reads as a face guard rather than 'swung back for balance'. Lower it about 6 px or move it out about 4 px so the silhouettes separate.",
+       "5: the follow-through is small (blade -29 to -40 degrees, hand moves 7 px). Carry the tip further down."
+      ]
+     },
+     "flinch": {
+      "score": 7,
+      "flaws": [
+       "1: both knees bend toward screen-left (r_kn 63,105 and l_kn 86,110), which reads as backward-bending knees. Move them forward (screen-right).",
+       "1: the blade shrinks to 30.9 px against 35.8 px.",
+       "0: the chest jolts back only 2 px. Push it 2 px further."
+      ]
+     },
+     "death": {
+      "score": 7,
+      "flaws": [
+       "1: the legs turn into a symmetric squat (far shin vertical at x 91, both feet shifted 7-8 px left) instead of a clear step back with the near foot.",
+       "2-3: the blade crosses the lower half of the shield (shield 95,101 / 97,110) and they merge. Move the shield up or right, or route the blade below it.",
+       "4-7: the sword hilt (112,123) touches the far boot (107,118), so the blade reads as part of the foot. Move the sword 6-10 px further right or down.",
+       "3: the torso is squashed to 13 px against 16 px.",
+       "5-7: the corpse slopes 0.58, a little steeper than the 0.5 isometric axis."
+      ]
+     }
+    }
+   ],
+   "best": {
+    "strike": "C",
+    "flinch": "A",
+    "death": "A"
+   },
+   "summary": "All three candidates follow the rule. Each strike lands toward the lower-right at -27 to -30 degrees, close to the isometric lower-right of -26.6. The flinch snaps the head toward the upper-left, and the body falls with the head upper-left and the feet and sword lower-right. In every candidate, idle 0 and strike 0 match the rest pose exactly, flinch 0 equals death 0, and the warp frames (idle 1-3, strike 7, flinch 3) stay within 2.24 px of rest.\n\nStrike, best C (8): it is the only candidate that keeps the sword-arm length constant (about 17-18 px). Its deep lunge contact reads as the most powerful, and its shield stays clear of the sword. It loses points for the level wind-up blade in frame 2 and the near knee bending backward in frames 1-3.\n- A (7.5) follows the beats most literally (the wind-up blade hangs behind the shoulders, there is a real coil, and the foot steps 12 px). But its arm stretches by up to 43%, its shield jumps to screen-left in frames 3-5 and pops back in frame 6, and frame 5 nearly repeats frame 4.\n- B (5.5) has a weak coil and an upright contact pose, its arm stretches by about 45%, and its sword hand sits on the shield in frames 3-5.\n\nFlinch, best A (8): it keeps the sword at full length, both arms are flung out strongly, and the knees bend forward correctly in frame 1. C (7) has backward-bending knees in frame 1. B (5.5) shrinks the blade to a dagger and pulls the shield back in.\n\nDeath, best A (8): it has the strongest stagger, the cleanest layering in frames 2-3 (the blade stays off the shield) and a corpse that lies along the isometric axis. Its fixes are a tip that hovers in frame 3 and a sword that slopes off the axis in frames 5-7. C (7) puts the tip on the ground and lays the sword on the axis, but the blade crosses the shield in frames 2-3 and the hilt touches the boot in frames 4-7. B (5) has knees that don't fold, a merged shield and sword, a jumble of legs, and a sword left hanging in mid-air.\n\nCrops are in /tmp/claude-0/-home-user-misterflask-workshop-1/15d5dec7-98b9-59d2-833f-ffb4d8cc1112/scratchpad/j3/.",
+   "map": {
+    "A": "cand_3",
+    "B": "cand_1",
+    "C": "cand_2"
+   }
+  }
+ ],
+ "synth": "The final near set is built and rendered: all four animations come from cand_3, with most of the judges' flaws fixed. Idle 0 and strike 0 are exactly REST. Idle 1-3 are identical to the far set's breathing frames. Death 0 equals flinch 0. The settle frames stay within 1.4 px of REST.\n\n**Taken:** idle is cand_3's, which is identical to the far set and the other two candidates. Strike, flinch and death are cand_3's, then fixed.\n\n**Strike, fixed:**\n- **f1-f2 weight:** the pelvis now sits at x77, then x75, over the rear leg, and the f2 crouch is deeper.\n- **f1-f3 arm stretch:** the sword arm is back to about 9.5/9 px (rest is 9.5/7.8).\n- **f1 blade:** tipped 36\u00b0 back toward the upper-left.\n- **f3 hand:** stays at shoulder level.\n- **f4 lunge:** deeper (pelvis +11 px), and the rear shin is back to full length.\n- **f5 follow-through:** no longer a copy of f4. The hand travels 11 px and the blade turns to 45\u00b0 with the tip at the ground. It stops at 45\u00b0 rather than the suggested 55\u00b0 because 55\u00b0 would cut across the front knee.\n- **f3-f5 shield:** the far forearm is now drawn over the shield (showing its inside), so it reads as held by the far arm. It is also moved clear of the near shoulder.\n- **f6:** a new in-between with the shield tucked across the belly.\n\n**Strike, left:**\n- The shield still goes behind him to screen-left. One judge praised this as the correct counter-swing, and putting it at the back-right collides with the forward-leaning head and the blade.\n- The 25 px shield jump from f2 to f3 stays, because f3 is the 50 ms smear frame.\n\n**Flinch, fixed:** at f0 the chest goes back 5 px, the shield is flung 4 px further out relative to the body, and the blade tip is 9 px higher. At f1 the lean is deeper and the pelvis drops 6 px. The shield is drawn in front of the torso, as in idle.\n\n**Flinch, left:** f3 keeps head_tilt 2. That gives a gentle 5, 2, 0 settle, the same as the far set.\n\n**Death, fixed:**\n- **d2:** the near shin and both forearms are back to normal length, with 3.8 px between the blade and the shield.\n- **d3:** both knees and the sword tip are on the ground.\n- **d4:** the sword is in the air, mid-fall.\n- **d5-d7:** the far leg lies along the ground axis. The dropped sword now lies on the 2:1 ground axis, parallel to the body and apart from the feet, rather than crosswise as one judge suggested; parallel gives a smooth d4 to d5 drop.\n\n**Death, left:** the shorter head/neck at d2-d3 and the shorter shins at d1 are left, since they read as a slumped or angled-away pose.\n\nFiles are in /home/user/misterflask-workshop-1/projects/ffh-anim-sprint/work/near_poses/final/:\n- poses_near.py\n- poses_near.json\n- render.png",
+ "_about": "Near pose set panel (after the sprint): three candidate sets (cand_1..3), three blind judges scoring the rendered guides 1-10 per animation (letters A/B/C, per-judge order in 'map'), then a synthesis agent built poses_near.json from the winners and the judges' flaws. Mean scores in 'table'."
+}
