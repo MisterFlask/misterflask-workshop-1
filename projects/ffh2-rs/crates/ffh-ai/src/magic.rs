@@ -122,6 +122,8 @@ enum Py {
     Spring,
     Scorch,
     Vitalize,
+    /// `spellRecruit` (Donal, once): units in the caster's city ([`recruit_value`]).
+    Recruit,
 }
 
 fn py_kind(d: &GameData, s: SpellType) -> Py {
@@ -139,6 +141,7 @@ fn py_kind(d: &GameData, s: SpellType) -> Py {
                 "SPELL_SPRING" => Py::Spring,
                 "SPELL_SCORCH" => Py::Scorch,
                 "SPELL_VITALIZE" => Py::Vitalize,
+                "SPELL_RECRUIT" => Py::Recruit,
                 _ => Py::None,
             })
             .collect()
@@ -555,6 +558,10 @@ fn py_value(g: &Game, caster: UnitId, spell: SpellType, ctx: Ctx) -> Option<i32>
             Some(_) => 0,
             None => terraform_value(g, g.units[caster].owner, spell, here),
         }),
+        Py::Recruit => Some(match target {
+            Some(_) => 0,
+            None => recruit_value(g, caster),
+        }),
         Py::Earthquake => match target {
             // Walls and fortification of the city we strike.
             Some(tp) if g.map.plots[tp].plot_city.is_some() => {
@@ -563,6 +570,33 @@ fn py_value(g: &Game, caster: UnitId, spell: SpellType, ctx: Ctx) -> Option<i32>
             }
             _ => Some(0),
         },
+    }
+}
+
+/// `spellRecruit`, Donal's once: population / 3 + 1 units of classes our techs open (scouts to
+/// champions) in the caster's city, twice that with a Temple of the Order. A unit's hit points
+/// for each, in the first city of ours that gives two or more (or as many as our best): Donal
+/// marches with the army, and waiting for a city half as good as our best, 5 of 9 Donals left
+/// their city and never recruited (by FfH's own terms it was worth nothing: none of 20 Donals
+/// recruited, docs/AI.md "Unique units").
+pub(crate) fn recruit_value(g: &Game, caster: UnitId) -> i32 {
+    let temple = g.d.ty::<BuildingType>("BUILDING_TEMPLE_OF_THE_ORDER");
+    let recruits = |c: CityId| {
+        let n = g.cities[c].population / 3 + 1;
+        if temple.is_some_and(|b| g.city_num_building(c, b) == 1) {
+            n * 2
+        } else {
+            n
+        }
+    };
+    let p = g.units[caster].owner;
+    let Some(c) = g.map.plots[g.unit_plot(caster)].plot_city.filter(|&c| g.cities[c].owner == p) else { return 0 };
+    let best = g.players[p].cities.iter().map(|&o| recruits(o)).max().unwrap_or(0);
+    let here = recruits(c);
+    if here >= 2 || here >= best {
+        here * 100
+    } else {
+        0
     }
 }
 
@@ -1145,7 +1179,7 @@ pub fn spell_worth(d: &GameData, s: SpellType) -> i32 {
         Py::DestroyUndead | Py::Heal => 30,
         Py::Earthquake | Py::Vitalize => 40,
         Py::Spring | Py::Scorch => 20,
-        Py::None => 0,
+        Py::None | Py::Recruit => 0,
     };
     if let Some(ut) = info.create_unit_type {
         let u = &d.units[ut];

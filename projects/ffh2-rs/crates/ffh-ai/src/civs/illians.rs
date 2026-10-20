@@ -1,5 +1,6 @@
 //! Illians: their ritual projects raise their unique units (the owner's rule: civilizations use
-//! their unique mechanics, CLAUDE.md "AI changes").
+//! their unique mechanics, CLAUDE.md "AI changes"). Wilboman (Hero promotion, an attacker's default
+//! AI) is trained as a hero (`production::role_ok`); as an attacker he never won on cost.
 //!
 //! - **Ritual projects** (`CIV4ProjectInfo.xml`, effects in `ffh/events.rs`): The White Hand
 //!   (Philosophy, 400 hammers: three Priests of Winter, strength 5 + 2 cold, Medic, Channeling

@@ -1,8 +1,8 @@
 //! Spellcasting (`magic.rs`): constructed, deterministic scenarios on a small hand-made map --
 //! a mage next to an enemy city casts Fireball before our stack attacks it, an adept that knows
 //! Enchanted Blade and Haste blesses its stack rather than hasting it at the end of a quiet turn,
-//! and a fresh summon attacks only a fight it has a chance in. They fix no unit's stats, only what
-//! the spells are for.
+//! a fresh summon attacks only a fight it has a chance in, and Donal recruits once in a big city.
+//! They fix no unit's stats, only what the spells are for.
 
 use std::sync::Arc;
 
@@ -230,4 +230,36 @@ fn a_summon_is_worth_only_the_fights_it_would_take() {
     g.units[warrior].damage = 60;
     let v = View::new(&g, us);
     assert!(magic::turn_value(&g, &v, mage, spectre).is_some_and(|value| value > weight), "the Warrior in reach is worth a Spectre");
+}
+
+#[test]
+fn donal_recruits_once_in_a_big_city() {
+    let d = ffh_data::global();
+    let mut g = one_landmass_game(14);
+    let us = PlayerId(0);
+    if !magic::enabled(&g, us) {
+        return;
+    }
+    g.player_found(us, 4, 5);
+    g.player_found(us, 10, 5);
+    let (big, small) = (g.players[us].cities[0], g.players[us].cities[1]);
+    g.city_set_population(big, 9);
+    g.city_set_population(small, 2);
+    let recruit = d.t::<SpellType>("SPELL_RECRUIT");
+    let donal = |g: &mut Game, x: i32| g.player_init_unit(us, d.t::<UnitType>("UNIT_DONAL"), x, 5, Some(UnitAIType::UNITAI_HERO), None);
+    // In the small city: a single recruit, while the big city gives four.
+    let elsewhere = donal(&mut g, 10);
+    assert!(g.unit_can_cast(elsewhere, recruit, false), "Donal recruits in any city of ours");
+    let v = View::new(&g, us);
+    assert!(magic::turn_value(&g, &v, elsewhere, recruit).unwrap_or(0) <= 0, "not for one recruit");
+    // In the big city: population 9 / 3 + 1 = 4 units, once.
+    let home = donal(&mut g, 4);
+    let v = View::new(&g, us);
+    let (spell, value) = magic::choose_turn_spell(&g, &v, home).expect("Donal casts something");
+    assert_eq!(spell, recruit, "the recruits beat Donal's other spells (value {value})");
+    let before = g.players[us].units.len();
+    magic::cast(&mut g, home, spell, "test", value);
+    assert_eq!(g.players[us].units.len(), before + 4, "four recruits");
+    g.units[home].has_casted = false;
+    assert!(!g.unit_can_cast(home, recruit, false), "the Recruiter promotion is spent");
 }

@@ -4,6 +4,8 @@
 //! production, army to its target, casters, missionaries -- then a process. Whatever happens,
 //! a city is never left without an order (`fallback`).
 
+use std::sync::OnceLock;
+
 use ffh_core::defs::{CITY_HOME_PLOT, NUM_CITY_PLOTS};
 use ffh_core::game::Game;
 use ffh_core::ids::*;
@@ -257,6 +259,13 @@ pub fn barbarians_near(g: &Game, p: PlayerId, plot: PlotIdx, range: i32) -> bool
 pub fn count_ai(g: &Game, p: PlayerId, unit_ai: UnitAIType) -> i32 {
     let pl = &g.players[p];
     pl.ai_num_ai_units[unit_ai] + pl.ai_num_train_ai_units[unit_ai]
+}
+
+/// The workers our land needs (step 6 of `decide`): one a city up to three, one more for every
+/// three worked plots without an improvement, at most two a city.
+pub(crate) fn worker_target(g: &Game, p: PlayerId) -> i32 {
+    let n_cities = g.players[p].cities.len() as i32;
+    (n_cities.min(3) + (unimproved_worked_plots(g, p) + 1) / 3).min(n_cities * 2).max(1)
 }
 
 /// Can our workers build anything useful yet (an improvement or route whose tech we have)?
@@ -541,8 +550,7 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
 
     // 6. More workers, as the land we work needs improving.
     if can_improve && safe {
-        let unimproved = unimproved_worked_plots(g, p);
-        let target = (ctx.n_cities.min(3) + (unimproved + 1) / 3).min(ctx.n_cities * 2).max(1);
+        let target = worker_target(g, p);
         if workers < target && ctx.pop >= 2 {
             if let Some(u) = best_unit(g, c, Role::Worker) {
                 return Some(Choice::Train(u, UnitAIType::UNITAI_WORKER));
@@ -556,10 +564,16 @@ fn decide(ai: &Ai, g: &Game, c: CityId) -> Option<Choice> {
         if let Some(choice) = crate::victory::production(g, c, false) { return Some(choice); } // victory-pursuit
     }
 
-    // 7. Heroes are unique and strong (but not at the cost of the first expansion).
+    // 7. Heroes are unique and strong (but not at the cost of the first expansion); a coastal city
+    // trains a hero ship (the Lanun's Black Wind, which serves as a transport).
     if let Some(u) = best_unit(g, c, Role::Hero) {
         if g.city_production_turns_left_unit(c, u, 0) <= max_turns.min(25) || ctx.n_cities >= 3 {
             return Some(Choice::Train(u, UnitAIType::UNITAI_HERO));
+        }
+    }
+    if let Some(u) = best_unit(g, c, Role::SeaHero) {
+        if g.city_production_turns_left_unit(c, u, 0) <= max_turns.min(25) || ctx.n_cities >= 3 {
+            return Some(Choice::Train(u, d.units[u].default_unit_ai_type.unwrap_or(UnitAIType::UNITAI_ATTACK_SEA)));
         }
     }
 
@@ -739,16 +753,32 @@ pub enum Role {
     Transport,
     /// Ships that reveal the seas.
     SeaExplore,
+    /// Hero ships (the Lanun's Black Wind).
+    SeaHero,
 }
 
 impl Role {
     fn sea(self) -> bool {
-        matches!(self, Role::SeaWorker | Role::Transport | Role::SeaExplore)
+        matches!(self, Role::SeaWorker | Role::Transport | Role::SeaExplore | Role::SeaHero)
     }
 }
 
-fn is_hero(info: &UnitInfo) -> bool {
-    info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO)
+/// A hero: the hero AI, or the Hero promotion for free. Wilboman and the War Machine have an
+/// attacker's default AI, and as attackers (one unit for 360 and 240 hammers) they never won on
+/// cost: 1 Wilboman in 47 Illian games, where he could be trained in 74% (docs/AI.md, "Unique
+/// units").
+fn is_hero(d: &GameData, info: &UnitInfo) -> bool {
+    static HERO: OnceLock<Option<PromotionType>> = OnceLock::new();
+    let hero = *HERO.get_or_init(|| d.ty::<PromotionType>("PROMOTION_HERO"));
+    info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO) || hero.is_some_and(|h| info.free_promotions[h])
+}
+
+/// A spellcaster from birth (Channeling I for free): a hero of strength 0 is still worth training
+/// (Corlindale, never trained before in 37 Elohim games).
+fn born_caster(d: &GameData, info: &UnitInfo) -> bool {
+    static CHANNELING: OnceLock<Option<PromotionType>> = OnceLock::new();
+    let channeling = *CHANNELING.get_or_init(|| d.ty::<PromotionType>("PROMOTION_CHANNELING1"));
+    channeling.is_some_and(|c| info.free_promotions[c])
 }
 
 /// A siege engine (catapults, trebuchets, cannons: default AI city attack or collateral, with
@@ -759,9 +789,9 @@ pub(crate) fn siege_engine(info: &UnitInfo) -> bool {
     matches!(info.default_unit_ai_type, Some(UnitAIType::UNITAI_ATTACK_CITY) | Some(UnitAIType::UNITAI_COLLATERAL)) && (info.bombard_rate > 0 || info.collateral_damage > 0)
 }
 
-fn role_ok(info: &UnitInfo, role: Role) -> bool {
+fn role_ok(d: &GameData, info: &UnitInfo, role: Role) -> bool {
     let has = |a: UnitAIType| info.unit_ai_type[a];
-    let fighter = info.combat > 0 && !info.found && !is_hero(info) && info.default_unit_ai_type != Some(UnitAIType::UNITAI_MAGE);
+    let fighter = info.combat > 0 && !info.found && !is_hero(d, info) && info.default_unit_ai_type != Some(UnitAIType::UNITAI_MAGE);
     match role {
         Role::Defense => {
             fighter && (has(UnitAIType::UNITAI_CITY_DEFENSE) || has(UnitAIType::UNITAI_CITY_COUNTER) || has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_COUNTER))
@@ -770,7 +800,8 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
         Role::Attack | Role::CityAttack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)) && !siege_engine(info),
         Role::Worker => has(UnitAIType::UNITAI_WORKER) && info.combat == 0,
         Role::Settler => has(UnitAIType::UNITAI_SETTLE) && info.found,
-        Role::Hero => is_hero(info) && info.combat > 0,
+        Role::Hero => is_hero(d, info) && (info.combat > 0 || born_caster(d, info)),
+        Role::SeaHero => is_hero(d, info) && info.combat > 0,
         Role::Mage => info.default_unit_ai_type == Some(UnitAIType::UNITAI_MAGE) || has(UnitAIType::UNITAI_WARWIZARD),
         Role::Explore => has(UnitAIType::UNITAI_EXPLORE),
         Role::SeaWorker => has(UnitAIType::UNITAI_WORKER_SEA) && info.combat == 0,
@@ -830,8 +861,8 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
             continue;
         }
         let cost = info.production_cost as i64;
-        let gain = if role_ok(info, Role::Defense) { better(type_city_defense(info), cost, cur_def) } else { 0 }
-            .max(if role_ok(info, Role::Attack) { better(type_attack_power(d, u) as i64, cost, cur_att) } else { 0 });
+        let gain = if role_ok(d, info, Role::Defense) { better(type_city_defense(info), cost, cur_def) } else { 0 }
+            .max(if role_ok(d, info, Role::Attack) { better(type_attack_power(d, u) as i64, cost, cur_att) } else { 0 });
         if gain < 133 {
             continue;
         }
@@ -863,7 +894,7 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
     for u in d.units.keys() {
         let info = &d.units[u];
         let domain = if role.sea() { DomainType::DOMAIN_SEA } else { DomainType::DOMAIN_LAND };
-        if info.domain_type != Some(domain) || !role_ok(info, role) {
+        if info.domain_type != Some(domain) || !role_ok(d, info, role) {
             continue;
         }
         if !g.city_offers_unit(c, u) || !g.city_can_train(c, u, false, false, false, false) {
@@ -872,7 +903,7 @@ pub fn best_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
         let turns = g.city_production_turns_left_unit(c, u, 0).max(1) as i64;
         let power = match role {
             Role::Defense => type_city_defense(info),
-            Role::Attack | Role::Hero | Role::Siege => {
+            Role::Attack | Role::Hero | Role::SeaHero | Role::Siege => {
                 let mut v = type_attack_power(d, u) as i64;
                 v += v * (info.moves.max(1) as i64 - 1) / 4;
                 v += v * (info.first_strikes * 2 + info.chance_first_strikes) as i64 / 20;
@@ -916,7 +947,7 @@ fn strongest_unit(g: &Game, c: CityId, role: Role) -> Option<UnitType> {
     let d = g.d;
     d.units
         .keys()
-        .filter(|&u| d.units[u].domain_type == Some(DomainType::DOMAIN_LAND) && role_ok(&d.units[u], role) && g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false))
+        .filter(|&u| d.units[u].domain_type == Some(DomainType::DOMAIN_LAND) && role_ok(d, &d.units[u], role) && g.city_offers_unit(c, u) && g.city_can_train(c, u, false, false, false, false))
         .max_by_key(|&u| (type_attack_power(d, u), d.units[u].production_cost, std::cmp::Reverse(u)))
 }
 
@@ -1067,4 +1098,25 @@ fn generic_building_value(g: &Game, c: CityId, b: BuildingType, threat: i32) -> 
         }
     }
     v
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn heroes_are_trained_as_heroes() {
+        let d = ffh_data::global();
+        let info = |name: &str| &d.units[d.t::<UnitType>(name)];
+        // The Hero promotion makes a hero whatever the default AI.
+        for name in ["UNIT_WILBOMAN", "UNIT_WAR_MACHINE"] {
+            assert!(role_ok(d, info(name), Role::Hero), "{name} is trained as a hero");
+            assert!(!role_ok(d, info(name), Role::Attack), "{name} is no army attacker");
+        }
+        // So does a spellcaster of strength 0 with the hero AI, and a hero ship at sea.
+        assert!(role_ok(d, info("UNIT_CORLINDALE"), Role::Hero));
+        assert!(role_ok(d, info("UNIT_BLACK_WIND"), Role::SeaHero) && Role::SeaHero.sea());
+        assert!(role_ok(d, info("UNIT_DONAL"), Role::Hero));
+        assert!(!role_ok(d, info("UNIT_AXEMAN"), Role::Hero) && !role_ok(d, info("UNIT_ADEPT"), Role::Hero));
+    }
 }

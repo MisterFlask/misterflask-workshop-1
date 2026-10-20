@@ -1242,7 +1242,7 @@ pub fn army_counts(g: &Game, p: PlayerId) -> (i32, i32) {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::Arc;
 
     use ffh_core::map::{Map, MapInitData};
@@ -1253,7 +1253,7 @@ mod tests {
 
     /// One block of grassland (x 2..=17, y 3..=8) in an ocean, revealed to both players: a fresh
     /// two-player AI game whose starting units are gone (as `tests/magic.rs`).
-    fn one_landmass_game(seed: u32) -> Game {
+    pub(crate) fn one_landmass_game(seed: u32) -> Game {
         let d = ffh_data::global();
         let mut g = Game::new(d, GameSetup::standard(d, 2, "WORLDSIZE_DUEL", seed));
         g.setup.options[GameOptionType::GAMEOPTION_NO_BARBARIANS] = true;

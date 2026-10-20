@@ -1118,6 +1118,56 @@ built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
   at turn 300, cities taken 0.6 -> 1.2). And the Amurites were eliminated in 10 games instead of
   5 (alive t -2.03; share@end +40, the survivors larger): lost wars in the games read, one at
   turn 163 before any caster, so not traced to the casters.
+- **Unique units in play** (2026-10-20). A census of 190 games (seeds 9101-9110, each
+  civilization forced into slot 0, all six players counted), by a throwaway build that printed
+  each unique unit's creation, its role and place every turn, its fights with their odds, its
+  casts and its death (the same games, to the checksum): the civilizations' own versions of the
+  common units are used as much as the units they replace, or more (Wood Golems attack twice as
+  often as Axemen, Trebuchets bombard, Myconids cast Spores 16 times each, Loki makes a puppet
+  every turn), and most of the units never seen are late (Divine Essence, Strength of Will,
+  Warhorses) or come by an upgrade at level 6 or more, in games that end near turn 520. Four
+  cheap faults, fixed:
+  - Workers cast into Beastmen fight (`units::fighters_off_worker_ai`), and only workers our
+    land does not need are cast (`civs::doviello`). The rules cast the Doviello's Worker ->
+    Beastman at war while they have as many workers as cities, and the Beastman keeps the
+    worker's AI (`CvUnit::convert`): 558 of their Beastmen came from workers, built nothing, and
+    were counted as workers, so production trained none (Battlemasters spent 28% of their turns
+    on the worker AI, and some Doviello played 200 turns with almost no workers). Fighting
+    without the gate, the cast took the workers production then trained at war, and the Doviello
+    survived less often (docs/AI_LOG.md, "Unique units"). With it, against the same build without
+    either (seeds 9201-9240): share at the end -17 (t -0.20), alive flat; from turn 300, 1.3 more
+    workers (t 2.9), improvements +4-10%, research +8-13%.
+  - Heroes production never chose (`production::role_ok`): the Hero promotion makes a hero
+    (Wilboman and the War Machine keep an attacker's default AI and, as attackers, never won on
+    cost: one Wilboman in 47 Illian games), so does Channeling I at strength 0 (Corlindale: none
+    in 37 Elohim games), and a coastal city trains a hero ship (`Role::SeaHero`: Black Wind, none
+    in 66 Lanun games; it serves as a transport).
+  - Heroes that cannot attack move as casters (`units::role_of`): Loki walked alone as an army
+    unit, and 30 of 42 Lokis were killed, 89% of the attacks finding him alone.
+  - Donal's Recruit (once: population / 3 + 1 units in his city, twice with a Temple of the
+    Order) is valued (`magic::recruit_value`): FfH's terms gave it nothing, and none of 20
+    Donals recruited. Asking for a city half as good as our best, 5 of 9 Donals left their city
+    with the army and never recruited; he now recruits in the first city that gives two, at the
+    start of our turn (`civs::bannor`): a unit trained at the end of a turn first moves on the
+    next, and the army took 3 of 9 Donals out of their city before the end-of-turn cast.
+  On the census seeds (60 games, before -> after): Loki killed 78% -> 61% of the time (puppets
+  per Loki 193 -> 230), Corlindale trained in 0% -> 67% of Elohim games, Wilboman 5% -> 45%,
+  Black Wind 0% -> 69%, Donal's recruits 0 -> 1 a Donal (all 9), the Doviello's Beastmen, Sons
+  of Asena and Battlemasters on the worker AI 19%, 12%, 28% of their turns -> 2%, 0%, 0%.
+  Measured with the six civilizations they touch forced into slot 0 (seeds 9201-9220, 120
+  pairs), against the build before: win 14.2% -> 17.5% (6 / 2, p 0.29), share at the end +172
+  (t 1.75), legacy@end +184 (t 1.64); the Elohim +594 (t 2.08, wins 1 -> 3), the Illians +167
+  (t 1.65), the Balseraphs +339 (wins 6 -> 8), the Lanun +173; the Doviello -20 (alive 0.7 ->
+  0.6, t -1.83) and the Bannor -219 (t -1.03), both flat against the same build without their
+  own fix (seeds 9201-9240: Doviello -17, t -0.20; Bannor with Recruit off +0, t 0.00, wins 6 /
+  6): their rivals gained from the others. Share at turns 200 and 300 is lower (-45 and -61, t
+  -1.5 and -1.7; not traced).
+  Not fixed (worth a look, not yet cheap): the Luchuirp lose 6.0 Mud Golems a game to
+  barbarians, the other civilizations 0.3-2.2 workers; Moroi garrisons upgraded to Brujahs
+  (strength 11, defense 5) and Vampires stay garrisons (57% and 49% of their turns); research
+  never plans a path to a late unique unit (Warhorses: Hornguard, Herne, Magnadine); Govannon
+  never casts Teach Spellcasting; the Bannor train a Flagbearer in 18% of the games they could
+  (56%), though one in a stack casts Morale every turn.
 
 ### Measured over the games they join (Infernals, Mercurians)
 

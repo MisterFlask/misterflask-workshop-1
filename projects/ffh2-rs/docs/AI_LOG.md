@@ -60,6 +60,32 @@ Their entries stay as the record of what they cost then.
    stronger). That is the kept rule; the Luchuirp's remaining cost is their army's, not their
    garrison's (docs/AI.md, "Unique units").
 
+### Workers cast into Beastmen fight, without a gate (replaced the same day)
+
+1. The Doviello's Worker -> Beastman (`SPELL_UPGRADE_DOVIELLO_WARRIOR`, cast by the rules' AI
+   gate at war while they have as many workers as cities) keeps the worker's AI on the Beastman
+   (`CvUnit::convert`). In 190 census games 558 Beastmen came from workers; they built nothing,
+   sat in our cities, and production counted them as workers and trained none (Battlemasters, the
+   same units cast on, spent 28% of their turns on the worker AI).
+2. Giving them their own default AI (attack) let production train workers at war, and the cast
+   took the new workers too: conversions 63 -> 79 and workers trained 80 -> 104 on the ten census
+   seeds. With the other fixes (seeds 9201-9220) the Doviello survived less often: alive 0.7 ->
+   0.5 (t -2.52), share@end -113 (t -0.62). The idle "workers" had been extra defenders in our
+   cities.
+3. Cast only on workers beyond production's own target (`production::worker_target`), so the
+   cast never takes a worker production would replace. Against the same build without the fix and
+   the gate (seeds 9201-9240): share@end -17 (t -0.20), alive flat, and from turn 300 1.3 more
+   workers (t 2.9), improvements +4-10%, research +8-13%.
+
+### Donal's Recruit in a city half as good as our best (replaced the same day)
+
+1. Recruit is once, and a bigger city gives more units (population / 3 + 1).
+2. Donal marches with the army: 5 of 9 Donals on the census seeds left their city and never
+   recruited. And at two units a city, 3 of 9 still did not: a unit trained at the end of our
+   turn first moves on the next, before the end-of-turn cast.
+3. Recruit in the first city of ours giving two or more, at the start of our turn
+   (`civs::bannor`): every Donal recruited (9 of 9).
+
 ## Spellcasting (2026-10-19, `magic.rs`)
 
 The kept version is in docs/AI.md, "Spellcasting". Development measured each civilization forced

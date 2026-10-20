@@ -1,7 +1,8 @@
 //! Lanun (`SPELL_PIRATE_COVE`, C++ `CvUnitAI::AI_buildPirateCove`): a work boat turns an empty
 //! coast plot of ours into a Pirate Cove (+2 commerce, growing into a Pirate Harbor and a Pirate
 //! Port, 3/2/6 on coast). [`Lanun::production`] trains a work boat for a city with a valid cove
-//! plot it works; [`Lanun::sea_worker`] takes it there and casts.
+//! plot it works; [`Lanun::sea_worker`] takes it there and casts. Black Wind, their hero ship, is
+//! trained in a coastal city (`production`'s hero step, `Role::SeaHero`) and serves as a transport.
 //!
 //! Tried, not kept (docs/AI_LOG.md): leaving the cove to boats without orders (FfH's
 //! end-of-turn spell choice also casts it from a boat sailing to a sea resource), better on seeds

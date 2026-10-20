@@ -5,7 +5,9 @@
 //!   owner's attitude drops by 4). The generic AI never took him into a foreign city.
 //!   [`Balseraphs::unit`] sends him, at peace, to the nearest reachable city of a civ we are not at
 //!   war with whose owner culture is low and grows by nothing (Disrupt drains one a turn on
-//!   average, so a city producing culture never falls), and Disrupt is cast there.
+//!   average, so a city producing culture never falls), and Disrupt is cast there. Otherwise he
+//!   moves as a caster (`units::role_of`: he defends only): as an army unit he walked alone, and
+//!   30 of 42 Lokis were killed.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;

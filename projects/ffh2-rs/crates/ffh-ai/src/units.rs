@@ -85,6 +85,12 @@ fn role_of(g: &Game, u: UnitId) -> Role {
         };
     }
     let ai = unit.ai_type.or(info.default_unit_ai_type).unwrap_or(UnitAIType::UNITAI_UNKNOWN);
+    // A hero that cannot attack (Loki, defensive only; Corlindale, strength 0) moves as a caster,
+    // with a stack or to a city: as an army unit Loki walked alone, and 30 of 42 Lokis were
+    // killed, 89% of the attacks finding him alone in the field (docs/AI.md, "Unique units").
+    if ai == UnitAIType::UNITAI_HERO && (info.only_defensive || info.combat == 0) {
+        return Role::Caster;
+    }
     match ai {
         UnitAIType::UNITAI_SETTLE => Role::Settler,
         UnitAIType::UNITAI_WORKER => Role::Worker,
@@ -108,6 +114,21 @@ fn role_of(g: &Game, u: UnitId) -> Role {
     }
 }
 
+/// A unit cast into a fighter keeps the AI type it had (`CvUnit::convert`): a Doviello Worker
+/// made a Beastman (`SPELL_UPGRADE_DOVIELLO_WARRIOR`, cast at war while they have as many workers
+/// as cities) stayed `UNITAI_WORKER`, could build nothing, and was counted as a worker by
+/// production, which then trained none (docs/AI.md, "Unique units"). A fighter that cannot build
+/// takes its own type's default AI.
+pub(crate) fn fighters_off_worker_ai(g: &mut Game, p: PlayerId) {
+    for u in g.players[p].units.clone() {
+        let unit = &g.units[u];
+        let info = &g.d.units[unit.unit_type];
+        if unit.ai_type == Some(UnitAIType::UNITAI_WORKER) && info.combat > 0 && !info.builds.iter().any(|&b| b) {
+            g.unit_ai_set_unit_ai_type(u, info.default_unit_ai_type.unwrap_or(UnitAIType::UNITAI_ATTACK));
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Turn driver
 // ----------------------------------------------------------------------------
@@ -115,6 +136,7 @@ fn role_of(g: &Game, u: UnitId) -> Role {
 /// Decide for every group of `v.p` that needs orders, in role priority order.
 pub fn play(ai: &Ai, g: &mut Game, v: &mut View) {
     let p = v.p;
+    fighters_off_worker_ai(g, p);
     // Promotions and upgrades for units that will not get orders this turn (fortified
     // garrisons, sentries); the others get theirs before acting.
     if !v.barbarian {
@@ -651,5 +673,40 @@ fn caster(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId) {
             }
         }
         _ => skip(g, grp),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::campaign::tests::one_landmass_game;
+
+    #[test]
+    fn heroes_that_cannot_attack_move_as_casters() {
+        let d = ffh_data::global();
+        let mut g = one_landmass_game(15);
+        let us = PlayerId(0);
+        let mut hero = |name: &str| g.player_init_unit(us, d.t::<UnitType>(name), 4, 5, Some(UnitAIType::UNITAI_HERO), None);
+        let (loki, corlindale, donal) = (hero("UNIT_LOKI"), hero("UNIT_CORLINDALE"), hero("UNIT_DONAL"));
+        assert_eq!(role_of(&g, loki), Role::Caster, "Loki defends only");
+        assert_eq!(role_of(&g, corlindale), Role::Caster, "Corlindale has no strength");
+        assert_eq!(role_of(&g, donal), Role::Army, "Donal fights");
+    }
+
+    /// `CvUnit::convert` keeps the old unit's AI type: a Doviello Worker cast into a Beastman is
+    /// created as `player_init_unit` does it here, on the worker AI.
+    #[test]
+    fn a_worker_cast_into_a_fighter_fights() {
+        let d = ffh_data::global();
+        let mut g = one_landmass_game(16);
+        let us = PlayerId(0);
+        let worker_ai = UnitAIType::UNITAI_WORKER;
+        let beastman = g.player_init_unit(us, d.t::<UnitType>("UNIT_BEASTMAN"), 4, 5, Some(worker_ai), None);
+        let worker = g.player_init_unit(us, d.t::<UnitType>("UNIT_WORKER"), 4, 5, Some(worker_ai), None);
+        assert_eq!(g.players[us].ai_num_ai_units[worker_ai], 2);
+        fighters_off_worker_ai(&mut g, us);
+        assert_eq!(g.units[beastman].ai_type, d.units[g.units[beastman].unit_type].default_unit_ai_type);
+        assert_eq!(g.units[worker].ai_type, Some(worker_ai));
+        assert_eq!(g.players[us].ai_num_ai_units[worker_ai], 1, "production counts the one real worker");
     }
 }
