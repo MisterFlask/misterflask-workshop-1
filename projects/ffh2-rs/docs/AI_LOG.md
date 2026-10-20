@@ -31,6 +31,35 @@ Each entry answers three questions, from the games themselves (counts with `ffh 
   `FFH_AI_TRACE` (a throwaway trace line is fine on a scratch branch; it must not change the
   checksum) and compare the snapshots per checkpoint (`civ_ab.py --load`, the snapshot fields).
 
+## Unique units (2026-10-20)
+
+The kept version is in docs/AI.md, "Unique units". It is kept under the owner's rule (CLAUDE.md,
+"AI changes"), so what its measurement shows is a cost to improve, not a gate. Back with it from
+round 5 (below): the Amurite casters (now `civs::unique_casters`, also for the Svartalfar,
+Doviello and Clan of Embers), the Illians' rituals, the Calabim vampire rules, the Grigori
+Medics, the Infernal Manes beyond a garrison quota (point 3 of their entry), and the
+building-gated units of the Khazad, Luchuirp and Lanun, now generic (`production::unit_building`).
+Their entries stay as the record of what they cost then.
+
+### An enabling building by strength squared per hammer (`48a0bf9`, reverted by `d9bee1e`)
+
+1. With the Sculptor's Studio visible, the Luchuirp reached Construction (Wood Golems, 6) before
+   Archery and built Studios from turn 150 (2.6 by turn 200 against 0.4). The Archery Range then
+   looked only 14% better than the golems for their Dwarven Slingers (5 with a first strike, +25%
+   in cities), under the 33% bar, so golems at 90 hammers held their cities (turn 300: 15 golems
+   and 8.5 slingers, against 2.7 and 20) and research at turn 300 fell 211 -> 179. Weighed as
+   `best_unit` weighs a choice, strength squared per hammer, the slinger is worth twice the golem.
+2. Re-measured on five civilizations (Khazad, Kuriotates, Luchuirp, Malakim, Sidar; seeds
+   8701-8720): squared strength per hammer overrates cheap units -- a Warrior (3, 25 hammers)
+   outscores an Axeman (4, 60) -- so Training Yards were no longer built (turn 300: Khazad
+   3.3 -> 0.9, Malakim 3.5 -> 1.5, Sidar 1.3 -> 0.3) and Warriors piled up (+3 to +6 a game in
+   all five).
+3. A building that opens a unit has to compare it with the city's best the way the role uses
+   them, linearly: a third stronger, or a third stronger per hammer. The Archery Range then comes
+   where golems hold a city (72% better per hammer) and the Training Yard where Warriors do (33%
+   stronger). That is the kept rule; the Luchuirp's remaining cost is their army's, not their
+   garrison's (docs/AI.md, "Unique units").
+
 ## Spellcasting (2026-10-19, `magic.rs`)
 
 The kept version is in docs/AI.md, "Spellcasting". Development measured each civilization forced

@@ -1091,7 +1091,33 @@ built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
   casters are their own keep casters (`civs::unique_casters`, the Amurites' round-5 rule made
   common): the best city trains up to (cities + 2) / 2, with a Mage Guild where the Adepts need
   one -- the Amurites' Wizards and the Svartalfar's Illusionists come by upgrade at level 4, the
-  Doviello's and the Clan's Shamans are their Adepts.
+  Doviello's and the Clan's Shamans are their Adepts. A city builds the enabling building
+  (`enabler_building`) when it opens a unit a third stronger than its best, or a third stronger
+  per hammer: by strength alone the Luchuirp built Studios and never the Archery Range their
+  Dwarven Slingers need, so 90-hammer Wood Golems held their cities; by strength squared per
+  hammer nobody built a Training Yard (docs/AI_LOG.md, "Unique units").
+  Measured with every civilization forced into slot 0, seeds 8701-8720 (380 pairs), against the
+  AI before this work. Of the 101 unique units, counted per civilization (units at most two
+  playable civilizations train), 27 -> 18 never appeared in a snapshot (every 50 turns), and the
+  mean share of games in which one appears rose 37% -> 44%:
+  Khazad Trebuchets 0 -> 80% of games, Svartalfar Illusionists 0 -> 60%, Doviello Shamans
+  20 -> 80%, Clan Shamans 10 -> 70%, Wood Golems 45 -> 95%, Amurite Wizards 0 -> 50%, Calabim
+  Vampires 15 -> 60%, Dwarven Cannons 0 -> 35%, Grigori Medics 0 -> 30%, War Tortoises 0 -> 25%;
+  fewer Boar Riders (Luchuirp 40 -> 10%), Harlequins (20 -> 5%) and Dwarven Shadows (20 -> 0%,
+  both dwarven civilizations). The 18 left are tier-4 units and heroes the games end before
+  (Divine Essence, Strength of Will, Theology, Fanaticism, Optics...), units reached only by an
+  upgrade at level 6 or more, and the Dwarven Shadow (Council of Esus as state religion). Win
+  12.1% -> 13.9% (29 / 22, p 0.40), share@200 +57 (t 1.82), share@end +20 (t 0.28), legacy@end
+  -67 (t -0.86); no civilization significantly worse in wins or share at the end, the Malakim
+  better (wins 1 -> 7, share@end +833, t 2.20). Two costs. The Luchuirp economy (turn 300:
+  economy buildings 23.7 -> 9.8, t -3.9; research 211 -> 150, t -2.0; wins 3 -> 3, share@end
+  -23): with the Wood Golem (their Axeman) out of reach, their army was Warriors at 25 hammers and
+  their research the highest at turn 300 (with the Lanun's); the army target counts units
+  (production step 8), so their golems
+  at 90 hammers cost what the others' Axemen do, and they went to war more often (0.3 -> 0.7 wars
+  at turn 300, cities taken 0.6 -> 1.2). And the Amurites were eliminated in 10 games instead of
+  5 (alive t -2.03; share@end +40, the survivors larger): lost wars in the games read, one at
+  turn 163 before any caster, so not traced to the casters.
 
 ### Measured over the games they join (Infernals, Mercurians)
 
