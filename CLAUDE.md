@@ -4,6 +4,12 @@ The active project in this repository is the Rust port in `projects/ffh2-rs/`
 (start with `projects/ffh2-rs/CLAUDE.md`).
 Other top-level directories hold standalone writing, research and tooling.
 
+### Unit animations
+
+To make idle, strike, flinch or death animations for an M7 unit sprite, follow
+`projects/ffh-anim-sprint/ANIMATING_UNITS.md`. It describes the method that won the October 2026
+animation sprint (`lib/recipe.py` in that folder); do not start from an ad-hoc approach.
+
 ### Agent worktrees are sparse
 
 New worktrees under `.claude/worktrees/` check out only the root files, `.claude/`

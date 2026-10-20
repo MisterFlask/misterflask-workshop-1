@@ -3,6 +3,10 @@
   python lib/recipe.py --unit units/swordsman.json --out final            # generate + build (3 model calls, n=2)
   python lib/recipe.py --unit units/swordsman.json --out final --rebuild  # re-cut from saved raws, no API calls
   python lib/recipe.py --unit units/hyborem.json --out final_hyborem --anims strike death
+  python lib/recipe.py --grid m7/roster/units/unit_ogre_embers.png --out final_ogre   # coordinates for annotating
+  python lib/recipe.py --unit units/ogre.json --out final_ogre --check-guides          # guides, no API calls
+
+The full how-to for agents is ANIMATING_UNITS.md.
 
 How it works (each choice comes from the sprint's results; see the report):
   idle    MLS mesh warp of the TRUE sprite toward each idle pose (sub-pixel breathing, no redraw, so no boil).
@@ -39,8 +43,15 @@ TREE = [("pelvis", "chest"), ("chest", "neck"), ("neck", "head"), ("chest", "r_s
 # ---------------------------------------------------------------- unit + poses
 def load_unit(path):
     u = json.loads(Path(path).read_text())
+    for k in ("name", "sprite", "description", "joints"):
+        if k not in u:
+            raise SystemExit(f"unit file {path} is missing '{k}' (see ANIMATING_UNITS.md, step 1)")
     u["sprite_img"] = Image.open(ROOT / u["sprite"]).convert("RGBA")
     sp = u["sprite_img"]
+    if sp.height > ak.H or sp.width > ak.SAFE_X[1] - ak.SAFE_X[0]:
+        raise SystemExit(f"{u['sprite']} is {sp.width}x{sp.height}; the animation canvas is {ak.W}x{ak.H} with a "
+                         f"{ak.SAFE_X[1] - ak.SAFE_X[0]} px wide safe region. Big units need a bigger canvas "
+                         "(ANIMATING_UNITS.md, 'Known limits').")
     u["offset"] = (int(ak.ANCHOR[0] - sp.width / 2), ak.H - sp.height)  # M7: feet 2 px above the bottom
     return u
 
@@ -207,6 +218,7 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
             if picks.get(name) == k or (name not in picks and (best is None or sc < best[0])):
                 best = (sc if name not in picks else -1, k, fr)
         chosen[name] = best
+        review_sheet(wdir, name, base)
     # round-2 fixes from the judges: de-fringe redrawn frames (magenta keying halo), sharpened warps (crisp idle and
     # settle frames instead of bilinear blur)
     clean = finish.defringe_applicable(base) and u.get("defringe", True)
@@ -248,6 +260,59 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
     return picked, report
 
 
+def review_sheet(wdir, name, base, picked=None):
+    """work/<out>/variants_<sheet>.png: every variant of one sheet, one row each, at 2x on a light ground, so a person
+    or agent can pick by eye (the automatic score cannot see colour smudges or off-model faces)."""
+    from PIL import ImageDraw
+    geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
+    rows = []
+    for k, raw in enumerate(raw_files(wdir, name), 1):
+        fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
+        cells = [base] + fr[1:]
+        row = Image.new("RGBA", (128 * 2 * len(cells), 128 * 2 + 40), (222, 226, 214, 255))
+        d = ImageDraw.Draw(row)
+        d.text((4, 4), f"VARIANT {k}   re-cut with: --rebuild --pick {name}={k}   (reference scale k={diag['k']})",
+               fill=(150, 20, 20, 255))
+        for i, f in enumerate(cells):
+            row.alpha_composite(f.crop((ak.SAFE_X[0], 0, ak.SAFE_X[1], ak.H)).resize((256, 256), Image.NEAREST), (i * 256, 40))
+            lab = "sprite (frame 0)" if i == 0 else f"{SHEETS[name][i - 1][0]} frame {SHEETS[name][i - 1][1]}"
+            d.text((i * 256 + 4, 22), lab, fill=(30, 34, 40, 255))
+        rows.append(row)
+    if rows:
+        out = Image.new("RGBA", (rows[0].width, sum(r.height + 6 for r in rows)), (255, 255, 255, 255))
+        y = 0
+        for row in rows:
+            out.alpha_composite(row, (0, y))
+            y += row.height + 6
+        out.convert("RGB").save(wdir / f"variants_{name}.png")
+
+
+def check_guides(u, out):
+    """work/<out>/guides_check.png: the unit's frame-0 guide over its sprite, then the strike, flinch and death guides.
+    No API calls. Use it to check the joint annotation before spending anything."""
+    wdir = ROOT / "work" / out
+    wdir.mkdir(parents=True, exist_ok=True)
+    poses = unit_poses(u)
+    style = u.get("guide_style", "grey")
+    base = base_canvas(u)
+    g = guides.render_guide(poses["idle"][0], style)
+    g2 = g.copy()
+    g2.putalpha(g.getchannel("A").point(lambda a: int(a * 0.55)))
+    over = Image.new("RGBA", (ak.W, ak.H), (126, 170, 60, 255))
+    over.alpha_composite(base)
+    over.alpha_composite(g2)
+    rows = [[over] + [guides.render_guide(p, style) for p in poses["strike"][1:7]],
+            [guides.render_guide(p, style) for p in poses["flinch"][:3]],
+            [guides.render_guide(p, style) for p in poses["death"][1:8]]]
+    W = max(len(r) for r in rows) * ak.W
+    sheet_im = Image.new("RGBA", (W, ak.H * len(rows)), (255, 0, 255, 255))
+    for y, row in enumerate(rows):
+        for x, f in enumerate(row):
+            sheet_im.alpha_composite(f, (x * ak.W, y * ak.H))
+    sheet_im.resize((sheet_im.width * 2, sheet_im.height * 2), Image.NEAREST).save(wdir / "guides_check.png")
+    return wdir / "guides_check.png"
+
+
 def write(d, anim, frames, base):
     """write_anim into an arbitrary folder (final/, final_nofx/, final_<unit>/) with this unit's frame 0."""
     import shutil
@@ -269,14 +334,30 @@ def write(d, anim, frames, base):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--unit", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--unit"); ap.add_argument("--out", required=True)
+    ap.add_argument("--grid", metavar="SPRITE", help="only render work/<out>/grid.png: SPRITE on the animation canvas at "
+                    "6x with canvas coordinates, for reading the frame-0 joints (no unit file needed)")
     ap.add_argument("--anims", nargs="+", default=["idle", "strike", "flinch", "death"])
     ap.add_argument("--rebuild", action="store_true"); ap.add_argument("--snap", action="store_true")
     ap.add_argument("--no-fx", action="store_true")
     ap.add_argument("--pick", nargs="*", default=[], help="sheet=variant, e.g. strike=2")
+    ap.add_argument("--check-guides", action="store_true", help="only render work/<out>/guides_check.png (no API calls)")
     a = ap.parse_args()
+    if a.grid:
+        sp = Image.open(ROOT / a.grid).convert("RGBA")
+        c = Image.new("RGBA", (ak.W, ak.H), (0, 0, 0, 0))
+        c.alpha_composite(sp, (int(ak.ANCHOR[0] - sp.width / 2), ak.H - sp.height))
+        (ROOT / "work" / a.out).mkdir(parents=True, exist_ok=True)
+        print(ak.grid_view(c, ROOT / "work" / a.out / "grid.png"), "sprite offset on canvas:",
+              (int(ak.ANCHOR[0] - sp.width / 2), ak.H - sp.height))
+        sys.exit(0)
+    if not a.unit:
+        ap.error("--unit is required (except with --grid)")
     u = load_unit(a.unit)
     style = u.get("guide_style", "grey")
+    if a.check_guides:
+        print(check_guides(u, a.out))
+        sys.exit(0)
     t0 = time.time()
     if not a.rebuild:
         print(json.dumps(generate(u, a.out, a.anims, style)))
