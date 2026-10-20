@@ -1,0 +1,79 @@
+{
+ "flare": {
+  "k": 1.0543,
+  "dx": 2.58,
+  "dy": -19.0,
+  "warnings": [],
+  "ref": {
+   "dE": 13.94,
+   "iou": 0.891
+  }
+ },
+ "gi2": {
+  "k": 1.1899,
+  "dx": 39.78,
+  "dy": 0.0,
+  "warnings": [
+   "component 3 (38939 px) of cell 3 crosses its cell border",
+   "reference redraw scale k=1.190 is outside 0.85-1.15"
+  ],
+  "ref": {
+   "dE": 10.59,
+   "iou": 0.937
+  }
+ },
+ "sunburst_1": {
+  "k": 1.0039,
+  "dx": 0.51,
+  "dy": 0.0,
+  "warnings": [],
+  "ref": {
+   "dE": 7.48,
+   "iou": 0.972
+  }
+ },
+ "sunburst_2": {
+  "k": 1.0078,
+  "dx": 0.51,
+  "dy": 1.0,
+  "warnings": [
+   "component 2 (34467 px) of cell 3 crosses its cell border"
+  ],
+  "ref": {
+   "dE": 7.93,
+   "iou": 0.97
+  }
+ },
+ "sunburst_fid": {
+  "k": 1.0116,
+  "dx": 1.02,
+  "dy": 2.0,
+  "warnings": [
+   "component 2 (33844 px) of cell 3 crosses its cell border"
+  ],
+  "ref": {
+   "dE": 8.67,
+   "iou": 0.966
+  }
+ },
+ "sunburst_grey": {
+  "k": 1.0039,
+  "dx": 0.01,
+  "dy": 0.0,
+  "warnings": [],
+  "ref": {
+   "dE": 8.01,
+   "iou": 0.972
+  }
+ },
+ "sunburst_high": {
+  "k": 1.0039,
+  "dx": 0.51,
+  "dy": 1.0,
+  "warnings": [],
+  "ref": {
+   "dE": 5.79,
+   "iou": 0.978
+  }
+ }
+}

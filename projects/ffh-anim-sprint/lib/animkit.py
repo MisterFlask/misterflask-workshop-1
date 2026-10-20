@@ -169,3 +169,22 @@ def log_time(arm, what, t0, t1=None, **extra):
     with open(arm_dir(arm) / "timings.jsonl", "a") as f:
         f.write(json.dumps(row) + "\n")
     return row
+
+
+def grid_view(im, out, scale=6, bg=(126, 170, 60, 255), step=8):
+    """Save `im` enlarged with a coordinate grid (lines every `step` px, labels every 16) for annotating joints/masks."""
+    from PIL import ImageDraw
+    base = Image.new("RGBA", im.size, bg)
+    base.alpha_composite(im.convert("RGBA"))
+    big = base.resize((im.width * scale, im.height * scale), Image.NEAREST)
+    d = ImageDraw.Draw(big)
+    for x in range(0, im.width, step):
+        d.line([(x * scale, 0), (x * scale, big.height)], fill=(255, 255, 0, 170) if x % 16 == 0 else (255, 255, 255, 80))
+        if x % 16 == 0:
+            d.text((x * scale + 2, 2), str(x), fill=(0, 0, 0, 255))
+    for y in range(0, im.height, step):
+        d.line([(0, y * scale), (big.width, y * scale)], fill=(255, 255, 0, 170) if y % 16 == 0 else (255, 255, 255, 80))
+        if y % 16 == 0:
+            d.text((2, y * scale + 2), str(y), fill=(0, 0, 0, 255))
+    big.save(out)
+    return out

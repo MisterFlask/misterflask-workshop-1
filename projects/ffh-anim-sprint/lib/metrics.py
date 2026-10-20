@@ -182,11 +182,22 @@ def boil(frames):
     return out
 
 
+def _pose_blade_vs_shield(anim, i):
+    """Expected sign of (blade centre x - shield centre x) from poses.json, or None if it is ambiguous."""
+    try:
+        p = ak.POSES["anims"][anim][i]
+    except (KeyError, IndexError):
+        return None
+    hilt, tip = (p["sword"] if "sword" in p else (p["r_ha"], p["tip"]))
+    bx = (hilt[0] + tip[0]) / 2
+    d = bx - p["shield"][0]
+    return None if abs(d) < 8 else (1 if d > 0 else -1)
+
+
 def gates(anim, frames, poses=None):
-    """Heuristic flags: facing flip (face/skin centroid should be left of the hair centroid), hand swap (blade should
-    be screen-left of the head and the shield wood screen-right of it while standing), missing sword."""
+    """Heuristic flags, confirmed by eye: facing flip (the face/skin centroid should be left of the hair centroid),
+    hand swap (blade vs shield on the opposite sides from the beat-sheet pose), missing sword."""
     flags = []
-    n = len(frames)
     for i, f in enumerate(frames):
         pm = part_masks(f)
         lying = anim == "death" and i >= 4
@@ -197,8 +208,11 @@ def gates(anim, frames, poses=None):
             continue
         if skin[0] > hair[0] + 6:
             flags.append(f"frame {i}: face is right of the hair (facing flip?)")
-        if steel and wood and steel[0] > wood[0] + 4 and anim != "death":
-            flags.append(f"frame {i}: blade is right of the shield (hands swapped?)")
+        exp = _pose_blade_vs_shield(anim, i)
+        if steel and wood and exp is not None:
+            got = steel[0] - wood[0]
+            if abs(got) > 6 and (1 if got > 0 else -1) != exp:
+                flags.append(f"frame {i}: blade and shield on the wrong sides (hands swapped?)")
     return flags
 
 

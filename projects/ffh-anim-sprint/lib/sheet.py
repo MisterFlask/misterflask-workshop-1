@@ -11,7 +11,9 @@ pixels are pure #FF00FF. Read order is row-major; cell 0 normally holds the true
 slice_sheet keys the whole sheet once, assigns connected components to cells by centroid (small bits such as
 sword tips join the nearest big figure), estimates ONE scale + offset for the whole sheet from the model's
 redraw of the reference cell, and maps every cell into canvas coordinates with it. It never normalises a
-frame's own height. diag has the calibration, per-cell warnings and the reference-redraw colour error.
+frame's own height. Each non-reference frame is then snapped so its lowest opaque row is on the ground row (every
+beat has feet, knees or a lying body on the ground; models drift whole rows up or down by up to ~15 px). diag has the
+calibration, ground snaps, per-cell warnings and the reference-redraw colour error.
 """
 import json, sys
 from pathlib import Path
@@ -129,7 +131,8 @@ def assign_components(keyed, geom, min_big=600):
     return lab, owner, warns
 
 
-def slice_sheet(raw, geom, n=None, ref_index=0, ref_canvas=None, calibrate=True, holes=30, return_redraw=False):
+def slice_sheet(raw, geom, n=None, ref_index=0, ref_canvas=None, calibrate=True, holes=30, return_redraw=False,
+                ground_snap=20):
     """Returns (frames, diag). frames[i] is the 160x128 canvas for cell i (empty canvas if the cell had nothing)."""
     geom = json.loads(Path(geom).read_text()) if isinstance(geom, (str, Path)) else geom
     n = n or geom["cols"] * geom["rows"]
@@ -188,6 +191,12 @@ def slice_sheet(raw, geom, n=None, ref_index=0, ref_canvas=None, calibrate=True,
             cx = geom["region"][0] + (ut - geom["inner"][0]) / s0
             cy = geom["region"][1] + (vt - geom["inner"][1]) / s0
             canvas.alpha_composite(small, (int(round(cx)), int(round(cy))))
+        if ground_snap and i != ref_index:
+            # every beat keeps something on the ground (feet, knees or the lying body), so the lowest opaque row
+            # belongs on the ground row; models sometimes draw a whole row of cells a few px high or low
+            canvas, sdy = ak.snap_ground(canvas, max_px=ground_snap)
+            if sdy:
+                diag.setdefault("ground_snap", {})[i] = sdy
         frames.append(canvas)
     if calibrate and ref_index is not None:
         diag["ref_redraw_dE"] = ref_redraw_error(frames[ref_index], ref_canvas)
