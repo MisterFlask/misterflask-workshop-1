@@ -1,0 +1,27 @@
+{
+ "_doc": "Small test map: every asset once, all terrain seams.",
+ "terrain": [
+  "GGFW",
+  "GHFW",
+  "GGGW",
+  "HGGW"
+ ],
+ "features": [
+  "f...",
+  ".m..",
+  "....",
+  "...."
+ ],
+ "buildings": [
+  {"rc": [2, 1], "type": "city", "footprint": 2},
+  {"rc": [0, 2], "type": "temple_leaves"}
+ ],
+ "units": [
+  {"rc": [0, 1], "type": "swordsman", "highlight": true},
+  {"rc": [1, 2], "type": "worker"},
+  {"rc": [3, 0], "type": "priest_of_leaves", "banner": "green"},
+  {"rc": [1, 0], "type": "hyborem", "banner": "red"}
+ ],
+ "water_drop": 8,
+ "clouds": false
+}

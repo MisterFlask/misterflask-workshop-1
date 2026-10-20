@@ -3,7 +3,8 @@
 This is the binding style guide for all art in the browser client (`crates/ffh-play`): map, units,
 cities, icons and UI chrome. Sprites are authored **as text** (section 13) and turned into images
 by the client at load time. Every asset is either drawn for this game or cut from the project
-owner's own reference sheets (section 10.2); nothing is taken from Civ4 or FfH2.
+owner's own reference sheets (section 10.2); nothing is taken from Civ4 or FfH2. The isometric
+renderer is outside this guide: its art and its rules are the M7 package's (docs/ISO.md).
 
 The direction is **cheerful readability**, in the spirit of the 16-bit tactics games (Shining
 Force, the handheld Fire Emblems): a sunny, saturated world, crisp outlined figures, bold owner

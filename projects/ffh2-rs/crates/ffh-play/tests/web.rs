@@ -184,13 +184,15 @@ fn the_page_and_its_modules_reference_only_embedded_files() {
             s = &s[end..];
         }
     }
-    assert!(refs.contains(&"/app/main.js".to_string()) && refs.contains(&"/app/style.css".to_string()), "{refs:?}");
+    // Relative references (`app/main.js`, not `/app/main.js`): the static site serves the page
+    // below its root (docs/WEB.md).
+    assert!(refs.contains(&"app/main.js".to_string()) && refs.contains(&"app/style.css".to_string()), "{refs:?}");
     for r in &refs {
         if r.starts_with("data:") {
             continue;
         }
-        let path = r.strip_prefix('/').unwrap_or_else(|| panic!("page reference {r} is not a server path"));
-        assert!(get(path).is_some(), "the page references {r}, which is not embedded");
+        assert!(!r.starts_with('/') && !r.contains(':'), "page reference {r} is not relative to the page");
+        assert!(get(r).is_some(), "the page references {r}, which is not embedded");
     }
     // Every module reached from main.js (and the art's set passes, which art.js imports by
     // name) is embedded; every embedded module is reached.

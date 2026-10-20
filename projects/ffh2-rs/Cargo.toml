@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/ffh-data", "crates/ffh-core", "crates/ffh-ai", "crates/ffh-cli", "crates/ffh-stress", "crates/ffh-play"]
+members = ["crates/ffh-data", "crates/ffh-core", "crates/ffh-ai", "crates/ffh-cli", "crates/ffh-stress", "crates/ffh-play", "crates/ffh-web"]
 
 [workspace.package]
 version = "0.1.0"

@@ -47,3 +47,11 @@ dependencies = [
  "ffh-core",
  "ffh-data",
 ]
+
+[[package]]
+name = "ffh-web"
+version = "0.1.0"
+dependencies = [
+ "ffh-data",
+ "ffh-play",
+]

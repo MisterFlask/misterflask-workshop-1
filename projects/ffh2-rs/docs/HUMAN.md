@@ -87,7 +87,7 @@ part of the map you have not looked at yet shows flat colours for a moment. **Th
 renderer** of P5 (colours, glyphs and labels: lettered dots for resources, boxes for
 improvements, units and cities) is kept for debugging: open the page as
 `http://127.0.0.1:8642/?renderer=flat`, or choose it under Tools → Options → "This browser" (which
-also offers the isometric 2.5D map and, experimental and off unless chosen, **a fully 3D painterly
+also offers the isometric 2.5D map in HD pixel art, docs/ISO.md, and, experimental and off unless chosen, **a fully 3D painterly
 map**: `?renderer=3d`, docs/R3D.md; it needs WebGL2). The choice is remembered by this browser.
 
 **Motion.** The interface moves quietly, in keeping with the manuscript look (docs/ART.md 4.5):

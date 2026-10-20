@@ -586,8 +586,8 @@ async function boot() {
   units.initUnits(mapView, $("#unit-panel"));
   renderTop();
   renderBottom();
-  // The isometric renderer (docs/art/SOC_DIRECTION.md): an opt-in map renderer with PNG tiles and
-  // unit sprites on team rings. It owns its own projection, so the art/flat switches leave it be.
+  // The isometric renderer (docs/ISO.md): an opt-in map renderer with the M7 "HD pixel" sprites.
+  // It owns its own projection, so the art/flat switches leave it be.
   // Chosen with `?renderer=iso` or the remembered Tools → Options choice.
   if (rendererChoice() === "iso") mapView.useIso(true);
   // The experimental 3D renderer (docs/R3D.md): loaded on demand; without WebGL2 it falls back.

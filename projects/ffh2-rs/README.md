@@ -4,6 +4,9 @@ A Rust port of **Fall from Heaven 2** (0.41), the Civilization IV: Beyond the Sw
 the rules engine is ported function by function from the mod's C++ DLL and rules Python;
 the AI is new. Base mod only; no UI (headless runner).
 
+Play in the browser, nothing to install: https://misterflask.github.io/misterflask-workshop-1/
+(the browser client with the engine compiled to WebAssembly, rebuilt from master; `docs/WEB.md`).
+
 ## Why
 
 - **Speed.** FFH2's late game spends most of its turn time in the C++ AI (repeated path
