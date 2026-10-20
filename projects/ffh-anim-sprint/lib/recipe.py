@@ -65,6 +65,13 @@ def load_unit(path):
     if missing:
         raise SystemExit(f"{path}: joints {missing} are missing (every joint except shield is required)")
     u["pose_set"], u["mirror"] = pose_set(u)
+    if not u.get("legacy"):
+        bad = wrong_way(u)
+        if bad:
+            raise SystemExit(f"{path}: these beat overrides point the wrong way for a {u['facing']} unit (rule 1: the strike "
+                             f"goes toward the {u['facing']}, the hit comes from there and the body falls away from it): "
+                             + "; ".join(f"{a} {i}: '{w}'" for a, i, w in bad) + ". Overrides are sent as written and never "
+                             "mirrored; reword them (ANIMATING_UNITS.md, step 1d).")
     u["sprite_img"] = Image.open(ROOT / u["sprite"]).convert("RGBA")
     sp = u["sprite_img"]
     if sp.height > ak.H or sp.width > ak.SAFE_X[1] - ak.SAFE_X[0]:
@@ -83,6 +90,16 @@ def pose_set(u):
     if weapon_left:
         return ("far" if u["facing"] == "lower-left" else "near"), False
     return ("near" if u["facing"] == "lower-left" else "far"), True
+
+
+def wrong_way(u):
+    """Beat overrides whose direction words contradict the facing: for a unit looking lower-X, 'lower-Y'/'down-Y' (the
+    other side) or 'upper-X'/'up-X' (falling toward the attacker). Returns [(anim, frame, word)]."""
+    import re
+    x = "left" if u["facing"] == "lower-left" else "right"
+    y = "right" if x == "left" else "left"
+    pat = re.compile(rf"\b(lower-{y}|down-{y}|upper-{x}|up-{x})\b", re.I)
+    return [(a, i, m.group(1)) for a, fr in u.get("beats", {}).items() for i, t in fr.items() for m in [pat.search(t)] if m]
 
 
 def smear_direction(u):
@@ -281,6 +298,16 @@ def ground_limit(u):
     return 20 if u.get("legacy") else 40
 
 
+def ground_row(u, base):
+    """The canvas row redrawn frames are snapped to: the row of the unit's own feet in frame 0, so the redrawn frames
+    and the frames built from the sprite stand on the same line. An M7 sprite has its feet 2 px above its bottom, which
+    is row 125; Hyborem's PNG has 4 empty rows, so his feet are on 123. Legacy unit files keep the sprint's row 125."""
+    if u.get("legacy"):
+        return None
+    bb = ak.bbox(base, 60)
+    return (bb[3] - 1) if bb else None
+
+
 def floating(frame, ground=ak.ANCHOR[1] - 1):
     """Px between the frame's lowest opaque row and the ground row (0 when it touches)."""
     import numpy as np
@@ -349,7 +376,8 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
         best = None
         for k, raw in enumerate(raw_files(wdir, name), 1):
-            fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u))
+            fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u),
+                                         ground_row=ground_row(u, base))
             sc = score_variant(diag, candidates(name, fr, base), poses, u["facing"], head_only=not u.get("legacy"))
             report[f"{name}_{k}"] = {"score": round(sc, 2), "k": diag["k"], "ref": diag.get("ref_redraw_dE"),
                                      "snap": diag.get("ground_snap"), "warnings": diag["warnings"]}
@@ -364,7 +392,8 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         fr, moved = prepare(u, name, fr, poses, style, base)
         chosen[name] = (sc, k, fr)
         report[f"{name}_{k}"]["x_snap"] = moved
-        fl = {f"{a} {i}": floating(f) for (a, i), f in zip(SHEETS[name], fr[1:]) if floating(f) > 3}
+        gr = ground_row(u, base) or ak.ANCHOR[1] - 1
+        fl = {f"{a} {i}": floating(f, gr) for (a, i), f in zip(SHEETS[name], fr[1:]) if floating(f, gr) > 3}
         if fl:
             report[f"{name}_{k}"]["floating"] = fl
             print(f"warning: {name} variant {k} has frames above the ground: {fl}", file=sys.stderr)
@@ -414,7 +443,8 @@ def review_sheet(wdir, name, base, u, poses, style):
     geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
     rows = []
     for k, raw in enumerate(raw_files(wdir, name), 1):
-        fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u))
+        fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base, ground_snap=ground_limit(u),
+                                         ground_row=ground_row(u, base))
         fr, moved = prepare(u, name, fr, poses, style, base)
         snaps = diag.get("ground_snap", {})
         cells = [base] + fr[1:]
@@ -433,7 +463,7 @@ def review_sheet(wdir, name, base, u, poses, style):
                 sn = snaps.get(str(i), snaps.get(i, 0)) if isinstance(snaps, dict) else 0
                 if sn and abs(sn) >= 4:
                     lab += f"  ground {sn:+.0f}"
-                fl = floating(f)
+                fl = floating(f, ground_row(u, base) or ak.ANCHOR[1] - 1)
                 if fl > 3:
                     lab += f"  FLOATS {fl}"
             d.text((i * 256 + 4, 22), lab, fill=(30, 34, 40, 255))

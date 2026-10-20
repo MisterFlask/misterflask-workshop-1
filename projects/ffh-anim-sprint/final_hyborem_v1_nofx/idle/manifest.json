@@ -1,6 +1,7 @@
 {
- "unit": "swordsman",
- "arm": "final_hyborem_nofx",
+ "unit": "hyborem",
+ "facing": "lower-left",
+ "arm": "final_hyborem_v1_nofx",
  "anim": "idle",
  "canvas": [
   160,

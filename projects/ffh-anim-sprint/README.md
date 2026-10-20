@@ -63,10 +63,12 @@ the idle frame-0 bounding box. Big units need a taller canvas than 128 px (Hybor
   (strips, GIF/MP4 sequences, combat vignette), `judging` (blind packets, aggregation), `recipe`.
 - `arms/<ARM>/`: one folder per method with frames, manifests, sheets, notes, timings, `sequence_{3x,1x}.{gif,mp4}`
   and `vignette.{gif,mp4}`. `arms/calib/` is the model calibration.
-- `final/` (recipe with FX), `final_nofx/`, `final_v1_nofx/` (first build), `final_hyborem_v1/`: the sprint's sets,
-  made before the strike-direction rule (`units/swordsman_judged.json`, `units/hyborem_v1.json`).
+- `final/` (recipe with FX), `final_nofx/`, `final_v1_nofx/` (first build): the sprint's swordsman sets
+  (`units/swordsman_judged.json`), which strike away from where he looks, as do the method sets in `arms/`;
+  `final_hyborem_v1/`: the sprint's Hyborem set (`units/hyborem_v1.json`), which keeps the rule.
 - `final_swordsman/`, `final_hyborem/`, `final_ogre/` (+ `_nofx`): sets made after it (`units/*.json`).
-- `poses_near.json` (from `lib/poses_near_src.py`): the pose set for units that look lower-right.
+- `poses_near.json` (from `lib/poses_near_src.py`): the pose set for units that look lower-right with the weapon in
+  the near (screen-left) hand and, mirrored, for lower-left units with it in the screen-right hand.
 - `judging/`: judge JSON, keys, `scores.json`, `verify_scores.json`. Packets are regenerable and not committed.
 - `report/`: `build.py`, `content.py`, `player.js`, `style.css` → `report/site/` (not committed).
 - `m7/`: the parts of the M7 art-mode package this sprint uses. `spend.jsonl` / `budget.json`: the image-API ledger.

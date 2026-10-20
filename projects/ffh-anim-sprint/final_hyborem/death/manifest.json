@@ -56,6 +56,6 @@
   }
  ],
  "warnings": [
-  "frame 4 leaves the safe region x (16, 144): bbox (26, 36, 146, 126)"
+  "frame 4 leaves the safe region x (16, 144): bbox (26, 34, 146, 124)"
  ]
 }

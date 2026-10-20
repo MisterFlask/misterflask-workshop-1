@@ -1,5 +1,9 @@
 # Beat sheet (shared by every arm)
 
+> The main tables below are the **far set** (`poses.json`): a unit that looks lower-left with the weapon in the far,
+> screen-left hand, such as the ogre and Hyborem. The sprint's swordsman sets used them too, against the later
+> strike-direction rule. The swordsman as he really is (looking lower-right) uses the **near set** in the last section.
+
 Stiffness is mostly timing and posing, not rendering, so every arm fills these same beats.
 "Leads" is the body part that moves first on that frame; the others follow a frame later
 (overlapping action). Joint positions for every frame are in `poses.json` (made by

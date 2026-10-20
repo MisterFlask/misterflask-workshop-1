@@ -32,8 +32,10 @@ engine's job (mirror for lower-right; upper facings need back views, out of scop
 point screen-right), with the sword in the near hand, so the sets made under this section strike
 away from where he looks. The sprint's arms and `final/` keep this section as written. Every new
 set follows the strike-direction rule in `ANIMATING_UNITS.md`: the strike goes where the sprite
-looks, hits come from there, and a lower-right unit uses the near pose set (`poses_near.json`,
-texts in `lib/beats.py` `BEATS_NEAR`).
+looks and hits come from there. The facing and the weapon arm's screen side pick the pose set: the
+near set (`poses_near.json`, texts in `lib/beats.py` `BEATS_NEAR`) for a lower-right unit with the
+weapon in the near, screen-left hand, and mirrored for a lower-left unit with it in the screen-right
+hand; otherwise the far set (`poses.json`), mirrored when the weapon is in the screen-right hand.
 
 ## Animations
 

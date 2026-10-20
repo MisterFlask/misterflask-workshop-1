@@ -1,5 +1,11 @@
 # Brief for judges
 
+> **Sprint record.** This is the brief the sprint's judges worked from. It describes the swordsman as facing the
+> lower-left and points at the far-set beat sheet, which is what the sprint's sets did; he actually looks lower-right,
+> and sets made under the strike-direction rule (`ANIMATING_UNITS.md`, rule 1) strike that way. Before reusing this
+> brief, rewrite the first paragraph with the unit's real facing and strike direction, and name the beat texts that
+> apply (`beats.md` main tables for the far set, its last section for the near set).
+
 You are judging, blind, several methods for animating one unit sprite in a cheerful 16-bit-style isometric
 strategy game (think SNES tactics games): a chibi **swordsman** facing the lower-left, blue tunic, round wooden
 shield on his left arm (screen-right), short sword in his right hand (screen-left). Each method is shown only as

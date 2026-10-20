@@ -132,7 +132,7 @@ def assign_components(keyed, geom, min_big=600):
 
 
 def slice_sheet(raw, geom, n=None, ref_index=0, ref_canvas=None, calibrate=True, holes=30, return_redraw=False,
-                ground_snap=20):
+                ground_snap=20, ground_row=None):
     """Returns (frames, diag). frames[i] is the 160x128 canvas for cell i (empty canvas if the cell had nothing)."""
     geom = json.loads(Path(geom).read_text()) if isinstance(geom, (str, Path)) else geom
     n = n or geom["cols"] * geom["rows"]
@@ -194,7 +194,8 @@ def slice_sheet(raw, geom, n=None, ref_index=0, ref_canvas=None, calibrate=True,
         if ground_snap and i != ref_index:
             # every beat keeps something on the ground (feet, knees or the lying body), so the lowest opaque row
             # belongs on the ground row; models sometimes draw a whole row of cells a few px high or low
-            canvas, sdy = ak.snap_ground(canvas, max_px=ground_snap)
+            canvas, sdy = ak.snap_ground(canvas, max_px=ground_snap,
+                                         **({} if ground_row is None else {"target_bottom": ground_row}))
             if sdy:
                 diag.setdefault("ground_snap", {})[i] = sdy
         frames.append(canvas)

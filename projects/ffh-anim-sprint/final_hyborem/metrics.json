@@ -100,10 +100,10 @@
   "nonrigid": [
    0.0,
    0.262,
-   0.268,
+   0.271,
    0.327,
-   0.344,
-   0.334,
+   0.348,
+   0.34,
    0.185,
    0.043
   ],
@@ -131,30 +131,30 @@
     ],
     "hair": [
      0.0,
-     13.03,
+     14.05,
      13.96,
-     6.19,
-     16.64,
-     11.24,
-     11.04,
+     7.25,
+     14.14,
+     11.69,
+     11.07,
      0.64
     ],
     "wood": [
      0.0,
-     9.91,
-     10.0,
-     3.77,
-     11.04,
-     9.64,
-     8.29,
+     11.5,
+     9.77,
+     5.42,
+     8.37,
+     9.52,
+     8.41,
      0.62
     ]
    },
    "peak_frame": {
     "hair": 4,
-    "wood": 4
+    "wood": 1
    },
-   "overlap_index": 0.0
+   "overlap_index": 1.5
   },
   "drift_dE": [
    {
@@ -191,13 +191,13 @@
    }
   ],
   "boil": [
-   105.74,
+   104.36,
    86.88,
    111.59,
-   120.38,
-   95.6,
+   114.67,
+   94.32,
    113.06,
-   96.04
+   93.04
   ],
   "arc": [
    null,
@@ -222,17 +222,17 @@
    "frame 7: face is right of the hair (facing flip?)"
   ],
   "summary": {
-   "nonrigid_mean": 0.252,
-   "overlap_index": 0.0,
+   "nonrigid_mean": 0.254,
+   "overlap_index": 1.5,
    "drift_mean": 2.69,
-   "boil_mean": 104.18,
+   "boil_mean": 102.56,
    "n_gate_flags": 10
   }
  },
  "flinch": {
   "nonrigid": [
    0.0,
-   0.33,
+   0.334,
    0.246,
    0.239
   ],
@@ -287,12 +287,12 @@
   "boil": [
    168.7,
    98.09,
-   96.74
+   94.23
   ],
   "arc": [
    [
     116,
-    59
+    57
    ],
    null,
    null,
@@ -305,20 +305,20 @@
    "frame 3: face is right of the hair (facing flip?)"
   ],
   "jitter": {
-   "bottom_std": 0.87,
+   "bottom_std": 0.0,
    "feet_x_std": 2.65,
    "bottoms": [
-    125,
-    125,
-    125,
+    123,
+    123,
+    123,
     123
    ]
   },
   "summary": {
-   "nonrigid_mean": 0.272,
+   "nonrigid_mean": 0.273,
    "overlap_index": 0.0,
    "drift_mean": 2.79,
-   "boil_mean": 121.18,
+   "boil_mean": 120.34,
    "n_gate_flags": 4
   }
  },
@@ -326,12 +326,12 @@
   "nonrigid": [
    0.0,
    0.258,
-   0.262,
-   0.341,
+   0.267,
+   0.346,
    0.39,
-   0.435,
-   0.392,
-   0.443
+   0.44,
+   0.396,
+   0.452
   ],
   "overlap": {
    "displacement": {
@@ -386,7 +386,7 @@
    },
    {
     "mean": 2.65,
-    "p95": 7.4
+    "p95": 7.41
    },
    {
     "mean": 2.52,
@@ -415,7 +415,7 @@
   ],
   "boil": [
    184.29,
-   110.71,
+   110.72,
    108.25,
    113.37,
    89.62,
@@ -425,7 +425,7 @@
   "arc": [
    [
     116,
-    59
+    57
    ],
    null,
    null,
@@ -445,7 +445,7 @@
    "frame 7: little or no steel (sword missing?)"
   ],
   "summary": {
-   "nonrigid_mean": 0.36,
+   "nonrigid_mean": 0.364,
    "overlap_index": 0.0,
    "drift_mean": 2.58,
    "boil_mean": 107.51,

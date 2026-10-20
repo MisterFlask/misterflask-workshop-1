@@ -1,9 +1,10 @@
 # Animating M7 units: idle, strike, flinch, death
 
 This is the working method for giving an M7 isometric unit sprite (the art-mode sprites made with the M7 package) its
-four combat animations. It came out of a blind bake-off of seven methods in October 2026: after fixes, it had the top
-mean score in all four animations in a second blind round against the strongest of the others (evidence at the end).
-Follow it as written. If you change it, re-test it the same way (see "Changing the method").
+four combat animations. It came out of a blind bake-off of seven methods on the swordsman in October 2026: after fixes,
+it had the top mean score in all four animations in a second blind round against the strongest of the others. Those
+sets predate rule 1 below. The recipe as it stands now (rule 1, a second pose set, later fixes) has been compared blind
+only with its own earlier sets (evidence at the end). Follow it as written. If you change it, re-test it the same way (see "Changing the method").
 
 Everything below runs from `projects/ffh-anim-sprint/`. In a sparse agent worktree (see the root `CLAUDE.md`) run
 `git sparse-checkout add projects/ffh-anim-sprint` first.
@@ -15,8 +16,8 @@ Everything below runs from `projects/ffh-anim-sprint/`. In a sparse agent worktr
    away from it, because the attacker stands where the unit looks. Sprites differ: the ogre and Hyborem look
    lower-left, the swordsman and the worker lower-right. So decide the facing for every unit with care (step 1b; Hyborem
    was misread at first glance) and record it in the unit file; the recipe then picks the poses, the beat texts and the
-   prompt that strike that way. The sprint's judged swordsman set (`final/`) breaks this rule (he looks lower-right and
-   strikes lower-left), so do not copy it.
+   prompt that strike that way. The sprint's swordsman sets (`final/`, `final_nofx/`, `final_v1_nofx/`) and every
+   method set in `arms/` break this rule (he looks lower-right and strikes lower-left), so do not copy any of them.
 2. **Big actions (strike, flinch, death): the image model draws them on one guided sprite sheet per animation.**
    Cell 1 of the 4×2 sheet is the real sprite; the next cells hold a flat blockout of each frame's pose (6 for the
    strike, 3 for the flinch, 7 for the death) and the rest stay empty. The model redraws the character in each pose;
@@ -40,7 +41,7 @@ For a unit `<unit>` you write `units/<unit>.json` and get two folders:
 
 | Folder | Contents |
 |---|---|
-| `final_<unit>/` | the shipping look: a white hit flash on frame 0 of flinch and death; on the strike, an impact spark at the weapon's tip on the hit frame wherever a steel-coloured patch shows there (a blade, or a club's spikes), and a smear arc on the swing and hit frames only when a steel-coloured blade at least 20 px long shows in both frames. A dark weapon such as Hyborem's flaming blade gets neither. |
+| `final_<unit>/` | the shipping look: a white hit flash on frame 0 of flinch and death; on the strike, an impact spark on the hit frame at the outermost point of the largest steel-coloured patch in it (a blade, a club's spikes, or light steel armour if that is the largest patch), and a smear arc on the swing frame and on the hit frame, each only when a steel-coloured blade at least 20 px long shows in that frame and the one before it. A dark weapon such as Hyborem's flaming blade gets neither. |
 | `final_<unit>_nofx/` | the same frames without effects, for engines that draw their own effects |
 
 Each holds, per animation `idle`, `strike`, `flinch`, `death`:
@@ -66,7 +67,9 @@ Each holds, per animation `idle`, `strike`, `flinch`, `death`:
   lower diagonal, mirror every frame; the 160-wide canvas mirrors about the anchor. Upper facings need back views, which
   this method does not make.
 
-`spec.md` and `beats.md` are the full contract and the swordsman's frame-by-frame beat sheet.
+`spec.md` is the sprint's contract (with a correction for rule 1). `beats.md` is the beat sheet: its main tables are the
+far set (lower-left units such as the ogre and Hyborem; the sprint's swordsman sets used them too, against rule 1), and
+its last section is the near set (the swordsman as he really is).
 
 ## Before you start
 
@@ -78,10 +81,12 @@ pip install pillow numpy scipy requests      # and ffmpeg on PATH, for the previ
 - **API key.** In a Claude Code cloud session the proxy injects the OpenAI key. Elsewhere, `export OPENAI_API_KEY=...`.
 - **Budget.** Every image call goes through `m7/lib/imggen.py`, which logs it to `spend.jsonl` and refuses a call that
   would exceed any of three caps in `budget.json`: the unit's tag (`anim/units`, $5 at the time of writing), the root
-  tag `anim` ($20) and `total` ($20). The check uses a pessimistic estimate of about $0.25 per sheet call; the bill is
-  about $0.08. For bulk work raise every cap that binds. A unit file without a `tag` is billed to `anim/final`.
-- **The sprite.** An M7 unit PNG at most 128 px wide and 128 px tall, feet 2 px above the bottom, looking lower-left or
-  lower-right, holding one weapon. Do not mirror it: step 1b records which way it looks. Paths in unit files and on the
+  tag `anim` ($20) and `total` ($20). The check uses a pessimistic estimate of about $0.25 per sheet call; `spend.jsonl`
+  then logs about $0.08 per call (the returned token usage at deliberately high prices, so the real bill is at most
+  that). For bulk work raise every cap that binds. A unit file without a `tag` is billed to `anim/final`.
+- **The sprite.** An M7 unit PNG at most 128 px wide and 128 px tall, feet at or near the bottom (M7 leaves 2 px; the
+  recipe stands the redrawn frames on the sprite's own feet row, so a few more empty rows, like Hyborem's 4, are fine),
+  looking lower-left or lower-right, holding one weapon. Do not mirror it: step 1b records which way it looks. Paths in unit files and on the
   command line are relative to `projects/ffh-anim-sprint/`.
 
 ## Step 1: describe the unit
@@ -103,8 +108,11 @@ If you can, have a second agent judge the facing from the sprite alone, without 
 `"facing"`; the recipe refuses a unit file without it.
 
 **1c. Write `units/<unit>.json`.** Start from `units/ogre.json` (lower-left, a club, no shield) or `units/hyborem.json`
-(lower-left, a greatsword, no shield), whatever your unit's facing; `facing` and the joints are what change. Do not copy
-`units/swordsman.json`: it uses the source poses unchanged (`same_as_source`), which only fits the swordsman.
+(lower-left, a greatsword, no shield), and replace everything unit-specific: `name`, `sprite`, `facing`, `description`,
+`hands`, `scale`, `head_r`, `limb`, `joints`, and every `beats` text. Both examples look lower-left, so their overrides
+name the lower-left and the upper-right; overrides go to the model exactly as written and are never mirrored, so the
+recipe refuses a unit whose overrides point the wrong way for its facing. Do not copy `units/swordsman.json`: it uses
+the source poses unchanged (`same_as_source`), which only fits the swordsman.
 
 | Key | What to put |
 |---|---|
@@ -127,8 +135,10 @@ Optional keys: `palette` (overrides guide colours), `defringe: false` (turns the
 Joints, in canvas coordinates `[x, y]`, placed **on the sprite as drawn**. `r_` is the weapon arm and the leg on the
 same side of the body, wherever they are on screen; `l_` is the other arm and leg. For a weapon held in both hands
 (a hoe, a spear, a polearm), the weapon hand `r_ha` is the one at the end of the shaft, farthest from the weapon's
-head, so that `r_ha` to `tip` runs along the whole weapon; the other hand is `l_ha`, and the `hands` sentence says that
-it holds the shaft lower down at rest (the poses swing one-handed):
+head, so that `r_ha` to `tip` runs along the whole weapon; the other hand is `l_ha`. The poses swing one-handed, so say
+in `hands` that the other hand holds the shaft lower down at rest and lets go during the action, and describe it as an
+empty fist in every override that mentions it (strike 2–5, flinch 0–1, death 1–3), or the model gets a text and a guide
+that disagree. No two-handed unit has been generated yet, so check its strike closely in step 3:
 
 | Joint | Where |
 |---|---|
@@ -185,8 +195,9 @@ the sprite in a red tint, then the flinch; row 3 is the death. Check:
 - each guide cell against its beat text from 1d: if your weapon rests at a different angle from the swordsman's (on the
   shoulder, or pointing down like a hoe), an early frame such as strike 1 may hold it differently from the text; then
   reword the text to describe what the guide shows, never the direction of the blow;
-- in death 4–7 the dropped weapon is always drawn as a sword blade; that is expected, and the death texts must name
-  your weapon so the model draws it.
+- every guide draws the weapon as a light sword blade with a crossguard, held or dropped (death 4–7, where it lies
+  where the swordsman drops his); that is expected, and every text that shows the weapon must name it (club, hoe,
+  greatsword) so the model draws it.
 
 If it warns that the guide weapon was shortened, the weapon is too long for the area the model is shown (x 16–143,
 y 0–127 of the canvas) in those frames. Carry on: the model draws it at full length, so in step 3 reject variants where
@@ -222,7 +233,12 @@ guide (`slid -24`: the model drew the figure 24 px off) or moved up or down onto
   that floats stays floating forever);
 - **sideways slide:** the feet jump between frames even after the slide (compare with frame 0);
 - **cropping:** a weapon or limb cut off at the canvas edge;
-- **magenta or purple specks** on outlines or seams (the recipe recolours most of them);
+- **magenta or purple specks** on outlines or seams (the recipe recolours most of them, except for units with purple
+  art such as the lich or the Sheaim mage, where de-fringing is off: pick the cleanest variant, re-roll if both have
+  specks);
+- **for a lower-right unit, a flip in strike frames 3–5:** the torso turns into the lunge and the shield swings behind
+  the back, which some judges read as the figure turning round (see Known limits); prefer the variant where the face
+  and chest still clearly point lower-right;
 - **death:** a corpse lying side-on instead of along the tile's diagonal, or a bounce (frame 6) that reads as a sit-up.
 
 Then re-cut with your picks. This is free, with no API calls:
@@ -248,7 +264,8 @@ This writes, in `final_<unit>/`:
 - `vignette.{gif,mp4}`: two copies side by side on one screen row; the attacker (blue banner) strikes toward the
   mirrored defender (red), who stands on the side the attacker faces;
 - `preview/`: per animation `<anim>_strip3x.png` (frames at 3× with timings and the hit marked), `<anim>_map1x.png`
-  (game scale), an onion skin and a silhouette strip.
+  (game scale), an onion skin with the weapon-tip trail (`_onion.png`), a silhouette strip (`_sil.png`), a change heat
+  map (`_diff.png`) and GIFs (`_1x.gif`, `_3x.gif`, not committed).
 
 If you cannot play GIFs, read the strips: `preview/<anim>_strip3x.png` for detail and `preview/<anim>_map1x.png` for
 game scale. Check:
@@ -270,7 +287,7 @@ to `final_<unit>/metrics.json` (`jitter`, for idle and flinch, is only in that f
 them for other units (the gates are heuristics even for the swordsman).
 
 **Commit** `units/<unit>.json`, `final_<unit>/` (frames, manifests, sheets, `unit_poses.json`, `metrics.json`, the
-sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets). `.gitignore` already leaves out
+sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets, `unit_poses.json`). `.gitignore` already leaves out
 `work/` and the per-animation preview GIFs.
 
 ## Known limits
@@ -289,15 +306,21 @@ sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (fr
   de-fringe step turns itself off when 1% or more of the sprite's opaque pixels are purple (the lich and the Sheaim
   mage), but keying can still eat purple art. The magenta key is assumed by the prompt, the template background
   (`sheet.make_template`) and `sheet.slice_sheet`; another key colour is not supported yet.
-- **Body plans.** The poses are a biped swinging a one-handed melee weapon. Archers and casters need their own beat sheet
-  and poses (a draw-and-release or a cast, in `lib/poses_src.py`, `lib/poses_near_src.py` and `lib/beats.py`). Mounted
+- **Body plans.** The poses are a biped swinging a one-handed melee weapon. Archers and casters (the elf archer, the
+  lich, the Sheaim mage, the priest) have no poses yet. A shot or a cast needs a new pose file in the `poses.json`
+  schema, written for the set that `--show-beats` names for the unit (the recipe mirrors it as needed), pointed to by
+  the unit file's `poses_from`, with all 16 beat texts overridden and the shot or cast aimed toward the facing (rule 1).
+  Do not edit `lib/poses_src.py`, `lib/poses_near_src.py` or `lib/beats.py` for this: every melee unit uses them. This
+  is untested; if you were not asked to build it, say so rather than animating a caster with the sword swing. Mounted
   units, animals and ships are untested.
 - **Facing.** Lower-left and lower-right only (see the engine contract).
-- **The near set** (`poses_near.json`, lower-right) was written after the sprint for the strike-direction rule and has
-  not been through a bake-off like the far set; it has been judged only as guides and in the post-rule checks. Its
-  weakest point is the shield on the strike: the far arm swings it behind the back on the 50 ms swing frame, and judges
-  in both checks read that as the shield vanishing and reappearing behind him, or swapping arms. Keeping the shield on
-  the far side of the body through frames 3–5 is the obvious change (in `lib/poses_near_src.py`); it is untested.
+- **The near set** (`poses_near.json`: lower-right with the weapon in the near hand, or mirrored) was written after the
+  sprint for the strike-direction rule and has not been through a bake-off like the far set; it has been judged only as
+  guides and in the post-rule checks. Its weakest point is the turn into the strike: the far arm swings the shield
+  behind the back on the 50 ms swing frame, and judges in both checks read that as the shield vanishing and reappearing
+  behind him or swapping arms, and one judge per round as the figure turning round and slashing behind himself (while
+  the direction judges all read the strike as lower-right). Keeping the shield on the far side of the body through
+  frames 3–5 is the obvious change (in `lib/poses_near_src.py`); it is untested.
 - **Remaining model defects.** Even the best variants carry small smudges, a corpse a little flatter than the isometric
   axis, and occasionally a death bounce that is too big. The pick in step 3 is the control.
 - **Model choice.** `gpt-image-2.5-sunburst` at medium quality, 1536×1024, two variants per call (`lib/gen.py`
@@ -308,7 +331,9 @@ sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (fr
 
 If you improve the recipe, re-test it before relying on it. Run the old and the new version on the same unit, then have
 judges compare them blind: letters instead of names, a frame-ordering test, and scores for motion, consistency, style
-and appeal (`lib/judging.py`, `JUDGE_BRIEF.md`). Agents judging stills are a useful filter. A person watching the motion
+and appeal (`lib/judging.py`; `JUDGE_BRIEF.md` is the sprint's brief, which says the swordsman faces lower-left, so
+rewrite its first paragraph with the unit's real facing first; `judging/post_rule/make_packets.py` builds the blind
+packets used after the sprint). Agents judging stills are a useful filter. A person watching the motion
 is the real test.
 
 ## Why this method (evidence)
@@ -333,7 +358,8 @@ other methods per animation, and gave it the top mean score in all four: 7.90 / 
 ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too small to call.
 
 - Report, with every animation playable: https://claude.ai/artifact/3eWLaH1v9PHpu6G6FGKExb
-- Data: `judging/` (scores, judges' JSON and keys), `spend.jsonl`, and the method arms' `notes.md`.
+- Data: `judging/` (scores, judges' JSON and keys), `spend.jsonl`, and the method arms' `notes.md` (the A0 control has
+  only its script, `arms/A0/make_a0.py`).
 
 ### After the sprint
 
@@ -348,8 +374,9 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
 - **Blind verification, round A** (`judging/post_rule/round_a.json`): three judges read where each set's sprite looks and
   where it strikes, under neutral letters. They read Hyborem as looking lower-left, against this guide's first call of
   lower-right, so his first post-rule set struck the wrong way. The round also exposed a prompt bug (the per-cell facing
-  sentence was sent unformatted) and gaps in this guide found by a second cold run (on the worker). All are fixed, and
-  the three worked examples were made again.
+  sentence was sent unformatted) and gaps in this guide found by a second cold run (on the worker, up to step 1e). The
+  bug and the guide gaps are fixed (a two-handed unit has still not been generated), and the three worked examples were
+  made again.
 - **Blind verification, round B** (`judging/post_rule/round_b.json`), on the regenerated sets: every new set strikes
   where its sprite looks (3 of 3 judges each), and the sprint's swordsman set fails again (3 of 3). Old set → new set,
   weighted scores, idle / strike / flinch / death (gaps under about 0.5 are within judge noise):
@@ -362,8 +389,9 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
 
   The two clear losses, the ogre's strike and Hyborem's death, were frames floating 21–22 px above the ground: the
   slicer only snapped up to 20 px and left them, and the pick by eye missed them. It now snaps up to 40 px and the
-  variant sheets label any float; both sets were re-cut from the same picks, so every frame touches the ground, but the
-  re-cut sets were not judged again. The swordsman's idle is unchanged because both sets use the same warp of his
+  variant sheets label any float; both sets were re-cut from the same picks, so every redrawn frame now stands on the
+  sprite's ground row (Hyborem's on his own feet row, 2 px above the others, because his PNG has 4 empty rows under the
+  feet), but the re-cut sets were not judged again. The swordsman's idle is unchanged because both sets use the same warp of his
   sprite.
 
 ## Worked examples
@@ -375,5 +403,6 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
 - `units/hyborem.json` → `final_hyborem/`: looks lower-left, a long greatsword, no shield; far set retargeted, beat texts
   reworded (fist and cape for the shield).
 - Sprint sets, kept only to reproduce the sprint (`"legacy": true`): `units/swordsman_judged.json` → `final/` breaks rule
-  1; `units/hyborem_v1.json` → `final_hyborem_v1/` keeps it but has the sprint's processing (no idle breath, no sideways
-  snap).
+  1 (its `facing` is the direction that set strikes, not where he looks; `final/`'s manifests predate the `facing`
+  field); `units/hyborem_v1.json` → `final_hyborem_v1/` keeps the rule but has the sprint's processing (no idle breath,
+  no sideways snap).

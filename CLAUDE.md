@@ -8,7 +8,9 @@ Other top-level directories hold standalone writing, research and tooling.
 
 To make idle, strike, flinch or death animations for an M7 unit sprite, follow
 `projects/ffh-anim-sprint/ANIMATING_UNITS.md`. It describes the method that won the October 2026
-animation sprint (`lib/recipe.py` in that folder); do not start from an ad-hoc approach.
+animation sprint (`lib/recipe.py` in that folder); do not start from an ad-hoc approach. Its first
+rule: the strike always goes in the direction the sprite is looking. In a sparse agent worktree
+that folder is not checked out; run `git sparse-checkout add projects/ffh-anim-sprint` first.
 
 ### Agent worktrees are sparse
 
