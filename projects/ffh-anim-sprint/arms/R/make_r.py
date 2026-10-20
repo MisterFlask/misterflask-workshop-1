@@ -38,7 +38,7 @@ POLYS = {
     "l_shin":  [[(86, 108), (99, 106), (104, 112), (109, 120), (108, 127), (88, 127), (88, 116)]],
     "head":    [[(64, 46), (76, 38), (98, 39), (104, 48), (102, 60), (95, 65), (88, 66), (86, 67), (79, 67),
                  (74, 66), (72, 66), (66, 62), (64, 56)]],
-    "r_upper": [[(63, 70), (66, 67), (71, 67), (72, 70), (72, 79), (69, 81), (65, 80), (63, 75)]],
+    "r_upper": [[(63, 70), (66, 67), (70, 67), (70, 79), (69, 81), (65, 80), (63, 75)]],
     "r_fore":  [[(55, 81), (58, 79), (62, 78), (65, 76), (70, 78), (70, 84), (66, 86), (63, 88), (58, 88), (55, 85)]],
     "sword":   [[(42, 46), (52, 46), (60, 66), (61, 73), (65, 73), (65, 77), (58, 81), (51, 84), (49, 80),
                  (51, 77), (49, 72), (41, 52)],
@@ -51,7 +51,8 @@ PRIORITY = list(POLYS)
 # Target silhouettes for hidden-pixel fill: the part as it would look with nothing in front of it.
 FILL = {
     # tunic continues under the far sleeve, the hair/chin and the near sleeve/shield edge
-    "torso":   [[(70, 62), (95, 62), (97, 70), (96, 84), (95, 96), (67, 97), (69, 86), (70, 72)]],
+    "torso":   [[(74, 62), (93, 62), (97, 67), (97, 74), (96, 84), (95, 96), (67, 97), (69, 90), (71, 84),
+                 (71, 70)]],
     # shorts legs continue up under the belt so the hips can turn without a gap
     "r_thigh": [[(67, 90), (81, 90), (81, 101), (78, 105), (77, 110), (69, 110), (66, 102)]],
     "l_thigh": [[(82, 90), (94, 90), (95, 101), (96, 109), (89, 111), (85, 104), (82, 99)]],
@@ -80,19 +81,40 @@ def segment(base):
     for k, name in enumerate(PRIORITY):
         m = rig.polygon_mask(base.size, POLYS[name])
         label[m & op] = k
+    # tunic-blue pixels caught by the head / sleeve polygons are the tunic's collar and straps: give them to the torso
+    r, g, b = (a[..., i].astype(int) for i in range(3))
+    blue = (b > r + 60) & (b > g + 40)
+    for name in ("head", "r_upper", "l_upper"):
+        k = PRIORITY.index(name)
+        label[(label == k) & blue] = PRIORITY.index("torso")
     unassigned = op & (label < 0)
     if unassigned.any():  # stray edge pixels: give them to the nearest assigned part
         idx = ndimage.distance_transform_edt(label < 0, return_distances=False, return_indices=True)
         label[unassigned] = label[idx[0][unassigned], idx[1][unassigned]]
+    # crumbs: polygon edges slice off a few outline pixels of a neighbouring part; when the parts move apart these
+    # specks would float in the air. Components under 12 px go to the neighbouring part they touch.
+    for _ in range(2):
+        for k in range(len(PRIORITY)):
+            lab, n = ndimage.label(label == k, structure=np.ones((3, 3)))
+            if n < 2:
+                continue
+            sizes = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1))
+            for c in np.nonzero(sizes < 12)[0]:
+                comp = lab == (c + 1)
+                ring = ndimage.binary_dilation(comp, np.ones((3, 3))) & ~comp & (label >= 0) & (label != k)
+                if ring.any():
+                    label[comp] = np.bincount(label[ring]).argmax()
     return {name: rig.part_layer(base, label == k) for k, name in enumerate(PRIORITY)}, label
 
 
-def fill_hidden(layer, polys, outline=True):
-    """Paint the pixels inside the target silhouette that the part does not have: clone the nearest opaque pixel of
-    the part (so stripes/shading extend), then redraw a 1 px dark outline on the new silhouette edge."""
+def fill_hidden(layer, polys, hidden, outline=True):
+    """Paint the pixels inside the target silhouette that the part does not have but that a part in FRONT of it hides
+    in the rest pose (`hidden`): clone the nearest opaque pixel of the part (so stripes/shading extend), then redraw
+    a 1 px dark outline on the new silhouette edge. Pixels nothing hides are left alone, so the rest pose rebuilt from
+    the parts stays identical to the sprite."""
     a = np.asarray(layer).copy()
     have = a[..., 3] > 200
-    sil = rig.polygon_mask(layer.size, polys) | have
+    sil = (rig.polygon_mask(layer.size, polys) & (hidden | have)) | have
     need = sil & ~have
     if not need.any():
         return layer
@@ -121,8 +143,11 @@ def paint_grip(sword):
 def build_parts(debug=False):
     base = ak.base_canvas()
     parts, label = segment(base)
+    seq = [n for g in P0.get("order", ak.POSES["default_order"]) for n in GROUP[g]]
     for name, polys in FILL.items():
-        parts[name] = fill_hidden(parts[name], polys)
+        front = [PRIORITY.index(n) for n in seq[seq.index(name) + 1:]]
+        hidden = np.isin(label, front)
+        parts[name] = fill_hidden(parts[name], polys, hidden)
     parts["sword"] = paint_grip(parts["sword"])
     (HERE / "parts").mkdir(parents=True, exist_ok=True)
     for name, im in parts.items():
@@ -193,6 +218,75 @@ def lerp(a, b, t):
     return [a[i] + (b[i] - a[i]) * t for i in range(len(a))]
 
 
+# ---------------------------------------------------------------- code-drawn blade
+# Rotating the sprite's stair-stepped blade outline by large angles gives a serrated (saw-tooth) edge. For large
+# sword turns the blade is redrawn in code instead: a straight tapered blade whose cross-section colours are averaged
+# from the sprite's own blade (so it keeps its light edge / white ridge / blue-grey shade / dark outline). The sprite's
+# crossguard, grip and pommel are still the raster pixels, rotated on top.
+BLADE_C = np.array([52.51, 65.85])     # blade centreline (PCA of the steel pixels), continuous coords
+BLADE_D = np.array([-0.3684, -0.9297])  # unit direction toward the tip
+BLADE_U = (-13.0, 16.2)                 # along-axis extent (guard .. tip incl. outline)
+BLADE_HW = 4.4                          # half width incl. outline
+HILT_U = -10.5                          # sword pixels below this (u <) are the hilt and stay raster
+_PROFILE = None
+
+
+def _uv(xy, c, d):
+    n = np.array([-d[1], d[0]])
+    q = xy - c
+    return q @ d, q @ n
+
+
+def blade_profile(sword):
+    global _PROFILE
+    if _PROFILE is None:
+        pm = ak._premul(sword)
+        vs = np.arange(-BLADE_HW, BLADE_HW + 1e-6, 0.25)
+        us = np.arange(-7.0, 9.0, 0.5)
+        n = np.array([-BLADE_D[1], BLADE_D[0]])
+        acc = np.zeros((len(vs), 4))
+        for u in us:
+            pts = BLADE_C + u * BLADE_D + vs[:, None] * n  # continuous coords
+            coords = [pts[:, 1] - 0.5, pts[:, 0] - 0.5]
+            acc += np.stack([ndimage.map_coordinates(pm[..., c], coords, order=1) for c in range(4)], 1)
+        _PROFILE = (vs, acc / len(us))
+    return _PROFILE
+
+
+def draw_blade(sword, M, a0, a1, ss=4):
+    vs, prof = blade_profile(sword)
+    a0 = np.asarray(a0, float) + 0.5
+    a1 = np.asarray(a1, float) + 0.5
+    c1 = M @ (BLADE_C - a0) + a1
+    dm = M @ BLADE_D
+    su = np.hypot(*dm)
+    d1 = dm / su
+    W, H = ak.W, ak.H
+    ys, xs = np.mgrid[0:H * ss, 0:W * ss]
+    xy = np.stack([(xs + 0.5) / ss, (ys + 0.5) / ss], -1)
+    u, v = _uv(xy, c1, d1)
+    u = u / su
+    taper = 7.0
+    w = np.where(u < BLADE_U[1] - taper, BLADE_HW,
+                 BLADE_HW * np.clip((BLADE_U[1] - u) / taper, 0.0, 1.0) ** 0.8 + 0.6)
+    vv = v * BLADE_HW / np.maximum(w, 1e-3)
+    inside = (u > BLADE_U[0]) & (u < BLADE_U[1]) & (np.abs(vv) <= BLADE_HW)
+    out = np.zeros((H * ss, W * ss, 4), np.float32)
+    for c in range(4):
+        out[..., c] = np.interp(vv, vs, prof[:, c])
+    out[~inside] = 0
+    small = out.reshape(H, ss, W, ss, 4).mean((1, 3))
+    return ak._unpremul(small)
+
+
+def hilt_layer(sword):
+    a = np.asarray(sword).copy()
+    ys, xs = np.mgrid[0:ak.H, 0:ak.W]
+    u, _ = _uv(np.stack([xs + 0.5, ys + 0.5], -1), BLADE_C, BLADE_D)
+    a[u >= HILT_U] = 0
+    return Image.fromarray(a, "RGBA")
+
+
 # ---------------------------------------------------------------- posing
 def pose_frame(parts, p, prev=None, squash=(1.0, 1.0), hair_lag=(0, 0), shield_lag=(0, 0), extra=None):
     extra = extra or {}
@@ -210,7 +304,7 @@ def pose_frame(parts, p, prev=None, squash=(1.0, 1.0), hair_lag=(0, 0), shield_l
     neck1 = dst[4]
     # head: turn about the neck by head_tilt (pose: + = chin up/back = clockwise), hair lags via MLS
     head = parts["head"]
-    if hair_lag != (0, 0):
+    if max(abs(hair_lag[0]), abs(hair_lag[1])) >= 1.0:  # sub-pixel lag would only blur the head
         hs = [(82, 66), (80, 58), (86, 58), (74, 60), (84, 42), (98, 48), (100, 60), (70, 46)]
         lag = np.array(hair_lag, float)
         hd = [hs[0], hs[1], hs[2], hs[3]] + [tuple(np.add(q, lag * w)) for q, w in
@@ -227,8 +321,13 @@ def pose_frame(parts, p, prev=None, squash=(1.0, 1.0), hair_lag=(0, 0), shield_l
     layers["r_fore"] = warp_affine(parts["r_fore"], M, P0["r_el"], el1)
     ha1 = np.add(el1, M @ np.subtract(P0["r_ha"], P0["r_el"]))
     tip = np.add(p["tip"], extra.get("tip", (0, 0)))
-    M, _, _ = bone_matrix(P0["r_ha"], P0["tip"], ha1, tip, STRETCH["sword"])
-    layers["sword"] = warp_affine(parts["sword"], M, P0["r_ha"], ha1)
+    M, sang, _ = bone_matrix(P0["r_ha"], P0["tip"], ha1, tip, STRETCH["sword"])
+    if abs(sang) > 12:  # big turn: code-drawn blade under the rotated raster hilt (no saw-tooth edge)
+        sw = draw_blade(parts["sword"], M, P0["r_ha"], ha1)
+        sw.alpha_composite(warp_affine(hilt_layer(parts["sword"]), M, P0["r_ha"], ha1))
+        layers["sword"] = sw
+    else:
+        layers["sword"] = warp_affine(parts["sword"], M, P0["r_ha"], ha1)
     # near arm: sleeve from the shoulder; shield follows the hand with a lag and turns a little with the forearm
     lsh1 = dst[6]
     M, _, _ = bone_matrix(P0["l_sh"], P0["l_el"], lsh1, p["l_el"], STRETCH["l_upper"])
@@ -247,9 +346,13 @@ def pose_frame(parts, p, prev=None, squash=(1.0, 1.0), hair_lag=(0, 0), shield_l
         layers[s + "_shin"] = warp_affine(parts[s + "_shin"], M, P0[s + "_kn"], kn1)
     out = Image.new("RGBA", (ak.W, ak.H), (0, 0, 0, 0))
     order = extra.get("order", p.get("order", ak.POSES["default_order"]))
-    for g in order:
-        for name in GROUP[g]:
-            out.alpha_composite(layers[name])
+    seq = [n for g in order for n in GROUP[g]]
+    if "sword" in seq and seq.index("sword") > seq.index("r_fore"):
+        # the fist wraps the grip: draw the sword just under the fist, keeping the fist's depth slot
+        seq.remove("sword")
+        seq.insert(seq.index("r_fore"), "sword")
+    for name in seq:
+        out.alpha_composite(layers[name])
     return out, layers
 
 
@@ -267,7 +370,9 @@ def strike(parts):
     head_xy = [np.array(q["head"], float) for q in S]
     shield_xy = [np.array(q["shield"][:2], float) for q in S]
     tweaks = {
-        1: dict(),
+        # frame 1: the forearm and fist go in front of the hair (poses.json puts the arm behind the head, which hid
+        # the hand entirely and left the sword hilt sprouting from the hair)
+        1: dict(extra=dict(order=["r_leg", "torso", "l_leg", "head", "r_arm", "sword", "l_arm", "shield"])),
         2: dict(squash=(1.0, 0.97)),
         3: dict(squash=(1.0, 1.03)),
         4: dict(squash=(1.03, 0.95)),
@@ -275,13 +380,19 @@ def strike(parts):
         6: dict(),
         7: dict(),
     }
+    # overlapping action as a one-frame spring: the hair (and the shield) chase the head (hand) position, so they
+    # trail behind on the whip forward (frames 3-5) and catch up on the recovery
+    hair = head_xy[0].copy()
+    shl = shield_xy[0].copy()
     frames = [ak.base_canvas()]
     for i in range(1, len(S)):
         tw = tweaks.get(i, {})
-        lag = np.clip((head_xy[i - 1] - head_xy[i]) * 0.35, -3, 3)
-        slag = np.clip((shield_xy[i - 1] - shield_xy[i]) * 0.6, -2, 2)
-        if i == 7:
-            lag, slag = lag * 0.5, slag * 0.5
+        hair = hair + (head_xy[i] - hair) * 0.55
+        shl = shl + (shield_xy[i] - shl) * 0.6
+        lag = np.clip(hair - head_xy[i], -3, 3)
+        slag = np.clip(shl - shield_xy[i], -2, 2)
+        if i == 7:  # settle: almost no lag left so idle resumes without a pop
+            lag, slag = lag * 0.3, slag * 0.3
         f, _ = pose_frame(parts, S[i], squash=tw.get("squash", (1.0, 1.0)), hair_lag=tuple(lag),
                           shield_lag=tuple(slag), extra=tw.get("extra"))
         frames.append(fit_ground(f))

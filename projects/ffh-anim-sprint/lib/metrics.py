@@ -231,15 +231,16 @@ def anim_metrics(frames, anim):
 
 
 def arm_metrics(arm, anims=ANIMS, root=None):
-    out = {}
     d = Path(root) if root else ak.ROOT / "arms" / arm
+    mp = d / "metrics.json"
+    out = json.loads(mp.read_text()) if mp.exists() else {}  # merge: agents may compute one animation at a time
     for anim in anims:
         if not (d / anim / "manifest.json").exists():
             continue
         frames, _ = ak.load_anim(arm, anim, root=root)
         out[anim] = anim_metrics(frames, anim)
-    (d / "metrics.json").write_text(json.dumps(out, indent=1))
-    return out
+    mp.write_text(json.dumps(out, indent=1))
+    return {k: v for k, v in out.items() if k in anims}
 
 
 if __name__ == "__main__":

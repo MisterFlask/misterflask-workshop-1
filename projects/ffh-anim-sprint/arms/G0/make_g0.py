@@ -23,7 +23,7 @@ ARM = "G0"
 TAG = "anim/G0"
 W = ROOT / "work/G0"
 A = ROOT / "arms/G0"
-GROUND_SNAP = 40
+GROUND_SNAP = 48
 
 
 def beat_texts(anim):
@@ -53,6 +53,14 @@ ROUNDS = {
                   "fully inside its own cell."),
     },
 }
+# r3: r2 fixed cell 4's blade and cell 7, but both r2 variants raised the sword so high in cell 2 that its tip ran off
+# the top of the canvas region (clipped flat at canvas y 0). Same as r2 plus a lower sword in cell 2.
+ROUNDS["strike"]["r3"] = dict(
+    texts=_reword(ROUNDS["strike"]["r2"]["texts"], {
+        2: "anticipation: weight shifts back onto the rear leg, torso leans back, the sword is lifted up over the head "
+           "with the tip pointing up and back; the sword hand stays just above the forehead, so the whole blade "
+           "stays well inside the cell with clear magenta above its tip",
+    }), extra=ROUNDS["strike"]["r2"]["extra"])
 
 
 def template(anim):
@@ -83,8 +91,8 @@ def variants(anim, rnd):
 
 def cut(anim, raw):
     geom = json.loads((W / f"template_{anim}.geom.json").read_text())
-    # ground_snap=40 instead of the default 20: with no guide in the empty cells the model has no ground line to
-    # follow there and drew the whole bottom row ~28 canvas px too high in round 1 (every strike beat has a foot
+    # ground_snap=48 instead of the default 20: with no guide in the empty cells the model has no ground line to
+    # follow there and drew the whole bottom row 27-42 canvas px too high in every round (every strike beat has a foot
     # on the ground, so snapping the lowest opaque row onto the ground row is still the right correction)
     frames, diag = sheet.slice_sheet(raw, geom, n=beats.COUNTS[anim], ground_snap=GROUND_SNAP)
     return frames, diag

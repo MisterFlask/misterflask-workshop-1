@@ -144,13 +144,22 @@ def actor_timeline(arm, script, root=None, mirror=False):
     Returns [(frame, start_ms, end_ms)], and a dict of event times (e.g. 'hit')."""
     cache = {}
     t, segs, ev = 0, [], []
+    d = Path(root) if root else ak.ROOT / "arms" / arm
     for item in script:
         anim, dur = item[0], item[1]
         if anim not in cache:
-            fr, man = ak.load_anim(arm, anim, root=root)
-            if mirror:
-                fr = [ak.mirror(f) for f in fr]
-            cache[anim] = (fr, man)
+            if not (d / anim / "manifest.json").exists():
+                if anim != "idle":
+                    continue  # this arm made no such animation: skip it in the sequence
+                # no idle made: hold the static sprite instead (sequence label says so)
+                cache[anim] = ([ak.base_canvas()] * 4, {"frames": [{"ms": 250, "events": []}] * 4})
+                if mirror:
+                    cache[anim] = ([ak.mirror(ak.base_canvas())] * 4, cache[anim][1])
+            else:
+                fr, man = ak.load_anim(arm, anim, root=root)
+                if mirror:
+                    fr = [ak.mirror(f) for f in fr]
+                cache[anim] = (fr, man)
         fr, man = cache[anim]
         ms = [x["ms"] for x in man["frames"]]
         if dur is None:
@@ -344,8 +353,10 @@ def arm_previews(arm, root=None, only=None):
             diffheat(frames).save(pv / f"{anim}_diff.png")
             anim_gifs(frames, man, pv, anim)
     res = {}
-    if only in (None, "sequence") and len(have) == 4:
-        res["sequence_ms"] = sequence(arm, d, root=root)
+    if only in (None, "sequence") and "strike" in have:
+        missing = [a for a in ANIMS if a not in have]
+        lab = None if not missing else f"{arm}: no {', '.join(missing)} (static sprite / skipped)"
+        res["sequence_ms"] = sequence(arm, d, root=root, label=lab)
     if only in (None, "vignette") and {"idle", "strike", "flinch", "death"} <= set(have):
         res["vignette_ms"] = vignette(arm, d, root=root)
     return have, res
