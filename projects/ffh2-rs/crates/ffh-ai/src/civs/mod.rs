@@ -254,6 +254,56 @@ pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
     of(g, p).tech_value(g, p, t, value)
 }
 
+/// Casters for a civilization whose casters are its own unique units (the Amurites' Wizards and the
+/// Svartalfar's Illusionists, Mages upgraded from level-4 Adepts; the Doviello's and the Clan's
+/// Shamans, their Adepts): the generic caster step comes after buildings with a target of
+/// (cities + 2) / 4, so these civilizations had almost none. The empire's most productive city,
+/// unthreatened and when a unit is affordable, trains casters up to (cities + 2) / 2, first
+/// building there what its Adepts need (a Mage Guild, but for the Shamans). They cast by
+/// `magic.rs` and upgrade by the generic upgrade. The owner's rule: civilizations use their unique
+/// units (CLAUDE.md "AI changes"); the Amurites' round-5 version is in docs/AI_LOG.md.
+pub(crate) fn unique_casters(g: &Game, c: CityId, threat: i32) -> Option<Choice> {
+    let d = g.d;
+    let p = g.cities[c].owner;
+    let pl = &g.players[p];
+    if threat > 0 {
+        return None;
+    }
+    let prod = |o: CityId| g.city_yield_rate(o, YieldType::YIELD_PRODUCTION);
+    let best = pl.cities.iter().copied().max_by_key(|&o| (prod(o), std::cmp::Reverse(o)))?;
+    if best != c {
+        return None;
+    }
+    let n = pl.cities.len() as i32;
+    let casters = crate::production::count_ai(g, p, UnitAIType::UNITAI_MAGE) + crate::production::count_ai(g, p, UnitAIType::UNITAI_WARWIZARD);
+    if casters >= (n + 2) / 2 {
+        return None;
+    }
+    let civ = g.player_get_civilization_type(p)?;
+    let adept = d.civ_unit(civ, d.ty::<UnitClassType>("UNITCLASS_ADEPT")?)?;
+    if !g.player_can_train(p, adept, false, false, false) {
+        return None;
+    }
+    let at_war = crate::diplomacy::preparing_target(g, pl.team).is_some()
+        || g.teams.keys().any(|t| t != pl.team && t != g.barbarian_team() && g.teams[t].alive_count > 0 && g.at_war(pl.team, t));
+    if !crate::economy::can_afford_unit(g, p, true, at_war) {
+        return None;
+    }
+    if let Some(b) = crate::production::unit_building(d, civ, &d.units[adept]) {
+        let bc = d.buildings[b].building_class_type?;
+        if !g.city_is_has_building_class(c, bc) {
+            if !g.city_can_construct(c, b, false, false, false) {
+                return None;
+            }
+            crate::trace!(g, p, "{}: {} for casters", g.cities[c].name, d.buildings[b].base.type_);
+            return Some(Choice::Construct(b));
+        }
+    }
+    let u = crate::production::best_unit(g, c, crate::production::Role::Mage)?;
+    crate::trace!(g, p, "{}: caster {} ({} of {})", g.cities[c].name, d.units[u].base.type_, casters, (n + 2) / 2);
+    Some(Choice::Train(u, UnitAIType::UNITAI_MAGE))
+}
+
 /// The units only this civilization, or it and one other, can train: its unique units, heroes
 /// included (a civilization's unit of a class the others lack or replace, `PrereqCiv` units),
 /// with a production cost. Built once from the game data.

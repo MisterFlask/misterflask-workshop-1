@@ -12,12 +12,15 @@
 //! - **For the Horde** (world spell, barbarian player with 60+ units): half the barbarian orcs
 //!   become ours where they stand. Cast at war or while preparing one, when the units have a war
 //!   to fight ([`ClanOfEmbers::spell_value`]).
+//! - **Shamans** (the Clan's Adept, no Mage Guild needed): the Clan keeps casters,
+//!   [`super::unique_casters`], the owner's rule that civilizations use their unique units.
 
 use ffh_core::game::Game;
 use ffh_core::ids::*;
 use ffh_data::*;
 
 use super::CivPlay;
+use crate::production::Choice;
 use crate::units::{alive, hold, move_to};
 use crate::view::View;
 use crate::Ai;
@@ -25,6 +28,10 @@ use crate::Ai;
 pub struct ClanOfEmbers;
 
 impl CivPlay for ClanOfEmbers {
+    fn production(&self, _ai: &Ai, g: &Game, c: CityId, threat: i32) -> Option<Choice> {
+        super::unique_casters(g, c, threat)
+    }
+
     fn spell_value(&self, g: &Game, u: UnitId, spell: SpellType, value: i32) -> i32 {
         if g.d.spells[spell].base.type_ != "SPELL_FOR_THE_HORDE" {
             return value;

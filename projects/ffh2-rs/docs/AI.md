@@ -1086,9 +1086,12 @@ built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
   the techs of one of our unique units (its building's included) at 1500 and one of those
   techs at 500 (`civs::unique_units`, under `FFH_AI_CIV_OFF`). Back from the round-5 reverts
   under the same rule: the Calabim vampires in the army with Feast and Gift Vampirism, the
-  Illians' ritual projects, the Amurites' casters (Mage Guild and adepts, so Wizards come by
-  upgrade), the Grigori Medics at war, and the Infernal Manes added to cities beyond the garrison
-  quota (round 5 kept one defender and lost the army).
+  Illians' ritual projects, the Grigori Medics at war, and the Infernal Manes added to cities
+  beyond the garrison quota (round 5 kept one defender and lost the army). Civilizations whose
+  casters are their own keep casters (`civs::unique_casters`, the Amurites' round-5 rule made
+  common): the best city trains up to (cities + 2) / 2, with a Mage Guild where the Adepts need
+  one -- the Amurites' Wizards and the Svartalfar's Illusionists come by upgrade at level 4, the
+  Doviello's and the Clan's Shamans are their Adepts.
 
 ### Measured over the games they join (Infernals, Mercurians)
 
