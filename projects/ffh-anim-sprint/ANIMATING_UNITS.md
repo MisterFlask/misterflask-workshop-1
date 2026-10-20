@@ -305,6 +305,28 @@ them for other units (the gates are heuristics even for the swordsman).
 sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets,
 `unit_poses.json`). `.gitignore` already leaves out `work/` and the per-animation preview GIFs.
 
+## Walk cycle (experimental)
+
+`lib/walk.py` applies the same method to a 6-frame walk, toward the unit's facing (rule 1):
+```bash
+python3 lib/walk.py --unit units/<unit>.json --out final_<unit> --check-guides     # walk guides, free
+python3 lib/walk.py --unit units/<unit>.json --out final_<unit>                    # 1 call, about $0.08
+python3 lib/walk.py --unit units/<unit>.json --out final_<unit> --rebuild --pick 2 # re-cut with a variant, free
+```
+The poses come from a planted-foot walk rig on the unit's frame-0 skeleton: each foot travels along the facing's ground
+diagonal, plants for half the cycle and swings with a lift for the other half; each leg is solved in a small 3D ground
+frame, so a leg pointing into the scene stays straight instead of bending. The model draws the six frames on one
+guided sheet, which is sliced, de-fringed and slid onto the guides like the strike. It writes `final_<unit>/walk/`
+(110 ms frames, looping; the manifest adds `ground_speed_px_per_s` and `ground_direction`, so the engine moves the unit at
+the speed the stride implies, 54.5 px/s on screen), `sheet_walk.png`, `preview/walk_strip3x.png` and
+`walk_clip.{gif,mp4}`: the unit walking two tiles along its facing, turning (mirrored) and walking two tiles down the
+other diagonal, then idling. Pick the variant by eye in `work/final_<unit>/variants_walk.png`, and compare figure
+heights with the sprite: one variant's height bounced 9 px between frames.
+
+Tried once, on the swordsman (`final_swordsman/walk/`, variant 2), and not judged. Its frames are 2–6 px taller than the
+idle, a small pop when he starts or stops, and two pairs of frames (2–3, 5–0) are near-twins, a slight hold at each
+footfall.
+
 ## Known limits
 
 - **Canvas size.** The canvas is 160×128 with a safe region of x 16–143. A unit taller than about 110 px, or one with a
