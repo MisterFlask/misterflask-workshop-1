@@ -4,3 +4,4 @@ __pycache__/
 # per-animation preview GIFs are regenerable (python lib/preview.py --arm X); sequences and stills are committed
 arms/*/preview/*.gif
 final/preview/*.gif
+judging/packets/

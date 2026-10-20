@@ -11,7 +11,8 @@ Per animation the packet holds, for every letter:
   <L>_onion.png <L>_sil.png       onion skin with sword-tip trail; silhouette strip
   <L>_shuffled.png      the frames in a shuffled order labelled p, q, r, ... (for the frame-ordering test)
   metrics.txt           the computed metrics per letter (non-rigidity, overlap, colour drift, boil, gate flags)
-key.json (NOT shown to judges): letter -> arm, and the true order behind each shuffled strip.
+key.json (NOT shown to judges; move it out of judging/ while they work): letter -> arm, and the true order behind
+each shuffled strip.
 """
 import argparse, json, random, sys
 from pathlib import Path
@@ -64,13 +65,13 @@ def arm_root(a):
     return ak.ROOT / a if a.startswith("final") else ak.ROOT / "arms" / a
 
 
-def packets(arms, seed=7, judges=3):
+def packets(arms, seed=7, judges=3, anims=None):
     rng = random.Random(seed)
     letters = list(LETTERS[:len(arms)])
     rng.shuffle(letters)
     key = {"letter_to_arm": dict(zip(letters, arms)), "shuffles": {}}
     sprite_row = None
-    for anim in ANIMS:
+    for anim in (anims or ANIMS):
         d = J / "packets" / anim
         d.mkdir(parents=True, exist_ok=True)
         have = {L: a for L, a in key["letter_to_arm"].items() if (arm_root(a) / anim / "manifest.json").exists()}
@@ -173,8 +174,9 @@ if __name__ == "__main__":
     ap.add_argument("cmd", choices=["packets", "aggregate"])
     ap.add_argument("--arms", nargs="+")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--anims", nargs="+")
     a = ap.parse_args()
     if a.cmd == "packets":
-        print(json.dumps(packets(a.arms, a.seed)["letter_to_arm"]))
+        print(json.dumps(packets(a.arms, a.seed, anims=a.anims)["letter_to_arm"]))
     else:
         print(json.dumps(aggregate(), indent=1))
