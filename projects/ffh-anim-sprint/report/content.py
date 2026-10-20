@@ -241,7 +241,7 @@ DOSSIERS = {
     "FINAL": {
         "verdict": "The recommendation: draw the big actions with the model on a guided sheet, and warp the real sprite for idle and for the frames next to idle.",
         "how": "Three guided-sheet calls in parallel (strike, flinch, death), cell 1 the real sprite and the other cells blockouts from the poses. Idle and the last frame of the strike and of the flinch are the real sprite bent by a sharpened mesh warp toward the pose, so nothing boils and nothing pops when the unit returns to idle. Death frame 0 is the flinch's impact frame. Code then removes the magenta keying fringe and, for the shipped look, adds a smear arc and impact spark to the strike and a hit flash to flinch and death. One command: <code>python3 lib/recipe.py --unit units/swordsman.json --out final</code>.",
-        "worked": "In round 1 its first build was the best complete set (7.28 mean over four animations), first for flinch and second for idle. The fixed build was then judged blind against its first build and the round-1 winners (see the verification table). A full set costs 3 calls, about $0.23 and under 30 s, and the same tool animated Hyborem.",
+        "worked": "In round 1 its first build was the best complete set (7.28 mean over four animations), first for flinch and second for idle. After the fixes, three fresh blind judges ranked it first for idle (7.90), strike (7.68), flinch (7.62) and death (7.85, first for every judge), ahead of its first build and of the best round-1 method for each animation. A full set costs 3 calls, about $0.23 and under 30 s, and the same tool animated Hyborem.",
         "failed": "The model still decides details: the first build's strike had a tan smudge on the shorts, its flinch drew squeezed manga eyes and swollen hair, and its corpse lies flatter than the isometric axis. Picking between two variants by eye remains a step. Big units need a taller canvas.",
     },
 }
@@ -286,7 +286,8 @@ def answer(ctx):
   gpt-image-2.5-sunburst draws a convincing strike, flinch and death when it gets one sprite sheet per animation with the
   real sprite in the first cell and a flat-colour pose blockout in every other cell. It cannot draw an idle: every
   redraw shimmers. So the recipe warps the real sprite for idle and for the frames next to idle. That hybrid was the
-  best complete set in blind judging, and the same tool animated a second unit unchanged.</p>
+  best complete set in blind judging, ranked first for all four animations once three cheap fixes were in, and the same
+  tool animated a second unit unchanged.</p>
   <dl class="kpis">
     <div><dt>Round-1 judge score, recipe vs control</dt><dd>{f2(score(data, "final_nofx"))} vs {f2(score(data, "A0"))}<small>weighted, out of 10, mean of four animations</small></dd></div>
     {kpi_v}
@@ -309,6 +310,10 @@ def answer(ctx):
     with little supervision.</li>
   <li><strong>The image model cannot do idle.</strong> A 1-pixel breath is smaller than the difference between any two of
     its drawings, so every sheet idle boiled (judge scores 3.8–5.8). Warping the real sprite scored 7.8–8.1.</li>
+  <li><strong>Small, targeted fixes were measurable.</strong> The round-1 comments led to three fixes that cost no new image
+    calls: picking the clean strike variant, sharpening the warped frames and removing the magenta fringe. In a fresh blind
+    round the fixed recipe ranked first for all four animations, 0.5–1.3 points above its own first build and 0.2–0.5
+    above the best single method for each animation (the idle gap over the rig, 0.2, is within noise).</li>
   <li><strong>What is left is shared by every model method</strong>: a thin magenta keying fringe (the recipe now removes
     it), corpses lying flatter than the isometric axis, occasional off-model faces on hit frames, and one variant in two
     with a visible defect, so a person still picks between two variants.</li>

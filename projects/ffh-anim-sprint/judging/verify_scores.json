@@ -1,0 +1,316 @@
+{
+ "by_anim": {
+  "idle": {
+   "R": {
+    "weighted": 7.7,
+    "mean_rank": 1.67,
+    "motion": 7.0,
+    "consistency": 8.33,
+    "style": 9.0,
+    "appeal": 6.33,
+    "n": 3
+   },
+   "final_nofx": {
+    "weighted": 7.9,
+    "mean_rank": 1.33,
+    "motion": 7.0,
+    "consistency": 9.0,
+    "style": 9.0,
+    "appeal": 6.33,
+    "n": 3
+   },
+   "final_v1_nofx": {
+    "weighted": 6.63,
+    "mean_rank": 3.0,
+    "motion": 6.0,
+    "consistency": 7.0,
+    "style": 7.67,
+    "appeal": 6.0,
+    "n": 3
+   },
+   "A0": {
+    "weighted": 5.52,
+    "mean_rank": 4.0,
+    "motion": 5.33,
+    "consistency": 5.0,
+    "style": 7.0,
+    "appeal": 5.0,
+    "n": 3
+   }
+  },
+  "strike": {
+   "G0": {
+    "weighted": 7.38,
+    "mean_rank": 2.33,
+    "motion": 8.33,
+    "consistency": 6.33,
+    "style": 7.33,
+    "appeal": 7.33,
+    "n": 3
+   },
+   "final_nofx": {
+    "weighted": 7.68,
+    "mean_rank": 1.33,
+    "motion": 8.0,
+    "consistency": 7.33,
+    "style": 7.67,
+    "appeal": 7.67,
+    "n": 3
+   },
+   "final_v1_nofx": {
+    "weighted": 7.03,
+    "mean_rank": 3.0,
+    "motion": 7.0,
+    "consistency": 6.67,
+    "style": 7.67,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "G2": {
+    "weighted": 6.95,
+    "mean_rank": 3.33,
+    "motion": 6.33,
+    "consistency": 7.67,
+    "style": 7.67,
+    "appeal": 6.0,
+    "n": 3
+   }
+  },
+  "flinch": {
+   "G0": {
+    "weighted": 7.05,
+    "mean_rank": 3.0,
+    "motion": 7.67,
+    "consistency": 6.0,
+    "style": 7.33,
+    "appeal": 7.33,
+    "n": 3
+   },
+   "final_nofx": {
+    "weighted": 7.62,
+    "mean_rank": 1.33,
+    "motion": 7.33,
+    "consistency": 8.0,
+    "style": 8.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "final_v1_nofx": {
+    "weighted": 7.12,
+    "mean_rank": 2.67,
+    "motion": 7.33,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "G2": {
+    "weighted": 6.95,
+    "mean_rank": 3.0,
+    "motion": 7.0,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 6.67,
+    "n": 3
+   }
+  },
+  "death": {
+   "final_nofx": {
+    "weighted": 7.85,
+    "mean_rank": 1.0,
+    "motion": 8.0,
+    "consistency": 8.0,
+    "style": 8.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "K": {
+    "weighted": 7.38,
+    "mean_rank": 2.33,
+    "motion": 8.67,
+    "consistency": 6.0,
+    "style": 7.0,
+    "appeal": 7.67,
+    "n": 3
+   },
+   "final_v1_nofx": {
+    "weighted": 7.35,
+    "mean_rank": 2.67,
+    "motion": 8.0,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "G2": {
+    "weighted": 6.7,
+    "mean_rank": 4.0,
+    "motion": 7.0,
+    "consistency": 6.33,
+    "style": 7.0,
+    "appeal": 6.33,
+    "n": 3
+   }
+  }
+ },
+ "by_arm": {
+  "R": {
+   "idle": {
+    "weighted": 7.7,
+    "mean_rank": 1.67,
+    "motion": 7.0,
+    "consistency": 8.33,
+    "style": 9.0,
+    "appeal": 6.33,
+    "n": 3
+   }
+  },
+  "final_nofx": {
+   "idle": {
+    "weighted": 7.9,
+    "mean_rank": 1.33,
+    "motion": 7.0,
+    "consistency": 9.0,
+    "style": 9.0,
+    "appeal": 6.33,
+    "n": 3
+   },
+   "strike": {
+    "weighted": 7.68,
+    "mean_rank": 1.33,
+    "motion": 8.0,
+    "consistency": 7.33,
+    "style": 7.67,
+    "appeal": 7.67,
+    "n": 3
+   },
+   "flinch": {
+    "weighted": 7.62,
+    "mean_rank": 1.33,
+    "motion": 7.33,
+    "consistency": 8.0,
+    "style": 8.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "death": {
+    "weighted": 7.85,
+    "mean_rank": 1.0,
+    "motion": 8.0,
+    "consistency": 8.0,
+    "style": 8.0,
+    "appeal": 7.0,
+    "n": 3
+   }
+  },
+  "final_v1_nofx": {
+   "idle": {
+    "weighted": 6.63,
+    "mean_rank": 3.0,
+    "motion": 6.0,
+    "consistency": 7.0,
+    "style": 7.67,
+    "appeal": 6.0,
+    "n": 3
+   },
+   "strike": {
+    "weighted": 7.03,
+    "mean_rank": 3.0,
+    "motion": 7.0,
+    "consistency": 6.67,
+    "style": 7.67,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "flinch": {
+    "weighted": 7.12,
+    "mean_rank": 2.67,
+    "motion": 7.33,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 7.0,
+    "n": 3
+   },
+   "death": {
+    "weighted": 7.35,
+    "mean_rank": 2.67,
+    "motion": 8.0,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 7.0,
+    "n": 3
+   }
+  },
+  "A0": {
+   "idle": {
+    "weighted": 5.52,
+    "mean_rank": 4.0,
+    "motion": 5.33,
+    "consistency": 5.0,
+    "style": 7.0,
+    "appeal": 5.0,
+    "n": 3
+   }
+  },
+  "G0": {
+   "strike": {
+    "weighted": 7.38,
+    "mean_rank": 2.33,
+    "motion": 8.33,
+    "consistency": 6.33,
+    "style": 7.33,
+    "appeal": 7.33,
+    "n": 3
+   },
+   "flinch": {
+    "weighted": 7.05,
+    "mean_rank": 3.0,
+    "motion": 7.67,
+    "consistency": 6.0,
+    "style": 7.33,
+    "appeal": 7.33,
+    "n": 3
+   }
+  },
+  "G2": {
+   "strike": {
+    "weighted": 6.95,
+    "mean_rank": 3.33,
+    "motion": 6.33,
+    "consistency": 7.67,
+    "style": 7.67,
+    "appeal": 6.0,
+    "n": 3
+   },
+   "flinch": {
+    "weighted": 6.95,
+    "mean_rank": 3.0,
+    "motion": 7.0,
+    "consistency": 7.0,
+    "style": 7.0,
+    "appeal": 6.67,
+    "n": 3
+   },
+   "death": {
+    "weighted": 6.7,
+    "mean_rank": 4.0,
+    "motion": 7.0,
+    "consistency": 6.33,
+    "style": 7.0,
+    "appeal": 6.33,
+    "n": 3
+   }
+  },
+  "K": {
+   "death": {
+    "weighted": 7.38,
+    "mean_rank": 2.33,
+    "motion": 8.67,
+    "consistency": 6.0,
+    "style": 7.0,
+    "appeal": 7.67,
+    "n": 3
+   }
+  }
+ }
+}

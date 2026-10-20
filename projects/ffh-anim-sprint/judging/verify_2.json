@@ -1,0 +1,101 @@
+{
+  "judge": 2,
+  "animations": {
+    "strike": {
+      "ordering": {"A": "w r p v s t q u", "C": "w p u t q s v r", "E": "v r s w q t u p", "G": "w v t s q p r u"},
+      "odd_frame": {"A": "4", "C": "2", "E": "none", "G": "6"},
+      "defects": {
+        "A": ["frame 1: sword blade cut off by the top edge of the frame", "frames 4-5: almost the same pose, only the blade angle changes", "frames 4-5: hair bigger and spikier and face slightly different from the ref", "frame 7: figure about 2 px taller with a wider stance and bigger shield than frame 0, so it pops on the return to idle", "frames 3-5: a few magenta fringe pixels on the outlines"],
+        "C": ["frames 3-6: tan/khaki smudges on the blue shorts", "frame 2: head turned to face screen-left with a different hair shape", "frame 4: contact barely lowers the body (head only about 2 px down)", "frame 3: blade end looks blunt and squared off"],
+        "E": ["frame 2: wind-up hardly differs from frame 1, body barely coiled", "frame 5: magenta stray pixels between the hand and the belt", "frame 3: sword hand has reddish/pink pixels", "frames 4-5: crouch is moderate and the lean-in is mild"],
+        "G": ["frames 1-4 and 6: tan/khaki smudges on the blue shorts", "frame 4: head stays at ref height, so the contact pose is not low", "frame 6: heavy brows and a different jaw make the face read differently", "frame 1: sword tip almost touches the top of the frame"]
+      },
+      "scores": {
+        "A": {"motion": 8, "consistency": 6, "style": 7, "appeal": 7},
+        "C": {"motion": 7, "consistency": 6, "style": 7, "appeal": 7},
+        "E": {"motion": 7, "consistency": 8, "style": 8, "appeal": 6},
+        "G": {"motion": 8, "consistency": 7, "style": 7, "appeal": 8}
+      },
+      "ranking": ["G", "E", "A", "C"],
+      "flaws": {
+        "A": "Has the most dynamic lunge, but the raised sword is cropped in frame 1 and the oversized settle frame pops back to idle.",
+        "C": "Muddy tan patches on the shorts through the swing, and the contact pose is too upright to sell the hit.",
+        "E": "The cleanest colours of the four, but the wind-up is weak and almost the same pose as the anticipation frame.",
+        "G": "Has the best wind-up and a seamless settle, but tan smudges stain the shorts and the contact frame does not drop the body."
+      },
+      "notes": "All four keep the sword in the right hand and the shield on the left arm. The main differences are the wind-up, how far the body drops on contact, and the colour noise."
+    },
+    "death": {
+      "ordering": {"C": "v r s w q t u p", "E": "u v t s q p r w", "G": "p r u q s t w v", "N": "w r v p s q u t"},
+      "odd_frame": {"C": "none", "E": "0", "G": "none", "N": "0"},
+      "defects": {
+        "C": ["frames 0-7: magenta fringe pixels along the outlines (hair, shield, boots)", "frame 6: the bounce lifts the head and shoulders about 10 px and raises the arm again, nearly repeating frame 4 instead of a 2 px bounce", "frames 5-7: the corpse slopes less steeply than the 2:1 ground axis"],
+        "E": ["frame 0: figure looks larger with a wide stance, and the head barely snaps back", "frames 1, 4-6: eyes open while falling, which mixes expressions", "frames 0 and 5-7: magenta fringe pixels on the outlines", "frame 4: body stays fairly upright during the fall"],
+        "G": ["frame 6: the bounce is too big, with the torso lifted nearly back to the frame 4 pose", "frames 5-7: the corpse slopes less steeply than the 2:1 ground axis", "frame 4: shield still upright on the arm"],
+        "N": ["frames 1, 2, 4, 6, 7: visible magenta fringe on the outlines (boots, hair, shield)", "frames 5-7: corpse lies nearly horizontal, which reads more like a side view than lying along the iso ground", "frame 0: the grimacing face and hair shape differ noticeably from the ref"]
+      },
+      "scores": {
+        "C": {"motion": 8, "consistency": 7, "style": 7, "appeal": 7},
+        "E": {"motion": 7, "consistency": 7, "style": 7, "appeal": 7},
+        "G": {"motion": 8, "consistency": 8, "style": 8, "appeal": 7},
+        "N": {"motion": 9, "consistency": 6, "style": 7, "appeal": 8}
+      },
+      "ranking": ["G", "N", "C", "E"],
+      "flaws": {
+        "C": "Same poses as G, but magenta fringe runs along the outlines in every frame.",
+        "E": "The impact frame is soft and oversized, and the eyes stay open through the fall.",
+        "G": "The bounce frame lifts the torso so far that it reads as trying to sit up rather than a small bounce.",
+        "N": "Has the best storytelling (stagger step, sword flying from the hand), but heavy magenta fringing and a flat side-view corpse."
+      },
+      "notes": "C and G share almost the same poses, and G has the clean outlines. In the ordering test the 'hits ground' and 'corpse' frames were nearly identical in every letter, so those two were guesses."
+    },
+    "flinch": {
+      "ordering": {"A": "p q s r", "C": "p s q r", "E": "r p s q", "G": "q s p r"},
+      "odd_frame": {"A": "1", "C": "none", "E": "0", "G": "none"},
+      "defects": {
+        "A": ["frame 2: barely recovers, still crouched with the sword dipped like frame 1, so frame 2 jumps to frame 3", "frame 3: body, shield and stance are larger and wider than the ref, so it pops on the return to idle", "frame 1: smeared blotchy shading on the mouth and cheek", "frame 2: magenta stray pixels near the belt and the shield edge"],
+        "C": ["frames 0-2: magenta fringe pixels on the outlines", "frame 1->2: recovery jumps straight to near-ready, and frames 2 and 3 are almost the same", "frame 3: slightly soft compared with the crisp ref it returns to"],
+        "E": ["frame 0: head barely snaps back, and the figure looks wider and larger than in the other frames", "frame 1: shallow recoil with little lean back and barely bent knees", "frames 0-3: magenta fringe pixels on the outlines"],
+        "G": ["frame 1->2: recovery jumps straight to near-ready, and frames 2 and 3 are almost the same", "frame 0: shield kept mostly in front instead of flung out to the right"]
+      },
+      "scores": {
+        "A": {"motion": 7, "consistency": 6, "style": 7, "appeal": 7},
+        "C": {"motion": 8, "consistency": 7, "style": 7, "appeal": 7},
+        "E": {"motion": 7, "consistency": 7, "style": 7, "appeal": 7},
+        "G": {"motion": 8, "consistency": 8, "style": 8, "appeal": 7}
+      },
+      "ranking": ["G", "C", "E", "A"],
+      "flaws": {
+        "A": "The recovering frame never recovers, and the oversized settle frame pops back to idle.",
+        "C": "Magenta outline fringe on the hit frames, and the recovery happens in one jump.",
+        "E": "The hit has little snap: the head and torso barely jolt back.",
+        "G": "The recovery happens in one jump from the recoil to almost ready, so frames 2 and 3 nearly duplicate."
+      },
+      "notes": "C and G share almost the same poses, and G has the clean outlines plus the closest return to the ref."
+    },
+    "idle": {
+      "ordering": {"C": "p q s r", "G": "r p s q", "J": "p r s q", "L": "s q p r"},
+      "odd_frame": {"C": "none", "G": "none", "J": "2", "L": "none"},
+      "defects": {
+        "C": ["frames 1-3: light re-render noise on the hair, face and boots (scattered pixel changes outside the breathing parts)", "frame 3: hair top still 1 px high instead of settling", "3->0: shield and sword drop back together (small pop)"],
+        "G": ["3->0: sword tip and shield settle on the same frame", "at 1x the 1 px breath is barely readable"],
+        "J": ["frames 1-3: whole sprite re-rendered each frame, so outlines, boots and face pixels boil", "frame 1: sword tip rises with the chest instead of lagging behind it", "3->0: large pop back to the original sprite, with most pixels changing", "frames 1, 3: reddish mouth and face detail differs from the ref"],
+        "L": ["frame 3: chest stays 1 px up while the head drops back, a slight neck squash", "3->0: shield and sword drop together", "at 1x the 1 px breath is barely readable"]
+      },
+      "scores": {
+        "C": {"motion": 6, "consistency": 7, "style": 8, "appeal": 6},
+        "G": {"motion": 7, "consistency": 9, "style": 9, "appeal": 6},
+        "J": {"motion": 6, "consistency": 5, "style": 7, "appeal": 5},
+        "L": {"motion": 7, "consistency": 8, "style": 9, "appeal": 6}
+      },
+      "ranking": ["G", "L", "C", "J"],
+      "flaws": {
+        "C": "The breath follows the beats, but faint re-render noise makes the hair and boots shimmer.",
+        "G": "Clean and on-beat, but the 1 px breath is so small it barely reads at game scale.",
+        "J": "The whole sprite boils every frame and pops hard back to the original on the loop.",
+        "L": "The chest lags the head on the exhale, giving a slight neck squash in frame 3."
+      },
+      "notes": "My J ordering swapped frames 1 and 3; in the ordered strip J's sword moves on frame 1. G and L both follow the lag pattern in the beat sheet (head first, then sword and shield)."
+    }
+  }
+}
