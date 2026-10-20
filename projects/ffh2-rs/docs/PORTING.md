@@ -216,6 +216,19 @@ the differences; it does not ask for them to be undone.
   transport (`isHiddenNationality` then recurses without end; FFH2's AI never got there, as
   `cannotTrain` keeps AI players from Airships, but a human could). The port takes the new unit
   off the unit it replaces first: the Airship stays on the water plot with the Frigate's cargo.
+- **A unit dies once.** FFH2's `onUnitKilled` gifts the Infernals two Manes when a unit of the
+  Council of Esus, the Ashen Veil or the Octopus Overlords (or with Death I or Entropy I) dies,
+  and the Mercurians an Angel for a unit of the Empyrean, the Order or the Runes of Kilmorph (or
+  their own); each rises in a random city of theirs. When that is the city the unit dies in (one
+  that changed hands with an enemy unit inside: `CvPlot::setOwner` kills it there), the newcomer
+  captures the dying unit (`setXY`), which kills it again: FFH2 runs that kill in full, its event
+  included (more Manes, which capture it again; each gift comes at 100 - 3 x civilizations alive
+  percent, so with few civilizations left this goes hundreds deep), and the outer kills then go on
+  with the deleted unit. In the port a kill of a unit whose own death event is running does
+  nothing: the event gifts its units once, and the unit dies in the first kill, captured if the
+  newcomer captured it (`Game::dying`). Seed 8210 with the Calabim forced and their spellcasting
+  off panicked on the deleted unit at turn 495: a city flipped to the Infernals by culture with an
+  Ashen Veil worker inside.
 
 **Human play (ffh-play; docs/PLAY_DESIGN.md §10)**
 

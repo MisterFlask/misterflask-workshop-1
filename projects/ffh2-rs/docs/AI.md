@@ -872,11 +872,12 @@ standard map, to a decision or turn 690), 19 civilizations x 20 seeds (the Infer
 Mercurians are not forced). Fresh seeds 8201-8220, the kept version: win 17.7% -> 18.5% (11 / 8
 seeds won by one side only), share@end +36 (t 1.39), legacy@end +18 (t 0.67), share@300 +0.4; 278
 of 379 games are the same game on both sides (a civilization's own spellcasting changes about a
-quarter of its games). By civilization the end shares run from Calabim +357 (t 1.04) and Clan of
-Embers +315 (t 1.48) to Khazad -142 (t -0.96) and Balseraphs -92 (t -1.73); only Sidar's +85 has
-|t| above 2. Development (seeds 1-20, with the caster production since removed): share@end +34
-(t 1.27), win 19.2% -> 16.8% (9 / 18: victory races between civilizations of equal share, on seeds
-that chose the civilizations' own logic in round 5). The variants that failed along the way, and
+quarter of its games; the 380th, Calabim seed 8210 with their spellcasting off, hit a rules crash
+fixed since: docs/PORTING.md, "A unit dies once"). By civilization the end shares run from
+Calabim +357 (t 1.04) and Clan of Embers +315 (t 1.48) to Khazad -142 (t -0.96) and Balseraphs -92
+(t -1.73); only Sidar's +85 has |t| above 2. Development (seeds 1-20, with the caster production
+since removed): share@end +34 (t 1.27), win 19.2% -> 16.8% (9 / 18: victory races between
+civilizations of equal share, on seeds that chose the civilizations' own logic in round 5). The variants that failed along the way, and
 why, are in docs/AI_LOG.md ("Spellcasting"); fresh sets 8001-8020 and 8101-8120 were spent on
 earlier versions.
 

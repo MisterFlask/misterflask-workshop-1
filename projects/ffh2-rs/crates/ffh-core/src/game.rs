@@ -275,6 +275,9 @@ pub struct Game {
     pub trophies: BTreeMap<String, i32>,
     /// The map script (C++ Python map script module).
     pub map_script: MapScriptRef,
+    /// Not in C++: the units whose `unit_kill` is running their `unitKilled` event; a kill of one
+    /// of them meanwhile does nothing (see `unit_kill`). Empty between rules calls; not saved.
+    pub dying: Vec<UnitId>,
     /// C++ `GC.getPathFinder()`.
     pub path_finder: RefCell<PathFinder>,
     /// C++ `GC.getStepFinder()`.
@@ -403,6 +406,7 @@ impl Game {
             culture_victory_culture_level: None,
             trophies: BTreeMap::new(),
             map_script: default_map_script(),
+            dying: Vec::new(),
             path_finder: RefCell::new(PathFinder::new(FinderKind::Path)),
             step_finder: RefCell::new(PathFinder::new(FinderKind::Step)),
             route_finder: RefCell::new(PathFinder::new(FinderKind::Route)),

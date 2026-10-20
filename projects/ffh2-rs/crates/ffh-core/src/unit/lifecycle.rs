@@ -340,6 +340,16 @@ impl Game {
     pub fn unit_kill(&mut self, u: UnitId, delay: bool, player: Option<PlayerId>) {
         let d = self.d;
 
+        // C++ quirk: the unit's own `unitKilled` event can kill it again. The Manes and Angels its
+        // death gifts rise in a random city of their civilization; in the city the unit dies in
+        // (one that changed hands with it inside) they capture it (`setXY`). C++ runs that kill in
+        // full, event included, as deep as the gift rolls go, and the outer kills then go on with
+        // the deleted unit. Here such a kill does nothing: the unit dies once, in the outer kill,
+        // captured if a capture set its capturing player (docs/PORTING.md, "Changes from FFH2").
+        if self.dying.contains(&u) {
+            return;
+        }
+
         // C++ dereferences `plot()` (FAssert non-NULL).
         let plot = self.unit_plot(u);
 
@@ -362,7 +372,9 @@ impl Game {
         if let Some(attacker) = player {
             // FfH: Modified by Kael 02/05/2009
             if !self.unit_is_immortal(u) {
+                self.dying.push(u);
                 self.ev_unit_killed(u, Some(attacker));
+                self.dying.pop();
             }
 
             // UI: TXT_KEY_MISC_GENERAL_KILLED to every alive player when a great general led the unit.
@@ -1915,5 +1927,47 @@ mod tests {
         assert!(g.units[frigate].death_delay);
         assert!(g.unit_do_delayed_death(frigate));
         assert!(g.units.contains(airship) && g.units.contains(warrior));
+    }
+
+    /// A worker of the Ashen Veil dies in the Infernals' only city, as when the city flips to
+    /// them by culture with the worker inside: its death event gifts the Infernals two Manes,
+    /// which rise in that city, on the dying worker, and capture it there, killing it again. FFH2
+    /// runs that kill, event included, as deep as the gift rolls go, and the outer kills go on
+    /// with the deleted unit (seed 8210, Calabim forced, panicked on it at turn 495). Here it dies
+    /// once: two Manes at most, and the Infernals capture it.
+    #[test]
+    fn a_unit_captured_by_its_own_death_event_dies_once() {
+        let d = ffh_data::global();
+        let mut setup = GameSetup::standard(d, 2, "WORLDSIZE_DUEL", 5);
+        setup.players[1].civ = Some(d.t::<CivilizationType>("CIVILIZATION_INFERNAL"));
+        setup.players[1].leader = Some(d.t::<LeaderHeadType>("LEADER_HYBOREM"));
+        let mut g = Game::new(d, setup);
+        g.autorun = true;
+        g.game_init();
+        let (victim, infernal) = (PlayerId(0), PlayerId(1));
+        let site = g.map.plot_ids().find(|&q| !g.plot_is_water(q) && g.map.plots[q].units.is_empty()).expect("a land plot");
+        let (x, y) = g.map.xy(site);
+        g.player_init_city(infernal, x, y, true, true);
+        assert_eq!(g.players[infernal].num_cities(), 1);
+        let (tv, ti) = (g.players[victim].team, g.players[infernal].team);
+        g.teams[tv].at_war[ti] = true;
+        g.teams[ti].at_war[tv] = true;
+
+        let manes = d.t::<UnitType>("UNIT_MANES");
+        let worker = d.t::<UnitType>("UNIT_WORKER");
+        let worker_class = info_unit_class(&d.units[worker]);
+        let count = |g: &Game, f: &dyn Fn(UnitType) -> bool| g.players[infernal].units.iter().filter(|&&u| f(g.units[u].unit_type)).count();
+        let mut captured = 0;
+        for _ in 0..10 {
+            let u = g.player_init_unit(victim, worker, x, y, None, None);
+            g.units[u].religion = Some(d.t::<ReligionType>("RELIGION_THE_ASHEN_VEIL"));
+            let manes_before = count(&g, &|t| t == manes);
+            let workers_before = count(&g, &|t| info_unit_class(&d.units[t]) == worker_class);
+            g.unit_kill(u, false, Some(infernal));
+            assert!(!g.units.contains(u));
+            assert!(count(&g, &|t| t == manes) <= manes_before + 2, "the death event gifted its two Manes once");
+            captured += count(&g, &|t| info_unit_class(&d.units[t]) == worker_class) - workers_before;
+        }
+        assert!(captured > 0, "a Manes captured a dying worker");
     }
 }

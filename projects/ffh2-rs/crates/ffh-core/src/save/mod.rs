@@ -19,7 +19,8 @@
 //!   * `controllers`: a loaded game has `NullController`s; the caller re-attaches its own
 //!     (`g.controllers[p] = ..`), exactly as after `Game::new`;
 //!   * `map_script`: only used while generating the map (`game_init`); a loaded game gets the
-//!     default script.
+//!     default script;
+//!   * `dying`: empty outside `unit_kill`.
 //!
 //!   Rules caches are saved as they are (`Player::ai_bonus_value`, the city rank caches, the
 //!   path finders' kept search trees), so nothing has to be recomputed after loading.
@@ -286,6 +287,7 @@ fn write_game(g: &Game, w: &mut Writer) {
         culture_victory_culture_level,
         trophies,
         map_script: _,
+        dying: _,
         path_finder,
         step_finder,
         route_finder,
@@ -506,6 +508,7 @@ fn read_game(d: &'static GameData, r: &mut Reader<'_>) -> Result<Game, LoadError
         culture_victory_culture_level: Persist::read(r)?,
         trophies: Persist::read(r)?,
         map_script: default_map_script(),
+        dying: Vec::new(),
         path_finder: Persist::read(r)?,
         step_finder: Persist::read(r)?,
         route_finder: Persist::read(r)?,
