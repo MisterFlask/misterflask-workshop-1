@@ -250,7 +250,56 @@ pub fn building_value(g: &Game, c: CityId, b: BuildingType, value: i32) -> i32 {
 }
 
 pub fn tech_value(g: &Game, p: PlayerId, t: TechType, value: i32) -> i32 {
+    let value = if enabled(g, p) { value + unique_unit_tech_value(g, p, t) } else { value };
     of(g, p).tech_value(g, p, t, value)
+}
+
+/// The units only this civilization, or it and one other, can train: its unique units, heroes
+/// included (a civilization's unit of a class the others lack or replace, `PrereqCiv` units),
+/// with a production cost. Built once from the game data.
+pub fn unique_units(d: &GameData, civ: CivilizationType) -> &'static [UnitType] {
+    static TABLE: std::sync::OnceLock<Vec<Vec<UnitType>>> = std::sync::OnceLock::new();
+    &TABLE.get_or_init(|| {
+        let playable: Vec<CivilizationType> = d.civilizations.keys().filter(|&c| d.civilizations[c].ai_playable).collect();
+        let trains = |c: CivilizationType, u: UnitType| {
+            let info = &d.units[u];
+            info.unit_class_type.is_some_and(|cl| d.civ_unit(c, cl) == Some(u)) && info.prereq_civ.map_or(true, |pc| pc == c)
+        };
+        d.civilizations
+            .keys()
+            .map(|civ| d.units.keys().filter(|&u| d.units[u].production_cost > 0 && trains(civ, u) && playable.iter().filter(|&&o| trains(o, u)).count() <= 2).collect())
+            .collect()
+    })[civ.idx()]
+}
+
+/// Research toward our unique units (the owner's rule: civilizations use their unique units,
+/// CLAUDE.md "AI changes"): a tech that completes the techs one of them needs (its own and its
+/// building's) is worth 1500, one of those techs before the others are in, 500. Religious units
+/// count under their religion only.
+fn unique_unit_tech_value(g: &Game, p: PlayerId, t: TechType) -> i32 {
+    let d = g.d;
+    let Some(civ) = g.player_get_civilization_type(p) else { return 0 };
+    let team = g.players[p].team;
+    if g.team_is_has_tech(team, Some(t)) {
+        return 0;
+    }
+    let has = |x: TechType| x == t || g.team_is_has_tech(team, Some(x));
+    let mut value = 0;
+    for &u in unique_units(d, civ) {
+        let info = &d.units[u];
+        if info.prereq_religion.is_some_and(|r| g.player_get_state_religion(p) != Some(r)) {
+            continue;
+        }
+        let mut techs: Vec<TechType> = info.prereq_and_tech.into_iter().chain(info.prereq_and_techs.iter().copied()).collect();
+        if let Some(b) = info.prereq_building {
+            techs.extend(d.buildings[b].prereq_and_tech);
+            techs.extend(d.buildings[b].prereq_and_techs.iter().flatten().copied());
+        }
+        if techs.contains(&t) {
+            value += if techs.iter().all(|&x| has(x)) { 1500 } else { 500 };
+        }
+    }
+    value
 }
 
 pub fn promotion_value(g: &Game, u: UnitId, promo: PromotionType, value: i32) -> i32 {
@@ -263,4 +312,29 @@ pub fn civic_value(g: &Game, p: PlayerId, civic: CivicType, value: i32) -> i32 {
 
 pub fn site_value(g: &Game, p: PlayerId, q: PlotIdx, value: i32) -> i32 {
     of(g, p).site_value(g, p, q, value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unique_units_are_the_civilizations_own() {
+        let d = ffh_data::global();
+        let names = |civ: &str| -> Vec<&str> {
+            unique_units(d, d.t::<CivilizationType>(civ)).iter().map(|&u| d.units[u].base.type_.as_str()).collect()
+        };
+        let khazad = names("CIVILIZATION_KHAZAD");
+        for u in ["UNIT_HORNGUARD", "UNIT_TREBUCHET", "UNIT_DWARVEN_CANNON", "UNIT_MAROS", "UNIT_DWARVEN_SLINGER"] {
+            assert!(khazad.contains(&u), "{u} in {khazad:?}");
+        }
+        for u in ["UNIT_AXEMAN", "UNIT_WORKER", "UNIT_CATAPULT", "UNIT_DONAL"] {
+            assert!(!khazad.contains(&u), "{u} in {khazad:?}");
+        }
+        let bannor = names("CIVILIZATION_BANNOR");
+        for u in ["UNIT_DEMAGOG", "UNIT_FLAGBEARER", "UNIT_DONAL"] {
+            assert!(bannor.contains(&u), "{u} in {bannor:?}");
+        }
+        assert!(names("CIVILIZATION_CALABIM").contains(&"UNIT_VAMPIRE"));
+    }
 }

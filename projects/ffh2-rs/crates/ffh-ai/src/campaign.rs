@@ -1220,8 +1220,9 @@ fn siege_building(g: &Game, c: CityId) -> Option<BuildingType> {
         if d.civ_unit(civ, class) != Some(u) || !g.player_can_train(p, u, false, false, false) {
             continue;
         }
-        let Some(bc) = info.prereq_building_class else { continue };
-        let Some(b) = d.civ_building(civ, bc) else { continue };
+        // (Every siege engine needs a Siege Workshop, `PrereqBuilding`.)
+        let Some(b) = crate::production::unit_building(d, civ, info) else { continue };
+        let Some(bc) = d.buildings[b].building_class_type else { continue };
         if g.city_is_has_building_class(c, bc) || !g.city_can_construct(c, b, false, false, false) {
             continue;
         }

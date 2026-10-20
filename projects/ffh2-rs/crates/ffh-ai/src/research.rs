@@ -52,7 +52,10 @@ struct Ctx {
     siege_want: bool,
 }
 
-/// Unit types `p` could train with its techs plus `extra` (ignores resources and buildings).
+/// Unit types `p` could train with its techs plus `extra` (ignores resources). A unit that needs a
+/// building (`PrereqBuilding`: siege engines, Knights, Hornguard, War Machines...) counts once the
+/// techs for the building are there too, unless the building needs a religion (temples):
+/// production builds it for the unit (`production::enabler_building`, `campaign::army_choice`).
 fn unit_available(g: &Game, p: PlayerId, ctx: &Ctx, u: UnitType, extra: &[TechType]) -> bool {
     let d = g.d;
     let info = &d.units[u];
@@ -63,13 +66,22 @@ fn unit_available(g: &Game, p: PlayerId, ctx: &Ctx, u: UnitType, extra: &[TechTy
     if info.domain_type != Some(DomainType::DOMAIN_LAND) || info.production_cost <= 0 || info.found {
         return false;
     }
-    if info.prereq_religion.is_some() || info.state_religion.is_some() || info.prereq_building.is_some() || info.min_level > 0 {
+    if info.prereq_religion.is_some() || info.state_religion.is_some() || info.min_level > 0 {
         return false;
     }
     if info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO) || d.unit_classes[class].max_player_instances > 0 || d.unit_classes[class].max_global_instances > 0 {
         return false;
     }
     let has = |t: TechType| extra.contains(&t) || g.team_is_has_tech(ctx.team, Some(t));
+    if let Some(b) = info.prereq_building {
+        let bi = &d.buildings[b];
+        if bi.prereq_religion.is_some() || bi.state_religion.is_some() {
+            return false;
+        }
+        if !bi.prereq_and_tech.map_or(true, has) || !bi.prereq_and_techs.iter().flatten().all(|&t| has(t)) {
+            return false;
+        }
+    }
     if let Some(t) = info.prereq_and_tech {
         if !has(t) {
             return false;
@@ -88,6 +100,10 @@ fn unit_defense(info: &UnitInfo) -> i64 {
 
 fn unit_attack(info: &UnitInfo) -> i64 {
     if info.combat <= 0 || info.only_defensive || !(info.unit_ai_type[UnitAIType::UNITAI_ATTACK] || info.unit_ai_type[UnitAIType::UNITAI_ATTACK_CITY]) {
+        return 0;
+    }
+    // Siege engines are researched as siege (`goal_bonus`), not as attackers.
+    if crate::production::siege_engine(info) {
         return 0;
     }
     let base = info.combat + info.damage_type_combat.iter().sum::<i32>();

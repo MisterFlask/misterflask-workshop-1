@@ -886,6 +886,25 @@ civilizations of equal share, on seeds that chose the civilizations' own logic i
 why, are in docs/AI_LOG.md ("Spellcasting"); fresh sets 8001-8020 and 8101-8120 were spent on
 earlier versions.
 
+**Summons and skeletons (2026-10-20).** Two follow-ups from the 53 traced validation games, kept
+under the owner's relaxed gate for this work (magic is niche for the AIs: kept for doing what it
+should, unless it clearly harms). (1) Summon reach: summons attacked only adjacent plots, so the
+Spectres FfH's rule casts for an enemy two plots away never attacked (84 of 84), and the end-of-turn
+value counted fights a summon would not take (13 of 15 valued Fireballs never attacked); now a
+summon attacks the best target it reaches this turn and is worth only that fight. In 14 traced
+games the summons that attacked rose from 10% to 14% (Fire Elementals cast by FfH's rule 19% ->
+59%). Measured with the change for the forced civilization only, fresh seeds 8301-8320, the first
+8 civilizations (160 pairs, 34 games changed; the run was stopped there): win 18.8% -> 18.8%
+(2 / 2), share@end -1 (t -0.03), legacy@300 +9 (t 2.16), legacy@end -15 (t -0.32). The barbarians
+keep the adjacent rule: with the reach (barbarians only, 40 paired games, random civilizations)
+they took 3.2 -> 3.8 cities a game (t 0.9), the civilizations lost 3.95 -> 4.70 to them (t 1.1)
+and their legacy score at turn 400 fell 54 (t -1.7). (2) Skeletons: a strike's units summoned for
+good go right after its collateral attackers (the owner's call: siege fodder; `campaign.rs`);
+strikes had skeletons ready 35 times in four traced Calabim games and used 10, now 15 and 10
+skeleton attacks in two replays where the old order made 1 and 8. Calabim forced, fresh seeds
+8501-8520 (7 of 20 games changed): win 10% -> 15% (1 / 0), share@end +22 (t 0.37), legacy@end -2.5
+(t -0.02).
+
 ## Civilization-specific (`civs/`)
 
 Each civilization has a module in `crates/ffh-ai/src/civs/` implementing `CivPlay`, whose
@@ -1053,6 +1072,24 @@ built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
   with no war, once it has 60 units. Development: win 5.0% -> 7.5% (1 / 0), share@end +74
   (t 0.94); fresh: the hold changes the cast in 15 of 64 games, share@end +126 (t 1.81).
 
+- **Unique units** (2026-10-20, the owner's rule: civilizations use their unique units). Over
+  380 forced games (seeds 8201-8220) many unique units never appeared. Most need a building by
+  `PrereqBuilding` (a building type, not a class), which production and research ignored: no
+  Siege Workshop or Grove was built in any of those games, so no civilization ever had a
+  catapult, trebuchet or cannon either. Now `production::unit_building` gives production
+  (`enabler_building`, the siege step of `campaign::army_choice`) and research (`unit_available`)
+  either kind of building; siege engines are trained for the siege role only
+  (`production::siege_engine`), not as the army's attackers (the Khazad fielded about 30 Dwarven
+  Cannons a game otherwise). On seeds 8201-8203 the Khazad went from 0 to 34 Trebuchets and 92
+  Dwarven Cannons (before that rule), the Luchuirp from 14 to 34 Wood Golems, the Calabim from 0
+  to 4 Vampires, and every civilization fielded catapults. Research values a tech that completes
+  the techs of one of our unique units (its building's included) at 1500 and one of those
+  techs at 500 (`civs::unique_units`, under `FFH_AI_CIV_OFF`). Back from the round-5 reverts
+  under the same rule: the Calabim vampires in the army with Feast and Gift Vampirism, the
+  Illians' ritual projects, the Amurites' casters (Mage Guild and adepts, so Wizards come by
+  upgrade), the Grigori Medics at war, and the Infernal Manes added to cities beyond the garrison
+  quota (round 5 kept one defender and lost the army).
+
 ### Measured over the games they join (Infernals, Mercurians)
 
 - **Mercurians** (kept; they join the team of the civilization that built the Mercurian Gate,
@@ -1072,21 +1109,23 @@ built a Mage Guild: 29 adepts in 3408 civ positions at turn 300).
 
 ### Reverted, and tried without effect
 
-Each module keeps a stub comment naming the attempt and its numbers; the diagnosis of each
-failure from the games (what happened when it fired, and what that implies) is in
-docs/AI_LOG.md. In short: the casters of the Amurites and the Sheaim (Mage Guilds and adepts)
-cast almost only buffs and cost army and economy; the Hippus' held Warcry fell on the same strikes
-the cast at the declaration already covered; the Illians' White Hand came at turns 325-372 for
-three priests that only summon; the Calabim's vampire rules barely fire (vampires from turn 280+);
-holding Stasis, Religious Fervor, Wild Hunt or never casting Veil of Night lost already in
-development; the Khazad's, Luchuirp's and Lanun's `PrereqBuilding` units (siege engines,
-Hornguard, golems, War Tortoise) did not change their wars; Bannor's Crusade timing, Grigori
-Medics, Elohim's Sanctuary hold, more Ljosalfar workers and the Kuriotates variants (no
-settlements, extra defenders) were flat or worse. Older civilization notes kept for the record:
-the Khazad's Dwarven Vault target (round 3: saving gold for the vault level cost more research
-than the happiness repaid, score -5 +- 37 over 40 games) and the elves' forests (`MaintainFeatures`
-keeps the forest under every improvement they build on their own plots; `FFH_LOG` shows no
-forest cleared by them).
+Each module keeps a stub comment naming the attempt and its numbers; the diagnosis of each failure
+from the games (what happened when it fired, and what that implies) is in docs/AI_LOG.md. Back since
+2026-10-20 under the owner's rule (see "Unique units" above): the Amurite casters, the Illians'
+rituals, the Calabim vampire rules, the Grigori Medics, the Infernal Manes (with a garrison quota),
+and the building-gated units, now generic. In short: the casters of the Amurites and the Sheaim
+(Mage Guilds and adepts) cast almost only buffs and cost army and economy; the Hippus' held Warcry
+fell on the same strikes the cast at the declaration already covered; the Illians' White Hand came
+at turns 325-372 for three priests that only summon; the Calabim's vampire rules barely fire
+(vampires from turn 280+); holding Stasis, Religious Fervor, Wild Hunt or never casting Veil of
+Night lost already in development; the Khazad's, Luchuirp's and Lanun's `PrereqBuilding` units
+(siege engines, Hornguard, golems, War Tortoise) did not change their wars; Bannor's Crusade timing,
+Grigori Medics, Elohim's Sanctuary hold, more Ljosalfar workers and the Kuriotates variants (no
+settlements, extra defenders) were flat or worse. Older civilization notes kept for the record: the
+Khazad's Dwarven Vault target (round 3: saving gold for the vault level cost more research than the
+happiness repaid, score -5 +- 37 over 40 games) and the elves' forests (`MaintainFeatures` keeps the
+forest under every improvement they build on their own plots; `FFH_LOG` shows no forest cleared by
+them).
 
 ### What the round shows
 

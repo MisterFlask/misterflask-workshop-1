@@ -751,6 +751,14 @@ fn is_hero(info: &UnitInfo) -> bool {
     info.default_unit_ai_type == Some(UnitAIType::UNITAI_HERO)
 }
 
+/// A siege engine (catapults, trebuchets, cannons: default AI city attack or collateral, with
+/// bombard or collateral damage). Trained for the siege role only (`campaign::army_choice` asks
+/// for a few per target): as the army's attackers the Khazad fielded about 30 Dwarven Cannons a
+/// game once their Siege Workshops came.
+pub(crate) fn siege_engine(info: &UnitInfo) -> bool {
+    matches!(info.default_unit_ai_type, Some(UnitAIType::UNITAI_ATTACK_CITY) | Some(UnitAIType::UNITAI_COLLATERAL)) && (info.bombard_rate > 0 || info.collateral_damage > 0)
+}
+
 fn role_ok(info: &UnitInfo, role: Role) -> bool {
     let has = |a: UnitAIType| info.unit_ai_type[a];
     let fighter = info.combat > 0 && !info.found && !is_hero(info) && info.default_unit_ai_type != Some(UnitAIType::UNITAI_MAGE);
@@ -759,7 +767,7 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
             fighter && (has(UnitAIType::UNITAI_CITY_DEFENSE) || has(UnitAIType::UNITAI_CITY_COUNTER) || has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_COUNTER))
                 && info.default_unit_ai_type != Some(UnitAIType::UNITAI_EXPLORE)
         }
-        Role::Attack | Role::CityAttack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)),
+        Role::Attack | Role::CityAttack => fighter && !info.only_defensive && (has(UnitAIType::UNITAI_ATTACK) || has(UnitAIType::UNITAI_ATTACK_CITY)) && !siege_engine(info),
         Role::Worker => has(UnitAIType::UNITAI_WORKER) && info.combat == 0,
         Role::Settler => has(UnitAIType::UNITAI_SETTLE) && info.found,
         Role::Hero => is_hero(info) && info.combat > 0,
@@ -772,8 +780,16 @@ fn role_ok(info: &UnitInfo, role: Role) -> bool {
     }
 }
 
+/// The building a city needs to train a unit (C++ `CvPlot::canTrain`): `PrereqBuilding`, a
+/// building type (siege engines, Knights, Druids and most building-gated unique units:
+/// Hornguard, Trebuchet, War Machine, Myconid...), or `PrereqBuildingClass`, the civilization's
+/// building of that class (archers, melee, Camel Archers...).
+pub(crate) fn unit_building(d: &GameData, civ: CivilizationType, info: &UnitInfo) -> Option<BuildingType> {
+    info.prereq_building.or_else(|| info.prereq_building_class.and_then(|bc| d.civ_building(civ, bc)))
+}
+
 /// A building that would let this city train a defender or attacker at least a third stronger
-/// than its best now (FfH `PrereqBuildingClass`), cheap enough to build soon.
+/// than its best now ([`unit_building`]), cheap enough to build soon.
 fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
     let d = g.d;
     let p = g.cities[c].owner;
@@ -783,7 +799,8 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
     let mut best: Option<(BuildingType, i64)> = None;
     for u in d.units.keys() {
         let info = &d.units[u];
-        let Some(bc) = info.prereq_building_class else { continue };
+        let Some(b) = unit_building(d, civ, info) else { continue };
+        let Some(bc) = d.buildings[b].building_class_type else { continue };
         if info.domain_type != Some(DomainType::DOMAIN_LAND) || g.city_is_has_building_class(c, bc) {
             continue;
         }
@@ -797,7 +814,6 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
         if !info.prereq_or_bonuses.is_empty() && !info.prereq_or_bonuses.iter().any(|&bn| g.city_has_bonus(c, bn)) {
             continue;
         }
-        let Some(b) = d.civ_building(civ, bc) else { continue };
         if !g.city_can_construct(c, b, false, false, false) {
             continue;
         }

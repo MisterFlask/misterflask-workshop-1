@@ -313,7 +313,7 @@ pub(crate) fn nearest_city(g: &Game, p: PlayerId, from: PlotIdx) -> Option<CityI
 }
 
 /// Defenders a city wants (garrison quota).
-fn garrison_quota(g: &Game, v: &View, c: CityId) -> i32 {
+pub(crate) fn garrison_quota(g: &Game, v: &View, c: CityId) -> i32 {
     let plot = g.city_plot(c);
     let mut q = 1 + i32::from(g.city_is_capital(c));
     if v.danger_at(plot) > 0 {
