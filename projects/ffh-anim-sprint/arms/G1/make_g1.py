@@ -40,6 +40,18 @@ def _reword(texts, new):
 ROUNDS = {
     "strike": {
         "r1": dict(texts=beat_texts("strike"), extra=""),
+        # r2: both r1 variants drew the cell 4 blade longer than the blockout's, so its tip left the safe region
+        # (x 14 in r1_1, x 9 in r1_2); r1_2 also drew the cell 2 blade past the top of the canvas region (clipped on
+        # canvas row 0). Hair came back fluffier than cell 1's in every redrawn cell.
+        "r2": dict(texts=_reword(beat_texts("strike"), {
+            2: "anticipation: weight shifts back onto the rear leg, torso leans back, the sword is lifted up over the "
+               "head with the tip pointing up and back; the blade tip ends where the blockout's blade tip ends, with "
+               "clear magenta above it",
+            4: "swing: the front foot steps toward the lower-left, the torso whips forward, the arm sweeps over the "
+               "head and the blade is level, pointing to the lower-left; the blade is no longer than the blockout's "
+               "blade and its tip ends where the blockout's tip ends, well inside the cell",
+        }), extra="Keep the hair exactly as small and neat as in cell 1, and draw the sword exactly as long as cell "
+                  "1's sword in every cell, following the blockout blade's length and tip position."),
     },
 }
 
