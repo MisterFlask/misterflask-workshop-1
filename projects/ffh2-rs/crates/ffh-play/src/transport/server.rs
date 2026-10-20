@@ -32,6 +32,7 @@ use crate::decision::Decision;
 use crate::human::{Answer, Answerer, DecisionReader};
 use crate::json::Json;
 use crate::query::Query;
+use crate::session::Session;
 
 /// A request for the game thread and where its reply goes.
 pub struct Envelope {
@@ -89,6 +90,55 @@ fn recv(rx: &Mutex<Receiver<Envelope>>, shared: &Shared) -> Option<Envelope> {
     }
 }
 
+/// Caches the view and map of `host`'s session in `shared` and publishes its status (`after`:
+/// what follows; with `After::Advance` the status says `running` until `advance` reaches the
+/// control point); without a session, clears the caches and publishes `no_game` or `crashed`.
+/// The game thread's refresh, shared with the web host (`transport::web`).
+pub fn refresh_shared(host: &Host, shared: &Shared, after: After) {
+    match host.session() {
+        Some(s) => {
+            let view = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::View))).ok().and_then(Result::ok);
+            let map = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::Map { since: None, epoch: None }))).ok().and_then(Result::ok);
+            shared.set_caches(view, map);
+            shared.set_game(host.game_info());
+            shared.set_crash(None);
+            shared.publish(host.status_after(after));
+        }
+        None => {
+            shared.clear_caches();
+            shared.set_crash(host.crash().cloned());
+            shared.publish(host.status());
+        }
+    }
+}
+
+/// Between turn slices: publishes the status of the running game `s` (game directory `dir`).
+/// Until `advance` returns the human has no control, whatever the predicate says in this slice
+/// (the AutoMoves rule may still run the human's missions). `false`: the status could not be read
+/// (nothing was published).
+pub fn publish_running(s: &Session, dir: Option<&Path>, shared: &Shared) -> bool {
+    let Ok(st) = running_status(s, dir) else { return false };
+    shared.set_game(st.get("game").cloned().unwrap_or_default());
+    shared.publish(st);
+    true
+}
+
+/// Blocking decision `d` opens: caches the view and map from the deciding player's side and
+/// publishes the status (phase `decision`); returns that status.
+pub fn publish_decision(r: &DecisionReader, d: &Decision, shared: &Shared) -> Json {
+    // `DecisionReader::query` catches a panic (a failed view keeps the previous one).
+    shared.set_caches(r.query(&Query::View).ok(), r.query(&Query::Map { since: None, epoch: None }).ok());
+    let status = r.query(&Query::Status).unwrap_or_else(|_| crate::jobj! { "phase" => "decision", "decision" => d.to_json() });
+    shared.publish(status.clone());
+    status
+}
+
+/// The status to publish once the decision whose status was `status` is answered: the rules call
+/// goes on (`running`).
+pub fn decision_closed(status: Json) -> Json {
+    status.with("phase", "running").with("decision", Json::Null)
+}
+
 /// Answers blocking decisions over HTTP (design §2.4): publishes the decision in the status (with
 /// the view and map from the deciding player's side), then answers envelopes from inside the
 /// rules call until an `answer` closes it.
@@ -103,10 +153,7 @@ impl Answerer for ChannelAnswerer {
     }
 
     fn ask_with(&self, r: &DecisionReader, d: &Decision) -> Answer {
-        // `DecisionReader::query` catches a panic (a failed view keeps the previous one).
-        self.shared.set_caches(r.query(&Query::View).ok(), r.query(&Query::Map { since: None, epoch: None }).ok());
-        let status = r.query(&Query::Status).unwrap_or_else(|_| crate::jobj! { "phase" => "decision", "decision" => d.to_json() });
-        self.shared.publish(status.clone());
+        let status = publish_decision(r, d, &self.shared);
         loop {
             // The server quits: the advisor's pick lets the rules call finish.
             let Some(env) = recv(&self.rx, &self.shared) else { return Answer::Advisor };
@@ -115,7 +162,7 @@ impl Answerer for ChannelAnswerer {
             let _ = env.reply.send(reply);
             if let Some(a) = answer {
                 // The rules call goes on; the game thread publishes again when it is done.
-                self.shared.publish(status.with("phase", "running").with("decision", Json::Null));
+                self.shared.publish(decision_closed(status));
                 return a;
             }
         }
@@ -150,21 +197,7 @@ impl GameThread {
     /// reads them at once). `after`: what follows; with `After::Advance` the status says
     /// `running` until `advance` reaches the control point.
     fn refresh(&mut self, after: After) {
-        match self.host.session() {
-            Some(s) => {
-                let view = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::View))).ok().and_then(Result::ok);
-                let map = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| s.query(&Query::Map { since: None, epoch: None }))).ok().and_then(Result::ok);
-                self.shared.set_caches(view, map);
-                self.shared.set_game(self.host.game_info());
-                self.shared.set_crash(None);
-                self.shared.publish(self.host.status_after(after));
-            }
-            None => {
-                self.shared.clear_caches();
-                self.shared.set_crash(self.host.crash().cloned());
-                self.shared.publish(self.host.status());
-            }
-        }
+        refresh_shared(&self.host, &self.shared, after);
     }
 
     /// Runs the game to the human's next control point, serving the queued envelopes between
@@ -177,12 +210,7 @@ impl GameThread {
         self.host.advance(&mut |s| {
             if last.is_none_or(|t| t.elapsed() >= PUBLISH_EVERY) {
                 last = Some(Instant::now());
-                // Until `advance` returns the human has no control, whatever the predicate says
-                // in this slice (the AutoMoves rule may still run the human's missions).
-                if let Ok(st) = running_status(s, dir.as_deref()) {
-                    shared.set_game(st.get("game").cloned().unwrap_or_default());
-                    shared.publish(st);
-                }
+                let _ = publish_running(s, dir.as_deref(), &shared);
             }
             loop {
                 let next = rx.lock().unwrap_or_else(|e| e.into_inner()).try_recv();

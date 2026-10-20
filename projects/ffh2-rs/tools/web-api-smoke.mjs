@@ -68,8 +68,9 @@ let baseUrl = "";
 async function checkAssets() {
   const page = await http("/");
   if (page.status !== 200 || !page.type.startsWith("text/html")) fail(`GET / -> ${page.status} ${page.type}`);
-  const refs = [...page.text.matchAll(/(?:src|href)="(\/app\/[^"]+)"/g)].map((m) => m[1]);
-  if (!refs.includes("/app/main.js") || !refs.includes("/app/style.css")) fail(`the page does not load /app/main.js and /app/style.css: ${refs}`);
+  // The page's references are relative (`app/main.js`: the static site serves it below its root).
+  const refs = [...page.text.matchAll(/(?:src|href)="(app\/[^"]+)"/g)].map((m) => `/${m[1]}`);
+  if (!refs.includes("/app/main.js") || !refs.includes("/app/style.css")) fail(`the page does not load app/main.js and app/style.css: ${refs}`);
   const seen = new Set();
   const queue = [...refs];
   while (queue.length) {

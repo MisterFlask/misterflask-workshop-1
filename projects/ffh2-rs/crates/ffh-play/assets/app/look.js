@@ -85,8 +85,11 @@ export function loadLook() {
     const t0 = performance.now();
     try {
       look.dpr = Math.max(1, Math.round(Math.min(globalThis.devicePixelRatio || 1, 3)));
-      const r = await fetch("/art/art.bundle.txt");
-      if (!r.ok) throw new Error(`/art/art.bundle.txt: HTTP ${r.status}`);
+      // Relative to this module (app/look.js): the page may live below the site's root (the
+      // static site: docs/WEB.md).
+      const url = new URL("../art/art.bundle.txt", import.meta.url);
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`${url.pathname}: HTTP ${r.status}`);
       const bundle = await r.text();
       const art = await loadArt({ bundle, lenient: true });
       look.bundle = bundle;

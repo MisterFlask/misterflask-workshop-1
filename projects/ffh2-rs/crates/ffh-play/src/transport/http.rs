@@ -305,7 +305,7 @@ pub enum Body {
 }
 
 impl Body {
-    fn bytes(&self) -> &[u8] {
+    pub fn bytes(&self) -> &[u8] {
         match self {
             Body::Bytes(b) => b,
             Body::Shared(s) => s.as_bytes(),
@@ -468,27 +468,45 @@ pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
             return Response::error(403, "forbidden", format!("the Host header must name this computer (127.0.0.1, localhost, [::1] or {bound})"));
         }
     }
-    let path = req.path.as_str();
-    let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| (path.starts_with("/app/") || path.starts_with("/art/")).then_some("GET"));
-    match known {
-        None => return Response::error(404, "not_found", format!("no {path}")),
-        Some(m) if m != req.method => return Response::error(405, "method", format!("{path} answers {m} only")).with("Allow", m),
-        Some(_) => {}
+    if let Err(refused) = check_method(req) {
+        return refused;
     }
-    match path {
+    match req.path.as_str() {
         "/api" => post_api(req, ctx),
-        "/api/status" => Response::json(200, &ctx.shared.status()),
         "/api/wait" => {
             let since = req.param("since").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
             let ms = req.param("timeout_ms").and_then(|v| v.parse::<u64>().ok()).unwrap_or(25_000);
             Response::json(200, &ctx.shared.wait(since, Duration::from_millis(ms)))
         }
-        "/api/view" => ctx.shared.view().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
+        "/" => asset("index.html", ctx),
+        p => api_get(req, &ctx.shared).unwrap_or_else(|| asset(p.trim_start_matches('/'), ctx)),
+    }
+}
+
+/// The path is one [`route`] answers, with its method: else 404 (an unknown path) or 405 (the
+/// wrong method). Shared with the web host (`transport::web`).
+pub fn check_method(req: &HttpRequest) -> Result<(), Response> {
+    let path = req.path.as_str();
+    let known = ROUTES.iter().find(|(p, _)| *p == path).map(|(_, m)| *m).or_else(|| (path.starts_with("/app/") || path.starts_with("/art/")).then_some("GET"));
+    match known {
+        None => Err(Response::error(404, "not_found", format!("no {path}"))),
+        Some(m) if m != req.method => Err(Response::error(405, "method", format!("{path} answers {m} only")).with("Allow", m)),
+        Some(_) => Ok(()),
+    }
+}
+
+/// The GETs of the API answered from [`Shared`] alone (`/api/status`, `/api/view`, `/api/map`,
+/// `/api/data`, `/api/setup`); `None` for any other path (`/api/wait`, which may wait, is the
+/// transport's). The method is checked by [`check_method`]. Shared with the web host.
+pub fn api_get(req: &HttpRequest, shared: &Shared) -> Option<Response> {
+    Some(match req.path.as_str() {
+        "/api/status" => Response::json(200, &shared.status()),
+        "/api/view" => shared.view().map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json),
         "/api/map" => {
             // `?since=R&epoch=E`: the tile deltas (an epoch is hex digits and `-`, a revision a
             // number: nothing to decode).
             let since = req.param("since").and_then(|v| v.parse::<i64>().ok());
-            ctx.shared.map_since(since, req.param("epoch")).map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json)
+            shared.map_since(since, req.param("epoch")).map_or_else(|| Response::error(409, "no_game", "no game is loaded"), Response::shared_json)
         }
         "/api/data" => {
             let (data, etag) = data_json();
@@ -501,19 +519,25 @@ pub fn route(req: &HttpRequest, ctx: &HttpCtx) -> Response {
             .with("Cache-Control", "no-cache")
         }
         "/api/setup" => Response::shared_json(setup_json()),
-        "/" => asset("index.html", ctx),
-        p => asset(p.trim_start_matches('/'), ctx),
+        _ => return None,
+    })
+}
+
+/// The envelope of a `POST /api`: the `X-FFH: 1` header and a UTF-8 body are required (else the
+/// error response); a body that is not JSON is answered with the protocol's `invalid` reply.
+/// Shared with the web host.
+pub fn post_envelope(req: &HttpRequest) -> Result<Json, Response> {
+    if req.header("x-ffh") != Some("1") {
+        return Err(Response::error(403, "forbidden", "POST /api needs the header X-FFH: 1"));
     }
+    let Ok(text) = std::str::from_utf8(&req.body) else { return Err(Response::error(400, "invalid", "the body is not UTF-8")) };
+    Json::parse(text).map_err(|e| Response::json(200, &super::err_reply(Json::Null, &super::ProtoErr::invalid(format!("not JSON: {e}")))))
 }
 
 fn post_api(req: &HttpRequest, ctx: &HttpCtx) -> Response {
-    if req.header("x-ffh") != Some("1") {
-        return Response::error(403, "forbidden", "POST /api needs the header X-FFH: 1");
-    }
-    let Ok(text) = std::str::from_utf8(&req.body) else { return Response::error(400, "invalid", "the body is not UTF-8") };
-    let j = match Json::parse(text) {
+    let j = match post_envelope(req) {
         Ok(j) => j,
-        Err(e) => return Response::json(200, &super::err_reply(Json::Null, &super::ProtoErr::invalid(format!("not JSON: {e}")))),
+        Err(refused) => return refused,
     };
     let id = j.get("id").cloned().unwrap_or(Json::Null);
     let (tx, rx) = mpsc::channel();
