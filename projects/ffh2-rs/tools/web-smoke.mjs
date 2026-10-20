@@ -409,8 +409,14 @@ async function rendererIso(url) {
     return seen.size;
   })()`);
   if (colours < 64) throw new Error(`the isometric frame is nearly blank (${colours} colours)`);
-  // A click on the upper body of one of our units' figures selects that unit's plot.
-  const mine = await b.eval(`(() => { const S = window.ffh.S; const u = S.view.units.find((u) => u.owner === S.view.me.player); return u ? { x: u.x, y: u.y } : null; })()`);
+  // A click on the upper body of one of our units' figures (not a garrison: those are hidden)
+  // selects that unit's plot.
+  const mine = await b.eval(`(() => {
+    const S = window.ffh.S;
+    const inCity = (u) => [...S.cities.values()].some((c) => c.x === u.x && c.y === u.y);
+    const u = S.view.units.find((u) => u.owner === S.view.me.player && !inCity(u));
+    return u ? { x: u.x, y: u.y } : null;
+  })()`);
   let clicked = false;
   if (mine) {
     await plotPos(mine.x, mine.y);

@@ -94,9 +94,11 @@ leaves a hole.
 - **Resources:** a prop per family (`resourceSprite`: grain, cattle, sheep, horses, deer, fish,
   whales, iron, gold, gems, marble, mithril, wine, fruit, mana, trade goods).
 - **Cities:** a one-plot settlement by size: `bld_city_village` (1-3), `bld_city_town` (4-8),
-  `bld_city_castle` (9+), with the owner's banner at its front-left, a plaque under it (size, name,
-  turns left on its build for your own; a star on a capital). A garrison stands at the gate,
-  front-right.
+  `bld_city_castle` (9+), its saturated blue (the art's stock roofs, spires and flags) recoloured to
+  the owner's colour (slate roofs stay slate), with the owner's banner at its front-left and a
+  plaque over the front of its base (size, name, turns left on its build for your own; a star on a
+  capital). As in the 2D renderer a garrison would hide its city, so it shows only while selected
+  or sliding (at the gate, front-right); the city's banner carries its count.
 - **Units:** the first sprite that exists of: `unit_<civilization>_<type>` (e.g.
   `unit_ljosalfar_archer`, `unit_sheaim_mage`), `<civilization>_<class>`, the type
   (`unit_swordsman` for UNIT_SWORDSMAN), the type's aliases, the class (`unit_axeman` for
@@ -110,12 +112,16 @@ As the contract says, faction colour stays a runtime choice: the **banner** besi
 pole and swallow-tailed flag in the owner's colour with a gold charge, placed just left of the
 figure's opaque box so a big unit does not hide it) and each city, the **contact shadow** under each
 unit, and the **selection highlight** (a gold inset diamond). Also: owner **borders** along plot
-edges, **rivers** along plot edges, **roads** between plot centres, the stack count on the banner, a
-pip on the finial for your units (green while it can move), a health bar when hurt, the **path**
-preview with turn roundels (red to an attack, orange when it declares war), the waypoints, the
-target and hover outlines, the combat flashes, the **Political** and **Yields** layers, fog
-(remembered plots darkened) and unexplored plots (not drawn). Units face right and are mirrored
-after a move to the left of the screen; your own moves slide as in the 2D renderer.
+edges (under what stands up, and again faintly over it, so a forest's owner still shows),
+**rivers** along plot edges (a blue channel between earth banks; an edge facing unexplored land is
+left out), white **surf** where land meets water, **roads** between plot centres, the stack count on
+the banner, a pip on the finial for your units (green while it can move), a health bar when hurt,
+the **path** preview with turn roundels (red to an attack, orange when it declares war), the
+waypoints, the target and hover outlines, the combat flashes, the **Political** and **Yields**
+layers, **fog** (remembered plots desaturated and darkened, keeping their hue), and **clouds** over
+the unexplored plots along the edge of the known world (unexplored plots are not drawn). Units face
+right and are mirrored after a move to the left of the screen; your own moves slide as in the 2D
+renderer.
 
 ## 6. Adding art
 

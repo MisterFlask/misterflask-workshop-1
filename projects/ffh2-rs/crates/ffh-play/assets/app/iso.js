@@ -232,22 +232,64 @@ function scaled(src, k, solid) {
   return out;
 }
 
-/** `src` mirrored and/or darkened to the fog's tone (a remembered plot out of sight). */
+/** `src` mirrored and/or in the fog's tones (a remembered plot out of sight): colours move 45%
+ *  toward their grey and darken, with a slight cool tint, so remembered grassland still reads as
+ *  grassland, not plains. */
 function variantOf(src, flip, fog) {
   const c = canvas(src.width, src.height);
-  const g = c.getContext("2d");
+  const g = c.getContext("2d", fog ? { willReadFrequently: true } : undefined);
   if (flip) {
     g.translate(src.width, 0);
     g.scale(-1, 1);
   }
   g.drawImage(src, 0, 0);
   if (fog) {
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.globalCompositeOperation = "source-atop";
-    g.fillStyle = "rgba(10,16,32,0.5)";
-    g.fillRect(0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height);
+    const p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      const l = 0.45 * (0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2]);
+      p[i] = (p[i] * 0.55 + l) * 0.62;
+      p[i + 1] = (p[i + 1] * 0.55 + l) * 0.62 + 3;
+      p[i + 2] = (p[i + 2] * 0.55 + l) * 0.62 + 10;
+    }
+    g.putImageData(d, 0, 0);
   }
   return c;
+}
+
+/** A CSS colour as [r, g, b] (memoised). */
+const RGB = new Map();
+function rgbOf(css) {
+  let v = RGB.get(css);
+  if (!v) {
+    const g = canvas(1, 1).getContext("2d", { willReadFrequently: true });
+    g.fillStyle = css;
+    g.fillRect(0, 0, 1, 1);
+    v = [...g.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    RGB.set(css, v);
+  }
+  return v;
+}
+
+function toHsl(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+
+function fromHsl(h, s, l) {
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 }
 
 /** The sprites: the PNGs of `iso/` (listed in iso/sprites.js, loaded on first use) and the ones
@@ -262,6 +304,7 @@ class SpriteStore {
     this.cache = new Map();
     this.cacheScale = null;
     this.alpha = new Map();
+    this.base = new Map();
   }
 
   /** A new frame at device scale `k`: a new zoom drops the cache. */
@@ -277,7 +320,7 @@ class SpriteStore {
 
   /** The sprite's native width and height, and its opaque box [x0, y0, x1, y1] (art px). */
   info(key) {
-    const s = SPRITES[key];
+    const s = SPRITES[this.base.get(key) ?? key];
     if (s) return s;
     const c = this.drawn.get(key);
     return c ? { w: c.width, h: c.height, box: [0, 0, c.width, c.height] } : null;
@@ -285,6 +328,35 @@ class SpriteStore {
 
   put(key, c) {
     this.drawn.set(key, c);
+  }
+
+  /** `key` with the art's stock blue (the settlements' roofs, spires and flags) turned to the
+   *  owner's colour `css`, as the drawn sprite `key@owner`; the plain key until it has loaded. */
+  owned(key, owner, css) {
+    const id = `${key}@${owner}`;
+    if (this.drawn.has(id)) return id;
+    const src = Object.hasOwn(SPRITES, key) ? this.source(key) : null;
+    if (!src) return key;
+    const c = canvas(src.width, src.height);
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(src, 0, 0);
+    const [oh, os, ol] = toHsl(...rgbOf(css));
+    const grey = os < 0.2;
+    const d = g.getImageData(0, 0, c.width, c.height);
+    const p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      if (p[i + 3] === 0) continue;
+      const [h, s, l] = toHsl(p[i], p[i + 1], p[i + 2]);
+      if (h < 195 || h > 252 || s < 0.35) continue;
+      const rgb = fromHsl(oh, grey ? os : s * 0.4 + os * 0.6, grey ? l * 0.5 + ol * 0.5 : l);
+      p[i] = rgb[0];
+      p[i + 1] = rgb[1];
+      p[i + 2] = rgb[2];
+    }
+    g.putImageData(d, 0, 0);
+    this.drawn.set(id, c);
+    this.base.set(id, key);
+    return id;
   }
 
   /** Whether art pixel (u, v) of sprite `key` is opaque (picking); its alpha is read once. */
@@ -629,6 +701,7 @@ export class IsoMap {
     if (layer === "political") this.drawPolitical(g, f, cells, PLOT);
     else if (layer === "yield") this.drawYields(g, f, cells);
     else {
+      this.drawShores(g, f, cells, PLOT);
       this.drawRivers(g, f, cells);
       this.drawRoutes(g, f, cells);
       this.drawBorders(g, f, cells, false);
@@ -654,8 +727,11 @@ export class IsoMap {
       it.box = it.f(g);
       if (it.stack) it.fig = it.stack.figure;
     }
-    this.ghostBuried(g, items);
+    this.ghostBuried(g, f, items);
     this.hits = items.filter((it) => it.hit && it.box).map((it) => ({ ...it.box, x: it.hit.x, y: it.hit.y, fig: it.fig ?? null }));
+    // Borders again over what stands up, faintly, so who owns a forest still shows.
+    if (layer === "terrain") this.drawBorders(g, f, cells, false, true);
+    this.drawClouds(g, f, cells);
 
     this.drawCityLabels(g, f, cities);
     this.drawUnitBadges(g, f, items.filter((it) => it.stack));
@@ -681,7 +757,7 @@ export class IsoMap {
       g.fillStyle = T.terrainColor(terrain);
       g.fill();
       if (c.fog) {
-        g.fillStyle = "rgba(10,16,32,0.5)";
+        g.fillStyle = "rgba(10,16,32,0.4)";
         g.fill();
       }
     }
@@ -752,22 +828,27 @@ export class IsoMap {
     }
   }
 
-  /** The cities: the settlement for their size, standing on the plot's bottom vertex, with the
-   *  owner's banner planted at its front-left. */
+  /** The cities: the settlement for their size in its owner's colour (the art's blue roofs and
+   *  flags recoloured), standing on the plot's bottom vertex, with the owner's banner planted at
+   *  its front-left; the banner also carries the garrison's count (drawUnitBadges). */
   collectCities(f, cities, items) {
+    this.cityFlags = new Map();
     for (const { city, c } of cities) {
-      const key = this.pick(citySprites(city.size ?? 1));
+      const base = this.pick(citySprites(city.size ?? 1));
       const banner = this.bannerKey(city.owner);
       const bottom = c.sy + f.TH / 2;
       items.push({
-        d: c.sy, o: 1, x: c.sx, solid: true, hit: { x: city.x, y: city.y },
-        f: (g) => {
+        d: c.sy, o: 1, x: c.sx, solid: true, ghost: 0.35, hit: { x: city.x, y: city.y },
+        f: (g, alpha = 1) => {
           let box = null;
-          if (key) {
+          if (base) {
+            const key = this.sprites.owned(base, city.owner, ownerColor(city.owner));
             const info = this.sprites.info(key);
-            box = this.blit(g, f, key, c.sx, bottom, info.w / 2, info.h, { fog: c.fog, mul: info.w > NATIVE ? NATIVE / info.w : 1 });
+            box = this.blit(g, f, key, c.sx, bottom, info.w / 2, info.h, { fog: c.fog, alpha, mul: info.w > NATIVE ? NATIVE / info.w : 1 });
           }
-          return union(box, this.blit(g, f, banner, c.sx - 62 * f.s, bottom - 16 * f.s, 4, 95));
+          const fl = this.blit(g, f, banner, c.sx - 62 * f.s, bottom - 16 * f.s, 4, 95, { alpha });
+          if (fl) this.cityFlags.set(c.k, fl);
+          return union(box, fl);
         },
       });
     }
@@ -792,7 +873,8 @@ export class IsoMap {
 
   /** Each stack's figure (its top unit's sprite) standing at the plot centre, with its contact
    *  shadow and its owner's banner just left of the figure's opaque box (compose.py). A garrison
-   *  stands at its city's gate, front right, so the settlement still shows. */
+   *  would hide its city: as in the 2D renderer it shows only while selected or sliding, at the
+   *  city's gate, front right, and the city's banner carries its count. */
   collectUnits(f, stacks, cityAt, items) {
     const now = performance.now();
     for (const st of stacks) {
@@ -800,19 +882,25 @@ export class IsoMap {
       const key = this.unitKey(top.type, top.owner);
       const off = this.slideOffset(top.id, now);
       const gate = cityAt.has(c.k);
+      st.flag = null;
+      st.figure = null;
+      if (gate && !st.picked && !off) {
+        items.push({ d: c.sy, o: 3, x: c.sx, stack: st, ax: c.sx, ay: c.sy + UNIT_DY * f.s, f: () => null });
+        continue;
+      }
       const ax = c.sx + (gate ? GATE_DX * f.s : 0) + (off?.x ?? 0);
       const ay = c.sy + (gate ? GATE_DY : UNIT_DY) * f.s + c.drop + (off?.y ?? 0);
       const flip = this.facing.get(top.id) ?? false;
-      const banner = this.bannerKey(top.owner);
+      const banner = gate ? null : this.bannerKey(top.owner);
       items.push({
-        d: c.sy, o: 3, x: c.sx, stack: st, ax, ay, hit: { x: c.x, y: c.y },
+        d: c.sy, o: 3, x: c.sx, stack: st, ax, ay, ghost: 0.25, hit: { x: c.x, y: c.y },
         f: (g, alpha = 1) => {
           const info = key && this.sprites.info(key);
           if (!info) return null;
           const left = flip ? info.w - info.box[2] : info.box[0];
           const bx = Math.min(-34, left - info.w / 2 - 10);
           if (alpha === 1) this.shadow(g, f, ax, ay - 2 * f.s, Math.min(70, Math.max(40, info.w * 0.5)));
-          const fl = this.blit(g, f, banner, ax + bx * f.s, ay - 6 * f.s, 4, 95, { alpha });
+          const fl = banner ? this.blit(g, f, banner, ax + bx * f.s, ay - 6 * f.s, 4, 95, { alpha }) : null;
           const box = this.blit(g, f, key, ax, ay, info.w / 2, info.h, { flip, alpha });
           st.flag = fl;
           st.figure = box;
@@ -840,44 +928,52 @@ export class IsoMap {
     g.restore();
   }
 
-  /** Units that something drawn after them hides by more than a quarter are drawn again, faded,
-   *  over it, so a unit behind a mountain or a forest still shows. */
-  ghostBuried(g, items) {
+  /** Units (and cities) that something drawn after them hides by more than a quarter (a third)
+   *  are drawn again, faded, over it, so a unit behind a mountain or a city behind a forest still
+   *  shows. Items are in depth order and no sprite rises more than about 300 art px above its plot,
+   *  so the scan stops there. */
+  ghostBuried(g, f, items) {
+    const reach = 300 * f.s;
     for (let i = 0; i < items.length; i++) {
       const u = items[i];
-      if (!u.stack || !u.stack.figure) continue;
-      const a = u.stack.figure;
+      const a = u.stack ? u.stack.figure : u.ghost ? u.box : null;
+      if (!a) continue;
       const area = (a.x1 - a.x0) * (a.y1 - a.y0);
       let hidden = 0;
-      for (let j = i + 1; j < items.length; j++) {
+      for (let j = i + 1; j < items.length && items[j].d <= u.d + reach; j++) {
         const b = items[j].box;
         if (!items[j].solid || !b) continue;
         const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
         const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
         if (w > 0 && h > 0) hidden += w * h;
       }
-      if (hidden > area * 0.25) u.f(g, 0.55);
+      if (hidden > area * u.ghost) u.f(g, 0.55);
     }
   }
 
   /** Rivers along plot edges: bit 0 is the plot's south edge (the diamond's lower-left), bit 1 its
-   *  east edge (lower-right); a royal-blue channel with a light core. */
+   *  east edge (lower-right); a royal-blue channel between earth banks, like the water tiles. An
+   *  edge whose far side is unexplored is left out (it would hang over the void). */
   drawRivers(g, f, cells) {
     const map = this.view.map;
     const hw = f.TW / 2;
     const hh = f.TW / 4;
+    const seen = (x, y) => {
+      const n = T.plotIndex(map, x, y);
+      return n < 0 || map.vis[n] > 0;
+    };
     const path = new Path2D();
     let any = false;
     for (const c of cells) {
       if (map.vis[c.k] === 0) continue;
       const rv = map.river[c.k];
       if (!(rv > 0)) continue;
-      if (rv & 1) {
+      if (rv & 1 && seen(c.x, c.y - 1)) {
         path.moveTo(c.sx - hw, c.sy);
         path.lineTo(c.sx, c.sy + hh);
         any = true;
       }
-      if (rv & 2) {
+      if (rv & 2 && seen(c.x + 1, c.y)) {
         path.moveTo(c.sx, c.sy + hh);
         path.lineTo(c.sx + hw, c.sy);
         any = true;
@@ -886,17 +982,74 @@ export class IsoMap {
     if (!any) return;
     g.lineCap = "round";
     g.lineJoin = "round";
-    g.strokeStyle = "#173f8a";
-    g.lineWidth = Math.max(3, 16 * f.s);
+    g.strokeStyle = "#6a4a26";
+    g.lineWidth = Math.max(4, 24 * f.s);
     g.stroke(path);
-    g.strokeStyle = "#2a6fd6";
-    g.lineWidth = Math.max(2, 11 * f.s);
+    g.strokeStyle = "#1f56b8";
+    g.lineWidth = Math.max(3, 17 * f.s);
     g.stroke(path);
-    g.strokeStyle = "rgba(170,214,255,0.8)";
+    g.strokeStyle = "#3f86e4";
+    g.lineWidth = Math.max(1.5, 9 * f.s);
+    g.stroke(path);
+  }
+
+  /** Surf where land meets water: white along the land's front edges at the water's level (the foot
+   *  of the earth bank) and along its back edges at its own. */
+  drawShores(g, f, cells, PLOT) {
+    const map = this.view.map;
+    const hw = f.TW / 2;
+    const hh = f.TW / 4;
+    const dz = WATER_DROP * f.s;
+    const wet = (x, y) => {
+      const n = T.plotIndex(map, x, y);
+      return n >= 0 && map.vis[n] > 0 && map.plot_type[n] === PLOT.ocean;
+    };
+    const p = new Path2D();
+    let any = false;
+    for (const c of cells) {
+      if (c.water || map.vis[c.k] === 0) continue;
+      if (wet(c.x + 1, c.y)) (p.moveTo(c.sx + hw, c.sy + dz), p.lineTo(c.sx, c.sy + hh + dz), (any = true)); // E: right -> bottom
+      if (wet(c.x, c.y - 1)) (p.moveTo(c.sx, c.sy + hh + dz), p.lineTo(c.sx - hw, c.sy + dz), (any = true)); // S: bottom -> left
+      if (wet(c.x, c.y + 1)) (p.moveTo(c.sx, c.sy - hh), p.lineTo(c.sx + hw, c.sy), (any = true)); // N: top -> right
+      if (wet(c.x - 1, c.y)) (p.moveTo(c.sx - hw, c.sy), p.lineTo(c.sx, c.sy - hh), (any = true)); // W: left -> top
+    }
+    if (!any) return;
+    g.lineCap = "round";
+    g.strokeStyle = "rgba(255,255,255,0.3)";
+    g.lineWidth = Math.max(2, 10 * f.s);
+    g.stroke(p);
+    g.strokeStyle = "rgba(255,255,255,0.85)";
     g.lineWidth = Math.max(1, 3 * f.s);
-    g.setLineDash([6 * f.s, 10 * f.s]);
-    g.stroke(path);
+    g.setLineDash([12 * f.s, 7 * f.s]);
+    g.stroke(p);
     g.setLineDash([]);
+  }
+
+  /** Clouds over the unexplored plots that touch explored ones (as the reference's), so the known
+   *  world ends in a bank of cloud rather than a cliff into the void: the shaded undersides of
+   *  every puff first, then the lit tops, so neighbouring puffs merge. */
+  drawClouds(g, f, cells) {
+    const map = this.view.map;
+    const edge = cells.filter((c) => map.vis[c.k] === 0 && T.DIRS8.some(([dx, dy]) => {
+      const n = T.plotIndex(map, c.x + dx, c.y + dy);
+      return n >= 0 && map.vis[n] > 0;
+    }));
+    if (!edge.length) return;
+    for (const lit of [false, true]) {
+      g.fillStyle = lit ? "#f7f9ff" : "#b9cbe6";
+      g.beginPath();
+      for (const c of edge) {
+        for (let i = 0; i < 3; i++) {
+          const h = hash32(c.k * 3 + i);
+          const r = f.TW * (0.24 + ((h >>> 16) & 255) / 1800);
+          const x = c.sx + (((h & 255) / 255) - 0.5) * f.TW * 0.5;
+          const y = c.sy + ((((h >>> 8) & 255) / 255) - 0.5) * f.TH * 0.5 + (lit ? -r * 0.12 : r * 0.08);
+          g.moveTo(x + r, y);
+          g.ellipse(x, y, lit ? r * 0.92 : r, (lit ? 0.52 : 0.6) * r, 0, 0, Math.PI * 2);
+        }
+      }
+      g.fill();
+    }
   }
 
   /** Roads and railroads from each routed plot's centre to the shared midpoint with every routed,
@@ -953,8 +1106,9 @@ export class IsoMap {
   }
 
   /** Each owner's border along every plot edge to a differently-owned plot: a line in the owner's
-   *  colour just inside the edge, on a dark rule. `wash` also tints the owned plots (Political). */
-  drawBorders(g, f, cells, wash) {
+   *  colour just inside the edge, on a dark rule. `wash` also tints the owned plots (Political);
+   *  `over` draws the line alone, faint, over what stands up. */
+  drawBorders(g, f, cells, wash, over = false) {
     const map = this.view.map;
     const hw = f.TW / 2;
     const hh = f.TW / 4;
@@ -985,11 +1139,19 @@ export class IsoMap {
     }
     g.lineCap = "round";
     for (const [owner, p] of byOwner) {
+      if (over) {
+        g.globalAlpha = 0.5;
+        g.strokeStyle = ownerColor(owner);
+        g.lineWidth = Math.max(1, 3 * f.s);
+        g.stroke(p);
+        g.globalAlpha = 1;
+        continue;
+      }
       g.strokeStyle = "rgba(12,14,24,0.55)";
-      g.lineWidth = Math.max(2.5, 7 * f.s);
+      g.lineWidth = Math.max(3, 10 * f.s);
       g.stroke(p);
       g.strokeStyle = ownerColor(owner);
-      g.lineWidth = Math.max(1.5, 4 * f.s);
+      g.lineWidth = Math.max(2, 6 * f.s);
       g.stroke(p);
     }
   }
@@ -1157,14 +1319,14 @@ export class IsoMap {
     }
   }
 
-  /** Each city's plaque under its plot: the size on a disc in the owner's colour, the name, and
+  /** Each city's plaque over the front of its base: the size on a disc in the owner's colour, the name, and
    *  for the player's own cities the turns left on what it builds; a gold star over a capital. */
   drawCityLabels(g, f, cities) {
     const mine = me()?.player;
     for (const { city, c } of cities) {
       const col = ownerColor(city.owner);
       const fs = Math.max(10, Math.round(f.TW * 0.12));
-      const y = c.sy + f.TH / 2 + 2;
+      const y = c.sy + f.TH / 4;
       const size = city.size === null || city.size === undefined ? "?" : String(city.size);
       const turns = city.owner === mine ? city.production?.turns : null;
       const label = f.TW >= 64 ? `${city.name ?? ""}${turns !== null && turns !== undefined ? `  ${turns}` : ""}` : "";
@@ -1209,16 +1371,18 @@ export class IsoMap {
     }
   }
 
-  /** Each stack's count (on its flag), its health bar when hurt, and for the player's own stacks
-   *  a pip on the finial: green while it can move. Drawn over everything. */
+  /** Each stack's count (on its flag; a hidden garrison's on its city's, even when alone), its
+   *  health bar when hurt, and for the player's own stacks a pip on the finial: green while it can
+   *  move. Drawn over everything. */
   drawUnitBadges(g, f, items) {
     const mine = me()?.player;
     for (const it of items) {
-      const { units, top, flag, figure } = it.stack;
-      if (!flag || !figure) continue;
+      const { units, top, figure } = it.stack;
+      const flag = it.stack.flag ?? this.cityFlags?.get(it.stack.c.k);
+      if (!flag) continue;
       const fx = flag.x0;
       const fy = flag.y0;
-      if (units.length > 1) {
+      if (units.length > 1 || !figure) {
         const fs = Math.max(9, Math.round(20 * f.s));
         g.font = `bold ${fs}px system-ui, sans-serif`;
         g.textAlign = "center";
@@ -1240,7 +1404,7 @@ export class IsoMap {
         g.lineWidth = 1;
         g.stroke();
       }
-      if (top.max_hp > 0 && top.hp < top.max_hp) {
+      if (figure && top.max_hp > 0 && top.hp < top.max_hp) {
         const w = Math.max(16, 40 * f.s);
         const h = Math.max(3, 5 * f.s);
         const x = it.ax - w / 2;
