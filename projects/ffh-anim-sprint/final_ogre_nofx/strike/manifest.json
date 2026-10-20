@@ -1,0 +1,64 @@
+{
+ "unit": "swordsman",
+ "arm": "final_ogre_nofx",
+ "anim": "strike",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": false,
+ "hold_last": false,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 100,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 160,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 50,
+   "events": []
+  },
+  {
+   "file": "frame_04.png",
+   "ms": 120,
+   "events": [
+    "hit"
+   ]
+  },
+  {
+   "file": "frame_05.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_06.png",
+   "ms": 100,
+   "events": []
+  },
+  {
+   "file": "frame_07.png",
+   "ms": 100,
+   "events": []
+  }
+ ],
+ "warnings": [
+  "frame 3 leaves the safe region x (16, 144): bbox (0, 17, 138, 126)",
+  "frame 4 leaves the safe region x (16, 144): bbox (21, 40, 146, 126)",
+  "frame 5 leaves the safe region x (16, 144): bbox (30, 37, 145, 126)"
+ ]
+}
