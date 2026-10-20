@@ -1,0 +1,95 @@
+{"judge": 1, "animations": {
+  "idle": {
+    "ordering": {"B": "s p r q", "D": "p r q s", "F": "p r q s", "H": "p r q s", "M": "r p q s", "S": "s q p r"},
+    "odd_frame": {"B": "none", "D": "2", "F": "2", "H": "1", "M": "1", "S": "none"},
+    "defects": {
+      "B": ["frames 1-3: head/chest, sword and shield move as rigid pixel blocks (clean, but cut-out-like shifts with no torso squash)"],
+      "D": ["frames 1-3: whole sprite redrawn each frame, outline and leg pixels boil", "frame 2: head rises 2 px (beat asks 1) and the face is redrawn with a wider eye", "frames 1 and 3 nearly identical (head and sword both up 1 px), so breathing in and out are not distinguished", "frames 2-3: outline slightly lighter and softer than frame 0"],
+      "F": ["frames 1-3: character redrawn larger: bigger shield, bigger boots, stance widened (feet move 1-4 px)", "frames 1-3: face turned more frontal with different eyes and mouth", "frames 1-3: purple-tinted outline", "frame 1: sword drops 1 px and shifts 3 px left instead of holding still", "frame 2: shield jumps up about 5 px", "big pop at 3->0 and 0->1"],
+      "H": ["frames 1-3: outline turns purple/magenta, so the outline colour flickers at 3->0 and 0->1", "frames 1-3: whole sprite redrawn, pixel boil on legs, shield and face", "frame 2: sword rises 3 px (beat asks 2)"],
+      "M": ["frames 1-2: whole body stretched, head 4 px higher than frame 0 (size pop)", "frames 1-3: face redrawn front-facing with larger eyes", "frames 1-3: purple-tinted outline", "frame 2: sword rises 5 px and shield 5 px, far more than a breath", "pop at 0->1 and 3->0"],
+      "S": ["frames 2-3: a few faint light fringe pixels above the hair and along the moved sword (resampling halo), invisible at 1x"]
+    },
+    "scores": {
+      "B": {"motion": 7, "consistency": 9, "style": 9, "appeal": 6},
+      "D": {"motion": 6, "consistency": 6, "style": 8, "appeal": 6},
+      "F": {"motion": 3, "consistency": 2, "style": 5, "appeal": 4},
+      "H": {"motion": 7, "consistency": 5, "style": 7, "appeal": 6},
+      "M": {"motion": 4, "consistency": 3, "style": 5, "appeal": 4},
+      "S": {"motion": 8, "consistency": 9, "style": 9, "appeal": 7}
+    },
+    "ranking": ["S", "B", "D", "H", "M", "F"],
+    "flaws": {
+      "B": "Correct and pixel-clean breath, but done by shifting rigid blocks, so it feels slightly mechanical.",
+      "D": "Every frame is redrawn, so outlines shimmer, and frames 1 and 3 cannot be told apart.",
+      "F": "Frames 1-3 are a redrawn, larger character with a different face and stance, so the loop pops instead of breathing.",
+      "H": "The outline turns purple in frames 1-3, so it visibly flickers every loop.",
+      "M": "The body stretches 4 px taller with a redrawn face in frames 1-2, a size pop rather than a breath.",
+      "S": "Very subtle and on-beat; only faint resampling fringe pixels on the moved parts."
+    },
+    "notes": "1-2 px idle: I ordered from the shuffled sheets with zoomed crops and per-region shift measurements (shuffled files only). S and B are both shippable; S's chest and shoulders deform a little, which reads more like a breath than B's block shifts."
+  },
+  "flinch": {
+    "ordering": {"B": "p r q s", "D": "r p q s", "F": "p r q s", "H": "p s r q", "M": "q p r s", "S": "r s p q"},
+    "odd_frame": {"B": "0", "D": "none", "F": "0", "H": "2", "M": "1", "S": "1"},
+    "defects": {
+      "B": ["frames 0-3: warped/resampled pixels look soft and smeared next to the crisp reference", "frames 0 and 3: dark stray pixels/tear at the left hip", "frame 0: belt and right torso edge torn by the warp", "frame 0: head barely snaps back, so the impact reads weakly"],
+      "D": ["frames 0-2: whole sprite leans and slides right as one rigid block; no head snap, eyes stay open, arms do not jerk out", "frames 0-1: feet slide instead of staying planted, front leg stretched", "frames 0-2: sword and shield keep their idle angles"],
+      "F": ["frame 0: arms bulkier and head/hair bigger and spikier than the reference", "frame 2: stray magenta pixels between belt and shield", "frame 2: face redrawn front-facing with large eyes", "frames 1-2 are nearly the same crouch, then a big jump to frame 3 (frame 2 is not halfway back)", "frames 0-2: purple-tinted outline pixels"],
+      "H": ["frames 0-3: faint purple/magenta outline pixels instead of the reference's dark outline", "frame 2: face redrawn more front-facing with wider eyes"],
+      "M": ["frames 0-1: head tipped so far back the face points at the sky; face redrawn rounder", "frames 1-2: dark brown strap/stain artifact down the right side of the shorts", "frames 2-3 nearly identical, so the recovery stalls", "frames 0-3: magenta-tinted outline pixels"],
+      "S": ["frames 0-1: hair swells into a wild mane, so the head reads larger than the reference", "frames 0-1: manga '> <' squeezed eyes, off-model for this sprite", "frames 0-2: magenta specks on the outline (hair, shield edge)", "frame 2: face redrawn front-facing", "uneven recovery: frame 2 is already almost the ready pose and frame 3 adds little"]
+    },
+    "scores": {
+      "B": {"motion": 5, "consistency": 6, "style": 5, "appeal": 5},
+      "D": {"motion": 3, "consistency": 7, "style": 7, "appeal": 3},
+      "F": {"motion": 7, "consistency": 5, "style": 7, "appeal": 7},
+      "H": {"motion": 8, "consistency": 7, "style": 8, "appeal": 8},
+      "M": {"motion": 6, "consistency": 5, "style": 7, "appeal": 6},
+      "S": {"motion": 8, "consistency": 6, "style": 7, "appeal": 8}
+    },
+    "ranking": ["H", "S", "F", "M", "B", "D"],
+    "flaws": {
+      "B": "The warped poses are soft and smeared with small tears, and the impact is too timid to read.",
+      "D": "It is just the static sprite leaned and slid sideways, with no head, eye or arm reaction.",
+      "F": "Strong poses, but the character gets bulkier on impact and the recovery stalls, then jumps to frame 3.",
+      "H": "Purple outline tint and a slightly redrawn face in the recovery frames; otherwise clean, with evenly spaced recovery.",
+      "M": "The head throw is overdone, a brown strap artifact appears on the shorts, and the recovery stalls.",
+      "S": "On impact the head and hair swell and the face goes manga-style, so the hit frames look slightly off-model."
+    },
+    "notes": "I got D (frames 0/1) and M (frames 2/3) wrong in the ordering test: D's frames differ only by how far they lean, and M's two recovery frames are near duplicates."
+  },
+  "death": {
+    "ordering": {"B": "s v r t q u w p", "D": "t q w v r u s p", "F": "r q v u t p w s", "H": "p u r s v q w t", "K": "w u q p r s v t", "M": "s r t q w p u v", "S": "v t u r w p q s"},
+    "odd_frame": {"B": "4", "D": "none", "F": "6", "H": "6", "K": "5", "M": "2", "S": "0"},
+    "defects": {
+      "B": ["frames 0-7: warped/resampled pixels, soft and smeared next to the crisp reference", "frame 3: legs and feet garbled into a blob while kneeling", "frame 4: raised arm stretched into a striped smear", "frames 5-7: corpse is the standing sprite rotated and squashed: face illegible, arm sticks up as a smear, legs mashed", "frames 5-7: corpse almost horizontal, not on the isometric axis", "frame 0: dark stray pixels at the left hip"],
+      "D": ["frames 0-7: the whole static sprite is rotated and slid as one rigid piece; no stagger step, no kneel, never lies down", "frames 3-7: lower body and shield clipped flat at the ground line (sunk into the tile)", "frames 0-7: sword stays raised in the hand and never drops; eyes never close", "frames 4-7: rotation jaggies on the outline and sword", "frame 7: final pose is a tilted, half-buried figure, not a corpse"],
+      "F": ["frames 0-7: character drawn larger and bulkier than the reference (bigger head, hands and boots)", "frame 6: bounce lifts the head about 11 px (beat asks 2) and opens the eyes and mouth, so he seems to revive", "frames 1, 2, 4: magenta specks in the outline and near the hands", "frames 5-7: shield stands up as an oval instead of lying flat"],
+      "H": ["frame 6: bounce lifts the head about 9 px (beat asks 2) and opens the eyes", "frames 5-7: corpse lies almost horizontal (about 10 degrees), not along the isometric axis", "frames 5-7: legs bunched and stubby", "frames 0-7: purple/magenta fringe on the outline", "frame 4: sword already lying on the ground instead of slipping from the hand"],
+      "K": ["frames 5-7: corpse lies nearly horizontal and side-on, not along the isometric axis", "frames 5-7: legs look stretched long for chibi proportions", "frame 6: bounce lifts the head about 9 px (beat asks 2)", "frames 1, 4, 6, 7: magenta outline pixels"],
+      "M": ["frames 2-3: tunic flares into a skirt-like shape", "frame 3: stray magenta pixel by the sword hand", "frames 5-7: corpse almost horizontal, not on the isometric axis", "frame 6: bounce raises head and arm about 6 px (beat asks 2)", "frame 4: sword already lying on the ground instead of slipping from the hand"],
+      "S": ["frames 0-1: manga '> <' squeezed eyes and swollen hair, slightly off-model", "frame 2: stray magenta pixel at the sword hand", "frames 5-7: corpse almost horizontal, not on the isometric axis", "frame 6: bounce lifts head and arm about 9 px (beat asks 2)", "frame 4: sword already lying on the ground instead of slipping from the hand"]
+    },
+    "scores": {
+      "B": {"motion": 5, "consistency": 4, "style": 4, "appeal": 3},
+      "D": {"motion": 2, "consistency": 5, "style": 5, "appeal": 2},
+      "F": {"motion": 9, "consistency": 6, "style": 7, "appeal": 8},
+      "H": {"motion": 8, "consistency": 7, "style": 7, "appeal": 7},
+      "K": {"motion": 8, "consistency": 7, "style": 8, "appeal": 8},
+      "M": {"motion": 8, "consistency": 6, "style": 8, "appeal": 7},
+      "S": {"motion": 8, "consistency": 7, "style": 8, "appeal": 7}
+    },
+    "ranking": ["K", "F", "S", "H", "M", "B", "D"],
+    "flaws": {
+      "B": "Poses come from warping the original sprite, so the kneel, fall and corpse frames turn into blurry smears with broken limbs.",
+      "D": "The sprite is only rotated and slid as a rigid block, so he never kneels or lies down and ends half-sunk into the ground.",
+      "F": "The boldest, most readable fall and the only corpse on the isometric axis, but the character is drawn bulkier than the reference and his eyes pop open on the bounce.",
+      "H": "Clean and on-beat, but the corpse lies nearly horizontal with stubby legs, and the bounce is exaggerated with eyes open.",
+      "K": "The corpse lies side-on and horizontal with stretched legs instead of along the isometric axis.",
+      "M": "The tunic briefly turns into a skirt in the kneel frames, and the corpse lies side-on rather than along the tile axis.",
+      "S": "The face goes slightly off-model, manga-style, on impact, and the corpse lies side-on and horizontal."
+    },
+    "notes": "H, K, M and S share the same structure and are close. K wins on the sword visibly flying out of the hand in frame 4 and a clean, on-model kneel. Frames 5 and 7 are near duplicates in every letter, so the 5/7 swaps in my ordering for D, K and S are expected."
+  }
+}}

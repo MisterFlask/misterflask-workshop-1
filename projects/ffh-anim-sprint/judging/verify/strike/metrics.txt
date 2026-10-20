@@ -1,0 +1,4 @@
+A: non-rigidity mean 0.345 (0 = just frame 0 moved), overlap index 0.43 (0 = all parts peak on the same frame), colour drift 0.97 (OKLab x100 to the sprite's colours), frame-to-frame change 123.3, gate flags: none
+C: non-rigidity mean 0.308 (0 = just frame 0 moved), overlap index 1.80 (0 = all parts peak on the same frame), colour drift 0.83 (OKLab x100 to the sprite's colours), frame-to-frame change 101.4, gate flags: none
+E: non-rigidity mean 0.295 (0 = just frame 0 moved), overlap index 1.09 (0 = all parts peak on the same frame), colour drift 0.80 (OKLab x100 to the sprite's colours), frame-to-frame change 95.3, gate flags: none
+G: non-rigidity mean 0.323 (0 = just frame 0 moved), overlap index 0.50 (0 = all parts peak on the same frame), colour drift 0.68 (OKLab x100 to the sprite's colours), frame-to-frame change 114.1, gate flags: none

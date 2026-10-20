@@ -1,0 +1,357 @@
+{
+ "judge": 2,
+ "animations": {
+  "idle": {
+   "ordering": {
+    "B": "s p r q",
+    "D": "p r q s",
+    "F": "p r q s",
+    "H": "p r q s",
+    "M": "r p q s",
+    "S": "s q p r"
+   },
+   "odd_frame": {
+    "B": "none",
+    "D": "none",
+    "F": "2",
+    "H": "2",
+    "M": "2",
+    "S": "none"
+   },
+   "defects": {
+    "B": [
+     "frames 1-3: the breath is rigid 1 px shifts of head/chest, sword and shield with almost no redraw (slightly cut-out feel)"
+    ],
+    "D": [
+     "frame 1: sword tip rises with the chest instead of lagging",
+     "frame 2: head rises 2 px (brief: 1 px) and everything peaks together",
+     "frame 3: head still 1 px up instead of back down",
+     "frames 1-3: face and sword hand slightly redrawn each frame (mild boil)"
+    ],
+    "F": [
+     "frames 1-3: face redrawn more frontal with larger eyes",
+     "frame 2: sword pushed ~4 px left and up and shield ~4 px up/right, far bigger than a breath",
+     "frames 1-3: torso shifts sideways 1-2 px; frame 3 front foot shifts 1 px",
+     "frames 1-3: magenta/purple outline fringe",
+     "frames 1-3: ~5% more pixels, belt buckle and hands redesigned (size pop)",
+     "3->0: sword and shield snap back 3-4 px"
+    ],
+    "H": [
+     "frames 1-3: magenta/purple outline fringe (colour pop against frame 0)",
+     "frames 1-3: face redrawn (eyes/mouth differ from frame 0)",
+     "frame 1: torso does not rise with the head",
+     "frame 3: sword already back at rest, no settle"
+    ],
+    "M": [
+     "frames 1-2: head and hair rise 4 px and the head is drawn larger (size pop)",
+     "frames 1-2: frontal face with two big eyes, a different face from frame 0",
+     "frame 2: shield and sword both up 4 px",
+     "frames 1-3: magenta/purple outline fringe",
+     "0->1: 4 px jump in one 250 ms frame, reads as a bounce, not a breath"
+    ],
+    "S": [
+     "frames 1-2: small redraw noise on face and hair (slight shimmer against frame 0)",
+     "frame 2: sword tip rises only ~1 px",
+     "frame 3: shield still 1 px high while the sword is already back"
+    ]
+   },
+   "scores": {
+    "B": {
+     "motion": 7,
+     "consistency": 10,
+     "style": 10,
+     "appeal": 6
+    },
+    "S": {
+     "motion": 7,
+     "consistency": 8,
+     "style": 9,
+     "appeal": 6
+    },
+    "D": {
+     "motion": 6,
+     "consistency": 7,
+     "style": 8,
+     "appeal": 5
+    },
+    "H": {
+     "motion": 6,
+     "consistency": 5,
+     "style": 6,
+     "appeal": 5
+    },
+    "F": {
+     "motion": 4,
+     "consistency": 3,
+     "style": 5,
+     "appeal": 5
+    },
+    "M": {
+     "motion": 4,
+     "consistency": 2,
+     "style": 5,
+     "appeal": 4
+    }
+   },
+   "ranking": [
+    "B",
+    "S",
+    "D",
+    "H",
+    "F",
+    "M"
+   ],
+   "flaws": {
+    "B": "The breath follows the beats exactly but is made of rigid 1 px part shifts, so it is subtle and a little cut-out-like at 1x.",
+    "S": "Slight redraw noise on the face and hair in frames 1-2 makes the head shimmer against the pixel-exact frame 0.",
+    "D": "Everything rises and falls together (the sword lifts with the chest in frame 1) and the face is lightly redrawn each frame, so the breath boils and lacks overlap.",
+    "H": "Frames 1-3 gain a purple outline fringe and a redrawn face, so the loop flickers in colour at 0->1 and 3->0.",
+    "F": "Frames 1-3 are a redrawn, more frontal character whose sword swings ~4 px out and shield jumps ~4 px, reading as a fidget with a pop rather than a breath.",
+    "M": "The head and shield shoot up 4 px with a taller, frontal-faced redraw in frames 1-2, so the idle bounces and the character visibly changes size."
+   },
+   "notes": "B and S are near pixel-exact and loop cleanly; F and M redraw the character and move 3-4 px, which pops at 3->0 and 0->1."
+  },
+  "flinch": {
+   "ordering": {
+    "B": "p r q s",
+    "D": "p r q s",
+    "F": "p r q s",
+    "H": "p s r q",
+    "M": "q p r s",
+    "S": "r s p q"
+   },
+   "odd_frame": {
+    "B": "0",
+    "D": "none",
+    "F": "0",
+    "H": "0",
+    "M": "1",
+    "S": "0"
+   },
+   "defects": {
+    "B": [
+     "frames 0-1: sprite resampled/warped: soft, blurry pixels and broken dark outline",
+     "frames 0-1: stray dark specks beside the belt and under the shield",
+     "frames 0-1: shield barely flung out and the lean back is slight",
+     "frame 1->2: crisp rendering returns abruptly (texture pop)"
+    ],
+    "D": [
+     "frames 0-2: whole sprite slides ~8 px right including both feet (feet not planted)",
+     "frames 0-1: eyes stay open, head does not snap back, arms not flung outward",
+     "frames 0-2: pose is mostly the idle sprite translated and tilted (cut-out feel)",
+     "frame 2->3: 3-5 px jump back toward the idle position"
+    ],
+    "F": [
+     "frames 0-2: character drawn ~25-30% bulkier (bigger torso, much bigger spiky hair), a size pop against idle",
+     "frames 0-3: magenta outline fringe; frames 1-2 magenta stray pixels by the belt and shield",
+     "frame 2: still crouched with the sword low instead of halfway back, so 2->3 snaps",
+     "frame 3: more frontal face and front foot 3 px off, a small pop into idle frame 0"
+    ],
+    "H": [
+     "frames 0-3: magenta/purple outline fringe (colour shift against idle)",
+     "frame 0: tunic drawn ~30% wider and arms long (size pop)",
+     "frame 0: front foot jumps 9 px out in one 80 ms frame"
+    ],
+    "M": [
+     "frames 0-1: diagonal brown strap appears on the tunic (outfit change)",
+     "frame 1: head thrown so far back the face points at the sky",
+     "frame 0->1: front foot pops back 8 px",
+     "frames 2-3: both near the ready pose; recovery happens in one jump and frame 3 is a frontal-faced redraw that pops into idle frame 0",
+     "frames 0-3: magenta outline fringe; head and hair larger in frames 0-1"
+    ],
+    "S": [
+     "frames 0-2: magenta outline fringe",
+     "frames 0-1: cartoon '><' squint eyes and enlarged wild hair (off-model)",
+     "frame 1: rear foot slides ~7 px toward the attacker",
+     "frames 0-1: ~14% more pixels (character slightly bigger)"
+    ]
+   },
+   "scores": {
+    "S": {
+     "motion": 9,
+     "consistency": 6,
+     "style": 6,
+     "appeal": 8
+    },
+    "H": {
+     "motion": 8,
+     "consistency": 6,
+     "style": 6,
+     "appeal": 7
+    },
+    "F": {
+     "motion": 7,
+     "consistency": 4,
+     "style": 6,
+     "appeal": 6
+    },
+    "M": {
+     "motion": 6,
+     "consistency": 4,
+     "style": 6,
+     "appeal": 6
+    },
+    "B": {
+     "motion": 5,
+     "consistency": 6,
+     "style": 5,
+     "appeal": 4
+    },
+    "D": {
+     "motion": 3,
+     "consistency": 7,
+     "style": 8,
+     "appeal": 3
+    }
+   },
+   "ranking": [
+    "S",
+    "H",
+    "F",
+    "M",
+    "B",
+    "D"
+   ],
+   "flaws": {
+    "S": "Off-model '><' eyes, enlarged hair and a purple outline fringe in frames 0-2 make the impact frames look like a slightly different character.",
+    "H": "A purple outline fringe runs through every frame and frame 0's torso is drawn noticeably wider than the idle sprite.",
+    "F": "Strong poses, but the character balloons ~25% bigger in the impact frames and frame 2 never gets halfway back, so the return to idle snaps.",
+    "M": "Recovery collapses into one jump with a frontal-faced frame 3 that pops into idle, and a tunic strap and oversized head appear in the impact frames.",
+    "B": "The impact frames are a soft, warped resample of the sprite with broken outlines and stray specks, and the recoil itself is small.",
+    "D": "The flinch is mostly the idle sprite sliding ~8 px sideways on skating feet, with no head snap, shut eyes or flung arms."
+   },
+   "notes": "S and H read instantly at 1x (impact, recoil with sword dipping, halfway, settle close to idle). M's frames 2 and 3 were hard to order."
+  },
+  "death": {
+   "ordering": {
+    "B": "s v r t q u w p",
+    "D": "t q w v r u s p",
+    "F": "r q v u t w s p",
+    "H": "p u r s v q w t",
+    "K": "w u q p r s v t",
+    "M": "s r t q w p u v",
+    "S": "v t u r w p q s"
+   },
+   "odd_frame": {
+    "B": "7",
+    "D": "none",
+    "F": "0",
+    "H": "0",
+    "K": "none",
+    "M": "0",
+    "S": "0"
+   },
+   "defects": {
+    "B": [
+     "frames 0-7: sprite warped/resampled: blurry pixels and broken outline",
+     "frame 1: raised sword arm is a stretched, striped smear",
+     "frame 3: legs mushed and cut at the bottom edge",
+     "frame 4: raised arm drawn as a striped tube",
+     "frames 5-7: corpse squashed flat, head and arm smeared (broken anatomy)",
+     "frames 5-7: corpse hugs the bottom edge, legs clipped"
+    ],
+    "D": [
+     "frames 0-7: rigid rotation of the idle sprite (a board tipping over) with jaggy rotated pixels",
+     "frames 4-7: legs and shield cropped by the bottom edge",
+     "frames 2-7: never kneels or lies flat; ends tilted ~20-30 degrees and half off-frame",
+     "frames 4-7: sword stays in the hand pointing up instead of dropping to the ground",
+     "frames 0-7: eyes never close",
+     "frames 5-7: no readable bounce"
+    ],
+    "F": [
+     "frames 0-1 and 4-7: character drawn ~25-50% bulkier than in kneeling frames 2-3 and the idle sprite (size pop)",
+     "frames 0-7: magenta/purple outline fringe",
+     "frame 6: the bounce opens the eyes and mouth (reads as reviving)",
+     "frame 0: spikier hair and broader build than the reference"
+    ],
+    "H": [
+     "frames 0-7: magenta outline fringe, pink pixels under the body in frames 5-7",
+     "frame 1: no step back with the near foot",
+     "frame 4: sword already lying on the ground instead of slipping from the hand",
+     "frames 5-7: corpse tilted ~11-17 degrees, closer to side view than the isometric axis",
+     "frame 6: eyes open on the bounce"
+    ],
+    "K": [
+     "frames 0-7: heaviest magenta outline fringe (up to ~450 px in frame 4)",
+     "frames 5-7: corpse lies nearly horizontal (side view), not along the isometric axis",
+     "frame 1: hair suddenly wilder"
+    ],
+    "M": [
+     "frames 0-1: diagonal brown strap appears on the tunic",
+     "frames 0-7: magenta outline fringe",
+     "frames 2-3: tunic reads like a skirt",
+     "frame 4: sword already on the ground instead of slipping from the hand",
+     "frames 5-7: corpse closer to side view than the isometric axis"
+    ],
+    "S": [
+     "frames 0-1: '><' squint eyes and enlarged wild hair (off-model)",
+     "frames 0-7: magenta outline fringe; frame 2 magenta pixels inside the sprite at the sword hand",
+     "frames 5-7: corpse closer to side view than the isometric axis"
+    ]
+   },
+   "scores": {
+    "K": {
+     "motion": 8,
+     "consistency": 7,
+     "style": 6,
+     "appeal": 8
+    },
+    "H": {
+     "motion": 8,
+     "consistency": 7,
+     "style": 6,
+     "appeal": 7
+    },
+    "M": {
+     "motion": 8,
+     "consistency": 6,
+     "style": 6,
+     "appeal": 8
+    },
+    "F": {
+     "motion": 9,
+     "consistency": 5,
+     "style": 5,
+     "appeal": 8
+    },
+    "S": {
+     "motion": 8,
+     "consistency": 6,
+     "style": 5,
+     "appeal": 8
+    },
+    "B": {
+     "motion": 5,
+     "consistency": 3,
+     "style": 3,
+     "appeal": 3
+    },
+    "D": {
+     "motion": 2,
+     "consistency": 5,
+     "style": 5,
+     "appeal": 1
+    }
+   },
+   "ranking": [
+    "K",
+    "H",
+    "M",
+    "F",
+    "S",
+    "B",
+    "D"
+   ],
+   "flaws": {
+    "K": "Heavy purple outline fringe, and the corpse lies almost flat-horizontal like a side-view figure rather than along the isometric ground axis.",
+    "H": "A purple outline fringe throughout, and the corpse lies closer to a side-view tilt than along the isometric ground axis.",
+    "M": "A brown strap appears on the tunic in the impact frames and a purple outline fringe runs through every frame.",
+    "F": "The character changes size between frames (chunky standing and corpse frames against small kneeling frames) and carries a purple outline fringe.",
+    "S": "Off-model '><' squint eyes and wild hair in frames 0-1, plus a purple fringe, make the opening frames look like a different character.",
+    "B": "Every frame is a blurry mesh-warp of the sprite, and the corpse is a squashed smear with a striped tube for an arm.",
+    "D": "The sprite is just rotated as a rigid board and sinks off the bottom of the frame; he never kneels, never lies down and never lets go of the sword."
+   },
+   "notes": "H, K, M and S share a very similar, readable sequence; K's sword visibly slipping from the hand in frame 4 is the best beat. F alone lays the corpse along the isometric axis. For the three lying frames I usually could not tell 'hits the ground' from 'corpse'."
+  }
+ }
+}
