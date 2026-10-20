@@ -532,8 +532,10 @@ army decision of each `play_turn` call (nothing outside `Game` is remembered).
   the stacks on the assembly ring step next to it (those still on their way come to the ring
   first). **Strike**: the force next to it covers the city: every committed stack there
   attacks in the same turn -- siege engines bombard, collateral attackers first while several
-  defenders stand, then the best odds when 68%+, else the unit cheapest to lose for its
-  strength (C++ `AI_getBestGroupSacrifice`) -- while the attackers left still cover the
+  defenders stand, then units summoned for good (skeletons and the like, `magic::raised`: free
+  to replace, they wear the defenders down as siege fodder; the owner's call, 2026-10-20), then
+  the best odds when 68%+, else the unit cheapest to lose for its strength (C++
+  `AI_getBestGroupSacrifice`) -- while the attackers left still cover the
   defenders left (or the defenders are down to half their health and outnumbered). Up to three
   units follow the victor into the city.
 - Campaign moves go one turn at a time (the rest of the path is dropped once the moves are
@@ -895,6 +897,10 @@ civilization that has logic plays exactly as before (same checksum), and
 as a generic one: the measurement switch. `civs/world_spell.rs` holds a world spell for a chosen
 moment (`spell_value` returns 0 for it and the `turn` hook casts it once the rules and the AI's
 default timing allow it). The older research flavours in `tech_plan.rs` are outside the switch.
+
+**Unique mechanics are used** (the owner's decision, 2026-10-20): a civilization's own units,
+spells and abilities are part of how it plays, so its AI uses them whether or not the games show a
+direct benefit; the win-rate gate below decides how they are used, not whether.
 
 **How it was measured.** `ffh stats --civ CIVILIZATION_X` forces a civilization into slot 0 (the
 leader picked by the seed; the other slots stay random and avoid it), and

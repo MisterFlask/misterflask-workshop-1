@@ -163,6 +163,22 @@ pub fn understood(d: &GameData, s: SpellType) -> bool {
         || py_kind(d, s) != Py::None
 }
 
+/// Units of type `t` are summoned for good by some spell (`bPermanentUnitCreate`: Raise
+/// Skeleton's skeletons, Battering Rams, Flesh Golems, Tigers, Treants, the Kraken), not trained:
+/// a strike spends them right after its collateral attackers (`campaign::strike`).
+pub fn raised(d: &GameData, t: UnitType) -> bool {
+    static TABLE: OnceLock<Vec<bool>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        let mut table = vec![false; d.units.len()];
+        for s in d.spells.iter() {
+            if let (true, Some(ut)) = (s.permanent_unit_create, s.create_unit_type) {
+                table[ut.idx()] = true;
+            }
+        }
+        table
+    })[t.idx()]
+}
+
 fn adds(info: &SpellInfo) -> impl Iterator<Item = PromotionType> {
     [info.add_promotion_type1, info.add_promotion_type2, info.add_promotion_type3].into_iter().flatten()
 }

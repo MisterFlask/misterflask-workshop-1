@@ -212,6 +212,10 @@ which forward to the C++ methods -- so port each Cy call to the corresponding po
   on against the same binary with it off (`civ_ab.py --off-base` / `FFH_AI_CIV_OFF` for a
   civilization's logic; docs/AI.md, "Tools"). Keep a change only if neither the win rate nor the
   share at the end falls; development-seed gains alone are not results.
+- **Civilizations use their unique mechanics** (the owner's decision, 2026-10-20): a
+  civilization's own units, spells and abilities are part of how it plays, so its AI uses them
+  whether or not they directly benefit it. The win-rate rule above does not decide whether a
+  civilization uses its own mechanics; measure what they cost and improve how they are used.
 - **Every measured change that fails gets an entry in `docs/AI_LOG.md` before it is reverted**:
   (1) why it made sense, (2) why it did not move the win rate, from the games themselves (what
   happened when it fired: counts, checkpoints, `FFH_AI_TRACE` replays), (3) what that implies.

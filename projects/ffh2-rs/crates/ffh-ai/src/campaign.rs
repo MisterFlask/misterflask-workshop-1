@@ -26,7 +26,8 @@
 //!   next to the city together from there when the force there covers it, and strike when the
 //!   force next to it does: every committed stack there attacks
 //!   in the same turn (`strike`), siege engines bombarding first, then collateral attackers,
-//!   then the best odds (or the cheapest unit to lose), while the remaining force still covers
+//!   then units summoned for good (skeletons, free to replace: siege fodder), then the best odds
+//!   (or the cheapest unit to lose), while the remaining force still covers
 //!   the remaining defenders. The victor does not stay alone in the city: up to three more
 //!   units follow it in. Stacks past gathering neither turn back for our cities in peril (the
 //!   threat usually comes from their target) nor stop to heal just before the strike.
@@ -964,8 +965,9 @@ pub fn act(g: &mut Game, v: &mut View, grp: GroupId, u: UnitId, early: bool) -> 
 
 /// The strike: the units of every committed stack next to the target attack this turn, one by
 /// one, while the force left still covers the defenders left. Siege engines bombard first;
-/// then collateral attackers while several defenders stand; then the best odds when they are
-/// good, else the unit that is cheapest to lose for its strength (C++ `AI_getBestGroupSacrifice`
+/// then collateral attackers while several defenders stand; then units summoned for good
+/// (skeletons, `magic::raised`), the best odds first; then the best odds when they are good,
+/// else the unit that is cheapest to lose for its strength (C++ `AI_getBestGroupSacrifice`
 /// does the same in a stack attack). Each attacker is taken out of its stack first, as a human
 /// selects a single unit: a stack whose other units have attacked cannot start a move.
 fn strike(g: &mut Game, v: &mut View, op: &Op) {
@@ -1040,14 +1042,20 @@ fn strike(g: &mut Game, v: &mut View, op: &Op) {
             let cost = g.d.units[g.units[u].unit_type].production_cost.max(1) as i64;
             attack_power(g, u) as i64 * (100 + g.unit_withdrawal_probability(u) as i64) * 100 / (cost * (10 + g.units[u].experience.max(0) as i64))
         };
+        let raised = |u: UnitId| crate::magic::raised(g.d, g.units[u].unit_type);
         let pick = if collateral {
             with_odds.iter().filter(|&&(u, _)| g.unit_collateral_damage(u) > 0).max_by_key(|&&(u, o)| (o, std::cmp::Reverse(u))).map(|&(u, _)| u)
+        } else if with_odds.iter().any(|&(u, _)| raised(u)) {
+            // Units summoned for good (skeletons) cost nothing to replace: they wear the
+            // defenders down for the units that follow, as siege fodder after the catapults.
+            with_odds.iter().filter(|&&(u, _)| raised(u)).max_by_key(|&&(u, o)| (o, std::cmp::Reverse(u))).map(|&(u, _)| u)
         } else if best_odds >= 680 {
             with_odds.iter().max_by_key(|&&(u, o)| (o, std::cmp::Reverse(u))).map(|&(u, _)| u)
         } else {
             with_odds.iter().max_by_key(|&&(u, _)| (sacrifice(u), std::cmp::Reverse(u))).map(|&(u, _)| u)
         };
         let Some(u) = pick else { break };
+        crate::trace!(g, p, "  attacker {} (odds {})", g.d.units[g.units[u].unit_type].base.type_, with_odds.iter().find(|&&(x, _)| x == u).map_or(0, |&(_, o)| o));
         // Out of its stack (a stack with spent units cannot start a move).
         if g.units[u].group.is_some_and(|grp| g.groups[grp].units.len() > 1) {
             g.unit_join_group(u, None, true);
@@ -1230,4 +1238,95 @@ pub fn army_counts(g: &Game, p: PlayerId) -> (i32, i32) {
     let att = count_ai(g, p, UnitAIType::UNITAI_ATTACK);
     let siege = count_ai(g, p, UnitAIType::UNITAI_ATTACK_CITY) + count_ai(g, p, UnitAIType::UNITAI_COLLATERAL);
     (att, siege)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use ffh_core::map::{Map, MapInitData};
+    use ffh_core::mapscript::FractalMapScript;
+    use ffh_core::setup::GameSetup;
+
+    use super::*;
+
+    /// One block of grassland (x 2..=17, y 3..=8) in an ocean, revealed to both players: a fresh
+    /// two-player AI game whose starting units are gone (as `tests/magic.rs`).
+    fn one_landmass_game(seed: u32) -> Game {
+        let d = ffh_data::global();
+        let mut g = Game::new(d, GameSetup::standard(d, 2, "WORLDSIZE_DUEL", seed));
+        g.setup.options[GameOptionType::GAMEOPTION_NO_BARBARIANS] = true;
+        g.map_script = Arc::new(FractalMapScript::default());
+        let ai = crate::ai_controller();
+        for p in g.player_ids() {
+            g.controllers[p] = ai.clone();
+        }
+        g.autorun = true;
+        g.game_init();
+        for u in g.players.iter().flat_map(|pl| pl.units.clone()).collect::<Vec<_>>() {
+            if g.units.contains(u) {
+                g.unit_kill(u, false, None);
+            }
+        }
+        let (np, nt) = (g.num_players(), g.num_teams());
+        g.map = Map::new(d, &MapInitData { grid_w: 20, grid_h: 12, ..Default::default() }, np, nt);
+        let (grass, coast) = (d.t::<TerrainType>("TERRAIN_GRASS"), d.t::<TerrainType>("TERRAIN_COAST"));
+        for p in g.map.plot_ids() {
+            let (x, y) = g.map.xy(p);
+            let land = (3..=8).contains(&y) && (2..=17).contains(&x);
+            g.plot_set_plot_type(p, if land { PlotType::PLOT_LAND } else { PlotType::PLOT_OCEAN }, false);
+            g.plot_set_terrain_type(p, if land { grass } else { coast }, false);
+        }
+        g.map_recalculate_areas();
+        g.update_plot_groups();
+        for t in g.team_ids() {
+            for p in g.map.plot_ids() {
+                g.plot_set_revealed(p, t, true, false, None, false);
+            }
+        }
+        g.update_plot_groups();
+        g
+    }
+
+    /// A skeleton in a strike attacks before the Champions, though they would take the city on
+    /// their own: units summoned for good soften the defenders (the old order sent the best odds
+    /// first, and the skeleton never fought).
+    #[test]
+    fn a_skeleton_softens_the_city_before_the_champions() {
+        let d = ffh_data::global();
+        let mut g = one_landmass_game(21);
+        let (us, them) = (PlayerId(0), PlayerId(1));
+        g.player_found(us, 4, 5);
+        g.player_found(them, 12, 5);
+        let city = g.players[them].capital_city.expect("the enemy founded a city");
+        let tp = g.city_plot(city);
+        g.player_init_unit(them, d.t::<UnitType>("UNIT_WARRIOR"), 12, 5, Some(UnitAIType::UNITAI_CITY_DEFENSE), None);
+        let (ut, tt) = (g.players[us].team, g.players[them].team);
+        g.team_declare_war(ut, tt, true, None);
+        let skeleton = g.player_init_unit(us, d.t::<UnitType>("UNIT_SKELETON"), 11, 5, Some(UnitAIType::UNITAI_ATTACK), None);
+        assert!(crate::magic::raised(d, g.units[skeleton].unit_type));
+        let champions: Vec<UnitId> = (0..2).map(|_| g.player_init_unit(us, d.t::<UnitType>("UNIT_CHAMPION"), 11, 5, Some(UnitAIType::UNITAI_ATTACK), None)).collect();
+        assert!(!crate::magic::raised(d, g.units[champions[0]].unit_type));
+        let grp = g.units[champions[0]].group.expect("a group");
+        for u in [skeleton, champions[1]] {
+            g.unit_join_group(u, Some(grp), false);
+        }
+        let op = Op {
+            city,
+            plot: tp,
+            civ: true,
+            phase: Phase::Strike,
+            groups: vec![grp],
+            rally: None,
+            assembly: None,
+            staging: None,
+            struck: false,
+            at_war: true,
+            need: 1,
+            have: 3,
+        };
+        let mut v = View::new(&g, us);
+        strike(&mut g, &mut v, &op);
+        assert!(!g.units.contains(skeleton) || g.units[skeleton].made_attack, "the skeleton attacked");
+    }
 }
