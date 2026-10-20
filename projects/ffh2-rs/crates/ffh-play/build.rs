@@ -2,6 +2,8 @@
 // `$OUT_DIR/art.bundle.txt` (the sprite data in one text) and `$OUT_DIR/art_assets.rs` (the
 // modules, each by `include_str!`), which `src/transport/http.rs` includes. The file lists come
 // from `src/transport/art_files.rs`, which the server also uses for `--assets DIR`.
+// Also embeds the isometric renderer's sprites (`assets/app/iso/*.png`, docs/ISO.md, written by
+// `tools/m7/m7.py export`): `$OUT_DIR/iso_assets.rs`, every PNG there by `include_bytes!`.
 
 use std::path::{Path, PathBuf};
 
@@ -28,6 +30,22 @@ fn main() {
     }
     rs.push_str("];\n");
     write_if_changed(&out.join("art_assets.rs"), &rs);
+
+    let iso = manifest.join("assets").join("app").join("iso");
+    println!("cargo:rerun-if-changed=assets/app/iso");
+    let mut pngs: Vec<String> = std::fs::read_dir(&iso)
+        .unwrap_or_else(|e| panic!("{}: {e}", iso.display()))
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.ends_with(".png"))
+        .collect();
+    pngs.sort();
+    let mut rs = String::from("/// The isometric renderer's sprites (`assets/app/iso/*.png`, docs/ISO.md): `(path, content type, bytes)`.\n");
+    rs.push_str("pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[\n");
+    for n in &pngs {
+        rs.push_str(&format!("    ({:?}, PNG, include_bytes!({:?})),\n", format!("app/iso/{n}"), iso.join(n).to_string_lossy()));
+    }
+    rs.push_str("];\n");
+    write_if_changed(&out.join("iso_assets.rs"), &rs);
 }
 
 fn write_if_changed(path: &Path, text: &str) {

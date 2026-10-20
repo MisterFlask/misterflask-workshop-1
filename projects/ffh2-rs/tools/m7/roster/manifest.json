@@ -1,0 +1,4286 @@
+{
+ "unit_swordsman": {
+  "kind": "unit",
+  "file": "roster/units/unit_swordsman.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_swordsman.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 86,
+  "round": "r1",
+  "variant": 3
+ },
+ "unit_worker": {
+  "kind": "unit",
+  "file": "roster/units/unit_worker.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "ref/crop_worker.png",
+   "(sprint raw of the accepted swordsman)"
+  ],
+  "prompt": "prompts/assets/unit_worker.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 82,
+  "round": "r1",
+  "variant": 3
+ },
+ "unit_priest_of_leaves": {
+  "kind": "unit",
+  "file": "roster/units/unit_priest_of_leaves.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "ref/crop_archer.png",
+   "(sprint raw: swordsman)",
+   "(sprint raw: worker)"
+  ],
+  "prompt": "prompts/assets/unit_priest_of_leaves.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 90,
+  "round": "r1",
+  "variant": 1
+ },
+ "unit_hyborem": {
+  "kind": "unit",
+  "file": "roster/units/unit_hyborem.png",
+  "size": [
+   105,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "(sprint raw: swordsman)",
+   "(sprint raw: rejected round-1 Hyborem, as the revision anchor)"
+  ],
+  "prompt": "prompts/assets/unit_hyborem.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 108,
+  "round": "r2",
+  "variant": 1
+ },
+ "unit_lich": {
+  "kind": "unit",
+  "file": "roster/units/unit_lich.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_lich.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 90,
+  "round": "r1",
+  "variant": 1
+ },
+ "unit_ljosalfar_archer": {
+  "kind": "unit",
+  "file": "roster/units/unit_ljosalfar_archer.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_archer.png"
+  ],
+  "prompt": "prompts/assets/unit_ljosalfar_archer.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 88,
+  "round": "r1",
+  "variant": 2
+ },
+ "unit_ogre_embers": {
+  "kind": "unit",
+  "file": "roster/units/unit_ogre_embers.png",
+  "size": [
+   98,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_ogre_embers.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "height": 108,
+  "round": "r1",
+  "variant": 2
+ },
+ "bld_city": {
+  "kind": "building",
+  "file": "roster/buildings/bld_city.png",
+  "size": [
+   384,
+   250
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "images": [
+   "ref/crop_city.png",
+   "(sprint raw: round-1 city draft)",
+   "anchors/buildings/crop_keep.png"
+  ],
+  "prompt": "prompts/assets/bld_city.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "footprint": 2,
+  "round": "r2",
+  "variant": 2,
+  "width": 372,
+  "quality": "high",
+  "gen_size": "1536x1024"
+ },
+ "bld_temple_leaves": {
+  "kind": "building",
+  "file": "roster/buildings/bld_temple_leaves.png",
+  "size": [
+   192,
+   198
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "images": [
+   "ref/crop_forest.png",
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_temple_leaves.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "footprint": 1,
+  "round": "r1",
+  "variant": 1,
+  "width": 184
+ },
+ "tile_grass": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_grass.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_grass.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "skirt": "earth"
+ },
+ "tile_farm": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_farm.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_farm_fields2.png",
+   "anchors/terrain/anchor_farms2.png"
+  ],
+  "prompt": "prompts/assets/tile_farm.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "inset",
+  "obj_width": 168,
+  "bottom": 92,
+  "p": 2,
+  "base": "tile_grass"
+ },
+ "tile_water": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_water.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "images": [
+   "anchors/terrain/anchor_ocean.png",
+   "ref/crop_coast_boat.png",
+   "ref/crop_river_bridge.png"
+  ],
+  "prompt": "prompts/assets/tile_water.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "swatch",
+  "k": 1.6,
+  "p": 2,
+  "skirt": "water"
+ },
+ "tile_hills": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_hills.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_hills.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "inset",
+  "obj_width": 170,
+  "bottom": 92,
+  "p": 2,
+  "base": "tile_grass"
+ },
+ "feat_forest": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_forest.png",
+  "size": [
+   192,
+   136
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_forest.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "width": 186,
+  "p": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "quality": "high"
+ },
+ "feat_mountain": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_mountain.png",
+  "size": [
+   228,
+   172
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "ref/crop_mine.png"
+  ],
+  "prompt": "prompts/assets/feat_mountain.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "width": 228,
+  "p": 2,
+  "lift": 4,
+  "shadow": 0.3
+ },
+ "unit_hill_giant": {
+  "kind": "unit",
+  "file": "roster/units/unit_hill_giant.png",
+  "size": [
+   107,
+   134
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_hill_giant.txt",
+  "accepted": "2026-10-19 17:43",
+  "height": 132,
+  "pixel": 1,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "gen_size": "1024x1024"
+ },
+ "unit_sheaim_mage": {
+  "kind": "unit",
+  "file": "roster/units/unit_sheaim_mage.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r2",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "prompts/assets/unit_sheaim_mage__unit_sheaim_mage_r1_3.png"
+  ],
+  "prompt": "prompts/assets/unit_sheaim_mage.txt",
+  "accepted": "2026-10-19 17:43",
+  "height": 90,
+  "pixel": 1,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "gen_size": "1024x1024"
+ },
+ "bld_mage_guild": {
+  "kind": "building",
+  "file": "roster/buildings/bld_mage_guild.png",
+  "size": [
+   192,
+   218
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_city.png",
+   "anchors/buildings/crop_keep.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_mage_guild.txt",
+  "accepted": "2026-10-19 17:43",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "gen_size": "1024x1024"
+ },
+ "feat_jungle": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_jungle.png",
+  "size": [
+   192,
+   146
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_jungle.txt",
+  "accepted": "2026-10-19 17:43",
+  "width": 186,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   60,
+   96,
+   36
+  ],
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "gen_size": "1024x1024"
+ },
+ "tile_pasture": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_pasture.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_sheep.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_pasture.txt",
+  "accepted": "2026-10-19 17:43",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 164,
+  "bottom": 94,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "gen_size": "1536x1024"
+ },
+ "tile_plains": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_plains.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_plains.txt",
+  "accepted": "2026-10-20 00:00",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_plains_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_plains_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_plains_b.txt",
+  "accepted": "2026-10-20 00:00",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.62,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "ovl_farm": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_farm.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_farm_fields2.png",
+   "anchors/terrain/anchor_farms2.png"
+  ],
+  "prompt": "prompts/assets/tile_farm.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "inset",
+  "obj_width": 168,
+  "bottom": 92,
+  "p": 2,
+  "base": "tile_grass",
+  "tile": "tile_farm",
+  "note": "extracted from the shipped tile by its difference to roster tile_grass (its base)"
+ },
+ "ovl_pasture": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_pasture.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "ref/crop_sheep.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_pasture.txt",
+  "accepted": "2026-10-19 17:43",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 164,
+  "bottom": 94,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "source": "package replication test, 2026-10-19 (made by a fresh session from this README alone)",
+  "tile": "tile_pasture",
+  "note": "extracted from the shipped tile by its difference to roster tile_grass (its base)",
+  "gen_size": "1536x1024"
+ },
+ "ovl_hills": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_hills.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_hills.txt",
+  "source": "2026-10-19 sprint (M7)",
+  "mode": "inset",
+  "obj_width": 170,
+  "bottom": 92,
+  "p": 2,
+  "base": "tile_grass",
+  "tile": "tile_hills",
+  "note": "extracted from the shipped tile by its difference to roster tile_grass (its base)"
+ },
+ "unit_horseman": {
+  "kind": "unit",
+  "file": "roster/units/unit_horseman.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_horseman.png"
+  ],
+  "prompt": "prompts/assets/unit_horseman.txt",
+  "accepted": "2026-10-20 00:07",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_knight": {
+  "kind": "unit",
+  "file": "roster/units/unit_knight.png",
+  "size": [
+   104,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_horseman.png"
+  ],
+  "prompt": "prompts/assets/unit_knight.txt",
+  "accepted": "2026-10-20 00:07",
+  "height": 108,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_chariot": {
+  "kind": "unit",
+  "file": "roster/units/unit_chariot.png",
+  "size": [
+   97,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_horseman.png"
+  ],
+  "prompt": "prompts/assets/unit_chariot.txt",
+  "accepted": "2026-10-20 00:08",
+  "height": 96,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_catapult": {
+  "kind": "unit",
+  "file": "roster/units/unit_catapult.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_catapult.txt",
+  "accepted": "2026-10-20 00:08",
+  "height": 80,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_trireme": {
+  "kind": "unit",
+  "file": "roster/units/unit_trireme.png",
+  "size": [
+   121,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_coast_boat.png"
+  ],
+  "prompt": "prompts/assets/unit_trireme.txt",
+  "accepted": "2026-10-20 00:09",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_frigate": {
+  "kind": "unit",
+  "file": "roster/units/unit_frigate.png",
+  "size": [
+   125,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_coast_boat.png"
+  ],
+  "prompt": "prompts/assets/unit_frigate.txt",
+  "accepted": "2026-10-20 00:09",
+  "height": 118,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_workboat": {
+  "kind": "unit",
+  "file": "roster/units/unit_workboat.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_coast_boat.png"
+  ],
+  "prompt": "prompts/assets/unit_workboat.txt",
+  "accepted": "2026-10-20 00:10",
+  "height": 66,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_wolf": {
+  "kind": "unit",
+  "file": "roster/units/unit_wolf.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_wolf.txt",
+  "accepted": "2026-10-20 00:10",
+  "height": 60,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_bear": {
+  "kind": "unit",
+  "file": "roster/units/unit_bear.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_bear.txt",
+  "accepted": "2026-10-20 00:11",
+  "height": 74,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_lion": {
+  "kind": "unit",
+  "file": "roster/units/unit_lion.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_lion.txt",
+  "accepted": "2026-10-20 00:11",
+  "height": 70,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_giant_spider": {
+  "kind": "unit",
+  "file": "roster/units/unit_giant_spider.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_giant_spider.txt",
+  "accepted": "2026-10-20 00:12",
+  "height": 70,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_griffon": {
+  "kind": "unit",
+  "file": "roster/units/unit_griffon.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_griffon.txt",
+  "accepted": "2026-10-20 00:12",
+  "height": 104,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_werewolf": {
+  "kind": "unit",
+  "file": "roster/units/unit_werewolf.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_werewolf.txt",
+  "accepted": "2026-10-20 00:13",
+  "height": 104,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_demon": {
+  "kind": "unit",
+  "file": "roster/units/unit_demon.png",
+  "size": [
+   109,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_demon.txt",
+  "accepted": "2026-10-20 00:13",
+  "height": 104,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_manes": {
+  "kind": "unit",
+  "file": "roster/units/unit_manes.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_manes.txt",
+  "accepted": "2026-10-20 00:14",
+  "height": 70,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_fire_elemental": {
+  "kind": "unit",
+  "file": "roster/units/unit_fire_elemental.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_fire_elemental.txt",
+  "accepted": "2026-10-20 00:14",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_earth_elemental": {
+  "kind": "unit",
+  "file": "roster/units/unit_earth_elemental.png",
+  "size": [
+   101,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_earth_elemental.txt",
+  "accepted": "2026-10-20 00:15",
+  "height": 108,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_water_elemental": {
+  "kind": "unit",
+  "file": "roster/units/unit_water_elemental.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_water_elemental.txt",
+  "accepted": "2026-10-20 00:15",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_air_elemental": {
+  "kind": "unit",
+  "file": "roster/units/unit_air_elemental.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_air_elemental.txt",
+  "accepted": "2026-10-20 00:16",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_golem": {
+  "kind": "unit",
+  "file": "roster/units/unit_golem.png",
+  "size": [
+   104,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_golem.txt",
+  "accepted": "2026-10-20 00:16",
+  "height": 104,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_angel": {
+  "kind": "unit",
+  "file": "roster/units/unit_angel.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_angel.txt",
+  "accepted": "2026-10-20 00:17",
+  "height": 100,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_treant": {
+  "kind": "unit",
+  "file": "roster/units/unit_treant.png",
+  "size": [
+   96,
+   124
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_treant.txt",
+  "accepted": "2026-10-20 00:17",
+  "height": 122,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_sea_serpent": {
+  "kind": "unit",
+  "file": "roster/units/unit_sea_serpent.png",
+  "size": [
+   112,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_sea_serpent.txt",
+  "accepted": "2026-10-20 00:18",
+  "height": 92,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_spectre": {
+  "kind": "unit",
+  "file": "roster/units/unit_spectre.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png"
+  ],
+  "prompt": "prompts/assets/unit_spectre.txt",
+  "accepted": "2026-10-20 00:18",
+  "height": 92,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_war_elephant": {
+  "kind": "unit",
+  "file": "roster/units/unit_war_elephant.png",
+  "size": [
+   122,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_animals_elephants.png"
+  ],
+  "prompt": "prompts/assets/unit_war_elephant.txt",
+  "accepted": "2026-10-20 00:19",
+  "height": 118,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_settler": {
+  "kind": "unit",
+  "file": "roster/units/unit_settler.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_worker.png"
+  ],
+  "prompt": "prompts/assets/unit_settler.txt",
+  "accepted": "2026-10-20 00:08",
+  "height": 90,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_warrior": {
+  "kind": "unit",
+  "file": "roster/units/unit_warrior.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_warrior.txt",
+  "accepted": "2026-10-20 00:08",
+  "height": 90,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_scout": {
+  "kind": "unit",
+  "file": "roster/units/unit_scout.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_scout.txt",
+  "accepted": "2026-10-20 00:09",
+  "height": 84,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_archer": {
+  "kind": "unit",
+  "file": "roster/units/unit_archer.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_archer.png"
+  ],
+  "prompt": "prompts/assets/unit_archer.txt",
+  "accepted": "2026-10-20 00:09",
+  "height": 90,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_axeman": {
+  "kind": "unit",
+  "file": "roster/units/unit_axeman.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_axeman.txt",
+  "accepted": "2026-10-20 00:10",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_phalanx": {
+  "kind": "unit",
+  "file": "roster/units/unit_phalanx.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_phalanx.txt",
+  "accepted": "2026-10-20 00:10",
+  "height": 106,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_champion": {
+  "kind": "unit",
+  "file": "roster/units/unit_champion.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_champion.txt",
+  "accepted": "2026-10-20 00:11",
+  "height": 112,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_hunter": {
+  "kind": "unit",
+  "file": "roster/units/unit_hunter.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_r1.png",
+   "ref/crop_archer.png"
+  ],
+  "prompt": "prompts/assets/unit_hunter.txt",
+  "accepted": "2026-10-20 00:11",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_crossbowman": {
+  "kind": "unit",
+  "file": "roster/units/unit_crossbowman.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_archer.png"
+  ],
+  "prompt": "prompts/assets/unit_crossbowman.txt",
+  "accepted": "2026-10-20 00:12",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_adept": {
+  "kind": "unit",
+  "file": "roster/units/unit_adept.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_adept.txt",
+  "accepted": "2026-10-20 00:13",
+  "height": 88,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_mage": {
+  "kind": "unit",
+  "file": "roster/units/unit_mage.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_mage.txt",
+  "accepted": "2026-10-20 00:13",
+  "height": 90,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_archmage": {
+  "kind": "unit",
+  "file": "roster/units/unit_archmage.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_archmage.txt",
+  "accepted": "2026-10-20 00:14",
+  "height": 96,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_disciple": {
+  "kind": "unit",
+  "file": "roster/units/unit_disciple.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_worker.png"
+  ],
+  "prompt": "prompts/assets/unit_disciple.txt",
+  "accepted": "2026-10-20 00:14",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_priest": {
+  "kind": "unit",
+  "file": "roster/units/unit_priest.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_priest.txt",
+  "accepted": "2026-10-20 00:17",
+  "height": 96,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_paladin": {
+  "kind": "unit",
+  "file": "roster/units/unit_paladin.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_paladin.txt",
+  "accepted": "2026-10-20 00:17",
+  "height": 88,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_druid": {
+  "kind": "unit",
+  "file": "roster/units/unit_druid.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_druid.txt",
+  "accepted": "2026-10-20 00:18",
+  "height": 94,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_assassin": {
+  "kind": "unit",
+  "file": "roster/units/unit_assassin.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_assassin.txt",
+  "accepted": "2026-10-20 00:18",
+  "height": 84,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_great_person": {
+  "kind": "unit",
+  "file": "roster/units/unit_great_person.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_worker.png"
+  ],
+  "prompt": "prompts/assets/unit_great_person.txt",
+  "accepted": "2026-10-20 00:20",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_commander": {
+  "kind": "unit",
+  "file": "roster/units/unit_commander.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_commander.txt",
+  "accepted": "2026-10-20 00:20",
+  "height": 88,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_goblin": {
+  "kind": "unit",
+  "file": "roster/units/unit_goblin.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png"
+  ],
+  "prompt": "prompts/assets/unit_goblin.txt",
+  "accepted": "2026-10-20 00:21",
+  "height": 74,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_lizardman": {
+  "kind": "unit",
+  "file": "roster/units/unit_lizardman.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_lizardman.txt",
+  "accepted": "2026-10-20 00:21",
+  "height": 94,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "unit_skeleton": {
+  "kind": "unit",
+  "file": "roster/units/unit_skeleton.png",
+  "size": [
+   96,
+   120
+  ],
+  "anchor": "canvas bottom-centre on tile centre",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/anchor_units.png",
+   "anchors/anchor_roster_people.png",
+   "ref/crop_swordsman.png"
+  ],
+  "prompt": "prompts/assets/unit_skeleton.txt",
+  "accepted": "2026-10-20 00:22",
+  "height": 86,
+  "pixel": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_city_village": {
+  "kind": "building",
+  "file": "roster/buildings/bld_city_village.png",
+  "size": [
+   192,
+   130
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r2",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_city_village.txt",
+  "accepted": "2026-10-20 00:10",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_city_town": {
+  "kind": "building",
+  "file": "roster/buildings/bld_city_town.png",
+  "size": [
+   192,
+   134
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r2",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_city.png",
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_city_town.txt",
+  "accepted": "2026-10-20 00:10",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_cottage": {
+  "kind": "building",
+  "file": "roster/buildings/bld_cottage.png",
+  "size": [
+   192,
+   110
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_cottage.txt",
+  "accepted": "2026-10-20 00:11",
+  "width": 136,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "bottom_pad": 12,
+  "note": "deliberately small (width 136) and centred on its tile with 12 transparent rows under it (work/_mine/pad.py); base_cover < 85% by design",
+  "gen_size": "1024x1024"
+ },
+ "bld_hamlet": {
+  "kind": "building",
+  "file": "roster/buildings/bld_hamlet.png",
+  "size": [
+   192,
+   130
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_hamlet.txt",
+  "accepted": "2026-10-20 00:14",
+  "width": 190,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_city_castle": {
+  "kind": "building",
+  "file": "roster/buildings/bld_city_castle.png",
+  "size": [
+   192,
+   152
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r3",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_city.png",
+   "prompts/assets/bld_city_castle__bld_city_town_r2_1.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_city_castle.txt",
+  "accepted": "2026-10-20 00:14",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_fort": {
+  "kind": "building",
+  "file": "roster/buildings/bld_fort.png",
+  "size": [
+   192,
+   134
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_city.png",
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_fort.txt",
+  "accepted": "2026-10-20 00:15",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_lumbermill": {
+  "kind": "building",
+  "file": "roster/buildings/bld_lumbermill.png",
+  "size": [
+   192,
+   148
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_river_bridge.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_lumbermill.txt",
+  "accepted": "2026-10-20 00:16",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_watchtower": {
+  "kind": "building",
+  "file": "roster/buildings/bld_watchtower.png",
+  "size": [
+   192,
+   210
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_river_bridge.png",
+   "anchors/buildings/crop_keep.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_watchtower.txt",
+  "accepted": "2026-10-20 00:16",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_workshop": {
+  "kind": "building",
+  "file": "roster/buildings/bld_workshop.png",
+  "size": [
+   192,
+   164
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/crop_keep.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_workshop.txt",
+  "accepted": "2026-10-20 00:17",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_windmill": {
+  "kind": "building",
+  "file": "roster/buildings/bld_windmill.png",
+  "size": [
+   192,
+   178
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_farm_fields.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_windmill.txt",
+  "accepted": "2026-10-20 00:17",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_camp": {
+  "kind": "building",
+  "file": "roster/buildings/bld_camp.png",
+  "size": [
+   192,
+   134
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_camp.txt",
+  "accepted": "2026-10-20 00:18",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_mine": {
+  "kind": "building",
+  "file": "roster/buildings/bld_mine.png",
+  "size": [
+   192,
+   130
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_mountains.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_mine.txt",
+  "accepted": "2026-10-20 00:18",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_ruins": {
+  "kind": "building",
+  "file": "roster/buildings/bld_ruins.png",
+  "size": [
+   192,
+   174
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_river_bridge.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_ruins.txt",
+  "accepted": "2026-10-20 00:20",
+  "width": 190,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_lair": {
+  "kind": "building",
+  "file": "roster/buildings/bld_lair.png",
+  "size": [
+   192,
+   138
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_lair.txt",
+  "accepted": "2026-10-20 00:20",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_graveyard": {
+  "kind": "building",
+  "file": "roster/buildings/bld_graveyard.png",
+  "size": [
+   192,
+   138
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_river_bridge.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_graveyard.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_goblin_fort": {
+  "kind": "building",
+  "file": "roster/buildings/bld_goblin_fort.png",
+  "size": [
+   192,
+   130
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_city.png",
+   "ref/crop_forest.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_goblin_fort.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "bld_harbor": {
+  "kind": "building",
+  "file": "roster/buildings/bld_harbor.png",
+  "size": [
+   192,
+   160
+  ],
+  "anchor": "canvas bottom-centre on bottom vertex of front-most footprint tile",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "anchors/buildings/crop_houses.png",
+   "anchors/buildings/house_style_city_raw.png"
+  ],
+  "prompt": "prompts/assets/bld_harbor.txt",
+  "accepted": "2026-10-20 00:22",
+  "width": 184,
+  "pixel": 2,
+  "footprint": 1,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "note": "open pier without ground plate: meant for a coastal water tile; base_cover 0.75 by design. Posts end at the canvas bottom (tile bottom vertex), the water surface is drawn 8 px lower.",
+  "gen_size": "1024x1024"
+ },
+ "feat_forest_ancient": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_forest_ancient.png",
+  "size": [
+   200,
+   176
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_forest_ancient.txt",
+  "accepted": "2026-10-20 00:09",
+  "width": 200,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   64,
+   28
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_forest_new": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_forest_new.png",
+  "size": [
+   192,
+   118
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_forest_new.txt",
+  "accepted": "2026-10-20 00:10",
+  "width": 176,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   52,
+   96,
+   32
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_forest_burnt": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_forest_burnt.png",
+  "size": [
+   192,
+   140
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_forest_burnt.txt",
+  "accepted": "2026-10-20 00:10",
+  "width": 186,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   48,
+   32,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_scrub": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_scrub.png",
+  "size": [
+   192,
+   108
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_scrub.txt",
+  "accepted": "2026-10-20 00:11",
+  "width": 170,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   72,
+   64,
+   36
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_volcano": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_volcano.png",
+  "size": [
+   228,
+   222
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png"
+  ],
+  "prompt": "prompts/assets/feat_volcano.txt",
+  "accepted": "2026-10-20 00:11",
+  "width": 228,
+  "pixel": 2,
+  "lift": 4,
+  "shadow": 0.3,
+  "edge_colour": [
+   44,
+   30,
+   30
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_flames": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_flames.png",
+  "size": [
+   192,
+   106
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_flames.txt",
+  "accepted": "2026-10-20 00:12",
+  "width": 160,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   110,
+   24,
+   16
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_mountain_hell": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_mountain_hell.png",
+  "size": [
+   228,
+   184
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "prompts/assets/feat_mountain_hell__ref_feat_mountain_3x.png"
+  ],
+  "prompt": "prompts/assets/feat_mountain_hell.txt",
+  "accepted": "2026-10-20 00:12",
+  "width": 228,
+  "pixel": 2,
+  "lift": 4,
+  "shadow": 0.3,
+  "edge_colour": [
+   48,
+   18,
+   18
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_tormented_souls": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_tormented_souls.png",
+  "size": [
+   192,
+   202
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_tormented_souls.txt",
+  "accepted": "2026-10-20 00:14",
+  "width": 160,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   48,
+   40
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_mana_node": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_mana_node.png",
+  "size": [
+   192,
+   170
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/feat_mana_node.txt",
+  "accepted": "2026-10-20 00:14",
+  "width": 150,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   32,
+   72
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_whaling_boats": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_whaling_boats.png",
+  "size": [
+   192,
+   114
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_ocean.png"
+  ],
+  "prompt": "prompts/assets/feat_whaling_boats.txt",
+  "accepted": "2026-10-20 00:18",
+  "width": 170,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   40,
+   56
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_wheat": {
+  "kind": "feature",
+  "file": "roster/terrain/res_wheat.png",
+  "size": [
+   192,
+   88
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_farms.png"
+  ],
+  "prompt": "prompts/assets/res_wheat.txt",
+  "accepted": "2026-10-20 00:18",
+  "width": 80,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   96,
+   64,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_cow": {
+  "kind": "feature",
+  "file": "roster/terrain/res_cow.png",
+  "size": [
+   192,
+   60
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_sheep.png",
+   "ref/crop_animals_elephants.png"
+  ],
+  "prompt": "prompts/assets/res_cow.txt",
+  "accepted": "2026-10-20 00:18",
+  "width": 96,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   64,
+   40,
+   32
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "feat_fishing_boats": {
+  "kind": "feature",
+  "file": "roster/terrain/feat_fishing_boats.png",
+  "size": [
+   192,
+   130
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r2",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_ocean.png"
+  ],
+  "prompt": "prompts/assets/feat_fishing_boats.txt",
+  "accepted": "2026-10-20 00:19",
+  "width": 160,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   56,
+   40,
+   28
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_sheep": {
+  "kind": "feature",
+  "file": "roster/terrain/res_sheep.png",
+  "size": [
+   192,
+   70
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_sheep.png",
+   "prompts/assets/res_sheep__ref_tile_pasture_3x.png"
+  ],
+  "prompt": "prompts/assets/res_sheep.txt",
+  "accepted": "2026-10-20 00:19",
+  "width": 90,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   72,
+   72,
+   64
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_horse": {
+  "kind": "feature",
+  "file": "roster/terrain/res_horse.png",
+  "size": [
+   192,
+   78
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_horseman.png",
+   "ref/crop_sheep.png"
+  ],
+  "prompt": "prompts/assets/res_horse.txt",
+  "accepted": "2026-10-20 00:20",
+  "width": 100,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   56,
+   36,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_deer": {
+  "kind": "feature",
+  "file": "roster/terrain/res_deer.png",
+  "size": [
+   192,
+   112
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_animals_elephants.png",
+   "ref/crop_sheep.png"
+  ],
+  "prompt": "prompts/assets/res_deer.txt",
+  "accepted": "2026-10-20 00:20",
+  "width": 96,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   64,
+   40,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_fish": {
+  "kind": "feature",
+  "file": "roster/terrain/res_fish.png",
+  "size": [
+   192,
+   112
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_ocean.png"
+  ],
+  "prompt": "prompts/assets/res_fish.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 90,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   24,
+   40,
+   80
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_whale": {
+  "kind": "feature",
+  "file": "roster/terrain/res_whale.png",
+  "size": [
+   192,
+   104
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_ocean.png"
+  ],
+  "prompt": "prompts/assets/res_whale.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 110,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   24,
+   32,
+   56
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_iron": {
+  "kind": "feature",
+  "file": "roster/terrain/res_iron.png",
+  "size": [
+   192,
+   86
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_mountains.png"
+  ],
+  "prompt": "prompts/assets/res_iron.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 90,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   48,
+   44,
+   48
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_gold": {
+  "kind": "feature",
+  "file": "roster/terrain/res_gold.png",
+  "size": [
+   192,
+   92
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_mountains.png"
+  ],
+  "prompt": "prompts/assets/res_gold.txt",
+  "accepted": "2026-10-20 00:21",
+  "width": 84,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   72,
+   52,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_gems": {
+  "kind": "feature",
+  "file": "roster/terrain/res_gems.png",
+  "size": [
+   192,
+   106
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_mountains.png"
+  ],
+  "prompt": "prompts/assets/res_gems.txt",
+  "accepted": "2026-10-20 00:22",
+  "width": 84,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   40,
+   36,
+   48
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_marble": {
+  "kind": "feature",
+  "file": "roster/terrain/res_marble.png",
+  "size": [
+   192,
+   88
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_river_bridge.png"
+  ],
+  "prompt": "prompts/assets/res_marble.txt",
+  "accepted": "2026-10-20 00:22",
+  "width": 84,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   64,
+   64,
+   72
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_mithril": {
+  "kind": "feature",
+  "file": "roster/terrain/res_mithril.png",
+  "size": [
+   192,
+   90
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_mountains.png"
+  ],
+  "prompt": "prompts/assets/res_mithril.txt",
+  "accepted": "2026-10-20 00:22",
+  "width": 84,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   44,
+   64
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_wine": {
+  "kind": "feature",
+  "file": "roster/terrain/res_wine.png",
+  "size": [
+   192,
+   92
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/buildings/crop_houses.png"
+  ],
+  "prompt": "prompts/assets/res_wine.txt",
+  "accepted": "2026-10-20 00:23",
+  "width": 96,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   56,
+   36,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_goods": {
+  "kind": "feature",
+  "file": "roster/terrain/res_goods.png",
+  "size": [
+   192,
+   96
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/buildings/crop_houses.png",
+   "ref/crop_city.png"
+  ],
+  "prompt": "prompts/assets/res_goods.txt",
+  "accepted": "2026-10-20 00:23",
+  "width": 90,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   56,
+   40,
+   24
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_fruit": {
+  "kind": "feature",
+  "file": "roster/terrain/res_fruit.png",
+  "size": [
+   192,
+   118
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_farm_fields.png"
+  ],
+  "prompt": "prompts/assets/res_fruit.txt",
+  "accepted": "2026-10-20 00:23",
+  "width": 90,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   40,
+   64,
+   28
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "res_mana": {
+  "kind": "feature",
+  "file": "roster/terrain/res_mana.png",
+  "size": [
+   192,
+   126
+  ],
+  "anchor": "canvas bottom-centre on tile bottom vertex",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_mine.png"
+  ],
+  "prompt": "prompts/assets/res_mana.txt",
+  "accepted": "2026-10-20 00:23",
+  "width": 80,
+  "pixel": 2,
+  "lift": 6,
+  "shadow": 0.35,
+  "edge_colour": [
+   36,
+   32,
+   72
+  ],
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_desert": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_desert.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_desert.txt",
+  "accepted": "2026-10-20 00:08",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_desert_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_desert_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_desert_b.txt",
+  "accepted": "2026-10-20 00:09",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_tundra": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_tundra.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_tundra.txt",
+  "accepted": "2026-10-20 00:09",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "140,112,84",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_tundra_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_tundra_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_tundra_b.txt",
+  "accepted": "2026-10-20 00:09",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "140,112,84",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_snow": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_snow.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_snow.txt",
+  "accepted": "2026-10-20 00:10",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "200,210,225",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_snow_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_snow_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_snow_b.txt",
+  "accepted": "2026-10-20 00:10",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "200,210,225",
+  "seed": 2,
+  "cx": 0.4,
+  "cy": 0.6,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_marsh": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_marsh.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_river_bridge.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_marsh.txt",
+  "accepted": "2026-10-20 00:11",
+  "mode": "swatch",
+  "k": 2.2,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "96,104,60",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_marsh_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_marsh_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_river_bridge.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_marsh_b.txt",
+  "accepted": "2026-10-20 00:11",
+  "mode": "swatch",
+  "k": 2.2,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "96,104,60",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_ocean": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_ocean.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_ocean.png",
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_ocean.txt",
+  "accepted": "2026-10-20 00:13",
+  "mode": "swatch",
+  "k": 2.2,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "water",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_ocean_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_ocean_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_ocean.png",
+   "ref/crop_coast_boat.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_ocean_b.txt",
+  "accepted": "2026-10-20 00:14",
+  "mode": "swatch",
+  "k": 2.2,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "water",
+  "seed": 2,
+  "cx": 0.4,
+  "cy": 0.6,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_burning_sands": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_burning_sands.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r2",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png",
+   "prompts/assets/tile_burning_sands__tile_burning_sands_r1_1.png"
+  ],
+  "prompt": "prompts/assets/tile_burning_sands.txt",
+  "accepted": "2026-10-20 00:16",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "150,70,40",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_burning_sands_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_burning_sands_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r2",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png",
+   "prompts/assets/tile_burning_sands_b__tile_burning_sands_r1_1.png"
+  ],
+  "prompt": "prompts/assets/tile_burning_sands_b.txt",
+  "accepted": "2026-10-20 00:16",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "150,70,40",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_broken_lands": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_broken_lands.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_broken_lands.txt",
+  "accepted": "2026-10-20 00:16",
+  "mode": "swatch",
+  "k": 2.6,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "96,92,104",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_broken_lands_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_broken_lands_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_broken_lands_b.txt",
+  "accepted": "2026-10-20 00:16",
+  "mode": "swatch",
+  "k": 2.6,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "96,92,104",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_fields_of_perdition": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_fields_of_perdition.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_fields_of_perdition.txt",
+  "accepted": "2026-10-20 00:17",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "90,40,40",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_fields_of_perdition_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_fields_of_perdition_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 3,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_fields_of_perdition_b.txt",
+  "accepted": "2026-10-20 00:17",
+  "mode": "swatch",
+  "k": 2.4,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "90,40,40",
+  "seed": 2,
+  "cx": 0.35,
+  "cy": 0.65,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_grass_b": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_grass_b.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_forest.png",
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_grass_b.txt",
+  "accepted": "2026-10-20 00:18",
+  "mode": "swatch",
+  "k": 1.8,
+  "p": 3,
+  "m": 0.25,
+  "skirt": "earth",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 168,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1024x1024"
+ },
+ "tile_hills_dry": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_hills_dry.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png",
+   "prompts/assets/tile_hills_dry__ref_ovl_hills.png"
+  ],
+  "prompt": "prompts/assets/tile_hills_dry.txt",
+  "accepted": "2026-10-20 00:20",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_plains.png",
+  "obj_width": 170,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_hills_dry": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_hills_dry.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png",
+   "prompts/assets/tile_hills_dry__ref_ovl_hills.png"
+  ],
+  "prompt": "prompts/assets/tile_hills_dry.txt",
+  "accepted": "2026-10-20 00:20",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_plains.png",
+  "obj_width": 170,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_hills_dry",
+  "gen_size": "1536x1024"
+ },
+ "tile_hills_snow": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_hills_snow.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "prompts/assets/tile_hills_snow__ref_ovl_hills.png"
+  ],
+  "prompt": "prompts/assets/tile_hills_snow.txt",
+  "accepted": "2026-10-20 00:20",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "200,210,225",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_snow.png",
+  "obj_width": 170,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_hills_snow": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_hills_snow.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mountains.png",
+   "prompts/assets/tile_hills_snow__ref_ovl_hills.png"
+  ],
+  "prompt": "prompts/assets/tile_hills_snow.txt",
+  "accepted": "2026-10-20 00:20",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "200,210,225",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_snow.png",
+  "obj_width": 170,
+  "bottom": 92,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_hills_snow",
+  "gen_size": "1536x1024"
+ },
+ "tile_plantation": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_plantation.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_farms2.png",
+   "prompts/assets/tile_plantation__ref_ovl_farm.png"
+  ],
+  "prompt": "prompts/assets/tile_plantation.txt",
+  "accepted": "2026-10-20 00:22",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 157,
+  "bottom": 94,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_plantation": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_plantation.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_farms2.png",
+   "prompts/assets/tile_plantation__ref_ovl_farm.png"
+  ],
+  "prompt": "prompts/assets/tile_plantation.txt",
+  "accepted": "2026-10-20 00:22",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 157,
+  "bottom": 94,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_plantation",
+  "gen_size": "1536x1024"
+ },
+ "tile_winery": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_winery.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_farms2.png",
+   "prompts/assets/tile_winery__ref_ovl_farm_cyan.png"
+  ],
+  "prompt": "prompts/assets/tile_winery.txt",
+  "accepted": "2026-10-20 00:22",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 158,
+  "bottom": 94,
+  "key": "#00ffff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_winery": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_winery.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_farms2.png",
+   "prompts/assets/tile_winery__ref_ovl_farm_cyan.png"
+  ],
+  "prompt": "prompts/assets/tile_winery.txt",
+  "accepted": "2026-10-20 00:22",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "earth",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_grass.png",
+  "obj_width": 158,
+  "bottom": 94,
+  "key": "#00ffff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_winery",
+  "gen_size": "1536x1024"
+ },
+ "tile_quarry": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_quarry.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_river_bridge.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_quarry.txt",
+  "accepted": "2026-10-20 00:23",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_plains.png",
+  "obj_width": 150,
+  "bottom": 95,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "note": "post-fix after accept: isolated magenta-fringe pixels (r>g+40 and b>g+40; 4 px) recoloured to the median of their opaque neighbours in both the overlay and the tile (work/_look/defringe.py); the inset path runs no fringe clean-up",
+  "gen_size": "1536x1024"
+ },
+ "ovl_quarry": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_quarry.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "ref/crop_mine.png",
+   "ref/crop_river_bridge.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_quarry.txt",
+  "accepted": "2026-10-20 00:23",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "176,150,90",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_plains.png",
+  "obj_width": 150,
+  "bottom": 95,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_quarry",
+  "note": "post-fix after accept: isolated magenta-fringe pixels (r>g+40 and b>g+40; 4 px) recoloured to the median of their opaque neighbours in both the overlay and the tile (work/_look/defringe.py); the inset path runs no fringe clean-up",
+  "gen_size": "1536x1024"
+ },
+ "tile_flood_plains": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_flood_plains.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_river.png",
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_flood_plains.txt",
+  "accepted": "2026-10-20 00:23",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_desert.png",
+  "obj_width": 168,
+  "bottom": 93,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_flood_plains": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_flood_plains.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_river.png",
+   "ref/crop_farm_fields.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_flood_plains.txt",
+  "accepted": "2026-10-20 00:23",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_desert.png",
+  "obj_width": 168,
+  "bottom": 93,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_flood_plains",
+  "gen_size": "1536x1024"
+ },
+ "tile_ice": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_ice.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_ocean.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_ice.txt",
+  "accepted": "2026-10-20 00:24",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "water",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_water.png",
+  "obj_width": 168,
+  "bottom": 93,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "gen_size": "1536x1024"
+ },
+ "ovl_ice": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_ice.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 2,
+  "mirrored": false,
+  "images": [
+   "anchors/terrain/anchor_ocean.png",
+   "ref/crop_mountains.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_ice.txt",
+  "accepted": "2026-10-20 00:24",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "water",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_water.png",
+  "obj_width": 168,
+  "bottom": 93,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_ice",
+  "gen_size": "1536x1024"
+ },
+ "tile_oasis": {
+  "kind": "tile",
+  "file": "roster/terrain/tile_oasis.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128, diamond rows 0-95)",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_oasis.txt",
+  "accepted": "2026-10-20 00:24",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_desert.png",
+  "obj_width": 160,
+  "bottom": 94,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "note": "post-fix after accept: isolated magenta-fringe pixels (r>g+40 and b>g+40; 12 px) recoloured to the median of their opaque neighbours in both the overlay and the tile (work/_look/defringe.py); the inset path runs no fringe clean-up",
+  "gen_size": "1536x1024"
+ },
+ "ovl_oasis": {
+  "kind": "overlay",
+  "file": "roster/terrain/ovl_oasis.png",
+  "size": [
+   192,
+   128
+  ],
+  "anchor": "canvas top-left = tile top-left (192x128); the object only, clipped to the diamond",
+  "round": "r1",
+  "variant": 1,
+  "mirrored": false,
+  "images": [
+   "ref/crop_coast_boat.png",
+   "ref/crop_forest.png",
+   "anchors/terrain/anchor_mapmid.png"
+  ],
+  "prompt": "prompts/assets/tile_oasis.txt",
+  "accepted": "2026-10-20 00:24",
+  "mode": "inset",
+  "k": 1.8,
+  "p": 2,
+  "m": 0.25,
+  "skirt": "214,176,108",
+  "seed": 1,
+  "cx": 0.5,
+  "cy": 0.5,
+  "base": "roster/terrain/tile_desert.png",
+  "obj_width": 160,
+  "bottom": 94,
+  "key": "#ff00ff",
+  "holes": 30,
+  "quality": "medium",
+  "model": "gpt-image-2.5-sunburst",
+  "tile": "tile_oasis",
+  "note": "post-fix after accept: isolated magenta-fringe pixels (r>g+40 and b>g+40; 12 px) recoloured to the median of their opaque neighbours in both the overlay and the tile (work/_look/defringe.py); the inset path runs no fringe clean-up",
+  "gen_size": "1536x1024"
+ }
+}

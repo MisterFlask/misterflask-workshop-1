@@ -14,7 +14,7 @@
 import { S, tname, dname, info, me, isBarbarian, ORDER_KINDS } from "./state.js";
 import * as T from "./tiles.js";
 import { ArtMap } from "./artmap.js";
-import { IsoMap } from "./iso.js";
+import { IsoMap, ISO_DEFAULT_ZOOM } from "./iso.js";
 import { artZooms, defaultArtZoom } from "./stacks.js";
 
 const ZOOMS = [12, 16, 24, 32, 48, 64];
@@ -419,7 +419,7 @@ export class MapView {
     this.request();
   }
 
-  /** Switches to the isometric renderer (`?renderer=iso`, docs/art/SOC_DIRECTION.md) or back to
+  /** Switches to the isometric renderer (`?renderer=iso`, docs/ISO.md) or back to
    *  the default renderer. */
   useIso(on) {
     if (!!on === !!this.iso) return;
@@ -429,7 +429,7 @@ export class MapView {
         this.art = null;
       }
       this.iso = new IsoMap(this);
-      this.snapZoom(64);
+      this.snapZoom(ISO_DEFAULT_ZOOM);
     } else {
       this.iso.dispose?.();
       this.iso = null;

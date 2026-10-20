@@ -15,7 +15,8 @@
 // spectator mode (play, pause, step, stop), and the trade screen (`stage trade`: gold offered and
 // accepted). The art client: the map drawn with the original pixel art (its worker, the view
 // drawn in full, a frame's time, the zoom steps and the chart, the bitmap type), Tools → Options
-// and `?renderer=flat` for the flat renderer; `?renderer=3d`, the experimental 3D renderer (picking,
+// and `?renderer=flat` for the flat renderer; `?renderer=iso`, the isometric renderer (its sprites,
+// picking a unit by its figure, zoom, layers); `?renderer=3d`, the experimental 3D renderer (picking,
 // selection, zoom, pan, layers). Phase 7: the automate buttons (`stage automate`: a
 // worker automated with a click, a scout exploring by its hotkey), the secretary general's election
 // popup (`stage election`) and the Kuriotates city-or-settlement decision (`stage settlement`). It
@@ -387,6 +388,66 @@ async function flatRenderer(url) {
   await answerPopups(false);
   await shot("flat-renderer");
   steps.push("?renderer=flat: the flat map of P5");
+}
+
+/** `?renderer=iso`: the isometric renderer (docs/ISO.md) on the same game: its sprites load, the
+ *  frame is drawn (not blank), a click on a unit's figure (which stands up into the plots behind)
+ *  selects it, the hover follows the mouse, the zoom steps, the political layer, and back to the art. */
+async function rendererIso(url) {
+  await b.goto(`${url}/?renderer=iso`);
+  await until2("window.ffh && window.ffh.ready", "the client to boot (iso)");
+  await waitHuman("the game in the isometric renderer");
+  await answerPopups(false);
+  if ((await b.eval("window.ffh.mapView.renderer()")) !== "iso") throw new Error("?renderer=iso did not keep the isometric renderer");
+  await until2("(() => { const im = window.ffh.mapView.iso.sprites.images; return im.size > 3 && [...im.values()].every((e) => e.ok); })()", "the isometric sprites to load", 60000);
+  const colours = await b.eval(`(() => {
+    const mv = window.ffh.mapView;
+    mv.draw();
+    const d = mv.ctx.getImageData(0, 0, mv.canvas.width, mv.canvas.height).data;
+    const seen = new Set();
+    for (let i = 0; i < d.length; i += 4 * 37) seen.add(((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3));
+    return seen.size;
+  })()`);
+  if (colours < 64) throw new Error(`the isometric frame is nearly blank (${colours} colours)`);
+  // A click on the upper body of one of our units' figures selects that unit's plot.
+  const mine = await b.eval(`(() => { const S = window.ffh.S; const u = S.view.units.find((u) => u.owner === S.view.me.player); return u ? { x: u.x, y: u.y } : null; })()`);
+  let clicked = false;
+  if (mine) {
+    await plotPos(mine.x, mine.y);
+    const p = await b.eval(`(() => {
+      const mv = window.ffh.mapView;
+      mv.draw();
+      const h = mv.iso.hits.find((h) => h.x === ${mine.x} && h.y === ${mine.y} && h.fig);
+      if (!h) return null;
+      const x = (h.fig.x0 + h.fig.x1) / 2, y = h.fig.y0 + (h.fig.y1 - h.fig.y0) * 0.35;
+      const q = mv.iso.screenToMap(x, y);
+      if (!q || q.x !== ${mine.x} || q.y !== ${mine.y}) return null;
+      const r = mv.canvas.getBoundingClientRect();
+      return { x: x + r.left, y: y + r.top };
+    })()`);
+    if (p) {
+      await b.eval("window.ffh.units.clearSelection && window.ffh.units.clearSelection()");
+      await b.mouse(p.x, p.y);
+      await until2(`(() => { const s = window.ffh.S.sel; return !!s && s.x === ${mine.x} && s.y === ${mine.y}; })()`, "a click on a unit's figure to select it (iso)");
+      await b.move(p.x + 2, p.y + 2);
+      await until2(`(() => { const h = window.ffh.mapView.overlay.hover; return !!h && h.x === ${mine.x} && h.y === ${mine.y}; })()`, "the hover on the unit's plot (iso)");
+      clicked = true;
+    }
+  }
+  const zooms = [];
+  for (const k of ["-", "-", "+", "+", "+", "-"]) {
+    await b.key(k);
+    zooms.push(await b.eval("window.ffh.mapView.cam.ts"));
+  }
+  if (JSON.stringify(zooms) !== JSON.stringify([64, 48, 64, 96, 128, 96])) throw new Error(`isometric zoom steps: ${zooms}`);
+  await b.eval(`window.ffh.setLayer("political")`);
+  await b.eval("window.ffh.mapView.draw()");
+  await b.eval(`window.ffh.setLayer("terrain")`);
+  await b.eval("window.ffh.mapView.draw()");
+  await shot("renderer-iso");
+  await b.eval(`window.ffh.setRenderer("art")`);
+  await until2(`window.ffh.mapView.renderer() === "art"`, "the art renderer after the isometric one");
+  steps.push(`?renderer=iso: a frame of ${colours} colours, ${clicked ? "a click on a unit's figure selects it, hover, " : ""}zoom ${zooms.join(" ")}, political layer, back to the art`);
 }
 
 /** `?renderer=3d`: the experimental 3D renderer (docs/R3D.md) on the same game: its WebGL frame is
@@ -1242,6 +1303,7 @@ async function main() {
     await shiftWaypoints(bin, saves);
     await shiftWaypoints(bin, saves, "goto");
     await flatRenderer(server.url);
+    await rendererIso(server.url);
     await renderer3d(server.url);
     await newGameElsewhere(bin);
     await crashScreen(bin);

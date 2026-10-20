@@ -64,6 +64,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/commands.js", JS, include_str!("../../assets/app/commands.js")),
     ("app/map.js", JS, include_str!("../../assets/app/map.js")),
     ("app/iso.js", JS, include_str!("../../assets/app/iso.js")),
+    ("app/iso/sprites.js", JS, include_str!("../../assets/app/iso/sprites.js")),
     ("app/units.js", JS, include_str!("../../assets/app/units.js")),
     ("app/city.js", JS, include_str!("../../assets/app/city.js")),
     ("app/screens.js", JS, include_str!("../../assets/app/screens.js")),
@@ -107,61 +108,10 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
     ("app/r3d/assets/vegetation.js", JS, include_str!("../../assets/app/r3d/assets/vegetation.js")),
 ];
 
-/// Binary client files (the isometric renderer's PNG tiles and unit sprites,
-/// docs/art/SOC_DIRECTION.md): `(path, content type, bytes)`, served like [`ASSETS`] but from raw
-/// bytes. `tests/web.rs` checks that every non-text file under `assets/app/` is listed here.
-pub const ASSET_BYTES: &[(&str, &str, &[u8])] = &[
-    ("app/iso/terrain/grass.png", PNG, include_bytes!("../../assets/app/iso/terrain/grass.png")),
-    ("app/iso/terrain/plains.png", PNG, include_bytes!("../../assets/app/iso/terrain/plains.png")),
-    ("app/iso/terrain/desert.png", PNG, include_bytes!("../../assets/app/iso/terrain/desert.png")),
-    ("app/iso/terrain/snow.png", PNG, include_bytes!("../../assets/app/iso/terrain/snow.png")),
-    ("app/iso/terrain/marsh.png", PNG, include_bytes!("../../assets/app/iso/terrain/marsh.png")),
-    ("app/iso/terrain/tundra.png", PNG, include_bytes!("../../assets/app/iso/terrain/tundra.png")),
-    ("app/iso/terrain/coast.png", PNG, include_bytes!("../../assets/app/iso/terrain/coast.png")),
-    ("app/iso/terrain/ocean.png", PNG, include_bytes!("../../assets/app/iso/terrain/ocean.png")),
-    ("app/iso/terrain/hell.png", PNG, include_bytes!("../../assets/app/iso/terrain/hell.png")),
-    ("app/iso/terrain/burning.png", PNG, include_bytes!("../../assets/app/iso/terrain/burning.png")),
-    ("app/iso/terrain/perdition.png", PNG, include_bytes!("../../assets/app/iso/terrain/perdition.png")),
-    ("app/iso/trees/pine_a.png", PNG, include_bytes!("../../assets/app/iso/trees/pine_a.png")),
-    ("app/iso/trees/pine_b.png", PNG, include_bytes!("../../assets/app/iso/trees/pine_b.png")),
-    ("app/iso/trees/palm_a.png", PNG, include_bytes!("../../assets/app/iso/trees/palm_a.png")),
-    ("app/iso/trees/palm_b.png", PNG, include_bytes!("../../assets/app/iso/trees/palm_b.png")),
-    ("app/iso/trees/ancient_a.png", PNG, include_bytes!("../../assets/app/iso/trees/ancient_a.png")),
-    ("app/iso/trees/ancient_b.png", PNG, include_bytes!("../../assets/app/iso/trees/ancient_b.png")),
-    ("app/iso/trees/dead_a.png", PNG, include_bytes!("../../assets/app/iso/trees/dead_a.png")),
-    ("app/iso/trees/dead_b.png", PNG, include_bytes!("../../assets/app/iso/trees/dead_b.png")),
-    ("app/iso/features/oasis.png", PNG, include_bytes!("../../assets/app/iso/features/oasis.png")),
-    ("app/iso/features/ice.png", PNG, include_bytes!("../../assets/app/iso/features/ice.png")),
-    ("app/iso/features/scrub.png", PNG, include_bytes!("../../assets/app/iso/features/scrub.png")),
-    ("app/iso/features/flood.png", PNG, include_bytes!("../../assets/app/iso/features/flood.png")),
-    ("app/iso/features/volcano.png", PNG, include_bytes!("../../assets/app/iso/features/volcano.png")),
-    ("app/iso/features/flames.png", PNG, include_bytes!("../../assets/app/iso/features/flames.png")),
-    ("app/iso/relief/peak.png", PNG, include_bytes!("../../assets/app/iso/relief/peak.png")),
-    ("app/iso/cities/town.png", PNG, include_bytes!("../../assets/app/iso/cities/town.png")),
-    ("app/iso/resources/mana.png", PNG, include_bytes!("../../assets/app/iso/resources/mana.png")),
-    ("app/iso/resources/crop.png", PNG, include_bytes!("../../assets/app/iso/resources/crop.png")),
-    ("app/iso/resources/animal.png", PNG, include_bytes!("../../assets/app/iso/resources/animal.png")),
-    ("app/iso/resources/fish.png", PNG, include_bytes!("../../assets/app/iso/resources/fish.png")),
-    ("app/iso/resources/ore.png", PNG, include_bytes!("../../assets/app/iso/resources/ore.png")),
-    ("app/iso/resources/goods.png", PNG, include_bytes!("../../assets/app/iso/resources/goods.png")),
-    ("app/iso/improvements/lair.png", PNG, include_bytes!("../../assets/app/iso/improvements/lair.png")),
-    ("app/iso/improvements/fort.png", PNG, include_bytes!("../../assets/app/iso/improvements/fort.png")),
-    ("app/iso/improvements/mananode.png", PNG, include_bytes!("../../assets/app/iso/improvements/mananode.png")),
-    ("app/iso/improvements/cottage.png", PNG, include_bytes!("../../assets/app/iso/improvements/cottage.png")),
-    ("app/iso/improvements/farm.png", PNG, include_bytes!("../../assets/app/iso/improvements/farm.png")),
-    ("app/iso/improvements/mine.png", PNG, include_bytes!("../../assets/app/iso/improvements/mine.png")),
-    ("app/iso/units/knight.png", PNG, include_bytes!("../../assets/app/iso/units/knight.png")),
-    ("app/iso/units/lich.png", PNG, include_bytes!("../../assets/app/iso/units/lich.png")),
-    ("app/iso/units/archer.png", PNG, include_bytes!("../../assets/app/iso/units/archer.png")),
-    ("app/iso/units/spider.png", PNG, include_bytes!("../../assets/app/iso/units/spider.png")),
-    ("app/iso/units/settler.png", PNG, include_bytes!("../../assets/app/iso/units/settler.png")),
-    ("app/iso/units/scout.png", PNG, include_bytes!("../../assets/app/iso/units/scout.png")),
-    ("app/iso/units/worker.png", PNG, include_bytes!("../../assets/app/iso/units/worker.png")),
-    ("app/iso/units/cavalry.png", PNG, include_bytes!("../../assets/app/iso/units/cavalry.png")),
-    ("app/iso/units/siege.png", PNG, include_bytes!("../../assets/app/iso/units/siege.png")),
-    ("app/iso/units/ship.png", PNG, include_bytes!("../../assets/app/iso/units/ship.png")),
-    ("app/iso/units/demon.png", PNG, include_bytes!("../../assets/app/iso/units/demon.png")),
-];
+// `ASSET_BYTES`: the binary client files, the isometric renderer's PNG sprites (docs/ISO.md),
+// embedded by `build.rs` from `assets/app/iso/*.png`: `(path, content type, bytes)`, served like
+// [`ASSETS`] but from raw bytes. `tests/web.rs` checks that every file under `assets/app/` is listed.
+include!(concat!(env!("OUT_DIR"), "/iso_assets.rs"));
 
 // `ART_MODULES`: the art toolkit's modules (`web/art`, docs/ART.md 15-16), embedded by `build.rs`
 // from the list `art_files::art_modules` makes; served at `/art/<path>` with the JS type.

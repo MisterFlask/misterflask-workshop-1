@@ -2,7 +2,7 @@
 
 **Status: experimental, off by default.** A fourth map renderer of the browser client
 (`crates/ffh-play`), beside the flat debug renderer, the 2D pixel art (docs/ART.md) and the
-isometric 2.5D renderer (docs/art/SOC_DIRECTION.md). It draws the same game state as a fully
+isometric 2.5D renderer (docs/ISO.md). It draws the same game state as a fully
 three-dimensional, painterly dark-fantasy world: real terrain relief, forests of procedurally modelled
 trees, settlements with architectural families, 3D figures for units and monsters, water, magic and
 corruption, through a stylised lighting and post-processing pipeline. It is a consumer of the game
@@ -558,7 +558,7 @@ Two scenes, the same renderer:
   | renderer | |
   |---|---|
   | 2D pixel art | [slice-art.jpg](r3d/slice-art.jpg) |
-  | isometric 2.5D | [slice-iso.jpg](r3d/slice-iso.jpg) |
+  | isometric 2.5D (the earlier look; docs/ISO.md has the current one) | [slice-iso.jpg](r3d/slice-iso.jpg) |
   | 3D, every stylisation off | [slice-3d-plain.jpg](r3d/slice-3d-plain.jpg) |
   | 3D painterly | [slice-3d-painterly.jpg](r3d/slice-3d-painterly.jpg) |
   | 3D painterly, close (168 px) | [slice-3d-close.jpg](r3d/slice-3d-close.jpg) |

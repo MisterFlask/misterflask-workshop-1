@@ -1,0 +1,39 @@
+{
+ "_doc": "Reference-like map. terrain: G grass F farm W water H hills. features: f forest m mountain. rc = [row, col]; row grows down-left, col grows down-right on screen. City footprint 2 covers rc..rc+1.",
+ "terrain": [
+  "GGGWGGWWW",
+  "GGGWGGGWW",
+  "GHGWGFGGW",
+  "GHGWGFFGG",
+  "GGGWGGGFG",
+  "GGGWGGFFG",
+  "HGGWWWWWW",
+  "HHGFFGHGG",
+  "HHGFGGHGG"
+ ],
+ "features": [
+  "ff..ff...",
+  "f....ff..",
+  "..f....f.",
+  "f.f....ff",
+  "ff......f",
+  ".f......f",
+  "m.f......",
+  "mm.....ff",
+  "mmf..f.f."
+ ],
+ "buildings": [
+  {"rc": [4, 4], "type": "city", "footprint": 2},
+  {"rc": [1, 1], "type": "temple_leaves"}
+ ],
+ "units": [
+  {"rc": [2, 0], "type": "swordsman", "highlight": true},
+  {"rc": [1, 2], "type": "priest_of_leaves", "banner": "green"},
+  {"rc": [7, 3], "type": "worker"},
+  {"rc": [3, 5], "type": "worker", "dx": 10},
+  {"rc": [2, 6], "type": "hyborem", "banner": "red", "highlight": true},
+  {"rc": [7, 5], "type": "swordsman"}
+ ],
+ "water_drop": 8,
+ "clouds": true
+}
