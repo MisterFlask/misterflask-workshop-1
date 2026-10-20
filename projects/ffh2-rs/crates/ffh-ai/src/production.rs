@@ -788,14 +788,18 @@ pub(crate) fn unit_building(d: &GameData, civ: CivilizationType, info: &UnitInfo
     info.prereq_building.or_else(|| info.prereq_building_class.and_then(|bc| d.civ_building(civ, bc)))
 }
 
-/// A building that would let this city train a defender or attacker at least a third stronger
-/// than its best now ([`unit_building`]), cheap enough to build soon.
+/// A building that would let this city train a defender or attacker at least a third better than
+/// its best now ([`unit_building`]), cheap enough to build soon. Better as [`best_unit`] weighs it,
+/// strength squared per hammer: by strength alone the Luchuirp's Sculptor's Studio (Wood Golems,
+/// 6) came before the Archery Range, which then looked no gain for the Dwarven Slingers (5 and a
+/// first strike, +25% in cities, two thirds of the price), and golems held their cities.
 fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
     let d = g.d;
     let p = g.cities[c].owner;
     let civ = g.player_get_civilization_type(p)?;
-    let cur_def = best_unit(g, c, Role::Defense).map_or(0, |u| type_city_defense(&d.units[u]));
-    let cur_att = best_unit(g, c, Role::Attack).map_or(0, |u| type_attack_power(d, u) as i64);
+    let worth = |power: i64, info: &UnitInfo| power * power / info.production_cost.max(1) as i64;
+    let cur_def = best_unit(g, c, Role::Defense).map_or(0, |u| worth(type_city_defense(&d.units[u]), &d.units[u]));
+    let cur_att = best_unit(g, c, Role::Attack).map_or(0, |u| worth(type_attack_power(d, u) as i64, &d.units[u]));
     let mut best: Option<(BuildingType, i64)> = None;
     for u in d.units.keys() {
         let info = &d.units[u];
@@ -822,8 +826,8 @@ fn enabler_building(g: &Game, c: CityId, threat: i32) -> Option<BuildingType> {
         if have > g.players[p].cities.len() / 2 {
             continue;
         }
-        let gain = if role_ok(info, Role::Defense) && cur_def > 0 { type_city_defense(info) * 100 / cur_def } else { 0 }
-            .max(if role_ok(info, Role::Attack) && cur_att > 0 { type_attack_power(d, u) as i64 * 100 / cur_att } else { 0 });
+        let gain = if role_ok(info, Role::Defense) && cur_def > 0 { worth(type_city_defense(info), info) * 100 / cur_def } else { 0 }
+            .max(if role_ok(info, Role::Attack) && cur_att > 0 { worth(type_attack_power(d, u) as i64, info) * 100 / cur_att } else { 0 });
         if gain < 133 {
             continue;
         }
