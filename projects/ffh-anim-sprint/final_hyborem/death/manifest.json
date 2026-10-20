@@ -1,0 +1,61 @@
+{
+ "unit": "swordsman",
+ "arm": "final_hyborem",
+ "anim": "death",
+ "canvas": [
+  160,
+  128
+ ],
+ "anchor": [
+  80,
+  126
+ ],
+ "loop": false,
+ "hold_last": true,
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_01.png",
+   "ms": 120,
+   "events": []
+  },
+  {
+   "file": "frame_02.png",
+   "ms": 140,
+   "events": []
+  },
+  {
+   "file": "frame_03.png",
+   "ms": 200,
+   "events": []
+  },
+  {
+   "file": "frame_04.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_05.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_06.png",
+   "ms": 80,
+   "events": []
+  },
+  {
+   "file": "frame_07.png",
+   "ms": 400,
+   "events": []
+  }
+ ],
+ "warnings": [
+  "frame 2 leaves the safe region x (16, 144): bbox (14, 39, 129, 126)",
+  "frame 3 leaves the safe region x (16, 144): bbox (15, 45, 131, 126)"
+ ]
+}

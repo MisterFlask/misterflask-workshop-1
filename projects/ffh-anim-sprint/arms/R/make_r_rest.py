@@ -189,8 +189,132 @@ def flinch(parts):
     return flinch_frames(parts)
 
 
+# ================================================================ DEATH
+RIGID_STAND = 0.8  # standing death frames: 80% rigid, 20% of the torso-joint squash (keeps the body proportions)
+TORSO_J = ["pelvis", "r_hip", "l_hip", "chest", "neck", "r_sh", "l_sh"]
+
+
+def fit_affine(src, dst):
+    """Least-squares 2x2 linear part + translation taking src points to dst points (about the first point)."""
+    S = np.asarray(src, float); D = np.asarray(dst, float)
+    s0, d0 = S[0], D[0]
+    A, *_ = np.linalg.lstsq(S - s0, D - d0, rcond=None)
+    return A.T, s0, d0
+
+
+def blend_rigid(M, t):
+    """Blend a linear map toward its nearest rotation (polar decomposition): t=0 keeps M (shear/squash), t=1 rigid."""
+    U, sv, Vt = np.linalg.svd(M)
+    Rm = U @ Vt
+    return (1 - t) * M + t * Rm
+
+
+def place_sword(parts, ha0, tip0, ha1, tip1):
+    M, sang, _ = R.bone_matrix(ha0, tip0, ha1, tip1, (0.8, 1.03))
+    if abs(sang) > 12:
+        sw = R.draw_blade(parts["sword"], M, ha0, ha1)
+        sw.alpha_composite(R.warp_affine(R.hilt_layer(parts["sword"]), M, ha0, ha1))
+        return sw
+    return R.warp_affine(parts["sword"], M, ha0, ha1)
+
+
+def limb_matrix(j0, j1, piv1, aim1, lim, G):
+    """FK in the body's own (unsheared) space: aim the limb at G^-1 of the target bone, then apply the body affine G,
+    so a limb lying on the ground is squashed and sheared exactly like the torso it hangs from."""
+    Gi = np.linalg.inv(G)
+    v = Gi @ np.subtract(aim1, piv1)
+    Mr, _, _ = R.bone_matrix((0.0, 0.0), np.subtract(j1, j0), (0.0, 0.0), v, lim)
+    return G @ Mr
+
+
+def body_frame(parts, p, rigid=0.0, sword=None, shield_flat=0.0, hair_lag=(0, 0), shield_lag=(0, 0),
+               shin_lim=(0.9, 1.1), order=None, head_extra=0.0):
+    """Pose the cut-out parts to pose p with one whole-body affine for the torso and head (least-squares fit of the
+    torso joints: rotation plus the squash/shear that lays a body on the iso ground), limbs rotated about their
+    joints (FK, stretch clamped), the sword in the hand or lying where `sword` = (hilt, tip) says, and the shield
+    turned from upright (0) to lying flat (1)."""
+    src = [P0[j] for j in TORSO_J]
+    dst = [p[j] for j in TORSO_J]
+    G, s0, d0 = fit_affine(src, dst)
+    G = blend_rigid(G, rigid)
+    L = {}
+    L["torso"] = R.warp_affine(parts["torso"], G, P0["pelvis"], np.add(d0, G @ np.subtract(P0["pelvis"], s0)))
+    pel1 = np.add(d0, G @ np.subtract(P0["pelvis"], s0))
+    J = {j: np.add(pel1, G @ np.subtract(P0[j], P0["pelvis"])) for j in TORSO_J}  # where the torso put each joint
+    # head: hung on the torso's neck with the body affine's squash/shear, turned so its absolute angle is the pose's
+    # head_tilt (+ = chin up/back, clockwise on screen)
+    neck1 = J["neck"]
+    U, _, Vt = np.linalg.svd(G)
+    Rg = U @ Vt
+    gdeg = np.degrees(np.arctan2(Rg[0, 1], Rg[0, 0]))
+    Hm = R.rotm(-p.get("head_tilt", 0) - gdeg - head_extra) @ G
+    head = parts["head"]
+    lag = np.linalg.inv(Hm) @ np.asarray(hair_lag, float)  # screen-space lag -> the head layer's own space
+    if max(abs(lag[0]), abs(lag[1])) >= 1.0:
+        hs = [(82, 66), (80, 58), (86, 58), (74, 60), (84, 42), (98, 48), (100, 60), (70, 46)]
+        hd = hs[:4] + [tuple(np.add(q, lag * w)) for q, w in zip(hs[4:], (0.8, 1.0, 0.7, 0.6))]
+        head = rig.mls_warp(head, hs, hd)
+    L["head"] = R.warp_affine(head, Hm, P0["neck"], neck1)
+    # far arm (FK from the torso's shoulder)
+    sh1 = J["r_sh"]
+    M = limb_matrix(P0["r_sh"], P0["r_el"], sh1, p["r_el"], R.STRETCH["r_upper"], G)
+    L["r_upper"] = R.warp_affine(parts["r_upper"], M, P0["r_sh"], sh1)
+    el1 = np.add(sh1, M @ np.subtract(P0["r_el"], P0["r_sh"]))
+    M = limb_matrix(P0["r_el"], P0["r_ha"], el1, p["r_ha"], R.STRETCH["r_fore"], G)
+    L["r_fore"] = R.warp_affine(parts["r_fore"], M, P0["r_el"], el1)
+    ha1 = np.add(el1, M @ np.subtract(P0["r_ha"], P0["r_el"]))
+    if sword is None:
+        L["sword"] = place_sword(parts, P0["r_ha"], P0["tip"], ha1, p["tip"])
+    else:
+        L["sword"] = place_sword(parts, P0["r_ha"], P0["tip"], sword[0], sword[1])
+    # near arm and shield
+    lsh1 = J["l_sh"]
+    M = limb_matrix(P0["l_sh"], P0["l_el"], lsh1, p["l_el"], R.STRETCH["l_upper"], G)
+    L["l_upper"] = R.warp_affine(parts["l_upper"], M, P0["l_sh"], lsh1)
+    _, fang, _ = R.bone_matrix(P0["l_el"], P0["l_ha"], p["l_el"], p["l_ha"])
+    sc1 = np.add(p["shield"][:2], shield_lag)
+    rx, ry = p["shield"][2], p["shield"][3]
+    if shield_flat > 0:
+        # upright oval (9 x 15) -> lying flat: turn a quarter clockwise and scale to the pose's ellipse
+        Sm = np.diag([rx / 15.0, ry / 9.0]) @ R.rotm(-90 * shield_flat) if shield_flat >= 1 else \
+            R.rotm(-90 * shield_flat) @ np.diag([1.0, 1.0 - 0.3 * shield_flat])
+        L["shield"] = R.warp_affine(parts["shield"], Sm, P0["shield"][:2], sc1)
+    else:
+        L["shield"] = R.warp_affine(parts["shield"], R.rotm(0.35 * fang), P0["shield"][:2], sc1)
+    # legs
+    for sd in ("r", "l"):
+        hip1 = J[sd + "_hip"]
+        M = limb_matrix(P0[sd + "_hip"], P0[sd + "_kn"], hip1, p[sd + "_kn"], (0.8, 1.2), G)
+        L[sd + "_thigh"] = R.warp_affine(parts[sd + "_thigh"], M, P0[sd + "_hip"], hip1)
+        kn1 = np.add(hip1, M @ np.subtract(P0[sd + "_kn"], P0[sd + "_hip"]))
+        M = limb_matrix(P0[sd + "_kn"], P0[sd + "_ft"], kn1, p[sd + "_ft"], shin_lim, G)
+        L[sd + "_shin"] = R.warp_affine(parts[sd + "_shin"], M, P0[sd + "_kn"], kn1)
+    order = order or p.get("order", ak.POSES["default_order"])
+    seq = [n for g in order for n in R.GROUP[g]]
+    if sword is None and seq.index("sword") > seq.index("r_fore"):
+        seq.remove("sword"); seq.insert(seq.index("r_fore"), "sword")
+    return comp(L, seq), L
+
+
 def death(parts):
-    raise NotImplementedError
+    D = POSES["death"]
+    shut = dict(parts, head=shut_eyes(parts["head"]))
+    frames = [flinch_frames(parts)[0]]  # death frame 0 is flinch frame 0, pixel for pixel
+    # overlapping action: the hair trails the head and the shield trails the arm through the fall (same one-frame
+    # springs as the strike and flinch, started from the rest pose like the flinch); the shield lands a frame late
+    lags = springs(D, start=P0)
+    fade = {5: 0.8, 6: 0.6, 7: 0.0}
+    for i in range(1, 8):
+        p = D[i]
+        lying = i >= 4
+        sword = None
+        if i >= 4:  # the sword leaves the hand on frame 4 (still dropping, hilt up), then lies at the lower-left
+            sword = ([62, 115], [31, 122]) if i == 4 else tuple(D[i]["sword"])
+        hl, sl = (np.asarray(v) * fade.get(i, 1.0) for v in lags[i])
+        f, _ = body_frame(shut, p, rigid=0.0 if lying else RIGID_STAND, sword=sword, hair_lag=tuple(hl),
+                          shield_lag=tuple(sl), shield_flat={4: 0.5, 5: 1.0, 6: 1.0, 7: 1.0}.get(i, 0.0))
+        frames.append(decrumb(R.fit_ground(f)))
+    return frames
 
 
 # ================================================================ closed eyes (code-drawn, sprite palette)

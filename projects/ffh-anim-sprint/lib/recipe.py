@@ -17,8 +17,8 @@ How it works (each choice comes from the sprint's results; see the report):
 A unit file (JSON) gives: name, sprite path, description (one line, what the model must keep), guide style
 ("colour" for the swordsman's own palette, "grey" for any other unit), the unit's frame-0 joints in 1x canvas
 coordinates (same keys as poses.json; omit "shield" if it has none), optional beat-text overrides, and optional
-poses_from (default poses.json). Poses for other units are retargeted bone by bone: angles from the swordsman's
-poses, lengths from the unit's own frame-0 skeleton.
+poses_from (default poses.json). Poses for other units are retargeted bone by bone: each bone keeps the unit's own
+frame-0 angle plus the swordsman bone's rotation away from its rest angle, at the unit's own bone lengths.
 """
 import argparse, json, math, sys, time
 from pathlib import Path
@@ -66,13 +66,27 @@ def retarget(u, src_rest, src_pose):
         if sb is None or sa is None:
             continue
         L = math.dist(rest[a][:2], rest[b][:2])
-        ang = math.atan2(sb[1] - sa[1], sb[0] - sa[0])
+        # relative retarget: the unit's own rest angle plus the source bone's rotation away from ITS rest angle,
+        # so frame 0 reproduces the unit's sprite exactly
+        sra, srb = src_rest[a], (src_rest.get("tip") if b == "tip" else src_rest[b])
+        d_src = math.atan2(sb[1] - sa[1], sb[0] - sa[0]) - math.atan2(srb[1] - sra[1], srb[0] - sra[0])
+        ang = math.atan2(rest[b][1] - rest[a][1], rest[b][0] - rest[a][0]) + d_src
         base = out[a] if a in out else rest[a]
         if b == "tip" and "sword" in src_pose:  # dropped sword: place it where the source drops it, unit-length blade
             h = (rest["pelvis"][0] + (src_pose["sword"][0][0] - rx) * s, rest["pelvis"][1] + (src_pose["sword"][0][1] - ry) * s)
             out["sword"] = (h, (h[0] + L * math.cos(ang), h[1] + L * math.sin(ang)))
             continue
-        out[b] = (base[0] + L * math.cos(ang), base[1] + L * math.sin(ang))
+        nb = (base[0] + L * math.cos(ang), base[1] + L * math.sin(ang))
+        if b == "tip":
+            # a long blade can leave the canvas (x 16-143, y 0-127): shorten the GUIDE blade along the same angle so
+            # the guide stays inside its cell; the model still draws the unit's real sword. Big units really want a
+            # bigger canvas; see the report.
+            for _ in range(40):
+                if 18 <= nb[0] <= 142 and 3 <= nb[1] <= 125:
+                    break
+                L *= 0.95
+                nb = (base[0] + L * math.cos(ang), base[1] + L * math.sin(ang))
+        out[b] = nb
     if "shield" in rest and "shield" in src_pose:
         dx, dy = src_pose["shield"][0] - src_pose["l_ha"][0], src_pose["shield"][1] - src_pose["l_ha"][1]
         rr = rest["shield"]

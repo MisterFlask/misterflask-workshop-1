@@ -59,6 +59,11 @@ def stack(rows, gap=6, bg=(250, 250, 250, 255)):
     return out
 
 
+def arm_root(a):
+    """Round-1 arms live in arms/<A>; recipe sets (final, final_nofx, final_<unit>) live at the project root."""
+    return ak.ROOT / a if a.startswith("final") else ak.ROOT / "arms" / a
+
+
 def packets(arms, seed=7, judges=3):
     rng = random.Random(seed)
     letters = list(LETTERS[:len(arms)])
@@ -68,10 +73,10 @@ def packets(arms, seed=7, judges=3):
     for anim in ANIMS:
         d = J / "packets" / anim
         d.mkdir(parents=True, exist_ok=True)
-        have = {L: a for L, a in key["letter_to_arm"].items() if (ak.ROOT / "arms" / a / anim / "manifest.json").exists()}
+        have = {L: a for L, a in key["letter_to_arm"].items() if (arm_root(a) / anim / "manifest.json").exists()}
         if not have:
             continue
-        data = {L: ak.load_anim(a, anim) for L, a in have.items()}
+        data = {L: ak.load_anim(a, anim, root=arm_root(a)) for L, a in have.items()}
         order = sorted(have)
         for j in range(1, judges + 1):
             rows = order[:]
