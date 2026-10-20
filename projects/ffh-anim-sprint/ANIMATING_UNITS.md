@@ -4,10 +4,24 @@ This is the working method for giving an M7 isometric unit sprite (the art-mode 
 four combat animations. It came out of a blind bake-off of seven methods on the swordsman in October 2026: after fixes,
 it had the top mean score in all four animations in a second blind round against the strongest of the others. Those
 sets predate rule 1 below. The recipe as it stands now (rule 1, a second pose set, later fixes) has been compared blind
-only with its own earlier sets (evidence at the end). Follow it as written. If you change it, re-test it the same way (see "Changing the method").
+only with its own earlier sets (evidence at the end). Follow it as written. If you change it, re-test it the same way
+(see "Changing the method").
 
 Everything below runs from `projects/ffh-anim-sprint/`. In a sparse agent worktree (see the root `CLAUDE.md`) run
 `git sparse-checkout add projects/ffh-anim-sprint` first.
+
+## Quick start
+
+For a unit `<unit>` (the steps below explain each one):
+
+1. `python3 lib/recipe.py --grid <sprite.png> --out final_<unit>`: read the joints from `work/final_<unit>/grid.png`.
+2. Decide which way the sprite looks, lower-left or lower-right (step 1b). Rule 1 depends on it.
+3. Write `units/<unit>.json` from `units/ogre.json` or `units/hyborem.json`, replacing everything unit-specific.
+4. `--show-beats`, then `--check-guides` (both free): reword texts that name props the unit lacks; check the guides
+   strike toward the facing.
+5. `python3 lib/recipe.py --unit units/<unit>.json --out final_<unit>`: three image calls, about $0.23.
+6. Pick variants by eye in `work/final_<unit>/variants_*.png`, then `--rebuild --pick strike=… flinch=… death=…`.
+7. `python3 lib/preview.py --arm final_<unit> --root final_<unit>`, run the step 4 checklist, commit.
 
 ## The rules
 
@@ -86,8 +100,8 @@ pip install pillow numpy scipy requests      # and ffmpeg on PATH, for the previ
   that). For bulk work raise every cap that binds. A unit file without a `tag` is billed to `anim/final`.
 - **The sprite.** An M7 unit PNG at most 128 px wide and 128 px tall, feet at or near the bottom (M7 leaves 2 px; the
   recipe stands the redrawn frames on the sprite's own feet row, so a few more empty rows, like Hyborem's 4, are fine),
-  looking lower-left or lower-right, holding one weapon. Do not mirror it: step 1b records which way it looks. Paths in unit files and on the
-  command line are relative to `projects/ffh-anim-sprint/`.
+  looking lower-left or lower-right, holding one weapon. Do not mirror it: step 1b records which way it looks. Paths in
+  unit files and on the command line are relative to `projects/ffh-anim-sprint/`.
 
 ## Step 1: describe the unit
 
@@ -210,8 +224,9 @@ the feet; the beat text ("nearly touches the ground") is what keeps the model fr
 python3 lib/recipe.py --unit units/<unit>.json --out final_<unit>
 ```
 This sends three sheet calls in parallel (strike, flinch, death), with two variants each. It takes about 20–25 s of
-model calls (longer if the API rate-limits) plus a few seconds to cut, warp and assemble, for about $0.23. It writes `final_<unit>/` and `final_<unit>_nofx/`.
-Raws, templates and diagnostics go to `work/final_<unit>/`, which is not committed.
+model calls (longer if the API rate-limits) plus a few seconds to cut, warp and assemble, for about $0.23. It writes
+`final_<unit>/` and `final_<unit>_nofx/`. Raws, templates and diagnostics go to `work/final_<unit>/`, which is not
+committed.
 
 ## Step 3: pick the variants by eye
 
@@ -287,8 +302,8 @@ to `final_<unit>/metrics.json` (`jitter`, for idle and flinch, is only in that f
 them for other units (the gates are heuristics even for the swordsman).
 
 **Commit** `units/<unit>.json`, `final_<unit>/` (frames, manifests, sheets, `unit_poses.json`, `metrics.json`, the
-sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets, `unit_poses.json`). `.gitignore` already leaves out
-`work/` and the per-animation preview GIFs.
+sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets,
+`unit_poses.json`). `.gitignore` already leaves out `work/` and the per-animation preview GIFs.
 
 ## Known limits
 
@@ -297,8 +312,8 @@ sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (fr
   The recipe refuses sprites taller or wider than 128. A bigger canvas means changing `W`, `H`, `ANCHOR`, `SAFE_X` and
   `SPRITE_OFFSET` in `lib/animkit.py`; `canvas`, `anchor`, `sprite_offset` and every joint in `lib/poses_src.py` and
   `lib/poses_near_src.py`, then regenerating `poses.json` and `poses_near.json` (`lib/guides.py` reads the canvas size
-  from `poses.json`); `REGION`, `GROUND_Y` and `SCALE` in `lib/sheet.py` (128 × 3 already
-  fills a 384 px cell, so the cell size from `default_geom` and the image size in `lib/gen.py` `CONTRACT` change too);
+  from `poses.json`); `REGION`, `GROUND_Y` and `SCALE` in `lib/sheet.py` (128 × 3 already fills a 384 px cell, so the
+  cell size from `default_geom` and the image size in `lib/gen.py` `CONTRACT` change too);
   the guide-weapon clamp (x 18–142, y 3–125) in `recipe.retarget`; the cell sizes in `recipe.review_sheet`; and the
   scene sizes in `lib/preview.py`. That is untested. The sideways slide (step 3) can push a long weapon further past
   the edge, as with Hyborem's greatsword and the ogre's club on the hit frames.
@@ -333,8 +348,8 @@ If you improve the recipe, re-test it before relying on it. Run the old and the 
 judges compare them blind: letters instead of names, a frame-ordering test, and scores for motion, consistency, style
 and appeal (`lib/judging.py`; `JUDGE_BRIEF.md` is the sprint's brief, which says the swordsman faces lower-left, so
 rewrite its first paragraph with the unit's real facing first; `judging/post_rule/make_packets.py` builds the blind
-packets used after the sprint). Agents judging stills are a useful filter. A person watching the motion
-is the real test.
+packets used after the sprint). Agents judging stills are a useful filter. A person watching the motion is the real
+test.
 
 ## Why this method (evidence)
 
@@ -391,8 +406,8 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
   slicer only snapped up to 20 px and left them, and the pick by eye missed them. It now snaps up to 40 px and the
   variant sheets label any float; both sets were re-cut from the same picks, so every redrawn frame now stands on the
   sprite's ground row (Hyborem's on his own feet row, 2 px above the others, because his PNG has 4 empty rows under the
-  feet), but the re-cut sets were not judged again. The swordsman's idle is unchanged because both sets use the same warp of his
-  sprite.
+  feet), but the re-cut sets were not judged again. The swordsman's idle is unchanged because both sets use the same
+  warp of his sprite.
 
 ## Worked examples
 
