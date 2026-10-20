@@ -45,14 +45,23 @@ def spend_by_arm():
 
 
 def minutes_by_arm(arm_dir):
+    """Minutes per logged item, plus "_wall": agent minutes with double counting removed. A window that lies fully
+    inside another logged window (one agent logging two sheets it ran in parallel, or a probe inside a larger task)
+    is dropped; separate agents working at the same time still add up, because that is real agent time."""
     p = arm_dir / "timings.jsonl"
     if not p.exists():
         return {}
-    out = {}
+    out, spans = {}, []
     for line in p.read_text().splitlines():
         if line.strip():
             r = json.loads(line)
             out[r["what"]] = out.get(r["what"], 0) + r.get("seconds", 0) / 60
+            if r.get("start") and r.get("end"):
+                spans.append((r["start"], r["end"]))
+    spans = sorted(set(spans), key=lambda w: (w[0], -w[1]))
+    keep = [w for i, w in enumerate(spans)
+            if not any(j != i and o[0] <= w[0] and w[1] <= o[1] and o != w for j, o in enumerate(spans))]
+    out["_wall"] = sum(b - a for a, b in keep) / 60
     return out
 
 

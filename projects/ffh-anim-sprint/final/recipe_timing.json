@@ -1,0 +1,12 @@
+{
+ "swordsman": {
+  "model_calls_s": 21.1,
+  "cut_and_assemble_s": 5.5,
+  "total_s": 26.6,
+  "note": "model_calls_s from work/final/gen_log.json (3 parallel calls); cut_and_assemble_s measured by timing `recipe.py --rebuild` (20 Oct 2026)"
+ },
+ "hyborem": {
+  "model_calls_s": 22.0,
+  "note": "work/final_hyborem/gen_log.json"
+ }
+}

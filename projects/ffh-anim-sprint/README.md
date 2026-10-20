@@ -2,8 +2,8 @@
 
 Research sprint (20 October 2026): how to make bespoke **idle, strike, flinch and death** animations for an M7
 isometric unit sprite, tested on the swordsman and checked on Hyborem. Seven methods ran on one shared beat sheet,
-three judge agents scored them blind, and a hybrid recipe built from the results won a second blind round in all
-four animations.
+three judge agents scored them blind, and a hybrid recipe (built mid-trial, judged blind with the others, then fixed)
+had the top mean score in all four animations in a second blind round.
 
 ## Result in one paragraph
 
@@ -11,7 +11,7 @@ Draw the big actions with the image model, and move the sprite's own pixels for 
 draws a convincing strike, flinch and death on **one sprite sheet per animation** whose first cell is the real sprite
 and whose other cells hold flat-colour pose blockouts. It cannot draw an idle (every redraw shimmers), so idle and the
 frames next to idle are the real sprite bent by a sharpened mesh warp. A full four-animation set takes 3 image calls,
-about 25 s and $0.23 (`lib/recipe.py`). Moving the whole sprite or its cut-out parts, which is what looked stiff
+about 21 s of model calls plus 6 s of assembly, and $0.23 (`lib/recipe.py`), then a by-eye variant pick. Moving the whole sprite or its cut-out parts, which is what looked stiff
 before, came last for strike, flinch and death in every judge's ranking.
 
 | Round 1 (weighted judge score /10) | idle | strike | flinch | death |
@@ -26,9 +26,12 @@ before, came last for strike, flinch and death in every judge's ranking.
 | A0 whole-sprite tween (control) | 6.28 | 4.58 | 5.03 | 3.62 |
 
 Verification round (fresh judges, fixed recipe vs its first build and the two best methods per animation): fixed recipe
-7.90 / 7.68 / 7.62 / 7.85, first in all four. Total image-API spend for the sprint: $4.45 of a $20 cap.
+7.90 / 7.68 / 7.62 / 7.85, the top mean in all four (first for every judge only in the death; the idle and strike margins,
+0.2 and 0.3, are too small to call). The same frames scored up to 1.2 points apart between the two panels, so compare
+within a round. Total image-API spend for the sprint: $4.45 of a $20 cap.
 
-The full write-up with every animation playable is the HTML report built from `report/` (published as an artifact).
+The full write-up, with every animation playable, is the HTML report built from `report/` and published at
+https://claude.ai/artifact/3eWLaH1v9PHpu6G6FGKExb (private until shared from its Share menu).
 
 ## Make a set for a unit
 
