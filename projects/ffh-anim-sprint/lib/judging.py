@@ -65,16 +65,17 @@ def arm_root(a):
     return ak.ROOT / a if a.startswith("final") else ak.ROOT / "arms" / a
 
 
-def packets(arms, seed=7, judges=3, anims=None):
+def packets(arms, seed=7, judges=3, anims=None, out=None, letters=None, per_anim=None):
     rng = random.Random(seed)
-    letters = list(LETTERS[:len(arms)])
+    letters = list((letters or LETTERS)[:len(arms)])
     rng.shuffle(letters)
     key = {"letter_to_arm": dict(zip(letters, arms)), "shuffles": {}}
     sprite_row = None
     for anim in (anims or ANIMS):
-        d = J / "packets" / anim
+        d = (Path(out) if out else J / "packets") / anim
         d.mkdir(parents=True, exist_ok=True)
-        have = {L: a for L, a in key["letter_to_arm"].items() if (arm_root(a) / anim / "manifest.json").exists()}
+        have = {L: a for L, a in key["letter_to_arm"].items() if (arm_root(a) / anim / "manifest.json").exists()
+                and (per_anim is None or a in per_anim.get(anim, []))}
         if not have:
             continue
         data = {L: ak.load_anim(a, anim, root=arm_root(a)) for L, a in have.items()}
@@ -118,7 +119,8 @@ def packets(arms, seed=7, judges=3, anims=None):
                         f"gate flags: {mm['gates'] or 'none'}")
         (d / "metrics.txt").write_text("\n".join(mtxt) + "\n")
     J.mkdir(exist_ok=True)
-    (J / "key.json").write_text(json.dumps(key, indent=1))
+    (Path(out) if out else J).mkdir(parents=True, exist_ok=True)
+    ((Path(out) if out else J) / "key.json").write_text(json.dumps(key, indent=1))
     return key
 
 
