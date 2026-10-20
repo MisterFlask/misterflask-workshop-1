@@ -1,8 +1,9 @@
 {
- "_note": "Pre-rule set kept only to reproduce final/ (the sprint's blind-judged set). Its poses strike to the lower-left although the sprite looks lower-right, which breaks the strike-direction rule in ANIMATING_UNITS.md. Do not copy it; use units/swordsman.json.",
+ "_note": "Pre-rule set kept only to reproduce final/ (the sprint's blind-judged set). Its poses strike to the lower-left although the sprite looks lower-right, which breaks the strike-direction rule in ANIMATING_UNITS.md. Do not copy it; use units/swordsman.json. legacy: true keeps the sprint's exact processing (angle-only retarget, edge-only de-fringe, no sideways snap).",
  "name": "swordsman",
  "sprite": "m7/roster/units/unit_swordsman.png",
  "facing": "lower-left",
+ "legacy": true,
  "description": "a swordsman foot soldier: blue sleeveless tunic over a cream shirt, brown leather belt, blue shorts, tan leggings, brown leather boots, brown tousled hair, a short steel sword in his RIGHT hand and a round wooden shield with a steel boss on his LEFT arm",
  "hands": "the sword stays in his right hand on the screen-left side and the shield on his left arm on the screen-right side",
  "guide_style": "colour",

@@ -119,13 +119,15 @@ def spark(frame, at, r=6, colour=(255, 246, 196), core=(255, 255, 255)):
     return out
 
 
-def apply_strike_fx(frames, swing=3, contact=4, direction="ccw"):
+def apply_strike_fx(frames, swing=3, contact=4, direction="ccw", min_blade=0):
     """Smear on the swing frame (from the wind-up blade to the swing blade) and on contact (swing -> contact);
-    impact spark at the contact frame's blade tip."""
+    impact spark at the contact frame's blade tip. A smear needs a steel blade at least min_blade px long in both
+    frames (a club's spikes or a dark blade give none, and a 1-px sliver of steel gives a hairline, not an arc)."""
+    import math
     out = list(frames)
     for i in (swing, contact):
         a, b = blade_ends(frames[i - 1]), blade_ends(frames[i])
-        if a and b:
+        if a and b and min(math.dist(*a), math.dist(*b)) >= min_blade:
             out[i] = smear(frames[i], a[0], a[1], b[0], b[1], alpha=150 if i == contact else 210, direction=direction)
     be = blade_ends(frames[contact])
     if be:
@@ -152,10 +154,11 @@ def defringe_applicable(base=None):
     return _purplish(a)[op].mean() < 0.01
 
 
-def defringe(frame, band=2):
+def defringe(frame, band=2, interior=False):
     """Remove the magenta halo the key leaves on redrawn frames: M7's edge-only cleanup (semi-transparent magenta-ish
     pixels and near-pure magenta), then opaque purple-tinted pixels within `band` px of the edge are recoloured to a
-    darkened mix of their non-purple neighbours, i.e. the outline colour they should have been."""
+    darkened mix of their non-purple neighbours, i.e. the outline colour they should have been. interior=True also
+    recolours purple specks inside the figure (key colour caught in a seam) to the plain mix of their neighbours."""
     import cleanup  # m7/lib, on the path via animkit
     im, _ = cleanup.clean(frame.convert("RGBA"), "unit")
     a = np.asarray(im).copy()
@@ -173,4 +176,17 @@ def defringe(frame, band=2):
         fallback = np.array([40, 28, 40], np.float32)
         newc = np.where((cnt > 0)[..., None], dark, fallback)
         a[..., :3][pur] = newc[pur].astype(np.uint8)
+    if interior:
+        for _ in range(3):  # small clusters fill in from their edges
+            inner = _purplish(a) & (a[..., 3] >= 128)
+            if not inner.any():
+                break
+            ok = (a[..., 3] >= 128) & ~inner
+            w = ok.astype(np.float32)
+            k = np.ones((3, 3), np.float32)
+            cnt = ndimage.convolve(w, k, mode="constant")
+            mix = np.dstack([ndimage.convolve(a[..., c].astype(np.float32) * w, k, mode="constant") for c in range(3)])
+            mix = mix / np.maximum(cnt, 1)[..., None]
+            fix = inner & (cnt > 0)
+            a[..., :3][fix] = mix[fix].astype(np.uint8)
     return Image.fromarray(a, "RGBA")

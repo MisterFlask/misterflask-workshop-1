@@ -44,6 +44,9 @@ FACINGS = ("lower-left", "lower-right")
 SETS = {"far": "poses.json", "near": "poses_near.json"}
 JOINTS = ("head", "neck", "chest", "pelvis", "r_sh", "r_el", "r_ha", "tip", "l_sh", "l_el", "l_ha",
           "r_hip", "r_kn", "r_ft", "l_hip", "l_kn", "l_ft")
+WEAPON_CHAIN = {("r_sh", "r_el"), ("r_el", "r_ha"), ("r_ha", "tip")}
+WARP_FRAMES = {("idle", 1), ("idle", 2), ("idle", 3), ("strike", 7), ("flinch", 3)}  # the true sprite, mesh-warped
+STANDING = {("strike", i) for i in range(1, 7)} | {("flinch", i) for i in range(3)} | {("death", i) for i in range(1, 4)}
 TREE = [("pelvis", "chest"), ("chest", "neck"), ("neck", "head"), ("chest", "r_sh"), ("r_sh", "r_el"), ("r_el", "r_ha"),
         ("r_ha", "tip"), ("chest", "l_sh"), ("l_sh", "l_el"), ("l_el", "l_ha"), ("pelvis", "r_hip"), ("r_hip", "r_kn"),
         ("r_kn", "r_ft"), ("pelvis", "l_hip"), ("l_hip", "l_kn"), ("l_kn", "l_ft")]
@@ -96,11 +99,31 @@ def base_canvas(u):
     return c
 
 
-def retarget(u, src_rest, src_pose):
-    """Unit pose = unit rest skeleton driven by the source pose's bone angles (lengths stay the unit's)."""
+def _wrap(a):
+    return (a + math.pi) % (2 * math.pi) - math.pi
+
+
+def retarget(u, src_rest, src_pose, mode="rel"):
+    """Unit pose = unit rest skeleton driven by the source pose (lengths stay the unit's). mode:
+    rel    every bone keeps the unit's rest angle plus the source bone's rotation (the sprint's retarget);
+    drawn  as rel, but the weapon arm and weapon (WEAPON_CHAIN) turn toward the source's ABSOLUTE angle as the source
+           bone turns further from rest (fully past 60 degrees), so a unit that holds its weapon differently (a club on
+           the shoulder) still swings it where the beat sheet says; for frames the model draws;
+    disp   every joint moves by the source joint's displacement from rest (x scale): small motion such as the idle
+           breath, which is a stretch the angles cannot carry; for the mesh-warped frames."""
     rest = u["joints"]
     out = {k: v for k, v in src_pose.items() if k not in rest and k not in ("shield", "sword", "tip")}
     s = u.get("scale", 1.0)
+    if mode == "disp":
+        for j, rv in rest.items():
+            if j == "shield":
+                continue
+            sp, sr = src_pose.get(j), src_rest.get(j)
+            out[j] = tuple(rv[:2]) if sp is None or sr is None else (rv[0] + (sp[0] - sr[0]) * s, rv[1] + (sp[1] - sr[1]) * s)
+        if "shield" in rest and "shield" in src_pose:
+            rr, sp, sr = rest["shield"], src_pose["shield"], src_rest["shield"]
+            out["shield"] = (rr[0] + (sp[0] - sr[0]) * s, rr[1] + (sp[1] - sr[1]) * s, rr[2] * sp[2] / sr[2], rr[3] * sp[3] / sr[3])
+        return _pose_tail(u, src_pose, out)
     px, py = src_pose["pelvis"][:2]
     rx, ry = src_rest["pelvis"][:2]
     out["pelvis"] = (rest["pelvis"][0] + (px - rx) * s, rest["pelvis"][1] + (py - ry) * s)
@@ -118,6 +141,9 @@ def retarget(u, src_rest, src_pose):
         sra, srb = src_rest[a], (src_rest.get("tip") if b == "tip" else src_rest[b])
         d_src = math.atan2(sb[1] - sa[1], sb[0] - sa[0]) - math.atan2(srb[1] - sra[1], srb[0] - sra[0])
         ang = math.atan2(rest[b][1] - rest[a][1], rest[b][0] - rest[a][0]) + d_src
+        if mode == "drawn" and (a, b) in WEAPON_CHAIN:
+            w = min(1.0, max(0.0, (abs(_wrap(d_src)) - math.radians(15)) / math.radians(45)))
+            ang += w * _wrap(math.atan2(sb[1] - sa[1], sb[0] - sa[0]) - ang)
         base = out[a] if a in out else rest[a]
         if b == "tip" and "sword" in src_pose:  # dropped sword: place it where the source drops it, unit-length blade
             h = (rest["pelvis"][0] + (src_pose["sword"][0][0] - rx) * s, rest["pelvis"][1] + (src_pose["sword"][0][1] - ry) * s)
@@ -133,15 +159,20 @@ def retarget(u, src_rest, src_pose):
                     break
                 L *= 0.95
                 nb = (base[0] + L * math.cos(ang), base[1] + L * math.sin(ang))
+                out["_weapon_shortened"] = True
         out[b] = nb
     if "shield" in rest and "shield" in src_pose:
         dx, dy = src_pose["shield"][0] - src_pose["l_ha"][0], src_pose["shield"][1] - src_pose["l_ha"][1]
         rr = rest["shield"]
         out["shield"] = (out["l_ha"][0] + dx * s, out["l_ha"][1] + dy * s, rr[2] * src_pose["shield"][2] / src_rest["shield"][2],
                          rr[3] * src_pose["shield"][3] / src_rest["shield"][3])
+    return _pose_tail(u, src_pose, out)
+
+
+def _pose_tail(u, src_pose, out):
     out["head_tilt"] = src_pose.get("head_tilt", 0)
     out["eyes"] = src_pose.get("eyes", "open")
-    out["order"] = [p for p in src_pose.get("order", ak.POSES["default_order"]) if p != "shield" or "shield" in rest]
+    out["order"] = [p for p in src_pose.get("order", ak.POSES["default_order"]) if p != "shield" or "shield" in u["joints"]]
     out["head_r"] = u.get("head_r", ak.POSES["head_r"])
     out["limb"] = u.get("limb", 1.0)
     if u.get("palette"):
@@ -155,7 +186,13 @@ def unit_poses(u):
         src = {a: [guides.mirror_pose(p) for p in fr] for a, fr in src.items()}
     if u.get("same_as_source"):
         return src
-    return {anim: [retarget(u, src["idle"][0], p) for p in frames] for anim, frames in src.items()}
+
+    def mode(anim, i):
+        if u.get("legacy") or i == 0 and anim in ("idle", "strike"):
+            return "rel"
+        return "disp" if (anim, i) in WARP_FRAMES else "drawn"
+    return {anim: [retarget(u, src["idle"][0], p, mode(anim, i)) for i, p in enumerate(frames)]
+            for anim, frames in src.items()}
 
 
 def beat_text(u, anim, i):
@@ -236,6 +273,51 @@ def generate(u, out, anims, style, n=2):
     return log
 
 
+def x_snap(frame, guide, y0=50, lim=40, min_gain=0.05):
+    """The model places each figure a little differently inside its cell, and the slicer only corrects height. Slide a
+    standing frame sideways onto its guide: the dx (within +-lim) that best overlaps the two alpha masks below y0 (legs
+    and body; arms and weapon vary more). Applied only when the overlap (IoU) gains at least min_gain.
+    Returns (frame, dx applied, gain)."""
+    import numpy as np
+    A = np.asarray(frame.getchannel("A"))[y0:] >= 128
+    G = np.asarray(guide.getchannel("A"))[y0:] >= 128
+    iou = lambda S: (S & G).sum() / max(1, (S | G).sum())
+    i0, best = iou(A), (0, iou(A))
+    for dx in range(-lim, lim + 1):
+        S = np.zeros_like(A)
+        if dx >= 0:
+            S[:, dx:] = A[:, :A.shape[1] - dx]
+        else:
+            S[:, :dx] = A[:, -dx:]
+        v = iou(S)
+        if v > best[1] + 1e-9:
+            best = (dx, v)
+    dx, gain = best[0], best[1] - i0
+    if dx == 0 or gain < min_gain:
+        return frame, 0, round(gain, 3)
+    out = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    out.alpha_composite(frame.crop((max(0, -dx), 0, frame.width - max(0, dx), frame.height)), (max(0, dx), 0))
+    return out, dx, round(gain, 3)
+
+
+def prepare(u, name, fr, poses, style, base):
+    """Post-process one sliced sheet (fr[0] = reference cell): de-fringe the redrawn frames and slide standing frames
+    onto their guides. Legacy unit files get only the sprint's edge de-fringe. Returns (frames, {cell: dx})."""
+    legacy = u.get("legacy", False)
+    out, moved = [fr[0]], {}
+    clean = finish.defringe_applicable(base) and u.get("defringe", True)
+    for k, f in enumerate(fr[1:], 1):
+        if clean:
+            f = finish.defringe(f, interior=not legacy)
+        an, i = SHEETS[name][k - 1]
+        if not legacy and (an, i) in STANDING:
+            f, dx, _ = x_snap(f, guides.render_guide(poses[an][i], style))
+            if dx:
+                moved[f"{an} {i}"] = dx
+        out.append(f)
+    return out, moved
+
+
 def raw_files(wdir, name):
     fs = sorted(wdir.glob(f"raw_{name}_*.png")) or sorted(wdir.glob(f"raw_{name}.png"))
     return [f for f in fs if not f.name.endswith(".prompt.txt")]
@@ -259,14 +341,14 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
             if picks.get(name) == k or (name not in picks and (best is None or sc < best[0])):
                 best = (sc if name not in picks else -1, k, fr)
         chosen[name] = best
-        review_sheet(wdir, name, base)
+        review_sheet(wdir, name, base, u, poses, style)
     # round-2 fixes from the judges: de-fringe redrawn frames (magenta keying halo), sharpened warps (crisp idle and
-    # settle frames instead of bilinear blur)
-    clean = finish.defringe_applicable(base) and u.get("defringe", True)
-    if clean:
-        for name in chosen:
-            sc, k, fr = chosen[name]
-            chosen[name] = (sc, k, [fr[0]] + [finish.defringe(f) for f in fr[1:]])
+    # settle frames instead of bilinear blur); after the ogre test: interior de-fringe and the sideways snap
+    for name in chosen:
+        sc, k, fr = chosen[name]
+        fr, moved = prepare(u, name, fr, poses, style, base)
+        chosen[name] = (sc, k, fr)
+        report[f"{name}_{k}"]["x_snap"] = moved
     warp = lambda p: rig.warp_to_pose(base, rest, p, sharpen=u.get("sharpen", 3.0))
     frames = {}
     if "idle" in anims:
@@ -292,7 +374,8 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
             fr2 = list(fr)
             if with_fx:
                 if a == "strike":
-                    fr2 = finish.apply_strike_fx(fr2, direction=smear_direction(u))
+                    fr2 = finish.apply_strike_fx(fr2, direction=smear_direction(u),
+                                                 min_blade=0 if u.get("legacy") else 20)
                 if a in ("flinch", "death"):
                     fr2 = finish.apply_hit_fx(fr2)
             write(d, a, fr2, base, u)
@@ -303,14 +386,17 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
     return picked, report
 
 
-def review_sheet(wdir, name, base, picked=None):
+def review_sheet(wdir, name, base, u, poses, style):
     """work/<out>/variants_<sheet>.png: every variant of one sheet, one row each, at 2x on a light ground, so a person
-    or agent can pick by eye (the automatic score cannot see colour smudges or off-model faces)."""
+    or agent can pick by eye (the automatic score cannot see colour smudges or off-model faces). Frames are shown as
+    they will be used (de-fringed, slid onto their guides); a cell label gives that slide and any ground snap."""
     from PIL import ImageDraw
     geom = json.loads((wdir / f"template_{name}.geom.json").read_text())
     rows = []
     for k, raw in enumerate(raw_files(wdir, name), 1):
         fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
+        fr, moved = prepare(u, name, fr, poses, style, base)
+        snaps = diag.get("ground_snap", {})
         cells = [base] + fr[1:]
         row = Image.new("RGBA", (128 * 2 * len(cells), 128 * 2 + 40), (222, 226, 214, 255))
         d = ImageDraw.Draw(row)
@@ -318,7 +404,15 @@ def review_sheet(wdir, name, base, picked=None):
                fill=(150, 20, 20, 255))
         for i, f in enumerate(cells):
             row.alpha_composite(f.crop((ak.SAFE_X[0], 0, ak.SAFE_X[1], ak.H)).resize((256, 256), Image.NEAREST), (i * 256, 40))
-            lab = "sprite (frame 0)" if i == 0 else f"{SHEETS[name][i - 1][0]} frame {SHEETS[name][i - 1][1]}"
+            lab = "sprite (frame 0)"
+            if i:
+                an, fi = SHEETS[name][i - 1]
+                lab = f"{an} frame {fi}"
+                if moved.get(f"{an} {fi}"):
+                    lab += f"  slid {moved[f'{an} {fi}']:+d}"
+                sn = snaps.get(str(i), snaps.get(i, 0)) if isinstance(snaps, dict) else 0
+                if sn and abs(sn) >= 4:
+                    lab += f"  ground {sn:+.0f}"
             d.text((i * 256 + 4, 22), lab, fill=(30, 34, 40, 255))
         rows.append(row)
     if rows:
@@ -339,8 +433,9 @@ def check_guides(u, out):
     style = u.get("guide_style", "grey")
     base = base_canvas(u)
     g = guides.render_guide(poses["idle"][0], style)
-    g2 = g.copy()
-    g2.putalpha(g.getchannel("A").point(lambda a: int(a * 0.55)))
+    red = Image.new("RGBA", g.size, (255, 40, 40, 255))
+    g2 = Image.blend(g, red, 0.45)  # tinted so the grey blockout stands out from the sprite
+    g2.putalpha(g.getchannel("A").point(lambda a: int(a * 0.6)))
     over = Image.new("RGBA", (ak.W, ak.H), (126, 170, 60, 255))
     over.alpha_composite(base)
     over.alpha_composite(g2)
@@ -353,6 +448,10 @@ def check_guides(u, out):
         for x, f in enumerate(row):
             sheet_im.alpha_composite(f, (x * ak.W, y * ak.H))
     sheet_im.resize((sheet_im.width * 2, sheet_im.height * 2), Image.NEAREST).save(wdir / "guides_check.png")
+    short = [f"{a} {i}" for a, fr in poses.items() for i, p in enumerate(fr) if p.get("_weapon_shortened")]
+    if short:
+        print(f"warning: the guide weapon was shortened to fit the canvas in {', '.join(short)}; the model draws it at full "
+              "length, so expect it cut off at the canvas edge there (ANIMATING_UNITS.md, Known limits)", file=sys.stderr)
     return wdir / "guides_check.png"
 
 

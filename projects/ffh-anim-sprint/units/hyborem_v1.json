@@ -1,8 +1,9 @@
 {
- "_note": "Pre-rule set kept only to reproduce final_hyborem_v1/ (the sprint's first second-unit check). Its poses strike to the lower-left although the sprite looks lower-right, which breaks the strike-direction rule in ANIMATING_UNITS.md. Do not copy it; use units/hyborem.json.",
+ "_note": "Pre-rule set kept only to reproduce final_hyborem_v1/ (the sprint's first second-unit check). Its poses strike to the lower-left although the sprite looks lower-right, which breaks the strike-direction rule in ANIMATING_UNITS.md. Do not copy it; use units/hyborem.json. legacy: true keeps the sprint's exact processing (angle-only retarget, edge-only de-fringe, no sideways snap).",
  "name": "hyborem",
  "sprite": "m7/roster/units/unit_hyborem.png",
  "facing": "lower-left",
+ "legacy": true,
  "tag": "anim/final",
  "description": "Hyborem, a towering hulking demon lord: deep crimson skin, two huge curved black horns, burning yellow eyes and a fanged grin, black obsidian spiked armour with gold trim, a tattered dark red cape, a black flaming greatsword in his RIGHT hand, and a ring of solid orange-yellow flames around his feet",
  "hands": "the flaming greatsword stays in his right hand on the screen-left side and his left hand is an empty fist on the screen-right side",
