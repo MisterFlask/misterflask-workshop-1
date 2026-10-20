@@ -182,11 +182,14 @@ def boil(frames):
     return out
 
 
-def _pose_blade_vs_shield(anim, i):
-    """Expected sign of (blade centre x - shield centre x) from poses.json, or None if it is ambiguous."""
+def _pose_blade_vs_shield(anim, i, poses=None):
+    """Expected sign of (blade centre x - shield centre x) from the poses (default poses.json), or None if it is
+    ambiguous or the pose has no shield."""
     try:
-        p = ak.POSES["anims"][anim][i]
+        p = (poses or ak.POSES["anims"])[anim][i]
     except (KeyError, IndexError):
+        return None
+    if "shield" not in p:
         return None
     hilt, tip = (p["sword"] if "sword" in p else (p["r_ha"], p["tip"]))
     bx = (hilt[0] + tip[0]) / 2
@@ -194,9 +197,16 @@ def _pose_blade_vs_shield(anim, i):
     return None if abs(d) < 8 else (1 if d > 0 else -1)
 
 
-def gates(anim, frames, poses=None):
-    """Heuristic flags, confirmed by eye: facing flip (the face/skin centroid should be left of the hair centroid),
-    hand swap (blade vs shield on the opposite sides from the beat-sheet pose), missing sword."""
+def gates(anim, frames, poses=None, facing="lower-left"):
+    """Heuristic flags, confirmed by eye: facing flip (the face/skin centroid should be on the facing side of the hair
+    centroid), hand swap (blade vs shield on the opposite sides from the pose: poses = {anim: [pose, ...]}, default
+    poses.json), missing sword. The colour parts are the swordsman's. A lower-right facer is checked as the mirror
+    image of a lower-left one."""
+    if facing == "lower-right":
+        from PIL import ImageOps
+        import guides
+        frames = [ImageOps.mirror(f) for f in frames]
+        poses = {a: [guides.mirror_pose(p) for p in fr] for a, fr in (poses or ak.POSES["anims"]).items()}
     flags = []
     for i, f in enumerate(frames):
         pm = part_masks(f)
@@ -208,7 +218,7 @@ def gates(anim, frames, poses=None):
             continue
         if skin[0] > hair[0] + 6:
             flags.append(f"frame {i}: face is right of the hair (facing flip?)")
-        exp = _pose_blade_vs_shield(anim, i)
+        exp = _pose_blade_vs_shield(anim, i, poses)
         if steel and wood and exp is not None:
             got = steel[0] - wood[0]
             if abs(got) > 6 and (1 if got > 0 else -1) != exp:
@@ -216,9 +226,9 @@ def gates(anim, frames, poses=None):
     return flags
 
 
-def anim_metrics(frames, anim):
+def anim_metrics(frames, anim, poses=None, facing="lower-left"):
     m = {"nonrigid": nonrigid(frames, wide=(anim == "death")), "overlap": overlap(frames), "drift_dE": drift(frames),
-         "boil": boil(frames), "arc": [tip_point(f) for f in frames], "gates": gates(anim, frames)}
+         "boil": boil(frames), "arc": [tip_point(f) for f in frames], "gates": gates(anim, frames, poses, facing)}
     if anim in ("idle", "flinch"):
         m["jitter"] = jitter(frames)
     nr = [v for v in m["nonrigid"][1:]]
@@ -234,11 +244,13 @@ def arm_metrics(arm, anims=ANIMS, root=None):
     d = Path(root) if root else ak.ROOT / "arms" / arm
     mp = d / "metrics.json"
     out = json.loads(mp.read_text()) if mp.exists() else {}  # merge: agents may compute one animation at a time
+    up = d / "unit_poses.json"  # written by recipe.py: the poses and facing this unit was made with
+    unit = json.loads(up.read_text()) if up.exists() else {}
     for anim in anims:
         if not (d / anim / "manifest.json").exists():
             continue
         frames, _ = ak.load_anim(arm, anim, root=root)
-        out[anim] = anim_metrics(frames, anim)
+        out[anim] = anim_metrics(frames, anim, unit.get("anims"), unit.get("facing", "lower-left"))
     mp.write_text(json.dumps(out, indent=1))
     return {k: v for k, v in out.items() if k in anims}
 

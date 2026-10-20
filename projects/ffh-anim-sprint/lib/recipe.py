@@ -5,6 +5,7 @@
   python lib/recipe.py --unit units/hyborem.json --out final_hyborem --anims strike death
   python lib/recipe.py --grid m7/roster/units/unit_ogre_embers.png --out final_ogre   # coordinates for annotating
   python lib/recipe.py --unit units/ogre.json --out final_ogre --check-guides          # guides, no API calls
+  python lib/recipe.py --unit units/ogre.json --out final_ogre --show-beats            # texts the model will get
 
 The full how-to for agents is ANIMATING_UNITS.md.
 
@@ -20,11 +21,15 @@ How it works (each choice comes from the sprint's results; see the report):
   finish  smear + spark on the strike, hit flash on flinch/death frame 0 (FX) - written to <out>/ ; the same set
           without FX goes to <out>_nofx/ for fair comparison with round-1 arms.
 
-A unit file (JSON) gives: name, sprite path, description (one line, what the model must keep), guide style
-("colour" for the swordsman's own palette, "grey" for any other unit), the unit's frame-0 joints in 1x canvas
-coordinates (same keys as poses.json; omit "shield" if it has none), optional beat-text overrides, and optional
-poses_from (default poses.json). Poses for other units are retargeted bone by bone: each bone keeps the unit's own
-frame-0 angle plus the swordsman bone's rotation away from its rest angle, at the unit's own bone lengths.
+A unit file (JSON) gives: name, sprite path, description (one line, what the model must keep), facing (the way the
+sprite looks: "lower-left" or "lower-right"; the strike always goes that way, and the hit comes from there), guide
+style ("colour" for the swordsman's own palette, "grey" for any other unit), the unit's frame-0 joints in 1x canvas
+coordinates (same keys as poses.json, r_ = the weapon arm; omit "shield" if it has none) and optional beat-text
+overrides. The facing and the weapon's screen side pick the source pose set (pose_set): "far" (poses.json, written for
+a lower-left facer with the weapon in the far, screen-left hand) or "near" (poses_near.json, a lower-right facer with
+the weapon in the near, screen-left hand), mirrored when the weapon is in the screen-right hand. Poses for other units
+are retargeted bone by bone: each bone keeps the unit's own frame-0 angle plus the source bone's rotation away from
+its rest angle, at the unit's own bone lengths.
 """
 import argparse, json, math, sys, time
 from pathlib import Path
@@ -35,6 +40,10 @@ import animkit as ak  # noqa: E402
 import beats, finish, gen, guides, metrics, rig, sheet  # noqa: E402
 
 ROOT = ak.ROOT
+FACINGS = ("lower-left", "lower-right")
+SETS = {"far": "poses.json", "near": "poses_near.json"}
+JOINTS = ("head", "neck", "chest", "pelvis", "r_sh", "r_el", "r_ha", "tip", "l_sh", "l_el", "l_ha",
+          "r_hip", "r_kn", "r_ft", "l_hip", "l_kn", "l_ft")
 TREE = [("pelvis", "chest"), ("chest", "neck"), ("neck", "head"), ("chest", "r_sh"), ("r_sh", "r_el"), ("r_el", "r_ha"),
         ("r_ha", "tip"), ("chest", "l_sh"), ("l_sh", "l_el"), ("l_el", "l_ha"), ("pelvis", "r_hip"), ("r_hip", "r_kn"),
         ("r_kn", "r_ft"), ("pelvis", "l_hip"), ("l_hip", "l_kn"), ("l_kn", "l_ft")]
@@ -46,6 +55,15 @@ def load_unit(path):
     for k in ("name", "sprite", "description", "joints"):
         if k not in u:
             raise SystemExit(f"unit file {path} is missing '{k}' (see ANIMATING_UNITS.md, step 1)")
+    if "facing" not in u:
+        print(f"warning: {path} has no 'facing'; assuming lower-left (ANIMATING_UNITS.md, step 1)", file=sys.stderr)
+        u["facing"] = "lower-left"
+    if u["facing"] not in FACINGS:
+        raise SystemExit(f"{path}: facing must be one of {FACINGS}, not {u['facing']!r}")
+    missing = [j for j in JOINTS if j not in u["joints"]]
+    if missing:
+        raise SystemExit(f"{path}: joints {missing} are missing (every joint except shield is required)")
+    u["pose_set"], u["mirror"] = pose_set(u)
     u["sprite_img"] = Image.open(ROOT / u["sprite"]).convert("RGBA")
     sp = u["sprite_img"]
     if sp.height > ak.H or sp.width > ak.SAFE_X[1] - ak.SAFE_X[0]:
@@ -54,6 +72,22 @@ def load_unit(path):
                          "(ANIMATING_UNITS.md, 'Known limits').")
     u["offset"] = (int(ak.ANCHOR[0] - sp.width / 2), ak.H - sp.height)  # M7: feet 2 px above the bottom
     return u
+
+
+def pose_set(u):
+    """(source set, mirror) for this unit, so that the strike goes the way the sprite looks: the far set looks
+    lower-left with the weapon in the far (screen-left) hand, the near set looks lower-right with the weapon in the
+    near (screen-left) hand, and a mirrored set swaps both the facing and the weapon's screen side."""
+    weapon_left = u["joints"]["r_sh"][0] <= u["joints"]["l_sh"][0]
+    if weapon_left:
+        return ("far" if u["facing"] == "lower-left" else "near"), False
+    return ("near" if u["facing"] == "lower-left" else "far"), True
+
+
+def smear_direction(u):
+    """Which way the strike's blade turns on screen (finish.smear), from the source set, flipped when mirrored."""
+    d = json.loads((ROOT / SETS[u["pose_set"]]).read_text()).get("smear", "ccw")
+    return {"ccw": "cw", "cw": "ccw"}.get(d, d) if u["mirror"] else d
 
 
 def base_canvas(u):
@@ -116,14 +150,21 @@ def retarget(u, src_rest, src_pose):
 
 
 def unit_poses(u):
-    src = json.loads((ROOT / u.get("poses_from", "poses.json")).read_text())["anims"]
+    src = json.loads((ROOT / u.get("poses_from", SETS[u["pose_set"]])).read_text())["anims"]
+    if u["mirror"]:
+        src = {a: [guides.mirror_pose(p) for p in fr] for a, fr in src.items()}
     if u.get("same_as_source"):
         return src
     return {anim: [retarget(u, src["idle"][0], p) for p in frames] for anim, frames in src.items()}
 
 
 def beat_text(u, anim, i):
-    return u.get("beats", {}).get(anim, {}).get(str(i)) or beats.BEATS[anim][i]["text"]
+    """The unit's own override (written for its real facing), else the source set's text, mirrored with its poses."""
+    own = u.get("beats", {}).get(anim, {}).get(str(i))
+    if own:
+        return own
+    t = (beats.BEATS_NEAR if u["pose_set"] == "near" else beats.BEATS)[anim][i]["text"]
+    return beats.swap_sides(t) if u["mirror"] else t
 
 
 # ---------------------------------------------------------------- prompt
@@ -134,8 +175,8 @@ def prompt(u, anim_label, cells, style):
         "The first attached image is a sprite-sheet template from my isometric fantasy strategy game: a 4x2 grid of "
         "equal cells on a flat magenta background (there are no visible grid lines). The top-left cell (cell 1) shows "
         f"the finished character, {u['description']}, drawn in {gen.STYLE}, standing in a 3/4 view facing the "
-        f"lower-left. {guide} Every cell must show the SAME character: same size, same face, same outfit and colours, "
-        "same pixel size and outline style, feet on the same ground line as the top-left cell. He faces the lower-left "
+        f"{u['facing']}. {guide} Every cell must show the SAME character: same size, same face, same outfit and colours, "
+        "same pixel size and outline style, feet on the same ground line as the top-left cell. He faces the {u['facing']} "
         f"in every cell; {u.get('hands', 'the weapon stays in the same hand as in cell 1')}. Leave cell 1 exactly as "
         f"it is. Empty cells stay empty magenta. The cells are consecutive frames of {anim_label}, read left to right, "
         f"top row then bottom row:\n{lines}\nEach cell holds exactly one figure, fully inside its cell. No grid lines, "
@@ -161,10 +202,10 @@ def make_sheet(u, poses, name, wdir, style):
     return geom, prompt(u, LABEL[name], texts, style)
 
 
-def score_variant(diag, cand):
+def score_variant(diag, cand, poses=None, facing="lower-left"):
     """Lower is better: gate flags (x100), reference-redraw colour error, scale error, size of ground snaps.
     cand = {anim: frames with the right frame indices} for the gate check."""
-    g = sum(len(metrics.gates(a, fr)) for a, fr in cand.items())
+    g = sum(len(metrics.gates(a, fr, poses=poses, facing=facing)) for a, fr in cand.items())
     ref = (diag.get("ref_redraw_dE") or {}).get("dE") or 20
     snap = sum(abs(v) for v in diag.get("ground_snap", {}).values())
     return g * 100 + ref + abs(diag["k"] - 1) * 200 + snap * 0.5
@@ -212,7 +253,7 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
         best = None
         for k, raw in enumerate(raw_files(wdir, name), 1):
             fr, diag = sheet.slice_sheet(raw, geom, n=len(SHEETS[name]) + 1, ref_canvas=base)
-            sc = score_variant(diag, candidates(name, fr, base))
+            sc = score_variant(diag, candidates(name, fr, base), poses, u["facing"])
             report[f"{name}_{k}"] = {"score": round(sc, 2), "k": diag["k"], "ref": diag.get("ref_redraw_dE"),
                                      "snap": diag.get("ground_snap"), "warnings": diag["warnings"]}
             if picks.get(name) == k or (name not in picks and (best is None or sc < best[0])):
@@ -251,10 +292,12 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
             fr2 = list(fr)
             if with_fx:
                 if a == "strike":
-                    fr2 = finish.apply_strike_fx(fr2)
+                    fr2 = finish.apply_strike_fx(fr2, direction=smear_direction(u))
                 if a in ("flinch", "death"):
                     fr2 = finish.apply_hit_fx(fr2)
-            write(d, a, fr2, base)
+            write(d, a, fr2, base, u)
+        (d / "unit_poses.json").write_text(json.dumps({"unit": u["name"], "facing": u["facing"], "pose_set": u["pose_set"],
+                                                       "mirrored": u["mirror"], "anims": poses}))
     picked = {k: v[1] for k, v in chosen.items()}
     (wdir / "build_report.json").write_text(json.dumps({"picked": picked, "variants": report}, indent=1))
     return picked, report
@@ -313,8 +356,9 @@ def check_guides(u, out):
     return wdir / "guides_check.png"
 
 
-def write(d, anim, frames, base):
-    """write_anim into an arbitrary folder (final/, final_nofx/, final_<unit>/) with this unit's frame 0."""
+def write(d, anim, frames, base, u=None):
+    """write_anim into an arbitrary folder (final/, final_nofx/, final_<unit>/) with this unit's frame 0; the
+    manifest gets the unit's name and facing."""
     import shutil
     arm = d.name
     tmp_root = ROOT / "arms"
@@ -330,6 +374,11 @@ def write(d, anim, frames, base):
             src.rmdir()
         except OSError:
             pass
+    if u:
+        mf = d / anim / "manifest.json"
+        man = json.loads(mf.read_text())
+        man = {"unit": u["name"], "facing": u["facing"], **{k: v for k, v in man.items() if k != "unit"}}
+        mf.write_text(json.dumps(man, indent=1))
 
 
 if __name__ == "__main__":
@@ -342,6 +391,8 @@ if __name__ == "__main__":
     ap.add_argument("--no-fx", action="store_true")
     ap.add_argument("--pick", nargs="*", default=[], help="sheet=variant, e.g. strike=2")
     ap.add_argument("--check-guides", action="store_true", help="only render work/<out>/guides_check.png (no API calls)")
+    ap.add_argument("--show-beats", action="store_true", help="only print the facing, pose set and the beat text each "
+                    "sheet cell will get, marking texts that name a shield, sword or blade (no API calls)")
     a = ap.parse_args()
     if a.grid:
         sp = Image.open(ROOT / a.grid).convert("RGBA")
@@ -357,6 +408,16 @@ if __name__ == "__main__":
     style = u.get("guide_style", "grey")
     if a.check_guides:
         print(check_guides(u, a.out))
+        sys.exit(0)
+    if a.show_beats:
+        print(f"{u['name']}: facing {u['facing']}, pose set {u['pose_set']}{' (mirrored)' if u['mirror'] else ''}, "
+              f"smear {smear_direction(u)}")
+        for name, cells in SHEETS.items():
+            for an, i in cells:
+                t = beat_text(u, an, i)
+                own = "own " if u.get("beats", {}).get(an, {}).get(str(i)) else "    "
+                props = ",".join(w for w in ("shield", "sword", "blade") if w in t.lower())
+                print(f"{an:6} {i}  {own}{('[' + props + '] ') if props else ''}{t}")
         sys.exit(0)
     t0 = time.time()
     if not a.rebuild:

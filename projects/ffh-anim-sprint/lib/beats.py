@@ -34,6 +34,20 @@ BEATS = {
         {"ms": 400, "text": "corpse: lying flat and still on his back, eyes closed, sword and shield on the ground beside him"},
     ],
 }
+
+
+def swap_sides(text):
+    """Mirror a beat text: every left <-> right (screen directions and, since a mirror image is mirrored in body too,
+    hands)."""
+    import re
+    sw = {"left": "right", "right": "left", "Left": "Right", "Right": "Left", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+    return re.sub(r"\b(left|right|Left|Right|LEFT|RIGHT)\b", lambda m: sw[m.group(1)], text)
+
+
+# The near set (poses_near.json): a unit that looks LOWER-RIGHT with the weapon in the near, screen-left hand. Same
+# timings and events as BEATS; texts describe that set's poses.
+BEATS_NEAR = {anim: [dict(b, text=swap_sides(b["text"])) for b in frames] for anim, frames in BEATS.items()}
+
 LOOP = {"idle": True, "strike": False, "flinch": False, "death": False}
 HOLD_LAST = {"idle": False, "strike": False, "flinch": False, "death": True}
 COUNTS = {k: len(v) for k, v in BEATS.items()}

@@ -37,8 +37,26 @@ def grass():
     return Image.open(GRASS).convert("RGBA")
 
 
+_UNIT_BASE = {}  # the current unit's idle frame 0 (set_unit), for banner placement
+
+
+def set_unit(d):
+    """Use this output folder's idle frame 0 (the unit's static sprite) for banner placement; swordsman if none."""
+    f = Path(d) / "idle" / "frame_00.png"
+    _UNIT_BASE["img"] = Image.open(f).convert("RGBA") if f.exists() else ak.base_canvas()
+
+
+def facing(d):
+    """The facing recorded in an output folder's manifests by recipe.py (older sets: lower-left)."""
+    for anim in ("strike", "idle"):
+        mf = Path(d) / anim / "manifest.json"
+        if mf.exists():
+            return json.loads(mf.read_text()).get("facing", "lower-left")
+    return "lower-left"
+
+
 def banner_x(ax, mirrored=False):
-    base = ak.base_canvas()
+    base = _UNIT_BASE.get("img") or ak.base_canvas()
     bb = ak.bbox(ak.mirror(base) if mirrored else base, 40)  # spec: banner from the idle frame-0 bbox, fixed per unit
     left = bb[0] - ak.W / 2
     return ax + min(-34, left - 10)
@@ -292,7 +310,11 @@ def sequence(arm, outdir, root=None, label=None):
 
 
 def vignette(arm, outdir, root=None, scale=2):
-    """A (right, blue) strikes B (left, mirrored, red): B flinches; A strikes again: B dies and stays down."""
+    """A (blue) strikes B (mirrored, red) on the neighbouring tile on the side A looks: B flinches; A strikes again:
+    B dies and stays down. A lower-left facer stands on the right, a lower-right facer on the left."""
+    d = Path(root) if root else ak.ROOT / "arms" / arm
+    set_unit(d)
+    a_left = facing(d) == "lower-right"
     a_script = [("idle", 1000), ("strike", None), ("idle", 1600), ("strike", None), ("idle", 2400)]
     a_segs, a_ev = actor_timeline(arm, a_script, root=root)
     hits = [t for k, t in a_ev if k == "hit"]
@@ -316,9 +338,12 @@ def vignette(arm, outdir, root=None, scale=2):
             sc.alpha_composite(g, (X0 + (c - r) * 96, Y0 + (c + r) * 48))
         ax_, ay_ = X0 + (2 - 1) * 96 + 96, Y0 + (2 + 1) * 48 + 54   # A on tile (1,2)
         bx_, by_ = X0 + (1 - 2) * 96 + 96, Y0 + (1 + 2) * 48 + 54   # B on tile (2,1)
+        if a_left:
+            ax_, bx_ = bx_, ax_
         unit_on(sc, fs[1], bx_, by_, "red", mirrored=True)
         unit_on(sc, fs[0], ax_, ay_, "blue")
-        sc = sc.crop((bx_ - 150, ay_ - 170, ax_ + 120, ay_ + 50))
+        lx, rx = min(ax_, bx_), max(ax_, bx_)
+        sc = sc.crop((lx - 150, ay_ - 170, rx + 120, ay_ + 50))
         return sc.resize((sc.width * scale, sc.height * scale), Image.NEAREST)
 
     fr = composite_timeline([a_segs, b_segs], draw)
@@ -340,6 +365,7 @@ def anim_gifs(frames, man, outdir, anim):
 
 def arm_previews(arm, root=None, only=None):
     d = Path(root) if root else ak.ROOT / "arms" / arm
+    set_unit(d)
     pv = d / "preview"
     pv.mkdir(parents=True, exist_ok=True)
     have = [a for a in ANIMS if (d / a / "manifest.json").exists()]
