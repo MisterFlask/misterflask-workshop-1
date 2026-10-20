@@ -43,10 +43,11 @@ python3 lib/recipe.py --unit units/swordsman.json --out final --rebuild --pick s
 python3 lib/preview.py --arm final --root final                              # strips, sequence_*.gif/mp4, vignette
 ```
 
+**To animate another unit, follow [`ANIMATING_UNITS.md`](ANIMATING_UNITS.md)**: the step-by-step guide for agents (unit
+file and joints, the free `--grid` and `--check-guides` helpers, picking variants by eye, QA checklist, known limits).
 A unit file (`units/*.json`) holds the sprite path, a one-line description of what the model must keep, the hands
-sentence and the frame-0 joints in canvas pixels (use `animkit.grid_view` to read them). Other units use grey guides
-and poses retargeted from the swordsman's (`units/hyborem.json`). The OpenAI key is injected by the session proxy;
-elsewhere set `OPENAI_API_KEY`.
+sentence and the frame-0 joints in canvas pixels. Other units use grey guides and poses retargeted from the
+swordsman's (`units/hyborem.json`). The OpenAI key is injected by the session proxy; elsewhere set `OPENAI_API_KEY`.
 
 Output per animation: `<out>/<anim>/frame_NN.png` (160×128, anchor (80,126) = tile centre, as an M7 unit),
 `manifest.json` (per-frame ms, `hit` event, loop/hold), `sheet_<anim>.png`. The engine should place the banner from
