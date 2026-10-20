@@ -255,7 +255,8 @@ files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheet
   which `lib/guides.py` reads) and `poses_near.json`; `REGION`, `GROUND_Y` and `SCALE` in `lib/sheet.py` (128 × 3 already
   fills a 384 px cell, so the cell size from `default_geom` and the image size in `lib/gen.py` `CONTRACT` change too);
   the guide-weapon clamp (x 18–142, y 3–125) in `recipe.retarget`; the cell sizes in `recipe.review_sheet`; and the
-  scene sizes in `lib/preview.py`. That is untested.
+  scene sizes in `lib/preview.py`. That is untested. The sideways slide (step 3) can push a long weapon further past
+  the edge: Hyborem's greatsword in strike frames 3 and 4.
 - **Purple or magenta art** (Sheaim, liches, infernal fire). The model's background is magenta and is keyed out. The
   de-fringe step turns itself off when 1% or more of the sprite's opaque pixels are purple (the lich and the Sheaim
   mage), but keying can still eat purple art. The magenta key is assumed by the prompt, the template background
@@ -301,9 +302,25 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
 - Report, with every animation playable: https://claude.ai/artifact/3eWLaH1v9PHpu6G6FGKExb
 - Data: `judging/` (scores, judges' JSON and keys), `spend.jsonl`, and the method arms' `notes.md`.
 
+### After the sprint
+
+- **Rule 1** (the strike goes where the sprite looks) was added after the sprint. Most roster sprites look lower-right,
+  so a second pose set was made for them (`poses_near.json`): three agents each designed one, three blind judges scored
+  the rendered guides, and the winner (7.83 of 10 in strike, flinch and death, against 7.33 and 5.33 for the others in
+  the strike) was refined from the judges' notes.
+- **A cold test** of this guide on the ogre, by an agent that read nothing else, found four gaps that are now fixed in
+  the recipe: a weapon carried differently from the swordsman's (a club on the shoulder) swung the wrong way, other units
+  did not breathe in the idle, the model's sideways placement made the ogre hop backwards while striking, and purple
+  specks survived inside the figure.
+- VERIFY-PLACEHOLDER
+
 ## Worked examples
 
-- `units/ogre.json` → `final_ogre/`: looks lower-left, club on the shoulder, far set.
-- Pre-rule sets, kept only to reproduce the sprint (they break rule 1): `units/swordsman_judged.json` → `final/`,
-  `units/hyborem_v1.json` → `final_hyborem_v1/`.
-- Lower-right examples (the swordsman, Hyborem) are being regenerated with the near set.
+- `units/swordsman.json` → `final_swordsman/`: looks lower-right, sword in the near hand, shield; near set, colour
+  guides.
+- `units/hyborem.json` → `final_hyborem/`: looks lower-right, a long greatsword, no shield; near set retargeted, grey
+  guides, beat texts reworded (fist and cape for the shield).
+- `units/ogre.json` → `final_ogre/`: looks lower-left, a long club resting on the shoulder, no shield; far set
+  retargeted, beat texts reworded (club for the sword).
+- Pre-rule sets, kept only to reproduce the sprint (they break rule 1; `"legacy": true`): `units/swordsman_judged.json`
+  → `final/`, `units/hyborem_v1.json` → `final_hyborem_v1/`.

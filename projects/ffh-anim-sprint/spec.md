@@ -28,6 +28,13 @@ goes toward the lower-left. Hits come from the lower-left, so flinch recoils and
 toward the upper-right (head upper-right, feet toward the attacker). Other facings are the
 engine's job (mirror for lower-right; upper facings need back views, out of scope here).
 
+**Correction after the sprint.** The swordsman sprite actually looks lower-right (his face and eyes
+point screen-right), with the sword in the near hand, so the sets made under this section strike
+away from where he looks. The sprint's arms and `final/` keep this section as written. Every new
+set follows the strike-direction rule in `ANIMATING_UNITS.md`: the strike goes where the sprite
+looks, hits come from there, and a lower-right unit uses the near pose set (`poses_near.json`,
+texts in `lib/beats.py` `BEATS_NEAR`).
+
 ## Animations
 
 | Anim | Frames | Loop | Frame 0 | Notes |

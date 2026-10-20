@@ -53,3 +53,16 @@ from this file.
 
 The corpse lies along the isometric ground axis (screen direction 96 right : 48 up), so it
 reads as lying *on the tile*, not as a side-view figure tipped over.
+
+## The lower-right (near) set
+
+After the sprint the recipe gained a second pose set for units that look lower-right with the
+weapon in the near, screen-left hand (the swordsman as he really is; `poses_near.json` from
+`lib/poses_near_src.py`, texts in `lib/beats.py` `BEATS_NEAR`). Timings, events and holds are the
+same as above. The directions turn round: the wind-up hangs the blade down behind the shoulders to
+the left, the swing sweeps across the chest, contact slashes down-right toward the lower-right
+tile while the shield arm swings back behind the shoulders; hits come from the lower-right, the
+flinch recoils toward the upper-left, and the corpse lies with the feet toward the lower-right and
+the head toward the upper-left, sword at the lower-right. Mirrored, each set also serves the other
+weapon hand (see `ANIMATING_UNITS.md`).
+

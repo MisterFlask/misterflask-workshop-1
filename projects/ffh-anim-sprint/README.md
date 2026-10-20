@@ -11,8 +11,10 @@ Draw the big actions with the image model, and move the sprite's own pixels for 
 draws a convincing strike, flinch and death on **one sprite sheet per animation** whose first cell is the real sprite
 and whose other cells hold flat-colour pose blockouts. It cannot draw an idle (every redraw shimmers), so idle and the
 frames next to idle are the real sprite bent by a sharpened mesh warp. A full four-animation set takes 3 image calls,
-about 21 s of model calls plus 6 s of assembly, and $0.23 (`lib/recipe.py`), then a by-eye variant pick. Moving the whole sprite or its cut-out parts, which is what looked stiff
-before, came last for strike, flinch and death in every judge's ranking.
+about 21 s of model calls plus 6 s of assembly, and $0.23 (`lib/recipe.py`), then a by-eye variant pick. Moving the
+whole sprite, which is what looked stiff before, came last for strike, flinch and death in every judge's ranking, and
+moving its cut-out parts second to last. Since the sprint the recipe also makes every unit strike where its sprite looks
+(`ANIMATING_UNITS.md`, rule 1); the sprint's own swordsman set predates that rule.
 
 | Round 1 (weighted judge score /10) | idle | strike | flinch | death |
 |---|---|---|---|---|
@@ -38,9 +40,9 @@ https://claude.ai/artifact/3eWLaH1v9PHpu6G6FGKExb (private until shared from its
 ```bash
 cd projects/ffh-anim-sprint
 pip install pillow numpy scipy requests
-python3 lib/recipe.py --unit units/swordsman.json --out final                 # 3 calls; writes final/ and final_nofx/
-python3 lib/recipe.py --unit units/swordsman.json --out final --rebuild --pick strike=2   # re-cut a variant, free
-python3 lib/preview.py --arm final --root final                              # strips, sequence_*.gif/mp4, vignette
+python3 lib/recipe.py --unit units/swordsman.json --out final_swordsman     # 3 calls; final_swordsman/ and _nofx/
+python3 lib/recipe.py --unit units/swordsman.json --out final_swordsman --rebuild --pick strike=1 flinch=1 death=1
+python3 lib/preview.py --arm final_swordsman --root final_swordsman          # strips, sequence_*.gif/mp4, vignette
 ```
 
 **To animate another unit, follow [`ANIMATING_UNITS.md`](ANIMATING_UNITS.md)**: the step-by-step guide for agents (unit
@@ -61,7 +63,10 @@ the idle frame-0 bounding box. Big units need a taller canvas than 128 px (Hybor
   (strips, GIF/MP4 sequences, combat vignette), `judging` (blind packets, aggregation), `recipe`.
 - `arms/<ARM>/`: one folder per method with frames, manifests, sheets, notes, timings, `sequence_{3x,1x}.{gif,mp4}`
   and `vignette.{gif,mp4}`. `arms/calib/` is the model calibration.
-- `final/` (recipe with FX), `final_nofx/`, `final_v1_nofx/` (first build), `final_hyborem/`.
+- `final/` (recipe with FX), `final_nofx/`, `final_v1_nofx/` (first build), `final_hyborem_v1/`: the sprint's sets,
+  made before the strike-direction rule (`units/swordsman_judged.json`, `units/hyborem_v1.json`).
+- `final_swordsman/`, `final_hyborem/`, `final_ogre/` (+ `_nofx`): sets made after it (`units/*.json`).
+- `poses_near.json` (from `lib/poses_near_src.py`): the pose set for units that look lower-right.
 - `judging/`: judge JSON, keys, `scores.json`, `verify_scores.json`. Packets are regenerable and not committed.
 - `report/`: `build.py`, `content.py`, `player.js`, `style.css` → `report/site/` (not committed).
 - `m7/`: the parts of the M7 art-mode package this sprint uses. `spend.jsonl` / `budget.json`: the image-API ledger.
