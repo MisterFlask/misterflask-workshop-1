@@ -207,12 +207,21 @@ function canvas(w, h) {
   return c;
 }
 
-/** `src` scaled by `k` with smoothing, halving first so a big reduction keeps its detail; `solid`
- *  makes the edge alpha all-or-nothing (a tile's diamond must cover its neighbours' skirts). */
+/** `src` scaled by `k` with smoothing, halving first so a big reduction keeps its detail and
+ *  enlarging by nearest neighbour first (to the next whole factor) so a fractional enlargement
+ *  stays crisp; `solid` makes the edge alpha all-or-nothing (a tile's diamond must cover its
+ *  neighbours' skirts). */
 function scaled(src, k, solid) {
   const w = Math.max(1, Math.round(src.width * k));
   const h = Math.max(1, Math.round(src.height * k));
   let cur = src;
+  if (k > 1) {
+    const n = Math.ceil(k);
+    cur = canvas(src.width * n, src.height * n);
+    const ug = cur.getContext("2d");
+    ug.imageSmoothingEnabled = false;
+    ug.drawImage(src, 0, 0, cur.width, cur.height);
+  }
   while (cur.width / 2 >= w && cur.height / 2 >= h) {
     const half = canvas(Math.ceil(cur.width / 2), Math.ceil(cur.height / 2));
     const hg = half.getContext("2d");
@@ -331,9 +340,9 @@ class SpriteStore {
   }
 
   /** `key` with the art's stock blue (the settlements' roofs, spires and flags) turned to the
-   *  owner's colour `css`, as the drawn sprite `key@owner`; the plain key until it has loaded. */
-  owned(key, owner, css) {
-    const id = `${key}@${owner}`;
+   *  owner's colour `css`, as the drawn sprite `key@css`; the plain key until it has loaded. */
+  owned(key, css) {
+    const id = `${key}@${css}`;
     if (this.drawn.has(id)) return id;
     const src = Object.hasOwn(SPRITES, key) ? this.source(key) : null;
     if (!src) return key;
@@ -468,6 +477,9 @@ export class IsoMap {
     this.slides = new Map();
     this.slideTurn = null;
     this.seenView = null;
+    this.epoch = null;
+    /** The last size seen of each city (city id -> size): a fogged city keeps its look. */
+    this.lastSize = new Map();
   }
 
   dispose() {}
@@ -529,7 +541,14 @@ export class IsoMap {
 
   screenOf(x, y) {
     const c = this.center(x, y);
-    return { x: c.sx, y: c.sy, ts: this.view.cam.ts };
+    return { x: c.sx, y: c.sy + this.dropAt(x, y), ts: this.view.cam.ts };
+  }
+
+  /** How much lower plot (x, y) is drawn (CSS px): water plots WATER_DROP art px. */
+  dropAt(x, y) {
+    const map = this.view.map;
+    const k = T.plotIndex(map, x, y);
+    return k >= 0 && map.plot_type[k] === this.plotTypes().ocean ? (WATER_DROP * this.view.cam.ts) / NATIVE : 0;
   }
 
   /** A map step (dx east, dy north) as a screen step (CSS px). */
@@ -566,18 +585,24 @@ export class IsoMap {
     if (!sp) return null;
     const s = f.s * mul;
     const left = flip ? info.w - ox : ox;
-    const x = Math.round((ax - left * s) * f.dpr);
-    const y = Math.round((ay - oy * s) * f.dpr);
+    // Both edges rounded from their exact positions, so neighbouring tiles share their edges at any
+    // device-pixel ratio (a browser zoom of 110% leaves no pinholes); at whole scales w = sp.w.
+    const ex = ax - left * s;
+    const ey = ay - oy * s;
+    const x = Math.round(ex * f.dpr);
+    const y = Math.round(ey * f.dpr);
+    const w = Math.round((ex + info.w * s) * f.dpr) - x;
+    const h = Math.round((ey + info.h * s) * f.dpr) - y;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.imageSmoothingEnabled = false;
     if (alpha !== 1) g.globalAlpha = alpha;
-    g.drawImage(sp.c, x, y, sp.w, sp.h);
+    g.drawImage(sp.c, x, y, w, h);
     if (alpha !== 1) g.globalAlpha = 1;
     g.setTransform(f.dpr, 0, 0, f.dpr, 0, 0);
     const [bx0, by0, bx1, by1] = info.box;
     const x0 = flip ? info.w - bx1 : bx0;
     const x1 = flip ? info.w - bx0 : bx1;
-    const part = { key, x: x / f.dpr, y: y / f.dpr, s: sp.w / f.dpr / info.w, flip };
+    const part = { key, x: x / f.dpr, y: y / f.dpr, s: w / f.dpr / info.w, flip };
     return { x0: part.x + x0 * s, y0: part.y + by0 * s, x1: part.x + x1 * s, y1: part.y + by1 * s, part };
   }
 
@@ -615,11 +640,11 @@ export class IsoMap {
 
   /** The banner sprite of `owner`, drawn on first use. */
   bannerKey(owner) {
-    const key = `banner:${owner}`;
-    if (!this.sprites.has(key)) {
-      const fg = ownerColor(owner);
-      this.sprites.put(key, drawBanner(fg, darken(fg, 0.45)));
-    }
+    // Keyed by the colour, not the player: a player's colour can change (a barbarian seen before
+    // it is met, a new game in the same page).
+    const fg = ownerColor(owner);
+    const key = `banner:${fg}`;
+    if (!this.sprites.has(key)) this.sprites.put(key, drawBanner(fg, darken(fg, 0.45)));
     return key;
   }
 
@@ -632,6 +657,15 @@ export class IsoMap {
     if (S.view === this.seenView) return;
     this.seenView = S.view;
     const map = this.view.map;
+    if (map.epoch !== this.epoch) {
+      // Another game (a new map tracker): unit ids restart, so last positions mean nothing.
+      this.epoch = map.epoch;
+      this.unitPos = new Map();
+      this.facing = new Map();
+      this.slides.clear();
+      this.slideTurn = null;
+      this.lastSize.clear();
+    }
     const units = S.view?.units ?? [];
     const { positions, moved } = unitMoves(this.unitPos, units, map.w, !!map.wrap_x);
     this.unitPos = positions;
@@ -683,15 +717,23 @@ export class IsoMap {
 
     // The plots in view (one copy each, nearest the camera), back to front. Sprites rise up to
     // about 270 art px above their plot, so plots below the view still count.
+    // On a map that wraps east-west, a small map or a far zoom shows a plot more than once: each
+    // copy in view is a cell of its own.
     const cells = [];
     const below = 300 * f.s;
+    const copies = map.wrap_x ? [-2, -1, 0, 1, 2] : [0];
+    const wrap = this.step(map.w, 0);
     for (let y = 0; y < map.h; y++) {
       for (let x = 0; x < map.w; x++) {
         const c = this.center(x, y);
-        if (c.sx < -f.TW || c.sx > v.vw + f.TW || c.sy < -f.TH * 2 || c.sy > v.vh + below) continue;
         const k = y * map.w + x;
         const water = map.plot_type[k] === PLOT.ocean;
-        cells.push({ x, y, k, sx: c.sx, sy: c.sy, water, drop: water ? WATER_DROP * f.s : 0, fog: map.vis[k] === 1 });
+        for (const m of copies) {
+          const sx = c.sx + m * wrap.x;
+          const sy = c.sy + m * wrap.y;
+          if (sx < -f.TW || sx > v.vw + f.TW || sy < -f.TH * 2 || sy > v.vh + below) continue;
+          cells.push({ x, y, k, sx, sy, water, drop: water ? WATER_DROP * f.s : 0, fog: map.vis[k] === 1 });
+        }
       }
     }
     cells.sort((a, b) => a.sy - b.sy || a.sx - b.sx);
@@ -708,12 +750,10 @@ export class IsoMap {
     }
     this.drawGroundMarks(g, f);
 
-    const byPlot = new Map(cells.map((c) => [c.k, c]));
+    const byPlot = new Map();
+    for (const c of cells) byPlot.set(c.k, [...(byPlot.get(c.k) ?? []), c]);
     const cities = [];
-    for (const city of S.cities.values()) {
-      const c = byPlot.get(city.y * map.w + city.x);
-      if (c) cities.push({ city, c });
-    }
+    for (const city of S.cities.values()) for (const c of byPlot.get(city.y * map.w + city.x) ?? []) cities.push({ city, c });
     const stacks = this.unitStacks(byPlot);
     // Everything that stands up, as items {d, o, f}: drawn by f in one pass sorted by d (the plot's
     // depth) then o (on one plot: feature, building or city, resource, unit).
@@ -834,7 +874,8 @@ export class IsoMap {
   collectCities(f, cities, items) {
     this.cityFlags = new Map();
     for (const { city, c } of cities) {
-      const base = this.pick(citySprites(city.size ?? 1));
+      if (city.size !== null && city.size !== undefined) this.lastSize.set(city.id, city.size);
+      const base = this.pick(citySprites(city.size ?? this.lastSize.get(city.id) ?? 1));
       const banner = this.bannerKey(city.owner);
       const bottom = c.sy + f.TH / 2;
       items.push({
@@ -842,12 +883,12 @@ export class IsoMap {
         f: (g, alpha = 1) => {
           let box = null;
           if (base) {
-            const key = this.sprites.owned(base, city.owner, ownerColor(city.owner));
+            const key = this.sprites.owned(base, ownerColor(city.owner));
             const info = this.sprites.info(key);
             box = this.blit(g, f, key, c.sx, bottom, info.w / 2, info.h, { fog: c.fog, alpha, mul: info.w > NATIVE ? NATIVE / info.w : 1 });
           }
           const fl = this.blit(g, f, banner, c.sx - 62 * f.s, bottom - 16 * f.s, 4, 95, { alpha });
-          if (fl) this.cityFlags.set(c.k, fl);
+          if (fl) this.cityFlags.set(c, fl);
           return union(box, fl);
         },
       });
@@ -863,10 +904,8 @@ export class IsoMap {
     const out = [];
     for (const units of S.unitsAt.values()) {
       const u0 = units[0];
-      const c = byPlot.get(u0.y * v.map.w + u0.x);
-      if (!c) continue;
       const top = T.topUnit(units, mine, sel);
-      out.push({ units, top, c, picked: sel.includes(top.id) });
+      for (const c of byPlot.get(u0.y * v.map.w + u0.x) ?? []) out.push({ units, top, c, picked: sel.includes(top.id) });
     }
     return out;
   }
@@ -1279,8 +1318,9 @@ export class IsoMap {
       ux += dx;
       px = n.x;
       const s = this.step(ux - n0.x, n.y - n0.y);
-      pts.push({ sx: c0.sx + s.x, sy: c0.sy + s.y });
+      pts.push({ sx: c0.sx + s.x, sy: c0.sy + s.y + this.dropAt(n.x, n.y) });
     }
+    pts[0].sy += this.dropAt(n0.x, n0.y);
     const danger = path.attack ? "#ff4a3a" : path.declare_war_team !== null && path.declare_war_team !== undefined ? "#ff9d2e" : null;
     g.lineJoin = "round";
     g.lineCap = "round";
@@ -1307,7 +1347,7 @@ export class IsoMap {
       const t = Math.min(1, (now - fl.t0) / fl.dur);
       const a = (1 - t) * (fl.kind === "death" ? 0.5 : 0.58);
       const c = this.center(fl.x, fl.y);
-      const cy = c.sy - 30 * f.s - (fl.kind === "death" ? t * f.TH * 0.5 : 0);
+      const cy = c.sy + this.dropAt(fl.x, fl.y) - 30 * f.s - (fl.kind === "death" ? t * f.TH * 0.5 : 0);
       const r = f.TW * (fl.kind === "death" ? 0.3 + t * 0.22 : 0.42);
       const grd = g.createRadialGradient(c.sx, cy, 0, c.sx, cy, r);
       grd.addColorStop(0, `rgba(119,37,43,${a})`);
@@ -1378,7 +1418,7 @@ export class IsoMap {
     const mine = me()?.player;
     for (const it of items) {
       const { units, top, figure } = it.stack;
-      const flag = it.stack.flag ?? this.cityFlags?.get(it.stack.c.k);
+      const flag = it.stack.flag ?? this.cityFlags?.get(it.stack.c);
       if (!flag) continue;
       const fx = flag.x0;
       const fy = flag.y0;

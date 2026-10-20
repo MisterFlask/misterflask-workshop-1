@@ -433,6 +433,7 @@ export class MapView {
     } else {
       this.iso.dispose?.();
       this.iso = null;
+      this.snapZoom(); // the renderer drawn now has its own steps (the isometric reach 384)
     }
     this.chunks.clear();
     this.pixels = 0;

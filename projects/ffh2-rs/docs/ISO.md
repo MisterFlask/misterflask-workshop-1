@@ -55,8 +55,12 @@ Two additions for this game:
 ## 3. The contract (tools/m7/README.md, "The asset contract")
 
 All sizes are art pixels; at 1x a tile is 192 px wide. The renderer draws every sprite at
-`ts / 192` (nearest neighbour at whole device-pixel factors; other factors are smoothed once per
-zoom and cached; tiles keep hard diamond edges so no seam shows).
+`ts / 192` of its size in device pixels: by nearest neighbour at whole factors; other factors are
+scaled once per zoom and cached (reductions smoothed, halving first; fractional enlargements by
+nearest neighbour to the next whole factor, then smoothed down, so they stay crisp). Each sprite's
+edges are rounded from their exact positions and tiles keep hard diamond edges, so tiles meet
+without seams or pinholes at any device-pixel ratio (a browser zoom of 110% included). On a map
+that wraps east-west every copy of a plot in view is drawn.
 
 | Kind | Key | Canvas | Anchor |
 |---|---|---|---|

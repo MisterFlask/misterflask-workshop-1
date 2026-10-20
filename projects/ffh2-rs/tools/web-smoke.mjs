@@ -435,7 +435,9 @@ async function rendererIso(url) {
       await b.eval("window.ffh.units.clearSelection && window.ffh.units.clearSelection()");
       await b.mouse(p.x, p.y);
       await until2(`(() => { const s = window.ffh.S.sel; return !!s && s.x === ${mine.x} && s.y === ${mine.y}; })()`, "a click on a unit's figure to select it (iso)");
-      await b.move(p.x + 2, p.y + 2);
+      // The hover at the clicked point (checked above to pick the unit's plot): a pixel or two
+      // off it may be the transparent edge of the figure, over the plot behind.
+      await b.move(p.x, p.y);
       await until2(`(() => { const h = window.ffh.mapView.overlay.hover; return !!h && h.x === ${mine.x} && h.y === ${mine.y}; })()`, "the hover on the unit's plot (iso)");
       clicked = true;
     }
