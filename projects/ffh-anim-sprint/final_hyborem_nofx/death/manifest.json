@@ -1,6 +1,6 @@
 {
  "unit": "hyborem",
- "facing": "lower-right",
+ "facing": "lower-left",
  "arm": "final_hyborem_nofx",
  "anim": "death",
  "canvas": [
@@ -56,8 +56,6 @@
   }
  ],
  "warnings": [
-  "frame 0 leaves the safe region x (16, 144): bbox (10, 2, 130, 126)",
-  "frame 5 leaves the safe region x (16, 144): bbox (18, 64, 145, 126)",
-  "frame 7 leaves the safe region x (16, 144): bbox (14, 64, 141, 126)"
+  "frame 4 leaves the safe region x (16, 144): bbox (26, 15, 146, 105)"
  ]
 }

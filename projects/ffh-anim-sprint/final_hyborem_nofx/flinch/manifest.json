@@ -1,6 +1,6 @@
 {
  "unit": "hyborem",
- "facing": "lower-right",
+ "facing": "lower-left",
  "arm": "final_hyborem_nofx",
  "anim": "flinch",
  "canvas": [
@@ -34,9 +34,5 @@
    "ms": 120,
    "events": []
   }
- ],
- "warnings": [
-  "frame 0 leaves the safe region x (16, 144): bbox (10, 2, 130, 126)",
-  "frame 1 leaves the safe region x (16, 144): bbox (12, 38, 129, 126)"
  ]
 }

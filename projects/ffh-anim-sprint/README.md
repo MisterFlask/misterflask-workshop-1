@@ -41,7 +41,7 @@ https://claude.ai/artifact/3eWLaH1v9PHpu6G6FGKExb (private until shared from its
 cd projects/ffh-anim-sprint
 pip install pillow numpy scipy requests
 python3 lib/recipe.py --unit units/swordsman.json --out final_swordsman     # 3 calls; final_swordsman/ and _nofx/
-python3 lib/recipe.py --unit units/swordsman.json --out final_swordsman --rebuild --pick strike=1 flinch=1 death=1
+python3 lib/recipe.py --unit units/swordsman.json --out final_swordsman --rebuild --pick strike=2 flinch=1 death=1
 python3 lib/preview.py --arm final_swordsman --root final_swordsman          # strips, sequence_*.gif/mp4, vignette
 ```
 

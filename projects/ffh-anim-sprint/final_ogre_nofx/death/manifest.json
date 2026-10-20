@@ -54,5 +54,9 @@
    "ms": 400,
    "events": []
   }
+ ],
+ "warnings": [
+  "frame 2 leaves the safe region x (16, 144): bbox (13, 42, 121, 126)",
+  "frame 4 leaves the safe region x (16, 144): bbox (19, 38, 152, 126)"
  ]
 }

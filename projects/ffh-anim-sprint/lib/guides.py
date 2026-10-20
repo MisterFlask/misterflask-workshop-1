@@ -104,12 +104,14 @@ def render_guide(p, style="colour"):
         hx, hy = g("head")
         tilt = p.get("head_tilt", 0)
         d.ellipse([hx - HEAD_R, hy - HEAD_R, hx + HEAD_R, hy + HEAD_R], fill=_c(pal["skin"]))
-        # hair cap over the top and back (back = upper-right for a lower-left facing figure)
-        ox, oy = rot((3, -4), tilt)
-        d.ellipse([hx + ox - 12, hy + oy - 11, hx + ox + 12, hy + oy + 9], fill=_c(pal["hair"]))
-        fx, fy = rot((-3, 3), tilt)
-        d.ellipse([hx + fx - 9, hy + fy - 7, hx + fx + 8, hy + fy + 8], fill=_c(pal["skin"]))
-        ex, ey = rot((-4, 1), tilt)
+        # hair cap over the top and back (back = upper-right for a lower-left facing figure); cap, face and eye are
+        # drawn for the swordsman's head (radius 13) and scale with the unit's head_r
+        k = HEAD_R / POSES["head_r"]
+        ox, oy = rot((3 * k, -4 * k), tilt)
+        d.ellipse([hx + ox - 12 * k, hy + oy - 11 * k, hx + ox + 12 * k, hy + oy + 9 * k], fill=_c(pal["hair"]))
+        fx, fy = rot((-3 * k, 3 * k), tilt)
+        d.ellipse([hx + fx - 9 * k, hy + fy - 7 * k, hx + fx + 8 * k, hy + fy + 8 * k], fill=_c(pal["skin"]))
+        ex, ey = rot((-4 * k, 1 * k), tilt)
         if p.get("eyes", "open") == "shut":
             d.line([(hx + ex - 2, hy + ey), (hx + ex + 1, hy + ey)], fill=_c(pal["eye"]), width=1)
         else:

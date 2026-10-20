@@ -12,14 +12,15 @@ Everything below runs from `projects/ffh-anim-sprint/`. In a sparse agent worktr
 
 1. **The strike goes where the sprite is looking.** Every unit strikes toward the side its face and eyes point to: the
    neighbouring tile at the lower-left or at the lower-right. Its flinch is a hit from that side, and its death falls
-   away from it, because the attacker stands where the unit looks. Sprites differ: the ogre looks lower-left, while the
-   swordsman, Hyborem, the worker, the elf archer, the priest and the hill giant look lower-right. So decide the facing
-   for every unit (step 1b) and record it in the unit file; the recipe then picks poses, beat texts and prompt that
-   strike that way. The sprint's judged swordsman set (`final/`) breaks this rule (he looks lower-right and strikes
-   lower-left), so do not copy it.
+   away from it, because the attacker stands where the unit looks. Sprites differ: the ogre and Hyborem look
+   lower-left, the swordsman and the worker lower-right. So decide the facing for every unit with care (step 1b; Hyborem
+   was misread at first glance) and record it in the unit file; the recipe then picks the poses, the beat texts and the
+   prompt that strike that way. The sprint's judged swordsman set (`final/`) breaks this rule (he looks lower-right and
+   strikes lower-left), so do not copy it.
 2. **Big actions (strike, flinch, death): the image model draws them on one guided sprite sheet per animation.**
-   Cell 1 of the sheet is the real sprite; every other cell holds a flat blockout of that frame's pose. The model
-   redraws the character in each pose; code keys, scales and places the frames.
+   Cell 1 of the 4×2 sheet is the real sprite; the next cells hold a flat blockout of each frame's pose (6 for the
+   strike, 3 for the flinch, 7 for the death) and the rest stay empty. The model redraws the character in each pose;
+   code keys, scales and places the frames.
 3. **Small motion (idle, and the last frame of the strike and flinch): the real sprite's own pixels, bent by a
    sharpened mesh warp.** No redraw, so nothing shimmers, and the animation lands back on the exact static sprite.
 4. **Do not** animate actions by moving, rotating or cutting up the static sprite. That is the stiff look the sprint
@@ -39,7 +40,7 @@ For a unit `<unit>` you write `units/<unit>.json` and get two folders:
 
 | Folder | Contents |
 |---|---|
-| `final_<unit>/` | the shipping look: a white hit flash on frame 0 of flinch and death, plus a smear arc and an impact spark on the strike when the weapon is a steel-coloured blade (other weapons get no strike effects) |
+| `final_<unit>/` | the shipping look: a white hit flash on frame 0 of flinch and death; on the strike, an impact spark at the weapon's tip on the hit frame wherever a steel-coloured patch shows there (a blade, or a club's spikes), and a smear arc on the swing and hit frames only when a steel-coloured blade at least 20 px long shows in both frames. A dark weapon such as Hyborem's flaming blade gets neither. |
 | `final_<unit>_nofx/` | the same frames without effects, for engines that draw their own effects |
 
 Each holds, per animation `idle`, `strike`, `flinch`, `death`:
@@ -48,6 +49,7 @@ Each holds, per animation `idle`, `strike`, `flinch`, `death`:
 - `<anim>/manifest.json`: `unit`, `facing`, `loop`, `hold_last`, and per frame `ms` and `events` (`"hit"` on strike frame 4).
 - `sheet_<anim>.png`: the frames side by side, 160 px apart.
 - `unit_poses.json`: the poses the guides and warps were made from (for QA and metrics).
+- after step 4, in `final_<unit>/` only: `metrics.json`, the sequence and vignette files and `preview/`.
 
 | Animation | Frames | Timing | Notes |
 |---|---|---|---|
@@ -79,7 +81,8 @@ pip install pillow numpy scipy requests      # and ffmpeg on PATH, for the previ
   tag `anim` ($20) and `total` ($20). The check uses a pessimistic estimate of about $0.25 per sheet call; the bill is
   about $0.08. For bulk work raise every cap that binds. A unit file without a `tag` is billed to `anim/final`.
 - **The sprite.** An M7 unit PNG at most 128 px wide and 128 px tall, feet 2 px above the bottom, looking lower-left or
-  lower-right, holding one weapon in one hand. Do not mirror it: step 1b records which way it looks.
+  lower-right, holding one weapon. Do not mirror it: step 1b records which way it looks. Paths in unit files and on the
+  command line are relative to `projects/ffh-anim-sprint/`.
 
 ## Step 1: describe the unit
 
@@ -91,25 +94,29 @@ This writes `work/final_<unit>/grid.png`: the sprite on the 160×128 animation c
 and labels every 16, and prints where the sprite sits on the canvas (a 96×120 sprite at (32, 8); Hyborem, 105 wide, at
 (27, 8)). Read every joint position from the grid in **canvas** coordinates.
 
-**1b. Decide which way the unit looks.** Zoom into the head on the grid. If the eyes, the nose and the turn of the face
-point screen-left, the unit looks **lower-left**; screen-right, **lower-right**. For a face drawn straight at the
-viewer, use the hair or hood (it sits on the back of the head), the chest and the feet. Write it as `"facing"`; the
-recipe refuses a unit file without it.
+**1b. Decide which way the unit looks.** This is easy to get wrong at a glance: Hyborem was first read as lower-right,
+and three independent blind checks then read lower-left. So crop the head and zoom it to 8× or more, and write down
+which side of the head's centre the eye (or eyes), the nose and the mouth sit on, and which side the ear, the back of
+the hair, a hood or a topknot sit on. Face features on the left and ear or hair on the right: **lower-left**; the
+reverse: **lower-right**. For a face drawn straight at the viewer, use the hair or hood, then the chest and the feet.
+If you can, have a second agent judge the facing from the sprite alone, without telling it your answer. Write it as
+`"facing"`; the recipe refuses a unit file without it.
 
-**1c. Write `units/<unit>.json`.** Start from `units/ogre.json` (a lower-left unit with a club, no shield) or
-`units/hyborem.json` (lower-right, greatsword, no shield):
+**1c. Write `units/<unit>.json`.** Start from `units/ogre.json` (lower-left, a club, no shield) or `units/hyborem.json`
+(lower-left, a greatsword, no shield), whatever your unit's facing; `facing` and the joints are what change. Do not copy
+`units/swordsman.json`: it uses the source poses unchanged (`same_as_source`), which only fits the swordsman.
 
 | Key | What to put |
 |---|---|
 | `name` | the unit key, e.g. `"ogre"`; it goes into the manifests |
-| `sprite` | path from the project root, e.g. `"m7/roster/units/unit_ogre_embers.png"` |
+| `sprite` | path relative to `projects/ffh-anim-sprint/`, e.g. `"m7/roster/units/unit_ogre_embers.png"` |
 | `facing` | `"lower-left"` or `"lower-right"` (step 1b) |
 | `tag` | `"anim/units"` (check it: a copied file may carry another tag) |
 | `description` | one line the model must keep: body, colours, armour, the weapon and **which hand** (`"... a spiked club in his RIGHT hand"`). Name the FfH unit, then describe what it looks like. |
 | `hands` | one sentence, e.g. `"the club stays in his right hand on the screen-left side and his left hand is an empty fist on the screen-right side"` |
 | `guide_style` | `"grey"` for every unit except the swordsman (its blockouts use the swordsman's own colours) |
-| `scale` | the figure's height ÷ 86 (the swordsman's), measured from the top of the head or hair (not horns, hat or weapon) to the soles; e.g. 98 px → 1.14. It scales how far the body travels (the swordsman's moves), not the pose angles. |
-| `head_r` | head radius in px (the swordsman's is 13) |
+| `scale` | the figure's height ÷ 86 (the swordsman's), measured from the top of the head or hair (not horns, hat or weapon) to the soles; e.g. 98 px → 1.14. If a hat or helmet hides the top of the head, estimate it: the top of the head is about as far above the eyes as the chin is below them. It scales how far the body travels (the swordsman's moves), not the pose angles. |
+| `head_r` | head radius in px (the swordsman's is 13); it sizes the guide's head, face and hair cap |
 | `limb` | limb thickness relative to the swordsman: 1.0 for human builds, about 1.4 for hulking ones |
 | `joints` | frame-0 positions, below; every joint is required except `shield` |
 | `beats` | rewordings of beat texts, step 1d |
@@ -118,14 +125,17 @@ Optional keys: `palette` (overrides guide colours), `defringe: false` (turns the
 (warp sharpening, default 3.0). `legacy`, `same_as_source` and `poses_from` are for the sprint's own sets; leave them out.
 
 Joints, in canvas coordinates `[x, y]`, placed **on the sprite as drawn**. `r_` is the weapon arm and the leg on the
-same side of the body, wherever they are on screen; `l_` is the other arm and leg:
+same side of the body, wherever they are on screen; `l_` is the other arm and leg. For a weapon held in both hands
+(a hoe, a spear, a polearm), the weapon hand `r_ha` is the one at the end of the shaft, farthest from the weapon's
+head, so that `r_ha` to `tip` runs along the whole weapon; the other hand is `l_ha`, and the `hands` sentence says that
+it holds the shaft lower down at rest (the poses swing one-handed):
 
 | Joint | Where |
 |---|---|
 | `head` | centre of the head, not counting horns or hat |
 | `neck`, `chest`, `pelvis` | base of the neck, middle of the chest, middle of the belt line |
 | `r_sh`, `r_el`, `r_ha` | weapon arm: shoulder, elbow, hand (the fist on the grip) |
-| `tip` | the weapon's far end (blade tip or club head), wherever it rests, even over the shoulder |
+| `tip` | the weapon's far end (blade tip or club head), wherever it rests, even over the shoulder; for a head set across the shaft (hoe, axe, hammer, pick), where the shaft meets the head |
 | `l_sh`, `l_el`, `l_ha` | the other shoulder, elbow, hand |
 | `shield` | `[cx, cy, rx, ry]`, **only if the unit carries a shield**; leave it out otherwise |
 | `r_hip`, `r_kn`, `r_ft`, `l_hip`, `l_kn`, `l_ft` | hips, knees, ankles |
@@ -136,10 +146,10 @@ draws, the weapon arm and weapon swing to the source's actual direction once the
 from rest, so a weapon carried differently (a club on the shoulder) still swings where the beat sheet says. The warped
 frames copy the source's small joint movements (the breath). `--show-beats` prints which set your unit gets.
 
-| Sprite looks | Weapon hand on screen | Source poses |
+| Sprite looks | Weapon arm on screen (`r_sh` left or right of `l_sh`) | Source poses |
 |---|---|---|
-| lower-left | left (the far hand) | far set, `poses.json` (the ogre) |
-| lower-right | left (the near hand) | near set, `poses_near.json` (the swordsman, Hyborem) |
+| lower-left | left (the far hand) | far set, `poses.json` (the ogre, Hyborem) |
+| lower-right | left (the near hand) | near set, `poses_near.json` (the swordsman) |
 | lower-left | right (the near hand) | near set, mirrored |
 | lower-right | right (the far hand) | far set, mirrored |
 
@@ -150,10 +160,12 @@ weapon and that the feet sit on the feet.
 ```bash
 python3 lib/recipe.py --unit units/<unit>.json --out final_<unit> --show-beats
 ```
-This prints the facing, the pose set, and the text each sheet cell will get (strike frames 1–6, flinch 0–2, death 1–7),
-marking texts that name a shield, sword or blade. The defaults already point the right way for your unit's facing.
-Override every text that names a prop your unit does not have (a club instead of a sword, an empty fist or a cape
-instead of a shield), as a string keyed by frame number:
+This prints the facing, the pose set, the smear direction (`cw` or `ccw`: which way the blade turns on screen; it is
+set by the pose set and needs no action) and the text each sheet cell will get (strike frames 1–6, flinch 0–2, death
+1–7), marking texts that name a shield, sword or blade and texts you have overridden (`own`). The defaults already point
+the right way for your unit's facing. Override every text that names a prop your unit does not have (a club instead of
+a sword, an empty fist or a cape instead of a shield) and any other feature it lacks (hair under a hat, a cape), as a
+string keyed by frame number. A unit without a sword and shield needs most texts overridden (the worker: 15 of 16):
 ```json
 "beats": {"strike": {"2": "...", "4": "..."}, "flinch": {"0": "..."}, "death": {"5": "..."}}
 ```
@@ -164,20 +176,30 @@ strike, away from it for the flinch and the fall). `units/ogre.json` and `units/
 ```bash
 python3 lib/recipe.py --unit units/<unit>.json --out final_<unit> --check-guides
 ```
-Open `work/final_<unit>/guides_check.png`. Row 1 starts with the frame-0 blockout laid over the sprite in a red tint:
-limbs, head and weapon should lie on the sprite's. The rest of row 1 is the strike poses the model will be asked to
-draw, row 2 the flinch and row 3 the death. Check that the strike reaches toward the unit's facing, and fix the joints
-until frame 0 lines up and no pose looks broken. If it warns that the guide weapon was shortened, the weapon is too
-long for the 160×128 canvas in those frames: the model will draw it full length and it will be cut off at the edge
-(see Known limits).
+Open `work/final_<unit>/guides_check.png` (every cell is labelled). Row 1 starts with your frame-0 skeleton over the
+sprite: bones in red, the weapon arm and weapon in yellow, joints as white dots; each should sit on the sprite's body
+part. The rest of row 1 is the strike poses the model will be asked to draw. Row 2 starts with the frame-0 blockout over
+the sprite in a red tint, then the flinch; row 3 is the death. Check:
+- the strike reaches toward the unit's facing, the flinch recoils away from it and the death falls away from it;
+- frame 0 lines up and no pose looks broken; fix the joints until it does;
+- each guide cell against its beat text from 1d: if your weapon rests at a different angle from the swordsman's (on the
+  shoulder, or pointing down like a hoe), an early frame such as strike 1 may hold it differently from the text; then
+  reword the text to describe what the guide shows, never the direction of the blow;
+- in death 4–7 the dropped weapon is always drawn as a sword blade; that is expected, and the death texts must name
+  your weapon so the model draws it.
+
+If it warns that the guide weapon was shortened, the weapon is too long for the area the model is shown (x 16–143,
+y 0–127 of the canvas) in those frames. Carry on: the model draws it at full length, so in step 3 reject variants where
+it is cut off. Do not move `tip` to silence the warning. A clamp at the bottom means the full weapon would reach below
+the feet; the beat text ("nearly touches the ground") is what keeps the model from drawing it there.
 
 ## Step 2: run the recipe
 
 ```bash
 python3 lib/recipe.py --unit units/<unit>.json --out final_<unit>
 ```
-This sends three sheet calls in parallel (strike, flinch, death), with two variants each. It takes about 21 s of model
-calls plus about 6 s to cut, warp and assemble, for about $0.23. It writes `final_<unit>/` and `final_<unit>_nofx/`.
+This sends three sheet calls in parallel (strike, flinch, death), with two variants each. It takes about 20–25 s of
+model calls (longer if the API rate-limits) plus a few seconds to cut, warp and assemble, for about $0.23. It writes `final_<unit>/` and `final_<unit>_nofx/`.
 Raws, templates and diagnostics go to `work/final_<unit>/`, which is not committed.
 
 ## Step 3: pick the variants by eye
@@ -185,9 +207,10 @@ Raws, templates and diagnostics go to `work/final_<unit>/`, which is not committ
 The recipe picks a variant per sheet by a score (reference-cell fidelity, scale, ground snaps, and gate flags that only
 make sense for the swordsman's colours). **That score cannot see colour smudges, off-model faces or a strike in the
 wrong direction, so always look.** For each sheet open `work/final_<unit>/variants_<sheet>.png`: one row per variant at
-2×, cell 1 the real sprite, frames shown as they will be used. A cell label says when the frame was slid sideways onto
-its guide (`slid -24`: the model drew the figure 24 px off) or snapped down to the ground by 4 px or more. Choose the
-variant with fewer of these defects:
+2×, cell 1 the real sprite, frames shown as they will be used but cropped to x 16–143 (a weapon that reaches past
+x 143 looks cut there; the frames themselves run to x 159). A cell label says when the frame was slid sideways onto its
+guide (`slid -24`: the model drew the figure 24 px off) or moved up or down onto the ground by 4 px or more
+(`ground +19`). Choose the variant with fewer of these defects:
 
 - **wrong direction:** the strike lands on the side away from where the face looks, the face turns the other way, or
   the hit comes from the wrong side;
@@ -220,7 +243,8 @@ python3 lib/preview.py --arm final_<unit> --root final_<unit>
 This writes, in `final_<unit>/`:
 - `sequence_3x.{gif,mp4}`: idle ×2, strike, idle, flinch, idle, death, then a 1.5 s corpse hold;
 - `sequence_1x.{gif,mp4}`: the same on a 3×3 map at game scale;
-- `vignette.{gif,mp4}`: two copies fighting, the attacker on the side it faces;
+- `vignette.{gif,mp4}`: two copies side by side on one screen row; the attacker (blue banner) strikes toward the
+  mirrored defender (red), who stands on the side the attacker faces;
 - `preview/`: per animation `<anim>_strip3x.png` (frames at 3× with timings and the hit marked), `<anim>_map1x.png`
   (game scale), an onion skin and a silhouette strip.
 
@@ -238,12 +262,13 @@ game scale. Check:
 - [ ] no magenta specks on outlines (check at 3×; the held corpse frame matters most);
 - [ ] nothing important is cut off at the canvas edge.
 
-`python3 lib/metrics.py --arm final_<unit> --root final_<unit>` gives numbers. Only `nonrigid`, `jitter` and `boil` are
-palette-independent; the gates, `drift_dE`, `overlap` and `arc` look for the swordsman's colours, so ignore them for
-other units.
+`python3 lib/metrics.py --arm final_<unit> --root final_<unit>` prints a summary per animation and writes every number
+to `final_<unit>/metrics.json` (`jitter`, for idle and flinch, is only in that file). Only `nonrigid`, `jitter` and
+`boil` are palette-independent; the gates, `drift_dE`, `overlap` and `arc` look for the swordsman's colours, so ignore
+them for other units (the gates are heuristics even for the swordsman).
 
-**Commit** `units/<unit>.json`, `final_<unit>/` (frames, manifests, sheets, `unit_poses.json`, the sequence and vignette
-files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets). `.gitignore` already leaves out
+**Commit** `units/<unit>.json`, `final_<unit>/` (frames, manifests, sheets, `unit_poses.json`, `metrics.json`, the
+sequence and vignette files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheets). `.gitignore` already leaves out
 `work/` and the per-animation preview GIFs.
 
 ## Known limits
@@ -251,12 +276,13 @@ files and the preview stills) and `final_<unit>_nofx/` (frames, manifests, sheet
 - **Canvas size.** The canvas is 160×128 with a safe region of x 16–143. A unit taller than about 110 px, or one with a
   long weapon, gets clipped: the ogre's club and Hyborem's greatsword are cut off at the top or the side in some frames.
   The recipe refuses sprites taller or wider than 128. A bigger canvas means changing `W`, `H`, `ANCHOR`, `SAFE_X` and
-  `SPRITE_OFFSET` in `lib/animkit.py`; `canvas`, `anchor` and `sprite_offset` in `poses.json` (via `lib/poses_src.py`,
-  which `lib/guides.py` reads) and `poses_near.json`; `REGION`, `GROUND_Y` and `SCALE` in `lib/sheet.py` (128 × 3 already
+  `SPRITE_OFFSET` in `lib/animkit.py`; `canvas`, `anchor`, `sprite_offset` and every joint in `lib/poses_src.py` and
+  `lib/poses_near_src.py`, then regenerating `poses.json` and `poses_near.json` (`lib/guides.py` reads the canvas size
+  from `poses.json`); `REGION`, `GROUND_Y` and `SCALE` in `lib/sheet.py` (128 × 3 already
   fills a 384 px cell, so the cell size from `default_geom` and the image size in `lib/gen.py` `CONTRACT` change too);
   the guide-weapon clamp (x 18–142, y 3–125) in `recipe.retarget`; the cell sizes in `recipe.review_sheet`; and the
   scene sizes in `lib/preview.py`. That is untested. The sideways slide (step 3) can push a long weapon further past
-  the edge: Hyborem's greatsword in strike frames 3 and 4.
+  the edge, as with Hyborem's greatsword and the ogre's club on the hit frames.
 - **Purple or magenta art** (Sheaim, liches, infernal fire). The model's background is magenta and is keyed out. The
   de-fringe step turns itself off when 1% or more of the sprite's opaque pixels are purple (the lich and the Sheaim
   mage), but keying can still eat purple art. The magenta key is assumed by the prompt, the template background
@@ -290,7 +316,9 @@ every animation blind; this recipe's first build was entered as an unnamed lette
 | this recipe (first build) | 7.80 | 6.65 | 7.37 | 7.28 |
 | sheet, no pose guides | 3.80 | 7.60 | 6.18 | 7.03 |
 | model repaints rig frames | 5.78 | 7.35 | 7.20 | 7.18 |
+| sheet with pose blockouts | 4.13 | 7.17 | 6.02 | 7.00 |
 | keys, then in-betweens | – | 7.20 | – | 7.62 |
+| chained per-frame calls | – | 6.63 | – | – |
 | cut-out rig + mesh warp | 8.07 | 4.95 | 5.20 | 3.97 |
 | whole-sprite tween (the stiff look) | 6.28 | 4.58 | 5.03 | 3.62 |
 
@@ -304,23 +332,29 @@ ranked first by every judge, and the idle and strike leads (0.2 and 0.3) are too
 
 ### After the sprint
 
-- **Rule 1** (the strike goes where the sprite looks) was added after the sprint. Most roster sprites look lower-right,
-  so a second pose set was made for them (`poses_near.json`): three agents each designed one, three blind judges scored
-  the rendered guides, and the winner (7.83 of 10 in strike, flinch and death, against 7.33 and 5.33 for the others in
-  the strike) was refined from the judges' notes.
+- **Rule 1** (the strike goes where the sprite looks) was added after the sprint. Sprites that look lower-right with
+  the weapon in the near hand needed a second pose set (`poses_near.json`): three agents each designed one, three blind
+  judges scored the rendered guides, and the winner (mean 7.83 of 10 in strike, flinch and death; the others 7.33 and
+  5.33 in the strike) was refined from the judges' notes (`judging/near_set/panel.json`).
 - **A cold test** of this guide on the ogre, by an agent that read nothing else, found four gaps that are now fixed in
   the recipe: a weapon carried differently from the swordsman's (a club on the shoulder) swung the wrong way, other units
   did not breathe in the idle, the model's sideways placement made the ogre hop backwards while striking, and purple
   specks survived inside the figure.
-- VERIFY-PLACEHOLDER
+- **Blind verification, round A** (`judging/post_rule/round_a.json`): three judges read where each set's sprite looks and
+  where it strikes, under neutral letters. They read Hyborem as looking lower-left, against this guide's first call of
+  lower-right, so his first post-rule set struck the wrong way. The round also exposed a prompt bug (the per-cell facing
+  sentence was sent unformatted) and gaps in this guide found by a second cold run (on the worker). All are fixed, and
+  the three worked examples were made again.
+- VERIFY-B-PLACEHOLDER
 
 ## Worked examples
 
 - `units/swordsman.json` → `final_swordsman/`: looks lower-right, sword in the near hand, shield; near set, colour
   guides.
-- `units/hyborem.json` → `final_hyborem/`: looks lower-right, a long greatsword, no shield; near set retargeted, grey
-  guides, beat texts reworded (fist and cape for the shield).
 - `units/ogre.json` → `final_ogre/`: looks lower-left, a long club resting on the shoulder, no shield; far set
   retargeted, beat texts reworded (club for the sword).
-- Pre-rule sets, kept only to reproduce the sprint (they break rule 1; `"legacy": true`): `units/swordsman_judged.json`
-  → `final/`, `units/hyborem_v1.json` → `final_hyborem_v1/`.
+- `units/hyborem.json` → `final_hyborem/`: looks lower-left, a long greatsword, no shield; far set retargeted, beat texts
+  reworded (fist and cape for the shield).
+- Sprint sets, kept only to reproduce the sprint (`"legacy": true`): `units/swordsman_judged.json` → `final/` breaks rule
+  1; `units/hyborem_v1.json` → `final_hyborem_v1/` keeps it but has the sprint's processing (no idle breath, no sideways
+  snap).

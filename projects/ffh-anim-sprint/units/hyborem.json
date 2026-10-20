@@ -1,7 +1,7 @@
 {
  "name": "hyborem",
  "sprite": "m7/roster/units/unit_hyborem.png",
- "facing": "lower-right",
+ "facing": "lower-left",
  "tag": "anim/units",
  "description": "Hyborem, a towering hulking demon lord: deep crimson skin, two huge curved black horns, burning yellow eyes and a fanged grin, black obsidian spiked armour with gold trim, a tattered dark red cape, a black flaming greatsword in his RIGHT hand, and a ring of solid orange-yellow flames around his feet",
  "hands": "the flaming greatsword stays in his right hand on the screen-left side and his left hand is an empty fist on the screen-right side",
@@ -81,19 +81,17 @@
  },
  "beats": {
   "strike": {
-   "2": "wind-up extreme: body coiled back and crouched, the sword hand behind the head and the flaming greatsword hanging down behind the shoulders to the left, left fist tucked across the belly",
-   "4": "contact: sword arm fully extended toward the lower-right, the flaming greatsword slashing down-right, front knee bent, body low and leaning in, left arm swung back behind the shoulders for balance",
-   "5": "follow-through: the greatsword carries on down until its tip nearly touches the ground at the lower-right, torso twisted, cape trailing back",
-   "6": "recover: body rises, front foot pulls back halfway, the greatsword comes back up on the near side toward the ready angle, left fist tucked across the belly"
+   "2": "wind-up extreme: body coiled back and slightly crouched, the greatsword cocked behind the head with the flaming blade hanging down behind the shoulders, left fist tucked in",
+   "4": "contact: sword arm fully extended toward the lower-left, the flaming blade slashing down-left, front knee bent, body low and leaning in, left arm swung back for balance"
   },
   "flinch": {
-   "0": "impact: hit from the lower-right; head snaps back toward the upper-left, eyes squeezed shut, torso jolts back, both arms jerk outward (sword arm thrown up and out to the left, left fist flung out to the right)",
-   "1": "recoil extreme: leaning back further toward the upper-left, knees bent, the greatsword dipping, left arm still out"
+   "0": "impact: hit from the lower-left; head snaps back toward the upper-right, eyes squeezed shut, torso jolts back, both arms jerk outward (left fist flung out to the right, sword arm thrown up and out)",
+   "1": "recoil extreme: leaning back further, knees bent, the greatsword dipping, left arm still out"
   },
   "death": {
-   "1": "stagger back: a step back toward the upper-left, body thrown back, sword arm flung up, left arm drooping",
-   "3": "kneeling: on both knees, slumped forward, the greatsword's tip resting on the ground at the lower-right, left arm hanging, the flames around his feet shrinking",
-   "5": "hits the ground: lying on his back along the ground, feet toward the lower-right and head toward the upper-left, horns on the ground; the greatsword lies on the ground at the lower-right; the cape spread under him",
+   "1": "stagger back: a step back with the near foot, body thrown back, sword arm flung up, left arm drooping",
+   "3": "kneeling: on both knees, slumped forward, the greatsword's tip resting on the ground, left arm hanging, the flames around his feet shrinking",
+   "5": "hits the ground: lying on his back along the ground, feet toward the lower-left and head toward the upper-right, horns on the ground; the greatsword lies on the ground at the lower-left; the cape spread under him",
    "6": "bounce: head and shoulders lift slightly off the ground, the cape settles",
    "7": "corpse: lying flat and still on his back, eyes dark, the greatsword on the ground beside him, only a few small embers left"
   }

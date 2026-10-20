@@ -1,5 +1,5 @@
 {
- "_note": "Pre-rule set kept only to reproduce final_hyborem_v1/ (the sprint's first second-unit check). Its poses strike to the lower-left although the sprite looks lower-right, which breaks the strike-direction rule in ANIMATING_UNITS.md. Do not copy it; use units/hyborem.json. legacy: true keeps the sprint's exact processing (angle-only retarget, edge-only de-fringe, no sideways snap).",
+ "_note": "The sprint's first second-unit check, kept only to reproduce final_hyborem_v1/. Hyborem looks lower-left and this set strikes lower-left, so it keeps the strike-direction rule, but it was made with the sprint's processing (angle-only retarget, no breath in the idle, edge-only de-fringe, no sideways snap). Use units/hyborem.json. legacy: true keeps that processing.",
  "name": "hyborem",
  "sprite": "m7/roster/units/unit_hyborem.png",
  "facing": "lower-left",

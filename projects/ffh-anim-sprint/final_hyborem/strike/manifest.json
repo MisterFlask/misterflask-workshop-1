@@ -1,6 +1,6 @@
 {
  "unit": "hyborem",
- "facing": "lower-right",
+ "facing": "lower-left",
  "arm": "final_hyborem",
  "anim": "strike",
  "canvas": [
@@ -58,8 +58,8 @@
   }
  ],
  "warnings": [
-  "frame 2 leaves the safe region x (16, 144): bbox (10, 30, 114, 126)",
-  "frame 3 leaves the safe region x (16, 144): bbox (43, 30, 160, 126)",
-  "frame 4 leaves the safe region x (16, 144): bbox (48, 40, 160, 126)"
+  "frame 3 leaves the safe region x (16, 144): bbox (0, 21, 132, 126)",
+  "frame 4 leaves the safe region x (16, 144): bbox (2, 35, 122, 126)",
+  "frame 5 leaves the safe region x (16, 144): bbox (8, 30, 126, 126)"
  ]
 }

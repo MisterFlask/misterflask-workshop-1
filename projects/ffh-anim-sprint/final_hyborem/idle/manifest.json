@@ -1,6 +1,6 @@
 {
  "unit": "hyborem",
- "facing": "lower-right",
+ "facing": "lower-left",
  "arm": "final_hyborem",
  "anim": "idle",
  "canvas": [

@@ -206,18 +206,21 @@ def beat_text(u, anim, i):
 def prompt(u, anim_label, cells, style):
     guide = gen.GUIDE_TEXT["colour" if style == "colour" else "grey"]
     lines = "\n".join(f"cell {c}: {t}" for c, t in cells)
-    return (
+    text = (
         "The first attached image is a sprite-sheet template from my isometric fantasy strategy game: a 4x2 grid of "
         "equal cells on a flat magenta background (there are no visible grid lines). The top-left cell (cell 1) shows "
         f"the finished character, {u['description']}, drawn in {gen.STYLE}, standing in a 3/4 view facing the "
         f"{u['facing']}. {guide} Every cell must show the SAME character: same size, same face, same outfit and colours, "
-        "same pixel size and outline style, feet on the same ground line as the top-left cell. He faces the {u['facing']} "
+        f"same pixel size and outline style, feet on the same ground line as the top-left cell. He faces the {u['facing']} "
         f"in every cell; {u.get('hands', 'the weapon stays in the same hand as in cell 1')}. Leave cell 1 exactly as "
         f"it is. Empty cells stay empty magenta. The cells are consecutive frames of {anim_label}, read left to right, "
         f"top row then bottom row:\n{lines}\nEach cell holds exactly one figure, fully inside its cell. No grid lines, "
         "frames, numbers, text, ground, shadows, motion lines or effects. Background: flat solid pure magenta #FF00FF "
         "filling the whole image, with no gradient. The second attached image is a roster sheet of other units from "
         "the same game: match its outline colour, shading and pixel size exactly.")
+    if "{" in text or "}" in text:  # an unformatted placeholder must never reach the model
+        raise ValueError(f"unformatted placeholder in the prompt: {text[text.find('{'):text.find('{') + 40]!r}")
+    return text
 
 
 # ---------------------------------------------------------------- the three sheets
@@ -424,29 +427,50 @@ def review_sheet(wdir, name, base, u, poses, style):
 
 
 def check_guides(u, out):
-    """work/<out>/guides_check.png: the unit's frame-0 guide over its sprite, then the strike, flinch and death guides.
-    No API calls. Use it to check the joint annotation before spending anything."""
+    """work/<out>/guides_check.png, no API calls: row 1 = the frame-0 skeleton over the sprite (bones red, the weapon
+    arm and weapon yellow, joints white), then the strike guides 1-6; row 2 = the frame-0 blockout over the sprite,
+    then the flinch guides 0-2; row 3 = the death guides 1-7. Every cell is labelled. Use it to check the joint
+    annotation and the poses before spending anything."""
+    from PIL import ImageDraw
     wdir = ROOT / "work" / out
     wdir.mkdir(parents=True, exist_ok=True)
     poses = unit_poses(u)
     style = u.get("guide_style", "grey")
     base = base_canvas(u)
-    g = guides.render_guide(poses["idle"][0], style)
+    rest = poses["idle"][0]
+    ground = (126, 170, 60, 255)
+    # skeleton over the sprite, drawn at 2x so 1-px lines stay thin
+    sk = Image.new("RGBA", (ak.W, ak.H), ground)
+    sk.alpha_composite(base)
+    sk = sk.resize((ak.W * 2, ak.H * 2), Image.NEAREST)
+    d = ImageDraw.Draw(sk)
+    for a, b in TREE:
+        if a in rest and b in rest:
+            col = (255, 220, 0, 255) if (a, b) in WEAPON_CHAIN else (255, 40, 40, 255)
+            d.line([(rest[a][0] * 2, rest[a][1] * 2), (rest[b][0] * 2, rest[b][1] * 2)], fill=col, width=2)
+    for j, v in rest.items():
+        if j in JOINTS:
+            d.ellipse([v[0] * 2 - 2, v[1] * 2 - 2, v[0] * 2 + 2, v[1] * 2 + 2], fill=(255, 255, 255, 255))
+    # blockout over the sprite, strongly tinted
+    g = guides.render_guide(rest, style)
     red = Image.new("RGBA", g.size, (255, 40, 40, 255))
-    g2 = Image.blend(g, red, 0.45)  # tinted so the grey blockout stands out from the sprite
-    g2.putalpha(g.getchannel("A").point(lambda a: int(a * 0.6)))
-    over = Image.new("RGBA", (ak.W, ak.H), (126, 170, 60, 255))
+    g2 = Image.blend(g, red, 0.45)
+    g2.putalpha(g.getchannel("A").point(lambda a: int(a * 0.75)))
+    over = Image.new("RGBA", (ak.W, ak.H), ground)
     over.alpha_composite(base)
     over.alpha_composite(g2)
-    rows = [[over] + [guides.render_guide(p, style) for p in poses["strike"][1:7]],
-            [guides.render_guide(p, style) for p in poses["flinch"][:3]],
-            [guides.render_guide(p, style) for p in poses["death"][1:8]]]
-    W = max(len(r) for r in rows) * ak.W
-    sheet_im = Image.new("RGBA", (W, ak.H * len(rows)), (255, 0, 255, 255))
+    cell = lambda im: im if im.size == (ak.W * 2, ak.H * 2) else im.resize((ak.W * 2, ak.H * 2), Image.NEAREST)
+    rows = [[("frame 0 skeleton", sk)] + [(f"strike {i}", guides.render_guide(poses["strike"][i], style)) for i in range(1, 7)],
+            [("frame 0 blockout", over)] + [(f"flinch {i}", guides.render_guide(poses["flinch"][i], style)) for i in range(3)],
+            [(f"death {i}", guides.render_guide(poses["death"][i], style)) for i in range(1, 8)]]
+    W = max(len(r) for r in rows) * ak.W * 2
+    sheet_im = Image.new("RGBA", (W, ak.H * 2 * len(rows)), (255, 0, 255, 255))
+    dd = ImageDraw.Draw(sheet_im)
     for y, row in enumerate(rows):
-        for x, f in enumerate(row):
-            sheet_im.alpha_composite(f, (x * ak.W, y * ak.H))
-    sheet_im.resize((sheet_im.width * 2, sheet_im.height * 2), Image.NEAREST).save(wdir / "guides_check.png")
+        for x, (lab, f) in enumerate(row):
+            sheet_im.alpha_composite(cell(f), (x * ak.W * 2, y * ak.H * 2))
+            dd.text((x * ak.W * 2 + 4, y * ak.H * 2 + 3), lab, fill=(255, 255, 255, 255))
+    sheet_im.save(wdir / "guides_check.png")
     short = [f"{a} {i}" for a, fr in poses.items() for i, p in enumerate(fr) if p.get("_weapon_shortened")]
     if short:
         print(f"warning: the guide weapon was shortened to fit the canvas in {', '.join(short)}; the model draws it at full "
