@@ -46,8 +46,10 @@ draws). Changes made here since the package arrived:
   `roster/terrain/ovl_<name>.png` (192 x 128, the tile's anchor). The game draws overlays over
   any base tile, so farms, hills and quarries need no per-terrain copies; inset tiles themselves
   are not exported.
-- **Resources** (`res_*`) are made on the feature path at width 70-110; the game stands them on
-  the plot's front-right quarter (anchor 40 px right of and 30 px below the tile centre).
+- **Resources** (`res_*`) are made on the feature path and cut at width 56-78 (made at 80-110,
+  then `recut` to about 70%: at full size they were as loud as units); the game stands them on the
+  plot's front-right quarter (anchor 40 px right of and 30 px below the tile centre). Keep strong
+  team-like colours off them (`res_goods`' red cloth was recoloured to undyed brown).
 - The 1-tile **geometry sentence** now ends with the "CAMERA CHECK" sentence (`CAMERA_CHECK` in
   `m7.py`): without it the model drew walled footprints at about 1.4:1 (base cover 0.60-0.71).
 - `accept` keeps the sprite's own `size` in the manifest (the image-generation size is

@@ -2576,7 +2576,7 @@
   "file": "roster/terrain/res_wheat.png",
   "size": [
    192,
-   88
+   64
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2587,8 +2587,8 @@
    "anchors/terrain/anchor_farms.png"
   ],
   "prompt": "prompts/assets/res_wheat.txt",
-  "accepted": "2026-10-20 00:18",
-  "width": 80,
+  "accepted": "2026-10-20 00:41",
+  "width": 56,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2608,7 +2608,7 @@
   "file": "roster/terrain/res_cow.png",
   "size": [
    192,
-   60
+   44
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2619,8 +2619,8 @@
    "ref/crop_animals_elephants.png"
   ],
   "prompt": "prompts/assets/res_cow.txt",
-  "accepted": "2026-10-20 00:18",
-  "width": 96,
+  "accepted": "2026-10-20 00:41",
+  "width": 68,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2672,7 +2672,7 @@
   "file": "roster/terrain/res_sheep.png",
   "size": [
    192,
-   70
+   52
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2683,8 +2683,8 @@
    "prompts/assets/res_sheep__ref_tile_pasture_3x.png"
   ],
   "prompt": "prompts/assets/res_sheep.txt",
-  "accepted": "2026-10-20 00:19",
-  "width": 90,
+  "accepted": "2026-10-20 00:41",
+  "width": 64,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2704,7 +2704,7 @@
   "file": "roster/terrain/res_horse.png",
   "size": [
    192,
-   78
+   56
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2715,8 +2715,8 @@
    "ref/crop_sheep.png"
   ],
   "prompt": "prompts/assets/res_horse.txt",
-  "accepted": "2026-10-20 00:20",
-  "width": 100,
+  "accepted": "2026-10-20 00:41",
+  "width": 70,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2736,7 +2736,7 @@
   "file": "roster/terrain/res_deer.png",
   "size": [
    192,
-   112
+   80
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2747,8 +2747,8 @@
    "ref/crop_sheep.png"
   ],
   "prompt": "prompts/assets/res_deer.txt",
-  "accepted": "2026-10-20 00:20",
-  "width": 96,
+  "accepted": "2026-10-20 00:41",
+  "width": 68,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2768,7 +2768,7 @@
   "file": "roster/terrain/res_fish.png",
   "size": [
    192,
-   112
+   80
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2779,8 +2779,8 @@
    "anchors/terrain/anchor_ocean.png"
   ],
   "prompt": "prompts/assets/res_fish.txt",
-  "accepted": "2026-10-20 00:21",
-  "width": 90,
+  "accepted": "2026-10-20 00:41",
+  "width": 64,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2800,7 +2800,7 @@
   "file": "roster/terrain/res_whale.png",
   "size": [
    192,
-   104
+   76
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2811,8 +2811,8 @@
    "anchors/terrain/anchor_ocean.png"
   ],
   "prompt": "prompts/assets/res_whale.txt",
-  "accepted": "2026-10-20 00:21",
-  "width": 110,
+  "accepted": "2026-10-20 00:41",
+  "width": 78,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2832,7 +2832,7 @@
   "file": "roster/terrain/res_iron.png",
   "size": [
    192,
-   86
+   62
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2843,8 +2843,8 @@
    "ref/crop_mountains.png"
   ],
   "prompt": "prompts/assets/res_iron.txt",
-  "accepted": "2026-10-20 00:21",
-  "width": 90,
+  "accepted": "2026-10-20 00:41",
+  "width": 64,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2864,7 +2864,7 @@
   "file": "roster/terrain/res_gold.png",
   "size": [
    192,
-   92
+   64
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2875,8 +2875,8 @@
    "ref/crop_mountains.png"
   ],
   "prompt": "prompts/assets/res_gold.txt",
-  "accepted": "2026-10-20 00:21",
-  "width": 84,
+  "accepted": "2026-10-20 00:41",
+  "width": 58,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2896,7 +2896,7 @@
   "file": "roster/terrain/res_gems.png",
   "size": [
    192,
-   106
+   76
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2907,8 +2907,8 @@
    "ref/crop_mountains.png"
   ],
   "prompt": "prompts/assets/res_gems.txt",
-  "accepted": "2026-10-20 00:22",
-  "width": 84,
+  "accepted": "2026-10-20 00:41",
+  "width": 58,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2928,7 +2928,7 @@
   "file": "roster/terrain/res_marble.png",
   "size": [
    192,
-   88
+   62
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2939,8 +2939,8 @@
    "ref/crop_river_bridge.png"
   ],
   "prompt": "prompts/assets/res_marble.txt",
-  "accepted": "2026-10-20 00:22",
-  "width": 84,
+  "accepted": "2026-10-20 00:41",
+  "width": 58,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2960,7 +2960,7 @@
   "file": "roster/terrain/res_mithril.png",
   "size": [
    192,
-   90
+   64
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -2971,8 +2971,8 @@
    "ref/crop_mountains.png"
   ],
   "prompt": "prompts/assets/res_mithril.txt",
-  "accepted": "2026-10-20 00:22",
-  "width": 84,
+  "accepted": "2026-10-20 00:41",
+  "width": 58,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -2992,7 +2992,7 @@
   "file": "roster/terrain/res_wine.png",
   "size": [
    192,
-   92
+   66
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -3003,8 +3003,8 @@
    "anchors/buildings/crop_houses.png"
   ],
   "prompt": "prompts/assets/res_wine.txt",
-  "accepted": "2026-10-20 00:23",
-  "width": 96,
+  "accepted": "2026-10-20 00:41",
+  "width": 68,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -3024,7 +3024,7 @@
   "file": "roster/terrain/res_goods.png",
   "size": [
    192,
-   96
+   70
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -3035,8 +3035,8 @@
    "ref/crop_city.png"
   ],
   "prompt": "prompts/assets/res_goods.txt",
-  "accepted": "2026-10-20 00:23",
-  "width": 90,
+  "accepted": "2026-10-20 00:41",
+  "width": 64,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -3049,6 +3049,7 @@
   "holes": 30,
   "quality": "medium",
   "model": "gpt-image-2.5-sunburst",
+  "note": "red cloth recoloured to undyed brown after accept",
   "gen_size": "1024x1024"
  },
  "res_fruit": {
@@ -3056,7 +3057,7 @@
   "file": "roster/terrain/res_fruit.png",
   "size": [
    192,
-   118
+   86
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -3067,8 +3068,8 @@
    "ref/crop_farm_fields.png"
   ],
   "prompt": "prompts/assets/res_fruit.txt",
-  "accepted": "2026-10-20 00:23",
-  "width": 90,
+  "accepted": "2026-10-20 00:41",
+  "width": 64,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -3088,7 +3089,7 @@
   "file": "roster/terrain/res_mana.png",
   "size": [
    192,
-   126
+   90
   ],
   "anchor": "canvas bottom-centre on tile bottom vertex",
   "round": "r1",
@@ -3099,8 +3100,8 @@
    "ref/crop_mine.png"
   ],
   "prompt": "prompts/assets/res_mana.txt",
-  "accepted": "2026-10-20 00:23",
-  "width": 80,
+  "accepted": "2026-10-20 00:41",
+  "width": 56,
   "pixel": 2,
   "lift": 6,
   "shadow": 0.35,
@@ -4095,7 +4096,7 @@
    "anchors/terrain/anchor_mapmid.png"
   ],
   "prompt": "prompts/assets/tile_flood_plains.txt",
-  "accepted": "2026-10-20 00:23",
+  "accepted": "2026-10-20 00:45",
   "mode": "inset",
   "k": 1.8,
   "p": 2,
@@ -4105,8 +4106,8 @@
   "cx": 0.5,
   "cy": 0.5,
   "base": "roster/terrain/tile_desert.png",
-  "obj_width": 168,
-  "bottom": 93,
+  "obj_width": 196,
+  "bottom": 98,
   "key": "#ff00ff",
   "holes": 30,
   "quality": "medium",
@@ -4130,7 +4131,7 @@
    "anchors/terrain/anchor_mapmid.png"
   ],
   "prompt": "prompts/assets/tile_flood_plains.txt",
-  "accepted": "2026-10-20 00:23",
+  "accepted": "2026-10-20 00:45",
   "mode": "inset",
   "k": 1.8,
   "p": 2,
@@ -4140,8 +4141,8 @@
   "cx": 0.5,
   "cy": 0.5,
   "base": "roster/terrain/tile_desert.png",
-  "obj_width": 168,
-  "bottom": 93,
+  "obj_width": 196,
+  "bottom": 98,
   "key": "#ff00ff",
   "holes": 30,
   "quality": "medium",
