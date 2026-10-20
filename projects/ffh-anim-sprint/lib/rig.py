@@ -55,11 +55,20 @@ def mls_map(shape, p, q, alpha=1.0):
     return out.reshape(h, w, 2)
 
 
-def mls_warp(im, src_pts, dst_pts, alpha=1.0, order=1):
-    """Warp `im` so src_pts move to dst_pts (backward-mapped)."""
+def mls_warp(im, src_pts, dst_pts, alpha=1.0, order=1, sharpen=0.0):
+    """Warp `im` so src_pts move to dst_pts (backward-mapped). sharpen > 0 snaps displacements that are close to a
+    whole pixel onto it (arm R's trick): most of the body then moves by exact pixels and stays crisp, and the
+    sub-pixel blend is confined to narrow bands. sharpen=0 is plain bilinear MLS."""
     a = np.asarray(im.convert("RGBA")).astype(np.float32)
     pm = np.dstack([a[..., :3] * a[..., 3:4] / 255.0, a[..., 3]])
     src = mls_map(a.shape[:2], dst_pts, src_pts, alpha)  # output pixel -> source location
+    if sharpen > 0:
+        ys, xs = np.mgrid[0:a.shape[0], 0:a.shape[1]]
+        grid = np.dstack([xs, ys]).astype(np.float64)
+        disp = src - grid
+        fl = np.floor(disp)
+        fr = np.clip((disp - fl - 0.5) * (1.0 + sharpen) + 0.5, 0.0, 1.0)
+        src = grid + fl + fr
     coords = [src[..., 1], src[..., 0]]
     out = np.dstack([ndimage.map_coordinates(pm[..., c], coords, order=order, mode="constant", cval=0.0)
                      for c in range(4)])
@@ -83,11 +92,11 @@ def pose_points(pose, joints=JOINTS, bone_samples=1):
     return pts
 
 
-def warp_to_pose(im, pose_src, pose_dst, joints=JOINTS, extra_src=(), extra_dst=(), bone_samples=1):
+def warp_to_pose(im, pose_src, pose_dst, joints=JOINTS, extra_src=(), extra_dst=(), bone_samples=1, sharpen=0.0):
     """Bend `im` (drawn in pose_src) toward pose_dst using every joint (+ bone midpoints) as an MLS handle."""
     s = pose_points(pose_src, joints, bone_samples) + list(extra_src)
     d = pose_points(pose_dst, joints, bone_samples) + list(extra_dst)
-    return mls_warp(im, s, d)
+    return mls_warp(im, s, d, sharpen=sharpen)
 
 
 # ---------------------------------------------------------------- cut-out parts

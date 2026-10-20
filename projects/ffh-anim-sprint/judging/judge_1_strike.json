@@ -1,0 +1,149 @@
+{
+  "judge": 1,
+  "animations": {
+    "strike": {
+      "ordering": {
+        "B": "u v w q r s p t",
+        "D": "s v r t u q w p",
+        "F": "t q w v r p s u",
+        "H": "r q v u t p w s",
+        "K": "s t v w u q p r",
+        "M": "w u q p r t v s",
+        "P": "r p s u t v q w",
+        "S": "r v q s t w p u"
+      },
+      "odd_frame": {
+        "B": "2",
+        "D": "none",
+        "F": "1",
+        "H": "none",
+        "K": "4",
+        "M": "none",
+        "P": "4",
+        "S": "1"
+      },
+      "defects": {
+        "B": [
+          "frames 1-6: resampled and blurry, dark outline lost; hard pop from crisp frame 0 to frame 1 and from frame 6 to crisp frame 7",
+          "frames 1-3: sword-arm sleeve rendered as a pale smeared blob; stray light pixels beside the left hip",
+          "frame 2: body noticeably narrower/smaller than frame 0",
+          "frames 4-5: forearm and hand mushy, grip on the sword unclear",
+          "frames 1-6: legs barely change (no real step, knee bend or weight shift); shield never swings back at contact"
+        ],
+        "D": [
+          "all frames: sword never leaves the ready angle - no anticipation, wind-up, swing or contact, so no strike reads",
+          "frames 1-6: whole sprite slid/sheared as a rigid cut-out; both feet slide (right on frames 1-2, ~25 px left on frames 3-5)",
+          "frames 3-5: near-identical poses, no distinguishable hit frame"
+        ],
+        "F": [
+          "frame 1: blade tip cut off flat near the top of the frame",
+          "frame 1: figure taller/larger than frame 0 (mild size pop)",
+          "frames 1-7: purple/pink fringe pixels on the outline instead of the reference's near-black outline",
+          "frames 4-5: hair spikier and torso stockier than the reference",
+          "frames 4-5: body pose almost identical; follow-through only nudges the blade angle"
+        ],
+        "H": [
+          "frame 5: stray magenta stroke at the sword wrist",
+          "frames 1-7: light purple/pink fringe pixels on the outline",
+          "frames 1-3: legs almost unchanged; anticipation and wind-up carried by the arm only",
+          "frame 4: contact fairly upright and the shield stays in front instead of swinging back"
+        ],
+        "K": [
+          "frames 1, 3, 6, 7: strong magenta/purple halo around the whole outline; pops against frame 0 and on the 7->0 loop",
+          "frames 4-5: shield flips to show its back with the fist, boss disappears (prop reads differently)",
+          "frame 7: face and outline differ from frame 0, visible pop when idle resumes",
+          "frame 2: shield covers the torso and the hilt sits on the head, slightly off-model"
+        ],
+        "M": [
+          "frames 1-7: purple/pink fringe pixels on the outline",
+          "frame 6: face slightly changed (eyes/mouth) from the reference",
+          "frames 1-3: legs largely static, weight shift back is weak"
+        ],
+        "P": [
+          "frames 3-7: saturated purple outline instead of near-black; frame 7 pops back to frame 0 on loop",
+          "frames 3-5: hair becomes much spikier than the reference",
+          "frame 7: face profile (nose/mouth) changed from the reference",
+          "frames 4-5: very wide stance, rear foot slides back"
+        ],
+        "S": [
+          "frames 3-6: tan/khaki smudge on the right shorts/thigh (stray colour patch)",
+          "frame 1: head and torso slightly larger than frame 0 (size pop)",
+          "frame 2: sword hilt above the head reads like a hair ornament",
+          "frame 7: slightly softer/blurrier than frame 0",
+          "frames 1-6: light purple fringe on the outline"
+        ]
+      },
+      "scores": {
+        "F": {
+          "motion": 9,
+          "consistency": 7,
+          "style": 7,
+          "appeal": 8
+        },
+        "M": {
+          "motion": 7,
+          "consistency": 8,
+          "style": 8,
+          "appeal": 7
+        },
+        "H": {
+          "motion": 7,
+          "consistency": 8,
+          "style": 8,
+          "appeal": 6
+        },
+        "S": {
+          "motion": 8,
+          "consistency": 6,
+          "style": 7,
+          "appeal": 7
+        },
+        "K": {
+          "motion": 9,
+          "consistency": 5,
+          "style": 6,
+          "appeal": 8
+        },
+        "P": {
+          "motion": 8,
+          "consistency": 6,
+          "style": 6,
+          "appeal": 7
+        },
+        "B": {
+          "motion": 5,
+          "consistency": 4,
+          "style": 4,
+          "appeal": 4
+        },
+        "D": {
+          "motion": 1,
+          "consistency": 7,
+          "style": 8,
+          "appeal": 1
+        }
+      },
+      "ranking": [
+        "F",
+        "M",
+        "H",
+        "S",
+        "K",
+        "P",
+        "B",
+        "D"
+      ],
+      "flaws": {
+        "F": "Strongest, most readable posing of the set, but the new frames drift a little in scale and outline colour and frame 1 crops the blade tip.",
+        "M": "Clean and on-model, but timid legs in the anticipation and wind-up make the strike read as competent rather than punchy.",
+        "H": "Clean and consistent, but stiff legs and an upright contact with the shield left in front make the blow less forceful.",
+        "S": "A tan smudge on the shorts in frames 3-6 and a slightly larger body in frame 1 break consistency in an otherwise strong strike.",
+        "K": "Very dynamic, but a heavy magenta halo and the shield flipping to its back side make several frames look like a different render.",
+        "P": "Good lunge, but saturated purple outlines and spiky hair in frames 3-7 drift off the reference, with a visible pop from frame 7 back to frame 0.",
+        "B": "Frames 1-6 are blurry, smeared resamples with mushy arms that pop hard against the crisp frames 0 and 7.",
+        "D": "The sword never swings: the whole sprite just slides left and right as a cut-out, so there is no strike at all."
+      },
+      "notes": "Ordering done blind before opening ordered strips; D was hardest (frames 4/5 indistinguishable). Outline fringe counts: K and P heaviest, F/H/M/S moderate, B and D none. At 1x all but D read as a strike."
+    }
+  }
+}

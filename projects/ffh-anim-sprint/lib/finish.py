@@ -8,6 +8,7 @@
   f = finish.spark(frame, (x, y), r=6)           # solid-pixel impact star
   frames = finish.apply_strike_fx(frames)        # smear on the swing + contact frames, spark on the hit frame
   frames = finish.apply_hit_fx(frames)           # flash on frame 0 (flinch / death)
+  f = finish.defringe(frame)                     # remove the magenta keying halo from a redrawn frame
 
 Every helper returns a new 160x128 RGBA image and never touches the canvas outside the figure's neighbourhood.
 """
@@ -136,3 +137,40 @@ def apply_hit_fx(frames, i=0, amount=0.6):
     out = list(frames)
     out[i] = flash(frames[i], amount)
     return out
+
+
+def _purplish(a):
+    r, g, b = a[..., 0].astype(int), a[..., 1].astype(int), a[..., 2].astype(int)
+    return (r > g + 25) & (b > g + 25) & (b > 60)
+
+
+def defringe_applicable(base=None):
+    """True when the unit's own sprite has (almost) no purple/magenta pixels, so purple on a redraw's edge can only
+    be keying fringe. Units with real purple art (Sheaim, liches) should be keyed on cyan instead."""
+    a = np.asarray((base or ak.base_canvas()).convert("RGBA"))
+    op = a[..., 3] > 200
+    return _purplish(a)[op].mean() < 0.01
+
+
+def defringe(frame, band=2):
+    """Remove the magenta halo the key leaves on redrawn frames: M7's edge-only cleanup (semi-transparent magenta-ish
+    pixels and near-pure magenta), then opaque purple-tinted pixels within `band` px of the edge are recoloured to a
+    darkened mix of their non-purple neighbours, i.e. the outline colour they should have been."""
+    import cleanup  # m7/lib, on the path via animkit
+    im, _ = cleanup.clean(frame.convert("RGBA"), "unit")
+    a = np.asarray(im).copy()
+    alpha = a[..., 3]
+    edge = ndimage.binary_dilation(alpha < 128, iterations=band) & (alpha >= 128)
+    pur = _purplish(a) & edge
+    if pur.any():
+        ok = (alpha >= 128) & ~_purplish(a)
+        w = ok.astype(np.float32)
+        k = np.ones((3, 3), np.float32)
+        cnt = ndimage.convolve(w, k, mode="constant")
+        mix = np.dstack([ndimage.convolve(a[..., c].astype(np.float32) * w, k, mode="constant") for c in range(3)])
+        mix = mix / np.maximum(cnt, 1)[..., None]
+        dark = np.clip(mix * 0.55, 0, 255)
+        fallback = np.array([40, 28, 40], np.float32)
+        newc = np.where((cnt > 0)[..., None], dark, fallback)
+        a[..., :3][pur] = newc[pur].astype(np.uint8)
+    return Image.fromarray(a, "RGBA")

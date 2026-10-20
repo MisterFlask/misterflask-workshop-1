@@ -11,6 +11,8 @@ How it works (each choice comes from the sprint's results; see the report):
           idle does not pop.
   flinch  guided sheet for the big frames 0-2; frame 3 (settle) warped from the true sprite.
   death   guided sheet for frames 1-7; frame 0 = flinch frame 0 (same pose by the beat sheet).
+  clean   redrawn frames are de-fringed (the magenta keying halo becomes outline colour); warps use the sharpened
+          MLS map so idle and settle frames stay crisp. Both were added after the blind strike judging.
   finish  smear + spark on the strike, hit flash on flinch/death frame 0 (FX) - written to <out>/ ; the same set
           without FX goes to <out>_nofx/ for fair comparison with round-1 arms.
 
@@ -205,15 +207,23 @@ def build(u, out, anims, style, picks=None, fx=True, snap=False):
             if picks.get(name) == k or (name not in picks and (best is None or sc < best[0])):
                 best = (sc if name not in picks else -1, k, fr)
         chosen[name] = best
+    # round-2 fixes from the judges: de-fringe redrawn frames (magenta keying halo), sharpened warps (crisp idle and
+    # settle frames instead of bilinear blur)
+    clean = finish.defringe_applicable(base) and u.get("defringe", True)
+    if clean:
+        for name in chosen:
+            sc, k, fr = chosen[name]
+            chosen[name] = (sc, k, [fr[0]] + [finish.defringe(f) for f in fr[1:]])
+    warp = lambda p: rig.warp_to_pose(base, rest, p, sharpen=u.get("sharpen", 3.0))
     frames = {}
     if "idle" in anims:
-        frames["idle"] = [base] + [rig.warp_to_pose(base, rest, p) for p in poses["idle"][1:]]
+        frames["idle"] = [base] + [warp(p) for p in poses["idle"][1:]]
     if "strike" in anims:
         fr = chosen["strike"][2]
-        frames["strike"] = [base] + fr[1:7] + [rig.warp_to_pose(base, rest, poses["strike"][7])]
+        frames["strike"] = [base] + fr[1:7] + [warp(poses["strike"][7])]
     if "flinch" in anims or "death" in anims:
         ff = chosen["flinch"][2]
-        flinch = ff[1:4] + [rig.warp_to_pose(base, rest, poses["flinch"][3])]
+        flinch = ff[1:4] + [warp(poses["flinch"][3])]
         if "flinch" in anims:
             frames["flinch"] = flinch
     if "death" in anims:
