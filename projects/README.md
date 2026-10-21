@@ -6,9 +6,10 @@ This directory contains standalone code projects. Each subdirectory is a self-co
 
 | Project | Description | Tech Stack |
 |---------|-------------|------------|
-| [ffh2-rs](./ffh2-rs/) | Fall from Heaven 2 (0.41) ported to Rust | Rust, web client |
 | [openai-image-mcp](./openai-image-mcp/) | MCP server for OpenAI (ChatGPT) image generation in Claude Code | TypeScript, MCP SDK, esbuild |
-| [ffh-anim-sprint](./ffh-anim-sprint/) | Research sprint: idle/strike/flinch/death animation methods for M7 isometric unit sprites | Python, Pillow, OpenAI images API |
+
+`ffh2-rs` (the Rust port of Fall from Heaven 2) and `ffh-anim-sprint` (the unit-animation
+research sprint) have moved to https://github.com/MisterFlask/RustFallFromHeaven.
 
 ## Adding a New Project
 
